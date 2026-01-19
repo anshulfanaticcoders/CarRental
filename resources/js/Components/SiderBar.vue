@@ -87,64 +87,64 @@ const userRole = usePage().props.auth.user.role;
 // Menus for "customer" (existing logic)
 const menus = [
   {
-    title: _t('customerprofile','my_profile'),
+    title: _t('customerprofile', 'my_profile'),
     key: "profile",
     icon: profileIcon,
     items: [
-      { name: _t('customerprofile','profile'), path: route('profile.edit', { locale: usePage().props.locale }) },
-      { name: _t('customerprofile','travel_documents'), path: route('user.documents.index', { locale: usePage().props.locale }) },
-      { name: _t('customerprofile','issued_payments'), path: route('profile.payments', { locale: usePage().props.locale }) },
-      { name: _t('customerprofile','register_as_vendor'), path: route('vendor.register', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'profile'), path: route('profile.edit', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'travel_documents'), path: route('user.documents.index', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'issued_payments'), path: route('profile.payments', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'register_as_vendor'), path: route('vendor.register', { locale: usePage().props.locale }) },
     ],
   },
   {
-    title: _t('customerprofile','my_bookings'),
+    title: _t('customerprofile', 'my_bookings'),
     key: "bookings",
     icon: bookingsIcon,
     items: [
-      { name: _t('customerprofile','all_bookings') || 'All Bookings', path: route('profile.bookings.all', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'all_bookings') || 'All Bookings', path: route('profile.bookings.all', { locale: usePage().props.locale }) },
     ],
   },
 ];
 
 const otherLinks = [
-  { name: _t('customerprofile','inbox'), path: route('messages.index', { locale: usePage().props.locale }), icon: inboxIcon, isInbox: true },
-  { name: _t('customerprofile','favorites'), path: route('profile.favourites', { locale: usePage().props.locale }), icon: favoritesIcon },
-  { name: _t('customerprofile','my_reviews'), path: route('profile.reviews', { locale: usePage().props.locale }), icon: reviewsIcon },
+  { name: _t('customerprofile', 'inbox'), path: route('messages.index', { locale: usePage().props.locale }), icon: inboxIcon, isInbox: true },
+  { name: _t('customerprofile', 'favorites'), path: route('profile.favourites', { locale: usePage().props.locale }), icon: favoritesIcon },
+  { name: _t('customerprofile', 'my_reviews'), path: route('profile.reviews', { locale: usePage().props.locale }), icon: reviewsIcon },
 ];
 
 // Additional menus for "vendor"
 const vendorMenus = [
   {
-    title: _t('customerprofile','dashboard'),
+    title: _t('customerprofile', 'dashboard'),
     key: "dashboard",
     icon: dashboardIcon,
     items: [
-      { name: _t('customerprofile','profile'), path: route('profile.edit', { locale: usePage().props.locale }) },
-      { name: _t('customerprofile','overview'), path: route('vendor.overview', { locale: usePage().props.locale }) },
-      { name: _t('customerprofile','documents'), path: route('vendor.documents.index', { locale: usePage().props.locale }) },
-      { name: _t('customerprofile','verification_status'), path: route('vendor.status', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'profile'), path: route('profile.edit', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'overview'), path: route('vendor.overview', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'documents'), path: route('vendor.documents.index', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'verification_status'), path: route('vendor.status', { locale: usePage().props.locale }) },
     ],
   },
   {
-    title: _t('customerprofile','vehicles'),
+    title: _t('customerprofile', 'vehicles'),
     key: "vehicles",
     icon: vehiclesIcon,
     items: [
-      { name: _t('customerprofile','all_vehicles'), path: route('current-vendor-vehicles.index', { locale: usePage().props.locale }) },
-      { name: _t('customerprofile','add_new_vehicle'), path: route('vehicles.create', { locale: usePage().props.locale }) },
-      { name: _t('customerprofile','create_bulk_listing'), path: route('vehicles.bulk-upload.create', { locale: usePage().props.locale }) },
-      { name: _t('customerprofile','manage_plans'), path: route('VendorPlanIndex', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'all_vehicles'), path: route('current-vendor-vehicles.index', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'add_new_vehicle'), path: route('vehicles.create', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'create_bulk_listing'), path: route('vehicles.bulk-upload.create', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'manage_plans'), path: route('VendorPlanIndex', { locale: usePage().props.locale }) },
     ],
   },
 ];
 
 const vendorOtherLinks = [
-  { name: _t('customerprofile','payment_history'), path: route('vendor.payments', { locale: usePage().props.locale }), icon: clockIcon },
-  { name: _t('customerprofile','bookings'), path: route('bookings.index', { locale: usePage().props.locale }), icon: vehiclesIcon },
-  { name: _t('customerprofile','date_blocking'), path: route('vendor.blocking-dates.index', { locale: usePage().props.locale }), icon: dateblockingIcon },
-  { name: _t('customerprofile','inbox'), path: route('messages.vendor.index', { locale: usePage().props.locale }), icon: inboxIcon, isInbox: true },
-  { name: _t('customerprofile','customer_reviews'), path: route('vendor.reviews', { locale: usePage().props.locale }), icon: reviewsIcon },
+  { name: _t('customerprofile', 'payment_history'), path: route('vendor.payments', { locale: usePage().props.locale }), icon: clockIcon },
+  { name: _t('customerprofile', 'bookings'), path: route('bookings.index', { locale: usePage().props.locale }), icon: vehiclesIcon },
+  { name: _t('customerprofile', 'date_blocking'), path: route('vendor.blocking-dates.index', { locale: usePage().props.locale }), icon: dateblockingIcon },
+  { name: _t('customerprofile', 'inbox'), path: route('messages.vendor.index', { locale: usePage().props.locale }), icon: inboxIcon, isInbox: true },
+  { name: _t('customerprofile', 'customer_reviews'), path: route('vendor.reviews', { locale: usePage().props.locale }), icon: reviewsIcon },
 ];
 
 // Active menus based on role
@@ -152,6 +152,9 @@ const activeMenus = userRole === "vendor" ? vendorMenus : menus;
 const activeOtherLinks = userRole === "vendor" ? vendorOtherLinks : otherLinks;
 
 const toggleMenu = (menuKey) => {
+  if (isCollapsed.value && !isMobile.value) {
+    toggleSidebar();
+  }
   activeMenu.value = activeMenu.value === menuKey ? null : menuKey;
 };
 
@@ -161,9 +164,9 @@ const setActiveSubmenu = (submenu) => {
 
 const greetingMessage = computed(() => {
   const hours = new Date().getHours();
-  if (hours < 12) return _t('customerprofile','greeting_morning');
-  if (hours < 18) return _t('customerprofile','greeting_afternoon');
-  return _t('customerprofile','greeting_evening');
+  if (hours < 12) return _t('customerprofile', 'greeting_morning');
+  if (hours < 18) return _t('customerprofile', 'greeting_afternoon');
+  return _t('customerprofile', 'greeting_evening');
 });
 
 const setActiveLinkFromRoute = () => {
@@ -211,8 +214,8 @@ onMounted(() => {
 });
 
 watch(() => usePage().url, () => {
-    setActiveLinkFromRoute();
-    setActiveSubmenuFromRoute();
+  setActiveLinkFromRoute();
+  setActiveSubmenuFromRoute();
 });
 
 import axios from "axios";
@@ -270,17 +273,42 @@ const handleSubmenuClick = (name) => {
 const profileCompletion = ref(0);
 
 const fetchProfileCompletion = async () => {
-    try {
-        const response = await fetch(route('profile.completion', { locale: usePage().props.locale }));
-        const data = await response.json();
-        profileCompletion.value = data.percentage;
-    } catch (error) {
-        console.error('Error fetching profile completion:', error);
-    }
+  try {
+    const response = await fetch(route('profile.completion', { locale: usePage().props.locale }));
+    const data = await response.json();
+    profileCompletion.value = data.percentage;
+  } catch (error) {
+    console.error('Error fetching profile completion:', error);
+  }
 };
 
 onMounted(fetchProfileCompletion);
 const showProfileAlert = computed(() => profileCompletion.value < 90);
+
+// Transition Hooks for Accordion Animation
+const beforeEnter = (el) => {
+  el.style.height = '0';
+  el.style.opacity = '0';
+};
+
+const enter = (el) => {
+  el.style.height = el.scrollHeight + 'px';
+  el.style.opacity = '1';
+};
+
+const afterEnter = (el) => {
+  el.style.height = 'auto'; // Allow height to adjust if content changes
+};
+
+const beforeLeave = (el) => {
+  el.style.height = el.scrollHeight + 'px';
+  el.style.opacity = '1';
+};
+
+const leave = (el) => {
+  el.style.height = '0';
+  el.style.opacity = '0';
+};
 </script>
 
 <template>
@@ -295,7 +323,7 @@ const showProfileAlert = computed(() => profileCompletion.value < 90);
         </svg>
       </button>
     </div>
-    
+
     <!-- Collapse toggle button (desktop only) -->
     <div v-if="!isMobile" class="flex justify-end py-4 pr-4">
       <button @click="toggleSidebar" class="collapse-toggle" :class="{ 'toggle-collapsed': isCollapsed }"
@@ -335,38 +363,39 @@ const showProfileAlert = computed(() => profileCompletion.value < 90);
 
       <!-- Dynamic Menus -->
       <div v-for="menu in activeMenus" :key="menu.key" class="menu-item flex flex-col gap-2">
-        <button class="menu-header" 
-          :class="{ 
-            active: activeMenu === menu.key, 
-            'collapsed-menu': isCollapsed && !isMobile,
-            'justify-between': !isCollapsed || isMobile
-          }"
-          @click="toggleMenu(menu.key)">
+        <button class="menu-header" :class="{
+          active: activeMenu === menu.key,
+          'collapsed-menu': isCollapsed && !isMobile,
+          'justify-between': !isCollapsed || isMobile
+        }" @click="toggleMenu(menu.key)">
           <div class="flex gap-2 items-center">
             <img :src="menu.icon" alt="" class="icon-button active"
               :class="{ 'brightness-active': activeMenu === menu.key }" />
             <span v-if="!isCollapsed || isMobile">{{ menu.title }}</span>
           </div>
-          <img v-if="(!isCollapsed || isMobile)" class="chevron" :class="{ rotated: activeMenu === menu.key }" :src="chevronIcon" alt="" />
+          <img v-if="(!isCollapsed || isMobile)" class="chevron" :class="{ rotated: activeMenu === menu.key }"
+            :src="chevronIcon" alt="" />
         </button>
-        <ul v-if="activeMenu === menu.key && (!isCollapsed || isMobile)" class="submenu">
-          <li v-for="item in menu.items" :key="item.name" :class="{ 'submenu-active': activeSubmenu === item.name }">
-            <Link :href="item.path" class="submenu-link flex items-center gap-2" @click="handleSubmenuClick(item.name)">
-              {{ item.name }}
-            </Link>
-          </li>
-        </ul>
+        <Transition name="accordion" @before-enter="beforeEnter" @enter="enter" @after-enter="afterEnter"
+          @before-leave="beforeLeave" @leave="leave">
+          <ul v-if="activeMenu === menu.key && (!isCollapsed || isMobile)" class="submenu">
+            <li v-for="item in menu.items" :key="item.name" :class="{ 'submenu-active': activeSubmenu === item.name }">
+              <Link :href="item.path" class="submenu-link flex items-center gap-2"
+                @click="handleSubmenuClick(item.name)">
+                {{ item.name }}
+              </Link>
+            </li>
+          </ul>
+        </Transition>
       </div>
 
       <!-- Other Links -->
       <div v-for="link in activeOtherLinks" :key="link.name" class="menu-item">
-        <Link :href="link.path" class="menu-link flex items-center gap-2"
-          :class="{ 
-            active: activeLink === link.name, 
-            'collapsed-menu': isCollapsed && !isMobile,
-            'justify-center': isCollapsed && !isMobile
-          }" 
-          @click="handleLinkClick(link.name)">
+        <Link :href="link.path" class="menu-link flex items-center gap-2" :class="{
+          active: activeLink === link.name,
+          'collapsed-menu': isCollapsed && !isMobile,
+          'justify-center': isCollapsed && !isMobile
+        }" @click="handleLinkClick(link.name)">
           <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]"
             :class="{ 'brightness-active': activeLink === link.name }" />
           <span v-if="!isCollapsed || isMobile">{{ link.name }}</span>
@@ -377,15 +406,14 @@ const showProfileAlert = computed(() => profileCompletion.value < 90);
       </div>
 
       <!-- Logout Button -->
-      <Link :href="route('logout')" method="post" as="button" 
-        class="text-[#EE1D52] flex items-center gap-1 mt-[4rem] w-full pb-[2rem]"
-        :class="{ 
-          'justify-center': isCollapsed && !isMobile, 
-          'ml-[1rem]': !isCollapsed || isMobile, 
-          'ml-0': isCollapsed && !isMobile 
+      <Link :href="route('logout')" method="post" as="button"
+        class="text-[#EE1D52] flex items-center gap-1 mt-[4rem] w-full pb-[2rem]" :class="{
+          'justify-center': isCollapsed && !isMobile,
+          'ml-[1rem]': !isCollapsed || isMobile,
+          'ml-0': isCollapsed && !isMobile
         }">
         <img :src="logoutIcon" alt="">
-        <span v-if="!isCollapsed || isMobile">{{ _t('customerprofile','log_out') }}</span>
+        <span v-if="!isCollapsed || isMobile">{{ _t('customerprofile', 'log_out') }}</span>
       </Link>
     </div>
   </div>
@@ -466,6 +494,21 @@ a {
   margin: 0;
   padding: 0 20px;
   border-radius: 12px;
+  overflow: hidden;
+  /* Important for height transition */
+}
+
+/* Accordion Transition Styles */
+.accordion-enter-active,
+.accordion-leave-active {
+  transition: height 0.3s ease, opacity 0.3s ease;
+  overflow: hidden;
+}
+
+.accordion-enter-from,
+.accordion-leave-to {
+  height: 0;
+  opacity: 0;
 }
 
 .submenu li {
@@ -511,18 +554,25 @@ a {
 }
 
 .unread-badge {
-  background-color: #EE1D52; /* Red background */
+  background-color: #EE1D52;
+  /* Red background */
   color: white;
-  border-radius: 50%; /* Circular shape */
-  padding: 2px 8px; /* Adjust padding to make it look like a badge */
-  font-size: 0.75rem; /* Smaller font size */
+  border-radius: 50%;
+  /* Circular shape */
+  padding: 2px 8px;
+  /* Adjust padding to make it look like a badge */
+  font-size: 0.75rem;
+  /* Smaller font size */
   font-weight: bold;
-  margin-left: auto; /* Push to the right */
-  min-width: 24px; /* Ensure it's circular even for single digits */
+  margin-left: auto;
+  /* Push to the right */
+  min-width: 24px;
+  /* Ensure it's circular even for single digits */
   text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 24px; /* Ensure height matches min-width for circular shape */
+  height: 24px;
+  /* Ensure height matches min-width for circular shape */
 }
 </style>

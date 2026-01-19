@@ -9,6 +9,9 @@ import GuestHeader from '@/Layouts/GuestHeader.vue';
 import { ref } from 'vue';
 import { Vue3Lottie } from 'vue3-lottie';
 import universalLoader from '../../../../public/animations/universal-loader.json';
+import { toast } from 'vue-sonner';
+import { Toaster } from "@/Components/ui/sonner";
+import { watch, onMounted } from 'vue';
 
 const page = usePage();
 
@@ -16,7 +19,7 @@ const _t = (group, key) => {
     return page.props.translations[group][key] || key;
 };
 
-defineProps({
+const props = defineProps({
     canResetPassword: {
         type: Boolean,
     },
@@ -47,6 +50,22 @@ const submit = () => {
         }
     });
 };
+
+const handleStatusToast = (status) => {
+    if (status) {
+        toast.success(status);
+    }
+};
+
+onMounted(() => {
+    setTimeout(() => {
+        handleStatusToast(props.status);
+    }, 100);
+});
+
+watch(() => props.status, (newStatus) => {
+    handleStatusToast(newStatus);
+});
 </script>
 
 <template>
@@ -70,9 +89,9 @@ const submit = () => {
 
         <GuestHeader />
 
-        <div v-if="status" class="mb-4 font-medium text-sm text-green-600">
-            {{ status }}
-        </div>
+        <Toaster position="bottom-right" :toastOptions="{
+            style: { background: 'black', color: 'white', border: '1px solid #333' }
+        }" />
 
         <div class="ml-[10%] flex justify-between items-center gap-16 h-[91vh] sign_in
         max-[768px]:flex-col max-[768px]:ml-0 max-[768px]:px-[1.5rem] max-[768px]:justify-center relative
@@ -120,7 +139,7 @@ const submit = () => {
                         </label>
                         <Link v-if="canResetPassword" :href="route('password.request')"
                             class="underline max-[768px]:text-[1rem] max-[768px]:text-white text-lg text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        {{ _t('login', 'forgot_password') }}
+                            {{ _t('login', 'forgot_password') }}
                         </Link>
 
                     </div>
@@ -131,7 +150,9 @@ const submit = () => {
                             :class="{ 'opacity-25': form.processing || isLoggingIn }"
                             :disabled="form.processing || isLoggingIn">
                             <span v-if="isLoggingIn" class="flex items-center justify-center gap-2">
-                                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <div
+                                    class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin">
+                                </div>
                                 Signing in...
                             </span>
                             <span v-else>{{ _t('login', 'sign_in_button') }}</span>

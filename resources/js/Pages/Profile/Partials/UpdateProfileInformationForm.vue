@@ -6,7 +6,8 @@ import TextArea from '@/Components/TextArea.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch, getCurrentInstance } from 'vue';
-import { useToast } from 'vue-toastification';
+import { toast } from 'vue-sonner';
+import { Toaster } from "@/Components/ui/sonner";
 import {
     Select,
     SelectContent,
@@ -20,7 +21,6 @@ import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import loaderVariant from '../../../../assets/loader-variant.svg';
 
-const toast = useToast();
 const user = usePage().props.auth.user;
 const profile = usePage().props.auth.user.profile;
 
@@ -75,20 +75,15 @@ const handleSubmit = () => {
     form.post(route('profile.update'), {
         preserveScroll: true, // Keeps scroll position unless overridden
         onSuccess: () => {
-            toast.success(_t('customerprofilepages', 'profile_updated_success_toast'), {
-                position: 'top-right',
-                timeout: 1000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
+            toast.success(_t('customerprofilepages', 'profile_updated_success_toast'));
             // Scroll to top before reload
             window.scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => {
                 window.location.reload();
-            }, 1500);
+            }, 1000);
         },
         onError: (errors) => {
+            toast.error('Failed to update profile. Please check the form.');
             // Log errors for debugging
             console.log('Validation errors:', errors);
 
@@ -196,7 +191,8 @@ onMounted(() => {
 
 <template>
     <header>
-        <h2 class="text-[1.75rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">{{ _t('customerprofilepages', 'personal_details') }}</h2>
+        <h2 class="text-[1.75rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">{{ _t('customerprofilepages',
+            'personal_details') }}</h2>
         <div class="w-[25rem] max-[768px]:w-full">
             <div class="profile-completion">
                 <p class="mb-2">{{ _t('customerprofilepages', 'profile_completion') }}{{ profileCompletion }}%</p>
@@ -276,10 +272,11 @@ onMounted(() => {
 
 
                 <div>
-                    <InputLabel for="date_of_birth" :value="_t('customerprofilepages', 'date_of_birth_label')" class="mb-1" />
+                    <InputLabel for="date_of_birth" :value="_t('customerprofilepages', 'date_of_birth_label')"
+                        class="mb-1" />
                     <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth" auto-apply
-                        :placeholder="_t('customerprofilepages', 'date_of_birth_placeholder')" class="w-full" :max-date="minimumDateOfBirth"
-                        :start-date="minimumDateOfBirth" />
+                        :placeholder="_t('customerprofilepages', 'date_of_birth_placeholder')" class="w-full"
+                        :max-date="minimumDateOfBirth" :start-date="minimumDateOfBirth" />
                     <InputError class="mt-2" :message="form.errors.date_of_birth" />
                 </div>
 
@@ -295,8 +292,8 @@ onMounted(() => {
                                 <SelectItem v-for="country in countries" :key="country.code" :value="country.code">
                                     <div class="flex items-center gap-2">
                                         <img :src="getFlagUrl(country.code)" :alt="`${country.name} flag`"
-                                                        class="w-[1.5rem] h-[1rem] rounded-sm" />
-                                    {{ country.name }}
+                                            class="w-[1.5rem] h-[1rem] rounded-sm" />
+                                        {{ country.name }}
                                     </div>
                                 </SelectItem>
                             </SelectGroup>
@@ -356,11 +353,13 @@ onMounted(() => {
                 </div>
 
 
-                <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] leading-4 mt-10">{{ _t('customerprofilepages', 'profile_section_title') }}
+                <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] leading-4 mt-10">{{
+                    _t('customerprofilepages', 'profile_section_title') }}
                 </h2>
 
                 <div class="col-span-2">
-                    <p class="mb-[1rem] text-customLightGrayColor font-medium max-[768px]:text-[0.95rem]">{{ _t('customerprofilepages', 'who_am_i_prompt') }}
+                    <p class="mb-[1rem] text-customLightGrayColor font-medium max-[768px]:text-[0.95rem]">{{
+                        _t('customerprofilepages', 'who_am_i_prompt') }}
                     </p>
                     <InputLabel for="about" :value="_t('customerprofilepages', 'about_label')" />
                     <TextArea id="about" class="mt-1 block w-full" v-model="form.about" />
@@ -378,15 +377,18 @@ onMounted(() => {
 
                 <div class="max-[768px]:col-span-2">
                     <span
-                        class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] mb-4 inline-block mt-5 max-[768px]:mb-4">{{ _t('customerprofilepages', 'tax_identification_number_title') }}</span>
-                    <InputLabel for="tax_identification" :value="_t('customerprofilepages', 'tax_identification_number_label')" />
+                        class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] mb-4 inline-block mt-5 max-[768px]:mb-4">{{
+                            _t('customerprofilepages', 'tax_identification_number_title') }}</span>
+                    <InputLabel for="tax_identification"
+                        :value="_t('customerprofilepages', 'tax_identification_number_label')" />
                     <TextInput id="tax_identification" type="text" class="mt-1 block w-full"
                         v-model="form.tax_identification" />
                     <InputError class="mt-2" :message="form.errors.tax_identification" />
                 </div>
 
                 <div class="flex items-end gap-4 row-span-3 col-span-2">
-                    <PrimaryButton :disabled="form.processing" class="w-[10rem]">{{ _t('customerprofilepages', 'update_profile_button') }} </PrimaryButton>
+                    <PrimaryButton :disabled="form.processing" class="w-[10rem]">{{ _t('customerprofilepages',
+                        'update_profile_button') }} </PrimaryButton>
                 </div>
             </div>
         </form>
@@ -394,6 +396,9 @@ onMounted(() => {
     <div v-if="form.processing" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
         <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
     </div>
+    <Toaster position="bottom-right" :toastOptions="{
+        style: { background: 'black', color: 'white', border: '1px solid #333' }
+    }" />
 </template>
 
 <style scoped>
@@ -428,9 +433,9 @@ select {
 
 :deep(.dp__input) {
     padding: 1rem 1rem 1rem 2.5rem;
-    border-radius: 12px; 
+    border-radius: 12px;
     border: 1px solid #2b2b2b99;
-    width: 100%; 
+    width: 100%;
 }
 
 :deep(.dp__menu) {
@@ -454,7 +459,8 @@ select {
     label {
         font-size: 0.75rem !important;
     }
-    :deep(.dp__input){
+
+    :deep(.dp__input) {
         font-size: 0.75rem;
     }
 }

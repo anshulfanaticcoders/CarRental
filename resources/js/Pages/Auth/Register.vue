@@ -7,6 +7,8 @@ import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
 import { ref, watch, computed, onMounted } from "vue";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import { Button } from "@/Components/ui/button";
+import { Toaster } from "@/Components/ui/sonner";
+import { toast } from "vue-sonner";
 import {
     Stepper,
     StepperItem,
@@ -27,9 +29,6 @@ import {
 
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
-import loaderVariant from '../../../assets/loader-variant.svg';
-import { Vue3Lottie } from 'vue3-lottie';
-import universalLoader from '../../../../public/animations/universal-loader.json';
 import Footer from "@/Components/Footer.vue";
 
 const stepIndex = ref(1);
@@ -249,6 +248,9 @@ const submit = () => {
 
     form.post(route("register"), {
         onSuccess: () => {
+            // Show toast success message
+            toast.success(_t('registerUser', 'account_created_success') || 'Account created successfully');
+
             const returnToUrl = sessionStorage.getItem('returnToUrl');
             if (returnToUrl) {
                 sessionStorage.removeItem('returnToUrl');
@@ -264,6 +266,8 @@ const submit = () => {
                 form.errors[field] = errors[field];
             });
             isRegistering.value = false; // Reset loading state on error
+            // Show toast error message
+            toast.error(_t('registerUser', 'registration_failed') || 'Registration failed. Please check the form.');
         },
     });
 };
@@ -338,6 +342,7 @@ watch(dateOfBirth, (newValue) => {
 </script>
 
 <template>
+
     <Head>
         <meta name="robots" content="noindex, nofollow">
         <title>Register</title>
@@ -374,18 +379,16 @@ watch(dateOfBirth, (newValue) => {
                                         isStepCompleted(step.step) && state !== 'active' && '!bg-green-500'
                                     ]" :disabled="!canNavigateTo(step.step)">
                                     <!-- Show checkmark for completed steps -->
-                                    <svg v-if="isStepCompleted(step.step) && state !== 'active'"
-                                         class="w-5 h-5"
-                                         fill="currentColor"
-                                         viewBox="0 0 20 20">
+                                    <svg v-if="isStepCompleted(step.step) && state !== 'active'" class="w-5 h-5"
+                                        fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd"
-                                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                              clip-rule="evenodd" />
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd" />
                                     </svg>
                                     <!-- Show number for active/inactive steps -->
                                     <span v-else class="text-sm font-medium">{{
                                         index + 1
-                                    }}</span>
+                                        }}</span>
                                 </Button>
                             </StepperTrigger>
 
@@ -432,10 +435,11 @@ watch(dateOfBirth, (newValue) => {
 
                             <div class="column w-full col-span-2 max-[768px]:col-span-1">
                                 <InputLabel for="date_of_birth" :value="_t('registerUser', 'date_of_birth_label')" />
-                                <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth" auto-apply
-                                    :placeholder="_t('registerUser', 'select_date_of_birth_placeholder')" class="w-full" :max-date="minimumDateOfBirth"
-                                    :start-date="minimumDateOfBirth" />
-                                <small class="text-gray-500 mt-1 block">{{ _t('registerUser', 'age_requirement') }}</small>
+                                <VueDatePicker v-model="dateOfBirth" :enable-time-picker="false" uid="date-of-birth"
+                                    auto-apply :placeholder="_t('registerUser', 'select_date_of_birth_placeholder')"
+                                    class="w-full" :max-date="minimumDateOfBirth" :start-date="minimumDateOfBirth" />
+                                <small class="text-gray-500 mt-1 block">{{ _t('registerUser', 'age_requirement')
+                                    }}</small>
                             </div>
                         </div>
                     </div>
@@ -454,7 +458,8 @@ watch(dateOfBirth, (newValue) => {
                             <div>
                                 <div class="flex items-end">
                                     <div class="w-[8rem]">
-                                        <InputLabel for="phone" class="whitespace-nowrap" :value="_t('registerUser', 'phone_number_label')" />
+                                        <InputLabel for="phone" class="whitespace-nowrap"
+                                            :value="_t('registerUser', 'phone_number_label')" />
                                         <Select v-model="form.phone_code">
                                             <SelectTrigger
                                                 class="w-full p-[1.75rem] border-customLightGrayColor bg-customPrimaryColor text-white rounded-[12px] !rounded-r-none border-r-0">
@@ -484,7 +489,7 @@ watch(dateOfBirth, (newValue) => {
                                                                 " alt="Country Flag" class="mr-2 w-6 h-4 rounded" />
                                                             <span>{{
                                                                 country.name
-                                                                }}
+                                                            }}
                                                                 ({{
                                                                     country.phone_code
                                                                 }})</span>
@@ -497,7 +502,8 @@ watch(dateOfBirth, (newValue) => {
 
                                     <div class="column w-full">
                                         <TextInput id="phone" type="text" v-model="form.phone" required
-                                            class="w-full !rounded-l-none" :placeholder="_t('registerUser', 'enter_phone_number_placeholder')"/>
+                                            class="w-full !rounded-l-none"
+                                            :placeholder="_t('registerUser', 'enter_phone_number_placeholder')" />
                                     </div>
                                 </div>
                                 <!-- Display full phone number -->
@@ -599,9 +605,11 @@ watch(dateOfBirth, (newValue) => {
                                     }" />
                                 <button type="button" @click="showPassword = !showPassword"
                                     class="absolute right-[1rem] translate-y-[1rem]  font-medium text-customDarkBlackColor text-sm max-[768px]:text-white">
-                                    {{ showPassword ? _t('registerUser', 'hide_password') : _t('registerUser', 'show_password') }}
+                                    {{ showPassword ? _t('registerUser', 'hide_password') : _t('registerUser',
+                                        'show_password') }}
                                 </button>
-                                <p class="flex justify-end font-medium text-[0.75rem]">{{ _t('registerUser', 'password_length_instruction') }}</p>
+                                <p class="flex justify-end font-medium text-[0.75rem]">{{ _t('registerUser',
+                                    'password_length_instruction') }}</p>
                                 <p v-if="
                                     form.password.length > 0 &&
                                     form.password.length < 8
@@ -615,10 +623,11 @@ watch(dateOfBirth, (newValue) => {
                             </div>
 
                             <div class="column w-full relative">
-                                <InputLabel for="password_confirmation" :value="_t('registerUser', 'confirm_password_label')" />
-                                <TextInput :type="showconfirmPassword ? 'text' : 'password'" id="password_confirmation" type="password"
-                                    v-model="form.password_confirmation" required autocomplete="new-password"
-                                    class="w-full" :class="{
+                                <InputLabel for="password_confirmation"
+                                    :value="_t('registerUser', 'confirm_password_label')" />
+                                <TextInput :type="showconfirmPassword ? 'text' : 'password'" id="password_confirmation"
+                                    type="password" v-model="form.password_confirmation" required
+                                    autocomplete="new-password" class="w-full" :class="{
                                         'border-red-500':
                                             form.password_confirmation.length >
                                             0 &&
@@ -630,9 +639,10 @@ watch(dateOfBirth, (newValue) => {
                                             form.password ===
                                             form.password_confirmation,
                                     }" />
-                                    <button type="button" @click="showconfirmPassword = !showconfirmPassword"
+                                <button type="button" @click="showconfirmPassword = !showconfirmPassword"
                                     class="absolute right-[1rem] translate-y-[1rem] font-medium text-customDarkBlackColor text-sm max-[768px]:text-white">
-                                    {{ showconfirmPassword ? _t('registerUser', 'hide_password') : _t('registerUser', 'show_password') }}
+                                    {{ showconfirmPassword ? _t('registerUser', 'hide_password') : _t('registerUser',
+                                        'show_password') }}
                                 </button>
                                 <p v-if="
                                     form.password_confirmation.length > 0 &&
@@ -654,7 +664,7 @@ watch(dateOfBirth, (newValue) => {
                             <div class="flex items-center justify-end mt-4">
                                 <Link :href="route('login')"
                                     class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                {{ _t('registerUser', 'already_registered_link') }}
+                                    {{ _t('registerUser', 'already_registered_link') }}
                                 </Link>
                             </div>
                         </div>
@@ -670,37 +680,45 @@ watch(dateOfBirth, (newValue) => {
                         <div class="flex items-center gap-3 max-[768px]:w-full max-[768px]:order-1">
                             <Button v-if="stepIndex !== 4" size="lg" class="w-[100%]" @click="nextStep"
                                 :disabled="!isStepValid || isValidating">
-                                {{ stepIndex === 2 && isValidating ? 'Validating...' : _t('registerUser', 'continue_button') }}
+                                {{ stepIndex === 2 && isValidating ? 'Validating...' : _t('registerUser',
+                                    'continue_button') }}
                             </Button>
-                            <PrimaryButton v-if="stepIndex === 4" class="w-[100%]"
-                                :disabled="isRegistering || !isStepValid" @click="submit">
-                                {{ isRegistering ? 'Registering...' : _t('registerUser', 'register_button') }}
-                            </PrimaryButton>
+                            <Button v-if="stepIndex === 4" class="w-[100%]" :disabled="isRegistering || !isStepValid"
+                                @click="submit">
+                                <span v-if="isRegistering" class="flex items-center gap-2">
+                                    <div
+                                        class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin">
+                                    </div>
+                                    Registering...
+                                </span>
+                                <span v-else>{{ _t('registerUser', 'register_button') }}</span>
+                            </Button>
                         </div>
                     </div>
                 </form>
             </Stepper>
         </div>
     </div>
-    <div v-if="isRegistering" class="loader-overlay">
-        <Vue3Lottie :animation-data="universalLoader" :height="200" :width="200" />
-    </div>
 
-    <Footer/>
+    <Toaster position="bottom-right" :toastOptions="{
+        style: { background: 'black', color: 'white', border: '1px solid #333' }
+    }" />
+
+    <Footer />
 </template>
 
 <style scoped>
 .loader-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
 }
 
 .register label {
@@ -730,6 +748,7 @@ watch(dateOfBirth, (newValue) => {
 .register .disabled\:opacity-50:disabled {
     opacity: 0.7;
 }
+
 :deep(.dp__input) {
     padding: 1rem 1rem 1rem 2.5rem;
     border-radius: 12px;
@@ -785,6 +804,7 @@ watch(dateOfBirth, (newValue) => {
         height: 0;
         opacity: 1;
     }
+
     100% {
         width: 120px;
         height: 120px;
@@ -793,7 +813,7 @@ watch(dateOfBirth, (newValue) => {
 }
 
 @media screen and (max-width:768px) {
-    :deep(.dp__input){
+    :deep(.dp__input) {
         font-size: 0.75rem;
     }
 
@@ -809,6 +829,7 @@ watch(dateOfBirth, (newValue) => {
             height: 0;
             opacity: 1;
         }
+
         100% {
             width: 80px;
             height: 80px;

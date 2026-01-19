@@ -47,6 +47,11 @@ const isInternal = computed(() => {
     return props.vehicle?.source === 'internal';
 });
 
+// Check if vehicle is Renteon
+const isRenteon = computed(() => {
+    return props.vehicle?.source === 'renteon';
+});
+
 // Get vehicle image (handles internal vehicles which use images array)
 const vehicleImage = computed(() => {
     // Internal vehicles: find primary image from images array
@@ -349,12 +354,47 @@ const locautoOptionalExtras = computed(() => {
     }));
 });
 
+const renteonPackages = computed(() => {
+    if (!isRenteon.value) return [];
+    return [{
+        type: 'BAS',
+        name: 'Basic Rental',
+        subtitle: 'Standard Package',
+        pricePerDay: parseFloat(props.vehicle?.price_per_day) || 0,
+        total: (parseFloat(props.vehicle?.price_per_day) || 0) * props.numberOfDays,
+        deposit: parseFloat(props.vehicle?.security_deposit) || 0,
+        benefits: ['Base rental rate', 'Standard coverage'],
+        isBestValue: true,
+        isAddOn: false
+    }];
+});
+
+const renteonOptionalExtras = computed(() => {
+    if (!isRenteon.value) return [];
+    // If Renteon provides extras in standard format, map them here
+    // Assuming standard 'extras' array
+    const extras = props.vehicle?.extras || [];
+    return extras.map(extra => ({
+        id: `renteon_extra_${extra.code || extra.id}`,
+        code: extra.code || extra.id,
+        name: extra.name || extra.description || 'Extra',
+        description: extra.description || extra.name || 'Optional Extra',
+        price: parseFloat(extra.price || extra.amount || 0) * props.numberOfDays,
+        daily_rate: parseFloat(extra.price || extra.amount || 0),
+        amount: extra.price || extra.amount,
+        maxQuantity: extra.max_quantity || 1
+    }));
+});
+
 const availablePackages = computed(() => {
     if (isAdobeCars.value) {
         return adobePackages.value;
     }
     if (isInternal.value) {
         return internalPackages.value;
+    }
+    if (isRenteon.value) {
+        return renteonPackages.value;
     }
     if (!props.vehicle || !props.vehicle.products) return [];
     return packageOrder
@@ -459,6 +499,8 @@ const extrasTotal = computed(() => {
             extra = adobeOptionalExtras.value.find(e => e.id === id);
         } else if (isInternal.value) {
             extra = internalOptionalExtras.value.find(e => e.id === id);
+        } else if (isRenteon.value) {
+            extra = renteonOptionalExtras.value.find(e => e.id === id);
         } else {
             extra = props.optionalExtras.find(e => e.id === id);
         }
@@ -488,6 +530,13 @@ const grandTotal = computed(() => {
     // For GreenMotion/USave and Adobe
     const pkgPrice = parseFloat(currentProduct.value?.total || 0);
     const mandatoryExtra = isAdobeCars.value ? adobeMandatoryProtection.value : 0;
+
+    // For Renteon, if simplistic logic:
+    if (isRenteon.value) {
+        // Base price (from package) + extras
+        return (pkgPrice + extrasTotal.value).toFixed(2);
+    }
+
     return (pkgPrice + mandatoryExtra + extrasTotal.value).toFixed(2);
 });
 
@@ -538,6 +587,8 @@ const getSelectedExtrasDetails = computed(() => {
             extra = adobeOptionalExtras.value.find(e => e.id === id);
         } else if (isInternal.value) {
             extra = internalOptionalExtras.value.find(e => e.id === id);
+        } else if (isRenteon.value) {
+            extra = renteonOptionalExtras.value.find(e => e.id === id);
         } else {
             extra = props.optionalExtras.find(e => e.id === id);
         }
@@ -901,7 +952,7 @@ const formatPaymentMethod = (method) => {
                                 <span v-if="vehicle?.benefits?.limited_km_per_day == 1">
                                     <span class="block text-base font-bold text-gray-900">Limited: {{
                                         vehicle?.benefits?.limited_km_per_day_range
-                                    }} km/day</span>
+                                        }} km/day</span>
                                     <span v-if="vehicle?.benefits?.price_per_km_per_day"
                                         class="text-base font-semibold text-gray-700 block mt-0.5">
                                         +{{ formatPrice(vehicle?.benefits?.price_per_km_per_day) }}/km
@@ -922,7 +973,7 @@ const formatPaymentMethod = (method) => {
                             </div>
                             <span class="text-base font-medium text-gray-900 mt-1">Min. Driver Age: {{
                                 vehicle?.benefits?.minimum_driver_age
-                            }}</span>
+                                }}</span>
                         </div>
                     </div>
                 </div>
@@ -1437,13 +1488,13 @@ const formatPaymentMethod = (method) => {
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Car Package ({{ currentPackage }})</span>
                                 <span class="font-semibold text-gray-900">{{ formatPrice(currentProduct?.total || 0)
-                                    }}</span>
+                                }}</span>
                             </div>
                             <div v-if="isAdobeCars && adobeMandatoryProtection > 0"
                                 class="flex justify-between text-sm">
                                 <span class="text-amber-600">Mandatory Liability (PLI)</span>
                                 <span class="font-semibold text-amber-600">+{{ formatPrice(adobeMandatoryProtection)
-                                    }}</span>
+                                }}</span>
                             </div>
                             <div v-for="item in getSelectedExtrasDetails" :key="item.id"
                                 class="flex justify-between text-sm">

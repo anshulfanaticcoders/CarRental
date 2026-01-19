@@ -773,6 +773,13 @@ onUnmounted(() => {
                             </span>
                         </template>
 
+                        <!-- Renteon Price -->
+                        <template v-else-if="isRenteon">
+                            <span class="car-price">
+                                {{ getSelectedCurrencySymbol() }}{{ renteonDailyPrice }}
+                            </span>
+                        </template>
+
                         <!-- Standard Price (Slot) -->
                         <template v-else>
                             <span class="car-price">

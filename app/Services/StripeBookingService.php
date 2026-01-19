@@ -13,10 +13,12 @@ use Illuminate\Support\Facades\DB;
 class StripeBookingService
 {
     protected $adobeCarService;
+    protected $renteonService;
 
-    public function __construct(AdobeCarService $adobeCarService)
+    public function __construct(AdobeCarService $adobeCarService, RenteonService $renteonService)
     {
         $this->adobeCarService = $adobeCarService;
+        $this->renteonService = $renteonService;
     }
 
     /**
@@ -151,6 +153,8 @@ class StripeBookingService
                     'plan' => $booking->plan,
                     'total_amount' => $booking->total_amount,
                 ]);
+            } elseif ($booking->provider_source === 'renteon') {
+                $this->triggerRenteonReservation($booking, $metadata);
             }
 
             return $booking;
@@ -617,6 +621,98 @@ class StripeBookingService
             ]);
             $booking->update([
                 'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Adobe Reservation Error: " . $e->getMessage()
+            ]);
+        }
+    }
+    /**
+     * Trigger reservation on Renteon API
+     */
+    protected function triggerRenteonReservation($booking, $metadata)
+    {
+        Log::info('Renteon: Triggering reservation for booking', ['booking_id' => $booking->id]);
+
+        try {
+            $nameParts = explode(' ', $metadata->customer_name ?? 'Guest User', 2);
+            $firstName = $nameParts[0];
+            $lastName = $nameParts[1] ?? 'Guest';
+
+            // Prepare Vehicle Data
+            $vehicleData = [
+                'sipp_code' => $metadata->sipp_code,
+                'vehicle_id' => $metadata->vehicle_id,
+                'provider_code' => $booking->provider_code ?? str_replace('renteon_', '', explode('_', $metadata->vehicle_id)[1] ?? ''), // Attempt to extract provider code from vehicle ID
+                'pickup_location' => $metadata->pickup_location_code,
+                'dropoff_location' => $metadata->return_location_code ?? $metadata->pickup_location_code,
+                'pickup_date' => $metadata->pickup_date,
+                'pickup_time' => $metadata->pickup_time,
+                'dropoff_date' => $metadata->dropoff_date,
+                'dropoff_time' => $metadata->dropoff_time,
+            ];
+
+            // Prepare Customer Data
+            $customerData = [
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'email' => $metadata->customer_email,
+                'phone' => $metadata->customer_phone,
+                'driver_age' => $metadata->customer_driver_age ?? 30,
+                'flight_number' => $metadata->flight_number ?? '',
+            ];
+
+            // Prepare Booking Data
+            $bookingData = [
+                'price' => $metadata->payable_amount, // or total_amount depending on payment model
+                'currency' => $metadata->currency,
+                'notes' => $metadata->notes ?? '',
+                'payment_method' => 'prepaid', // Assuming stripe prepaid
+                'reference' => 'WEB-' . $booking->booking_number,
+            ];
+
+            // Extras
+            $extras = [];
+            // Parse extras similar to other providers if needed
+            if (!empty($metadata->extras_data)) {
+                 $extras = json_decode($metadata->extras_data, true);
+            }
+            $bookingData['extras'] = $extras;
+
+            Log::info('Renteon: Sending reservation request', [
+                'vehicle' => $vehicleData,
+                'customer' => $customerData
+            ]);
+
+            $response = $this->renteonService->createBooking($vehicleData, $customerData, $bookingData);
+
+            if ($response && isset($response['ReservationNo'])) {
+                 $confNumber = $response['ReservationNo'];
+                 Log::info('Renteon: Reservation successful', ['conf' => $confNumber]);
+
+                 $booking->update([
+                     'provider_booking_ref' => $confNumber,
+                     'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Conf: " . $confNumber
+                 ]);
+            } elseif ($response && isset($response['id'])) {
+                 // Fallback if ID is returned
+                 $confNumber = $response['id'];
+                 Log::info('Renteon: Reservation successful (ID)', ['id' => $confNumber]);
+                 $booking->update([
+                     'provider_booking_ref' => $confNumber,
+                     'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Conf: " . $confNumber
+                 ]);
+            } else {
+                Log::error('Renteon: Reservation failed', ['response' => $response]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Reservation failed: " . json_encode($response)
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Renteon: Exception during reservation trigger', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Reservation Error: " . $e->getMessage()
             ]);
         }
     }

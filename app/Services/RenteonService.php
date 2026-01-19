@@ -37,7 +37,11 @@ class RenteonService
             Log::info("Renteon API Request: {$method} {$url}", ['data' => $data]);
 
             $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout(30)
+                ->withOptions([
+                    'connect_timeout' => 120,
+                    'timeout' => 120,
+                ])
+                ->timeout(120)
                 ->acceptJson()
                 ->{$method}($url, $data);
 
@@ -304,6 +308,32 @@ class RenteonService
             'provider' => 'renteon',
             'full_address' => $location['Path'],
         ];
+    }
+
+    /**
+     * Parse location response for dropoff locations (used by GreenMotionController)
+     */
+    public function parseLocationResponse()
+    {
+        $locations = $this->getLocations();
+        if (!$locations) {
+            return [];
+        }
+
+        $parsedLocations = [];
+        foreach ($locations as $location) {
+            // Transform to match the structure expected by the frontend dropoff selector
+            // Usually needs id/code and name
+            $parsedLocations[] = [
+                'location_id' => $location['Code'], // Map Code to location_id
+                'name' => $location['Name'],
+                'address' => $location['Path'] ?? '',
+                'code' => $location['Code'],
+                'provider' => 'renteon'
+            ];
+        }
+
+        return $parsedLocations;
     }
 
     /**
