@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vrooem - Profile</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-900: #0f2936;
+            --primary-800: #153b4f;
+            --primary-700: #1c4d66;
+            --primary-600: #245f7d;
+            --primary-100: #dceef6;
+            --accent-500: #06b6d4;
+            --gray-900: #0f172a;
+            --gray-700: #334155;
+            --gray-600: #475569;
+            --gray-500: #64748b;
+            --gray-200: #e2e8f0;
+            --gray-100: #f1f5f9;
+            --white: #ffffff;
+            --shadow-sm: 0 2px 8px rgba(15, 41, 54, 0.08);
+            --shadow-md: 0 12px 30px rgba(15, 41, 54, 0.14);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "IBM Plex Sans", sans-serif;
+            background: #f8fbfd;
+            color: var(--gray-900);
+            min-height: 100vh;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .page {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: var(--white);
+            border-right: 1px solid var(--gray-200);
+            padding: 2rem 1.5rem;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .sidebar-brand {
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: var(--primary-800);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .user-card {
+            display: flex;
+            gap: 0.9rem;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 14px;
+            background: var(--gray-100);
+            margin-bottom: 1.5rem;
+        }
+
+        .user-card img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .user-card p {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+        }
+
+        .user-card h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .nav-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .nav-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--gray-500);
+            margin-bottom: 0.7rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.9rem 1rem;
+            border-radius: 12px;
+            color: var(--primary-800);
+            font-weight: 500;
+            transition: all 150ms ease;
+        }
+
+        .nav-item.active,
+        .nav-item:hover {
+            background: var(--primary-800);
+            color: var(--white);
+        }
+
+        .nav-sub {
+            margin-top: 0.6rem;
+            padding-left: 0.75rem;
+        }
+
+        .nav-sub a {
+            display: block;
+            padding: 0.5rem 0.9rem;
+            border-radius: 10px;
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+
+        .nav-sub a.active {
+            background: var(--primary-100);
+            color: var(--primary-800);
+            font-weight: 600;
+        }
+
+        .nav-footer {
+            margin-top: 2.5rem;
+        }
+
+        .logout {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            color: #ee1d52;
+            font-weight: 600;
+        }
+
+        .content {
+            padding: 3rem 4rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            color: var(--primary-900);
+        }
+
+        .header p {
+            color: var(--gray-600);
+            margin-top: 0.4rem;
+        }
+
+        .section {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-800);
+            margin-bottom: 1rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1.2rem;
+        }
+
+        label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--primary-700);
+            font-weight: 600;
+        }
+
+        input {
+            margin-top: 0.5rem;
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--gray-200);
+            font-size: 0.95rem;
+            color: var(--gray-900);
+            background: var(--white);
+        }
+
+        .button-row {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .button-primary {
+            background: linear-gradient(135deg, var(--primary-800), var(--primary-600));
+            color: var(--white);
+            border: none;
+            border-radius: 14px;
+            padding: 0.9rem 1.6rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+        }
+
+        .button-secondary {
+            background: var(--gray-100);
+            color: var(--primary-800);
+            border: 1px solid var(--gray-200);
+            border-radius: 14px;
+            padding: 0.9rem 1.6rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .danger {
+            border: 1px solid #fca5a5;
+            background: #fff1f2;
+            color: #be123c;
+            font-weight: 600;
+        }
+
+        @media (max-width: 1024px) {
+            .page {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--gray-200);
+            }
+
+            .content {
+                padding: 2rem 1.5rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <aside class="sidebar">
+            <div class="sidebar-brand">VROOEM</div>
+            <div class="user-card">
+                <img src="/storage/avatars/default-avatar.svg" alt="User">
+                <div>
+                    <p>Hello, good afternoon</p>
+                    <h4>Alex Carter</h4>
+                    <p class="role">Customer</p>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">My Profile</div>
+                <div class="nav-item active">Profile</div>
+                <div class="nav-sub">
+                    <a href="#" class="active">Profile Details</a>
+                    <a href="#">Travel Documents</a>
+                    <a href="#">Issued Payments</a>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">Bookings</div>
+                <div class="nav-item">All Bookings</div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">Quick Links</div>
+                <div class="nav-item">Inbox</div>
+                <div class="nav-item">Favorites</div>
+                <div class="nav-item">My Reviews</div>
+            </div>
+
+            <div class="nav-footer">
+                <a class="logout" href="#">Log Out</a>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div class="header">
+                <div>
+                    <h1>My Profile</h1>
+                    <p>Manage your personal info and security settings.</p>
+                </div>
+                <button class="button-secondary">View public profile</button>
+            </div>
+
+            <section class="section">
+                <h2 class="section-title">Profile Information</h2>
+                <div class="form-grid">
+                    <div>
+                        <label>First Name</label>
+                        <input type="text" value="Alex">
+                    </div>
+                    <div>
+                        <label>Last Name</label>
+                        <input type="text" value="Carter">
+                    </div>
+                    <div>
+                        <label>Email</label>
+                        <input type="email" value="alex@vrooem.com">
+                    </div>
+                    <div>
+                        <label>Phone</label>
+                        <input type="tel" value="+1 202 555 0117">
+                    </div>
+                </div>
+                <div class="button-row">
+                    <button class="button-primary">Save changes</button>
+                    <button class="button-secondary">Cancel</button>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Update Password</h2>
+                <div class="form-grid">
+                    <div>
+                        <label>Current Password</label>
+                        <input type="password" value="">
+                    </div>
+                    <div>
+                        <label>New Password</label>
+                        <input type="password" value="">
+                    </div>
+                    <div>
+                        <label>Confirm Password</label>
+                        <input type="password" value="">
+                    </div>
+                </div>
+                <div class="button-row">
+                    <button class="button-primary">Update Password</button>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Delete Account</h2>
+                <p class="danger" style="padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+                    Deleting your account is permanent and cannot be undone.
+                </p>
+                <button class="button-secondary danger">Delete Account</button>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
