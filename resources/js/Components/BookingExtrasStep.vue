@@ -369,21 +369,48 @@ const renteonPackages = computed(() => {
     }];
 });
 
+const renteonIncludedServices = computed(() => {
+    if (!isRenteon.value) return [];
+    const extras = props.vehicle?.extras || [];
+    return extras.filter(extra => extra.included || extra.free_of_charge || extra.included_in_price || extra.included_in_price_limited);
+});
+
+const renteonDriverPolicy = computed(() => {
+    if (!isRenteon.value) return null;
+        const benefits = props.vehicle?.benefits || {};
+        if (!benefits.young_driver_age_from && !benefits.senior_driver_age_from && !benefits.minimum_driver_age) {
+            return null;
+        }
+        return {
+            youngFrom: benefits.young_driver_age_from,
+            youngTo: benefits.young_driver_age_to,
+            seniorFrom: benefits.senior_driver_age_from,
+            seniorTo: benefits.senior_driver_age_to,
+            minAge: benefits.minimum_driver_age,
+            maxAge: benefits.maximum_driver_age,
+        };
+
+});
+
 const renteonOptionalExtras = computed(() => {
     if (!isRenteon.value) return [];
     // If Renteon provides extras in standard format, map them here
     // Assuming standard 'extras' array
     const extras = props.vehicle?.extras || [];
-    return extras.map(extra => ({
-        id: `renteon_extra_${extra.code || extra.id}`,
-        code: extra.code || extra.id,
-        name: extra.name || extra.description || 'Extra',
-        description: extra.description || extra.name || 'Optional Extra',
-        price: parseFloat(extra.price || extra.amount || 0) * props.numberOfDays,
-        daily_rate: parseFloat(extra.price || extra.amount || 0),
-        amount: extra.price || extra.amount,
-        maxQuantity: extra.max_quantity || 1
-    }));
+        return extras.filter(extra => !extra.included && !extra.included_in_price && !extra.included_in_price_limited && !extra.is_one_time).map(extra => ({
+            id: `renteon_extra_${extra.code || extra.id}`,
+            code: extra.code || extra.id,
+            name: extra.name || extra.description || 'Extra',
+            description: extra.description || extra.name || 'Optional Extra',
+            price: parseFloat(extra.price || extra.amount || 0) * props.numberOfDays,
+            daily_rate: parseFloat(extra.daily_rate || extra.price || extra.amount || 0),
+            amount: extra.price || extra.amount,
+            maxQuantity: extra.max_quantity || 1,
+            service_id: extra.service_id || extra.id,
+            service_group: extra.service_group,
+            service_type: extra.service_type
+        }));
+
 });
 
 const availablePackages = computed(() => {
@@ -410,7 +437,7 @@ const currentProduct = computed(() => {
 });
 
 const formatPrice = (val) => {
-    const currencyCode = props.vehicle?.currency || 'EUR';
+    const currencyCode = props.vehicle?.currency || props.vehicle?.benefits?.deposit_currency || 'EUR';
     const converted = convertPrice(parseFloat(val), currencyCode);
     return `${getSelectedCurrencySymbol()}${converted.toFixed(2)}`;
 };
@@ -603,7 +630,9 @@ const getSelectedExtrasDetails = computed(() => {
                 name: extra.name,
                 qty,
                 isFree,
-                total
+                total,
+                service_id: extra.service_id,
+                code: extra.code
             });
         }
     }
@@ -906,10 +935,48 @@ const formatPaymentMethod = (method) => {
                                 {{ formatPaymentMethod(vehicle?.payment_method) }}
                             </span>
                         </div>
+                        <div v-if="vehicle?.benefits?.deposit_amount">
+                            <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Deposit Amount</h5>
+                            <p class="text-xl font-bold text-gray-900">
+                                {{ formatPrice(vehicle?.benefits?.deposit_amount) }}
+                            </p>
+                            <p v-if="vehicle?.benefits?.deposit_currency" class="text-xs text-gray-500">Currency: {{ vehicle?.benefits?.deposit_currency }}</p>
+                        </div>
+                        <div v-if="vehicle?.benefits?.excess_amount">
+                            <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Excess Amount</h5>
+                            <p class="text-xl font-bold text-gray-900">
+                                {{ formatPrice(vehicle?.benefits?.excess_amount) }}
+                            </p>
+                        </div>
                     </div>
 
                     <!-- Benefits Grid -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
+                        <div v-if="vehicle?.benefits?.excess_theft_amount" class="flex items-start gap-3">
+                            <div class="mt-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-500" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 11c0 2.761-2.239 5-5 5-2.761 0-5-2.239-5-5 0-2.761 2.239-5 5-5 2.761 0 5 2.239 5 5zm0 0c0 2.761 2.239 5 5 5 2.761 0 5-2.239 5-5 0-2.761-2.239-5-5-5-2.761 0-5 2.239-5 5zm0 0v12" />
+                                </svg>
+                            </div>
+                            <div>
+                                <span class="block text-base font-bold text-gray-900">Excess Theft</span>
+                                <span class="text-sm text-gray-500 block mt-0.5">{{ formatPrice(vehicle?.benefits?.excess_theft_amount) }}</span>
+                            </div>
+                        </div>
+
+                        <div v-if="vehicle?.benefits?.maximum_driver_age" class="flex items-start gap-3">
+                            <div class="mt-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 14c3.866 0 7 1.343 7 3v3H5v-3c0-1.657 3.134-3 7-3zm0-2a4 4 0 100-8 4 4 0 000 8z" />
+                                </svg>
+                            </div>
+                            <span class="text-base font-medium text-gray-900 mt-1">Max. Driver Age: {{ vehicle?.benefits?.maximum_driver_age }}</span>
+                        </div>
+
                         <!-- Cancellation -->
                         <div class="flex items-start gap-3">
                             <div class="mt-1">
@@ -1051,6 +1118,31 @@ const formatPaymentMethod = (method) => {
                         </div>
                     </div>
                 </template>
+            </section>
+
+            <section v-if="isRenteon && (renteonIncludedServices.length || renteonDriverPolicy)" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <h3 class="font-display text-2xl font-bold text-gray-900 mb-4">Renteon Highlights</h3>
+                <div class="space-y-4">
+                        <div v-if="renteonIncludedServices.length">
+                            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Included Services</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="service in renteonIncludedServices" :key="service.id"
+                                    class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-100">
+                                    {{ service.name }}<span v-if="service.quantity_included" class="ml-1">(x{{ service.quantity_included }})</span>
+                                </span>
+                            </div>
+                        </div>
+
+                    <div v-if="renteonDriverPolicy">
+                        <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Driver Age Policy</p>
+                        <p class="text-sm text-gray-600">
+                            <span v-if="renteonDriverPolicy.minAge">Minimum age: {{ renteonDriverPolicy.minAge }}</span>
+                            <span v-if="renteonDriverPolicy.maxAge" class="ml-4">Maximum age: {{ renteonDriverPolicy.maxAge }}</span>
+                            <span v-if="renteonDriverPolicy.youngFrom" class="ml-4">Young driver: {{ renteonDriverPolicy.youngFrom }}-{{ renteonDriverPolicy.youngTo || 'N/A' }}</span>
+                            <span v-if="renteonDriverPolicy.seniorFrom" class="ml-4">Senior driver: {{ renteonDriverPolicy.seniorFrom }}-{{ renteonDriverPolicy.seniorTo || 'N/A' }}</span>
+                        </p>
+                    </div>
+                </div>
             </section>
 
             <!-- LocautoRent: Protection Plans Section -->
@@ -1437,7 +1529,8 @@ const formatPaymentMethod = (method) => {
                             grandTotal,
                             payableAmount,
                             pendingAmount
-                        }
+                        },
+                        vehicle_total: currentProduct?.total || props.vehicle?.total_price || 0
                     })" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg">
                         Proceed to Booking
                     </button>

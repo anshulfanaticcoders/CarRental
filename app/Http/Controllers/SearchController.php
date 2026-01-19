@@ -415,6 +415,32 @@ class SearchController extends Controller
         $locationLng = $validated['longitude'] ?? null;
         $locationAddress = $validated['where'] ?? null;
 
+        // Fallback: If no provider ID, try to resolve by provider + location name
+        if (!$currentProviderLocationId && $providerName === 'renteon' && !empty($validated['where'])) {
+            $allLocations = json_decode(file_get_contents(public_path('unified_locations.json')), true);
+            $searchParam = trim((string) $validated['where']);
+            $matchedLocation = collect($allLocations)->first(function ($loc) use ($searchParam) {
+                $name = strtolower((string) ($loc['name'] ?? ''));
+                $city = strtolower((string) ($loc['city'] ?? ''));
+                $country = strtolower((string) ($loc['country'] ?? ''));
+                $needle = strtolower($searchParam);
+                return $needle !== '' && ($name === $needle || str_contains($name, $needle) || str_contains($city, $needle) || str_contains($country, $needle));
+            });
+
+            if ($matchedLocation && !empty($matchedLocation['providers'])) {
+                $renteonEntry = collect($matchedLocation['providers'])->first(function ($provider) {
+                    return ($provider['provider'] ?? null) === 'renteon';
+                });
+
+                if ($renteonEntry) {
+                    $currentProviderLocationId = $renteonEntry['pickup_id'] ?? null;
+                    $locationLat = $matchedLocation['latitude'] ?? $locationLat;
+                    $locationLng = $matchedLocation['longitude'] ?? $locationLng;
+                    $locationAddress = $matchedLocation['name'] ?? $locationAddress;
+                }
+            }
+        }
+
         // Fallback: If no provider ID, try to find one from the 'where' text
         if (!$currentProviderLocationId && !empty($validated['where'])) {
             $searchParam = $validated['where'];
@@ -1229,7 +1255,7 @@ class SearchController extends Controller
                 } // Close LocautoRent elseif
                 elseif ($providerToFetch === 'renteon') {
                     try {
-                        Log::info('Attempting to fetch Renteon vehicles from ALL providers for location ID: ' . $currentProviderLocationId);
+                        Log::info('Attempting to fetch Renteon vehicles from default provider for location ID: ' . $currentProviderLocationId);
                         Log::info('Search params: ', [
                             'pickup_id' => $currentProviderLocationId,
                             'date_from' => $validated['date_from'],
@@ -1238,23 +1264,25 @@ class SearchController extends Controller
                             'end_time' => $validated['end_time'] ?? '09:00'
                         ]);
 
-                        // Search vehicles from ALL Renteon providers
-                        $renteonVehicles = $this->renteonService->getTransformedVehiclesFromAllProviders(
+                        $renteonVehicles = $this->renteonService->getTransformedVehicles(
                             $currentProviderLocationId,
-                            $validated['dropoff_location_id'] ?? $currentProviderLocationId,
+                            $currentProviderLocationId,
                             $validated['date_from'],
                             $validated['start_time'] ?? '09:00',
                             $validated['date_to'],
                             $validated['end_time'] ?? '09:00',
-                            [], // Additional options
-                            [], // Empty providerCodes array = search ALL providers
+                            [
+                                'driver_age' => $validated['age'] ?? 35,
+                                'currency' => $validated['currency'] ?? 'EUR',
+                                'prepaid' => true,
+                            ],
                             $locationLat,
                             $locationLng,
                             $currentProviderLocationName,
                             $rentalDays
                         );
 
-                        Log::info('Renteon vehicles processed from all providers: ' . count($renteonVehicles));
+                        Log::info('Renteon vehicles processed from default provider: ' . count($renteonVehicles));
 
                         foreach ($renteonVehicles as $renteonVehicle) {
                             $providerVehicles->push((object) $renteonVehicle);

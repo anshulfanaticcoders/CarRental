@@ -45,7 +45,7 @@ class RenteonCarController extends Controller
 
             // Get search parameters from request
             $pickupLocationId = $request->get('location_id');
-            $dropoffLocationId = $request->get('dropoff_location_id', $pickupLocationId);
+            $dropoffLocationId = $pickupLocationId;
             $dateFrom = $request->get('start_date');
             $timeFrom = $request->get('start_time', '09:00');
             $dateTo = $request->get('end_date');
@@ -72,7 +72,11 @@ class RenteonCarController extends Controller
                     $timeFrom,
                     $dateTo,
                     $timeTo,
-                    [],
+                    [
+                        'driver_age' => (int) $request->get('age', 35),
+                        'currency' => $request->get('currency', 'EUR'),
+                        'prepaid' => true,
+                    ],
                     (float) $request->get('lat', 0),
                     (float) $request->get('lng', 0),
                     $request->get('full_vehicle_address', 'Renteon Location'),
@@ -119,7 +123,7 @@ class RenteonCarController extends Controller
                     'locationInfo' => $locationInfo,
                     'searchParams' => [
                         'pickup_location_id' => $pickupLocationId ?? $pickupCode,
-                        'dropoff_location_id' => $dropoffLocationId ?? $pickupLocationId ?? $pickupCode,
+                        'dropoff_location_id' => $pickupLocationId ?? $pickupCode,
                         'pickup_datetime' => $dateFrom . ' ' . $timeFrom,
                         'dropoff_datetime' => $dateTo . ' ' . $timeTo,
                         'date_from' => $dateFrom,

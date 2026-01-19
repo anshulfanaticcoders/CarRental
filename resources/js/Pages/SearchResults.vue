@@ -277,7 +277,11 @@ const selectedCheckoutData = ref(null);
 
 const handleProceedToCheckout = (data) => {
     // console.log('Proceed to Checkout:', data);
-    selectedCheckoutData.value = data;
+    const vehicleTotal = data.vehicle_total ?? selectedVehicle.value?.total_price ?? 0;
+    selectedCheckoutData.value = {
+        ...data,
+        vehicle_total: vehicleTotal
+    };
     bookingStep.value = 'checkout';
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -1160,7 +1164,7 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
         if (vehicle.source === 'adobe') {
             const total = parseFloat(vehicle.tdr || 0);
             priceValue = convertCurrency(total, 'USD');
-        } else if ((vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent') && vehicle.price_per_day) {
+        } else if ((vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent' || vehicle.source === 'renteon') && vehicle.price_per_day) {
             priceValue = convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD');
         } else {
             // For GreenMotion/USave, show total rental price

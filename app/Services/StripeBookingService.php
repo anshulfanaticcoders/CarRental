@@ -647,6 +647,12 @@ class StripeBookingService
                 'pickup_time' => $metadata->pickup_time,
                 'dropoff_date' => $metadata->dropoff_date,
                 'dropoff_time' => $metadata->dropoff_time,
+                'connector_id' => $metadata->renteon_connector_id ?? null,
+                'pickup_office_id' => $metadata->renteon_pickup_office_id ?? null,
+                'dropoff_office_id' => $metadata->renteon_dropoff_office_id ?? null,
+                'pricelist_id' => $metadata->renteon_pricelist_id ?? null,
+                'price_date' => $metadata->renteon_price_date ?? null,
+                'prepaid' => $metadata->renteon_prepaid ?? true,
             ];
 
             // Prepare Customer Data
@@ -666,6 +672,8 @@ class StripeBookingService
                 'notes' => $metadata->notes ?? '',
                 'payment_method' => 'prepaid', // Assuming stripe prepaid
                 'reference' => 'WEB-' . $booking->booking_number,
+                'voucher_number' => 'WEB-' . $booking->booking_number,
+                'prepaid' => $metadata->renteon_prepaid ?? true,
             ];
 
             // Extras
@@ -674,7 +682,28 @@ class StripeBookingService
             if (!empty($metadata->extras_data)) {
                  $extras = json_decode($metadata->extras_data, true);
             }
-            $bookingData['extras'] = $extras;
+
+            $normalizedExtras = [];
+            if (is_array($extras)) {
+                foreach ($extras as $extra) {
+                    if (($extra['qty'] ?? 0) <= 0) {
+                        continue;
+                    }
+                    $serviceId = $extra['service_id'] ?? $extra['id'] ?? null;
+                    if (!$serviceId && !empty($extra['code'])) {
+                        $serviceId = preg_replace('/^renteon_extra_/', '', (string) $extra['code']);
+                    }
+
+                    $normalizedExtras[] = [
+                        'id' => $serviceId,
+                        'qty' => (int) ($extra['qty'] ?? 1),
+                        'isSelected' => true,
+                        'code' => $extra['code'] ?? null,
+                    ];
+                }
+            }
+
+            $bookingData['extras'] = $normalizedExtras;
 
             Log::info('Renteon: Sending reservation request', [
                 'vehicle' => $vehicleData,
@@ -683,7 +712,15 @@ class StripeBookingService
 
             $response = $this->renteonService->createBooking($vehicleData, $customerData, $bookingData);
 
-            if ($response && isset($response['ReservationNo'])) {
+            if ($response && isset($response['Number'])) {
+                 $confNumber = $response['Number'];
+                 Log::info('Renteon: Reservation successful', ['conf' => $confNumber]);
+
+                 $booking->update([
+                     'provider_booking_ref' => $confNumber,
+                     'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Conf: " . $confNumber
+                 ]);
+             } elseif ($response && isset($response['ReservationNo'])) {
                  $confNumber = $response['ReservationNo'];
                  Log::info('Renteon: Reservation successful', ['conf' => $confNumber]);
 
@@ -691,7 +728,7 @@ class StripeBookingService
                      'provider_booking_ref' => $confNumber,
                      'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Conf: " . $confNumber
                  ]);
-            } elseif ($response && isset($response['id'])) {
+             } elseif ($response && isset($response['id'])) {
                  // Fallback if ID is returned
                  $confNumber = $response['id'];
                  Log::info('Renteon: Reservation successful (ID)', ['id' => $confNumber]);
@@ -699,12 +736,13 @@ class StripeBookingService
                      'provider_booking_ref' => $confNumber,
                      'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Conf: " . $confNumber
                  ]);
-            } else {
-                Log::error('Renteon: Reservation failed', ['response' => $response]);
-                $booking->update([
-                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Reservation failed: " . json_encode($response)
-                ]);
-            }
+             } else {
+                 Log::error('Renteon: Reservation failed', ['response' => $response]);
+                 $booking->update([
+                     'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Reservation failed: " . json_encode($response)
+                 ]);
+             }
+
 
         } catch (\Exception $e) {
             Log::error('Renteon: Exception during reservation trigger', [

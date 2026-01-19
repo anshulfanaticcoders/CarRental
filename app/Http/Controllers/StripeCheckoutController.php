@@ -145,6 +145,12 @@ class StripeCheckoutController extends Controller
                 'rental_code' => !empty($validated['rentalCode']) ? $validated['rentalCode'] : ($validated['vehicle']['rentalCode'] ?? ''),
                 'vehicle_total' => $validated['vehicle_total'] ?? $validated['total_amount'],
                 'payment_method' => $validated['payment_method'] ?? 'card',
+                'renteon_connector_id' => $validated['vehicle']['connector_id'] ?? null,
+                'renteon_pickup_office_id' => $validated['vehicle']['provider_pickup_office_id'] ?? null,
+                'renteon_dropoff_office_id' => $validated['vehicle']['provider_dropoff_office_id'] ?? null,
+                'renteon_pricelist_id' => $validated['vehicle']['pricelist_id'] ?? null,
+                'renteon_price_date' => $validated['vehicle']['price_date'] ?? null,
+                'renteon_prepaid' => $validated['vehicle']['prepaid'] ?? true,
             ];
 
 

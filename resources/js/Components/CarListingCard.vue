@@ -24,6 +24,11 @@ const isAdobeCars = computed(() => {
     return props.vehicle?.source === 'adobe';
 });
 
+// Check if vehicle is Renteon
+const isRenteon = computed(() => {
+    return props.vehicle?.source === 'renteon';
+});
+
 // Helper for highlighting benefits
 const isKeyBenefit = (text) => {
     if (!text) return false;
@@ -293,6 +298,14 @@ const adobeDailyPrice = computed(() => {
     return convertPrice(originalPrice, 'USD').toFixed(2);
 });
 
+// Get Renteon converted daily price
+const renteonDailyPrice = computed(() => {
+    if (!isRenteon.value) return '0.00';
+    const originalPrice = parseFloat(props.vehicle?.price_per_day || 0);
+    const originalCurrency = props.vehicle?.currency || 'EUR';
+    return convertPrice(originalPrice, originalCurrency).toFixed(2);
+});
+
 // Get package name from type
 const getPackageName = (type) => {
     const names = {
@@ -371,6 +384,13 @@ const selectPackage = (type) => {
     selectedPackage.value = type;
     showAllPlans.value = false;
     emit('select-package', { vehicle: props.vehicle, package: type });
+};
+
+const selectRenteonPackage = () => {
+    emit('select-package', {
+        vehicle: props.vehicle,
+        package: 'BAS',
+    });
 };
 
 // Select LocautoRent protection plan (null = Basic, no extra protection)
@@ -823,6 +843,14 @@ onUnmounted(() => {
                 <!-- Internal Vehicle: Emit select-package for inline BookingExtrasStep -->
                 <button v-else-if="vehicle.source === 'internal'" @click="selectInternalPackage"
                     class="header-btn primary">
+                    Book Deal
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+
+                <button v-else-if="isRenteon" @click="selectRenteonPackage" class="header-btn primary">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

@@ -97,7 +97,7 @@ class RenteonService
 
     /**
      * Search for available vehicles from Renteon API
-     * Calls the /api/bookings/search endpoint with POST
+     * Uses /api/bookings/availability
      *
      * @param string $pickupCode Pickup location code
      * @param string $dropoffCode Dropoff location code
@@ -112,24 +112,60 @@ class RenteonService
     public function getVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [], $providerCode = null)
     {
         $provider = $providerCode ?? $this->providerCode;
+        $pickupDateTime = $this->formatLocalDateTime($startDate, $startTime);
+        $dropoffDateTime = $this->formatLocalDateTime($endDate, $endTime);
+
+        $driverAge = isset($options['driver_age']) ? (int) $options['driver_age'] : null;
+        $drivers = $driverAge ? [['DriverAge' => $driverAge]] : [];
 
         $data = [
-            'Provider' => $provider,
-            'PickupLocationCode' => $pickupCode,
-            'DropoffLocationCode' => $dropoffCode ?? $pickupCode,
-            'PickupDate' => $startDate,
-            'DropoffDate' => $endDate
+            'Prepaid' => isset($options['prepaid']) ? (bool) $options['prepaid'] : true,
+            'IncludeOnRequest' => isset($options['include_on_request']) ? (bool) $options['include_on_request'] : false,
+            'Providers' => [
+                [
+                    'Code' => $provider,
+                ]
+            ],
+            'PickupLocation' => $pickupCode,
+            'DropOffLocation' => $dropoffCode ?? $pickupCode,
+            'PickupDate' => $pickupDateTime,
+            'DropOffDate' => $dropoffDateTime,
+            'Currency' => $options['currency'] ?? 'EUR',
+            'HasDelivery' => (bool) ($options['has_delivery'] ?? false),
+            'HasCollection' => (bool) ($options['has_collection'] ?? false),
         ];
 
-        Log::info('Renteon vehicle search API call', [
+        if (!empty($options['providers'])) {
+            $providers = [];
+            foreach ($options['providers'] as $providerEntry) {
+                if (!is_array($providerEntry) || empty($providerEntry['Code'])) {
+                    continue;
+                }
+                $providers[] = $providerEntry;
+            }
+            if (!empty($providers)) {
+                $data['Providers'] = $providers;
+            }
+        }
+
+        if (!empty($options['car_categories'])) {
+            $data['CarCategories'] = $options['car_categories'];
+        }
+
+        if (!empty($drivers)) {
+            $data['Drivers'] = $drivers;
+        }
+
+        Log::info('Renteon availability API call', [
             'provider' => $provider,
             'pickup_code' => $pickupCode,
             'dropoff_code' => $dropoffCode ?? $pickupCode,
-            'start_date' => $startDate,
-            'end_date' => $endDate
+            'pickup_date' => $pickupDateTime,
+            'dropoff_date' => $dropoffDateTime,
+            'currency' => $data['Currency']
         ]);
 
-        $response = $this->makeRequest('POST', 'api/bookings/search', $data);
+        $response = $this->makeRequest('POST', 'api/bookings/availability', $data);
 
         if ($response === null) {
             Log::warning('Renteon API returned null response', [
@@ -266,15 +302,76 @@ class RenteonService
         // This is a placeholder - we'll need to check the actual booking endpoint
         // from the Swagger documentation to implement this correctly
 
-        $data = [
-            'provider_code' => $this->providerCode,
-            'vehicle' => $vehicleData,
-            'customer' => $customerData,
-            'booking' => $bookingData,
+        $drivers = [];
+        if (!empty($customerData['driver_age'])) {
+            $drivers[] = [
+                'DriverAge' => (int) $customerData['driver_age'],
+                'Name' => $customerData['first_name'] ?? null,
+                'Surname' => $customerData['last_name'] ?? null,
+            ];
+        }
+
+        $services = [];
+        if (!empty($bookingData['extras']) && is_array($bookingData['extras'])) {
+            foreach ($bookingData['extras'] as $extra) {
+                if (empty($extra['id']) || empty($extra['qty'])) {
+                    continue;
+                }
+                $services[] = [
+                    'ServiceId' => (int) ($extra['service_id'] ?? $extra['id']),
+                    'IsSelected' => (bool) ($extra['isSelected'] ?? true),
+                    'Quantity' => (int) $extra['qty'],
+                ];
+            }
+        }
+
+        $payload = [
+            'ConnectorId' => $vehicleData['connector_id'] ?? null,
+            'CarCategory' => $vehicleData['sipp_code'] ?? null,
+            'PickupOfficeId' => $vehicleData['pickup_office_id'] ?? null,
+            'DropOffOfficeId' => $vehicleData['dropoff_office_id'] ?? null,
+            'PickupDate' => $vehicleData['pickup_date'] ?? null,
+            'DropOffDate' => $vehicleData['dropoff_date'] ?? null,
+            'PricelistId' => $vehicleData['pricelist_id'] ?? null,
+            'Currency' => $bookingData['currency'] ?? 'EUR',
+            'Prepaid' => (bool) ($bookingData['prepaid'] ?? true),
+            'PriceDate' => $vehicleData['price_date'] ?? null,
+            'PromoCode' => $vehicleData['promo_code'] ?? null,
+            'ClientName' => trim(($customerData['first_name'] ?? '') . ' ' . ($customerData['last_name'] ?? '')),
+            'ClientEmail' => $customerData['email'] ?? null,
+            'ClientPhone' => $customerData['phone'] ?? null,
+            'FlightNumber' => $customerData['flight_number'] ?? null,
+            'VoucherNumber' => $bookingData['voucher_number'] ?? $bookingData['reference'] ?? null,
         ];
 
-        // Placeholder endpoint - need to verify actual endpoint from Swagger
-        return $this->makeRequest('POST', 'api/bookings', $data);
+        $requiredFields = ['ConnectorId', 'CarCategory', 'PickupOfficeId', 'DropOffOfficeId', 'PickupDate', 'DropOffDate', 'PricelistId', 'Currency'];
+        foreach ($requiredFields as $field) {
+            if (empty($payload[$field])) {
+                Log::error('Renteon booking payload missing required field', [
+                    'field' => $field,
+                    'payload' => $payload,
+                ]);
+                return null;
+            }
+        }
+
+        if (!empty($drivers)) {
+            $payload['Drivers'] = $drivers;
+        }
+
+        if (!empty($services)) {
+            $payload['Services'] = $services;
+        }
+
+        Log::info('Renteon booking payload prepared', [
+            'connector_id' => $payload['ConnectorId'],
+            'car_category' => $payload['CarCategory'],
+            'pickup_office_id' => $payload['PickupOfficeId'],
+            'dropoff_office_id' => $payload['DropOffOfficeId'],
+            'services_count' => count($services),
+        ]);
+
+        return $this->makeRequest('POST', 'api/bookings/save', $payload);
     }
 
     /**
@@ -342,6 +439,8 @@ class RenteonService
      */
     public function getTransformedVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [], $locationLat = null, $locationLng = null, $locationName = null, $rentalDays = 1)
     {
+        $options['driver_age'] = $options['driver_age'] ?? ($options['age'] ?? null);
+        $options['currency'] = $options['currency'] ?? 'EUR';
         $vehicles = $this->getVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options);
 
         if (!$vehicles) {
@@ -377,6 +476,9 @@ class RenteonService
      */
     public function getTransformedVehiclesFromAllProviders($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [], $providerCodes = [], $locationLat = null, $locationLng = null, $locationName = null, $rentalDays = 1)
     {
+        $options['driver_age'] = $options['driver_age'] ?? ($options['age'] ?? null);
+        $options['currency'] = $options['currency'] ?? 'EUR';
+
         $vehicles = $this->getVehiclesFromAllProviders(
             $pickupCode,
             $dropoffCode,
@@ -403,23 +505,32 @@ class RenteonService
 
     /**
      * Transform vehicle data to unified format
-     * This will need to be implemented based on actual vehicle data structure
      */
     private function transformVehicle($vehicle, $pickupCode, $locationLat = null, $locationLng = null, $locationName = null, $rentalDays = 1)
     {
-        // Parse SIPP code if available to extract vehicle details
-        $sippCode = $vehicle['sipp_code'] ?? $vehicle['acriss_code'] ?? null;
+        $sippCode = $vehicle['CarCategory'] ?? $vehicle['sipp_code'] ?? $vehicle['acriss_code'] ?? null;
         $parsedSipp = $this->parseSippCode($sippCode);
 
-        // Get provider code if available (for multi-provider searches)
-        $providerCode = $vehicle['provider_code'] ?? $this->providerCode;
-
-        $brand = $vehicle['make'] ?? 'Renteon';
-        $model = $vehicle['model'] ?? 'Renteon Vehicle';
+        $providerCode = $vehicle['provider_code'] ?? $vehicle['Provider'] ?? $this->providerCode;
+        $modelName = $vehicle['ModelName'] ?? $vehicle['model'] ?? 'Renteon Vehicle';
+        [$brand, $model] = $this->splitModelName($modelName);
         $category = $parsedSipp['category'] ?? ($vehicle['category'] ?? 'Unknown');
 
-        // Create unique ID that includes provider code to avoid conflicts
-        $vehicleId = $vehicle['id'] ?? md5($providerCode . '_' . $pickupCode . '_' . ($sippCode ?? 'unknown'));
+        $depositAmount = $vehicle['DepositAmount'] ?? null;
+        $depositCurrency = $vehicle['DepositCurrency'] ?? null;
+        if ($depositAmount === null && isset($vehicle['Deposit']) && is_array($vehicle['Deposit'])) {
+            $depositAmount = $vehicle['Deposit']['Amount'] ?? $depositAmount;
+            $depositCurrency = $vehicle['Deposit']['Currency'] ?? $depositCurrency;
+        }
+
+        $totalAmount = isset($vehicle['Amount']) ? (float) $vehicle['Amount'] : (float) ($vehicle['daily_rate'] ?? 0) * $rentalDays;
+        $pricePerDay = $rentalDays > 0 ? $totalAmount / $rentalDays : $totalAmount;
+        $currency = $vehicle['Currency'] ?? $vehicle['currency'] ?? 'EUR';
+
+        $pickupOfficeId = $vehicle['PickupOfficeId'] ?? null;
+        $dropoffOfficeId = $vehicle['DropOffOfficeId'] ?? null;
+
+        $vehicleId = $vehicle['id'] ?? md5($providerCode . '_' . $pickupCode . '_' . ($sippCode ?? 'unknown') . '_' . ($pickupOfficeId ?? ''));
 
         return [
             'id' => 'renteon_' . $providerCode . '_' . $vehicleId,
@@ -429,32 +540,52 @@ class RenteonService
             'model' => $model,
             'category' => $category,
             'sipp_code' => $sippCode,
-            'image' => $vehicle['image_url'] ?? $vehicle['image'] ?? '/images/dummyCarImaage.png',
-            'price_per_day' => (float) ($vehicle['daily_rate'] ?? 0),
-            'total_price' => (float) (($vehicle['daily_rate'] ?? 0) * $rentalDays),
-            'price_per_week' => (float) (($vehicle['daily_rate'] ?? 0) * 7),
-            'price_per_month' => (float) (($vehicle['daily_rate'] ?? 0) * 30),
-            'currency' => $vehicle['currency'] ?? 'EUR',
+            'image' => $vehicle['CarModelImageURL'] ?? $vehicle['image_url'] ?? $vehicle['image'] ?? '/images/dummyCarImaage.png',
+            'price_per_day' => $pricePerDay,
+            'total_price' => $totalAmount,
+            'price_per_week' => $pricePerDay * 7,
+            'price_per_month' => $pricePerDay * 30,
+            'currency' => $currency,
             'transmission' => $parsedSipp['transmission'] ?? ($vehicle['transmission'] ?? 'Manual'),
             'fuel' => $parsedSipp['fuel'] ?? ($vehicle['fuel_type'] ?? 'Petrol'),
-            'seating_capacity' => (int) ($parsedSipp['seating_capacity'] ?? $vehicle['seats'] ?? 4),
-            'doors' => (int) ($parsedSipp['doors'] ?? $vehicle['doors'] ?? 4),
+            'seating_capacity' => (int) ($vehicle['PassengerCapacity'] ?? $parsedSipp['seating_capacity'] ?? $vehicle['seats'] ?? 4),
+            'doors' => (int) ($vehicle['NumberOfDoors'] ?? $parsedSipp['doors'] ?? $vehicle['doors'] ?? 4),
+            'luggageLarge' => isset($vehicle['BigBagsCapacity']) ? (int) $vehicle['BigBagsCapacity'] : null,
+            'luggageSmall' => isset($vehicle['SmallBagsCapacity']) ? (int) $vehicle['SmallBagsCapacity'] : null,
             'mileage' => $vehicle['mileage'] ?? 'Unlimited',
             'latitude' => (float) ($locationLat ?? 0),
             'longitude' => (float) ($locationLng ?? 0),
             'full_vehicle_address' => $locationName ?? 'Renteon Location',
             'provider_pickup_id' => $pickupCode,
+            'provider_pickup_office_id' => $pickupOfficeId,
+            'provider_dropoff_office_id' => $dropoffOfficeId,
+            'connector_id' => $vehicle['ConnectorId'] ?? null,
+            'price_date' => $vehicle['PriceDate'] ?? null,
+            'pricelist_id' => $vehicle['PricelistId'] ?? null,
+            'pricelist_code' => $vehicle['PricelistCode'] ?? null,
+            'is_on_request' => $vehicle['IsOnRequest'] ?? false,
+            'prepaid' => $vehicle['Prepaid'] ?? true,
+            'extras' => $this->mapAvailableServices($vehicle['AvailableServices'] ?? [], $rentalDays),
             'features' => $vehicle['features'] ?? [],
             'airConditioning' => $parsedSipp['air_conditioning'] ?? false,
             'benefits' => [
-                'minimum_driver_age' => (int) ($vehicle['min_driver_age'] ?? 21),
+                'minimum_driver_age' => (int) ($vehicle['MinimumDriverAge'] ?? $vehicle['YoungDriverAgeFrom'] ?? 21),
+                'maximum_driver_age' => $vehicle['MaximumDriverAge'] ?? $vehicle['SeniorDriverAgeTo'] ?? null,
+                'young_driver_age_from' => $vehicle['YoungDriverAgeFrom'] ?? null,
+                'young_driver_age_to' => $vehicle['YoungDriverAgeTo'] ?? null,
+                'senior_driver_age_from' => $vehicle['SeniorDriverAgeFrom'] ?? null,
+                'senior_driver_age_to' => $vehicle['SeniorDriverAgeTo'] ?? null,
+                'deposit_amount' => $depositAmount,
+                'deposit_currency' => $depositCurrency,
+                'excess_amount' => $vehicle['ExcessAmount'] ?? null,
+                'excess_theft_amount' => $vehicle['ExcessTheftAmount'] ?? null,
                 'fuel_policy' => $vehicle['fuel_policy'] ?? 'Full to Full',
             ],
             'products' => [
                 [
                     'type' => 'BAS',
-                    'total' => (string) (($vehicle['daily_rate'] ?? 0) * $rentalDays),
-                    'currency' => $vehicle['currency'] ?? 'EUR',
+                    'total' => (string) $totalAmount,
+                    'currency' => $currency,
                 ]
             ],
             'options' => [],
@@ -519,6 +650,65 @@ class RenteonService
         }
 
         return $data;
+    }
+
+    private function splitModelName($modelName)
+    {
+        $modelName = trim((string) $modelName);
+        if ($modelName === '') {
+            return ['Renteon', 'Vehicle'];
+        }
+
+        $parts = preg_split('/\s+/', $modelName, 2);
+        if (!$parts || count($parts) < 2) {
+            return ['Renteon', $modelName];
+        }
+
+        return [$parts[0], $parts[1]];
+    }
+
+    private function formatLocalDateTime($date, $time)
+    {
+        $date = trim((string) $date);
+        $time = trim((string) $time);
+        $time = $time !== '' ? $time : '09:00';
+
+        if (strlen($time) === 5) {
+            $time = $time . ':00';
+        }
+
+        return $date . 'T' . $time;
+    }
+
+    private function mapAvailableServices(array $services, $rentalDays = 1)
+    {
+        return array_map(function ($service) use ($rentalDays) {
+            $amount = isset($service['Amount']) ? (float) $service['Amount'] : 0.0;
+            $isOneTime = $service['IsOneTimePayment'] ?? false;
+            $dailyRate = $isOneTime ? ($rentalDays > 0 ? $amount / $rentalDays : $amount) : $amount;
+
+            return [
+                'id' => $service['ServiceId'] ?? null,
+                'service_id' => $service['ServiceId'] ?? null,
+                'code' => $service['Code'] ?? null,
+                'name' => $service['Name'] ?? $service['AdditionalName'] ?? 'Extra',
+                'description' => $service['DescriptionWeb'] ?? $service['Description'] ?? $service['ServiceTypeName'] ?? null,
+                'amount' => $amount,
+                'price' => $amount,
+                'daily_rate' => $dailyRate,
+                'max_quantity' => $service['MaximumQuantity'] ?? 1,
+                'included' => $service['FreeOfCharge'] ?? false,
+                'included_in_price' => $service['IncludedInPriceUnlimited'] ?? false,
+                'included_in_price_limited' => $service['IncludedInPriceLimited'] ?? false,
+                'prepaid' => $service['Prepaid'] ?? false,
+                'is_one_time' => $isOneTime,
+                'quantity_included' => $service['QuantityIncluded'] ?? 0,
+                'included_per_day' => $service['IncludedPerDurationMeasuringUnit'] ?? false,
+                'included_per_contract' => $service['IncludedPerContract'] ?? false,
+                'service_group' => $service['ServiceGroupName'] ?? null,
+                'service_type' => $service['ServiceTypeName'] ?? null,
+            ];
+        }, $services);
     }
 
     /**
