@@ -84,7 +84,7 @@ const form = useForm({
     country: "",
     password: "",
     password_confirmation: "",
-    currency: "$",
+    currency: "EUR",
 });
 
 const isPasswordValid = computed(() => {
@@ -273,6 +273,16 @@ const submit = () => {
 };
 
 const countries = ref([]);
+const currencies = ref([]);
+
+const selectedCurrency = computed({
+    get() {
+        return form.currency || '';
+    },
+    set(newValue) {
+        form.currency = newValue;
+    }
+});
 
 const selectedPhoneCode = ref("");
 const phoneNumber = ref("");
@@ -297,6 +307,7 @@ watch(selectedPhoneCode, (newCode) => {
     form.phone_code = newCode;
 });
 
+
 const fetchCountries = async () => {
     try {
         const response = await fetch("/countries.json"); // Ensure it's in /public
@@ -306,7 +317,17 @@ const fetchCountries = async () => {
     }
 };
 
+const fetchCurrencies = async () => {
+    try {
+        const response = await fetch("/currency.json");
+        currencies.value = await response.json();
+    } catch (error) {
+        console.error("Error loading currencies:", error);
+    }
+};
+
 onMounted(fetchCountries);
+onMounted(fetchCurrencies);
 
 // Get flag URL
 const getFlagUrl = (countryCode) => {
@@ -351,7 +372,8 @@ watch(dateOfBirth, (newValue) => {
 
     <div class="flex justify-center items-center register py-customVerticalSpacing min-h-[100vh]">
         <div class="w-[60rem] max-w-full mx-auto px-4 max-[768px]:px-[1.5rem]">
-            <Stepper v-model="stepIndex" class="block w-full">
+            <div class="register-card">
+                <Stepper v-model="stepIndex" class="block w-full">
                 <form @submit.prevent="submit">
                     <div
                         class="flex w-full flex-start gap-2 mb-[4rem] max-[768px]:mb-[2rem] max-[768px]:gap-1 max-[768px]:mt-[2rem]">
@@ -579,6 +601,23 @@ watch(dateOfBirth, (newValue) => {
                                 <img v-if="form.country" :src="getFlagUrl(form.country)" alt="Country Flag"
                                     class="absolute right-3 top-1/2 transform translate-x-[0%] translate-y-[0%] w-[2.1rem] h-[1.5rem] rounded" />
                             </div>
+
+                            <div class="column w-full col-span-2 max-[768px]:col-span-1">
+                                <InputLabel for="currency" :value="_t('registerUser', 'currency_label')" class="mb-1" />
+                                <Select v-model="selectedCurrency">
+                                    <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                                        <SelectValue :placeholder="_t('registerUser', 'select_currency_placeholder')" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectLabel>{{ _t('registerUser', 'currency_label') }}</SelectLabel>
+                                            <SelectItem v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                                                {{ currency.code }} ({{ currency.symbol }})
+                                            </SelectItem>
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </div>
 
@@ -674,16 +713,16 @@ watch(dateOfBirth, (newValue) => {
                     <div
                         class="flex items-center justify-between mt-[3rem] max-[768px]:mt-[2rem] max-[768px]:flex-col max-[768px]:gap-3">
                         <Button v-if="stepIndex !== 1" variant="outline" size="lg"
-                            class="w-[20%] max-[768px]:w-full max-[768px]:order-2" @click="prevStep">
+                            class="w-[20%] max-[768px]:w-full max-[768px]:order-2 register-secondary-button" @click="prevStep">
                             {{ _t('registerUser', 'back_button') }}
                         </Button>
                         <div class="flex items-center gap-3 max-[768px]:w-full max-[768px]:order-1">
-                            <Button v-if="stepIndex !== 4" size="lg" class="w-[100%]" @click="nextStep"
+                            <Button v-if="stepIndex !== 4" size="lg" class="w-[100%] register-primary-button" @click="nextStep"
                                 :disabled="!isStepValid || isValidating">
                                 {{ stepIndex === 2 && isValidating ? 'Validating...' : _t('registerUser',
                                     'continue_button') }}
                             </Button>
-                            <Button v-if="stepIndex === 4" class="w-[100%]" :disabled="isRegistering || !isStepValid"
+                            <Button v-if="stepIndex === 4" class="w-[100%] register-primary-button" :disabled="isRegistering || !isStepValid"
                                 @click="submit">
                                 <span v-if="isRegistering" class="flex items-center gap-2">
                                     <div
@@ -697,6 +736,7 @@ watch(dateOfBirth, (newValue) => {
                     </div>
                 </form>
             </Stepper>
+            </div>
         </div>
     </div>
 
@@ -708,6 +748,46 @@ watch(dateOfBirth, (newValue) => {
 </template>
 
 <style scoped>
+.register {
+    background: radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.05), transparent 55%),
+        radial-gradient(circle at 85% 10%, rgba(124, 179, 204, 0.08), transparent 70%),
+        linear-gradient(160deg, #f9fcfe, #ffffff 70%);
+}
+
+.register-card {
+    padding: 3rem 3.5rem 3.5rem;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(176, 212, 230, 0.6);
+    box-shadow: 0 18px 36px rgba(21, 59, 79, 0.12);
+    backdrop-filter: blur(12px);
+}
+
+.register-primary-button {
+    background: linear-gradient(135deg, #153b4f, #245f7d);
+    color: #ffffff;
+    border: none;
+    border-radius: 14px;
+    box-shadow: 0 12px 24px rgba(21, 59, 79, 0.2);
+    transition: all 150ms ease;
+}
+
+.register-primary-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 32px rgba(21, 59, 79, 0.25);
+}
+
+.register-secondary-button {
+    border: 1px solid rgba(21, 59, 79, 0.3);
+    color: #153b4f;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.register-secondary-button:hover {
+    background: rgba(21, 59, 79, 0.06);
+}
+
 .loader-overlay {
     position: fixed;
     top: 0;
@@ -723,13 +803,22 @@ watch(dateOfBirth, (newValue) => {
 
 .register label {
     margin-bottom: 0.5rem;
-    color: #2b2b2bbf;
+    color: #1c4d66;
 }
 
 .register input {
-    border: 1px solid #2b2b2b80;
-    border-radius: 12px;
-    padding: 1rem;
+    border: 1px solid rgba(21, 59, 79, 0.18);
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    background: rgba(255, 255, 255, 0.9);
+    transition: all 150ms ease;
+}
+
+.register input:focus {
+    outline: none;
+    border-color: #06b6d4;
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.2);
+    background: #ffffff;
 }
 
 .register .button-secondary {
@@ -751,9 +840,10 @@ watch(dateOfBirth, (newValue) => {
 
 :deep(.dp__input) {
     padding: 1rem 1rem 1rem 2.5rem;
-    border-radius: 12px;
-    border: 1px solid #2b2b2b99;
+    border-radius: 14px;
+    border: 1px solid rgba(21, 59, 79, 0.18);
     width: 100%;
+    background: rgba(255, 255, 255, 0.9);
 }
 
 :deep(.dp__menu) {
@@ -782,6 +872,12 @@ watch(dateOfBirth, (newValue) => {
     transform: translate(-50%, -50%);
     animation: ripple 2s ease-out infinite;
     z-index: -1;
+}
+
+@media screen and (max-width: 1024px) {
+    .register-card {
+        padding: 2.5rem 2.5rem 3rem;
+    }
 }
 
 .stepper-active::after {

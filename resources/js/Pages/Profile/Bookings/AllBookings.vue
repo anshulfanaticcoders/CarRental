@@ -124,6 +124,15 @@ const formatNumber = (number) => {
   }).format(number);
 };
 
+const getBookingImageUrl = (booking) => {
+  if (booking.vehicle?.images?.length) {
+    return booking.vehicle.images.find(img => img.image_type === 'primary')?.image_url
+      || booking.vehicle.images[0]?.image_url
+      || null;
+  }
+  return booking.vehicle_image || null;
+};
+
 const handleTabChange = (tab) => {
   activeTab.value = tab;
 };
@@ -238,42 +247,37 @@ const getCardDelay = (index) => {
         >
           <div class="flex flex-col lg:flex-row">
             <!-- Vehicle Image Section -->
-            <div class="lg:w-[30%] relative h-64 lg:h-56">
+            <div class="lg:w-[30%] relative overflow-hidden min-h-56 lg:min-h-0">
               <Link
                 v-if="booking.vehicle"
                 :href="route('vehicle.show', { locale: usePage().props.locale, id: booking.vehicle.id })"
-                class="block h-full"
+                class="absolute inset-0"
               >
-                <img
-                  v-if="booking.vehicle?.images?.length"
-                  :src="booking.vehicle.images.find(img => img.image_type === 'primary')?.image_url || booking.vehicle.images[0]?.image_url"
-                  :alt="booking.vehicle?.brand || booking.vehicle_name"
-                  class="w-full h-full object-cover"
-                />
-                <img
-                  v-else-if="booking.vehicle_image"
-                  :src="booking.vehicle_image"
-                  :alt="booking.vehicle_name"
-                  class="w-full h-full object-cover"
-                />
+                <div
+                  v-if="getBookingImageUrl(booking)"
+                  class="w-full h-full bg-center bg-no-repeat bg-cover"
+                  :style="{ backgroundImage: `url(${getBookingImageUrl(booking)})` }"
+                  :aria-label="booking.vehicle?.brand || booking.vehicle_name"
+                ></div>
               </Link>
-              <img
-                v-else-if="booking.vehicle_image"
-                :src="booking.vehicle_image"
-                :alt="booking.vehicle_name"
-                class="w-full h-full object-cover"
-              />
+              <div
+                v-else-if="getBookingImageUrl(booking)"
+                class="absolute inset-0 w-full h-full bg-center bg-no-repeat bg-cover"
+                :style="{ backgroundImage: `url(${getBookingImageUrl(booking)})` }"
+                :aria-label="booking.vehicle_name"
+              ></div>
               <div v-else class="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                 <svg class="w-24 h-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
               </div>
+              <div class="absolute inset-0 bg-gradient-to-t from-black/25 via-black/0 to-black/10"></div>
 
               <!-- Status Badge Overlay -->
               <div class="absolute top-4 left-4">
                 <span
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border"
-                  :class="getStatusBadge(booking.booking_status)"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border shadow-sm backdrop-blur-sm bg-white/85"
+                  :class="[getStatusBadge(booking.booking_status).text, getStatusBadge(booking.booking_status).border]"
                 >
                   <span>{{ getStatusBadge(booking.booking_status).icon }}</span>
                   <span class="capitalize">{{ booking.booking_status }}</span>

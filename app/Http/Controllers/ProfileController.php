@@ -50,6 +50,17 @@ class ProfileController extends Controller
             $user = Auth::user();
 
             $validated = $request->validated();
+            if (!empty($validated['currency'])) {
+                $currencyMap = [
+                    '€' => 'EUR',
+                    '$' => 'USD',
+                    '£' => 'GBP',
+                    'د.إ' => 'AED',
+                    '₹' => 'INR',
+                    '¥' => 'JPY',
+                ];
+                $validated['currency'] = $currencyMap[$validated['currency']] ?? strtoupper($validated['currency']);
+            }
 
             if ($request->hasFile('avatar')) {
                 $folderName = 'avatars';

@@ -38,7 +38,16 @@ class VendorOverviewController extends Controller
             });
         })->sum('amount');
 
-        $currency = auth()->user()->profile?->currency ?? '$';
+        $currency = auth()->user()->profile?->currency ?? 'EUR';
+        $currencyMap = [
+            '€' => 'EUR',
+            '$' => 'USD',
+            '£' => 'GBP',
+            'د.إ' => 'AED',
+            '₹' => 'INR',
+            '¥' => 'JPY',
+        ];
+        $currency = $currencyMap[$currency] ?? strtoupper($currency);
 
         // New count for active vehicles
         $activeVehicles = Vehicle::where('vendor_id', $vendorId)

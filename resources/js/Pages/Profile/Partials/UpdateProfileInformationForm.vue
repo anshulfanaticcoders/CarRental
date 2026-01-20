@@ -106,19 +106,26 @@ const handleSubmit = () => {
 const currencies = ref([]);
 const selectedCurrency = computed({
     get() {
-        const currency = currencies.value.find(c => c.symbol === form.currency);
-        return currency ? currency.code : '';
+        return form.currency || '';
     },
     set(newValue) {
-        const currency = currencies.value.find(c => c.code === newValue);
-        form.currency = currency ? currency.symbol : '';
+        form.currency = newValue;
     }
 });
+
+const normalizeCurrencyValue = () => {
+    if (!form.currency || currencies.value.length === 0) return;
+    const bySymbol = currencies.value.find(c => c.symbol === form.currency);
+    if (bySymbol) {
+        form.currency = bySymbol.code;
+    }
+};
 
 const fetchCurrencies = async () => {
     try {
         const response = await fetch('/currency.json'); // Ensure it's in /public
         currencies.value = await response.json();
+        normalizeCurrencyValue();
     } catch (error) {
         console.error("Error loading currencies:", error);
     }
@@ -156,6 +163,8 @@ const fetchCountries = async () => {
 };
 
 onMounted(fetchCountries);
+
+
 
 // Get flag URL
 const getFlagUrl = (countryCode) => {
@@ -317,9 +326,9 @@ onMounted(() => {
                         <SelectContent>
                             <SelectGroup>
                                 <SelectLabel>{{ _t('customerprofilepages', 'currency_label') }}</SelectLabel>
-                                <SelectItem v-for="currency in currencies" :key="currency.code" :value="currency.code">
-                                    {{ currency.code }}
-                                </SelectItem>
+                        <SelectItem v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                            {{ currency.code }} ({{ currency.symbol }})
+                        </SelectItem>
                             </SelectGroup>
                         </SelectContent>
                     </Select>

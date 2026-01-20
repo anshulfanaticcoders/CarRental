@@ -178,7 +178,7 @@ watch(() => props.status, (newStatus) => {
 </template>
 
 
-<style>
+<style scoped>
 .login-page {
     background: radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.025), transparent 60%),
         radial-gradient(circle at 85% 10%, rgba(124, 179, 204, 0.05), transparent 70%),

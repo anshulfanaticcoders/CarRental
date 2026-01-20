@@ -522,7 +522,7 @@ class BookingController extends Controller
 
         // Check if internal vehicle exists
         if ($booking->vehicle_id) {
-            $booking->load(['vehicle.images', 'vehicle.category', 'vehicle.vendorProfile']);
+            $booking->load(['vehicle.images', 'vehicle.category', 'vehicle.vendorProfile', 'vehicle.vendor']);
         }
 
         // Load vendor user if vendorProfile exists
@@ -533,11 +533,17 @@ class BookingController extends Controller
         // Normalize Vehicle Data
         $vehicleData = null;
         $vendorProfile = null;
+        $vendorUser = null;
+        $vendorCompany = null;
 
         if ($booking->vehicle) {
             $vehicleData = $booking->vehicle;
             // Try to get vendorProfile from vehicle first, then from booking
             $vendorProfile = $booking->vehicle->vendorProfile ?? $booking->vendorProfile;
+            $vendorUser = $booking->vehicle->vendor;
+            if ($vendorUser) {
+                $vendorCompany = VendorProfile::where('user_id', $vendorUser->id)->first();
+            }
         } else {
             // For external providers, still try to get vendorProfile from booking
             $vendorProfile = $booking->vendorProfile;
@@ -578,6 +584,8 @@ class BookingController extends Controller
             'vehicle' => $vehicleData,
             'payment' => $payment,
             'vendorProfile' => $vendorProfile,
+            'vendorUser' => $vendorUser,
+            'vendorCompany' => $vendorCompany,
         ]);
 
         return $pdf->download("booking-{$booking->booking_number}.pdf");

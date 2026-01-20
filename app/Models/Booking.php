@@ -88,6 +88,11 @@ class Booking extends Model
         return $this->hasMany(BookingPayment::class);
     }
 
+    public function amounts(): HasOne
+    {
+        return $this->hasOne(BookingAmount::class);
+    }
+
     public function extras()
     {
         return $this->hasMany(BookingExtra::class);

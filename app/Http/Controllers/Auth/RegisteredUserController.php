@@ -50,8 +50,18 @@ class RegisteredUserController extends Controller
             'postcode' => 'required|string|max:10',
             'city' => 'required|string|max:255',
             'country' => 'required|string|max:255',
-            'currency' => 'required|string|max:10',
+            'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
         ]);
+
+        $currencyMap = [
+            '€' => 'EUR',
+            '$' => 'USD',
+            '£' => 'GBP',
+            'د.إ' => 'AED',
+            '₹' => 'INR',
+            '¥' => 'JPY',
+        ];
+        $validated['currency'] = $currencyMap[$validated['currency']] ?? strtoupper($validated['currency']);
 
         // Create user
         $user = User::create([
