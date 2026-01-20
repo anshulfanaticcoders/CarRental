@@ -7,10 +7,16 @@ use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Customer;
 use App\Models\User;
+use App\Notifications\Booking\BookingCreatedAdminNotification;
+use App\Notifications\Booking\BookingCreatedCompanyNotification;
+use App\Notifications\Booking\BookingCreatedCustomerNotification;
+use App\Notifications\Booking\BookingCreatedVendorNotification;
+use App\Models\VendorProfile;
 use App\Services\AdobeCarService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
 class StripeBookingService
@@ -141,6 +147,8 @@ class StripeBookingService
             DB::commit();
             Log::info('StripeBookingService: Transaction committed successfully', ['booking_id' => $booking->id]);
 
+            $this->notifyBookingCreated($booking, $customer);
+
             // Phase 2: Trigger Provider Reservations
             if ($booking->provider_source === 'locauto_rent') {
                 $this->triggerLocautoReservation($booking, $metadata);
@@ -228,6 +236,45 @@ class StripeBookingService
             'flight_number' => $metadata->flight_number ?? null,
             'driver_age' => $metadata->customer_driver_age ?? null,
         ]);
+    }
+
+    protected function notifyBookingCreated(Booking $booking, Customer $customer): void
+    {
+        try {
+            $vehicle = $booking->vehicle ?? null;
+
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = User::where('email', $adminEmail)->first();
+            if ($admin) {
+                $admin->notify(new BookingCreatedAdminNotification($booking, $customer, $vehicle));
+            }
+
+            $vendor = null;
+            $vendorProfile = null;
+
+            if ($booking->vehicle_id && $vehicle) {
+                $vendor = User::find($vehicle->vendor_id);
+                $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
+            }
+
+            if ($vendor) {
+                Notification::route('mail', $vendor->email)
+                    ->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
+            }
+
+            if ($vendorProfile && $vendorProfile->company_email) {
+                Notification::route('mail', $vendorProfile->company_email)
+                    ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+            }
+
+            Notification::route('mail', $customer->email)
+                ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+        } catch (\Exception $e) {
+            Log::warning('StripeBookingService: Failed to send booking notifications', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

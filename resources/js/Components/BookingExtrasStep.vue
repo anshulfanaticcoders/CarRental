@@ -436,6 +436,19 @@ const currentProduct = computed(() => {
     return availablePackages.value.find(p => p.type === currentPackage.value);
 });
 
+const locautoBaseTotal = computed(() => {
+    const total = parseFloat(props.vehicle?.total_price || 0);
+    if (total > 0) return total;
+    const daily = parseFloat(props.vehicle?.price_per_day || 0);
+    return daily > 0 ? daily * props.numberOfDays : 0;
+});
+
+const locautoBaseDaily = computed(() => {
+    const total = locautoBaseTotal.value;
+    if (!total || !props.numberOfDays) return 0;
+    return total / props.numberOfDays;
+});
+
 const resolveVehicleCurrency = () => {
     return props.vehicle?.currency
         || props.vehicle?.vendor_profile?.currency
@@ -556,7 +569,7 @@ const extrasTotal = computed(() => {
 const grandTotal = computed(() => {
     if (isLocautoRent.value) {
         // For LocautoRent: base price + selected protection + extras
-        const basePrice = parseFloat(props.vehicle?.total_price || 0);
+        const basePrice = locautoBaseTotal.value;
         const protectionAmount = selectedLocautoProtection.value
             ? parseFloat(locautoProtectionPlans.value.find(p => p.code === selectedLocautoProtection.value)?.amount || 0) * props.numberOfDays
             : 0;
@@ -1178,7 +1191,7 @@ const formatPaymentMethod = (method) => {
                             <div class="flex items-baseline gap-1 mb-2">
                                 <span class="text-3xl font-bold"
                                     :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatPrice(0) }}
+                                    {{ formatPrice(locautoBaseDaily) }}
                                 </span>
                                 <span class="text-sm text-gray-500">/day</span>
                             </div>
@@ -1186,7 +1199,7 @@ const formatPaymentMethod = (method) => {
                                 <span class="text-sm text-gray-600">Total:</span>
                                 <span class="text-lg font-bold"
                                     :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatPrice(0) }}
+                                    {{ formatPrice(locautoBaseTotal) }}
                                 </span>
                             </div>
                         </div>
@@ -1218,7 +1231,7 @@ const formatPaymentMethod = (method) => {
                             <div class="flex items-baseline gap-1 mb-2">
                                 <span class="text-3xl font-bold"
                                     :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatPrice(protection.amount) }}
+                                    {{ formatPrice(locautoBaseDaily + protection.amount) }}
                                 </span>
                                 <span class="text-sm text-gray-500">/day</span>
                             </div>
@@ -1226,7 +1239,7 @@ const formatPaymentMethod = (method) => {
                                 <span class="text-sm text-gray-600">Total:</span>
                                 <span class="text-lg font-bold"
                                     :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatPrice(protection.amount * numberOfDays) }}
+                                    {{ formatPrice(locautoBaseTotal + (protection.amount * numberOfDays)) }}
                                 </span>
                             </div>
                         </div>
@@ -1468,7 +1481,7 @@ const formatPaymentMethod = (method) => {
                 <div class="space-y-3 text-sm text-gray-700 mb-6 pb-6 border-b border-gray-100">
                     <div class="flex justify-between">
                         <span>Car Package ({{ currentPackage }})</span>
-                        <span class="font-medium">{{ formatPrice(currentProduct?.total || 0) }}</span>
+                        <span class="font-medium">{{ formatPrice(isLocautoRent ? locautoBaseTotal : (currentProduct?.total || 0)) }}</span>
                     </div>
                     <div v-if="isAdobeCars && adobeMandatoryProtection > 0" class="flex justify-between text-amber-600">
                         <span>Mandatory Liability (PLI)</span>
@@ -1538,7 +1551,7 @@ const formatPaymentMethod = (method) => {
                             payableAmount,
                             pendingAmount
                         },
-                        vehicle_total: currentProduct?.total || props.vehicle?.total_price || 0
+                        vehicle_total: isLocautoRent ? locautoBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0)
                     })" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg">
                         Proceed to Booking
                     </button>
