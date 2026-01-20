@@ -436,8 +436,16 @@ const currentProduct = computed(() => {
     return availablePackages.value.find(p => p.type === currentPackage.value);
 });
 
+const resolveVehicleCurrency = () => {
+    return props.vehicle?.currency
+        || props.vehicle?.vendor_profile?.currency
+        || props.vehicle?.vendorProfile?.currency
+        || props.vehicle?.benefits?.deposit_currency
+        || 'EUR';
+};
+
 const formatPrice = (val) => {
-    const currencyCode = props.vehicle?.currency || props.vehicle?.benefits?.deposit_currency || 'EUR';
+    const currencyCode = resolveVehicleCurrency();
     const converted = convertPrice(parseFloat(val), currencyCode);
     return `${getSelectedCurrencySymbol()}${converted.toFixed(2)}`;
 };
@@ -450,7 +458,7 @@ const getBenefits = (product) => {
 
     const benefits = [];
     const type = product.type;
-    const currencyCode = product?.currency || props.vehicle?.currency || 'EUR';
+    const currencyCode = product?.currency || resolveVehicleCurrency();
 
     // Dynamic from API
     if (product.excess !== undefined && parseFloat(product.excess) === 0) {
@@ -820,26 +828,27 @@ const formatPaymentMethod = (method) => {
 </script>
 
 <template>
-    <div class=" px-0 md:p-6 pb-0">
-        <Breadcrumb class="mb-4">
-            <BreadcrumbList>
-                <BreadcrumbItem>
-                    <BreadcrumbLink href="/">Home</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                    <BreadcrumbLink href="#" @click.prevent="$emit('back')">Search Results</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                    <BreadcrumbPage>Booking Options</BreadcrumbPage>
-                </BreadcrumbItem>
-            </BreadcrumbList>
-        </Breadcrumb>
-    </div>
-    <div class="flex flex-col lg:flex-row gap-8 px-0 md:p-6">
-        <!-- Left Column: Upgrades & Extras -->
-        <div class="flex-1 space-y-8">
+    <div>
+        <div class=" px-0 md:p-6 pb-0">
+            <Breadcrumb class="mb-4">
+                <BreadcrumbList>
+                    <BreadcrumbItem>
+                        <BreadcrumbLink href="/">Home</BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                        <BreadcrumbLink href="#" @click.prevent="$emit('back')">Search Results</BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                        <BreadcrumbPage>Booking Options</BreadcrumbPage>
+                    </BreadcrumbItem>
+                </BreadcrumbList>
+            </Breadcrumb>
+        </div>
+        <div class="flex flex-col lg:flex-row gap-8 px-0 md:p-6">
+            <!-- Left Column: Upgrades & Extras -->
+            <div class="flex-1 space-y-8">
             <!-- Location Instructions -->
             <div v-if="locationInstructions"
                 class="info-card rounded-2xl p-6 flex items-start gap-4 shadow-lg relative overflow-hidden">
@@ -1234,7 +1243,7 @@ const formatPaymentMethod = (method) => {
 
             <!-- 2. Extras Section -->
             <section
-                v-if="(optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0)">
+                v-if="(optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0)">
                 <div class="mb-6">
                     <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Optional Extras</h2>
                     <p class="text-gray-600">Enhance your journey with these add-ons</p>
@@ -1242,7 +1251,7 @@ const formatPaymentMethod = (method) => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template
-                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : optionalExtras)))"
+                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : optionalExtras))))"
                         :key="extra.id">
                         <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
                             class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
@@ -1504,7 +1513,7 @@ const formatPaymentMethod = (method) => {
                 </div>
 
                 <!-- View Booking Details Button -->
-                <button v-if="paymentPercentage > 0" @click="showDetailsModal = true"
+                <button @click="showDetailsModal = true"
                     class="w-full text-sm py-3 mb-4 rounded-xl border-2 font-semibold transition-all flex items-center justify-center gap-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -1513,7 +1522,6 @@ const formatPaymentMethod = (method) => {
                     </svg>
                     View Booking Details
                 </button>
-                <div v-else class="mb-6"></div>
 
                 <!-- Action Buttons -->
                 <div class="space-y-3">
@@ -1656,6 +1664,7 @@ const formatPaymentMethod = (method) => {
             </div>
         </div>
     </Transition>
+    </div>
 </template>
 
 <style scoped>

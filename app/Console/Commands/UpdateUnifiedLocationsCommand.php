@@ -21,7 +21,7 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $description = 'Updates the unified_locations.json file with fuzzy matching to merge similar locations across providers.';
 
     protected $greenMotionService;
-    // protected $okMobilityService; // DISABLED: OK Mobility commented out
+    protected $okMobilityService;
     protected $locationSearchService;
     protected $locationMatchingService;
     protected $adobeCarService;
@@ -31,7 +31,7 @@ class UpdateUnifiedLocationsCommand extends Command
 
     public function __construct(
         \App\Services\GreenMotionService $greenMotionService,
-        // \App\Services\OkMobilityService $okMobilityService, // DISABLED: OK Mobility commented out
+        \App\Services\OkMobilityService $okMobilityService,
         \App\Services\LocationSearchService $locationSearchService,
         \App\Services\LocationMatchingService $locationMatchingService,
         \App\Services\AdobeCarService $adobeCarService,
@@ -41,7 +41,7 @@ class UpdateUnifiedLocationsCommand extends Command
     ) {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
-        // $this->okMobilityService = $okMobilityService; // DISABLED: OK Mobility commented out
+        $this->okMobilityService = $okMobilityService;
         $this->locationSearchService = $locationSearchService;
         $this->locationMatchingService = $locationMatchingService;
         $this->adobeCarService = $adobeCarService;
@@ -66,10 +66,8 @@ class UpdateUnifiedLocationsCommand extends Command
         $usaveLocations = $this->fetchProviderLocations('usave');
         $this->info('Fetched ' . count($usaveLocations) . ' U-SAVE locations.');
 
-        // OK Mobility DISABLED
-        // $okMobilityLocations = $this->fetchOkMobilityLocations();
-        // $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
-        $okMobilityLocations = []; // Empty array to maintain compatibility
+        $okMobilityLocations = $this->fetchOkMobilityLocations();
+        $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
 
         $adobeLocations = $this->fetchAdobeLocations();
         $this->info('Fetched ' . count($adobeLocations) . ' Adobe locations.');
@@ -335,9 +333,6 @@ class UpdateUnifiedLocationsCommand extends Command
         \Illuminate\Support\Facades\File::put($filePath, json_encode($locations, JSON_PRETTY_PRINT));
     }
 
-    // DISABLED: OK Mobility locations fetching
-    // Uncomment this method when OK Mobility is needed again
-    /*
     private function fetchOkMobilityLocations(): array
     {
         $this->info('Fetching OK Mobility locations...');
@@ -350,33 +345,23 @@ class UpdateUnifiedLocationsCommand extends Command
 
         $locations = [];
 
-        // Log the response for debugging
-        $this->comment('OK Mobility XML Response (first 500 chars): ' . substr($xmlResponse, 0, 500));
-
         $xmlObject = simplexml_load_string($xmlResponse);
         if ($xmlObject !== false) {
-            // Register the correct namespace based on the actual response
             $xmlObject->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
             $xmlObject->registerXPathNamespace('get', 'http://www.OKGroup.es/RentaCarWebService/getWSDL');
 
-            // Try different XPath expressions to find the stations
             $stations = $xmlObject->xpath('//get:RentalStation');
 
             if (empty($stations)) {
-                // Try alternative paths
                 $stations = $xmlObject->xpath('//soap:Body//get:RentalStation');
-                $this->comment('Found stations with alternative path: ' . count($stations));
             }
 
             if (empty($stations)) {
-                // Try without namespace
                 $stations = $xmlObject->xpath('//RentalStation');
-                $this->comment('Found stations without namespace: ' . count($stations));
             }
 
             if (empty($stations)) {
                 $this->error('No OK Mobility stations found in XML response');
-                $this->error('Full XML response: ' . $xmlResponse);
                 return [];
             }
 
@@ -385,13 +370,11 @@ class UpdateUnifiedLocationsCommand extends Command
             foreach ($stations as $station) {
                 $stationData = json_decode(json_encode($station), true);
 
-                // Handle both array and object formats with null checking
                 $stationId = is_array($stationData['StationID']) ? ($stationData['StationID'][0] ?? '') : ($stationData['StationID'] ?? '');
                 $stationName = is_array($stationData['Station']) ? ($stationData['Station'][0] ?? '') : ($stationData['Station'] ?? '');
                 $city = is_array($stationData['City']) ? ($stationData['City'][0] ?? '') : ($stationData['City'] ?? '');
                 $countryId = is_array($stationData['CountryID']) ? ($stationData['CountryID'][0] ?? '') : ($stationData['CountryID'] ?? '');
 
-                // Handle Latitude/Longitude which might not exist
                 $latitude = 0;
                 if (isset($stationData['Latitude'])) {
                     $latitude = is_array($stationData['Latitude']) ? (float) ($stationData['Latitude'][0] ?? 0) : (float) $stationData['Latitude'];
@@ -400,6 +383,10 @@ class UpdateUnifiedLocationsCommand extends Command
                 $longitude = 0;
                 if (isset($stationData['Longitude'])) {
                     $longitude = is_array($stationData['Longitude']) ? (float) ($stationData['Longitude'][0] ?? 0) : (float) $stationData['Longitude'];
+                }
+
+                if (!$stationId || !$stationName) {
+                    continue;
                 }
 
                 $locations[] = [
@@ -419,13 +406,11 @@ class UpdateUnifiedLocationsCommand extends Command
             }
         } else {
             $this->error('Failed to parse OK Mobility XML response');
-            $this->error('XML Response: ' . $xmlResponse);
         }
 
         $this->info('Processed ' . count($locations) . ' OK Mobility locations');
         return $locations;
     }
-    */
 
     private function fetchAdobeLocations(): array
     {

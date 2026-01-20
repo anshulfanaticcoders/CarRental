@@ -712,7 +712,7 @@ const getVehiclePriceConverted = (vehicle) => {
     } else {
         // Internal vehicles
         originalPrice = vehicle.price_per_day;
-        originalCurrency = vehicle.currency || 'USD';
+        originalCurrency = vehicle.currency || vehicle.vendor_profile?.currency || 'USD';
     }
 
     if (originalPrice === null || isNaN(parseFloat(originalPrice))) return null;
@@ -2488,14 +2488,15 @@ watch(
                     :view-mode="viewMode" :favoriteStatus="favoriteStatus[vehicle.id] || false"
                     :popEffect="popEffect[vehicle.id] || false" @toggleFavourite="toggleFavourite"
                     @saveSearchUrl="saveSearchUrl" @select-package="handlePackageSelection">
-                    <template #dailyPrice>
-                        <div class="flex items-baseline gap-1">
-                            <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
-                                {{ getCurrencySymbol(selectedCurrency) }}{{ convertCurrency(vehicle.price_per_day,
-                                    vehicle.currency).toFixed(2) }}
-                            </span>
-                        </div>
-                    </template>
+                <template #dailyPrice>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
+                            {{ getCurrencySymbol(selectedCurrency) }}{{
+                                getVehiclePriceConverted(vehicle)?.toFixed(2)
+                            }}
+                        </span>
+                    </div>
+                </template>
                 </CarListingCard>
             </div>
 

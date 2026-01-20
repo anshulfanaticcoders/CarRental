@@ -75,9 +75,9 @@ class OkMobilityBookingController extends Controller
         $customerDetails = $validatedData['customer'];
         $customerDetails['comments'] = 'OK Mobility Booking - ' . ($customerDetails['comments'] ?? '');
 
-        // First, make the reservation with OK Mobility API
         try {
             $reservationData = [
+                'reference' => 'OM-' . $validatedData['vehicle_id'] . '-' . now()->format('YmdHis'),
                 'group_code' => $validatedData['ok_mobility_group_id'],
                 'token' => $validatedData['ok_mobility_token'],
                 'pickup_date' => $validatedData['start_date'],
@@ -100,40 +100,10 @@ class OkMobilityBookingController extends Controller
                 'remarks' => $validatedData['remarks'] ?? null,
             ];
 
-            $xmlResponse = $this->okMobilityService->makeReservation($reservationData);
-
-            if (is_null($xmlResponse) || empty($xmlResponse)) {
-                Log::error('OK Mobility API returned null or empty XML response for createReservation.');
-                return response()->json(['error' => 'Failed to submit booking to OK Mobility API. API returned empty response.'], 500);
-            }
-
-            libxml_use_internal_errors(true);
-            $xmlObject = simplexml_load_string($xmlResponse);
-
-            if ($xmlObject === false) {
-                $errors = libxml_get_errors();
-                foreach ($errors as $error) {
-                    Log::error('XML Parsing Error (createReservation): ' . $error->message);
-                }
-                libxml_clear_errors();
-                return response()->json(['error' => 'Failed to parse XML response from OK Mobility API.'], 500);
-            }
-
-            $bookingReference = (string) $xmlObject->Body->createReservationResponse->createReservationResult->Reservation_Nr ?? null;
-            $status = (string) $xmlObject->Body->createReservationResponse->createReservationResult->Status ?? 'pending';
-
-            if (!$bookingReference) {
-                Log::error('OK Mobility API did not return a booking reference for createReservation.', [
-                    'response_xml' => $xmlResponse,
-                    'parsed_response_array' => json_decode(json_encode($xmlObject), true)
-                ]);
-                return response()->json(['error', 'Booking submitted to OK Mobility, but no reference received. Please check logs.'], 500);
-            }
-
-            // Save booking to database
+            // Save booking to database before payment
             $okMobilityBooking = OkMobilityBooking::create([
                 'user_id' => $validatedData['user_id'] ?? auth()->id(),
-                'ok_mobility_booking_ref' => $bookingReference,
+                'ok_mobility_booking_ref' => null,
                 'vehicle_id' => $validatedData['vehicle_id'],
                 'vehicle_location' => $validatedData['vehicle_location'] ?? null,
                 'start_date' => $validatedData['start_date'],
@@ -148,14 +118,19 @@ class OkMobilityBookingController extends Controller
                 'vehicle_total' => $validatedData['vehicle_total'],
                 'currency' => $validatedData['currency'],
                 'grand_total' => $validatedData['grand_total'],
-                'payment_handler_ref' => null, // Initially null
-                'booking_status' => $status,
-                'api_response' => json_decode(json_encode($xmlObject), true),
+                'payment_handler_ref' => null,
+                'booking_status' => 'payment_pending',
+                'api_response' => null,
                 'remarks' => $validatedData['remarks'] ?? null,
+                'ok_mobility_token' => $validatedData['ok_mobility_token'],
+                'ok_mobility_group_id' => $validatedData['ok_mobility_group_id'],
             ]);
-            Log::info('OK Mobility booking saved to database successfully with ref: ' . $bookingReference);
 
-            Log::info('OK Mobility booking saved to database successfully with ref: ' . $bookingReference);
+            $okMobilityBooking->update([
+                'api_response' => [
+                    'reservation_payload' => $reservationData,
+                ],
+            ]);
 
             // Calculate Amount to Charge based on Payment Percentage
             $amountToCharge = $validatedData['grand_total'];
@@ -172,7 +147,7 @@ class OkMobilityBookingController extends Controller
                             'currency' => strtolower($validatedData['currency']),
                             'product_data' => [
                                 'name' => 'OK Mobility Car Rental Booking',
-                                'description' => "Booking for vehicle ID {$validatedData['vehicle_id']} (Ref: {$bookingReference}) - Pay Now (" . ($paymentPercentage > 0 ? $paymentPercentage . '%' : 'Full Amount') . ")",
+                                'description' => "Booking for vehicle ID {$validatedData['vehicle_id']} - Pay Now (" . ($paymentPercentage > 0 ? $paymentPercentage . '%' : 'Full Amount') . ")",
                             ],
                             'unit_amount' => round($amountToCharge * 100), // Amount in cents, rounded
                         ],
@@ -184,7 +159,6 @@ class OkMobilityBookingController extends Controller
                 'cancel_url' => route('okmobility.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $okMobilityBooking->id]),
                 'metadata' => [
                     'okmobility_booking_id' => $okMobilityBooking->id,
-                    'okmobility_booking_ref' => $bookingReference,
                 ],
             ]);
 
@@ -227,9 +201,58 @@ class OkMobilityBookingController extends Controller
             $okMobilityBooking = OkMobilityBooking::where('payment_handler_ref', $sessionId)->firstOrFail();
 
             if ($session->payment_status === 'paid') {
+                $reservationPayload = $okMobilityBooking->api_response['reservation_payload'] ?? null;
+
+                if (!$reservationPayload) {
+                    $okMobilityBooking->update([
+                        'booking_status' => 'api_failed',
+                        'payment_handler_ref' => $session->payment_intent,
+                    ]);
+                    return redirect()->route('okmobility.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $okMobilityBooking->id])
+                        ->with('error', 'Payment completed, but reservation data was missing. Please contact support.');
+                }
+
+                $xmlResponse = $this->okMobilityService->makeReservation($reservationPayload);
+
+                if (is_null($xmlResponse) || empty($xmlResponse)) {
+                    $okMobilityBooking->update([
+                        'booking_status' => 'api_failed',
+                        'payment_handler_ref' => $session->payment_intent,
+                    ]);
+                    return redirect()->route('okmobility.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $okMobilityBooking->id])
+                        ->with('error', 'Payment completed, but OK Mobility booking failed. Please contact support.');
+                }
+
+                libxml_use_internal_errors(true);
+                $xmlObject = simplexml_load_string($xmlResponse);
+
+                if ($xmlObject === false) {
+                    $okMobilityBooking->update([
+                        'booking_status' => 'api_failed',
+                        'payment_handler_ref' => $session->payment_intent,
+                    ]);
+                    return redirect()->route('okmobility.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $okMobilityBooking->id])
+                        ->with('error', 'Payment completed, but OK Mobility booking response could not be parsed.');
+                }
+
+                $bookingReference = (string) ($xmlObject->Body->createReservationResponse->createReservationResult->Reservation_Nr ?? null);
+                $status = (string) ($xmlObject->Body->createReservationResponse->createReservationResult->Status ?? 'pending');
+
+                if (!$bookingReference) {
+                    $okMobilityBooking->update([
+                        'booking_status' => 'api_failed',
+                        'payment_handler_ref' => $session->payment_intent,
+                        'api_response' => json_decode(json_encode($xmlObject), true),
+                    ]);
+                    return redirect()->route('okmobility.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $okMobilityBooking->id])
+                        ->with('error', 'Payment completed, but OK Mobility booking reference was missing.');
+                }
+
                 $okMobilityBooking->update([
-                    'booking_status' => 'confirmed',
+                    'booking_status' => $status,
                     'payment_handler_ref' => $session->payment_intent,
+                    'ok_mobility_booking_ref' => $bookingReference,
+                    'api_response' => json_decode(json_encode($xmlObject), true),
                 ]);
 
                 // Create affiliate commission if applicable (same as other payment controllers)
@@ -255,6 +278,7 @@ class OkMobilityBookingController extends Controller
                 return redirect()->route('profile.bookings.ok-mobility', ['locale' => app()->getLocale()]);
 
             } else {
+
                 Log::warning('Stripe session not paid for OK Mobility booking. Session ID: ' . $sessionId);
                 $okMobilityBooking->update(['booking_status' => 'payment_failed']);
                 return redirect()->route('okmobility.booking.cancel', ['locale' => app()->getLocale(), 'booking_id' => $okMobilityBooking->id])->with('error', 'Payment not completed.');

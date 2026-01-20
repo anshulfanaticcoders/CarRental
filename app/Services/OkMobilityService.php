@@ -61,7 +61,14 @@ class OkMobilityService
                     ]);
 
                 if ($response->successful()) {
-                    return $response->body();
+                    $body = $response->body();
+                    if ($response->header('Content-Encoding') === 'gzip') {
+                        $decoded = @gzdecode($body);
+                        if ($decoded !== false) {
+                            return $decoded;
+                        }
+                    }
+                    return $body;
                 }
 
                 Log::warning("OK Mobility attempt failed for $url: " . $response->status() . " - " . $response->reason());
@@ -87,14 +94,19 @@ class OkMobilityService
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:get="http://www.OKGroup.es/RentaCarWebService/getWSDL">
    <soapenv:Header/>
    <soapenv:Body>
-      <get:getMultiplePricesRequest>
-         <objRequest>
-            <customerCode>' . $this->customerCode . '</customerCode>
-            <companyCode>' . $this->companyCode . '</companyCode>
-            <PickUpDate>' . $pickupDateTime . '</PickUpDate>
-            <PickUpStation>' . $pickupStationId . '</PickUpStation>
-            <DropOffDate>' . $dropoffDateTime . '</DropOffDate>
-            <DropOffStation>' . $dropoffStationId . '</DropOffStation>';
+       <get:getMultiplePricesRequest>
+          <objRequest>
+             <customerCode>' . $this->customerCode . '</customerCode>
+             <companyCode>' . $this->companyCode . '</companyCode>
+             <PickUp>
+                <Date>' . $pickupDateTime . '</Date>
+                <rentalStation>' . $pickupStationId . '</rentalStation>
+             </PickUp>
+             <DropOff>
+                <Date>' . $dropoffDateTime . '</Date>
+                <rentalStation>' . $dropoffStationId . '</rentalStation>
+             </DropOff>';
+
 
         if ($groupId) {
             $xmlRequest .= '<groupID>' . $groupId . '</groupID>';
@@ -122,27 +134,30 @@ class OkMobilityService
          <objRequest>
             <customerCode>' . $this->customerCode . '</customerCode>
             <companyCode>' . $this->companyCode . '</companyCode>
-            <MessageType>N</MessageType>
-            <token>' . $reservationData['token'] . '</token>
-            <groupCode>' . ($reservationData['group_code'] ?? $reservationData['sipp_code'] ?? '') . '</groupCode>
-            <PickUp>
-                <Date>' . $reservationData['pickup_date'] . ' ' . $reservationData['pickup_time'] . '</Date>
-                <rentalStation>' . $reservationData['pickup_station_id'] . '</rentalStation>
-            </PickUp>
-            <DropOff>
-                <Date>' . $reservationData['dropoff_date'] . ' ' . $reservationData['dropoff_time'] . '</Date>
-                <rentalStation>' . $reservationData['dropoff_station_id'] . '</rentalStation>
-            </DropOff>
-            <Driver>
-                <Name>' . htmlspecialchars($reservationData['driver_name']) . '</Name>
-                <EMail>' . htmlspecialchars($reservationData['driver_email']) . '</EMail>
-                <Phone>' . htmlspecialchars($reservationData['driver_phone']) . '</Phone>
-                <Address>' . htmlspecialchars($reservationData['driver_address'] ?? '') . '</Address>
-                <City>' . htmlspecialchars($reservationData['driver_city'] ?? '') . '</City>
-                <Postal_code>' . htmlspecialchars($reservationData['driver_postal_code'] ?? '') . '</Postal_code>
-                <Country>' . htmlspecialchars($reservationData['driver_country'] ?? '') . '</Country>
-                <Date_of_Birth>' . ($reservationData['driver_dob'] ?? '') . '</Date_of_Birth>
-            </Driver>';
+             <MessageType>N</MessageType>
+             <Reference>' . htmlspecialchars($reservationData['reference'] ?? '') . '</Reference>
+             <token>' . $reservationData['token'] . '</token>
+             <groupCode>' . ($reservationData['group_code'] ?? $reservationData['sipp_code'] ?? '') . '</groupCode>
+             <PickUp>
+                 <Date>' . $reservationData['pickup_date'] . ' ' . $reservationData['pickup_time'] . '</Date>
+                 <rentalStation>' . $reservationData['pickup_station_id'] . '</rentalStation>
+             </PickUp>
+             <DropOff>
+                 <Date>' . $reservationData['dropoff_date'] . ' ' . $reservationData['dropoff_time'] . '</Date>
+                 <rentalStation>' . $reservationData['dropoff_station_id'] . '</rentalStation>
+             </DropOff>
+             <Driver>
+                 <Name>' . htmlspecialchars($reservationData['driver_name']) . '</Name>
+                 <EMail>' . htmlspecialchars($reservationData['driver_email']) . '</EMail>
+                 <Phone>' . htmlspecialchars($reservationData['driver_phone']) . '</Phone>
+                 <Address>' . htmlspecialchars($reservationData['driver_address'] ?? '') . '</Address>
+                 <City>' . htmlspecialchars($reservationData['driver_city'] ?? '') . '</City>
+                 <Postal_Code>' . htmlspecialchars($reservationData['driver_postal_code'] ?? '') . '</Postal_Code>
+                 <Country>' . htmlspecialchars($reservationData['driver_country'] ?? '') . '</Country>
+                 <DriverLicenceNumber>' . htmlspecialchars($reservationData['driver_license_number'] ?? '') . '</DriverLicenceNumber>
+                 <Date_of_Birth>' . ($reservationData['driver_dob'] ?? '') . '</Date_of_Birth>
+             </Driver>';
+
 
         // Extras
         if (isset($reservationData['extras']) && !empty($reservationData['extras'])) {

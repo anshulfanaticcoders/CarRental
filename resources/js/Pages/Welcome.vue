@@ -4,11 +4,11 @@ import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaIn
 import heroImg from "../../assets/heroImage.jpg";
 import FloatingBubbles from '@/Components/FloatingBubbles.vue';
 import Footer from '@/Components/Footer.vue'
-import locationMapIcon from "../../assets/location.svg";
-import chipIcon from "../../assets/chip.svg";
-import phoneIcon from "../../assets/phone.svg";
-import userCoverageIcon from "../../assets/usercoverage.svg";
-import carImage from "../../assets/carImagebgrmoved.jpeg";
+import wifiIcon from "../../assets/usb.svg";
+import replacementIcon from "../../assets/carIcon.svg";
+import protectionIcon from "../../assets/verification.svg";
+import priceIcon from "../../assets/percentage-tag.svg";
+import supportIcon from "../../assets/call.svg";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
 import EsimSection from "@/Components/EsimSection.vue";
@@ -324,7 +324,7 @@ useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-title', {
 
 useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-left', {
     opacity: 0,
-    x: -50,
+    y: 30,
 });
 
 useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-image', {
@@ -334,7 +334,7 @@ useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-image', {
 
 useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-card-right', {
     opacity: 0,
-    x: 50,
+    y: 30,
 });
 
 useScrollAnimation('.popular-places-trigger', '.popular-place-card', {
@@ -517,66 +517,86 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!------------------------------- WHY CHOOSE US -------------------------------------->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section class="py-customVerticalSpacing why-choose-us-trigger">
+        <section class="py-customVerticalSpacing why-choose-us-trigger why-choose-surface">
             <div class="full-w-container flex flex-col gap-16">
                 <div class="column text-center flex flex-col gap-5 items-center why-choose-us-title">
                     <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('why_choose_us') }}-</span>
                     <h3 class="max-w-[883px] text-customDarkBlackColor">
                         {{ _p('why_subtitle') }}
                     </h3>
+                    <p class="max-w-[720px] text-customLightGrayColor text-[1.1rem]">
+                        Travel with the confidence of a premium concierge and the ease of a local expert.
+                    </p>
                 </div>
-                <div class="column grid grid-cols-3 gap-16
-                max-[768px]:grid-cols-1">
-                    <div class="col flex flex-col gap-10">
-                        <div class="info-card flex gap-5 items-start why-choose-us-card-left">
-                            <img :src="locationMapIcon" alt="" />
-                            <div class="flex flex-col gap-3">
-                                <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
-                                        _p('convenient_locations') }}</span>
-                                <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
-                                    {{ _p('convenient_locations_text') }}
-                                </p>
-                            </div>
+                <div class="column why-choose-grid">
+                    <div class="why-choose-card why-choose-us-card-left">
+                        <div class="why-choose-icon">
+                            <img :src="wifiIcon" alt="Free internet included" />
                         </div>
-                        <div class="info-card flex gap-5 items-start why-choose-us-card-left">
-                            <img :src="phoneIcon" alt="" />
-                            <div class=" flex flex-col gap-3">
-                                <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
-                                        _p('fast_booking') }}</span>
-                                <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
-                                    {{ _p('fast_booking_text') }}
-                                </p>
+                        <div class="flex flex-col gap-3">
+                            <span class="why-choose-title">Free Internet Included</span>
+                            <p class="why-choose-text">
+                                Stay connected from arrival to drop-off with effortless, in-car access.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="why-choose-card why-choose-us-card-left">
+                        <div class="why-choose-icon">
+                            <img :src="replacementIcon" alt="Instant replacement guarantee" />
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            <span class="why-choose-title">Instant Replacement Guarantee</span>
+                            <p class="why-choose-text">
+                                If your reserved vehicle is unavailable, we secure a replacement instantly.
+                            </p>
+                            <div class="why-choose-tag">
+                                <img :src="priceIcon" alt="" />
+                                <span>No extra cost, upgrades when possible.</span>
                             </div>
                         </div>
                     </div>
-                    <div class="col flex justify-center why-choose-us-image">
-                        <img class="rounded-[20px] h-full object-cover" :src="carImage" alt=""
-                            style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);" />
-                    </div>
-                    <div class="col flex flex-col gap-10">
-                        <div class="info-card flex gap-5 items-start why-choose-us-card-right">
-                            <img :src="chipIcon" alt="" />
-                            <div class=" flex flex-col gap-3">
-                                <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
-                                        _p('modern_fleet') }}</span>
-                                <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
-                                    {{ _p('modern_fleet_text') }}
-                                </p>
-                            </div>
+                    <div class="why-choose-card why-choose-us-card-left">
+                        <div class="why-choose-icon">
+                            <img :src="protectionIcon" alt="Fair damage protection" />
                         </div>
-                        <div class="info-card flex gap-5 items-start why-choose-us-card-right">
-                            <img :src="userCoverageIcon" alt="" />
-                            <div class="flex flex-col gap-3 ">
-                                <span
-                                    class="text-[1.5rem] text-customDarkBlackColor font-medium  max-[768px]:text-[1.25rem]">{{
-                                        _p('insurance_coverage') }}</span>
-                                <p class="text-customLightGrayColor text-[1.15rem]  max-[768px]:text-[0.95rem]">
-                                    {{ _p('insurance_coverage_text') }}
-                                </p>
-                            </div>
+                        <div class="flex flex-col gap-3">
+                            <span class="why-choose-title">Fair Damage Protection</span>
+                            <p class="why-choose-text">
+                                We protect you from excessive charges for minor scratches or normal wear.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="why-choose-card why-choose-us-card-right">
+                        <div class="why-choose-icon">
+                            <img :src="priceIcon" alt="Best price guarantee" />
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            <span class="why-choose-title">Best Price Guarantee</span>
+                            <p class="why-choose-text">
+                                Transparent pricing with the lowest rate available for every trip.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="why-choose-card why-choose-us-card-right">
+                        <div class="why-choose-icon">
+                            <img :src="supportIcon" alt="24/7 worldwide support" />
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            <span class="why-choose-title">24/7 Worldwide Support</span>
+                            <p class="why-choose-text">
+                                Wherever you are, Vrooem is ready to keep your journey effortless.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="why-choose-card why-choose-us-card-right">
+                        <div class="why-choose-icon">
+                            <img :src="replacementIcon" alt="No rushing or waiting" />
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            <span class="why-choose-title">No Rushing, No Waiting</span>
+                            <p class="why-choose-text">
+                                Skip long lines and start your trip relaxed with fast, guided pickup.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -591,7 +611,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!-- ------------------------Testimonials Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section class="py-customVerticalSpacing">
+        <section v-if="props.testimonials && props.testimonials.length" class="py-customVerticalSpacing">
             <Testimonials />
         </section>
         <!-- ---------------------------<End>---------------------------------------------------->
@@ -599,8 +619,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!-- ------------------------Blogs Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section
-            class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0 blogs-trigger">
+        <section v-if="!isLoading && blogs && blogs.length" class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0 blogs-trigger">
             <div
                 class="column text-center flex flex-col items-center w-[650px] py-8 max-[768px]:py-0 max-[768px]:w-full max-[768px]:mb-10 blog-title-section">
                 <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('blogs_title') }}-</span>
@@ -687,7 +706,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!-- ------------------------FAQ Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section class="my-customVerticalSpacing">
+        <section v-if="props.faqs && props.faqs.length" class="my-customVerticalSpacing">
             <!-- Pass the faqs prop to the Faq component -->
             <Faq :faqs="props.faqs" />
         </section>
@@ -733,6 +752,125 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 .blog-item,
 .more-button {
     will-change: transform, opacity;
+}
+
+.why-choose-surface {
+    position: relative;
+}
+
+.why-choose-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top, rgba(15, 23, 42, 0.05), transparent 65%);
+    pointer-events: none;
+}
+
+.why-choose-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2.5rem;
+    position: relative;
+    z-index: 1;
+    align-items: stretch;
+}
+
+.why-choose-card {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    background: #ffffff;
+    border-radius: 22px;
+    padding: 1.75rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+    height: 100%;
+}
+
+.why-choose-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 22px 40px rgba(15, 23, 42, 0.12);
+    border-color: rgba(15, 23, 42, 0.14);
+}
+
+.why-choose-icon {
+    width: 3.1rem;
+    height: 3.1rem;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    flex-shrink: 0;
+}
+
+.why-choose-icon img {
+    width: 1.55rem;
+    height: 1.55rem;
+    filter: none;
+}
+
+.why-choose-title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.why-choose-text {
+    font-size: 1.02rem;
+    color: #6b7280;
+}
+
+.why-choose-tag {
+    margin-top: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    font-size: 0.85rem;
+    color: #4b5563;
+}
+
+.why-choose-tag img {
+    width: 0.85rem;
+    height: 0.85rem;
+}
+
+@media screen and (max-width: 1024px) {
+    .why-choose-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.5rem;
+    }
+
+    .why-choose-card {
+        padding: 1.5rem;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .why-choose-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .why-choose-card {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .why-choose-title {
+        font-size: 1.2rem;
+    }
+
+    .why-choose-text {
+        font-size: 0.95rem;
+    }
 }
 
 .blog-container>img {

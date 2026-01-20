@@ -105,7 +105,7 @@ const plugin = Autoplay({
                     class="pl-1 md:basis-1/2 lg:basis-1/4">
                     <div class="p-1">
                         <Card class='h-[19rem]'>
-                            <CardContent class="flex h-full flex-col aspect-square justify-center p-6 gap-10">
+                            <CardContent class="flex h-full flex-col aspect-square justify-center p-6 gap-10 w-full">
                                 <div class="column p-4 border-b border-customMediumBlackColor">
                                     <span v-for="star in Math.floor(testimonial.rating)" :key="star"
                                         class="text-yellow-500 text-[1.5rem]">★</span>
