@@ -250,13 +250,19 @@ const getCardDelay = (index) => {
                   :alt="booking.vehicle?.brand || booking.vehicle_name"
                   class="w-full h-64 lg:h-full object-cover"
                 />
-                <div
+                <img
                   v-else-if="booking.vehicle_image"
-                  class="w-full h-64 lg:h-full bg-gray-50 flex items-center justify-center p-8"
-                >
-                  <img :src="booking.vehicle_image" :alt="booking.vehicle_name" class="max-h-full object-contain" />
-                </div>
+                  :src="booking.vehicle_image"
+                  :alt="booking.vehicle_name"
+                  class="w-full h-64 lg:h-full object-cover"
+                />
               </Link>
+              <img
+                v-else-if="booking.vehicle_image"
+                :src="booking.vehicle_image"
+                :alt="booking.vehicle_name"
+                class="w-full h-64 lg:h-full object-cover"
+              />
               <div v-else class="w-full h-64 lg:h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                 <svg class="w-24 h-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />

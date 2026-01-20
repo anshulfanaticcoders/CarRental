@@ -542,7 +542,7 @@ class BookingController extends Controller
             // For external providers, still try to get vendorProfile from booking
             $vendorProfile = $booking->vendorProfile;
 
-            $vehicleData = [
+            $vehicleData = (object) [
                 'brand' => explode(' ', $booking->vehicle_name)[0] ?? 'Vehicle',
                 'model' => $booking->vehicle_name,
                 'vehicle_name' => $booking->vehicle_name,
