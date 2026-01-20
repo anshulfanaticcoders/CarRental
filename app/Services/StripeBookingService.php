@@ -6,9 +6,12 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Customer;
+use App\Models\User;
 use App\Services\AdobeCarService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class StripeBookingService
 {
@@ -174,6 +177,41 @@ class StripeBookingService
     {
         $email = $metadata->customer_email ?? null;
 
+        $fullName = trim($metadata->customer_name ?? 'Guest');
+        $nameParts = preg_split('/\s+/', $fullName, 2);
+        $firstName = $nameParts[0] ?? 'Guest';
+        $lastName = $nameParts[1] ?? 'Guest';
+        $userId = $metadata->user_id ?? null;
+        $phone = $metadata->customer_phone ?? null;
+
+        if (!$userId) {
+            $user = null;
+            if ($email && $phone) {
+                $user = User::where('email', $email)
+                    ->orWhere('phone', $phone)
+                    ->first();
+            } elseif ($email) {
+                $user = User::where('email', $email)->first();
+            } elseif ($phone) {
+                $user = User::where('phone', $phone)->first();
+            }
+
+            if (!$user) {
+                $safePhone = $phone ?: 'guest_' . now()->timestamp . '_' . Str::random(6);
+                $user = User::create([
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'email' => $email ?? 'guest_' . now()->timestamp . '_' . Str::random(6) . '@temp.com',
+                    'phone' => $safePhone,
+                    'password' => Hash::make(Str::random(32)),
+                    'role' => 'customer',
+                    'status' => 'active',
+                ]);
+            }
+
+            $userId = $user->id;
+        }
+
         if ($email) {
             $customer = Customer::where('email', $email)->first();
             if ($customer) {
@@ -182,9 +220,13 @@ class StripeBookingService
         }
 
         return Customer::create([
-            'name' => $metadata->customer_name ?? 'Guest',
+            'user_id' => $userId,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'email' => $email ?? 'guest_' . time() . '@temp.com',
-            'phone' => $metadata->customer_phone ?? null,
+            'phone' => $phone,
+            'flight_number' => $metadata->flight_number ?? null,
+            'driver_age' => $metadata->customer_driver_age ?? null,
         ]);
     }
 

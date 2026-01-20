@@ -109,7 +109,9 @@ class StripeCheckoutController extends Controller
             ];
 
             // Prepare metadata for webhook
+            $userId = $request->user()?->id;
             $metadata = [
+                'user_id' => $userId,
                 'vehicle_id' => $validated['vehicle']['id'] ?? '',
                 'vehicle_source' => $validated['vehicle']['source'] ?? 'greenmotion',
                 'vehicle_brand' => $validated['vehicle']['brand'] ?? '',
@@ -134,6 +136,7 @@ class StripeCheckoutController extends Controller
                 'customer_email' => $validated['customer']['email'] ?? '',
                 'customer_phone' => $validated['customer']['phone'] ?? '',
                 'customer_driver_age' => $validated['customer']['driver_age'] ?? '',
+                'flight_number' => $validated['customer']['flight_number'] ?? '',
                 'protection_code' => $validated['protection_code'] ?? '',
                 'protection_amount' => $validated['protection_amount'] ?? 0,
                 'sipp_code' => $validated['vehicle']['sipp_code'] ?? '',
