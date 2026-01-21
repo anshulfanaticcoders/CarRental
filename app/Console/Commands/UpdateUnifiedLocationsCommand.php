@@ -66,9 +66,8 @@ class UpdateUnifiedLocationsCommand extends Command
         $usaveLocations = $this->fetchProviderLocations('usave');
         $this->info('Fetched ' . count($usaveLocations) . ' U-SAVE locations.');
 
-        // $okMobilityLocations = $this->fetchOkMobilityLocations();
-        // $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
-        $okMobilityLocations = [];
+        $okMobilityLocations = $this->fetchOkMobilityLocations();
+        $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
 
         $adobeLocations = $this->fetchAdobeLocations();
         $this->info('Fetched ' . count($adobeLocations) . ' Adobe locations.');
@@ -82,10 +81,8 @@ class UpdateUnifiedLocationsCommand extends Command
         $renteonLocations = $this->fetchRenteonLocations();
         $this->info('Fetched ' . count($renteonLocations) . ' Renteon locations.');
 
-        // $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations, $wheelsysLocations, $renteonLocations);
-        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $adobeLocations, $locautoLocations, $wheelsysLocations, $renteonLocations);
+        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations, $wheelsysLocations, $renteonLocations);
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
-        // $this->info('OK Mobility is currently DISABLED in this command.'); // Comment: OK Mobility commented out
 
         $this->saveUnifiedLocations(array_values($unifiedLocations));
 
@@ -384,6 +381,10 @@ class UpdateUnifiedLocationsCommand extends Command
                 $stationName = is_array($stationData['Station']) ? ($stationData['Station'][0] ?? '') : ($stationData['Station'] ?? '');
                 $city = is_array($stationData['City']) ? ($stationData['City'][0] ?? '') : ($stationData['City'] ?? '');
                 $countryId = is_array($stationData['CountryID']) ? ($stationData['CountryID'][0] ?? '') : ($stationData['CountryID'] ?? '');
+                $locationType = '';
+                if (isset($stationData['LocationType'])) {
+                    $locationType = is_array($stationData['LocationType']) ? ($stationData['LocationType'][0] ?? '') : ($stationData['LocationType'] ?? '');
+                }
 
                 $latitude = 0;
                 if (isset($stationData['Latitude'])) {
@@ -399,12 +400,17 @@ class UpdateUnifiedLocationsCommand extends Command
                     continue;
                 }
 
+                $normalizedCity = $this->normalizeTitleCase($city ?: $stationName);
+                $normalizedType = $this->normalizeTitleCase($locationType);
+                $hasKnownType = !empty($normalizedType) && strtolower($normalizedType) !== 'unknown';
+                $displayName = $hasKnownType ? trim($normalizedCity . ' ' . $normalizedType) : $normalizedCity;
+
                 $locations[] = [
                     'id' => 'okmobility_' . $stationId,
-                    'label' => $stationName,
-                    'below_label' => implode(', ', array_filter([$city, $countryId])),
-                    'location' => $stationName,
-                    'city' => $city,
+                    'label' => $displayName,
+                    'below_label' => implode(', ', array_filter([$normalizedCity, $countryId])),
+                    'location' => $displayName,
+                    'city' => $normalizedCity,
                     'state' => null,
                     'country' => $countryId,
                     'latitude' => (float) $latitude,
@@ -412,6 +418,7 @@ class UpdateUnifiedLocationsCommand extends Command
                     'source' => 'okmobility',
                     'matched_field' => 'location',
                     'provider_location_id' => $stationId,
+                    'location_type' => $hasKnownType ? $normalizedType : 'unknown',
                 ];
             }
         } else {
@@ -456,6 +463,19 @@ class UpdateUnifiedLocationsCommand extends Command
         }
 
         return $locations;
+    }
+
+    private function normalizeTitleCase(?string $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        $value = str_replace(['_', '-'], ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value);
+
+        return ucwords(strtolower($value));
     }
 
     private function fetchLocautoLocations(): array
