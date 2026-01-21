@@ -505,6 +505,17 @@ class LocationMatchingService
             }
         }
 
+        $resolvedType = $bestLocation['location_type'] ?? $this->detectLocationType($bestLocation);
+        $resolvedCity = trim((string) ($bestLocation['city'] ?? ''));
+
+        if ($resolvedType === 'unknown') {
+            $resolvedType = $this->detectLocationType($bestLocation);
+        }
+
+        if ($resolvedType !== 'unknown' && $resolvedCity !== '' && strcasecmp(trim($bestName), $resolvedCity) === 0) {
+            $bestName = trim($resolvedCity . ' ' . ucfirst($resolvedType));
+        }
+
         // Remove duplicates and the main name from aliases
         $aliases = array_values(array_unique(array_filter($aliases, fn($a) => $a !== $bestName)));
 

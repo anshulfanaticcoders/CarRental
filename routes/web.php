@@ -891,11 +891,12 @@ Route::group([
         Route::get('/adobe-booking-success', [AdobeBookingController::class, 'adobeBookingSuccess'])->name('adobe.booking.success');
         Route::get('/adobe-booking-cancel', [AdobeBookingController::class, 'adobeBookingCancel'])->name('adobe.booking.cancel');
 
-        // OK Mobility Booking Routes
-        Route::post('/ok-mobility-booking/charge', [OkMobilityBookingController::class, 'processOkMobilityBookingPayment'])->name('okmobility.booking.charge');
-        Route::get('/ok-mobility-booking-success', [OkMobilityBookingController::class, 'bookingSuccess'])->name('okmobility.booking.success');
-        Route::get('/ok-mobility-booking-cancel', [OkMobilityBookingController::class, 'bookingCancel'])->name('okmobility.booking.cancel');
     });
+
+    // OK Mobility Booking Routes (allow guests)
+    Route::post('/ok-mobility-booking/charge', [OkMobilityBookingController::class, 'processOkMobilityBookingPayment'])->name('okmobility.booking.charge');
+    Route::get('/ok-mobility-booking-success', [OkMobilityBookingController::class, 'bookingSuccess'])->name('okmobility.booking.success');
+    Route::get('/ok-mobility-booking-cancel', [OkMobilityBookingController::class, 'bookingCancel'])->name('okmobility.booking.cancel');
 
     // Vendor status check for vehicle creation
     Route::middleware(['auth', 'vendor.status'])->group(function () {

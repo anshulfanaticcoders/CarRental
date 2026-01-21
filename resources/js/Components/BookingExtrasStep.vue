@@ -52,6 +52,11 @@ const isRenteon = computed(() => {
     return props.vehicle?.source === 'renteon';
 });
 
+// Check if vehicle is OK Mobility
+const isOkMobility = computed(() => {
+    return props.vehicle?.source === 'okmobility';
+});
+
 // Get vehicle image (handles internal vehicles which use images array)
 const vehicleImage = computed(() => {
     // Internal vehicles: find primary image from images array
@@ -415,6 +420,67 @@ const renteonOptionalExtras = computed(() => {
 
 });
 
+const okMobilityBaseTotal = computed(() => {
+    if (!isOkMobility.value) return 0;
+    const total = parseFloat(props.vehicle?.total_price || 0);
+    if (total > 0) return total;
+    const daily = parseFloat(props.vehicle?.price_per_day || 0);
+    return daily > 0 ? daily * props.numberOfDays : 0;
+});
+
+const okMobilityPackages = computed(() => {
+    if (!isOkMobility.value) return [];
+    const benefits = ['Base rental rate'];
+    if (props.vehicle?.mileage) {
+        benefits.push(`Mileage: ${props.vehicle.mileage}`);
+    }
+    if (props.vehicle?.fuel_policy) {
+        benefits.push(props.vehicle.fuel_policy);
+    }
+    return [
+        {
+            type: 'BAS',
+            name: 'Basic Rental',
+            subtitle: 'Standard Package',
+            total: okMobilityBaseTotal.value,
+            deposit: 0,
+            benefits,
+            isBestValue: true,
+            isAddOn: false
+        }
+    ];
+});
+
+const okMobilityOptionalExtras = computed(() => {
+    if (!isOkMobility.value) return [];
+    const extras = props.vehicle?.extras || [];
+    return extras.map((extra, index) => {
+        const id = extra.id || extra.extraID || extra.extraId || extra.extra_id || extra.code || extra.extra || index;
+        const name = extra.name || extra.extra || extra.description || extra.displayName || extra.code || 'Extra';
+        const description = extra.description || extra.displayDescription || '';
+        const priceValue = parseFloat(
+            extra.priceWithTax ?? extra.valueWithTax ?? extra.value ?? extra.price ?? extra.amount ?? 0
+        );
+        const pricePerContract = extra.pricePerContract === true || extra.pricePerContract === 'true';
+        const dailyRate = pricePerContract && props.numberOfDays
+            ? (priceValue / props.numberOfDays)
+            : priceValue;
+
+        return {
+            id: `okmobility_extra_${id}`,
+            code: extra.code || extra.extraID || extra.extra || id,
+            name,
+            description,
+            price: priceValue,
+            daily_rate: dailyRate,
+            amount: priceValue,
+            included: extra.included || extra.extra_Included === 'true',
+            required: extra.required || extra.extra_Required === 'true',
+            is_one_time: pricePerContract
+        };
+    }).filter(extra => extra.price > 0 || extra.required || extra.included);
+});
+
 const availablePackages = computed(() => {
     if (isAdobeCars.value) {
         return adobePackages.value;
@@ -424,6 +490,9 @@ const availablePackages = computed(() => {
     }
     if (isRenteon.value) {
         return renteonPackages.value;
+    }
+    if (isOkMobility.value) {
+        return okMobilityPackages.value;
     }
     if (!props.vehicle || !props.vehicle.products) return [];
     return packageOrder
@@ -569,6 +638,8 @@ const extrasTotal = computed(() => {
             extra = internalOptionalExtras.value.find(e => e.id === id);
         } else if (isRenteon.value) {
             extra = renteonOptionalExtras.value.find(e => e.id === id);
+        } else if (isOkMobility.value) {
+            extra = okMobilityOptionalExtras.value.find(e => e.id === id);
         } else {
             extra = props.optionalExtras.find(e => e.id === id);
         }
@@ -603,6 +674,10 @@ const grandTotal = computed(() => {
     if (isRenteon.value) {
         // Base price (from package) + extras
         return (pkgPrice + extrasTotal.value).toFixed(2);
+    }
+
+    if (isOkMobility.value) {
+        return (okMobilityBaseTotal.value + extrasTotal.value).toFixed(2);
     }
 
     return (pkgPrice + mandatoryExtra + extrasTotal.value).toFixed(2);
@@ -657,6 +732,8 @@ const getSelectedExtrasDetails = computed(() => {
             extra = internalOptionalExtras.value.find(e => e.id === id);
         } else if (isRenteon.value) {
             extra = renteonOptionalExtras.value.find(e => e.id === id);
+        } else if (isOkMobility.value) {
+            extra = okMobilityOptionalExtras.value.find(e => e.id === id);
         } else {
             extra = props.optionalExtras.find(e => e.id === id);
         }
@@ -1276,7 +1353,7 @@ const formatPaymentMethod = (method) => {
 
             <!-- 2. Extras Section -->
             <section
-                v-if="(optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0)">
+                v-if="(optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0)">
                 <div class="mb-6">
                     <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Optional Extras</h2>
                     <p class="text-gray-600">Enhance your journey with these add-ons</p>
@@ -1284,7 +1361,7 @@ const formatPaymentMethod = (method) => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template
-                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : optionalExtras))))"
+                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : optionalExtras)))))"
                         :key="extra.id">
                         <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
                             class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
@@ -1501,7 +1578,7 @@ const formatPaymentMethod = (method) => {
                 <div class="space-y-3 text-sm text-gray-700 mb-6 pb-6 border-b border-gray-100">
                     <div class="flex justify-between">
                         <span>Car Package ({{ currentPackage }})</span>
-                        <span class="font-medium" v-if="ratesReady">{{ formatPrice(isLocautoRent ? locautoBaseTotal : (currentProduct?.total || 0)) }}</span>
+                        <span class="font-medium" v-if="ratesReady">{{ formatPrice(isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || 0))) }}</span>
                         <span class="price-skeleton price-skeleton-sm" v-else></span>
                     </div>
                     <div v-if="isAdobeCars && adobeMandatoryProtection > 0" class="flex justify-between text-amber-600">
@@ -1578,7 +1655,7 @@ const formatPaymentMethod = (method) => {
                             payableAmount,
                             pendingAmount
                         },
-                        vehicle_total: isLocautoRent ? locautoBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0)
+                        vehicle_total: isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0))
                     })" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg"
                         :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                         Proceed to Booking
@@ -1629,7 +1706,7 @@ const formatPaymentMethod = (method) => {
                         <div class="space-y-4">
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Car Package ({{ currentPackage }})</span>
-                                <span class="font-semibold text-gray-900">{{ formatPrice(currentProduct?.total || 0)
+                                <span class="font-semibold text-gray-900">{{ formatPrice(isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || 0))
                                 }}</span>
                             </div>
                             <div v-if="isAdobeCars && adobeMandatoryProtection > 0"

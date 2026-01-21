@@ -29,6 +29,11 @@ const isRenteon = computed(() => {
     return props.vehicle?.source === 'renteon';
 });
 
+// Check if vehicle is OK Mobility
+const isOkMobility = computed(() => {
+    return props.vehicle?.source === 'okmobility';
+});
+
 // Helper for highlighting benefits
 const isKeyBenefit = (text) => {
     if (!text) return false;
@@ -413,6 +418,13 @@ const selectRenteonPackage = () => {
     emit('select-package', {
         vehicle: props.vehicle,
         package: 'BAS',
+    });
+};
+
+const selectOkMobilityPackage = () => {
+    emit('select-package', {
+        vehicle: props.vehicle,
+        package: 'BAS'
     });
 };
 
@@ -880,6 +892,15 @@ onUnmounted(() => {
                 </button>
 
                 <button v-else-if="isRenteon" @click="selectRenteonPackage" class="header-btn primary"
+                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
+                    Book Deal
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+
+                <button v-else-if="isOkMobility" @click="selectOkMobilityPackage" class="header-btn primary"
                     :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

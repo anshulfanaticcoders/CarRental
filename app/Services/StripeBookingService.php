@@ -890,36 +890,40 @@ class StripeBookingService
 
             $response = $this->renteonService->createBooking($vehicleData, $customerData, $bookingData);
 
-            if ($response && isset($response['Number'])) {
-                 $confNumber = $response['Number'];
-                 Log::info('Renteon: Reservation successful', ['conf' => $confNumber]);
+            $confNumber = null;
+            if (is_array($response)) {
+                $confNumber = $response['Number']
+                    ?? $response['ReservationNo']
+                    ?? $response['ReservationNumber']
+                    ?? $response['ConfirmationNumber']
+                    ?? $response['BookingNumber']
+                    ?? $response['id']
+                    ?? null;
 
-                 $booking->update([
-                     'provider_booking_ref' => $confNumber,
-                     'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Conf: " . $confNumber
-                 ]);
-             } elseif ($response && isset($response['ReservationNo'])) {
-                 $confNumber = $response['ReservationNo'];
-                 Log::info('Renteon: Reservation successful', ['conf' => $confNumber]);
+                if ($confNumber === null && isset($response['Data']) && is_array($response['Data'])) {
+                    $confNumber = $response['Data']['Number']
+                        ?? $response['Data']['ReservationNo']
+                        ?? $response['Data']['ReservationNumber']
+                        ?? $response['Data']['ConfirmationNumber']
+                        ?? $response['Data']['BookingNumber']
+                        ?? $response['Data']['id']
+                        ?? null;
+                }
+            }
 
-                 $booking->update([
-                     'provider_booking_ref' => $confNumber,
-                     'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Conf: " . $confNumber
-                 ]);
-             } elseif ($response && isset($response['id'])) {
-                 // Fallback if ID is returned
-                 $confNumber = $response['id'];
-                 Log::info('Renteon: Reservation successful (ID)', ['id' => $confNumber]);
-                 $booking->update([
-                     'provider_booking_ref' => $confNumber,
-                     'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Conf: " . $confNumber
-                 ]);
-             } else {
-                 Log::error('Renteon: Reservation failed', ['response' => $response]);
-                 $booking->update([
-                     'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Reservation failed: " . json_encode($response)
-                 ]);
-             }
+            if ($confNumber) {
+                Log::info('Renteon: Reservation successful', ['conf' => $confNumber]);
+
+                $booking->update([
+                    'provider_booking_ref' => $confNumber,
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Conf: " . $confNumber
+                ]);
+            } else {
+                  Log::error('Renteon: Reservation failed', ['response' => $response]);
+                  $booking->update([
+                      'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Reservation failed: " . json_encode($response)
+                  ]);
+              }
 
 
         } catch (\Exception $e) {

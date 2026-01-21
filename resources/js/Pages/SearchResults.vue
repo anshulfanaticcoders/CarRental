@@ -609,6 +609,8 @@ watch(
             seating_capacity,
             price_range,
             color,
+            // Currency conversion is client-side; don't refetch provider availability.
+            currency,
             ...serverParams
         } = data;
         return serverParams;
@@ -624,13 +626,16 @@ let markers = [];
 // mobileMarkers removed
 
 const allVehiclesForMap = computed(() => {
-    const internal = props.vehicles.data || [];
-    const okMobility = props.okMobilityVehicles?.data || [];
-    const renteon = props.renteonVehicles?.data || [];
-    // Provider vehicles (including Adobe, Wheelsys, GreenMotion, LocautoRent, etc.) are already included in the main vehicles collection
-    const providerVehicles = internal.filter(v => v.source !== 'internal' && v.source !== 'renteon');
-    const internalOnly = internal.filter(v => v.source === 'internal');
-    return [...internalOnly, ...okMobility, ...renteon, ...providerVehicles];
+    // Source of truth: backend already returns a combined list in props.vehicles.
+    // Still defensively de-dupe by id so UI pagination never hides vehicles.
+    const base = props.vehicles?.data || [];
+    const merged = [...base, ...(props.okMobilityVehicles?.data || []), ...(props.renteonVehicles?.data || [])];
+    const byId = new Map();
+    merged.forEach(v => {
+        if (!v || !v.id) return;
+        if (!byId.has(v.id)) byId.set(v.id, v);
+    });
+    return Array.from(byId.values());
 });
 
 // Helper to get vehicle price in selected currency

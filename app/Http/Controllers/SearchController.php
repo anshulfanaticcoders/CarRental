@@ -49,6 +49,63 @@ class SearchController extends Controller
 
     public function search(Request $request)
     {
+        $normalizeTime = function ($value, string $default): string {
+            $value = is_string($value) ? trim($value) : '';
+            if ($value === '') {
+                return $default;
+            }
+
+            // Accept HH:MM (24h). Fallback to default for anything else.
+            if (!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $value)) {
+                return $default;
+            }
+
+            return $value;
+        };
+
+        $providerDefaultTime = function (string $provider): string {
+            // Keep provider defaults explicit so empty/invalid times don't randomly break APIs.
+            // Wheelsys expects a different default in this codebase.
+            return $provider === 'wheelsys' ? '10:00' : '09:00';
+        };
+
+        $normalizeTimeToStep = function (string $time, int $stepMinutes): string {
+            // Round to nearest step (e.g. 30m). Assumes valid HH:MM.
+            [$h, $m] = array_map('intval', explode(':', $time));
+            $total = $h * 60 + $m;
+            $rounded = (int) (round($total / $stepMinutes) * $stepMinutes);
+            $rounded = max(0, min(23 * 60 + 59, $rounded));
+            $rh = (int) floor($rounded / 60);
+            $rm = $rounded % 60;
+            return sprintf('%02d:%02d', $rh, $rm);
+        };
+
+        $clampTimeToBusinessHours = function (string $time, string $fallback, string $provider): string {
+            // Many providers return 0 inventory for out-of-hours times.
+            // Without fetching station opening hours for every provider/location,
+            // we clamp to a safe daytime window for robustness.
+            // This primarily stabilizes providers like OK Mobility.
+            [$h, $m] = array_map('intval', explode(':', $time));
+            $total = $h * 60 + $m;
+
+            // Default safe window: 08:00 - 20:00.
+            // Wheelsys uses a different default time in this codebase.
+            $min = 8 * 60;
+            $max = 20 * 60;
+
+            // Providers known to be strict about office hours.
+            $strictProviders = ['okmobility', 'greenmotion', 'usave', 'locauto_rent', 'wheelsys', 'adobe'];
+            if (!in_array($provider, $strictProviders, true)) {
+                return $time;
+            }
+
+            if ($total < $min || $total > $max) {
+                return $fallback;
+            }
+
+            return $time;
+        };
+
         $validated = $request->validate([
             'seating_capacity' => 'nullable|integer',
             'brand' => 'nullable|string',
@@ -86,6 +143,10 @@ class SearchController extends Controller
             'provider_pickup_id' => 'nullable|string', // Replaces 'greenmotion_location_id'
             'unified_location_id' => 'nullable|integer', // Unified location ID for multi-provider search
         ]);
+
+        // Normalize incoming times early (handles empty string case).
+        $validated['start_time'] = $normalizeTime($validated['start_time'] ?? '', '09:00');
+        $validated['end_time'] = $normalizeTime($validated['end_time'] ?? '', '09:00');
 
         // Calculate rental duration in days for price-per-day normalization
         $dtStart = \Carbon\Carbon::parse(($validated['date_from'] ?? now()->addDays(1)->format('Y-m-d')) . ' ' . ($validated['start_time'] ?? '09:00'));
@@ -537,6 +598,15 @@ class SearchController extends Controller
                 $currentProviderLocationId = $providerEntry['pickup_id'];
                 $currentProviderLocationName = $providerEntry['original_name'];
 
+                // Provider-safe times: avoid random empty/invalid times causing 0 results.
+                $startTimeForProvider = $normalizeTime($validated['start_time'] ?? '', $providerDefaultTime($providerToFetch));
+                $endTimeForProvider = $normalizeTime($validated['end_time'] ?? '', $providerDefaultTime($providerToFetch));
+                // Most providers in this codebase operate on 30-minute increments.
+                $startTimeForProvider = $normalizeTimeToStep($startTimeForProvider, 30);
+                $endTimeForProvider = $normalizeTimeToStep($endTimeForProvider, 30);
+                $startTimeForProvider = $clampTimeToBusinessHours($startTimeForProvider, $providerDefaultTime($providerToFetch), $providerToFetch);
+                $endTimeForProvider = $clampTimeToBusinessHours($endTimeForProvider, $providerDefaultTime($providerToFetch), $providerToFetch);
+
                 if ($providerToFetch === 'greenmotion' || $providerToFetch === 'usave') {
                     try {
                         $this->greenMotionService->setProvider($providerToFetch);
@@ -555,9 +625,9 @@ class SearchController extends Controller
                         $gmResponse = $this->greenMotionService->getVehicles(
                             $currentProviderLocationId,
                             $validated['date_from'],
-                            $validated['start_time'] ?? '09:00',
+                            $startTimeForProvider,
                             $validated['date_to'],
-                            $validated['end_time'] ?? '09:00',
+                            $endTimeForProvider,
                             $validated['age'] ?? 35,
                             array_filter($gmOptions)
                         );
@@ -715,9 +785,9 @@ class SearchController extends Controller
                         Log::info('Search params: ', [
                             'pickup_id' => $currentProviderLocationId,
                             'date_from' => $validated['date_from'],
-                            'start_time' => $validated['start_time'] ?? '09:00',
+                            'start_time' => $startTimeForProvider,
                             'date_to' => $validated['date_to'],
-                            'end_time' => $validated['end_time'] ?? '09:00'
+                            'end_time' => $endTimeForProvider
                         ]);
 
                         Log::info('Fetching Adobe vehicle data from API');
@@ -726,8 +796,8 @@ class SearchController extends Controller
                         $adobeSearchParams = [
                             'pickupoffice' => $currentProviderLocationId,
                             'returnoffice' => $currentProviderLocationId,
-                            'startdate' => $validated['date_from'] . ' ' . ($validated['start_time'] ?? '09:00'),
-                            'enddate' => $validated['date_to'] . ' ' . ($validated['end_time'] ?? '09:00'),
+                            'startdate' => $validated['date_from'] . ' ' . $startTimeForProvider,
+                            'enddate' => $validated['date_to'] . ' ' . $endTimeForProvider,
                             'promotionCode' => $validated['promocode'] ?? null
                         ];
 
@@ -878,9 +948,9 @@ class SearchController extends Controller
                             $currentProviderLocationId,
                             $currentProviderLocationId, // OK Mobility is one-way rental only
                             $validated['date_from'],
-                            $validated['start_time'] ?? '09:00',
+                            $startTimeForProvider,
                             $validated['date_to'],
-                            $validated['end_time'] ?? '09:00'
+                            $endTimeForProvider
                         );
 
                         Log::info('OK Mobility API response received: ' . ($okMobilityResponse ? 'SUCCESS' : 'NULL/EMPTY'));
@@ -1030,13 +1100,13 @@ class SearchController extends Controller
                     }
                 } elseif ($providerToFetch === 'wheelsys') {
                     Log::info('Attempting to fetch Wheelsys vehicles for location ID: ' . $currentProviderLocationId);
-                    Log::info('Search params: ', [
-                        'pickup_id' => $currentProviderLocationId,
-                        'date_from' => $validated['date_from'],
-                        'start_time' => $validated['start_time'] ?? '10:00',
-                        'date_to' => $validated['date_to'],
-                        'end_time' => $validated['end_time'] ?? '10:00'
-                    ]);
+                        Log::info('Search params: ', [
+                            'pickup_id' => $currentProviderLocationId,
+                            'date_from' => $validated['date_from'],
+                            'start_time' => $startTimeForProvider,
+                            'date_to' => $validated['date_to'],
+                            'end_time' => $endTimeForProvider
+                        ]);
 
                     // Convert date format from YYYY-MM-DD to DD/MM/YYYY for Wheelsys
                     $dateFromFormatted = date('d/m/Y', strtotime($validated['date_from']));
@@ -1047,9 +1117,9 @@ class SearchController extends Controller
                             $currentProviderLocationId,
                             $validated['dropoff_location_id'] ?? $currentProviderLocationId,
                             $dateFromFormatted,
-                            $validated['start_time'] ?? '10:00',
+                            $startTimeForProvider,
                             $dateToFormatted,
-                            $validated['end_time'] ?? '10:00'
+                            $endTimeForProvider
                         );
 
                         Log::info('Wheelsys API response received successfully');
@@ -1138,18 +1208,18 @@ class SearchController extends Controller
                         Log::info('Search params: ', [
                             'pickup_id' => $currentProviderLocationId,
                             'date_from' => $validated['date_from'],
-                            'start_time' => $validated['start_time'] ?? '09:00',
+                            'start_time' => $startTimeForProvider,
                             'date_to' => $validated['date_to'],
-                            'end_time' => $validated['end_time'] ?? '09:00',
+                            'end_time' => $endTimeForProvider,
                             'age' => $validated['age'] ?? 35
                         ]);
 
                         $locautoResponse = $this->locautoRentService->getVehicles(
                             $currentProviderLocationId,
                             $validated['date_from'],
-                            $validated['start_time'] ?? '09:00',
+                            $startTimeForProvider,
                             $validated['date_to'],
-                            $validated['end_time'] ?? '09:00',
+                            $endTimeForProvider,
                             $validated['age'] ?? 35,
                             []
                         );
@@ -1259,18 +1329,18 @@ class SearchController extends Controller
                         Log::info('Search params: ', [
                             'pickup_id' => $currentProviderLocationId,
                             'date_from' => $validated['date_from'],
-                            'start_time' => $validated['start_time'] ?? '09:00',
+                            'start_time' => $startTimeForProvider,
                             'date_to' => $validated['date_to'],
-                            'end_time' => $validated['end_time'] ?? '09:00'
+                            'end_time' => $endTimeForProvider
                         ]);
 
                         $renteonVehicles = $this->renteonService->getTransformedVehicles(
                             $currentProviderLocationId,
                             $currentProviderLocationId,
                             $validated['date_from'],
-                            $validated['start_time'] ?? '09:00',
+                            $startTimeForProvider,
                             $validated['date_to'],
-                            $validated['end_time'] ?? '09:00',
+                            $endTimeForProvider,
                             [
                                 'driver_age' => $validated['age'] ?? 35,
                                 'currency' => $validated['currency'] ?? 'EUR',

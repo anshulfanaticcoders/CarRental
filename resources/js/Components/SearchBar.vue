@@ -497,6 +497,9 @@ const handleInputClick = () => {
 };
 
 const handleDropoffInputClick = () => {
+  if (!dropoffSearchResults.value.length) {
+    return;
+  }
   showDropoffSearchBox.value = !showDropoffSearchBox.value;
   showSearchBox.value = false; // Close other dropdown
 };
@@ -646,7 +649,10 @@ const selectLocation = (result) => {
     // Only internal location, no external providers
     form.value.provider = 'internal';
     form.value.provider_pickup_id = null;
-    isProviderLocation.value = false;
+    form.value.dropoff_where = form.value.where;
+    form.value.dropoff_location_id = null;
+    dropoffSearchResults.value = [];
+    isProviderLocation.value = true;
     return;
   }
 
@@ -671,6 +677,9 @@ const selectLocation = (result) => {
   }
 };
 
+const providersWithDropoffList = new Set(['greenmotion', 'usave', 'adobe', 'locauto_rent', 'renteon']);
+const providerSupportsDropoffList = (provider) => providersWithDropoffList.has(provider);
+
 const selectProvider = async (provider) => {
   form.value.provider = provider.provider;
   form.value.provider_pickup_id = provider.pickup_id;
@@ -682,18 +691,16 @@ const selectProvider = async (provider) => {
   form.value.dropoff_location_id = form.value.provider_pickup_id;
 
   isProviderLocation.value = true;
-  await fetchDropoffLocations(provider.provider, provider.pickup_id);
+  dropoffSearchResults.value = [];
+
+  if (providerSupportsDropoffList(provider.provider)) {
+    await fetchDropoffLocations(provider.provider, provider.pickup_id);
+  }
 };
 
 
 const fetchDropoffLocations = async (provider, locationId) => {
   if (!provider || !locationId) return;
-
-  // For Wheelsys, pickup and dropoff are the same - no API call needed
-  if (provider === 'wheelsys') {
-    dropoffSearchResults.value = selectedPickupLocation.value ? [selectedPickupLocation.value] : [];
-    return;
-  }
 
   try {
     const response = await axios.get(`/api/${provider}/dropoff-locations/${locationId}`);
@@ -841,7 +848,9 @@ onMounted(async () => {
 
     if (props.prefill.provider && props.prefill.provider !== 'internal' && props.prefill.provider_pickup_id) {
       isProviderLocation.value = true;
-      await fetchDropoffLocations(props.prefill.provider, props.prefill.provider_pickup_id);
+      if (providerSupportsDropoffList(props.prefill.provider)) {
+        await fetchDropoffLocations(props.prefill.provider, props.prefill.provider_pickup_id);
+      }
       if (props.prefill.dropoff_where) {
         form.value.dropoff_where = props.prefill.dropoff_where;
       } else if (props.prefill.dropoff_location_id) {
@@ -855,6 +864,10 @@ onMounted(async () => {
       }
     }
 
+  }
+
+  if (form.value.where && !form.value.dropoff_where) {
+    form.value.dropoff_where = form.value.where;
   }
 
   // Ensure prefilled location is considered selected

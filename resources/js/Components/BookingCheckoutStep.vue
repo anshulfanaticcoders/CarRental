@@ -38,6 +38,7 @@ const form = ref({
     email: user.email || '',
     phone: user.phone || '',
     driver_age: '',
+    driver_license_number: '',
     address: user.address || '',
     city: user.city || '',
     postal_code: user.postal_code || '',
@@ -99,11 +100,20 @@ const validate = () => {
         isValid = false;
     }
 
+    if (isOkMobility.value && !form.value.driver_license_number.trim()) {
+        errors.value.driver_license_number = 'Driver License Number is required for OK Mobility';
+        isValid = false;
+    }
+
     return isValid;
 };
 
 const isLocautoRent = computed(() => {
     return props.vehicle?.source === 'locauto_rent';
+});
+
+const isOkMobility = computed(() => {
+    return props.vehicle?.source === 'okmobility';
 });
 
 const isInternal = computed(() => {
@@ -252,6 +262,16 @@ const formatPrice = (val) => {
                                 :class="{ 'border-red-500 bg-red-50': errors.driver_age, 'border-gray-200': !errors.driver_age }"
                                 placeholder="30" />
                             <p v-if="errors.driver_age" class="text-red-500 text-xs mt-1">{{ errors.driver_age }}</p>
+                        </div>
+
+                        <!-- Driver License Number (OK Mobility) -->
+                        <div v-if="isOkMobility">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Driver License Number *</label>
+                            <input v-model="form.driver_license_number" type="text"
+                                class="w-full rounded-xl border-2 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                :class="{ 'border-red-500 bg-red-50': errors.driver_license_number, 'border-gray-200': !errors.driver_license_number }"
+                                placeholder="License Number" />
+                            <p v-if="errors.driver_license_number" class="text-red-500 text-xs mt-1">{{ errors.driver_license_number }}</p>
                         </div>
 
                         <!-- Address -->
