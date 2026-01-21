@@ -136,10 +136,6 @@ class StripeCheckoutController extends Controller
                 'customer_email' => $validated['customer']['email'] ?? '',
                 'customer_phone' => $validated['customer']['phone'] ?? '',
                 'customer_driver_age' => $validated['customer']['driver_age'] ?? '',
-                'customer_address' => $validated['customer']['address'] ?? '',
-                'customer_city' => $validated['customer']['city'] ?? '',
-                'customer_postal_code' => $validated['customer']['postal_code'] ?? '',
-                'customer_country' => $validated['customer']['country'] ?? '',
                 'flight_number' => $validated['customer']['flight_number'] ?? '',
                 'protection_code' => $validated['protection_code'] ?? '',
                 'protection_amount' => $validated['protection_amount'] ?? 0,
@@ -159,6 +155,17 @@ class StripeCheckoutController extends Controller
                 'renteon_price_date' => $validated['vehicle']['price_date'] ?? null,
                 'renteon_prepaid' => $validated['vehicle']['prepaid'] ?? true,
             ];
+
+            $customerMetadata = array_filter([
+                'customer_address' => $validated['customer']['address'] ?? null,
+                'customer_city' => $validated['customer']['city'] ?? null,
+                'customer_postal_code' => $validated['customer']['postal_code'] ?? null,
+                'customer_country' => $validated['customer']['country'] ?? null,
+            ], static fn($value) => $value !== null && $value !== '');
+
+            if (!empty($customerMetadata)) {
+                $metadata = array_merge($metadata, $customerMetadata);
+            }
 
 
             // Create Stripe Checkout Session

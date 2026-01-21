@@ -225,9 +225,9 @@ class StripeBookingService
         $phone = $metadata->customer_phone ?? null;
 
         $tempPassword = null;
+        $user = null;
 
         if (!$userId) {
-            $user = null;
             if ($email && $phone) {
                 $user = User::where('email', $email)
                     ->orWhere('phone', $phone)
@@ -297,13 +297,21 @@ class StripeBookingService
             $country = 'us';
         }
 
-        UserProfile::create([
-            'user_id' => $user->id,
-            'address_line1' => $metadata->customer_address ?? null,
-            'city' => $metadata->customer_city ?? null,
-            'postal_code' => $metadata->customer_postal_code ?? null,
-            'country' => $country,
-        ]);
+        try {
+            UserProfile::firstOrCreate([
+                'user_id' => $user->id,
+            ], [
+                'address_line1' => $metadata->customer_address ?? null,
+                'city' => $metadata->customer_city ?? null,
+                'postal_code' => $metadata->customer_postal_code ?? null,
+                'country' => $country,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('StripeBookingService: Failed to create user profile', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     protected function notifyBookingCreated(Booking $booking, Customer $customer, ?string $tempPassword = null): void

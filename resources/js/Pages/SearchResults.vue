@@ -42,6 +42,7 @@ import Dropdown from "@/Components/Dropdown.vue";
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
 
 import { useCurrency } from '@/composables/useCurrency';
+import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -52,6 +53,7 @@ import {
 } from '@/Components/ui/breadcrumb';
 
 const { selectedCurrency, supportedCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
+const { convertPrice, fetchExchangeRates } = useCurrencyConversion();
 
 // Currency names mapping for better display
 const currencyNames = {
@@ -132,65 +134,13 @@ const formatCurrencyTriggerDisplay = (currency) => {
     return `${currency}(${symbol})`;
 };
 
-const exchangeRates = ref(null);
-
-const fetchExchangeRates = async () => {
-    try {
-        const response = await fetch('/api/currency-rates');
-        const data = await response.json();
-        if (data.success) {
-            exchangeRates.value = data.rates;
-        } else {
-            console.error('Failed to fetch exchange rates:', data.message || 'Unknown error');
-        }
-    } catch (error) {
-        console.error('Error fetching exchange rates:', error);
-    }
-};
-
-const symbolToCodeMap = {
-    '$': 'USD',
-    '€': 'EUR',
-    '£': 'GBP',
-    '¥': 'JPY',
-    'A$': 'AUD',
-    'C$': 'CAD',
-    'Fr': 'CHF',
-    'HK$': 'HKD',
-    'S$': 'SGD',
-    'kr': 'SEK',
-    '₩': 'KRW',
-    'kr': 'NOK',
-    'NZ$': 'NZD',
-    '₹': 'INR',
-    'Mex$': 'MXN',
-    'R$': 'BRL',
-    '₽': 'RUB',
-    'R': 'ZAR',
-    'AED': 'AED'
-    // Add other symbol-to-code mappings as needed
-};
-
 const convertCurrency = (price, fromCurrency) => {
     const numericPrice = parseFloat(price);
     if (isNaN(numericPrice)) {
-        return 0; // Return 0 if price is not a number
+        return 0;
     }
 
-    let fromCurrencyCode = fromCurrency;
-    if (symbolToCodeMap[fromCurrency]) {
-        fromCurrencyCode = symbolToCodeMap[fromCurrency];
-    }
-
-    if (!exchangeRates.value || !fromCurrencyCode || !selectedCurrency.value) {
-        return numericPrice; // Return original price if rates not loaded or currencies are invalid
-    }
-    const rateFrom = exchangeRates.value[fromCurrencyCode];
-    const rateTo = exchangeRates.value[selectedCurrency.value];
-    if (rateFrom && rateTo) {
-        return (numericPrice / rateFrom) * rateTo;
-    }
-    return numericPrice; // Fallback to original price if conversion is not possible
+    return convertPrice(numericPrice, fromCurrency);
 };
 
 const props = defineProps({

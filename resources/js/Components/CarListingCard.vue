@@ -71,6 +71,18 @@ const showAllPlans = ref(false);
 
 const ratesReady = computed(() => !!exchangeRates.value && !loading.value);
 
+const canConvertFrom = (fromCurrency) => {
+    if (!fromCurrency || !selectedCurrency.value) return false;
+    if (!exchangeRates.value || loading.value) return false;
+
+    const fromCode = fromCurrency.toUpperCase();
+    const toCode = selectedCurrency.value.toUpperCase();
+
+    if (fromCode === toCode) return true;
+
+    return Boolean(exchangeRates.value[fromCode] && exchangeRates.value[toCode]);
+};
+
 // --- Computed Properties ---
 
 // Calculate Number of Rental Days
@@ -272,6 +284,7 @@ const dailyPrice = computed(() => {
     if (!product) return '0.00';
     const originalPrice = parseFloat(product.total) / numberOfRentalDays.value;
     const originalCurrency = product.currency || props.vehicle.currency || 'USD';
+    if (!canConvertFrom(originalCurrency)) return null;
     return convertPrice(originalPrice, originalCurrency).toFixed(2);
 });
 
@@ -282,6 +295,7 @@ const premiumPlusDailyPrice = computed(() => {
     if (!product) return '0.00';
     const originalPrice = parseFloat(product.total) / numberOfRentalDays.value;
     const originalCurrency = product.currency || props.vehicle.currency || 'USD';
+    if (!canConvertFrom(originalCurrency)) return null;
     return convertPrice(originalPrice, originalCurrency).toFixed(2);
 });
 
@@ -292,6 +306,7 @@ const locautoDailyPrice = computed(() => {
     const protectionPrice = selectedLocautoProtection.value ? parseFloat(selectedLocautoProtection.value.amount) : 0;
     const originalPrice = basePrice + protectionPrice;
     const originalCurrency = props.vehicle.currency || 'EUR';
+    if (!canConvertFrom(originalCurrency)) return null;
     return convertPrice(originalPrice, originalCurrency).toFixed(2);
 });
 
@@ -301,6 +316,7 @@ const adobeDailyPrice = computed(() => {
     const baseTotal = adobeBaseRate.value;
     const protectionTotal = selectedAdobeProtection.value ? parseFloat(selectedAdobeProtection.value.amount) : 0;
     const originalPrice = (baseTotal + protectionTotal) / numberOfRentalDays.value;
+    if (!canConvertFrom('USD')) return null;
     return convertPrice(originalPrice, 'USD').toFixed(2);
 });
 
@@ -309,6 +325,7 @@ const renteonDailyPrice = computed(() => {
     if (!isRenteon.value) return '0.00';
     const originalPrice = parseFloat(props.vehicle?.price_per_day || 0);
     const originalCurrency = props.vehicle?.currency || 'EUR';
+    if (!canConvertFrom(originalCurrency)) return null;
     return convertPrice(originalPrice, originalCurrency).toFixed(2);
 });
 
@@ -780,7 +797,7 @@ onUnmounted(() => {
                     <div class="car-total">
                         <!-- GreenMotion/USave Price -->
                         <template v-if="isGreenMotionOrUSave">
-                            <span class="car-price" v-if="ratesReady">
+                            <span class="car-price" v-if="dailyPrice !== null">
                                 {{ getSelectedCurrencySymbol() }}{{ dailyPrice }}
                             </span>
                             <span class="price-skeleton" v-else></span>
@@ -788,7 +805,7 @@ onUnmounted(() => {
 
                         <!-- Locauto Price -->
                         <template v-else-if="isLocautoRent">
-                            <span class="car-price" v-if="ratesReady">
+                            <span class="car-price" v-if="locautoDailyPrice !== null">
                                 {{ getSelectedCurrencySymbol() }}{{ locautoDailyPrice }}
                             </span>
                             <span class="price-skeleton" v-else></span>
@@ -796,7 +813,7 @@ onUnmounted(() => {
 
                         <!-- Adobe Price -->
                         <template v-else-if="isAdobeCars">
-                            <span class="car-price" v-if="ratesReady">
+                            <span class="car-price" v-if="adobeDailyPrice !== null">
                                 {{ getSelectedCurrencySymbol() }}{{ adobeDailyPrice }}
                             </span>
                             <span class="price-skeleton" v-else></span>
@@ -804,7 +821,7 @@ onUnmounted(() => {
 
                         <!-- Renteon Price -->
                         <template v-else-if="isRenteon">
-                            <span class="car-price" v-if="ratesReady">
+                            <span class="car-price" v-if="renteonDailyPrice !== null">
                                 {{ getSelectedCurrencySymbol() }}{{ renteonDailyPrice }}
                             </span>
                             <span class="price-skeleton" v-else></span>

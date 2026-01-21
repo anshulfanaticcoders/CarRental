@@ -1,10 +1,12 @@
 import { computed, ref } from 'vue';
 import { useCurrency } from './useCurrency';
 
+const exchangeRates = ref(null);
+const loading = ref(false);
+let fetchPromise = null;
+
 export function useCurrencyConversion() {
     const { selectedCurrency } = useCurrency();
-    const exchangeRates = ref(null);
-    const loading = ref(false);
 
     // Currency symbols mapping
     const currencySymbols = {
@@ -42,22 +44,30 @@ export function useCurrencyConversion() {
 
     // Fetch exchange rates
     const fetchExchangeRates = async () => {
-        if (exchangeRates.value) return; // Already loaded
+        if (exchangeRates.value) return exchangeRates.value;
+        if (fetchPromise) return fetchPromise;
 
         loading.value = true;
-        try {
-            const response = await fetch('/api/currency-rates');
-            const data = await response.json();
-            if (data.success) {
-                exchangeRates.value = data.rates;
-            } else {
-                console.error('Failed to fetch exchange rates:', data.message || 'Unknown error');
+        fetchPromise = (async () => {
+            try {
+                const response = await fetch('/api/currency-rates');
+                const data = await response.json();
+                if (data.success) {
+                    exchangeRates.value = data.rates;
+                } else {
+                    console.error('Failed to fetch exchange rates:', data.message || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Error fetching exchange rates:', error);
+            } finally {
+                loading.value = false;
+                fetchPromise = null;
             }
-        } catch (error) {
-            console.error('Error fetching exchange rates:', error);
-        } finally {
-            loading.value = false;
-        }
+
+            return exchangeRates.value;
+        })();
+
+        return fetchPromise;
     };
 
     // Convert price from one currency to another
