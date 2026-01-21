@@ -66,8 +66,9 @@ class UpdateUnifiedLocationsCommand extends Command
         $usaveLocations = $this->fetchProviderLocations('usave');
         $this->info('Fetched ' . count($usaveLocations) . ' U-SAVE locations.');
 
-        $okMobilityLocations = $this->fetchOkMobilityLocations();
-        $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
+        // $okMobilityLocations = $this->fetchOkMobilityLocations();
+        // $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
+        $okMobilityLocations = [];
 
         $adobeLocations = $this->fetchAdobeLocations();
         $this->info('Fetched ' . count($adobeLocations) . ' Adobe locations.');
@@ -81,7 +82,8 @@ class UpdateUnifiedLocationsCommand extends Command
         $renteonLocations = $this->fetchRenteonLocations();
         $this->info('Fetched ' . count($renteonLocations) . ' Renteon locations.');
 
-        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations, $wheelsysLocations, $renteonLocations);
+        // $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations, $wheelsysLocations, $renteonLocations);
+        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $adobeLocations, $locautoLocations, $wheelsysLocations, $renteonLocations);
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
         // $this->info('OK Mobility is currently DISABLED in this command.'); // Comment: OK Mobility commented out
 

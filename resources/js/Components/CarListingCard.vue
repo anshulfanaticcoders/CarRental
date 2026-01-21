@@ -44,6 +44,10 @@ const props = defineProps({
     vehicle: Object,
     form: Object, // Needed for date/time/location params in links
     favoriteStatus: Boolean,
+    favoriteLoading: {
+        type: Boolean,
+        default: false,
+    },
     popEffect: Boolean,
     viewMode: {
         type: String,
@@ -665,10 +669,10 @@ onUnmounted(() => {
                 </span>
             </div>
 
-            <button class="car-favorite" :class="{ 'is-active': favoriteStatus }"
-                @click.prevent="$emit('toggleFavourite', vehicle)"
+            <button class="car-favorite" :class="{ 'is-active': favoriteStatus, 'is-loading': favoriteLoading }"
+                @click.prevent="$emit('toggleFavourite', vehicle)" :disabled="favoriteLoading"
                 :aria-label="favoriteStatus ? 'Remove from favorites' : 'Add to favorites'"
-                v-if="vehicle.source === 'internal'">
+                :aria-busy="favoriteLoading ? 'true' : 'false'">
                 <Heart class="w-5 h-5 transition-all duration-300"
                     :class="{ 'fill-red-500 stroke-red-500 scale-110': favoriteStatus }" />
             </button>
@@ -1259,6 +1263,29 @@ onUnmounted(() => {
 .car-favorite.is-active {
     color: #ef4444;
     background: #fff;
+}
+
+.car-favorite.is-loading {
+    cursor: wait;
+}
+
+.car-favorite.is-loading::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border-radius: 999px;
+    border: 2px solid rgba(15, 23, 42, 0.18);
+    border-top-color: rgba(15, 23, 42, 0.7);
+    animation: favorite-spin 0.8s linear infinite;
+}
+
+@keyframes favorite-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Slider Styles */

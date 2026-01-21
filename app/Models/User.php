@@ -6,6 +6,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\ChatStatus; // Added import
 use Illuminate\Database\Eloquent\Relations\HasOne; // Added import
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\ProviderFavorite;
 
 class User extends Authenticatable
 {
@@ -96,5 +98,10 @@ public function bookings()
     public function chatStatus(): HasOne
     {
         return $this->hasOne(ChatStatus::class);
+    }
+
+    public function providerFavorites(): HasMany
+    {
+        return $this->hasMany(ProviderFavorite::class);
     }
 }

@@ -1,52 +1,71 @@
 <script setup>
-import { ref, onMounted } from "vue"; // onMounted might be removed if fetchFavorites is removed
-import axios from "axios"; // Keep for toggleFavourite if it remains axios-based
-import { Link, router } from "@inertiajs/vue3"; // Added router
+import { ref, watch } from "vue";
+import axios from "axios";
+import { router } from "@inertiajs/vue3";
 import MyProfileLayout from "@/Layouts/MyProfileLayout.vue";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue'; // Added Pagination
-import Heart from "../../../assets/Heart.svg";
-import FilledHeart from "../../../assets/FilledHeart.svg";
-import goIcon from "../../../assets/goIcon.svg";
 import carIcon from "../../../assets/carIcon.svg";
-import walkIcon from "../../../assets/walking.svg";
 import mileageIcon from "../../../assets/mileageIcon.svg";
+import { Heart } from "lucide-vue-next";
 
 // Props will now come from Inertia controller
 const props = defineProps({
     favoriteVehicles: Object, // Expects a paginated object
+    providerFavorites: Object,
 });
 
-import { useToast } from 'vue-toastification';
-const toast = useToast(); // Initialize toast
+import { toast as sonnerToast } from 'vue-sonner';
+
+const favoriteLoading = ref({});
+const favoriteVehiclesState = ref(props.favoriteVehicles?.data || []);
+const providerFavoritesState = ref(props.providerFavorites?.data || []);
+
+watch(
+  () => props.favoriteVehicles?.data,
+  (data) => {
+    favoriteVehiclesState.value = data || [];
+  }
+);
+
+watch(
+  () => props.providerFavorites?.data,
+  (data) => {
+    providerFavoritesState.value = data || [];
+  }
+);
 const toggleFavourite = async (vehicle) => {
-    const action = vehicle.is_favourite ? 'removed from' : 'added to';
     const endpoint = vehicle.is_favourite
         ? route('vehicles.unfavourite', { vehicle: vehicle.id })
         : route('vehicles.favourite', { vehicle: vehicle.id });
 
     try {
+        favoriteLoading.value[vehicle.id] = true;
         await axios.post(endpoint);
-        vehicle.is_favourite = !vehicle.is_favourite; // Toggle the favorite state
+        vehicle.is_favourite = !vehicle.is_favourite;
+
+        if (!vehicle.is_favourite) {
+            favoriteVehiclesState.value = favoriteVehiclesState.value.filter(
+                (item) => item.id !== vehicle.id
+            );
+        }
 
         // Show toast notification
-        toast.success(`Vehicle ${action} favorites!`, {
-            position: 'top-right',
-            timeout: 3000,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            icon: vehicle.is_favourite ? '❤️' : '💔',
-        });
+        sonnerToast.success(
+            vehicle.is_favourite ? "Vehicle added to favorite." : "Vehicle removed from favorite.",
+            {
+                position: 'bottom-right',
+                duration: 3000,
+            }
+        );
 
     } catch (error) {
-        toast.error('Failed to update favorites', {
-            position: 'top-right', 
-            timeout: 3000,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
+        sonnerToast.error('Failed to update favorite.', {
+            position: 'bottom-right',
+            duration: 3000,
         });
         console.error('Error:', error);
+    } finally {
+        favoriteLoading.value[vehicle.id] = false;
     }
 };
 
@@ -55,6 +74,44 @@ const toggleFavourite = async (vehicle) => {
 const formatPrice = (price, vehicle) => {
     const currencySymbol = vehicle?.vendor_profile?.currency ?? '€'; // Default to '€' if missing
     return `${currencySymbol}${price}`;
+};
+
+const formatProviderPrice = (payload) => {
+    if (!payload) return '';
+    const amount = Number(payload.price_per_day);
+    if (!Number.isFinite(amount)) return '';
+    const currency = payload.currency ? `${payload.currency} ` : '';
+    return `${currency}${amount.toFixed(2)}`;
+};
+
+
+const toggleProviderFavourite = async (favorite) => {
+    if (!favorite) return;
+    favoriteLoading.value[favorite.id] = true;
+    try {
+        await axios.post(route('favorites.provider.toggle'), {
+            vehicle_key: favorite.vehicle_key,
+            source: favorite.source,
+            payload: favorite.payload || null,
+        });
+
+        providerFavoritesState.value = providerFavoritesState.value.filter(
+            (item) => item.id !== favorite.id
+        );
+
+        sonnerToast.success('Vehicle removed from favorite.', {
+            position: 'bottom-right',
+            duration: 3000,
+        });
+    } catch (error) {
+        sonnerToast.error('Failed to update favorite.', {
+            position: 'bottom-right',
+            duration: 3000,
+        });
+        console.error('Error:', error);
+    } finally {
+        favoriteLoading.value[favorite.id] = false;
+    }
 };
 
 const handlePageChange = (page) => {
@@ -74,62 +131,72 @@ const handlePageChange = (page) => {
         <p class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
             {{ _t('common','favorite_title') }}
         </p>
-        <div v-if="!props.favoriteVehicles || !props.favoriteVehicles.data || props.favoriteVehicles.data.length === 0" class="text-gray-500">
+        <div v-if="favoriteVehiclesState.length === 0 && providerFavoritesState.length === 0" class="text-gray-500">
             No favorite vehicles yet.
         </div>
-        <div v-else class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
-            <div v-for="vehicle in props.favoriteVehicles.data" :key="vehicle.id"
-                class="p-[1rem] rounded-[12px] border-[1px] border-[#E7E7E7]">
-                <div class="column flex justify-end">
-                    <button @click.stop="toggleFavourite(vehicle)" class="heart-icon"
-                                :class="{ 'filled-heart': vehicle.is_favourite }">
-                                <img :src="vehicle.is_favourite ? FilledHeart : Heart" alt="Favorite"
-                                    class="w-full mb-[1rem] transition-colors duration-300" />
-                            </button>
+        <div v-if="favoriteVehiclesState.length > 0" class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
+            <div v-for="vehicle in favoriteVehiclesState" :key="vehicle.id"
+                class="favorite-card">
+                <div class="favorite-image">
+                    <img v-if="vehicle.images" :src="`${vehicle.images.find(
+                        (image) =>
+                            image.image_type === 'primary'
+                    )?.image_url
+                        }`" alt="Primary Image" />
+                    <button class="favorite-toggle" :class="{ 'is-loading': favoriteLoading[vehicle.id] }"
+                        :disabled="favoriteLoading[vehicle.id]" @click.stop="toggleFavourite(vehicle)"
+                        :aria-busy="favoriteLoading[vehicle.id] ? 'true' : 'false'">
+                        <Heart class="w-5 h-5 transition-all duration-300 fill-red-500 stroke-red-500" />
+                    </button>
                 </div>
-                <Link :href="route('vehicle.show', { id: vehicle.id })">
-                    <div class="column flex flex-col gap-5 items-start">
-                        <img v-if="vehicle.images" :src="`${vehicle.images.find(
-                            (image) =>
-                                image.image_type === 'primary'
-                        )?.image_url
-                            }`" alt="Primary Image" class="w-full h-[250px] object-cover rounded-lg" />
-                        <span class="bg-[#f5f5f5] inline-block px-8 py-2 text-center rounded-[40px]">
-                            {{ vehicle.model }}
-                        </span>
+                <div class="favorite-content">
+                    <span class="favorite-pill">{{ vehicle.model }}</span>
+                    <h5 class="favorite-title">{{ vehicle.brand }}</h5>
+                    <div class="favorite-meta">
+                        <img :src="carIcon" alt="" />
+                        <span>{{ vehicle.transmission }} · {{ vehicle.fuel }} · {{ vehicle.seating_capacity }} Seats</span>
                     </div>
-                    <div class="column mt-[2rem]">
-                        <h5 class="font-medium text-[1.5rem] text-customPrimaryColor max-[768px]:text-[1.2rem]">
-                            {{ vehicle.brand }}
-                        </h5>
-                        <div class="car_short_info mt-[1rem] flex gap-3">
-                            <img :src="carIcon" alt="" />
-                            <div class="features">
-                                <span class="capitalize text-[1.15rem] max-[768px]:text-[0.875rem]">{{ vehicle.transmission }} .
-                                    {{ vehicle.fuel }} .
-                                    {{
-                                        vehicle.seating_capacity
-                                    }}
-                                    Seats</span>
-                            </div>
+                    <div class="favorite-meta">
+                        <img :src="mileageIcon" alt="" />
+                        <span>{{ vehicle.mileage }}km/d</span>
+                    </div>
+                    <div class="favorite-price">
+                        <span class="favorite-amount">{{ formatPrice(vehicle.price_per_day, vehicle) }}</span>
+                        <span class="favorite-unit">/day</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="providerFavoritesState.length > 0" class="mt-10">
+            <p class="text-[1.25rem] text-customPrimaryColor font-semibold mb-[1rem]">
+                Provider favorites
+            </p>
+            <div class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
+                <div v-for="favorite in providerFavoritesState" :key="favorite.id"
+                    class="favorite-card">
+                    <div class="favorite-image">
+                        <img :src="favorite.payload?.image || '/images/dummyCarImaage.png'" alt="Primary Image" />
+                        <button class="favorite-toggle" :class="{ 'is-loading': favoriteLoading[favorite.id] }"
+                            :disabled="favoriteLoading[favorite.id]"
+                            @click.stop="toggleProviderFavourite(favorite)"
+                            :aria-busy="favoriteLoading[favorite.id] ? 'true' : 'false'">
+                            <Heart class="w-5 h-5 transition-all duration-300 fill-red-500 stroke-red-500" />
+                        </button>
+                    </div>
+                    <div class="favorite-content">
+                        <span class="favorite-pill">{{ favorite.payload?.model || 'Vehicle' }}</span>
+                        <h5 class="favorite-title">{{ favorite.payload?.brand || 'Provider Vehicle' }}</h5>
+                        <div class="favorite-meta">
+                            <img :src="mileageIcon" alt="" />
+                            <span>Provider listing</span>
                         </div>
-                        <div class="extra_details flex gap-5 mt-[1rem]">
-                            <!-- <div class="col flex gap-3">
-                                <img :src="walkIcon" alt="" /><span class="text-[1.15rem]">9.3 KM Away</span>
-                            </div> -->
-                            <div class="col flex gap-3">
-                                <img :src="mileageIcon" alt="" /><span class="text-[1.15rem] max-[768px]:text-[0.875rem]">{{ vehicle.mileage
-                                    }}km/d</span>
-                            </div>
-                        </div>
-                        <div class="mt-[2rem] flex justify-between items-center">
-                            <div>
-                                <span class="text-customPrimaryColor text-[1.875rem] font-medium max-[768px]:text-[1.35rem]">{{ formatPrice(vehicle.price_per_day, vehicle) }}</span><span>/day</span>
-                            </div>
-                            <img :src="goIcon" alt="" class="max-[768px]:w-[35px]"/>
+                        <div class="favorite-price">
+                            <span class="favorite-amount">{{ formatProviderPrice(favorite.payload) }}</span>
+                            <span class="favorite-unit">/day</span>
                         </div>
                     </div>
-                </Link>
+                </div>
             </div>
         </div>
         <!-- Pagination -->
@@ -142,3 +209,139 @@ const handlePageChange = (page) => {
         </div>
     </MyProfileLayout>
 </template>
+
+<style scoped>
+.favorite-card {
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid #e7e7e7;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.favorite-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+}
+
+.favorite-image {
+  position: relative;
+  height: 220px;
+  overflow: hidden;
+}
+
+.favorite-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.favorite-image .favorite-toggle {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+}
+
+.favorite-content {
+  padding: 18px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.favorite-pill {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #f5f5f5;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1f3d57;
+}
+
+.favorite-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #153b4f;
+}
+
+.favorite-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: #5c6b7a;
+}
+
+.favorite-meta img {
+  width: 18px;
+  height: 18px;
+}
+
+.favorite-price {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #153b4f;
+  font-weight: 700;
+}
+
+.favorite-amount {
+  font-size: 1.5rem;
+}
+
+.favorite-unit {
+  font-size: 0.95rem;
+  color: #6b7280;
+}
+
+
+.favorite-toggle {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e7e7e7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.favorite-toggle:hover {
+  transform: scale(1.06);
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.18);
+}
+
+.favorite-toggle.is-loading {
+  cursor: wait;
+}
+
+.favorite-toggle.is-loading::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 2px solid rgba(15, 23, 42, 0.18);
+  border-top-color: rgba(15, 23, 42, 0.7);
+  animation: favorite-spin 0.8s linear infinite;
+}
+
+@keyframes favorite-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+</style>

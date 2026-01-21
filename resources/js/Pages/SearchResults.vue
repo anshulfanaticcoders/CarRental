@@ -1469,22 +1469,22 @@ watch(showMap, (newValue) => {
 
 // handleMapToggle removed
 
-import { useToast } from "vue-toastification";
 import { Inertia } from "@inertiajs/inertia";
 import CustomDropdown from "@/Components/CustomDropdown.vue";
-const toast = useToast();
 const favoriteStatus = ref({});
+const favoriteLoading = ref({});
 
 const fetchFavoriteStatus = async () => {
     if (!page.props.auth?.user) return;
     try {
-        // Fetch favorites for internal vehicles only
-        if (!props.vehicles.data || props.vehicles.data.length === 0) return;
+        const allVehicles = allVehiclesForMap.value || [];
+        if (allVehicles.length === 0) return;
         const response = await axios.get(route('favorites.status'));
         const favoriteIds = response.data; // Now an array of IDs
         const newStatus = {};
-        props.vehicles.data.forEach((vehicle) => {
-            newStatus[vehicle.id] = favoriteIds.includes(vehicle.id);
+        allVehicles.forEach((vehicle) => {
+            const vehicleKey = String(vehicle.id);
+            newStatus[vehicle.id] = favoriteIds.includes(vehicleKey);
         });
         favoriteStatus.value = newStatus;
     } catch (error) {
@@ -1495,28 +1495,60 @@ const $page = usePage();
 
 const popEffect = ref({});
 
+const getFavoriteImage = (vehicle) => {
+    if (!vehicle) return null;
+    if (vehicle.image) return vehicle.image;
+    return vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || null;
+};
+
+const buildProviderFavoritePayload = (vehicle) => {
+    return {
+        vehicle_key: String(vehicle.id),
+        source: vehicle.source,
+        brand: vehicle.brand || null,
+        model: vehicle.model || null,
+        image: getFavoriteImage(vehicle),
+        price_per_day: vehicle.price_per_day ?? null,
+        currency: vehicle.currency ?? null,
+        provider_pickup_id: vehicle.provider_pickup_id ?? null,
+        search: {
+            where: form.where,
+            dropoff_where: form.dropoff_where || null,
+            provider: form.provider || null,
+            provider_pickup_id: form.provider_pickup_id || null,
+            unified_location_id: form.unified_location_id || null,
+            dropoff_location_id: form.dropoff_location_id || null,
+            date_from: form.date_from || null,
+            date_to: form.date_to || null,
+            start_time: form.start_time || null,
+            end_time: form.end_time || null,
+            rentalCode: form.rentalCode || null,
+        },
+    };
+};
+
 const toggleFavourite = async (vehicle) => {
     if (!$page.props.auth?.user) {
         return router.get(route('login', {}, usePage().props.locale));
     }
 
-    if (vehicle.source === 'greenmotion') {
-        toast.info("Favorites are not supported for GreenMotion vehicles.", {
-            position: "top-right",
-            timeout: 3000,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-        });
-        return;
-    }
-
-    const endpoint = favoriteStatus.value[vehicle.id]
-        ? route('vehicles.unfavourite', { vehicle: vehicle.id })
-        : route('vehicles.favourite', { vehicle: vehicle.id });
+    const isFavorite = !!favoriteStatus.value[vehicle.id];
+    favoriteLoading.value[vehicle.id] = true;
 
     try {
-        await axios.post(endpoint);
+        if (vehicle.source === 'internal') {
+            const endpoint = isFavorite
+                ? route('vehicles.unfavourite', { vehicle: vehicle.id })
+                : route('vehicles.favourite', { vehicle: vehicle.id });
+            await axios.post(endpoint);
+        } else {
+            await axios.post(route('favorites.provider.toggle'), {
+                vehicle_key: String(vehicle.id),
+                source: vehicle.source,
+                payload: buildProviderFavoritePayload(vehicle),
+            });
+        }
+
         favoriteStatus.value[vehicle.id] = !favoriteStatus.value[vehicle.id];
 
         if (favoriteStatus.value[vehicle.id]) {
@@ -1526,30 +1558,26 @@ const toggleFavourite = async (vehicle) => {
             }, 300);
         }
 
-        toast.success(
-            `Vehicle ${favoriteStatus.value[vehicle.id] ? "added to" : "removed from"
-            } favorites!`,
+        sonnerToast.success(
+            favoriteStatus.value[vehicle.id]
+                ? "Vehicle added to favorite."
+                : "Vehicle removed from favorite.",
             {
-                position: "top-right",
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-                icon: favoriteStatus.value[vehicle.id] ? "❤️" : "💔",
+                position: "bottom-right",
+                duration: 3000,
             }
         );
     } catch (error) {
         if (error.response && error.response.status === 401) {
             router.get(route('login', {}, usePage().props.locale));
         } else {
-            toast.error("Failed to update favorites", {
-                position: "top-right",
-                timeout: 3000,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
+            sonnerToast.error("Failed to update favorite.", {
+                position: "bottom-right",
+                duration: 3000,
             });
         }
+    } finally {
+        favoriteLoading.value[vehicle.id] = false;
     }
 };
 
@@ -2486,6 +2514,7 @@ watch(
                 :class="[viewMode === 'list' ? 'list-view' : 'grid-view']">
                 <CarListingCard v-for="vehicle in paginatedVehicles" :key="vehicle.id" :vehicle="vehicle" :form="form"
                     :view-mode="viewMode" :favoriteStatus="favoriteStatus[vehicle.id] || false"
+                    :favoriteLoading="favoriteLoading[vehicle.id] || false"
                     :popEffect="popEffect[vehicle.id] || false" @toggleFavourite="toggleFavourite"
                     @saveSearchUrl="saveSearchUrl" @select-package="handlePackageSelection">
                 <template #dailyPrice>

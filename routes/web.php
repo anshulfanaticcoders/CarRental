@@ -874,6 +874,7 @@ Route::group([
         Route::post('/vehicles/{vehicle}/unfavourite', [FavoriteController::class, 'unfavourite'])->name('vehicles.unfavourite');
         Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
         Route::get('/favorites/status', [FavoriteController::class, 'getFavoriteStatus'])->name('favorites.status');
+        Route::post('/favorites/provider/toggle', [FavoriteController::class, 'toggleProviderFavourite'])->name('favorites.provider.toggle');
 
         // GreenMotion Booking Routes
         Route::post('/green-motion-booking/charge', [GreenMotionBookingController::class, 'processGreenMotionBookingPayment'])->name('greenmotion.booking.charge');

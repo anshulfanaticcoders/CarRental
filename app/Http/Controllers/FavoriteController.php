@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Models\ProviderFavorite;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia; // Added Inertia
@@ -52,8 +53,14 @@ class FavoriteController extends Controller
             return $vehicle;
         });
 
+        $providerFavorites = $user->providerFavorites()
+            ->latest()
+            ->paginate(12)
+            ->withQueryString();
+
         return Inertia::render('Profile/Favourites', [
             'favoriteVehicles' => $paginatedFavorites,
+            'providerFavorites' => $providerFavorites,
         ]);
     }
 
@@ -64,8 +71,50 @@ class FavoriteController extends Controller
             return response()->json([]); // Return empty array if not logged in
         }
         $user = Auth::user();
-        $favoriteIds = $user->favorites()->pluck('vehicles.id');
+        $favoriteIds = $user->favorites()
+            ->pluck('vehicles.id')
+            ->map(fn ($id) => (string) $id);
+        $providerFavoriteKeys = $user->providerFavorites()
+            ->pluck('vehicle_key');
 
-        return response()->json($favoriteIds);
+        return response()->json($favoriteIds->merge($providerFavoriteKeys)->values());
+    }
+
+    public function toggleProviderFavourite(Request $request, $locale)
+    {
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $validated = $request->validate([
+            'vehicle_key' => ['required', 'string'],
+            'source' => ['required', 'string'],
+            'payload' => ['nullable', 'array'],
+        ]);
+
+        $user = Auth::user();
+        $favorite = $user->providerFavorites()
+            ->where('vehicle_key', $validated['vehicle_key'])
+            ->first();
+
+        if ($favorite) {
+            $favorite->delete();
+
+            return response()->json([
+                'success' => true,
+                'action' => 'removed',
+            ]);
+        }
+
+        $user->providerFavorites()->create([
+            'vehicle_key' => $validated['vehicle_key'],
+            'source' => $validated['source'],
+            'payload' => $validated['payload'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'action' => 'added',
+        ]);
     }
 }

@@ -59,11 +59,37 @@ const handleClick = () => {
     class="block w-[2rem] h-[2rem] relative"
     @click.prevent="handleClick"
     :disabled="loading"
+    :aria-busy="loading ? 'true' : 'false'"
   >
     <div 
       ref="animationContainer" 
       class="w-full h-full"
       :class="{ 'opacity-50': loading }"
     ></div>
+    <span v-if="loading" class="favorite-spinner" aria-hidden="true"></span>
   </button>
 </template>
+
+<style scoped>
+.favorite-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  border-top-color: rgba(0, 0, 0, 0.55);
+  animation: favorite-spin 0.8s linear infinite;
+}
+
+@keyframes favorite-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+</style>
