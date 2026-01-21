@@ -60,7 +60,9 @@ class BookingDashboardController extends Controller
             $bookings->where('booking_status', $statusFilter);
         }
 
-        $bookings = $bookings->orderBy('created_at', 'desc')->with(['customer', 'vehicle.vendorProfileData','payments','vendorProfile'])->paginate(7);
+        $bookings = $bookings->orderBy('created_at', 'desc')
+            ->with(['customer', 'vehicle.vendorProfileData', 'payments', 'vendorProfile', 'amounts'])
+            ->paginate(7);
 
         // Get booking status counts
         $statusCounts = [

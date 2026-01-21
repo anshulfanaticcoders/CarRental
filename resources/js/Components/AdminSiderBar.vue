@@ -320,6 +320,10 @@ const data = {
       icon: FileChartColumn,
       items: [
         {
+          title: 'Analytics',
+          url: '/admin/analytics',
+        },
+        {
           title: 'Users Report',
           url: '/users-report',
         },

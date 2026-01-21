@@ -182,9 +182,15 @@
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="text-sm">
-                                        <div class="font-medium">{{ formatCurrency(booking.total_amount, booking.booking_currency || 'USD') }}</div>
-                                        <div class="text-green-600 text-xs">Paid: {{ formatCurrency(booking.amount_paid || 0, booking.booking_currency || 'USD') }}</div>
-                                        <div class="text-yellow-600 text-xs">Pending: {{ formatCurrency(booking.pending_amount || 0, booking.booking_currency || 'USD') }}</div>
+                                        <div class="font-medium">
+                                            {{ formatCurrency(getAdminAmounts(booking).total, getAdminAmounts(booking).currency) }}
+                                        </div>
+                                        <div class="text-green-600 text-xs">
+                                            Paid: {{ formatCurrency(getAdminAmounts(booking).paid, getAdminAmounts(booking).currency) }}
+                                        </div>
+                                        <div class="text-yellow-600 text-xs">
+                                            Pending: {{ formatCurrency(getAdminAmounts(booking).pending, getAdminAmounts(booking).currency) }}
+                                        </div>
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
@@ -379,6 +385,25 @@ const formatCurrency = (amount, currency) => {
     return `${getCurrencySymbol(currency)}${formatNumber(amount)}`;
 };
 
+const getAdminAmounts = (booking) => {
+    const amounts = booking.amounts || null;
+    if (amounts && amounts.admin_currency) {
+        return {
+            currency: amounts.admin_currency,
+            total: Number(amounts.admin_total_amount || 0),
+            paid: Number(amounts.admin_paid_amount || 0),
+            pending: Number(amounts.admin_pending_amount || 0),
+        };
+    }
+
+    return {
+        currency: booking.booking_currency || 'USD',
+        total: Number(booking.total_amount || 0),
+        paid: Number(booking.amount_paid || 0),
+        pending: Number(booking.pending_amount || 0),
+    };
+};
+
 // Currency badge class
 const getCurrencyBadgeClass = (currency) => {
     const classes = {
@@ -412,5 +437,3 @@ onMounted(() => {
     }
 });
 </script>
-
-

@@ -7,6 +7,7 @@ use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Customer;
 use App\Models\User;
+use App\Models\UserProfile;
 use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
@@ -254,6 +255,11 @@ class StripeBookingService
             $userId = $user->id;
         }
 
+        $resolvedUser = $user ?? User::find($userId);
+        if ($resolvedUser) {
+            $this->ensureUserProfile($resolvedUser, $metadata);
+        }
+
         if ($email) {
             $customer = Customer::where('email', $email)->first();
             if ($customer) {
@@ -278,6 +284,26 @@ class StripeBookingService
             'customer' => $customer,
             'temp_password' => $tempPassword,
         ];
+    }
+
+    protected function ensureUserProfile(User $user, $metadata): void
+    {
+        if ($user->profile()->exists()) {
+            return;
+        }
+
+        $country = $metadata->customer_country ?? $metadata->country ?? null;
+        if (!$country) {
+            $country = 'us';
+        }
+
+        UserProfile::create([
+            'user_id' => $user->id,
+            'address_line1' => $metadata->customer_address ?? null,
+            'city' => $metadata->customer_city ?? null,
+            'postal_code' => $metadata->customer_postal_code ?? null,
+            'country' => $country,
+        ]);
     }
 
     protected function notifyBookingCreated(Booking $booking, Customer $customer, ?string $tempPassword = null): void

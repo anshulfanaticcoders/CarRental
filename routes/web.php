@@ -159,6 +159,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // Payments
     Route::get('/admin/payments', [PaymentDashboardController::class, 'index'])->name('admin.payments.index');
 
+    // Analytics
+    Route::get('/admin/analytics', [\App\Http\Controllers\Admin\AnalyticsDashboardController::class, 'index'])
+        ->name('admin.analytics.index');
+
     // User reports
     Route::get('/users-report', [UsersReportController::class, 'index'])->name('admin.users.reports');
     Route::get('/vendors-report', [VendorsReportController::class, 'index'])->name('admin.vendors.reports');

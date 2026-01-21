@@ -6,10 +6,12 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use App\Notifications\Concerns\FormatsBookingAmounts;
 
 class CustomerPaymentFailedNotification extends Notification
 {
     use Queueable;
+    use FormatsBookingAmounts;
 
     protected $booking;
     protected $customer;
@@ -29,6 +31,7 @@ class CustomerPaymentFailedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $amounts = $this->getCustomerAmounts($this->booking);
         return (new MailMessage)
             ->subject('Payment Failed for Booking #' . $this->booking->booking_number)
             ->greeting('Hello ' . $this->customer->first_name . ',')
@@ -42,7 +45,7 @@ class CustomerPaymentFailedNotification extends Notification
             ->line('**Pickup Time:** ' . $this->booking->pickup_time)
             ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
             ->line('**Return Time:** ' . $this->booking->return_time)
-            ->line('**Total Amount:** €' . number_format($this->booking->total_amount, 2))
+            ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
             ->line('Please try again or contact support if the issue persists.')
             ->action('Retry Payment', url('/' . app()->getLocale() . '/retry-payment/' . $this->booking->id))
             ->line('Thank you for choosing our service.');
@@ -50,6 +53,7 @@ class CustomerPaymentFailedNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
+        $amounts = $this->getCustomerAmounts($this->booking);
         return [
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
@@ -60,7 +64,8 @@ class CustomerPaymentFailedNotification extends Notification
             'pickup_time' => $this->booking->pickup_time,
             'return_date' => $this->booking->return_date->format('Y-m-d'),
             'return_time' => $this->booking->return_time,
-            'total_amount' => $this->booking->total_amount,
+            'total_amount' => $amounts['total'],
+            'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'message' => 'Payment for Booking #' . $this->booking->booking_number . ' has failed.',
         ];
     }

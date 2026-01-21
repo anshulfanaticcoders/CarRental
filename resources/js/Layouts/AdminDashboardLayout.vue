@@ -70,6 +70,7 @@ const routeTitles = {
   '/blogs': 'All Blogs',
   '/blogs/create': 'Create a Blog',
   '/admin/payments': 'All Payments',
+  '/admin/analytics': 'Analytics',
   '/users-report': 'Users Report',
   '/vendors-report': 'Vendors Report',
   '/business-report': 'Business Report',

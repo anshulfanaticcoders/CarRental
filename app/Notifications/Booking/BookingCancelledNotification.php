@@ -6,10 +6,12 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use App\Notifications\Concerns\FormatsBookingAmounts;
 
 class BookingCancelledNotification extends Notification
 {
     use Queueable;
+    use FormatsBookingAmounts;
 
     protected $booking;
     protected $customer;
@@ -38,6 +40,10 @@ class BookingCancelledNotification extends Notification
         // ]);
         // $formattedAddress = implode(', ', $addressParts);
 
+        $amounts = $this->recipientType === 'admin'
+            ? $this->getAdminAmounts($this->booking)
+            : $this->getVendorAmounts($this->booking);
+
         $mailMessage = (new MailMessage)
             ->subject('Booking Cancelled - #' . $this->booking->booking_number)
             ->line('**Booking Details:**')
@@ -49,7 +55,7 @@ class BookingCancelledNotification extends Notification
             ->line('**Pickup Time:** ' . $this->booking->pickup_time)
             ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
             ->line('**Return Time:** ' . $this->booking->return_time)
-            ->line('**Total Amount:** $' . number_format($this->booking->total_amount, 2))
+            ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
             ->line('**Cancellation Reason:** ' . $this->booking->cancellation_reason)
             ->line('**Customer Details:**')
             ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
@@ -81,6 +87,9 @@ class BookingCancelledNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
+        $amounts = $this->recipientType === 'admin'
+            ? $this->getAdminAmounts($this->booking)
+            : $this->getVendorAmounts($this->booking);
         // $addressParts = array_filter([
         //     $this->vehicle->city,
         //     $this->vehicle->state,
@@ -98,10 +107,11 @@ class BookingCancelledNotification extends Notification
             'pickup_time' => $this->booking->pickup_time,
             'return_date' => $this->booking->return_date->format('Y-m-d'),
             'return_time' => $this->booking->return_time,
-            'total_amount' => $this->booking->total_amount,
+            'total_amount' => $amounts['total'],
             'cancellation_reason' => $this->booking->cancellation_reason,
             'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
             'customer_email' => $this->customer->email,
+            'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'message' => 'Booking #' . $this->booking->booking_number . ' has been cancelled.',
         ];
     }

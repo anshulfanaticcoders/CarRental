@@ -6,10 +6,12 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
+use App\Notifications\Concerns\FormatsBookingAmounts;
 
 class GuestBookingCreatedNotification extends Notification
 {
     use Queueable;
+    use FormatsBookingAmounts;
 
     protected $booking;
     protected $customer;
@@ -31,7 +33,7 @@ class GuestBookingCreatedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $currency = $this->booking->booking_currency ?? 'EUR';
+        $amounts = $this->getCustomerAmounts($this->booking);
         $loginUrl = route('login', ['locale' => app()->getLocale()]);
 
         return (new MailMessage)
@@ -45,9 +47,9 @@ class GuestBookingCreatedNotification extends Notification
             ->line('**Pickup Time:** ' . $this->booking->pickup_time)
             ->line('**Return Date:** ' . $this->formatDate($this->booking->return_date))
             ->line('**Return Time:** ' . $this->booking->return_time)
-            ->line('**Total Amount:** ' . $currency . ' ' . number_format($this->booking->total_amount, 2))
-            ->line('**Amount Paid:** ' . $currency . ' ' . number_format($this->booking->amount_paid, 2))
-            ->line('**Pending Amount:** ' . $currency . ' ' . number_format($this->booking->pending_amount, 2))
+            ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
+            ->line('**Amount Paid:** ' . $this->formatCurrencyAmount($amounts['paid'], $amounts['currency']))
+            ->line('**Pending Amount:** ' . $this->formatCurrencyAmount($amounts['pending'], $amounts['currency']))
             ->line('---')
             ->line('**Account Access (Guest Checkout):**')
             ->line('We created an account for you so you can manage your booking anytime.')

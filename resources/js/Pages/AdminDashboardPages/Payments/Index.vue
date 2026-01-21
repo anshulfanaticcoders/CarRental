@@ -143,10 +143,9 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Transaction ID</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Currency</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Total Amount</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Payment Amount</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Amount Paid</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Pending Amount</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Admin Total</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Admin Paid</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Admin Pending</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Payment Method</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Date</TableHead>
@@ -161,21 +160,24 @@
                                     {{ payment.transaction_id }}
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <Badge :class="getCurrencyBadgeClass(payment.currency)" class="text-xs">
-                                        {{ payment.currency }}
+                                    <Badge :class="getCurrencyBadgeClass(getAdminAmounts(payment).currency)" class="text-xs">
+                                        {{ getAdminAmounts(payment).currency }}
                                     </Badge>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="font-medium">{{ formatCurrency(payment.booking?.total_amount || 0, payment.currency) }}</div>
+                                    <div class="font-medium">
+                                        {{ formatCurrency(getAdminAmounts(payment).total, getAdminAmounts(payment).currency) }}
+                                    </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="font-medium">{{ formatCurrency(payment.amount, payment.currency) }}</div>
+                                    <div class="text-green-600 font-medium">
+                                        {{ formatCurrency(getAdminAmounts(payment).paid, getAdminAmounts(payment).currency) }}
+                                    </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="text-green-600 font-medium">{{ formatCurrency(payment.booking?.amount_paid || 0, payment.currency) }}</div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="text-yellow-600 font-medium">{{ formatCurrency(payment.booking?.pending_amount || 0, payment.currency) }}</div>
+                                    <div class="text-yellow-600 font-medium">
+                                        {{ formatCurrency(getAdminAmounts(payment).pending, getAdminAmounts(payment).currency) }}
+                                    </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="text-sm">{{ payment.payment_method }}</div>
@@ -262,7 +264,7 @@ const search = ref(props.filters?.search || '');
 // Initialize filters with proper currency value
 const filters = ref({
     status: props.filters?.status || null,
-    currency: props.filters?.currency || 'all'
+    currency: props.filters?.currency || props.stats?.currency_symbol || 'all'
 });
 
 // Watch for changes in search and filters
@@ -304,6 +306,25 @@ const getCurrencySymbol = (currency) => {
 // Format currency with symbol
 const formatCurrency = (amount, currency) => {
     return `${getCurrencySymbol(currency)}${formatNumber(amount)}`;
+};
+
+const getAdminAmounts = (payment) => {
+    const amounts = payment.booking?.amounts || null;
+    if (amounts && amounts.admin_currency) {
+        return {
+            currency: amounts.admin_currency,
+            total: Number(amounts.admin_total_amount || 0),
+            paid: Number(amounts.admin_paid_amount || 0),
+            pending: Number(amounts.admin_pending_amount || 0),
+        };
+    }
+
+    return {
+        currency: payment.currency || 'USD',
+        total: Number(payment.booking?.total_amount || 0),
+        paid: Number(payment.booking?.amount_paid || 0),
+        pending: Number(payment.booking?.pending_amount || 0),
+    };
 };
 
 // Currency badge class

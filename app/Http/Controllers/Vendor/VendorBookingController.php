@@ -98,20 +98,28 @@ class VendorBookingController extends Controller
         // Notify Admin
         $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
         $admin = User::where('email', $adminEmail)->first();
+        $adminNotification = new BookingStatusUpdatedAdminNotification($booking, $customer, $vehicle, $vendor);
         if ($admin) {
-            $admin->notify(new BookingStatusUpdatedAdminNotification($booking, $customer, $vehicle, $vendor));
+            $admin->notify($adminNotification);
+        } else {
+            Notification::route('mail', $adminEmail)->notify($adminNotification);
         }
 
         // Notify Customer
-        if ($customer && $customer->user) { // Ensure customer and associated user exist
-            $customer->user->notify(new BookingStatusUpdatedCustomerNotification($booking, $customer, $vehicle, $vendor));
+        if ($customer) {
+            $customerNotification = new BookingStatusUpdatedCustomerNotification($booking, $customer, $vehicle, $vendor);
+            if ($customer->user) {
+                $customer->user->notify($customerNotification);
+            } else {
+                Notification::route('mail', $customer->email)->notify($customerNotification);
+            }
         }
 
         // Notify Company
-    if ($vendorProfile && $vendorProfile->company_email) {
-        Notification::route('mail', $vendorProfile->company_email)
-            ->notify(new BookingStatusUpdatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
-    }
+        if ($vendorProfile && $vendorProfile->company_email) {
+            Notification::route('mail', $vendorProfile->company_email)
+                ->notify(new BookingStatusUpdatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+        }
 
         return response()->json([
             'message' => 'Booking status updated successfully',
@@ -127,12 +135,12 @@ class VendorBookingController extends Controller
         }
 
         $validated = $request->validate([
-            'cancellation_reason' => 'required|string',
+            'cancellation_reason' => 'nullable|string',
         ]);
 
         $booking->update([
             'booking_status' => 'cancelled',
-            'cancellation_reason' => $validated['cancellation_reason'],
+            'cancellation_reason' => $validated['cancellation_reason'] ?? 'Cancelled by vendor',
         ]);
 
         $vehicle = Vehicle::find($booking->vehicle_id);
@@ -141,18 +149,32 @@ class VendorBookingController extends Controller
         $customer = $booking->customer;
         $vehicle = $booking->vehicle;
         $vendor = User::find($vehicle->vendor_id);
+        $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
 
         // Notify Admin
         $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
         $admin = User::where('email', $adminEmail)->first();
+        $adminNotification = new BookingStatusUpdatedAdminNotification($booking, $customer, $vehicle, $vendor);
         if ($admin) {
-            $admin->notify(new BookingStatusUpdatedAdminNotification($booking, $customer, $vehicle, $vendor));
+            $admin->notify($adminNotification);
+        } else {
+            Notification::route('mail', $adminEmail)->notify($adminNotification);
         }
 
         // Notify Customer
         if ($customer) {
-            Notification::route('mail', $customer->email)
-                ->notify(new BookingStatusUpdatedCustomerNotification($booking, $customer, $vehicle, $vendor));
+            $customerNotification = new BookingStatusUpdatedCustomerNotification($booking, $customer, $vehicle, $vendor);
+            if ($customer->user) {
+                $customer->user->notify($customerNotification);
+            } else {
+                Notification::route('mail', $customer->email)->notify($customerNotification);
+            }
+        }
+
+        // Notify Company
+        if ($vendorProfile && $vendorProfile->company_email) {
+            Notification::route('mail', $vendorProfile->company_email)
+                ->notify(new BookingStatusUpdatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
         }
 
         return back()->with('success', 'Booking cancelled successfully.');
