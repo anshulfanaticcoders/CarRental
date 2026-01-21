@@ -120,6 +120,7 @@ class VendorVehicleController extends Controller
             'horsepower' => 'required|decimal:0,2',
             'co2' => 'required|string',
             'location' => 'nullable|string',
+            'location_type' => 'nullable|string|max:255',
             'status' => 'required|in:available,rented,maintenance',
             'features' => 'nullable|array', // Features will be an array of selected feature names
             'featured' => 'boolean',
@@ -192,6 +193,7 @@ class VendorVehicleController extends Controller
             'horsepower' => $request->horsepower,
             'co2' => $request->co2,
             'location' => $request->location ?? '',
+            'location_type' => $request->location_type,
             'city' => $request->city ?? '',
             'state' => $request->state ?? '',
             'country' => $request->country ?? '',

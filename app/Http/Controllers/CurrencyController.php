@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CurrencyRate;
 use Illuminate\Http\Request;
 
 class CurrencyController extends Controller
@@ -59,5 +60,34 @@ class CurrencyController extends Controller
         ]);
 
         return back();
+    }
+
+    public function rates(Request $request)
+    {
+        $baseCurrency = strtoupper($request->query('base', config('currency.base_currency', 'USD')));
+
+        $rates = CurrencyRate::query()
+            ->where('base_currency', $baseCurrency)
+            ->get(['target_currency', 'rate', 'fetched_at']);
+
+        if ($rates->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'base' => $baseCurrency,
+                'rates' => [],
+                'message' => 'Rates not available'
+            ], 404);
+        }
+
+        $fetchedAt = $rates->max('fetched_at');
+        $mappedRates = $rates->pluck('rate', 'target_currency');
+        $mappedRates[$baseCurrency] = 1;
+
+        return response()->json([
+            'success' => true,
+            'base' => $baseCurrency,
+            'rates' => $mappedRates,
+            'fetched_at' => $fetchedAt,
+        ]);
     }
 }

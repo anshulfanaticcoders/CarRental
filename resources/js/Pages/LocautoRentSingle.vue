@@ -208,7 +208,7 @@ onMounted(async () => {
     try {
         const [currencyRes, ratesRes] = await Promise.all([
             fetch('/currency.json'),
-            fetch(`${import.meta.env.VITE_EXCHANGERATE_API_BASE_URL}/v6/${import.meta.env.VITE_EXCHANGERATE_API_KEY}/latest/USD`)
+            fetch('/api/currency-rates')
         ]);
         
         const currencyData = await currencyRes.json();
@@ -218,8 +218,8 @@ onMounted(async () => {
         }, {});
         
         const ratesData = await ratesRes.json();
-        if (ratesData.result === 'success') {
-            exchangeRates.value = ratesData.conversion_rates;
+        if (ratesData.success) {
+            exchangeRates.value = ratesData.rates;
         }
     } catch (error) {
         console.error("Error loading currency data:", error);

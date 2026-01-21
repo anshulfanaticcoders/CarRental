@@ -53,7 +53,7 @@ const props = defineProps({
 
 const emit = defineEmits(['toggleFavourite', 'saveSearchUrl', 'select-package']);
 
-const { selectedCurrency, convertPrice, getSelectedCurrencySymbol, getCurrencySymbol, fetchExchangeRates } = useCurrencyConversion();
+const { selectedCurrency, convertPrice, getSelectedCurrencySymbol, getCurrencySymbol, fetchExchangeRates, exchangeRates, loading } = useCurrencyConversion();
 const page = usePage();
 
 // Fetch exchange rates on mount
@@ -64,6 +64,8 @@ onMounted(() => {
 // State for GreenMotion/USave plan selection
 const selectedPackage = ref('BAS'); // Default to Basic
 const showAllPlans = ref(false);
+
+const ratesReady = computed(() => !!exchangeRates.value && !loading.value);
 
 // --- Computed Properties ---
 
@@ -774,37 +776,42 @@ onUnmounted(() => {
                     <div class="car-total">
                         <!-- GreenMotion/USave Price -->
                         <template v-if="isGreenMotionOrUSave">
-                            <span class="car-price">
+                            <span class="car-price" v-if="ratesReady">
                                 {{ getSelectedCurrencySymbol() }}{{ dailyPrice }}
                             </span>
+                            <span class="price-skeleton" v-else></span>
                         </template>
 
                         <!-- Locauto Price -->
                         <template v-else-if="isLocautoRent">
-                            <span class="car-price">
+                            <span class="car-price" v-if="ratesReady">
                                 {{ getSelectedCurrencySymbol() }}{{ locautoDailyPrice }}
                             </span>
+                            <span class="price-skeleton" v-else></span>
                         </template>
 
                         <!-- Adobe Price -->
                         <template v-else-if="isAdobeCars">
-                            <span class="car-price">
+                            <span class="car-price" v-if="ratesReady">
                                 {{ getSelectedCurrencySymbol() }}{{ adobeDailyPrice }}
                             </span>
+                            <span class="price-skeleton" v-else></span>
                         </template>
 
                         <!-- Renteon Price -->
                         <template v-else-if="isRenteon">
-                            <span class="car-price">
+                            <span class="car-price" v-if="ratesReady">
                                 {{ getSelectedCurrencySymbol() }}{{ renteonDailyPrice }}
                             </span>
+                            <span class="price-skeleton" v-else></span>
                         </template>
 
                         <!-- Standard Price (Slot) -->
                         <template v-else>
-                            <span class="car-price">
+                            <span class="car-price" v-if="ratesReady">
                                 <slot name="dailyPrice"></slot>
                             </span>
+                            <span class="price-skeleton" v-else></span>
                         </template>
                     </div>
                     <span class="car-currency">per day</span>
@@ -812,7 +819,8 @@ onUnmounted(() => {
 
                 <!-- Book Buttons -->
                 <!-- GreenMotion -->
-                <button v-if="isGreenMotionOrUSave" @click="selectPackage(selectedPackage)" class="header-btn primary">
+                <button v-if="isGreenMotionOrUSave" @click="selectPackage(selectedPackage)" class="header-btn primary"
+                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -822,7 +830,7 @@ onUnmounted(() => {
 
                 <!-- Locauto -->
                 <button v-else-if="isLocautoRent" @click="selectLocautoProtection(selectedLocautoProtection)"
-                    class="header-btn primary">
+                    class="header-btn primary" :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -832,7 +840,7 @@ onUnmounted(() => {
 
                 <!-- Adobe -->
                 <button v-else-if="isAdobeCars" @click="selectAdobeProtection(selectedAdobeProtection)"
-                    class="header-btn primary">
+                    class="header-btn primary" :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -842,7 +850,7 @@ onUnmounted(() => {
 
                 <!-- Internal Vehicle: Emit select-package for inline BookingExtrasStep -->
                 <button v-else-if="vehicle.source === 'internal'" @click="selectInternalPackage"
-                    class="header-btn primary">
+                    class="header-btn primary" :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -850,7 +858,8 @@ onUnmounted(() => {
                     </svg>
                 </button>
 
-                <button v-else-if="isRenteon" @click="selectRenteonPackage" class="header-btn primary">
+                <button v-else-if="isRenteon" @click="selectRenteonPackage" class="header-btn primary"
+                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -860,7 +869,8 @@ onUnmounted(() => {
 
                 <!-- Standard Link for other external providers -->
                 <Link v-else :href="route(getProviderRoute(vehicle), getRouteParams(vehicle))"
-                    class="header-btn primary" @click="$emit('saveSearchUrl')">
+                    class="header-btn primary" @click="(event) => { if (!ratesReady) { event.preventDefault(); return; } $emit('saveSearchUrl'); }"
+                    :class="{ 'is-loading': !ratesReady }">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1124,6 +1134,31 @@ onUnmounted(() => {
     box-shadow: var(--shadow-lg);
     transform: translateY(-4px);
     border-color: var(--primary-100);
+}
+
+.price-skeleton {
+    display: inline-block;
+    width: 74px;
+    height: 18px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.header-btn.primary.is-loading {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 /* Card Image */

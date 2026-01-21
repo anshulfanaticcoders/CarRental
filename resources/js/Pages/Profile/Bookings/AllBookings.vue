@@ -117,6 +117,29 @@ const getCurrencySymbol = (currency) => {
   return symbols[currency] || '$';
 };
 
+const getBookingCurrency = (booking) => {
+  return booking.amounts?.booking_currency || booking.booking_currency || 'EUR';
+};
+
+const getBookingAmount = (booking, field) => {
+  const bookingFieldMap = {
+    total_amount: 'booking_total_amount',
+    amount_paid: 'booking_amount_paid',
+    pending_amount: 'booking_pending_amount',
+  };
+
+  const mappedField = bookingFieldMap[field];
+  if (mappedField && booking.amounts?.[mappedField] !== undefined && booking.amounts?.[mappedField] !== null) {
+    return parseFloat(booking.amounts[mappedField]);
+  }
+
+  if (booking.amounts?.[field] !== undefined && booking.amounts?.[field] !== null) {
+    return parseFloat(booking.amounts[field]);
+  }
+
+  return parseFloat(booking[field] || 0);
+};
+
 const formatNumber = (number) => {
   return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
@@ -381,10 +404,10 @@ const getCardDelay = (index) => {
                   <div>
                     <p class="text-sm text-gray-500">{{ _t('customerbooking', 'total_amount') }}</p>
                     <p class="text-2xl font-bold text-[#153B4F]">
-                      {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.total_amount) }}
+                      {{ getCurrencySymbol(getBookingCurrency(booking)) }}{{ formatNumber(getBookingAmount(booking, 'total_amount')) }}
                     </p>
-                    <p v-if="booking.amount_paid > 0" class="text-sm text-green-600 mt-1">
-                      {{ getCurrencySymbol(booking.booking_currency) }}{{ formatNumber(booking.amount_paid) }} {{ _t('customerbooking', 'paid') }}
+                    <p v-if="getBookingAmount(booking, 'amount_paid') > 0" class="text-sm text-green-600 mt-1">
+                      {{ getCurrencySymbol(getBookingCurrency(booking)) }}{{ formatNumber(getBookingAmount(booking, 'amount_paid')) }} {{ _t('customerbooking', 'paid') }}
                     </p>
                   </div>
 

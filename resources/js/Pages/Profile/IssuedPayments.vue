@@ -49,7 +49,7 @@
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
                                 formatDate(payment.created_at) }}</td>
                             <td class="px-4 py-2 text-sm text-green-600 whitespace-nowrap font-medium">
-                                {{ payment.booking?.vehicle?.vendor_profile?.currency || '$' }} {{ payment.amount || _t('customerprofilepages', 'not_applicable') }}
+                                {{ getCurrencySymbol(getBookingCurrency(payment)) }} {{ formatNumber(getBookingAmount(payment, 'amount_paid')) }}
                             </td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ payment.payment_method || _t('customerprofilepages', 'not_applicable') }}
                             </td>
@@ -114,6 +114,48 @@ const formatDate = (dateStr) => {
     if (!dateStr) return _t('customerprofilepages', 'not_applicable');
     const date = new Date(dateStr);
     return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
+};
+
+const formatNumber = (number) => {
+    return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(number);
+};
+
+const getCurrencySymbol = (currency) => {
+    const symbols = {
+        'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
+        'AUD': 'A$', 'CAD': 'C$', 'CHF': 'Fr', 'HKD': 'HK$',
+        'SGD': 'S$', 'SEK': 'kr', 'KRW': '₩', 'NOK': 'kr',
+        'NZD': 'NZ$', 'INR': '₹', 'MXN': 'Mex$', 'ZAR': 'R',
+        'AED': 'AED', 'MAD': 'د.م.', 'TRY': '₺'
+    };
+    return symbols[currency] || '$';
+};
+
+const getBookingCurrency = (payment) => {
+    return payment.booking?.amounts?.booking_currency || payment.booking?.booking_currency || 'EUR';
+};
+
+const getBookingAmount = (payment, field) => {
+    const bookingFieldMap = {
+        amount_paid: 'booking_amount_paid',
+        total_amount: 'booking_total_amount',
+        pending_amount: 'booking_pending_amount',
+    };
+
+    const mappedField = bookingFieldMap[field];
+    const amount = mappedField ? payment.booking?.amounts?.[mappedField] : payment.booking?.amounts?.[field];
+    if (amount !== undefined && amount !== null) {
+        return parseFloat(amount);
+    }
+
+    if (field === 'amount_paid') {
+        return parseFloat(payment.amount || 0);
+    }
+
+    return parseFloat(payment.booking?.[field] || 0);
 };
 
 const filteredPayments = computed(() => {

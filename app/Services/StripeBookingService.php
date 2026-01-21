@@ -13,6 +13,7 @@ use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
 use App\Models\VendorProfile;
 use App\Services\AdobeCarService;
+use App\Services\BookingAmountService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -61,6 +62,8 @@ class StripeBookingService
                 $vehicleId = (int) $metadata->vehicle_id;
             }
 
+            $bookingCurrency = strtoupper((string) ($metadata->currency ?? 'EUR'));
+
             $booking = Booking::create([
                 'booking_number' => Booking::generateBookingNumber(),
                 'customer_id' => $customer->id,
@@ -82,13 +85,39 @@ class StripeBookingService
                 'total_amount' => (float) ($metadata->total_amount ?? 0),
                 'amount_paid' => (float) ($metadata->payable_amount ?? 0),
                 'pending_amount' => (float) ($metadata->pending_amount ?? 0),
-                'booking_currency' => $metadata->currency ?? 'EUR',
+                'booking_currency' => $bookingCurrency,
                 'payment_status' => 'partial',
                 'booking_status' => 'confirmed',
                 'stripe_session_id' => $session->id,
                 'stripe_payment_intent_id' => $session->payment_intent,
                 'provider_booking_ref' => $metadata->provider_booking_ref ?? null,
             ]);
+
+            $extrasTotal = 0.0;
+            $extrasData = json_decode($metadata->extras_data ?? '[]', true);
+            if (!empty($extrasData)) {
+                foreach ($extrasData as $extraItem) {
+                    $extrasTotal += (float) ($extraItem['total'] ?? 0);
+                }
+            }
+
+            $vendorCurrency = null;
+            if ($booking->vehicle_id) {
+                $vehicle = $booking->vehicle()->with('vendorProfile')->first();
+                $vendorCurrency = $vehicle?->vendorProfile?->currency;
+            }
+
+            $vehicleTotal = (float) ($metadata->vehicle_total ?? 0);
+            $extraAmount = $vehicleTotal > 0
+                ? $vehicleTotal + $extrasTotal
+                : (float) ($metadata->total_amount ?? 0);
+
+            app(BookingAmountService::class)->createForBooking($booking, [
+                'total_amount' => $booking->total_amount,
+                'amount_paid' => $booking->amount_paid,
+                'pending_amount' => $booking->pending_amount,
+                'extra_amount' => $extraAmount,
+            ], $bookingCurrency, $vendorCurrency);
 
             Log::info('StripeBookingService: Booking record created', ['booking_id' => $booking->id]);
 

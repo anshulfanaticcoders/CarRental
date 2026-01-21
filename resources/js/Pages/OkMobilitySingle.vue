@@ -102,12 +102,12 @@ const providerLogoText = computed(() => {
 
 const fetchExchangeRates = async () => {
     try {
-        const response = await fetch(`${import.meta.env.VITE_EXCHANGERATE_API_BASE_URL}/v6/${import.meta.env.VITE_EXCHANGERATE_API_KEY}/latest/USD`);
+        const response = await fetch('/api/currency-rates');
         const data = await response.json();
-        if (data.result === 'success') {
-            exchangeRates.value = data.conversion_rates;
+        if (data.success) {
+            exchangeRates.value = data.rates;
         } else {
-            console.error('Failed to fetch exchange rates:', data['error-type']);
+            console.error('Failed to fetch exchange rates:', data.message || 'Unknown error');
         }
     } catch (error) {
         console.error('Error fetching exchange rates:', error);

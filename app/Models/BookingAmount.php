@@ -9,30 +9,27 @@ class BookingAmount extends Model
 {
     protected $fillable = [
         'booking_id',
-        'base_currency',
-        'booking_currency',
+        'admin_currency',
+        'admin_total_amount',
+        'admin_paid_amount',
+        'admin_pending_amount',
+        'admin_extra_amount',
         'vendor_currency',
-        'fx_rate',
-        'vendor_fx_rate',
-        'base_price',
-        'extras_total',
-        'tax_amount',
-        'discount_amount',
-        'total_amount',
-        'amount_paid',
-        'pending_amount',
+        'vendor_total_amount',
+        'vendor_paid_amount',
+        'vendor_pending_amount',
+        'vendor_extra_amount',
     ];
 
     protected $casts = [
-        'fx_rate' => 'decimal:6',
-        'vendor_fx_rate' => 'decimal:6',
-        'base_price' => 'decimal:2',
-        'extras_total' => 'decimal:2',
-        'tax_amount' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
-        'total_amount' => 'decimal:2',
-        'amount_paid' => 'decimal:2',
-        'pending_amount' => 'decimal:2',
+        'admin_total_amount' => 'decimal:2',
+        'admin_paid_amount' => 'decimal:2',
+        'admin_pending_amount' => 'decimal:2',
+        'admin_extra_amount' => 'decimal:2',
+        'vendor_total_amount' => 'decimal:2',
+        'vendor_paid_amount' => 'decimal:2',
+        'vendor_pending_amount' => 'decimal:2',
+        'vendor_extra_amount' => 'decimal:2',
     ];
 
     public function booking(): BelongsTo

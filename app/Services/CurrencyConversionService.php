@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CurrencyRate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -21,16 +22,20 @@ class CurrencyConversionService
 
     public function __construct()
     {
+        $exchangeRateKey = env('EXCHANGERATE_API_KEY', env('VITE_EXCHANGERATE_API_KEY'));
+        $exchangeRateBaseUrl = env('EXCHANGERATE_API_BASE_URL', env('VITE_EXCHANGERATE_API_BASE_URL', 'https://v6.exchangerate-api.com'));
+
         // Optimized ExchangeRate-API configuration
-        $this->exchangeRateProviders = [
-            'primary' => [
+        $this->exchangeRateProviders = [];
+        if (!empty($exchangeRateKey)) {
+            $this->exchangeRateProviders['primary'] = [
                 'name' => 'ExchangeRate-API',
-                'url' => env('EXCHANGERATE_API_BASE_URL', 'https://v6.exchangerate-api.com') . '/v6/' . env('EXCHANGERATE_API_KEY') . '/latest/{base}',
+                'url' => $exchangeRateBaseUrl . '/v6/' . $exchangeRateKey . '/latest/{base}',
                 'timeout' => 5,
                 'rate_limit' => 2000, // requests per hour
                 'requires_key' => false // Key is embedded in URL
-            ]
-        ];
+            ];
+        }
 
         $this->requestTimeout = config('currency.request_timeout', 5);
         $this->maxRetries = config('currency.max_retries', 3);
@@ -39,11 +44,14 @@ class CurrencyConversionService
         $this->defaultBaseCurrency = config('currency.base_currency', 'USD');
 
         // Initialize circuit breaker state
-        $this->circuitBreakerState = [
-            'primary' => ['failures' => 0, 'last_failure' => null, 'state' => 'closed'],
-            'secondary' => ['failures' => 0, 'last_failure' => null, 'state' => 'closed'],
-            'fallback' => ['failures' => 0, 'last_failure' => null, 'state' => 'closed']
-        ];
+        $this->circuitBreakerState = [];
+        foreach (array_keys($this->exchangeRateProviders) as $provider) {
+            $this->circuitBreakerState[$provider] = [
+                'failures' => 0,
+                'last_failure' => null,
+                'state' => 'closed'
+            ];
+        }
     }
 
     /**
@@ -55,59 +63,24 @@ class CurrencyConversionService
         try {
             $baseCurrency = strtoupper(trim($baseCurrency));
 
-            // Check cache first for all rates
-            $cacheKey = "exchange_rates_all_{$baseCurrency}";
-            if (Cache::has($cacheKey)) {
-                $cached = Cache::get($cacheKey);
+            $dbRates = $this->getRatesFromDatabase($baseCurrency);
+            if ($dbRates) {
                 return [
                     'success' => true,
-                    'rates' => $cached['rates'],
-                    'timestamp' => $cached['timestamp'],
+                    'rates' => $dbRates['rates'],
+                    'timestamp' => $dbRates['timestamp'],
                     'base_currency' => $baseCurrency,
-                    'provider' => 'cache',
+                    'provider' => 'database',
                     'cache_hit' => true
                 ];
             }
-
-            // Fetch from ExchangeRate-API
-            $provider = $this->exchangeRateProviders['primary'];
-            $url = str_replace('{base}', $baseCurrency, $provider['url']);
-
-            $response = Http::timeout($provider['timeout'])
-                ->withHeaders([
-                    'User-Agent' => 'CarRental-Platform/1.0',
-                    'Accept' => 'application/json'
-                ])
-                ->get($url);
-
-            if (!$response->successful()) {
-                throw new Exception("API request failed with status: {$response->status()}");
-            }
-
-            $data = $response->json();
-
-            if ($data['result'] !== 'success') {
-                throw new Exception($data['error-type'] ?? 'API returned error');
-            }
-
-            // Extract conversion rates from ExchangeRate-API response
-            $rates = $data['conversion_rates'];
-            $timestamp = $data['time_last_update_unix'] ?? time();
-
-            // Cache all rates for 1 hour
-            Cache::put($cacheKey, [
-                'rates' => $rates,
-                'timestamp' => $timestamp
-            ], $this->cacheTtl);
-
             return [
-                'success' => true,
-                'rates' => $rates,
-                'timestamp' => $timestamp,
+                'success' => false,
+                'error' => 'Rates unavailable in database',
+                'rates' => [],
                 'base_currency' => $baseCurrency,
-                'provider' => $provider['name'],
-                'cache_hit' => false,
-                'next_update' => $data['time_next_update_utc'] ?? null
+                'timestamp' => now()->timestamp,
+                'provider' => 'database'
             ];
 
         } catch (Exception $e) {
@@ -345,14 +318,12 @@ class CurrencyConversionService
                 ];
             }
 
-            // Get exchange rate
-            $rate = $this->getExchangeRate($from, $to);
-
-            if (!$rate['success']) {
-                throw new Exception($rate['error'] ?? 'Failed to get exchange rate');
+            $crossRate = $this->getCrossRateFromBase($from, $to);
+            if (!($crossRate['success'] ?? false)) {
+                throw new Exception($crossRate['error'] ?? 'Rates unavailable in database');
             }
 
-            $convertedAmount = round($amount * $rate['rate'], 2);
+            $convertedAmount = round($amount * $crossRate['rate'], 2);
 
             return [
                 'success' => true,
@@ -360,10 +331,10 @@ class CurrencyConversionService
                 'converted_amount' => $convertedAmount,
                 'from_currency' => $from,
                 'to_currency' => $to,
-                'rate' => $rate['rate'],
-                'rate_timestamp' => $rate['timestamp'],
-                'conversion_method' => $rate['provider'],
-                'cache_hit' => $rate['cache_hit'] ?? false
+                'rate' => $crossRate['rate'],
+                'rate_timestamp' => $crossRate['timestamp'],
+                'conversion_method' => $crossRate['provider'],
+                'cache_hit' => $crossRate['cache_hit'] ?? false
             ];
 
         } catch (Exception $e) {
@@ -386,6 +357,49 @@ class CurrencyConversionService
         }
     }
 
+    private function getCrossRateFromBase(string $from, string $to): array
+    {
+        $baseCurrency = $this->defaultBaseCurrency;
+        $rateData = $this->getAllExchangeRates($baseCurrency);
+
+        if (!$rateData['success']) {
+            if ($baseCurrency !== 'USD') {
+                $rateData = $this->getAllExchangeRates('USD');
+            }
+        }
+
+        if (!($rateData['success'] ?? false)) {
+            return [
+                'success' => false,
+                'error' => $rateData['error'] ?? 'Base currency rates unavailable',
+                'rate' => null,
+                'timestamp' => null,
+                'provider' => 'none'
+            ];
+        }
+
+        $rates = $rateData['rates'] ?? [];
+        if (!isset($rates[$from], $rates[$to])) {
+            return [
+                'success' => false,
+                'error' => "Missing rate for {$from} or {$to}",
+                'rate' => null,
+                'timestamp' => $rateData['timestamp'] ?? null,
+                'provider' => $rateData['provider'] ?? 'cache'
+            ];
+        }
+
+        $rate = $rates[$to] / $rates[$from];
+
+        return [
+            'success' => true,
+            'rate' => $rate,
+            'timestamp' => $rateData['timestamp'] ?? null,
+            'provider' => $rateData['provider'] ?? 'cache',
+            'cache_hit' => $rateData['cache_hit'] ?? false
+        ];
+    }
+
     /**
      * Get exchange rate between two currencies
      */
@@ -400,31 +414,19 @@ class CurrencyConversionService
                 throw new Exception('Invalid currency code');
             }
 
-            // Check cache first
-            $cacheKey = "exchange_rate_{$from}_{$to}";
-            if (Cache::has($cacheKey)) {
-                $cached = Cache::get($cacheKey);
-                return [
-                    'success' => true,
-                    'rate' => $cached['rate'],
-                    'timestamp' => $cached['timestamp'],
-                    'provider' => 'cache',
-                    'cache_hit' => true
-                ];
+            $result = $this->getCrossRateFromBase($from, $to);
+
+            if (!($result['success'] ?? false)) {
+                throw new Exception($result['error'] ?? 'Rates unavailable in database');
             }
 
-            // Try to get rates from providers
-            $result = $this->fetchExchangeRateFromProviders($from, $to);
-
-            if ($result['success']) {
-                // Cache successful result
-                Cache::put($cacheKey, [
-                    'rate' => $result['rate'],
-                    'timestamp' => $result['timestamp']
-                ], $this->cacheTtl);
-            }
-
-            return $result;
+            return [
+                'success' => true,
+                'rate' => $result['rate'],
+                'timestamp' => $result['timestamp'],
+                'provider' => $result['provider'] ?? 'database',
+                'cache_hit' => $result['cache_hit'] ?? false
+            ];
 
         } catch (Exception $e) {
             Log::error('Exchange rate fetch failed', [
@@ -449,7 +451,18 @@ class CurrencyConversionService
      */
     private function fetchExchangeRateFromProviders(string $from, string $to): array
     {
-        $providers = ['primary', 'secondary', 'fallback'];
+        $providers = array_keys($this->exchangeRateProviders);
+
+        if (empty($providers)) {
+            return [
+                'success' => false,
+                'error' => 'No exchange rate providers configured',
+                'rate' => 1.0,
+                'timestamp' => now()->timestamp,
+                'provider' => 'none',
+                'fallback_used' => true
+            ];
+        }
 
         foreach ($providers as $provider) {
             if ($this->isCircuitBreakerOpen($provider)) {
@@ -487,12 +500,42 @@ class CurrencyConversionService
         ];
     }
 
+    private function getRatesFromDatabase(string $baseCurrency): ?array
+    {
+        $rates = CurrencyRate::query()
+            ->where('base_currency', $baseCurrency)
+            ->get(['target_currency', 'rate', 'fetched_at']);
+
+        if ($rates->isEmpty()) {
+            return null;
+        }
+
+        $mapped = $rates->pluck('rate', 'target_currency')->toArray();
+        $mapped[$baseCurrency] = 1.0;
+
+        return [
+            'rates' => $mapped,
+            'timestamp' => $rates->max('fetched_at')?->timestamp ?? now()->timestamp,
+        ];
+    }
+
     /**
      * Fetch all rates from providers
      */
     private function fetchAllRatesFromProviders(string $base): array
     {
-        $providers = ['primary', 'secondary', 'fallback'];
+        $providers = array_keys($this->exchangeRateProviders);
+
+        if (empty($providers)) {
+            return [
+                'success' => false,
+                'error' => 'No exchange rate providers configured',
+                'rates' => [],
+                'base_currency' => $base,
+                'timestamp' => now()->timestamp,
+                'provider' => 'none'
+            ];
+        }
 
         foreach ($providers as $provider) {
             if ($this->isCircuitBreakerOpen($provider)) {

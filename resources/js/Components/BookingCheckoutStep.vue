@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, unref } from 'vue';
 import StripeCheckoutButton from './StripeCheckoutButton.vue';
 import { usePage } from '@inertiajs/vue3';
+import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 
 const props = defineProps({
     vehicle: Object,
@@ -19,12 +20,15 @@ const props = defineProps({
     dropoffLocation: String,
     numberOfDays: Number,
     currencySymbol: String,
+    selectedCurrencyCode: String,
     paymentPercentage: Number,
     totals: Object, // { grandTotal, payableAmount, pendingAmount }
     vehicleTotal: [String, Number]
 });
 
 const emit = defineEmits(['back']);
+
+const { convertPrice, getSelectedCurrencySymbol, fetchExchangeRates, selectedCurrency } = useCurrencyConversion();
 
 // Pre-fill from auth user if available
 const user = usePage().props.auth?.user || {};
@@ -46,7 +50,7 @@ const form = ref({
 const selectedPaymentMethod = ref('card');
 
 const availablePaymentMethods = computed(() => {
-    const currency = (props.vehicle.currency || 'EUR').toUpperCase();
+    const currency = checkoutCurrency.value;
     const methods = [
         { id: 'card', name: 'Credit / Debit Card', icon: '💳', logos: ['visa', 'mastercard', 'amex', 'applepay', 'googlepay'] }
     ];
@@ -106,6 +110,53 @@ const isInternal = computed(() => {
     return props.vehicle?.source === 'internal';
 });
 
+const normalizeCurrencyCode = (currency) => {
+    if (!currency) return 'EUR';
+    const currencyMap = {
+        '€': 'EUR',
+        '$': 'USD',
+        '£': 'GBP',
+        '₹': 'INR',
+        '₽': 'RUB',
+        'A$': 'AUD',
+        'C$': 'CAD',
+        'د.إ': 'AED',
+        '¥': 'JPY'
+    };
+    const trimmed = `${currency}`.trim();
+    return (currencyMap[trimmed] || trimmed).toUpperCase();
+};
+
+const resolveVehicleCurrency = () => {
+    return normalizeCurrencyCode(
+        props.vehicle?.currency
+        || props.vehicle?.vendor_profile?.currency
+        || props.vehicle?.vendorProfile?.currency
+        || props.vehicle?.benefits?.deposit_currency
+        || 'EUR'
+    );
+};
+
+const checkoutCurrency = computed(() => {
+    const preferred = props.selectedCurrencyCode || selectedCurrency.value;
+    return normalizeCurrencyCode(preferred || resolveVehicleCurrency());
+});
+
+const normalizeTotalValue = (value) => {
+    const raw = unref(value);
+    const numeric = parseFloat(raw ?? 0);
+    return Number.isNaN(numeric) ? 0 : numeric;
+};
+
+const convertTotal = (value) => {
+    const vehicleCurrency = resolveVehicleCurrency();
+    return convertPrice(normalizeTotalValue(value), vehicleCurrency);
+};
+
+onMounted(() => {
+    fetchExchangeRates();
+});
+
 // Get vehicle image (handles internal vehicles which use images array)
 const vehicleImage = computed(() => {
     // Internal vehicles: find primary image from images array
@@ -136,18 +187,20 @@ const bookingData = computed(() => {
         pickup_location: props.pickupLocation,
         dropoff_location: props.dropoffLocation,
         number_of_days: props.numberOfDays,
-        total_amount: props.totals.grandTotal,
-        currency: props.vehicle.currency || 'EUR',
+        total_amount: convertTotal(props.totals?.grandTotal),
+        currency: checkoutCurrency.value,
         quoteid: props.vehicle.quoteid || null,
         rentalCode: props.vehicle.rentalCode || null,
-        vehicle_total: props.vehicleTotal || 0,
+        vehicle_total: convertTotal(props.vehicleTotal || 0),
         payment_method: selectedPaymentMethod.value
     };
 });
 
 // Helper to format currency
 const formatPrice = (val) => {
-    return `${props.currencySymbol}${parseFloat(val).toFixed(2)}`;
+    const currencyCode = resolveVehicleCurrency();
+    const converted = convertPrice(parseFloat(val), currencyCode);
+    return `${getSelectedCurrencySymbol()}${converted.toFixed(2)}`;
 };
 </script>
 

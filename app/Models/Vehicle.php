@@ -26,6 +26,7 @@ class Vehicle extends Model
         'horsepower',
         'co2',
         'location',
+        'location_type',
         'latitude',
         'longitude',
         'city',

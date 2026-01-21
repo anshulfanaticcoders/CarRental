@@ -74,26 +74,26 @@ export function useWheelsysCurrency() {
             isLoading.value = true;
 
             // Use the same API endpoint as Show.vue for consistency
-            const response = await fetch(`${import.meta.env.VITE_EXCHANGERATE_API_BASE_URL}/v6/${import.meta.env.VITE_EXCHANGERATE_API_KEY}/latest/USD`);
+            const response = await fetch('/api/currency-rates');
             const data = await response.json();
 
-            if (data.result === 'success') {
-                exchangeRates.value = data.conversion_rates;
+            if (data.success) {
+                exchangeRates.value = data.rates;
                 lastFetchTime.value = now;
 
                 console.log('Wheelsys: Exchange rates updated successfully', {
                     timestamp: new Date(now).toISOString(),
                     sampleRates: {
-                        USD: data.conversion_rates.USD,
-                        EUR: data.conversion_rates.EUR,
-                        GBP: data.conversion_rates.GBP,
-                        INR: data.conversion_rates.INR
+                        USD: data.rates.USD,
+                        EUR: data.rates.EUR,
+                        GBP: data.rates.GBP,
+                        INR: data.rates.INR
                     }
                 });
 
                 return exchangeRates.value;
             } else {
-                console.error('Wheelsys: Failed to fetch exchange rates:', data['error-type']);
+                console.error('Wheelsys: Failed to fetch exchange rates:', data.message || 'Unknown error');
                 return null;
             }
         } catch (error) {

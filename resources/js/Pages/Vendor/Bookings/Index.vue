@@ -82,14 +82,14 @@
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
                                 booking.pickup_location }}</td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
-                                getCurrencySymbol(booking.booking_currency || 'USD') }}{{ formatNumber(booking.total_amount || 0) }}</td>
+                                getCurrencySymbol(getVendorCurrency(booking)) }}{{ formatNumber(getVendorAmount(booking, 'total_amount')) }}</td>
                             <td class="px-4 py-2 text-sm text-green-600 whitespace-nowrap font-medium">{{
                                 booking.payments[0]?.payment_status === 'pending' ? 'Nil' :
-                                    `${getCurrencySymbol(booking.booking_currency || 'USD')}${formatNumber(booking.amount_paid || 0)}`
+                                    `${getCurrencySymbol(getVendorCurrency(booking))}${formatNumber(getVendorAmount(booking, 'amount_paid'))}`
                                 }}</td>
                             <td class="px-4 py-2 text-sm text-yellow-600 whitespace-nowrap font-medium">{{
                                 booking.payments[0]?.payment_status === 'pending' ? 'Nil' :
-                                    `${getCurrencySymbol(booking.booking_currency || 'USD')}${formatNumber(booking.pending_amount || 0)}`
+                                    `${getCurrencySymbol(getVendorCurrency(booking))}${formatNumber(getVendorAmount(booking, 'pending_amount'))}`
                                 }}</td>
                             <td class="px-4 py-2 text-sm capitalize">
                                 <span :class="{
@@ -313,6 +313,32 @@ const formatNumber = (number) => {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     }).format(number);
+};
+
+const getVendorCurrency = (booking) => {
+    return booking.amounts?.vendor_currency
+        || booking.vehicle?.vendorProfile?.currency
+        || booking.booking_currency
+        || 'EUR';
+};
+
+const getVendorAmount = (booking, field) => {
+    const vendorFieldMap = {
+        total_amount: 'vendor_total_amount',
+        amount_paid: 'vendor_amount_paid',
+        pending_amount: 'vendor_pending_amount',
+    };
+
+    const mappedField = vendorFieldMap[field];
+    if (mappedField && booking.amounts?.[mappedField] !== undefined && booking.amounts?.[mappedField] !== null) {
+        return parseFloat(booking.amounts[mappedField]);
+    }
+
+    if (booking.amounts?.[field] !== undefined && booking.amounts?.[field] !== null) {
+        return parseFloat(booking.amounts[field]);
+    }
+
+    return parseFloat(booking[field] || 0);
 };
 
 const updateStatus = async (booking) => {

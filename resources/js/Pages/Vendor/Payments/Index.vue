@@ -84,7 +84,7 @@
                 <p class="text-green-100 text-sm font-medium">Total Revenue</p>
                 <p class="text-2xl font-bold mt-1">
                   <span v-if="selectedCurrency === 'all'">
-                    {{ getCurrencySymbol('USD') }}{{ formatNumber(totalRevenueAllCurrencies) }}
+                    {{ getCurrencySymbol(defaultVendorCurrency) }}{{ formatNumber(totalRevenueAllCurrencies) }}
                   </span>
                   <span v-else>
                     {{ getCurrencySymbol(selectedCurrency) }}{{ formatNumber(totalRevenueByCurrency) }}
@@ -107,7 +107,7 @@
                 <p class="text-yellow-100 text-sm font-medium">Pending Amount</p>
                 <p class="text-2xl font-bold mt-1">
                   <span v-if="selectedCurrency === 'all'">
-                    {{ getCurrencySymbol('USD') }}{{ formatNumber(pendingAmountAllCurrencies) }}
+                    {{ getCurrencySymbol(defaultVendorCurrency) }}{{ formatNumber(pendingAmountAllCurrencies) }}
                   </span>
                   <span v-else>
                     {{ getCurrencySymbol(selectedCurrency) }}{{ formatNumber(pendingAmountByCurrency) }}
@@ -224,17 +224,17 @@
                 </TableCell>
                 <TableCell class="text-right">
                   <div class="font-medium text-green-600">
-                    {{ getCurrencySymbol(payment.booking?.booking_currency || 'USD') }}{{ formatNumber(payment.booking?.amount_paid || 0) }}
+                    {{ getCurrencySymbol(getVendorCurrency(payment)) }}{{ formatNumber(getVendorAmount(payment, 'amount_paid')) }}
                   </div>
                 </TableCell>
                 <TableCell class="text-right">
                   <div class="font-medium">
-                    {{ getCurrencySymbol(payment.booking?.booking_currency || 'USD') }}{{ formatNumber(payment.booking?.total_amount || 0) }}
+                    {{ getCurrencySymbol(getVendorCurrency(payment)) }}{{ formatNumber(getVendorAmount(payment, 'total_amount')) }}
                   </div>
                 </TableCell>
                 <TableCell class="text-right">
                   <div class="font-medium text-yellow-600">
-                    {{ getCurrencySymbol(payment.booking?.booking_currency || 'USD') }}{{ formatNumber(payment.booking?.pending_amount || 0) }}
+                    {{ getCurrencySymbol(getVendorCurrency(payment)) }}{{ formatNumber(getVendorAmount(payment, 'pending_amount')) }}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -355,6 +355,42 @@ const getCurrencySymbol = (currency) => {
   return symbols[currency] || '$';
 };
 
+const getVendorCurrency = (payment) => {
+  return payment.booking?.amounts?.vendor_currency
+    || payment.booking?.vehicle?.vendorProfile?.currency
+    || payment.booking?.booking_currency
+    || 'EUR';
+};
+
+const getVendorAmount = (payment, field) => {
+  const vendorFieldMap = {
+    amount_paid: 'vendor_amount_paid',
+    total_amount: 'vendor_total_amount',
+    pending_amount: 'vendor_pending_amount',
+  };
+
+  const mappedField = vendorFieldMap[field];
+  const amount = mappedField ? payment.booking?.amounts?.[mappedField] : payment.booking?.amounts?.[field];
+  if (amount !== undefined && amount !== null) {
+    return parseFloat(amount);
+  }
+
+  if (field === 'amount_paid') {
+    return parseFloat(payment.amount || 0);
+  }
+
+  return parseFloat(payment.booking?.[field] || 0);
+};
+
+const defaultVendorCurrency = computed(() => {
+  const samplePayment = props.payments?.[0] || props.allPayments?.[0] || null;
+  return samplePayment ? getVendorCurrency(samplePayment) : 'EUR';
+});
+
+if (selectedCurrency.value === 'all' && defaultVendorCurrency.value) {
+  selectedCurrency.value = defaultVendorCurrency.value;
+}
+
 const formatNumber = (number) => {
   return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
@@ -387,7 +423,7 @@ const availableCurrencies = computed(() => {
 
   const currencies = new Set();
   allPaymentsData.value.forEach(payment => {
-    const currency = payment.currency || payment.booking?.booking_currency || 'USD';
+    const currency = getVendorCurrency(payment);
     currencies.add(currency);
   });
 
@@ -399,7 +435,7 @@ const totalRevenueAllCurrencies = computed(() => {
   if (!allPaymentsData.value || !Array.isArray(allPaymentsData.value)) return 0;
 
   return allPaymentsData.value.reduce((total, payment) => {
-    const totalAmount = payment.total_amount || payment.booking?.total_amount || 0;
+    const totalAmount = getVendorAmount(payment, 'total_amount');
     return total + parseFloat(totalAmount || 0);
   }, 0);
 });
@@ -409,7 +445,7 @@ const pendingAmountAllCurrencies = computed(() => {
   if (!allPaymentsData.value || !Array.isArray(allPaymentsData.value)) return 0;
 
   return allPaymentsData.value.reduce((total, payment) => {
-    const pendingAmount = payment.pending_amount || payment.booking?.pending_amount || 0;
+    const pendingAmount = getVendorAmount(payment, 'pending_amount');
     return total + parseFloat(pendingAmount || 0);
   }, 0);
 });
@@ -419,8 +455,8 @@ const totalRevenueByCurrency = computed(() => {
   if (!allPaymentsData.value || !Array.isArray(allPaymentsData.value) || selectedCurrency.value === 'all') return 0;
 
   return allPaymentsData.value.reduce((total, payment) => {
-    const totalAmount = payment.total_amount || payment.booking?.total_amount || 0;
-    const currency = payment.currency || payment.booking?.booking_currency || 'USD';
+    const totalAmount = getVendorAmount(payment, 'total_amount');
+    const currency = getVendorCurrency(payment);
 
     if (currency === selectedCurrency.value) {
       return total + parseFloat(totalAmount || 0);
@@ -434,8 +470,8 @@ const pendingAmountByCurrency = computed(() => {
   if (!allPaymentsData.value || !Array.isArray(allPaymentsData.value) || selectedCurrency.value === 'all') return 0;
 
   return allPaymentsData.value.reduce((total, payment) => {
-    const pendingAmount = payment.pending_amount || payment.booking?.pending_amount || 0;
-    const currency = payment.currency || payment.booking?.booking_currency || 'USD';
+    const pendingAmount = getVendorAmount(payment, 'pending_amount');
+    const currency = getVendorCurrency(payment);
 
     if (currency === selectedCurrency.value) {
       return total + parseFloat(pendingAmount || 0);
@@ -450,7 +486,7 @@ const totalTransactionsAll = computed(() => {
     return allPaymentsData.value?.length || 0;
   } else {
     return allPaymentsData.value?.filter(payment => {
-      const currency = payment.currency || payment.booking?.booking_currency || 'USD';
+      const currency = getVendorCurrency(payment);
       return currency === selectedCurrency.value;
     }).length || 0;
   }
@@ -464,7 +500,7 @@ const successfulTransactionsAll = computed(() => {
 
   if (selectedCurrency.value !== 'all') {
     filtered = filtered.filter(payment => {
-      const currency = payment.currency || payment.booking?.booking_currency || 'USD';
+      const currency = getVendorCurrency(payment);
       return currency === selectedCurrency.value;
     });
   }

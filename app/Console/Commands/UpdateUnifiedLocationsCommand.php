@@ -92,13 +92,21 @@ class UpdateUnifiedLocationsCommand extends Command
 
     private function getInternalVehicleLocations(): array
     {
-        return \App\Models\Vehicle::select('city', 'state', 'country', 'latitude', 'longitude', 'location')
+        return \App\Models\Vehicle::select('city', 'state', 'country', 'latitude', 'longitude', 'location', 'location_type')
             ->whereNotNull('city')
             ->whereNotNull('country')
             ->get()
             ->map(function ($vehicle) {
                 // Use the location field for the label as requested
-                $label = !empty($vehicle->location) ? $vehicle->location : $vehicle->city;
+                // $label = !empty($vehicle->location) ? $vehicle->location : $vehicle->city;
+                
+                // Combine city and location_type for the label
+                $label = $vehicle->city;
+                if (!empty($vehicle->location_type)) {
+                    $label .= ' ' . $vehicle->location_type;
+                } elseif (!empty($vehicle->location)) {
+                     $label = $vehicle->location;
+                }
 
                 return [
                     'id' => 'internal_' . md5($vehicle->city . $vehicle->state . $vehicle->country . $vehicle->location),

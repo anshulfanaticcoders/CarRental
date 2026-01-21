@@ -99,7 +99,7 @@ const props = defineProps({
 const emit = defineEmits(['back', 'proceed-to-checkout']);
 
 // Currency conversion composable
-const { convertPrice, getSelectedCurrencySymbol, fetchExchangeRates } = useCurrencyConversion();
+const { convertPrice, getSelectedCurrencySymbol, fetchExchangeRates, exchangeRates, loading } = useCurrencyConversion();
 
 // Sticky Bar Logic
 const summarySection = ref(null);
@@ -133,6 +133,8 @@ const currentPackage = ref(props.initialPackage || 'BAS');
 const selectedExtras = ref({});
 const selectedExtrasOrder = ref([]); // Track selection order for "First 2 Free" logic
 const showDetailsModal = ref(false);
+
+const ratesReady = computed(() => !!exchangeRates.value && !loading.value);
 
 // (Moved above)
 
@@ -450,11 +452,29 @@ const locautoBaseDaily = computed(() => {
 });
 
 const resolveVehicleCurrency = () => {
-    return props.vehicle?.currency
+    const rawCurrency = props.vehicle?.currency
         || props.vehicle?.vendor_profile?.currency
         || props.vehicle?.vendorProfile?.currency
         || props.vehicle?.benefits?.deposit_currency
         || 'EUR';
+    return normalizeCurrencyCode(rawCurrency);
+};
+
+const normalizeCurrencyCode = (currency) => {
+    if (!currency) return 'EUR';
+    const currencyMap = {
+        '€': 'EUR',
+        '$': 'USD',
+        '£': 'GBP',
+        '₹': 'INR',
+        '₽': 'RUB',
+        'A$': 'AUD',
+        'C$': 'CAD',
+        'د.إ': 'AED',
+        '¥': 'JPY'
+    };
+    const trimmed = `${currency}`.trim();
+    return (currencyMap[trimmed] || trimmed).toUpperCase();
 };
 
 const formatPrice = (val) => {
@@ -471,7 +491,7 @@ const getBenefits = (product) => {
 
     const benefits = [];
     const type = product.type;
-    const currencyCode = product?.currency || resolveVehicleCurrency();
+    const currencyCode = normalizeCurrencyCode(product?.currency || resolveVehicleCurrency());
 
     // Dynamic from API
     if (product.excess !== undefined && parseFloat(product.excess) === 0) {
@@ -1481,11 +1501,13 @@ const formatPaymentMethod = (method) => {
                 <div class="space-y-3 text-sm text-gray-700 mb-6 pb-6 border-b border-gray-100">
                     <div class="flex justify-between">
                         <span>Car Package ({{ currentPackage }})</span>
-                        <span class="font-medium">{{ formatPrice(isLocautoRent ? locautoBaseTotal : (currentProduct?.total || 0)) }}</span>
+                        <span class="font-medium" v-if="ratesReady">{{ formatPrice(isLocautoRent ? locautoBaseTotal : (currentProduct?.total || 0)) }}</span>
+                        <span class="price-skeleton price-skeleton-sm" v-else></span>
                     </div>
                     <div v-if="isAdobeCars && adobeMandatoryProtection > 0" class="flex justify-between text-amber-600">
                         <span>Mandatory Liability (PLI)</span>
-                        <span class="font-medium">+{{ formatPrice(adobeMandatoryProtection) }}</span>
+                        <span class="font-medium" v-if="ratesReady">+{{ formatPrice(adobeMandatoryProtection) }}</span>
+                        <span class="price-skeleton price-skeleton-sm" v-else></span>
                     </div>
                     <!-- Selected Extras List -->
                     <div v-for="item in getSelectedExtrasDetails" :key="item.id"
@@ -1493,7 +1515,10 @@ const formatPaymentMethod = (method) => {
                         <span>{{ item.name }} <span v-if="item.qty > 1">x{{ item.qty }}</span></span>
                         <span class="font-medium">
                             <span v-if="item.isFree" class="text-green-600 font-bold">Free</span>
-                            <span v-else>+{{ formatPrice(item.total) }}</span>
+                            <template v-else>
+                                <span v-if="ratesReady">+{{ formatPrice(item.total) }}</span>
+                                <span class="price-skeleton price-skeleton-sm" v-else></span>
+                            </template>
                         </span>
                     </div>
                 </div>
@@ -1501,7 +1526,8 @@ const formatPaymentMethod = (method) => {
                 <!-- Total -->
                 <div class="flex justify-between items-center border-t pt-4 mb-3">
                     <span class="text-lg font-bold text-gray-800">Total</span>
-                    <span class="text-3xl font-bold text-[#1e3a5f]">{{ formatPrice(grandTotal) }}</span>
+                    <span class="text-3xl font-bold text-[#1e3a5f]" v-if="ratesReady">{{ formatPrice(grandTotal) }}</span>
+                    <span class="price-skeleton price-skeleton-lg" v-else></span>
                 </div>
 
                 <!-- Payable Amount -->
@@ -1509,7 +1535,8 @@ const formatPaymentMethod = (method) => {
                     class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-4 mb-3">
                     <div class="flex justify-between items-center">
                         <span class="font-bold text-green-800">Pay Now ({{ paymentPercentage }}%)</span>
-                        <span class="text-2xl font-bold text-green-700">{{ formatPrice(payableAmount) }}</span>
+                        <span class="text-2xl font-bold text-green-700" v-if="ratesReady">{{ formatPrice(payableAmount) }}</span>
+                        <span class="price-skeleton price-skeleton-md" v-else></span>
                     </div>
                 </div>
 
@@ -1552,7 +1579,8 @@ const formatPaymentMethod = (method) => {
                             pendingAmount
                         },
                         vehicle_total: isLocautoRent ? locautoBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0)
-                    })" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg">
+                    })" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg"
+                        :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                         Proceed to Booking
                     </button>
                     <button @click="$emit('back')"
@@ -1755,6 +1783,44 @@ const formatPaymentMethod = (method) => {
 
     100% {
         transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.price-skeleton {
+    display: inline-block;
+    height: 16px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.price-skeleton-sm {
+    width: 90px;
+}
+
+.price-skeleton-md {
+    width: 120px;
+    height: 20px;
+}
+
+.price-skeleton-lg {
+    width: 160px;
+    height: 26px;
+}
+
+.btn-primary.is-loading {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
     }
 }
 

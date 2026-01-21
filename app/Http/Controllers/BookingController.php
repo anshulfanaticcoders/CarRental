@@ -20,6 +20,7 @@ use App\Models\BookingExtra;
 use App\Models\Customer;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
+use App\Services\BookingAmountService;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
 use Stripe\Customer as StripeCustomer;
@@ -107,6 +108,8 @@ class BookingController extends Controller
         $vehicle = Vehicle::findOrFail($validatedData['vehicle_id']);
 
         // Booking creation
+        $bookingCurrency = strtoupper($request->input('currency', config('currency.default', 'EUR')));
+
         $booking = Booking::create([
             'booking_number' => uniqid('BOOK-'),
             'customer_id' => $customer->id,
@@ -126,11 +129,21 @@ class BookingController extends Controller
             'total_amount' => $request->input('total_amount'),
             'pending_amount' => $request->input('pending_amount'),
             'amount_paid' => $request->input('amount_paid'),
+            'booking_currency' => $bookingCurrency,
             'payment_status' => 'pending',
             'booking_status' => 'pending',
             'plan' => $request->input('plan'),
             'plan_price' => $request->input('plan_price'),
         ]);
+
+        $vendorCurrency = $vehicle->vendorProfile?->currency;
+        $extraAmount = (float) $booking->base_price + (float) $booking->extra_charges;
+        app(BookingAmountService::class)->createForBooking($booking, [
+            'total_amount' => $booking->total_amount,
+            'amount_paid' => $booking->amount_paid,
+            'pending_amount' => $booking->pending_amount,
+            'extra_amount' => $extraAmount,
+        ], $bookingCurrency, $vendorCurrency);
 
         $extrasData = [];
         foreach ($validatedData['extras'] as $extra) {
@@ -329,7 +342,7 @@ class BookingController extends Controller
         $vendorId = auth()->id();
 
         // Get ALL payments for statistics (without pagination)
-        $allPayments = BookingPayment::with(['booking.customer', 'booking.vehicle'])
+        $allPayments = BookingPayment::with(['booking.customer', 'booking.vehicle', 'booking.amounts'])
             ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
             ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
             ->where('vehicles.vendor_id', $vendorId)
@@ -338,7 +351,7 @@ class BookingController extends Controller
             ->get(); // <-- Get ALL payments for statistics
 
         // Get paginated payments for the table
-        $payments = BookingPayment::with(['booking.customer', 'booking.vehicle'])
+        $payments = BookingPayment::with(['booking.customer', 'booking.vehicle', 'booking.amounts'])
             ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
             ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
             ->where('vehicles.vendor_id', $vendorId)
@@ -710,7 +723,7 @@ class BookingController extends Controller
             ]);
         }
 
-        $payments = BookingPayment::with(['booking.vehicle.vendorProfile'])
+        $payments = BookingPayment::with(['booking.vehicle.vendorProfile', 'booking.amounts'])
             ->whereHas('booking', function ($query) use ($customer) {
                 $query->where('customer_id', $customer->id);
             })
@@ -758,7 +771,7 @@ class BookingController extends Controller
 
         $bookings = $customer ?
             Booking::where('customer_id', $customer->id)
-                ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'extras')
+                ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'extras', 'amounts')
                 ->orderBy('created_at', 'desc')
                 ->paginate(10) :
             collect();

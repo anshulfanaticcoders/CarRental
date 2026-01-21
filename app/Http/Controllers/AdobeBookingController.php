@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\AdobeCarService;
+use App\Services\BookingAmountService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -423,6 +424,14 @@ class AdobeBookingController extends Controller
                 'booking_status' => 'pending',
                 'notes' => $adobeComment,
             ]);
+
+            $extraAmount = (float) $booking->base_price + (float) $booking->extra_charges;
+            app(BookingAmountService::class)->createForBooking($booking, [
+                'total_amount' => $booking->total_amount,
+                'amount_paid' => $booking->amount_paid,
+                'pending_amount' => $booking->pending_amount,
+                'extra_amount' => $extraAmount,
+            ], $booking->booking_currency, null);
 
             Log::info('Unified booking record created for Adobe', ['booking_id' => $booking->id]);
 
