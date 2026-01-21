@@ -325,7 +325,7 @@ const getVendorCurrency = (booking) => {
 const getVendorAmount = (booking, field) => {
     const vendorFieldMap = {
         total_amount: 'vendor_total_amount',
-        amount_paid: 'vendor_amount_paid',
+        amount_paid: 'vendor_paid_amount',
         pending_amount: 'vendor_pending_amount',
     };
 

@@ -364,7 +364,7 @@ const getVendorCurrency = (payment) => {
 
 const getVendorAmount = (payment, field) => {
   const vendorFieldMap = {
-    amount_paid: 'vendor_amount_paid',
+    amount_paid: 'vendor_paid_amount',
     total_amount: 'vendor_total_amount',
     pending_amount: 'vendor_pending_amount',
   };

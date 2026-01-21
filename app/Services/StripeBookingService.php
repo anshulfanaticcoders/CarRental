@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
+use App\Notifications\Booking\GuestBookingCreatedNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
 use App\Models\VendorProfile;
 use App\Services\AdobeCarService;
@@ -52,7 +53,8 @@ class StripeBookingService
 
         try {
             // Find or create customer
-            $customer = $this->findOrCreateCustomer($metadata);
+            $customerData = $this->findOrCreateCustomer($metadata);
+            $customer = $customerData['customer'];
             Log::info('StripeBookingService: Customer processed', ['customer_id' => $customer->id]);
 
             // Create booking
@@ -176,7 +178,7 @@ class StripeBookingService
             DB::commit();
             Log::info('StripeBookingService: Transaction committed successfully', ['booking_id' => $booking->id]);
 
-            $this->notifyBookingCreated($booking, $customer);
+            $this->notifyBookingCreated($booking, $customer, $customerData['temp_password']);
 
             // Phase 2: Trigger Provider Reservations
             if ($booking->provider_source === 'locauto_rent') {
@@ -210,7 +212,7 @@ class StripeBookingService
         }
     }
 
-    protected function findOrCreateCustomer($metadata)
+    protected function findOrCreateCustomer($metadata): array
     {
         $email = $metadata->customer_email ?? null;
 
@@ -220,6 +222,8 @@ class StripeBookingService
         $lastName = $nameParts[1] ?? 'Guest';
         $userId = $metadata->user_id ?? null;
         $phone = $metadata->customer_phone ?? null;
+
+        $tempPassword = null;
 
         if (!$userId) {
             $user = null;
@@ -235,12 +239,13 @@ class StripeBookingService
 
             if (!$user) {
                 $safePhone = $phone ?: 'guest_' . now()->timestamp . '_' . Str::random(6);
+                $tempPassword = Str::random(10);
                 $user = User::create([
                     'first_name' => $firstName,
                     'last_name' => $lastName,
                     'email' => $email ?? 'guest_' . now()->timestamp . '_' . Str::random(6) . '@temp.com',
                     'phone' => $safePhone,
-                    'password' => Hash::make(Str::random(32)),
+                    'password' => Hash::make($tempPassword),
                     'role' => 'customer',
                     'status' => 'active',
                 ]);
@@ -252,11 +257,14 @@ class StripeBookingService
         if ($email) {
             $customer = Customer::where('email', $email)->first();
             if ($customer) {
-                return $customer;
+                return [
+                    'customer' => $customer,
+                    'temp_password' => null,
+                ];
             }
         }
 
-        return Customer::create([
+        $customer = Customer::create([
             'user_id' => $userId,
             'first_name' => $firstName,
             'last_name' => $lastName,
@@ -265,9 +273,14 @@ class StripeBookingService
             'flight_number' => $metadata->flight_number ?? null,
             'driver_age' => $metadata->customer_driver_age ?? null,
         ]);
+
+        return [
+            'customer' => $customer,
+            'temp_password' => $tempPassword,
+        ];
     }
 
-    protected function notifyBookingCreated(Booking $booking, Customer $customer): void
+    protected function notifyBookingCreated(Booking $booking, Customer $customer, ?string $tempPassword = null): void
     {
         try {
             $vehicle = $booking->vehicle ?? null;
@@ -296,8 +309,21 @@ class StripeBookingService
                     ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
             }
 
-            Notification::route('mail', $customer->email)
-                ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+            if ($tempPassword) {
+                if (!empty($customer->email) && !str_starts_with($customer->email, 'guest_')) {
+                    Notification::route('mail', $customer->email)
+                        ->notify(new GuestBookingCreatedNotification($booking, $customer, $vehicle, $tempPassword));
+                } else {
+                    Log::warning('StripeBookingService: Guest account created without deliverable email', [
+                        'booking_id' => $booking->id,
+                        'customer_id' => $customer->id,
+                        'email' => $customer->email,
+                    ]);
+                }
+            } else {
+                Notification::route('mail', $customer->email)
+                    ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+            }
         } catch (\Exception $e) {
             Log::warning('StripeBookingService: Failed to send booking notifications', [
                 'booking_id' => $booking->id,

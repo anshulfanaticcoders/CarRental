@@ -15,7 +15,6 @@ import flagNl from '../../assets/flag-nl.svg';
 import flagEs from '../../assets/flag-es.svg';
 import flagAr from '../../assets/flag-ar.svg';
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
-import loaderVariant from '../../assets/loader-variant.svg'; // Import loader for potential use
 
 // Get page properties
 const page = usePage();
@@ -409,9 +408,6 @@ watch(() => url.value, () => {
 
           <!-- Currency Switcher -->
           <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
-            <div v-if="currencyLoading" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50">
-                <img :src="loaderVariant" alt="Loading..." class="w-6 h-6" />
-            </div>
             <Dropdown align="right" width="max">
               <template #trigger>
                 <button
@@ -419,7 +415,7 @@ watch(() => url.value, () => {
                   class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
                   :disabled="currencyLoading"
                 >
-                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2">
+                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2" :class="{ 'opacity-60': currencyLoading }">
                   <span>{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
                   <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -579,7 +575,7 @@ watch(() => url.value, () => {
                   class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
                   :disabled="currencyLoading"
                 >
-                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2">
+                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2" :class="{ 'opacity-60': currencyLoading }">
                   <span>{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
                   <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -819,10 +815,14 @@ watch(() => url.value, () => {
       <img :src="animatedFlagUrl" alt="Flag" class="animated-flag" />
     </div>
 
-    <!-- Full-screen loader for currency change -->
-    <div v-if="currencyLoading" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
-        <img :src="moneyExchangeSymbol" alt="Loading..." class="w-16 h-16 animate-spin" />
+    <div v-if="currencyLoading" class="currency-overlay">
+      <div class="currency-loader">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
     </div>
+
 
     <!-- Full-screen notification component -->
     <div v-if="mobileNotificationsOpen" class="fixed top-0 left-0 w-full h-full bg-white z-50">
@@ -933,6 +933,7 @@ header {
   background: #9ca3af;
 }
 
+
 /* Flag animation styles */
 .animated-flag {
   animation: zoom-fade 1.5s forwards; /* Set animation duration to 1.5 seconds */
@@ -955,6 +956,56 @@ header {
   100% {
     transform: scale(2);
     opacity: 0;
+  }
+}
+
+.currency-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(6px);
+}
+
+.currency-loader {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+}
+
+.currency-loader .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #f8fafc;
+  animation: currencyDots 1.1s ease-in-out infinite;
+}
+
+.currency-loader .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.currency-loader .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes currencyDots {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-6px);
+    opacity: 1;
   }
 }
 </style>
