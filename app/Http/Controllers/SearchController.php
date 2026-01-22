@@ -553,11 +553,27 @@ class SearchController extends Controller
             }
 
             if ($matchedLocation && !empty($matchedLocation['providers'])) {
-                // Fetch from ALL provider locations for this unified location
-                // Each entry in providers array is a separate location (e.g., Terminal 1, Terminal 2)
+                // Fetch from ALL providers only when explicitly mixed.
+                // Otherwise, restrict to the requested provider.
+                $providerEntriesSource = $matchedLocation['providers'];
+
+                if ($providerName !== 'mixed') {
+                    $providerEntriesSource = array_values(array_filter($providerEntriesSource, function ($provider) use ($providerName) {
+                        return ($provider['provider'] ?? null) === $providerName;
+                    }));
+
+                    if (empty($providerEntriesSource)) {
+                        $providerEntriesSource = [[
+                            'provider' => $providerName,
+                            'pickup_id' => $currentProviderLocationId,
+                            'original_name' => $locationAddress,
+                        ]];
+                    }
+                }
+
                 $allProviderEntries = []; // Store all entries, not just one per provider
 
-                foreach ($matchedLocation['providers'] as $index => $provider) {
+                foreach ($providerEntriesSource as $provider) {
                     $allProviderEntries[] = [
                         'provider' => $provider['provider'],
                         'pickup_id' => $provider['pickup_id'],
@@ -755,6 +771,8 @@ class SearchController extends Controller
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
+                                        'ok_mobility_pickup_time' => $startTimeForProvider,
+                                        'ok_mobility_dropoff_time' => $endTimeForProvider,
                                         'features' => $features,
                                         'airConditioning' => $hasAC,
                                         'sipp_code' => $sippCode,
@@ -1072,12 +1090,14 @@ class SearchController extends Controller
                                                 'currency' => 'EUR',
                                                 'token' => $token,
                                                 'group_id' => $groupId,
+                                                'rate_code' => $vehicleData['rateCode'] ?? null,
                                             ]
                                         ],
                                         'extras' => $extras,
                                         'insurance_options' => [],
                                         'ok_mobility_token' => $token,
                                         'ok_mobility_group_id' => $groupId,
+                                        'ok_mobility_rate_code' => $vehicleData['rateCode'] ?? null,
                                         'extras_required' => !empty($vehicleData['extrasRequired']) ? explode(',', $vehicleData['extrasRequired']) : [],
                                         'extras_available' => !empty($vehicleData['extrasAvailable']) ? explode(',', $vehicleData['extrasAvailable']) : [],
                                     ]);

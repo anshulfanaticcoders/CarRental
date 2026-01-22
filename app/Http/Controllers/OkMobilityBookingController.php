@@ -122,8 +122,6 @@ class OkMobilityBookingController extends Controller
                 'booking_status' => 'payment_pending',
                 'api_response' => null,
                 'remarks' => $validatedData['remarks'] ?? null,
-                'ok_mobility_token' => $validatedData['ok_mobility_token'],
-                'ok_mobility_group_id' => $validatedData['ok_mobility_group_id'],
             ]);
 
             $okMobilityBooking->update([

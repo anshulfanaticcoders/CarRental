@@ -22,62 +22,12 @@ const handleCheckout = async () => {
     error.value = null;
 
     try {
-        const vehicleSource = props.bookingData?.vehicle?.source;
-
         // 1. Initialize Stripe
         const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
         if (!stripe) throw new Error('Stripe failed to initialize.');
 
         // 2. Create Checkout Session
-        let response;
-        if (vehicleSource === 'okmobility') {
-            const customerName = `${props.bookingData.customer?.name || ''}`.trim();
-            const nameParts = customerName.split(/\s+/).filter(Boolean);
-            const firstname = nameParts[0] || 'Guest';
-            const surname = nameParts.slice(1).join(' ') || 'Guest';
-            const detailedExtras = props.bookingData.detailed_extras || [];
-            const extrasPayload = detailedExtras.map((extra) => ({
-                id: extra.code || extra.id,
-                quantity: extra.qty || 1,
-                option_total: extra.total || 0,
-            }));
-
-            response = await axios.post(route('okmobility.booking.charge'), {
-                pickup_station_id: props.bookingData.vehicle?.provider_pickup_id || props.bookingData.vehicle?.provider_pickup_office_id,
-                dropoff_station_id: props.bookingData.vehicle?.provider_dropoff_id || props.bookingData.vehicle?.provider_pickup_id || props.bookingData.vehicle?.provider_pickup_office_id,
-                start_date: props.bookingData.pickup_date,
-                start_time: props.bookingData.pickup_time,
-                end_date: props.bookingData.dropoff_date,
-                end_time: props.bookingData.dropoff_time,
-                customer: {
-                    firstname,
-                    surname,
-                    email: props.bookingData.customer?.email,
-                    phone: props.bookingData.customer?.phone,
-                    address1: props.bookingData.customer?.address,
-                    address2: null,
-                    address3: null,
-                    town: props.bookingData.customer?.city,
-                    postcode: props.bookingData.customer?.postal_code,
-                    country: props.bookingData.customer?.country,
-                    driver_licence_number: props.bookingData.customer?.driver_license_number,
-                    flight_number: props.bookingData.customer?.flight_number,
-                    comments: props.bookingData.customer?.notes,
-                },
-                extras: extrasPayload,
-                vehicle_id: props.bookingData.vehicle?.id,
-                vehicle_total: props.bookingData.vehicle_total || props.bookingData.total_amount,
-                currency: props.bookingData.currency,
-                grand_total: props.bookingData.totals?.grandTotal || props.bookingData.total_amount,
-                user_id: props.bookingData.customer?.user_id || null,
-                vehicle_location: props.bookingData.pickup_location,
-                ok_mobility_group_id: props.bookingData.vehicle?.ok_mobility_group_id,
-                ok_mobility_token: props.bookingData.vehicle?.ok_mobility_token,
-                remarks: props.bookingData.customer?.notes || null,
-            });
-        } else {
-            response = await axios.post(route('api.stripe.checkout'), props.bookingData);
-        }
+        const response = await axios.post(route('api.stripe.checkout'), props.bookingData);
         
         const sessionId = response.data?.session_id || response.data?.sessionId;
         if ((response.data?.success || sessionId) && sessionId) {

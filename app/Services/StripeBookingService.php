@@ -198,6 +198,8 @@ class StripeBookingService
                 ]);
             } elseif ($booking->provider_source === 'renteon') {
                 $this->triggerRenteonReservation($booking, $metadata);
+            } elseif ($booking->provider_source === 'okmobility') {
+                $this->triggerOkMobilityReservation($booking, $metadata);
             }
 
             return $booking;
@@ -933,6 +935,130 @@ class StripeBookingService
             ]);
             $booking->update([
                 'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Reservation Error: " . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Trigger reservation on OK Mobility API
+     */
+    protected function triggerOkMobilityReservation($booking, $metadata)
+    {
+        Log::info('OK Mobility: Triggering reservation for booking', ['booking_id' => $booking->id]);
+
+        try {
+            $token = $metadata->ok_mobility_token ?? null;
+            $groupId = $metadata->ok_mobility_group_id ?? null;
+            $rateCode = trim((string) ($metadata->ok_mobility_rate_code ?? ''));
+
+            if (!$token || !$groupId || $rateCode === '') {
+                Log::error('OK Mobility: Missing token, group ID, or rate code in metadata', [
+                    'booking_id' => $booking->id,
+                    'token_present' => (bool) $token,
+                    'group_id_present' => (bool) $groupId,
+                    'rate_code_present' => $rateCode !== '',
+                ]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "OK Mobility Reservation failed: Missing token, group ID, or rate code."
+                ]);
+                return;
+            }
+
+            $customerName = trim((string) ($metadata->customer_name ?? 'Guest User'));
+            $nameParts = preg_split('/\s+/', $customerName, 2);
+            $firstName = $nameParts[0] ?? 'Guest';
+            $lastName = $nameParts[1] ?? 'Guest';
+
+            $extras = [];
+            $extrasData = json_decode($metadata->extras_data ?? '[]', true);
+            if (is_array($extrasData)) {
+                foreach ($extrasData as $extra) {
+                    $code = $extra['code'] ?? $extra['id'] ?? null;
+                    if (!$code) {
+                        continue;
+                    }
+                    $extras[] = [
+                        'id' => $code,
+                        'quantity' => (int) ($extra['qty'] ?? 1),
+                    ];
+                }
+            }
+
+            $reservationData = [
+                'reference' => 'WEB-' . $booking->booking_number,
+                'group_code' => $groupId,
+                'token' => $token,
+                'rate_code' => $rateCode,
+                'pickup_date' => $metadata->pickup_date,
+                'pickup_time' => $metadata->pickup_time,
+                'pickup_station_id' => $metadata->pickup_location_code,
+                'dropoff_date' => $metadata->dropoff_date,
+                'dropoff_time' => $metadata->dropoff_time,
+                'dropoff_station_id' => $metadata->return_location_code ?? $metadata->pickup_location_code,
+                'driver_name' => $firstName . ' ' . $lastName,
+                'driver_surname' => $lastName,
+                'driver_email' => $metadata->customer_email ?? '',
+                'driver_phone' => $metadata->customer_phone ?? '',
+                'driver_address' => $metadata->customer_address ?? '',
+                'driver_city' => $metadata->customer_city ?? '',
+                'driver_postal_code' => $metadata->customer_postal_code ?? '',
+                'driver_country' => $metadata->customer_country ?? '',
+                'driver_license_number' => $metadata->driver_license_number ?? '',
+                'driver_age' => $metadata->customer_driver_age ?? 25,
+                'extras' => $extras,
+                'remarks' => $metadata->notes ?? null,
+                'flight_number' => $metadata->flight_number ?? null,
+            ];
+
+            $okMobilityService = app(\App\Services\OkMobilityService::class);
+            $xmlResponse = $okMobilityService->makeReservation($reservationData);
+
+            if (!$xmlResponse) {
+                Log::error('OK Mobility: Empty response from API');
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "OK Mobility Reservation failed: No response from API."
+                ]);
+                return;
+            }
+
+            libxml_use_internal_errors(true);
+            $xmlObject = simplexml_load_string($xmlResponse);
+            if ($xmlObject === false) {
+                Log::error('OK Mobility: Failed to parse XML response', ['response' => $xmlResponse]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "OK Mobility Reservation failed: Invalid XML response."
+                ]);
+                libxml_clear_errors();
+                return;
+            }
+
+            $bookingReferenceNodes = $xmlObject->xpath('//*[local-name()="Reservation_Nr"]');
+            $statusNodes = $xmlObject->xpath('//*[local-name()="Status"]');
+            $bookingReference = $bookingReferenceNodes ? (string) $bookingReferenceNodes[0] : null;
+            $status = $statusNodes ? (string) $statusNodes[0] : 'pending';
+
+            if ($bookingReference) {
+                Log::info('OK Mobility: Reservation successful', ['conf' => $bookingReference]);
+                $booking->update([
+                    'provider_booking_ref' => $bookingReference,
+                    'booking_status' => $status ?: $booking->booking_status,
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "OK Mobility Conf: " . $bookingReference
+                ]);
+            } else {
+                Log::error('OK Mobility: Reservation failed, reference missing', ['response' => $xmlResponse]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "OK Mobility Reservation failed: Missing booking reference."
+                ]);
+            }
+
+            libxml_clear_errors();
+        } catch (\Exception $e) {
+            Log::error('OK Mobility: Exception during reservation trigger', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "OK Mobility Reservation Error: " . $e->getMessage()
             ]);
         }
     }

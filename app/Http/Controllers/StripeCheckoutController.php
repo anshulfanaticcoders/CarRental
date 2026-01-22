@@ -154,6 +154,11 @@ class StripeCheckoutController extends Controller
                 'renteon_pricelist_id' => $validated['vehicle']['pricelist_id'] ?? null,
                 'renteon_price_date' => $validated['vehicle']['price_date'] ?? null,
                 'renteon_prepaid' => $validated['vehicle']['prepaid'] ?? true,
+                'ok_mobility_token' => $validated['vehicle']['ok_mobility_token'] ?? null,
+                'ok_mobility_group_id' => $validated['vehicle']['ok_mobility_group_id'] ?? null,
+                'ok_mobility_rate_code' => $validated['vehicle']['ok_mobility_rate_code'] ?? null,
+                'driver_license_number' => $validated['customer']['driver_license_number'] ?? null,
+                'notes' => $validated['customer']['notes'] ?? null,
             ];
 
             $customerMetadata = array_filter([

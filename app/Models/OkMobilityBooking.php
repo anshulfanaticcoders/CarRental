@@ -33,8 +33,6 @@ class OkMobilityBooking extends Model
         'booking_status',
         'api_response',
         'user_id',
-        'ok_mobility_token',
-        'ok_mobility_group_id',
         'affiliate_discount_code',
         'affiliate_discount_amount',
     ];

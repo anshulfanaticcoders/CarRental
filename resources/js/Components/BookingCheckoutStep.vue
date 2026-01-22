@@ -182,6 +182,13 @@ const vehicleImage = computed(() => {
 });
 
 const bookingData = computed(() => {
+    const pickupTime = isOkMobility.value
+        ? (props.vehicle?.ok_mobility_pickup_time || props.pickupTime)
+        : props.pickupTime;
+    const dropoffTime = isOkMobility.value
+        ? (props.vehicle?.ok_mobility_dropoff_time || props.dropoffTime)
+        : props.dropoffTime;
+
     return {
         vehicle: props.vehicle,
         package: props.package,
@@ -191,9 +198,9 @@ const bookingData = computed(() => {
         detailed_extras: props.detailedExtras,
         customer: form.value,
         pickup_date: props.pickupDate,
-        pickup_time: props.pickupTime,
+        pickup_time: pickupTime,
         dropoff_date: props.dropoffDate,
-        dropoff_time: props.dropoffTime,
+        dropoff_time: dropoffTime,
         pickup_location: props.pickupLocation,
         dropoff_location: props.dropoffLocation,
         number_of_days: props.numberOfDays,
