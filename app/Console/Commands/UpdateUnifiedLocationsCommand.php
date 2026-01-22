@@ -60,17 +60,17 @@ class UpdateUnifiedLocationsCommand extends Command
         $internalLocations = $this->getInternalVehicleLocations();
         $this->info('Fetched ' . count($internalLocations) . ' internal vehicle locations.');
 
-        $greenMotionLocations = $this->fetchProviderLocations('greenmotion');
-        $this->info('Fetched ' . count($greenMotionLocations) . ' GreenMotion locations.');
-
-        $usaveLocations = $this->fetchProviderLocations('usave');
-        $this->info('Fetched ' . count($usaveLocations) . ' U-SAVE locations.');
-
         $okMobilityLocations = $this->fetchOkMobilityLocations();
         $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
 
         $adobeLocations = $this->fetchAdobeLocations();
         $this->info('Fetched ' . count($adobeLocations) . ' Adobe locations.');
+
+        $greenMotionLocations = $this->fetchProviderLocations('greenmotion');
+        $this->info('Fetched ' . count($greenMotionLocations) . ' GreenMotion locations.');
+
+        $usaveLocations = $this->fetchProviderLocations('usave');
+        $this->info('Fetched ' . count($usaveLocations) . ' U-SAVE locations.');
 
         $locautoLocations = $this->fetchLocautoLocations();
         $this->info('Fetched ' . count($locautoLocations) . ' Locauto Rent locations.');

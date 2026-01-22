@@ -36,23 +36,28 @@ class AdobeCarService
      */
     protected function getAccessToken(): ?string
     {
-        return Cache::remember('adobe_api_token', 55, function () { // Cache for 55 minutes
-            $response = Http::post(rtrim($this->baseUrl, '/') . '/Auth/Login', [
-                'userName' => $this->username,
-                'password' => $this->password,
-            ]);
+        $cachedToken = Cache::get('adobe_api_token');
+        if (!empty($cachedToken)) {
+            return $cachedToken;
+        }
 
-            if ($response->successful() && $response->json('token')) {
-                return $response->json('token');
-            }
+        $response = Http::withOptions(['verify' => false])->post(rtrim($this->baseUrl, '/') . '/Auth/Login', [
+            'userName' => $this->username,
+            'password' => $this->password,
+        ]);
 
-            logger()->error('Failed to get Adobe API access token.', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
+        if ($response->successful() && $response->json('token')) {
+            $token = $response->json('token');
+            Cache::put('adobe_api_token', $token, 55);
+            return $token;
+        }
 
-            return null;
-        });
+        logger()->error('Failed to get Adobe API access token.', [
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+
+        return null;
     }
 
     /**
@@ -68,10 +73,16 @@ class AdobeCarService
             return [];
         }
 
-        $response = Http::withToken($token)->get(rtrim($this->baseUrl, '/') . '/Offices/list');
+        $response = Http::withOptions(['verify' => false])
+            ->withToken($token)
+            ->get(rtrim($this->baseUrl, '/') . '/Offices');
 
         if ($response->successful()) {
-            return $response->json();
+            $data = $response->json();
+            if (isset($data['data']) && is_array($data['data'])) {
+                return $data['data'];
+            }
+            return is_array($data) ? $data : [];
         }
 
         logger()->error('Failed to fetch Adobe API office list.', [

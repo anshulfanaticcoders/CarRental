@@ -1374,6 +1374,35 @@ class SearchController extends Controller
 
                         Log::info('Renteon vehicles processed from default provider: ' . count($renteonVehicles));
 
+                        if (empty($renteonVehicles)) {
+                            Log::info('Renteon: No vehicles from default provider, trying all providers', [
+                                'pickup_id' => $currentProviderLocationId,
+                                'date_from' => $validated['date_from'],
+                                'date_to' => $validated['date_to'],
+                            ]);
+
+                            $renteonVehicles = $this->renteonService->getTransformedVehiclesFromAllProviders(
+                                $currentProviderLocationId,
+                                $currentProviderLocationId,
+                                $validated['date_from'],
+                                $startTimeForProvider,
+                                $validated['date_to'],
+                                $endTimeForProvider,
+                                [
+                                    'driver_age' => $validated['age'] ?? 35,
+                                    'currency' => $validated['currency'] ?? 'EUR',
+                                    'prepaid' => true,
+                                ],
+                                [],
+                                $locationLat,
+                                $locationLng,
+                                $currentProviderLocationName,
+                                $rentalDays
+                            );
+
+                            Log::info('Renteon vehicles processed from all providers: ' . count($renteonVehicles));
+                        }
+
                         foreach ($renteonVehicles as $renteonVehicle) {
                             $providerVehicles->push((object) $renteonVehicle);
                         }
