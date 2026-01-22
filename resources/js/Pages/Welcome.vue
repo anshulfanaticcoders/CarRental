@@ -123,6 +123,10 @@ const translatedPhrases = computed(() => [
 ]);
 
 const displayedText = ref('');
+const isHeroMobile = ref(false);
+const updateHeroMobile = () => {
+    isHeroMobile.value = window.innerWidth <= 600;
+};
 let currentPhraseIndex = 0;
 let currentCharIndex = 0;
 let isDeleting = false;
@@ -136,6 +140,11 @@ const DELAY_AFTER_DELETE = 500; // Delay after deleting
 // Function to handle the typing animation
 const typeWriter = () => {
     const currentPhrase = translatedPhrases.value[currentPhraseIndex];
+    if (isHeroMobile.value) {
+        // On mobile, we use CSS marquee, so just keep the timer alive to check for resize
+        timer = setTimeout(typeWriter, 1000);
+        return;
+    }
     if (isDeleting) {
         // Deleting characters (stop before empty to avoid blank)
         if (currentCharIndex <= 1) {
@@ -164,14 +173,27 @@ const typeWriter = () => {
     }
 };
 
+const scrollToSearch = () => {
+    const searchSection = document.querySelector('.hero-search');
+    if (searchSection) {
+        // Offset for sticky header if needed
+        const yOffset = -50;
+        const y = searchSection.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+};
+
 onMounted(() => {
     // Start the typing animation
     timer = setTimeout(typeWriter, 500);
+    updateHeroMobile();
+    window.addEventListener('resize', updateHeroMobile);
 });
 
 onBeforeUnmount(() => {
     // Clean up the timer when component is destroyed
     if (timer) clearTimeout(timer);
+    window.removeEventListener('resize', updateHeroMobile);
 });
 
 
@@ -427,31 +449,65 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                     <div class="hero-label">{{ heroBadge }}</div>
                     <h1 class="hero-title anim-title clip-path-anim" v-html="animatedTagline"></h1>
                     <p class="hero-subtitle">{{ heroSubtitle }}</p>
-                    <div class="hero-typewriter">
+                    <!-- Desktop Typewriter -->
+                    <div v-show="!isHeroMobile" class="hero-typewriter">
                         <span class="typewriter-text">{{ displayedText }}</span>
                         <span class="cursor-blink ml-1"></span>
+                    </div>
+
+                    <!-- Mobile Marquee -->
+                    <div v-show="isHeroMobile" class="hero-marquee">
+                        <div class="marquee-track">
+                            <span v-for="(phrase, index) in translatedPhrases" :key="index" class="marquee-item">{{
+                                phrase
+                                }}</span>
+                            <span v-for="(phrase, index) in translatedPhrases" :key="'dup-' + index"
+                                class="marquee-item">{{
+                                    phrase }}</span>
+                        </div>
                     </div>
                     <div class="hero-trust">
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z" fill="currentColor" />
+                                <path
+                                    d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z"
+                                    fill="currentColor" />
                             </svg>
                             Fast booking
                         </span>
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 6h14l-1.2 12.5a2 2 0 01-2 1.8H8.2a2 2 0 01-2-1.8L5 6z" fill="currentColor" />
-                                <path d="M9 6V5a3 3 0 016 0v1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M5 6h14l-1.2 12.5a2 2 0 01-2 1.8H8.2a2 2 0 01-2-1.8L5 6z"
+                                    fill="currentColor" />
+                                <path d="M9 6V5a3 3 0 016 0v1" fill="none" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" />
                             </svg>
                             Transparent pricing
                         </span>
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 2a9 9 0 019 9 9 9 0 01-9 9 9 9 0 01-9-9 9 9 0 019-9z" fill="none" stroke="currentColor" stroke-width="1.5" />
-                                <path d="M12 6v5l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M12 2a9 9 0 019 9 9 9 0 01-9 9 9 9 0 01-9-9 9 9 0 019-9z" fill="none"
+                                    stroke="currentColor" stroke-width="1.5" />
+                                <path d="M12 6v5l3 2" fill="none" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
                             Real-time support
                         </span>
+                    </div>
+
+                    <div v-show="isHeroMobile" class="mobile-scroll-btn" @click="scrollToSearch">
+                        <span class="scroll-text">Let's Start Booking</span>
+                        <div class="scroll-arrows">
+                            <svg viewBox="0 0 24 24" class="scroll-arrow arrow-1">
+                                <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" />
+                            </svg>
+                            <svg viewBox="0 0 24 24" class="scroll-arrow arrow-2">
+                                <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" />
+                            </svg>
+                            <svg viewBox="0 0 24 24" class="scroll-arrow arrow-3">
+                                <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -650,7 +706,8 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!-- ------------------------Blogs Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section v-if="!isLoading && blogs && blogs.length" class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0 blogs-trigger">
+        <section v-if="!isLoading && blogs && blogs.length"
+            class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0 blogs-trigger">
             <div
                 class="column text-center flex flex-col items-center w-[650px] py-8 max-[768px]:py-0 max-[768px]:w-full max-[768px]:mb-10 blog-title-section">
                 <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('blogs_title') }}-</span>
@@ -749,6 +806,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 <style>
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600&display=swap");
+
 .bg-dots-darker {
     background-image: url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.22676 0C1.91374 0 2.45351 0.539773 2.45351 1.22676C2.45351 1.91374 1.91374 2.45351 1.22676 2.45351C0.539773 2.45351 0 1.91374 0 1.22676C0 0.539773 0.539773 0 1.22676 0Z' fill='rgba(0,0,0,0.07)'/%3E%3C/svg%3E");
 }
@@ -1100,10 +1158,12 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 }
 
 @keyframes floatBubble {
+
     0%,
     100% {
         transform: translateY(0) translateX(0);
     }
+
     50% {
         transform: translateY(-14px) translateX(8px);
     }
@@ -1219,11 +1279,13 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
         box-shadow: 0 0 0 6px rgba(46, 167, 173, 0.25);
         opacity: 0.9;
     }
+
     50% {
         background: #e8dccf;
         box-shadow: 0 0 0 8px rgba(232, 220, 207, 0.2);
         opacity: 1;
     }
+
     100% {
         background: #2ea7ad;
         box-shadow: 0 0 0 6px rgba(46, 167, 173, 0.25);
@@ -1354,14 +1416,48 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 @media (max-width: 768px) {
     .hero-search {
-        margin-top: 2rem;
-        padding: 0 1.5rem 0;
+        margin-top: 4rem;
+        padding: 0 1rem;
     }
 }
 
 @media (max-width: 900px) {
     .hero {
-        padding: 3.5rem 6vw 8rem;
+        padding: 0rem 0vw 1rem;
+    }
+
+    .hero-wrapper {
+        max-width: 100%;
+    }
+
+    .hero-left {
+        padding: 2.8rem 2.4rem 3rem;
+        border-radius: 0;
+    }
+
+    .hero-title {
+        font-size: clamp(2.2rem, 5vw, 3rem);
+    }
+
+    .hero-subtitle {
+        max-width: 100%;
+    }
+
+    .hero-trust {
+        gap: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .hero-bubble.bubble-1 {
+        width: 100px;
+        height: 100px;
+        right: 10%;
+    }
+
+    .hero-bubble.bubble-4 {
+        width: 85px;
+        height: 85px;
+        left: 12%;
     }
 
     .hero-bg-image {
@@ -1371,15 +1467,149 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
         right: 0;
         opacity: 0.28;
     }
+
+
 }
 
 @media (max-width: 600px) {
     .hero-left {
-        padding: 2.6rem 1.8rem;
+        padding: 3.4rem 1.6rem;
     }
 
     .hero-trust {
+        gap: 0.75rem;
+    }
+
+    .hero-title {
+        font-size: clamp(2rem, 8vw, 2.6rem);
+    }
+
+    .hero-marquee {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        min-height: 3.2rem;
+        border-radius: 16px;
+        padding: 0.8rem 1.1rem;
+        overflow: hidden;
+        background: rgba(6, 19, 28, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: #e8dccf;
+        box-shadow: inset 0 0 0 1px rgba(46, 167, 173, 0.2);
+        position: relative;
+        white-space: nowrap;
+    }
+
+    .marquee-track {
+        display: flex;
+        gap: 2rem;
+        animation: marquee 30s linear infinite;
+        width: max-content;
+    }
+
+    .mobile-scroll-btn {
+        margin-top: 2.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         gap: 1rem;
+        cursor: pointer;
+        color: #e8dccf;
+        width: 100%;
+    }
+
+    .scroll-text {
+        font-family: "Fraunces", serif;
+        font-size: 1.2rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #2ea7ad;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .scroll-arrows {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 40px;
+        margin-top: -10px;
+    }
+
+    .scroll-arrow {
+        width: 24px;
+        height: 24px;
+        margin-top: -12px;
+        /* Overlap them slightly */
+        animation: arrowFade 2s infinite;
+        opacity: 0;
+    }
+
+    .arrow-1 {
+        animation-delay: 0s;
+        width: 24px;
+        height: 24px;
+        opacity: 0.6;
+    }
+
+    .arrow-2 {
+        animation-delay: 0.2s;
+        width: 30px;
+        height: 30px;
+        margin-top: -12px;
+        opacity: 0.8;
+    }
+
+    .arrow-3 {
+        animation-delay: 0.4s;
+        width: 36px;
+        height: 36px;
+        margin-top: -15px;
+    }
+
+    @keyframes arrowFade {
+        0% {
+            opacity: 0;
+            transform: translateY(-5px);
+        }
+
+        50% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        100% {
+            opacity: 0;
+            transform: translateY(5px);
+        }
+    }
+
+    .marquee-item {
+        font-size: 1rem;
+        color: #e8dccf;
+        flex-shrink: 0;
+    }
+
+    @keyframes marquee {
+        0% {
+            transform: translateX(0);
+        }
+
+        100% {
+            transform: translateX(-50%);
+        }
+    }
+
+    .hero-bubble.bubble-2 {
+        width: 70px;
+        height: 70px;
+        left: 4%;
+    }
+
+    .hero-bubble.bubble-3 {
+        width: 60px;
+        height: 60px;
+        right: 4%;
     }
 }
 </style>
