@@ -16,7 +16,7 @@ class LocautoRentService
   public function __construct()
   {
     // Use production URL - credentials only work on production, not test environment
-    $this->baseUrl = env('LOCAUTO_RENT_PRODUCTION_URL', 'https://nextrent.locautorent.com/webservices/nextRentOTAService.asmx');
+    $this->baseUrl = env('LOCAUTO_RENT_PRODUCTION_URL', 'https://api.locautorent.com/NextRentWebService.asmx');
     $this->username = env('LOCAUTO_RENT_USERNAME');
     $this->password = env('LOCAUTO_RENT_PASSWORD');
     $this->testMode = false; // Use production mode

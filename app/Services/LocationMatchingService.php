@@ -103,6 +103,13 @@ class LocationMatchingService
      */
     public function calculateSimilarityScore(array $loc1, array $loc2): float
     {
+        $exactKey1 = $this->buildExactMatchKey($loc1);
+        $exactKey2 = $this->buildExactMatchKey($loc2);
+
+        if ($exactKey1 !== '' && $exactKey1 === $exactKey2) {
+            return 1.0;
+        }
+
         // Check for terminal conflict FIRST - different terminals should NEVER merge
         // e.g., "Dubai Terminal 1" and "Dubai Terminal 2" should stay separate
         if ($this->hasTerminalConflict($loc1, $loc2)) {
@@ -134,6 +141,23 @@ class LocationMatchingService
         );
 
         return $totalScore;
+    }
+
+    private function buildExactMatchKey(array $location): string
+    {
+        $name = $location['label'] ?? $location['name'] ?? '';
+        $city = $location['city'] ?? '';
+        $country = $location['country'] ?? '';
+
+        $normalizedName = $this->locationSearchService->normalizeString($name);
+        $normalizedCity = $this->locationSearchService->normalizeString($city);
+        $normalizedCountry = $this->locationSearchService->normalizeString($country);
+
+        if ($normalizedName === '' || $normalizedCity === '' || $normalizedCountry === '') {
+            return '';
+        }
+
+        return $normalizedName . '|' . $normalizedCity . '|' . $normalizedCountry;
     }
 
     /**

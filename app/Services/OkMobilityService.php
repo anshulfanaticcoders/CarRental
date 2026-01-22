@@ -47,9 +47,9 @@ class OkMobilityService
                     'SOAPAction' => $action,
                     'Accept-Encoding' => 'gzip',
                 ])
-                    ->timeout(60)
-                    ->connectTimeout(15)
-                    ->retry(3, 200) // Retry 3 times with 200ms delay
+                    ->timeout(config('services.okmobility.timeout', 12))
+                    ->connectTimeout(config('services.okmobility.connect_timeout', 6))
+                    ->retry(config('services.okmobility.retry_attempts', 1), config('services.okmobility.retry_delay', 200))
                     ->withOptions([
                         'verify' => false,
                         'curl' => [

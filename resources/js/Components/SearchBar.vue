@@ -665,8 +665,14 @@ const selectLocation = (result) => {
     form.value.provider_pickup_id = result.providers[0].pickup_id;
     dropoffProvider.value = result.providers[0].provider;
 
-    // Fetch dropoff locations for the first provider
-    selectProvider(result.providers[0]);
+    // Set default dropoff to be same as pickup while keeping mixed provider
+    form.value.dropoff_where = form.value.where;
+    form.value.dropoff_location_id = form.value.provider_pickup_id;
+
+    // Fetch dropoff locations for the first provider without overriding mixed
+    if (providerSupportsDropoffList(result.providers[0].provider)) {
+      fetchDropoffLocations(result.providers[0].provider, result.providers[0].pickup_id);
+    }
   } else {
     // No providers and not an internal location, reset
     isProviderLocation.value = false;
