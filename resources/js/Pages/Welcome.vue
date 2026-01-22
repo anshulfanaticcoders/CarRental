@@ -104,6 +104,18 @@ const animatedTagline = computed(() => {
     return words.join(' ').replace(/</g, '<').replace(/>/g, '>');
 });
 
+const heroBadge = computed(() => {
+    const badge = _t('hero_badge');
+    return badge && badge !== 'hero_badge' ? badge : 'Vrooem car Rentals';
+});
+
+const heroSubtitle = computed(() => {
+    const subtitle = _t('hero_subtitle');
+    return subtitle && subtitle !== 'hero_subtitle'
+        ? subtitle
+        : 'Premium vehicles, moonlit routes, and concierge-level care for travelers who expect quiet elegance at every pickup.';
+});
+
 const translatedPhrases = computed(() => [
     _t('typewriter_text_1'),
     _t('typewriter_text_2'),
@@ -125,16 +137,18 @@ const DELAY_AFTER_DELETE = 500; // Delay after deleting
 const typeWriter = () => {
     const currentPhrase = translatedPhrases.value[currentPhraseIndex];
     if (isDeleting) {
-        // Deleting characters
-        displayedText.value = currentPhrase.substring(0, currentCharIndex - 1);
-        currentCharIndex--;
-        // If deletion is complete
-        if (currentCharIndex === 0) {
+        // Deleting characters (stop before empty to avoid blank)
+        if (currentCharIndex <= 1) {
             isDeleting = false;
             currentPhraseIndex = (currentPhraseIndex + 1) % translatedPhrases.value.length;
+            currentCharIndex = 1;
+            const nextPhrase = translatedPhrases.value[currentPhraseIndex];
+            displayedText.value = nextPhrase.substring(0, currentCharIndex);
             timer = setTimeout(typeWriter, DELAY_AFTER_DELETE);
             return;
         }
+        displayedText.value = currentPhrase.substring(0, currentCharIndex - 1);
+        currentCharIndex--;
         timer = setTimeout(typeWriter, DELETE_SPEED);
     } else {
         // Typing characters
@@ -399,37 +413,54 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     <AuthenticatedHeaderLayout />
 
     <main class="overflow-x-hidden">
-        <section class="hero_section max-[768px]:bg-customPrimaryColor relative">
-            <div class="wrapper flex justify-between w-full
-            max-[768px]:flex-col">
-                <div class="column bg-customPrimaryColor h-[38rem] w-full text-white flex flex-col items-end justify-center
-                     max-[768px]:h-auto max-[768px]:px-[1.5rem] max-[768px]:py-[1.5rem] relative">
-                    <FloatingBubbles />
-                    <div class="pl-[10%] max-[768px]:pl-0 hero-content relative z-10">
-                        <h1 class="anim-title clip-path-anim" v-html="animatedTagline"></h1>
-                        <div class="h-16 mt-3 max-[768px]:h-20 flex">
-                            <!-- Typewriter text container -->
-                            <p class="text-[1.25rem]  max-[768px]:text-[1rem] flex items-center">
-                                <span class="typewriter-text">{{ displayedText }}</span>
-                                <span class="cursor-blink ml-1"></span>
-                            </p>
-                        </div>
+        <section class="hero_section hero">
+            <div class="hero-bg-image hero-image" :style="{ backgroundImage: `url(${heroImageSource})` }"></div>
+            <div class="hero-orb orb-1"></div>
+            <div class="hero-orb orb-2"></div>
+            <div class="hero-bubble bubble-1"></div>
+            <div class="hero-bubble bubble-2"></div>
+            <div class="hero-bubble bubble-3"></div>
+            <div class="hero-bubble bubble-4"></div>
+            <div class="hero-bubble bubble-5"></div>
+            <div class="hero-wrapper">
+                <div class="hero-left">
+                    <div class="hero-label">{{ heroBadge }}</div>
+                    <h1 class="hero-title anim-title clip-path-anim" v-html="animatedTagline"></h1>
+                    <p class="hero-subtitle">{{ heroSubtitle }}</p>
+                    <div class="hero-typewriter">
+                        <span class="typewriter-text">{{ displayedText }}</span>
+                        <span class="cursor-blink ml-1"></span>
+                    </div>
+                    <div class="hero-trust">
+                        <span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z" fill="currentColor" />
+                            </svg>
+                            Fast booking
+                        </span>
+                        <span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M5 6h14l-1.2 12.5a2 2 0 01-2 1.8H8.2a2 2 0 01-2-1.8L5 6z" fill="currentColor" />
+                                <path d="M9 6V5a3 3 0 016 0v1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            </svg>
+                            Transparent pricing
+                        </span>
+                        <span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 2a9 9 0 019 9 9 9 0 01-9 9 9 9 0 01-9-9 9 9 0 019-9z" fill="none" stroke="currentColor" stroke-width="1.5" />
+                                <path d="M12 6v5l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            Real-time support
+                        </span>
                     </div>
                 </div>
-                <div
-                    class="column h-[46rem] w-full relative max-[768px]:h-auto max-[768px]:pb-[2rem] max-[768px]:px-[1.5rem] hero-image">
-                    <img class="rounded-bl-[20px] h-full w-full object-cover max-[768px]:rounded-[20px]"
-                        :src="heroImageSource" alt="Hero Image" />
-                    <div class="bg-customOverlayColor absolute top-0 w-full h-full rounded-bl-[20px]"></div>
-                </div>
+            </div>
+            <div class="search-bar-section hero-search">
+                <SearchBar class="search-bar-animation" :simple="true" />
             </div>
         </section>
 
 
-        <section
-            class="mt-[-14rem] mb-[6rem] max-[768px]:mb-[0] max-[768px]:mt-[-1rem] max-[768px]:px-[1.5rem] max-[768px]:pt-[2rem] max-[768px]:bg-customPrimaryColor relative z-10 search-bar-section">
-            <SearchBar class="search-bar-animation" :simple="true" />
-        </section>
 
 
         <!------------------------------- Advertisement Section -------------------------------------->
@@ -717,6 +748,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 </template>
 
 <style>
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600&display=swap");
 .bg-dots-darker {
     background-image: url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.22676 0C1.91374 0 2.45351 0.539773 2.45351 1.22676C2.45351 1.91374 1.91374 2.45351 1.22676 2.45351C0.539773 2.45351 0 1.91374 0 1.22676C0 0.539773 0.539773 0 1.22676 0Z' fill='rgba(0,0,0,0.07)'/%3E%3C/svg%3E");
 }
@@ -947,5 +979,407 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 .category-card-hover:hover {
     transform: scale(1.01);
     filter: brightness(0.8);
+}
+
+.hero {
+    position: relative;
+    overflow: visible;
+    padding: 5rem 4vw 7rem;
+    background: radial-gradient(circle at 20% 20%, rgba(46, 167, 173, 0.2), transparent 55%),
+        radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.08), transparent 40%),
+        linear-gradient(125deg, #081824 0%, #0b2f3f 45%, #08141d 100%);
+}
+
+.hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.08), transparent 45%),
+        url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 120C40 120 60 90 100 90C140 90 160 120 200 120' stroke='rgba(255,255,255,0.06)' stroke-width='1'/%3E%3Cpath d='M0 150C40 150 60 120 100 120C140 120 160 150 200 150' stroke='rgba(255,255,255,0.04)' stroke-width='1'/%3E%3Cpath d='M0 60C40 60 60 30 100 30C140 30 160 60 200 60' stroke='rgba(255,255,255,0.05)' stroke-width='1'/%3E%3C/svg%3E");
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.hero-bg-image {
+    position: absolute;
+    top: -5%;
+    right: -3%;
+    width: 55%;
+    height: 120%;
+    background-size: cover;
+    background-position: center right;
+    opacity: 0.35;
+    filter: saturate(1.1);
+    mix-blend-mode: screen;
+    pointer-events: none;
+}
+
+.hero-bg-image::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(8, 20, 29, 0.95) 0%, rgba(8, 20, 29, 0.35) 45%, rgba(8, 20, 29, 0) 100%),
+        linear-gradient(180deg, rgba(8, 20, 29, 0.85) 0%, rgba(8, 20, 29, 0) 35%, rgba(8, 20, 29, 0) 65%, rgba(8, 20, 29, 0.85) 100%);
+}
+
+.hero-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(0px);
+    opacity: 0.7;
+    mix-blend-mode: screen;
+    pointer-events: none;
+}
+
+.hero-orb.orb-1 {
+    width: 260px;
+    height: 260px;
+    background: radial-gradient(circle, rgba(46, 167, 173, 0.4), transparent 70%);
+    top: -60px;
+    left: 10%;
+}
+
+.hero-orb.orb-2 {
+    width: 180px;
+    height: 180px;
+    background: radial-gradient(circle, rgba(255, 211, 155, 0.25), transparent 70%);
+    bottom: 10%;
+    right: 18%;
+}
+
+.hero-bubble {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgb(255 255 255 / 8%), rgba(46, 167, 173, 0.05));
+    border: 1px solid rgb(255 255 255 / 9%);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 22px rgba(5, 15, 24, 0.28);
+    pointer-events: none;
+    animation: floatBubble 10s ease-in-out infinite;
+}
+
+.hero-bubble.bubble-1 {
+    width: 120px;
+    height: 120px;
+    top: 18%;
+    right: 16%;
+    animation-delay: 0.2s;
+}
+
+.hero-bubble.bubble-2 {
+    width: 90px;
+    height: 90px;
+    bottom: 14%;
+    left: 8%;
+    animation-delay: 1s;
+}
+
+.hero-bubble.bubble-3 {
+    width: 70px;
+    height: 70px;
+    top: 55%;
+    right: 6%;
+    animation-delay: 1.6s;
+}
+
+.hero-bubble.bubble-4 {
+    width: 100px;
+    height: 100px;
+    top: 8%;
+    left: 22%;
+    animation-delay: 0.6s;
+}
+
+.hero-bubble.bubble-5 {
+    width: 80px;
+    height: 80px;
+    bottom: 26%;
+    right: 28%;
+    animation-delay: 2.2s;
+}
+
+@keyframes floatBubble {
+    0%,
+    100% {
+        transform: translateY(0) translateX(0);
+    }
+    50% {
+        transform: translateY(-14px) translateX(8px);
+    }
+}
+
+.hero-wrapper {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.5rem;
+    position: relative;
+    z-index: 1;
+    align-items: stretch;
+}
+
+.hero-left {
+    padding: 3.2rem 2.6rem 3.2rem 3.2rem;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(9, 27, 36, 0.75));
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 30px 70px rgba(6, 18, 27, 0.45);
+    font-family: "Manrope", sans-serif;
+}
+
+.hero-left::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 12% 18%, rgba(46, 167, 173, 0.18), transparent 60%);
+    pointer-events: none;
+}
+
+.hero-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #e8dccf;
+    font-weight: 600;
+    margin-bottom: 1.6rem;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-title {
+    font-family: "Fraunces", serif;
+    font-size: clamp(2.7rem, 4.2vw, 4rem);
+    line-height: 1.08;
+    color: #ffffff;
+    margin-bottom: 1.6rem;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-title .anim-title-word {
+    color: #e8dccf;
+}
+
+.hero-subtitle {
+    font-size: 1.08rem;
+    color: rgba(255, 255, 255, 0.75);
+    max-width: 28rem;
+    line-height: 1.65;
+    margin-bottom: 1.9rem;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-typewriter {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 1.35rem;
+    border-radius: 999px;
+    background: rgba(6, 19, 28, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #e8dccf;
+    font-size: 0.98rem;
+    position: relative;
+    z-index: 1;
+    box-shadow: inset 0 0 0 1px rgba(46, 167, 173, 0.2);
+    min-height: 2.6rem;
+}
+
+.hero-typewriter::before {
+    content: "";
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #2ea7ad;
+    box-shadow: 0 0 0 6px rgba(46, 167, 173, 0.35);
+    position: relative;
+    z-index: 1;
+    animation: premiumPulse 2.4s ease-in-out infinite;
+}
+
+.hero-typewriter::after {
+    content: none;
+}
+
+@keyframes premiumPulse {
+    0% {
+        background: #2ea7ad;
+        box-shadow: 0 0 0 6px rgba(46, 167, 173, 0.25);
+        opacity: 0.9;
+    }
+    50% {
+        background: #e8dccf;
+        box-shadow: 0 0 0 8px rgba(232, 220, 207, 0.2);
+        opacity: 1;
+    }
+    100% {
+        background: #2ea7ad;
+        box-shadow: 0 0 0 6px rgba(46, 167, 173, 0.25);
+        opacity: 0.9;
+    }
+}
+
+.hero-typewriter .typewriter-text {
+    display: inline-block;
+    min-width: 24ch;
+    white-space: nowrap;
+}
+
+.hero-trust {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: 2.6rem;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.95rem;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-trust span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.hero-trust svg {
+    width: 18px;
+    height: 18px;
+    color: #d9cbb8;
+    flex-shrink: 0;
+}
+
+.search-bar-section .search_bar {
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 18px 50px rgba(5, 15, 24, 0.45);
+    background: rgba(10, 20, 26, 0.92);
+    overflow: visible;
+    position: relative;
+    width: 100%;
+    max-width: 1280px;
+}
+
+.search-bar-section .search_bar::before {
+    content: "";
+    position: absolute;
+    top: 0.6rem;
+    left: 1.2rem;
+    right: 1.2rem;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #2ea7ad, transparent);
+    animation: none;
+    opacity: 1;
+    z-index: 0;
+}
+
+.search-bar-section .search_bar form {
+    background: transparent !important;
+    backdrop-filter: blur(14px);
+    position: relative;
+    z-index: 1;
+}
+
+.search-bar-section .search_bar .bg-gray-50 {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.search-bar-section .search_bar .border-gray-200 {
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.search-bar-section .search_bar form .text-customDarkBlackColor {
+    color: #f6f2ec !important;
+}
+
+.search-bar-section .search_bar form svg {
+    color: #f6f2ec !important;
+}
+
+.search-bar-section .search_bar form .text-customLightGrayColor {
+    color: rgba(230, 235, 238, 0.7) !important;
+}
+
+.search-bar-section .search_bar form input,
+.search-bar-section .search_bar form .text-customPrimaryColor,
+.search-bar-section .search_bar form .text-gray-400,
+.search-bar-section .search_bar form .text-gray-500 {
+    color: #f6f2ec !important;
+}
+
+.search-bar-section .search_bar form input::placeholder {
+    color: rgba(230, 235, 238, 0.5) !important;
+}
+
+.search-bar-section .search-results {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+.search-bar-section .search-results .text-gray-500,
+.search-bar-section .search-results .text-gray-600,
+.search-bar-section .search-results .text-customDarkBlackColor {
+    color: #334155 !important;
+}
+
+.search-bar-section .search_bar button[type="submit"] {
+    background: linear-gradient(135deg, #0d3342, #2ea7ad) !important;
+    border-radius: 18px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.search-bar-section .search_bar button[type="submit"]:hover {
+    box-shadow: 0 16px 30px rgba(12, 63, 78, 0.25);
+}
+
+.hero-search {
+    max-width: 1280px;
+    margin: 2.5rem auto 0;
+    position: relative;
+    z-index: 10;
+}
+
+@media (max-width: 768px) {
+    .hero-search {
+        margin-top: 2rem;
+        padding: 0 1.5rem 0;
+    }
+}
+
+@media (max-width: 900px) {
+    .hero {
+        padding: 3.5rem 6vw 8rem;
+    }
+
+    .hero-bg-image {
+        width: 100%;
+        height: 70%;
+        top: 30%;
+        right: 0;
+        opacity: 0.28;
+    }
+}
+
+@media (max-width: 600px) {
+    .hero-left {
+        padding: 2.6rem 1.8rem;
+    }
+
+    .hero-trust {
+        gap: 1rem;
+    }
 }
 </style>
