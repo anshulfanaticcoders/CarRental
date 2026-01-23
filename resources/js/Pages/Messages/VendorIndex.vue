@@ -299,10 +299,48 @@ const handleMessageReceived = (message) => {
     }
 };
 
+const normalizeBookingId = (bookingId) => {
+    if (!bookingId) return null;
+    const parsedId = Number(bookingId);
+    return Number.isNaN(parsedId) ? bookingId : parsedId;
+};
+
+const findPartnerByBookingId = (bookingId) => {
+    if (!bookingId || !props.chatPartners) return null;
+
+    return props.chatPartners.find((partner) => {
+        if (partner.active_booking_id == bookingId || partner.latest_completed_booking_id == bookingId || partner.latest_booking_id == bookingId) {
+            return true;
+        }
+
+        if (Array.isArray(partner.bookings)) {
+            return partner.bookings.some((booking) => booking.id == bookingId);
+        }
+
+        return false;
+    });
+};
+
 onMounted(() => {
         
     checkIfMobile();
     window.addEventListener('resize', checkIfMobile);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingIdFromUrl = normalizeBookingId(urlParams.get('booking_id'));
+
+    if (bookingIdFromUrl && props.chatPartners) {
+        const targetPartner = findPartnerByBookingId(bookingIdFromUrl);
+        if (targetPartner) {
+            if (targetPartner.latest_completed_booking_id == bookingIdFromUrl && targetPartner.active_booking_id != bookingIdFromUrl) {
+                showRecentChats.value = true;
+            }
+            selectedPartner.value = targetPartner;
+            otherUser.value = targetPartner.user;
+            loadChatForBooking(bookingIdFromUrl, targetPartner);
+            return;
+        }
+    }
     
     if (isMobile.value) {
         showChat.value = false;
@@ -324,14 +362,14 @@ onUnmounted(() => {
         <meta name="robots" content="noindex, nofollow">
         <title>Inbox</title>
     </Head>
-    <div class="flex flex-col h-screen bg-gray-100 message-box">
+    <div class="flex flex-col h-screen message-box">
         <!-- New Page Header -->
 
         <!-- Main Chat Area -->
         <div class="flex flex-row flex-grow overflow-hidden">
             <!-- Chat List (Left Panel) -->
             <div v-if="!showChat || !isMobile"
-                 class="w-full md:w-1/3 lg:w-1/4 border-r bg-white flex flex-col flex-shrink-0">
+                 class="w-full md:w-1/3 lg:w-1/4 border-r flex flex-col flex-shrink-0 chat-list-panel">
                 <!-- Active/Recent Chats Toggle -->
                 <div class="p-3 border-b bg-gray-50">
                     <div class="flex space-x-2">
@@ -366,130 +404,34 @@ onUnmounted(() => {
                         </p>
                     </div>
                     <div v-else v-for="partner in filteredChatPartners" :key="partner.user.id"
-                        class="border-b cursor-pointer hover:bg-gray-50 transition-colors"
-                        :class="{'bg-blue-50': selectedPartner && partner.user.id === selectedPartner.user.id}"
+                        class="border-b cursor-pointer transition-colors chat-list-item"
+                        :class="{'active': selectedPartner && partner.user.id === selectedPartner.user.id}"
                         @click="loadChat(partner)">
-
-                        <!-- Enhanced Partner Card -->
-                        <div class="flex gap-4 w-full py-4 px-4">
-                            <!-- Vehicle Image with Status Badge -->
+                        <div class="flex items-center gap-3 px-4 py-3">
                             <div class="relative flex-shrink-0">
-                                <img :src="getVehicleImage(partner)"
-                                    :alt="partner.vehicle?.name || 'Vehicle'"
-                                    class="w-16 h-16 rounded-xl object-cover shadow-sm" />
-
-                                <!-- Booking Status Badge -->
-                                <div v-if="partner.booking?.status"
-                                     class="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs"
-                                     :class="getBookingStatusBadgeClass(partner.booking.status)">
-                                    {{ getBookingStatusIcon(partner.booking.status) }}
-                                </div>
+                                <img :src="getProfileImage(partner.user)"
+                                    :alt="partner.user.first_name"
+                                    class="w-11 h-11 rounded-full object-cover ring-2 ring-white shadow-sm" />
+                                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
+                                    :class="partner.user?.chat_status?.is_online ? 'bg-emerald-500' : 'bg-gray-400'"></span>
                             </div>
-
-                            <!-- Detailed Chat Information -->
-                            <div class="flex-1 min-w-0">
-                                <!-- Header Row: Customer Name + Timestamp + Unread -->
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center gap-2 min-w-0">
-                                        <!-- Customer Avatar -->
-                                        <img :src="getProfileImage(partner.user)"
-                                            :alt="partner.user.first_name"
-                                            class="w-8 h-8 rounded-full object-cover ring-2 ring-white" />
-
-                                        <!-- Customer Name with Online Status -->
-                                        <div class="min-w-0">
-                                            <div class="flex items-center gap-2">
-                                                <span class="font-semibold text-gray-900 truncate">
-                                                    {{ partner.user.first_name }} {{ partner.user.last_name || '' }}
-                                                </span>
-                                                <div class="w-2 h-2 rounded-full"
-                                                     :class="partner.user?.chat_status?.is_online ? 'bg-green-500' : 'bg-gray-400'">
-                                                </div>
-                                            </div>
-                                            <p class="text-xs text-gray-500">
-                                                {{ formatLastSeen(partner.user?.chat_status) }}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex items-center gap-2 flex-shrink-0">
-                                        <span class="text-xs text-gray-500">
-                                            {{ formatTime(partner.last_message_at) }}
-                                        </span>
-                                        <span v-if="partner.unread_count > 0"
-                                            class="bg-blue-600 text-white rounded-full min-w-[24px] h-6 flex items-center justify-center text-xs font-medium px-2">
-                                            {{ partner.unread_count }}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <!-- Vehicle Details -->
-                                <div class="mb-2">
-                                    <h4 class="font-medium text-gray-900 text-sm mb-1">
-                                        {{ partner.vehicle?.name }}
-                                    </h4>
-                                    <div class="flex items-center gap-3 text-xs text-gray-600">
-                                        <span>{{ partner.vehicle?.brand }} {{ partner.vehicle?.model }}</span>
-                                        <span>•</span>
-                                        <span>{{ partner.vehicle?.category }}</span>
-                                    </div>
-                                </div>
-
-                                <!-- Booking Information -->
-                                <div v-if="partner.booking" class="mb-2">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-2">
-                                            <!-- NEW: Recent Tab Indicator for Completed Bookings -->
-                                            <span v-if="showRecentChats && partner.completed_bookings_count > 0"
-                                                  class="text-xs px-2 py-1 rounded-full font-medium bg-gray-100 text-gray-700 flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                {{ partner.completed_bookings_count }} completed
-                                            </span>
-                                            <span v-else :class="`text-xs px-2 py-1 rounded-full font-medium ${getBookingStatusColor(partner.booking.status)}`">
-                                                {{ getBookingStatusIcon(partner.booking.status) }}
-                                                {{ partner.booking.status?.charAt(0).toUpperCase() + partner.booking.status?.slice(1) }}
-                                            </span>
-                                            <!-- Chat Disabled Indicator -->
-                                            <span v-if="partner.booking.chat_allowed === false" class="text-xs text-orange-600 flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                </svg>
-                                                Chat disabled
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <!-- Booking Dates (for active bookings) -->
-                                    <div v-if="partner.booking.status === 'pending' || partner.booking.status === 'confirmed'"
-                                         class="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        <span>{{ partner.booking.pickup_date ? formatDate(partner.booking.pickup_date) : 'Date not available' }} - {{ partner.booking.return_date ? formatDate(partner.booking.return_date) : 'Date not available' }}</span>
-                                    </div>
-                                </div>
-
-                                <!-- Last Message Preview -->
-                                <div class="flex items-start justify-between">
-                                    <p class="text-sm text-gray-600 truncate pr-2 flex-1" :title="partner.last_message_preview">
-                                        {{ partner.last_message_preview || 'No messages yet' }}
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="font-semibold text-slate-900 truncate">
+                                        {{ partner.user.first_name }} {{ partner.user.last_name || '' }}
                                     </p>
-                                </div>
-
-                                <!-- Booking Count Indicators -->
-                                <div class="flex gap-2 mt-2">
-                                    <span v-if="partner.active_bookings_count > 0"
-                                        class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                                        {{ partner.active_bookings_count }} active
-                                    </span>
-                                    <span v-if="partner.completed_bookings_count > 0"
-                                        class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                                        {{ partner.completed_bookings_count }} completed
+                                    <span class="text-xs text-slate-500 flex-shrink-0">
+                                        {{ formatTime(partner.last_message_at) }}
                                     </span>
                                 </div>
+                                <p class="text-sm text-slate-500 truncate" :title="partner.last_message_preview">
+                                    {{ partner.last_message_preview || 'No messages yet' }}
+                                </p>
                             </div>
+                            <span v-if="partner.unread_count > 0"
+                                class="bg-emerald-600 text-white rounded-full min-w-[24px] h-6 flex items-center justify-center text-xs font-medium px-2">
+                                {{ partner.unread_count }}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -497,7 +439,7 @@ onUnmounted(() => {
 
             <!-- Chat Component (Right Panel / Full Mobile) -->
             <div v-if="showChat || !isMobile"
-                 class="w-full md:flex-grow bg-gray-50 flex flex-col">
+                 class="w-full md:flex-grow bg-gradient-to-br from-white to-slate-50 flex flex-col min-h-0">
 
                 <div v-if="loadingChat" class="flex-1 flex items-center justify-center">
                     <p class="text-gray-600">Loading chat...</p>
@@ -538,6 +480,30 @@ onUnmounted(() => {
 </template>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Assistant:wght@400;600;700&display=swap');
+
+.message-box {
+    font-family: "Assistant", "Segoe UI", sans-serif;
+    background: #f6f2ea;
+}
+
+.chat-list-panel {
+    background: #fbfaf7;
+    border-right: 1px solid #e7e0d4;
+}
+
+.chat-list-item {
+    background: transparent;
+}
+
+.chat-list-item:hover {
+    background: #f8f5ef;
+}
+
+.chat-list-item.active {
+    background: #f1ede5;
+}
+
 @media screen and (max-width:768px) {
 .message-box{
     padding-bottom: 4rem;

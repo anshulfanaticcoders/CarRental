@@ -128,7 +128,7 @@ class MessageController extends Controller
 
             // Prepare vehicle image for active booking
             $vehicleImage = null;
-            if ($activeBooking->vehicle->images && $activeBooking->vehicle->images->isNotEmpty()) {
+            if ($activeBooking && $activeBooking->vehicle && $activeBooking->vehicle->images && $activeBooking->vehicle->images->isNotEmpty()) {
                 $vehicleImage = $activeBooking->vehicle->images->first()->image_url;
             }
 
@@ -350,7 +350,9 @@ public function show($locale, $bookingId)
     }
 
     $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
-    $otherUser = User::select('id', 'first_name', 'last_login_at')->find($otherUserId); // Use last_login_at
+    $otherUser = User::select('id', 'first_name', 'last_name', 'role')
+        ->with(['profile', 'chatStatus'])
+        ->find($otherUserId);
 
     $messages = Message::where('booking_id', $bookingId)
         ->where(function ($query) use ($user, $otherUserId) {
@@ -571,6 +573,12 @@ public function markMessagesAsRead($locale, $bookingId)
         ->whereNull('read_at')
         ->get();
 
+    \Log::info('Chat mark-as-read invoked', [
+        'booking_id' => $bookingId,
+        'user_id' => $user->id,
+        'unread_count' => $unreadMessages->count()
+    ]);
+
     if ($unreadMessages->isEmpty()) {
         return response()->json(['success' => 'No unread messages to mark.']);
     }
@@ -600,19 +608,20 @@ public function markMessagesAsRead($locale, $bookingId)
     // Broadcast read status update for other participants
     $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
 
-    // Temporarily disable broadcasting to isolate the issue
-    // TODO: Re-enable broadcasting once Pusher/queue is configured properly
-    /*
     foreach ($unreadMessages as $message) {
         try {
-            // Broadcast message read event
+            $message->read_at = $now;
             broadcast(new MessageRead($message, $user, $otherUserId))->toOthers();
+            \Log::info('Chat message.read broadcast', [
+                'message_id' => $message->id,
+                'booking_id' => $bookingId,
+                'reader_id' => $user->id,
+                'recipient_id' => $otherUserId
+            ]);
         } catch (\Exception $e) {
             \Log::error('Failed to broadcast MessageRead event: ' . $e->getMessage());
-            // Continue even if broadcasting fails
         }
     }
-    */
 
     return response()->json([
         'success' => 'Messages marked as read.',

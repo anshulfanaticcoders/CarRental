@@ -55,13 +55,18 @@ class MessageRead implements ShouldBroadcast
      */
     public function broadcastWith(): array
     {
+        $readAt = $this->message->read_at;
+        if ($readAt && !$readAt instanceof \Carbon\Carbon) {
+            $readAt = \Carbon\Carbon::parse($readAt);
+        }
+
         return [
             'message_id' => $this->message->id,
             'user_id' => $this->user->id,
             'user_name' => $this->user->first_name . ' ' . $this->user->last_name,
             'recipient_id' => $this->recipientId,
             'booking_id' => $this->message->booking_id,
-            'read_at' => $this->message->read_at ? $this->message->read_at->toISOString() : now()->toISOString(),
+            'read_at' => $readAt ? $readAt->toISOString() : now()->toISOString(),
         ];
     }
 }

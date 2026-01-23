@@ -422,6 +422,9 @@ const setupChannelListeners = () => {
                 messageList.value.push(e.message);
                 emit('messageReceived', e.message);
                 scrollToBottom();
+                if (e.message.sender_id !== page.props.auth.user.id) {
+                    markAsRead();
+                }
             }
         }
     });
@@ -446,7 +449,7 @@ const setupChannelListeners = () => {
     });
 
     // Listen for typing indicators
-    channel.listen('typing.indicator', (e) => {
+    channel.listen('.typing.indicator', (e) => {
         if (e.user_id !== page.props.auth.user.id && e.booking_id == props.bookingId) {
             if (e.is_typing) {
                 // Add user to typing list
@@ -473,7 +476,7 @@ const setupChannelListeners = () => {
     });
 
     // Listen for enhanced read receipts
-    channel.listen('message.read', (e) => {
+    channel.listen('.message.read', (e) => {
         if (e.user_id !== page.props.auth.user.id && e.booking_id == props.bookingId) {
             // Update message read status
             const messageIndex = messageList.value.findIndex(msg => msg.id === e.message_id);
@@ -565,6 +568,11 @@ const getBookingStatusIcon = (status) => {
     }
 };
 
+const formatStatusLabel = (status) => {
+    if (!status) return 'Unknown';
+    return status.charAt(0).toUpperCase() + status.slice(1);
+};
+
 const getProfileImage = (user) => {
     return user?.profile?.avatar ? `${user.profile.avatar}` : '/storage/avatars/default-avatar.svg';
 };
@@ -650,6 +658,43 @@ const lastSeenText = computed(() => {
     return `Last seen on ${formatDate(chatStatus.last_logout_at)}`;
 });
 
+const roleLabel = computed(() => {
+    const role = props.otherUser?.role;
+    if (!role) return 'User';
+    return role.charAt(0).toUpperCase() + role.slice(1);
+});
+
+const bookingSummary = computed(() => {
+    const details = props.bookingDetails || {};
+    const vehicle = details.vehicle || {};
+
+    return {
+        id: details.id ?? props.bookingId,
+        status: details.status ?? details.booking_status,
+        vehicleName: vehicle.name,
+        vehicleBrand: vehicle.brand,
+        vehicleModel: vehicle.model,
+        pickupDate: details.pickup_date,
+        returnDate: details.return_date
+    };
+});
+
+const bookingVehicleLabel = computed(() => {
+    const summary = bookingSummary.value;
+    const brandModel = [summary.vehicleBrand, summary.vehicleModel].filter(Boolean).join(' ');
+
+    if (summary.vehicleName && brandModel) {
+        return `${summary.vehicleName} · ${brandModel}`;
+    }
+
+    return summary.vehicleName || brandModel;
+});
+
+const bookingLink = computed(() => {
+    if (!props.bookingId) return null;
+    return route('booking.show', { locale: page.props.locale, id: props.bookingId });
+});
+
 const canSendMessage = computed(() => {
     return props.bookingRestrictions?.can_send_messages !== false;
 });
@@ -658,6 +703,9 @@ watch(() => props.messages, (newMessages) => {
     if (newMessages) {
         messageList.value = newMessages;
         scrollToBottom();
+        if (props.bookingId && newMessages.length > 0) {
+            markAsRead();
+        }
     }
 }, { deep: true });
 
@@ -698,11 +746,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="flex flex-col h-full bg-gradient-to-b from-gray-50 to-gray-100 rounded-xl shadow-lg overflow-hidden">
+    <div class="flex flex-col h-full min-h-0 bg-gradient-to-b from-gray-50 to-gray-100 rounded-xl shadow-lg overflow-hidden chat-shell">
         <!-- Header - Fixed -->
-        <div class="p-4 bg-white border-b border-gray-200 flex items-center gap-3 shadow-sm flex-shrink-0">
+        <div class="p-4 sm:p-5 chat-header border-b border-emerald-100/60 flex items-start gap-3 shadow-sm flex-shrink-0">
             <button v-if="showBackButton" @click="goBack"
-                class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                class="p-2 rounded-full hover:bg-white/70 transition-colors duration-200">
                 <img :src="arrowBackIcon" alt="Back" class="w-5 h-5" />
             </button>
 
@@ -714,33 +762,48 @@ onUnmounted(() => {
             </div>
 
             <div class="flex-grow min-w-0">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div class="min-w-0 flex-1">
-                        <h2 class="text-base sm:text-lg font-semibold text-gray-800 truncate">
-                            {{ otherUser?.first_name || 'Chat Partner' }} {{ otherUser?.last_name || '' }}
-                        </h2>
-                        <p class="text-xs sm:text-sm text-gray-500 truncate">{{ lastSeenText }}</p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 class="text-base sm:text-lg font-semibold text-gray-800 truncate chat-title">
+                                {{ otherUser?.first_name || 'Chat Partner' }} {{ otherUser?.last_name || '' }}
+                            </h2>
+                            <span class="role-pill">{{ roleLabel }}</span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-500 truncate">{{ lastSeenText }}</p>
+                        <div class="mt-2 flex flex-wrap items-center gap-2 text-[0.7rem]">
+                            <span v-if="bookingSummary.id" class="booking-pill">Booking #{{ bookingSummary.id }}</span>
+                            <span v-if="bookingSummary.status" :class="['booking-pill', getBookingStatusColor(bookingSummary.status)]">
+                                {{ getBookingStatusIcon(bookingSummary.status) }} {{ formatStatusLabel(bookingSummary.status) }}
+                            </span>
+                            <span v-if="bookingVehicleLabel" class="booking-pill booking-vehicle">{{ bookingVehicleLabel }}</span>
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                            <span v-if="bookingSummary.pickupDate">Pickup {{ formatDate(bookingSummary.pickupDate) }}</span>
+                            <span v-if="bookingSummary.returnDate">Return {{ formatDate(bookingSummary.returnDate) }}</span>
+                            <a v-if="bookingLink" :href="bookingLink" class="booking-link">View booking</a>
+                        </div>
                     </div>
 
                     <!-- Booking Context Dropdown (if multiple bookings) -->
                     <div v-if="allBookings.length > 1" class="booking-dropdown relative flex-shrink-0">
                         <button @click="toggleBookingDropdown"
-                            class="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
+                            class="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                             title="Switch booking">
-                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                             </svg>
-                            <span class="text-blue-800 font-medium hidden xs:inline sm:inline">{{ allBookings.length }} Bookings</span>
-                            <span class="text-blue-800 font-medium xs:hidden sm:hidden">{{ allBookings.length }}</span>
-                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span class="text-emerald-900 font-medium hidden xs:inline sm:inline">{{ allBookings.length }} Bookings</span>
+                            <span class="text-emerald-900 font-medium xs:hidden sm:hidden">{{ allBookings.length }}</span>
+                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </button>
 
                         <!-- Dropdown Menu -->
                         <div v-if="showBookingDropdown"
-                             class="absolute right-0 top-full mt-1 w-72 sm:w-80 lg:w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[60vh] overflow-hidden">
-                            <div class="p-3 border-b border-gray-100">
+                             class="absolute right-0 top-full mt-1 w-72 sm:w-80 lg:w-96 bg-white rounded-lg shadow-xl border border-emerald-100 z-50 max-h-[60vh] overflow-hidden">
+                            <div class="p-3 border-b border-emerald-50">
                                 <h3 class="text-sm font-semibold text-gray-800">Switch Booking</h3>
                                 <p class="text-xs text-gray-500">Select a different booking to chat about</p>
                             </div>
@@ -749,8 +812,8 @@ onUnmounted(() => {
                                      @click="switchBooking(booking)"
                                      :class="[
                                          'p-3 sm:p-4 border-b border-gray-50 last:border-b-0 cursor-pointer transition-colors duration-150 active:scale-95',
-                                         'hover:bg-gray-50',
-                                         booking.id === bookingId ? 'bg-blue-50' : 'bg-white'
+                                         'hover:bg-emerald-50',
+                                         booking.id === bookingId ? 'bg-emerald-50' : 'bg-white'
                                      ]">
                                     <div class="flex gap-3 sm:gap-4">
                                         <!-- Vehicle Image -->
@@ -772,7 +835,7 @@ onUnmounted(() => {
                                             <div class="flex items-start justify-between gap-2 mb-1">
                                                 <h4 class="font-semibold text-sm sm:text-base text-gray-900 truncate leading-tight">{{ booking.vehicle?.name }}</h4>
                                                 <span v-if="booking.id === bookingId"
-                                                      class="text-xs bg-blue-600 text-white px-2 py-1 rounded-full flex-shrink-0">Current</span>
+                                                      class="text-xs bg-emerald-700 text-white px-2 py-1 rounded-full flex-shrink-0">Current</span>
                                             </div>
                                             <p class="text-xs sm:text-sm text-gray-600 mb-2">{{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}</p>
                                             <div class="flex flex-wrap items-center gap-2">
@@ -789,11 +852,11 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Single Booking Indicator -->
-                    <div v-else-if="bookingDetails" class="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
-                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div v-else-if="bookingDetails" class="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
+                        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <span class="text-green-800 font-medium text-sm">1 Booking</span>
+                        <span class="text-emerald-800 font-medium text-sm">1 Booking</span>
                     </div>
                 </div>
             </div>
@@ -882,119 +945,122 @@ onUnmounted(() => {
         </div>
 
         <!-- Messages - Scrollable -->
-        <div ref="messageContainer" class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-            <div v-if="filteredMessages.length === 0" class="text-center text-gray-500 py-12">
-                <div class="text-4xl mb-2">💬</div>
-                <p class="text-lg">No messages found</p>
-            </div>
-            <div v-else v-for="message in filteredMessages" :key="message.id" class="group relative">
-                <div :class="[
-                    'p-4 rounded-2xl max-w-[75%] break-words shadow-sm transition-all duration-200 hover:shadow-md w-fit',
-                    message.sender_id === $page.props.auth.user.id
-                        ? 'ml-auto bg-customPrimaryColor text-white rounded-br-lg'
-                        : 'mr-auto bg-white text-gray-900 border border-gray-200 rounded-bl-lg'
-                ]">
-                    <div class="flex justify-between items-start gap-3 mb-2">
-                        <span class="font-medium text-sm opacity-90">
-                            {{ message.sender_id === $page.props.auth.user.id ? 'You' : otherUser.first_name }}
-                        </span>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs opacity-70">{{ formatTime(message.created_at) }}</span>
-                            <button v-if="message.sender_id === page.props.auth.user.id"
-                                @click="toggleOptions(message.id)"
-                                class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-white/20 mobile-show-options">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Message Content -->
-                    <div class="text-sm leading-relaxed">
-                        <template v-if="message.deleted_at">
-                            <div class="flex items-center gap-2 text-gray-400 italic">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"></path>
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v4a1 1 0 102 0V5z" clip-rule="evenodd"></path>
-                                </svg>
-                                This message was deleted
-                            </div>
-                        </template>
-                        <template v-else-if="message.file_path">
-                            <div v-if="isImage(message.file_type)" class="mb-2">
-                                <a :href="message.file_url" target="_blank" class="block">
-                                    <img :src="message.file_url" :alt="message.file_name" 
-                                        class="w-60 h-48 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200" />
-                                </a>
-                            </div>
-                            <div v-else class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
-                                <img :src="getFileIcon(message.file_type)" alt="File Icon" class="w-8 h-8" />
-                                <div class="flex-grow min-w-0">
-                                    <a :href="message.file_url" target="_blank" 
-                                        class="text-blue-600 hover:text-blue-800 font-medium block truncate">
-                                        {{ message.file_name }}
-                                    </a>
-                                    <p class="text-xs text-gray-500">{{ formatFileSize(message.file_size) }}</p>
-                                </div>
-                            </div>
-                            <p v-if="message.message" class="mt-2">{{ message.message }}</p>
-                        </template>
-                        <template v-else-if="message.voice_note_path">
-                            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                <div class="flex-shrink-0">
-                                    <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+        <div class="relative flex-1 min-h-0">
+            <div ref="messageContainer" class="h-full min-h-0 overflow-y-auto p-4 pb-16 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                <div v-if="filteredMessages.length === 0" class="text-center text-gray-500 py-12">
+                    <div class="text-4xl mb-2">💬</div>
+                    <p class="text-lg">No messages found</p>
+                </div>
+                <div v-else v-for="message in filteredMessages" :key="message.id" class="group relative">
+                    <div :class="[
+                        'p-4 rounded-2xl max-w-[75%] break-words shadow-sm transition-all duration-200 hover:shadow-md w-fit',
+                        message.sender_id === $page.props.auth.user.id
+                            ? 'ml-auto bg-customPrimaryColor text-white rounded-br-lg'
+                            : 'mr-auto bg-white text-gray-900 border border-gray-200 rounded-bl-lg'
+                    ]">
+                        <div class="flex justify-between items-start gap-3 mb-2">
+                            <span class="font-medium text-sm opacity-90">
+                                {{ message.sender_id === $page.props.auth.user.id ? 'You' : otherUser.first_name }}
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs opacity-70">{{ formatTime(message.created_at) }}</span>
+                                <button v-if="message.sender_id === page.props.auth.user.id"
+                                    @click="toggleOptions(message.id)"
+                                    class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-white/20 mobile-show-options">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
                                     </svg>
-                                </div>
-                                <audio controls :src="message.voice_note_url" class="flex-grow h-8"></audio>
+                                </button>
                             </div>
-                            <p v-if="message.message" class="mt-2">{{ message.message }}</p>
-                        </template>
-                        <template v-else>
-                            {{ message.message }}
-                        </template>
-                    </div>
+                        </div>
 
-                    <!-- Enhanced Read Status -->
-                    <div v-if="message.sender_id === page.props.auth.user.id && !message.deleted_at"
-                        class="text-right mt-2">
-                        <div class="flex items-center justify-end gap-1">
-                            <!-- Single checkmark for delivered (shown when not read) -->
-                            <span v-if="!message.read_at" class="text-xs text-gray-400">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                                </svg>
-                            </span>
+                        <!-- Message Content -->
+                        <div class="text-sm leading-relaxed">
+                            <template v-if="message.deleted_at">
+                                <div class="flex items-center gap-2 text-gray-400 italic">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"></path>
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v4a1 1 0 102 0V5z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    This message was deleted
+                                </div>
+                            </template>
+                            <template v-else-if="message.file_path">
+                                <div v-if="isImage(message.file_type)" class="mb-2">
+                                    <a :href="message.file_url" target="_blank" class="block">
+                                        <img :src="message.file_url" :alt="message.file_name" 
+                                            class="w-60 h-48 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200" />
+                                    </a>
+                                </div>
+                                <div v-else class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                                    <img :src="getFileIcon(message.file_type)" alt="File Icon" class="w-8 h-8" />
+                                    <div class="flex-grow min-w-0">
+                                        <a :href="message.file_url" target="_blank" 
+                                            class="text-blue-600 hover:text-blue-800 font-medium block truncate">
+                                            {{ message.file_name }}
+                                        </a>
+                                        <p class="text-xs text-gray-500">{{ formatFileSize(message.file_size) }}</p>
+                                    </div>
+                                </div>
+                                <p v-if="message.message" class="mt-2">{{ message.message }}</p>
+                            </template>
+                            <template v-else-if="message.voice_note_path">
+                                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <div class="flex-shrink-0">
+                                        <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                    <audio controls :src="message.voice_note_url" class="flex-grow h-8"></audio>
+                                </div>
+                                <p v-if="message.message" class="mt-2">{{ message.message }}</p>
+                            </template>
+                            <template v-else>
+                                {{ message.message }}
+                            </template>
+                        </div>
 
-                            <!-- Double checkmark for read (shown only when read) -->
-                            <span v-else class="text-xs text-blue-500">
-                                <img :src="doubleTickIcon" alt="Read" class="w-4 h-4" />
-                            </span>
+                        <!-- Enhanced Read Status -->
+                        <div v-if="message.sender_id === page.props.auth.user.id && !message.deleted_at"
+                            class="text-right mt-2">
+                            <div class="flex items-center justify-end gap-1">
+                                <!-- Single checkmark for delivered (shown when not read) -->
+                                <span v-if="!message.read_at" class="text-xs text-gray-400">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                                    </svg>
+                                </span>
 
-                            <!-- Read timestamp (shown on hover for better UX) -->
-                            <span v-if="message.read_at" class="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" :title="`Read at ${formatTime(message.read_at)}`">
-                                {{ formatTime(message.read_at) }}
-                            </span>
+                                <!-- Double checkmark for read (shown only when read) -->
+                                <span v-else class="text-xs text-blue-500">
+                                    <img :src="doubleTickIcon" alt="Read" class="w-4 h-4" />
+                                </span>
+
+                                <!-- Read timestamp (shown on hover for better UX) -->
+                                <span v-if="message.read_at" class="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" :title="`Read at ${formatTime(message.read_at)}`">
+                                    {{ formatTime(message.read_at) }}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Undo Delete Button -->
-                    <div v-if="recentlyDeleted && recentlyDeleted.messageId === message.id && message.sender_id === page.props.auth.user.id" 
-                        class="mt-3 text-right">
-                        <button @click="undoDeleteMessage(message.id)" 
-                            class="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors duration-200">
-                            Undo Delete
+                    <!-- Options Menu -->
+                    <div v-if="showOptions === message.id && message.sender_id === page.props.auth.user.id && !message.deleted_at"
+                        class="absolute right-10 top-2 mt-2 bg-white shadow-lg rounded-lg py-2 w-32 z-20 border border-gray-200 delete-message-popup-mobile">
+                        <button @click="deleteMessage(message.id)"
+                            class="w-full text-left px-4 py-2 text-[0.75rem] text-red-600 hover:bg-red-50 transition-colors duration-200">
+                            Delete Message
                         </button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Options Menu -->
-                <div v-if="showOptions === message.id && message.sender_id === page.props.auth.user.id && !message.deleted_at"
-                    class="absolute right-10 top-2 mt-2 bg-white shadow-lg rounded-lg py-2 w-32 z-20 border border-gray-200 delete-message-popup-mobile">
-                    <button @click="deleteMessage(message.id)"
-                        class="w-full text-left px-4 py-2 text-[0.75rem] text-red-600 hover:bg-red-50 transition-colors duration-200">
-                        Delete Message
+            <!-- Undo Delete Toast -->
+            <div v-if="recentlyDeleted" class="undo-toast">
+                <div class="undo-toast__content">
+                    <div class="text-sm text-slate-700">Message deleted</div>
+                    <button @click="undoDeleteMessage(recentlyDeleted.messageId)" class="undo-toast__button">
+                        Undo
                     </button>
                 </div>
             </div>
@@ -1156,6 +1222,99 @@ onUnmounted(() => {
         </div>
     </div>
 </template>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Assistant:wght@400;600;700&display=swap');
+
+.chat-shell {
+    font-family: "Assistant", "Segoe UI", sans-serif;
+}
+
+.chat-header {
+    background: linear-gradient(135deg, #f6f2ea 0%, #eef4f0 100%);
+}
+
+.chat-title {
+    font-family: "Fraunces", "Georgia", serif;
+    letter-spacing: 0.2px;
+}
+
+.role-pill {
+    background: #0f3d3a;
+    color: #f6f5ef;
+    border-radius: 9999px;
+    padding: 0.15rem 0.6rem;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.booking-pill {
+    background: #f2efe8;
+    color: #2d3e3b;
+    border-radius: 9999px;
+    padding: 0.2rem 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.booking-vehicle {
+    background: #e8f0ea;
+    color: #1f3b34;
+    text-transform: none;
+    letter-spacing: 0.02em;
+}
+
+.booking-link {
+    color: #0f3d3a;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(15, 61, 58, 0.3);
+}
+
+.booking-link:hover {
+    color: #0b2d2b;
+    border-color: rgba(11, 45, 43, 0.5);
+}
+
+.undo-toast {
+    position: absolute;
+    left: 1.5rem;
+    right: 1.5rem;
+    bottom: 1.25rem;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.undo-toast__content {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(15, 61, 58, 0.12);
+    box-shadow: 0 12px 30px rgba(15, 61, 58, 0.12);
+    backdrop-filter: blur(12px);
+    border-radius: 999px;
+    padding: 0.6rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    pointer-events: auto;
+}
+
+.undo-toast__button {
+    background: #0f3d3a;
+    color: #f6f5ef;
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.undo-toast__button:hover {
+    background: #0b2d2b;
+}
+</style>
 
 <style scoped>
 /* Custom scrollbar */
