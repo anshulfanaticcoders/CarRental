@@ -1,94 +1,166 @@
 <template>
     <AdminDashboardLayout>
-        <div class="flex flex-col gap-4 w-[95%] ml-[1.5rem]">
-            <div class="flex items-center justify-between mt-[2rem]">
-                <span class="text-[1.5rem] font-semibold">Manage FAQs</span>
-                <Input v-model="search" placeholder="Search FAQ..." class="w-[300px]" @input="handleSearch" />
+        <div class="flex flex-col gap-6 w-[95%] ml-[1.5rem] pb-12">
+            <div class="mt-[2rem] rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div class="flex flex-col gap-4 p-6">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">FAQ Studio</p>
+                            <h1 class="text-2xl font-semibold text-gray-900">Bulk FAQ Editor</h1>
+                            <p class="text-sm text-gray-500">Create and update multiple FAQs across locales at once.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <Input v-model="search" placeholder="Search FAQs..." class="w-[260px]" />
+                            <Button variant="outline" @click="addRow">Add Row</Button>
+                            <Button :disabled="isSaving || hasIncompleteRows" @click="saveAll">
+                                {{ isSaving ? 'Saving...' : 'Save All' }}
+                            </Button>
+                        </div>
+                    </div>
 
-                <!-- Open Dialog -->
-                <Dialog v-model:open="isDialogOpen">
-                    <DialogTrigger as-child>
-                        <Button @click="openDialog">Create New FAQ</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>{{ isEditing ? "Edit FAQ" : "Create FAQ" }}</DialogTitle>
-                        </DialogHeader>
-                        <form @submit.prevent="isEditing ? updateFaq() : addFaq()">
-                            <!-- Locale Tabs -->
-                            <div class="flex border-b border-gray-200 mb-4">
-                                <button
-                                    v-for="locale in available_locales"
-                                    :key="locale"
-                                    type="button"
-                                    @click="setActiveLocaleDialog(locale)"
-                                    :class="[
-                                        'py-2 px-4 font-semibold',
-                                        activeLocaleDialog === locale ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'
-                                    ]"
-                                >
-                                    {{ locale.toUpperCase() }}
-                                </button>
-                            </div>
-
-                            <div v-if="faqForm.translations[activeLocaleDialog]">
-                                <div class="mb-4">
-                                    <label :for="'question-' + activeLocaleDialog">Question ({{ activeLocaleDialog.toUpperCase() }})</label>
-                                    <Input :id="'question-' + activeLocaleDialog" v-model="faqForm.translations[activeLocaleDialog].question" required />
-                                     <p v-if="errors && errors[`translations.${activeLocaleDialog}.question`]" class="text-red-500 text-sm">{{ errors[`translations.${activeLocaleDialog}.question`] }}</p>
-                                </div>
-                                <div class="mt-2">
-                                    <label :for="'answer-' + activeLocaleDialog">Answer ({{ activeLocaleDialog.toUpperCase() }})</label>
-                                    <Textarea :id="'answer-' + activeLocaleDialog" v-model="faqForm.translations[activeLocaleDialog].answer" required />
-                                    <p v-if="errors && errors[`translations.${activeLocaleDialog}.answer`]" class="text-red-500 text-sm">{{ errors[`translations.${activeLocaleDialog}.answer`] }}</p>
-                                </div>
-                            </div>
-                            <div v-else>
-                                <p>Translations not available for {{ activeLocaleDialog.toUpperCase() }}</p>
-                            </div>
-                            <div class="mt-4 flex justify-end gap-2">
-                                <Button type="button" variant="outline" @click="isDialogOpen = false">Cancel</Button>
-                                <Button type="submit">{{ isEditing ? "Update" : "Add" }} FAQ</Button>
-                            </div>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Locale View</span>
+                        <button
+                            v-for="locale in availableLocales"
+                            :key="locale"
+                            type="button"
+                            @click="activeLocaleFilter = locale"
+                            :class="[
+                                'rounded-full border px-3 py-1 text-xs font-semibold uppercase transition',
+                                activeLocaleFilter === locale
+                                    ? 'border-[#153B4F] bg-[#153B4F] text-white'
+                                    : 'border-gray-200 text-gray-500 hover:border-[#153B4F] hover:text-[#153B4F]'
+                            ]"
+                        >
+                            {{ locale }}
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div class="rounded-md border p-5 mt-[1rem] bg-[#153B4F0D]">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Question</TableHead>
-                            <TableHead>Answer</TableHead>
-                            <TableHead class="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <TableRow v-for="faq in filteredFaqs" :key="faq.id">
-                            <TableCell>{{ faq.question }}</TableCell>
-                            <TableCell>{{ faq.answer }}</TableCell>
-                            <TableCell class="text-right">
-                                <div class="flex justify-end gap-2">
-                                    <Button variant="outline" @click="editFaq(faq)">Edit</Button>
-                                    <Button variant="destructive" @click="openDeleteDialog(faq.id)">Delete</Button>
+            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div>
+                    <div>
+                        <div
+                            class="grid border-b border-gray-100 bg-[#153B4F0D]"
+                            :style="gridTemplate"
+                        >
+                            <div class="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gray-500">Row</div>
+                            <div
+                                v-for="locale in visibleLocales"
+                                :key="`head-${locale}`"
+                                class="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gray-500"
+                            >
+                                {{ locale }}
+                            </div>
+                        </div>
+
+                        <div
+                            v-for="(row, rowIndex) in filteredRows"
+                            :key="row.key"
+                            class="grid border-b border-gray-100"
+                            :style="gridTemplate"
+                        >
+                            <div class="px-4 py-4 bg-gray-50/60">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-900">Row {{ rowIndex + 1 }}</p>
+                                        <p class="text-xs text-gray-500">{{ row.id ? 'Existing FAQ' : 'New FAQ' }}</p>
+                                    </div>
+                                    <span
+                                        v-if="getMissingLocales(row).length"
+                                        class="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase text-amber-700"
+                                    >
+                                        Missing {{ getMissingLocales(row).join(', ') }}
+                                    </span>
+                                    <span
+                                        v-else
+                                        class="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase text-emerald-700"
+                                    >
+                                        Complete
+                                    </span>
                                 </div>
-                            </TableCell>
-                        </TableRow>
-                        <TableRow v-if="filteredFaqs.length === 0">
-                            <TableCell colspan="3" class="text-center">No FAQs found.</TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    <Button size="sm" variant="outline" @click="duplicateRow(row)">Duplicate</Button>
+                                    <Button size="sm" variant="outline" @click="copyFromLocale(row, 'en')">
+                                        Copy from EN
+                                    </Button>
+                                    <Button size="sm" variant="destructive" @click="openDeleteDialog(row)">Delete</Button>
+                                </div>
+                            </div>
+
+                            <div
+                                v-for="locale in visibleLocales"
+                                :key="`${row.key}-${locale}`"
+                                class="px-4 py-4"
+                            >
+                                <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                                    <div class="flex items-center justify-between">
+                                        <p class="text-xs font-semibold uppercase text-gray-400">Question</p>
+                                        <span class="text-[10px] font-semibold text-gray-400">{{ locale.toUpperCase() }}</span>
+                                    </div>
+                                    <Input
+                                        v-model="row.translations[locale].question"
+                                        :placeholder="`Question in ${locale.toUpperCase()}`"
+                                        class="mt-2"
+                                    />
+                                    <p
+                                        v-if="fieldError(rowIndex, locale, 'question')"
+                                        class="text-xs text-red-500 mt-1"
+                                    >
+                                        {{ fieldError(rowIndex, locale, 'question') }}
+                                    </p>
+
+                                    <div class="mt-4 flex items-center justify-between">
+                                        <p class="text-xs font-semibold uppercase text-gray-400">Answer</p>
+                                    </div>
+                                    <Textarea
+                                        v-model="row.translations[locale].answer"
+                                        :placeholder="`Answer in ${locale.toUpperCase()}`"
+                                        class="mt-2 min-h-[120px] max-h-[200px] overflow-y-auto"
+                                    />
+                                    <p
+                                        v-if="fieldError(rowIndex, locale, 'answer')"
+                                        class="text-xs text-red-500 mt-1"
+                                    >
+                                        {{ fieldError(rowIndex, locale, 'answer') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="filteredRows.length === 0" class="px-6 py-16 text-center text-gray-500">
+                            No FAQs match your search. Try adding a new row.
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Alert Dialog for Delete Confirmation -->
+            <div class="sticky bottom-6">
+                <div class="rounded-2xl border border-gray-200 bg-white/95 shadow-lg backdrop-blur">
+                    <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+                        <div>
+                            <p class="text-xs uppercase tracking-widest text-gray-400">Progress</p>
+                            <p class="text-sm font-semibold text-gray-900">
+                                {{ completedRows }} complete / {{ rowsWithContent }} total
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <Button variant="outline" @click="addRow">Add Row</Button>
+                            <Button :disabled="isSaving || hasIncompleteRows" @click="saveAll">
+                                {{ isSaving ? 'Saving...' : 'Save All' }}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <AlertDialog v-model:open="isDeleteDialogOpen">
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>Delete FAQ row?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Do you really want to delete this FAQ? This action cannot be undone.
+                            This will remove the FAQ. If it already exists, it will be deleted from the database.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -102,14 +174,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue"; // Added watch
-import { router, usePage } from "@inertiajs/vue3"; // Added usePage
+import { ref, computed, watch } from "vue";
+import { router } from "@inertiajs/vue3";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/Components/ui/table";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import { Textarea } from "@/Components/ui/textarea";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -119,174 +189,211 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/Components/ui/alert-dialog';
-import { useToast } from 'vue-toastification'; // Added useToast
+} from "@/Components/ui/alert-dialog";
+import { useToast } from "vue-toastification";
 
 const props = defineProps({
     faqs: Array,
     search: String,
-    available_locales: Array, // Added
-    current_locale: String,   // Added
-    errors: Object, // For server-side validation errors
+    available_locales: Array,
+    current_locale: String,
+    errors: Object,
 });
 
-const page = usePage(); // Added page instance
-const toast = useToast(); // Added toast instance
+const toast = useToast();
 
+const availableLocales = computed(() => props.available_locales || []);
 const search = ref(props.search || "");
-const faqs = ref([...props.faqs]); // This will be updated by router.reload or direct assignment
-const isDialogOpen = ref(false);
-const isEditing = ref(false);
+const isSaving = ref(false);
+const activeLocaleFilter = ref(props.current_locale || availableLocales.value[0] || "en");
 const isDeleteDialogOpen = ref(false);
+const rowToDelete = ref(null);
 
-const activeLocaleDialog = ref(props.current_locale || (props.available_locales && props.available_locales.length > 0 ? props.available_locales[0] : 'en'));
+const createRowKey = () => `row_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
-const initialTranslations = {};
-if (props.available_locales) {
-    props.available_locales.forEach(locale => {
-        initialTranslations[locale] = { question: "", answer: "" };
+const createEmptyTranslations = () => {
+    const translations = {};
+    availableLocales.value.forEach(locale => {
+        translations[locale] = { question: "", answer: "" };
     });
-} else {
-    // Default if available_locales is not passed (should not happen with controller update)
-    initialTranslations['en'] = { question: "", answer: "" };
+    return translations;
+};
+
+const mapFaqToRow = (faq) => {
+    const translations = createEmptyTranslations();
+    (faq?.translations || []).forEach((translation) => {
+        if (translation?.locale && translations[translation.locale]) {
+            translations[translation.locale] = {
+                question: translation.question || "",
+                answer: translation.answer || "",
+            };
+        }
+    });
+
+    return {
+        key: createRowKey(),
+        id: faq?.id || null,
+        translations,
+    };
+};
+
+const faqRows = ref(
+    (props.faqs || []).map(mapFaqToRow)
+);
+
+if (faqRows.value.length === 0) {
+    faqRows.value.push({ key: createRowKey(), id: null, translations: createEmptyTranslations() });
 }
 
-
-const faqForm = ref({
-    id: null,
-    translations: JSON.parse(JSON.stringify(initialTranslations)) // Deep copy
+const visibleLocales = computed(() => {
+    return availableLocales.value.includes(activeLocaleFilter.value)
+        ? [activeLocaleFilter.value]
+        : availableLocales.value.slice(0, 1);
 });
-const deleteFaqId = ref(null);
 
-const setActiveLocaleDialog = (locale) => {
-    activeLocaleDialog.value = locale;
-};
+const gridTemplate = computed(() => {
+    const columns = visibleLocales.value.length || 1;
+    return `grid-template-columns: 220px repeat(${columns}, minmax(0, 1fr));`;
+});
 
-const openDialog = () => {
-    isEditing.value = false;
-    // Reset form with initial empty translations for each locale
-    const newInitialTranslations = {};
-    if (props.available_locales) {
-        props.available_locales.forEach(locale => {
-            newInitialTranslations[locale] = { question: "", answer: "" };
-        });
-    } else {
-        newInitialTranslations['en'] = { question: "", answer: "" };
-    }
-    faqForm.value = { id: null, translations: newInitialTranslations };
-    activeLocaleDialog.value = props.current_locale || (props.available_locales && props.available_locales.length > 0 ? props.available_locales[0] : 'en');
-    isDialogOpen.value = true;
-};
-
-const addFaq = async () => {
-    router.post(route("admin.settings.faq.store"), { translations: faqForm.value.translations }, {
-        preserveScroll: true,
-        onSuccess: (page) => {
-            // Assuming controller returns updated faqs or flash message
-            // For simplicity, we can reload the faqs prop if successful
-            if (page.props.flash && page.props.flash.success) {
-                toast.success(page.props.flash.success);
-                 router.reload({ only: ['faqs'] }); // Reload faqs to get the latest list
-            }
-            isDialogOpen.value = false;
-        },
-        onError: (formErrors) => {
-            console.error("Error adding FAQ:", formErrors);
-            // Display validation errors using toast or inline messages
-            Object.values(formErrors).forEach(error => toast.error(error));
-        }
+const rowHasContent = (row) => {
+    return availableLocales.value.some(locale => {
+        const entry = row.translations[locale];
+        return entry?.question?.trim() || entry?.answer?.trim();
     });
 };
 
-const editFaq = (faq) => {
-    isEditing.value = true;
-    const newTranslations = {};
-    props.available_locales.forEach(locale => {
-        // The 'faq' object from props.faqs already has translated question/answer via accessors
-        // We need to fetch the specific translations for editing
-        // This assumes faq.translations is an array like [{locale: 'en', question: 'Q', answer: 'A'}, ...]
-        // If faq.translations is an object keyed by locale from controller, adjust accordingly
-        const existingTranslation = faq.translations.find(t => t.locale === locale);
-        newTranslations[locale] = {
-            question: existingTranslation ? existingTranslation.question : (locale === props.current_locale ? faq.question : ''),
-            answer: existingTranslation ? existingTranslation.answer : (locale === props.current_locale ? faq.answer : '')
+const getMissingLocales = (row) => {
+    return availableLocales.value
+        .filter(locale => {
+            const entry = row.translations[locale];
+            return !entry?.question?.trim() || !entry?.answer?.trim();
+        })
+        .map(locale => locale.toUpperCase());
+};
+
+const isRowComplete = (row) => rowHasContent(row) && getMissingLocales(row).length === 0;
+
+const filteredRows = computed(() => {
+    if (!search.value.trim()) {
+        return faqRows.value;
+    }
+
+    const term = search.value.toLowerCase();
+    return faqRows.value.filter(row => {
+        return availableLocales.value.some(locale => {
+            const entry = row.translations[locale];
+            return (
+                entry.question?.toLowerCase().includes(term) ||
+                entry.answer?.toLowerCase().includes(term)
+            );
+        });
+    });
+});
+
+const rowsWithContent = computed(() => faqRows.value.filter(rowHasContent).length);
+const completedRows = computed(() => faqRows.value.filter(isRowComplete).length);
+const hasIncompleteRows = computed(() => {
+    return faqRows.value.some(row => rowHasContent(row) && !isRowComplete(row));
+});
+
+const addRow = () => {
+    faqRows.value.push({ key: createRowKey(), id: null, translations: createEmptyTranslations() });
+};
+
+const duplicateRow = (row) => {
+    const clonedTranslations = JSON.parse(JSON.stringify(row.translations));
+    faqRows.value.push({ key: createRowKey(), id: null, translations: clonedTranslations });
+};
+
+const copyFromLocale = (row, sourceLocale) => {
+    if (!row.translations[sourceLocale]) return;
+    const source = row.translations[sourceLocale];
+    availableLocales.value.forEach(locale => {
+        if (locale === sourceLocale) return;
+        row.translations[locale] = {
+            question: source.question,
+            answer: source.answer,
         };
     });
-    faqForm.value = { id: faq.id, translations: newTranslations };
-    activeLocaleDialog.value = props.current_locale || props.available_locales[0];
-    isDialogOpen.value = true;
 };
 
-const updateFaq = async () => {
-    router.put(route("admin.settings.faq.update", faqForm.value.id), { translations: faqForm.value.translations }, {
-        preserveScroll: true,
-        onSuccess: (page) => {
-            if (page.props.flash && page.props.flash.success) {
-                toast.success(page.props.flash.success);
-                 router.reload({ only: ['faqs'] }); // Reload faqs
-            }
-            isDialogOpen.value = false;
-        },
-        onError: (formErrors) => {
-            console.error("Error updating FAQ:", formErrors);
-            Object.values(formErrors).forEach(error => toast.error(error));
-        }
-    });
-};
-
-const openDeleteDialog = (id) => {
-    deleteFaqId.value = id;
+const openDeleteDialog = (row) => {
+    rowToDelete.value = row;
     isDeleteDialogOpen.value = true;
 };
 
-const confirmDelete = async () => {
-    router.delete(route("admin.settings.faq.destroy", deleteFaqId.value), {
+const confirmDelete = () => {
+    const row = rowToDelete.value;
+    if (!row) return;
+
+    if (row.id) {
+        router.delete(route("admin.settings.faq.destroy", row.id), {
+            onSuccess: (page) => {
+                if (page.props.flash?.success) {
+                    toast.success(page.props.flash.success);
+                }
+                faqRows.value = faqRows.value.filter(item => item.key !== row.key);
+                if (faqRows.value.length === 0) {
+                    addRow();
+                }
+                isDeleteDialogOpen.value = false;
+            },
+            onError: () => {
+                toast.error("Failed to delete FAQ.");
+                isDeleteDialogOpen.value = false;
+            },
+        });
+    } else {
+        faqRows.value = faqRows.value.filter(item => item.key !== row.key);
+        if (faqRows.value.length === 0) {
+            addRow();
+        }
+        isDeleteDialogOpen.value = false;
+    }
+};
+
+const fieldError = (rowIndex, locale, field) => {
+    if (!props.errors) return null;
+    return props.errors[`rows.${rowIndex}.translations.${locale}.${field}`] || null;
+};
+
+const saveAll = () => {
+    const rowsToSave = faqRows.value
+        .filter(rowHasContent)
+        .map(row => ({ id: row.id, translations: row.translations }));
+
+    if (!rowsToSave.length) {
+        toast.warning("Add at least one FAQ before saving.");
+        return;
+    }
+
+    isSaving.value = true;
+
+    router.post(route("admin.settings.faq.bulk"), { rows: rowsToSave }, {
+        preserveScroll: true,
         onSuccess: (page) => {
-            if (page.props.flash && page.props.flash.success) {
+            if (page.props.flash?.success) {
                 toast.success(page.props.flash.success);
             }
-            // faqs.value = faqs.value.filter((faq) => faq.id !== deleteFaqId.value); // No longer needed if reloading
-            router.reload({ only: ['faqs'] }); // Reload faqs
-            isDeleteDialogOpen.value = false;
+            router.reload({ only: ["faqs"] });
         },
-        onError: (errors) => {
-            console.error("Error deleting FAQ:", errors);
-            toast.error("Failed to delete FAQ.");
-        }
+        onError: (formErrors) => {
+            Object.values(formErrors).forEach(error => toast.error(error));
+        },
+        onFinish: () => {
+            isSaving.value = false;
+        },
     });
 };
 
-const handleSearch = () => {
-    router.get(route("admin.settings.faq.index"), { search: search.value }, {
-        preserveState: true,
-        replace: true,
-    });
-};
-
-const filteredFaqs = computed(() => {
-    if (!search.value) {
-        return props.faqs; // Use props.faqs directly for filtering
-    }
-    return props.faqs.filter((faq) =>
-        (faq.question && faq.question.toLowerCase().includes(search.value.toLowerCase())) ||
-        (faq.answer && faq.answer.toLowerCase().includes(search.value.toLowerCase()))
-    );
-});
-
-// Watch for changes in props.faqs to update local faqs ref if needed,
-// though direct use of props.faqs in computed is often cleaner.
 watch(() => props.faqs, (newFaqs) => {
-  faqs.value = [...newFaqs];
+    faqRows.value = (newFaqs || []).map(mapFaqToRow);
+    if (faqRows.value.length === 0) {
+        addRow();
+    }
 }, { deep: true });
-
 </script>
 
 <style scoped>
-table th{
-    font-size: 0.95rem;
-}
-table td{
-    font-size: 0.875rem;
-}
 </style>

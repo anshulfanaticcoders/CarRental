@@ -9,6 +9,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\App; // Added for locale access
 use App\Helpers\SchemaBuilder; // Import SchemaBuilder
+use Illuminate\Support\Facades\DB;
 
 class FaqController extends Controller
 {
@@ -96,6 +97,52 @@ class FaqController extends Controller
         // Translations will be deleted by cascade constraint
         $faq->delete();
         return redirect()->route('admin.settings.faq.index', ['locale' => App::getLocale()])->with('success', 'FAQ deleted successfully.');
+    }
+
+    public function storeBulk(Request $request)
+    {
+        $available_locales = ['en', 'fr', 'nl', 'es', 'ar']; // Or from config
+        $validationRules = [
+            'rows' => 'required|array|min:1',
+            'rows.*.translations' => 'required|array',
+        ];
+
+        foreach ($available_locales as $locale) {
+            $validationRules["rows.*.translations.{$locale}.question"] = 'required|string|max:255';
+            $validationRules["rows.*.translations.{$locale}.answer"] = 'required|string';
+        }
+
+        $validated = $request->validate($validationRules);
+
+        DB::transaction(function () use ($validated, $available_locales) {
+            foreach ($validated['rows'] as $row) {
+                $faqId = $row['id'] ?? null;
+                $faq = $faqId ? Faq::find($faqId) : null;
+
+                if (!$faq) {
+                    $faq = Faq::create([]);
+                }
+
+                $translationsData = $row['translations'] ?? [];
+                foreach ($available_locales as $locale) {
+                    $data = $translationsData[$locale] ?? null;
+                    if (!$data) {
+                        continue;
+                    }
+
+                    $faq->translations()->updateOrCreate(
+                        ['locale' => $locale],
+                        [
+                            'question' => $data['question'],
+                            'answer' => $data['answer'],
+                        ]
+                    );
+                }
+            }
+        });
+
+        return redirect()->route('admin.settings.faq.index', ['locale' => App::getLocale()])
+            ->with('success', 'FAQs saved successfully.');
     }
 
     // This method is likely used by the public Faq.vue page

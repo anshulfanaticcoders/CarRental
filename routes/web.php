@@ -190,6 +190,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // Route for FAQ
     Route::get('admin/settings/faq', [FaqController::class, 'index'])->name('admin.settings.faq.index');
     Route::post('admin/settings/faq', [FaqController::class, 'store'])->name('admin.settings.faq.store');
+    Route::post('admin/settings/faq/bulk', [FaqController::class, 'storeBulk'])->name('admin.settings.faq.bulk');
     Route::put('admin/settings/faq/{faq}', [FaqController::class, 'update'])->name('admin.settings.faq.update');
     Route::delete('admin/settings/faq/{faq}', [FaqController::class, 'destroy'])->name('admin.settings.faq.destroy');
 

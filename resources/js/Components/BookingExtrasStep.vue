@@ -1,7 +1,9 @@
 <script setup>
-import { ref, computed, watch, watchEffect, onMounted } from "vue";
+import { ref, computed, watch, watchEffect, onMounted, onUnmounted, nextTick } from "vue";
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 import check from "../../assets/Check.svg";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 // Additional Icons
 import carIcon from "../../assets/carIcon.svg";
 import fuelIcon from "../../assets/fuel.svg";
@@ -56,6 +58,11 @@ const isRenteon = computed(() => {
 const isOkMobility = computed(() => {
     return props.vehicle?.source === 'okmobility';
 });
+
+const isValidCoordinate = (coord) => {
+    const num = parseFloat(coord);
+    return !isNaN(num) && isFinite(num);
+};
 
 // Get vehicle image (handles internal vehicles which use images array)
 const vehicleImage = computed(() => {
@@ -114,6 +121,72 @@ const scrollToSummary = () => {
     summarySection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
+const vehicleLocationText = computed(() => {
+    if (!props.vehicle) return '';
+    if (props.vehicle.full_vehicle_address) return props.vehicle.full_vehicle_address;
+    const parts = [props.vehicle.location, props.vehicle.city, props.vehicle.state, props.vehicle.country]
+        .filter(Boolean)
+        .map(part => `${part}`.trim())
+        .filter(part => part.length > 0);
+    const fallback = parts.join(', ');
+    if (fallback) return fallback;
+    return props.pickupLocation || props.locationName || '';
+});
+
+const hasVehicleCoords = computed(() => {
+    return isValidCoordinate(props.vehicle?.latitude) && isValidCoordinate(props.vehicle?.longitude);
+});
+
+const vehicleLocationTitle = computed(() => {
+    if (isInternal.value) return 'Vehicle Location';
+    return 'Pickup Location';
+});
+
+const vehicleMapRef = ref(null);
+let vehicleMap = null;
+
+const initVehicleMap = () => {
+    if (!hasVehicleCoords.value || !vehicleMapRef.value) return;
+
+    if (vehicleMap) {
+        vehicleMap.remove();
+        vehicleMap = null;
+    }
+
+    const lat = parseFloat(props.vehicle.latitude);
+    const lng = parseFloat(props.vehicle.longitude);
+
+    vehicleMap = L.map(vehicleMapRef.value, {
+        zoomControl: true,
+        maxZoom: 18,
+        minZoom: 3,
+        zoomSnap: 0.25,
+        markerZoomAnimation: false,
+        preferCanvas: true,
+    });
+
+    vehicleMap.setView([lat, lng], 14);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+    }).addTo(vehicleMap);
+
+    const markerIcon = L.divIcon({
+        className: "",
+        html: '<div style="width:18px;height:18px;background:#1e3a5f;border-radius:999px;border:2px solid #ffffff;box-shadow:0 2px 6px rgba(0,0,0,0.25);"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+    });
+
+    L.marker([lat, lng], { icon: markerIcon }).addTo(vehicleMap);
+
+    setTimeout(() => {
+        if (vehicleMap) {
+            vehicleMap.invalidateSize();
+        }
+    }, 200);
+};
+
 // Fetch exchange rates on mount
 onMounted(() => {
     fetchExchangeRates();
@@ -128,6 +201,26 @@ onMounted(() => {
 
     if (summarySection.value) {
         observer.observe(summarySection.value);
+    }
+
+    nextTick(() => {
+        initVehicleMap();
+    });
+});
+
+watch(
+    () => [props.vehicle?.id, props.vehicle?.latitude, props.vehicle?.longitude],
+    () => {
+        nextTick(() => {
+            initVehicleMap();
+        });
+    }
+);
+
+onUnmounted(() => {
+    if (vehicleMap) {
+        vehicleMap.remove();
+        vehicleMap = null;
     }
 });
 
@@ -979,6 +1072,20 @@ const formatPaymentMethod = (method) => {
                     <h4 class="font-display text-xl font-bold mb-2 text-white">Pickup Instructions</h4>
                     <p class="text-sm text-white/90 leading-relaxed">{{ locationInstructions }}</p>
                 </div>
+            </div>
+
+            <!-- Vehicle Location -->
+            <div v-if="vehicleLocationText || hasVehicleCoords" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <MapPin class="w-5 h-5 text-[#1e3a5f]" />
+                    <h4 class="font-display text-xl font-bold text-gray-900">{{ vehicleLocationTitle }}</h4>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">
+                    {{ vehicleLocationText || 'Location details unavailable.' }}
+                </p>
+                <div v-if="hasVehicleCoords" ref="vehicleMapRef"
+                    class="h-56 rounded-xl overflow-hidden border border-gray-200"></div>
+                <p v-else class="text-xs text-gray-500">Map not available for this vehicle.</p>
             </div>
 
             <!-- Vendor Info & Guidelines (Internal Only) -->
