@@ -336,6 +336,18 @@ class StripeBookingService
     {
         try {
             $vehicle = $booking->vehicle ?? null;
+            if (!$vehicle) {
+                $vehicleName = $booking->vehicle_name ?? 'Vehicle';
+                $brand = explode(' ', $vehicleName)[0] ?? 'Vehicle';
+                $vehicle = (object) [
+                    'brand' => $brand,
+                    'model' => $vehicleName,
+                    'location' => $booking->pickup_location ?? '',
+                    'city' => '',
+                    'state' => '',
+                    'country' => '',
+                ];
+            }
 
             $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
             $admin = User::where('email', $adminEmail)->first();
@@ -362,7 +374,7 @@ class StripeBookingService
             }
 
             if ($tempPassword) {
-                if (!empty($customer->email) && !str_starts_with($customer->email, 'guest_')) {
+                if (!empty($customer->email)) {
                     Notification::route('mail', $customer->email)
                         ->notify(new GuestBookingCreatedNotification($booking, $customer, $vehicle, $tempPassword));
                 } else {
@@ -575,6 +587,8 @@ class StripeBookingService
                 return;
             }
 
+            $currency = $metadata->currency ?: ($booking->booking_currency ?? 'EUR');
+
             $xmlResponse = $greenMotionService->makeReservation(
                 $metadata->pickup_location_code,
                 $metadata->pickup_date,
@@ -585,7 +599,7 @@ class StripeBookingService
                 $customerDetails,
                 $vehicleId,
                 $metadata->vehicle_total ?? $metadata->total_amount, // vehicleTotal
-                $metadata->currency,
+                $currency,
                 $metadata->total_amount, // grandTotal
                 $booking->stripe_session_id,
                 $quoteId,
