@@ -94,6 +94,7 @@ class StripeCheckoutController extends Controller
             ];
             $currency = $currencyMap[$currency] ?? $currency;
 
+
             // Build line items for Stripe
             $lineItems = [
                 [
@@ -310,11 +311,24 @@ class StripeCheckoutController extends Controller
                 'currency' => $booking->booking_currency,
             ];
 
+            $providerLocationInfo = null;
+            if (in_array($booking->provider_source, ['greenmotion', 'usave'], true)) {
+                $metadata = $booking->provider_metadata ?? [];
+                $locationId = $metadata['pickup_location_code'] ?? null;
+                if (!empty($locationId)) {
+                    $greenMotionService = app(GreenMotionService::class);
+                    $greenMotionService->setProvider($booking->provider_source);
+                    $xmlLocationInfo = $greenMotionService->getLocationInfo($locationId);
+                    $providerLocationInfo = $greenMotionService->parseLocationInfo($xmlLocationInfo, $locationId);
+                }
+            }
+
             return inertia('Booking/Success', [
                 'booking' => $booking,
                 'customer' => $booking->customer,
                 'payment' => $booking->payments->first(), // Pass the first payment object
                 'vehicle' => $vehicleData,
+                'provider_location_info' => $providerLocationInfo,
                 'session_id' => $sessionId,
             ]);
 

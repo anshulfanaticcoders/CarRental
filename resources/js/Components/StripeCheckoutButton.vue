@@ -28,6 +28,7 @@ const handleCheckout = async () => {
 
         // 2. Create Checkout Session
         const response = await axios.post(route('api.stripe.checkout'), props.bookingData);
+
         
         const sessionId = response.data?.session_id || response.data?.sessionId;
         if ((response.data?.success || sessionId) && sessionId) {

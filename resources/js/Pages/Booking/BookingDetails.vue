@@ -17,7 +17,8 @@ const props = defineProps({
   payment: Object,
   vendorProfile: Object,
   plan: Object,
-  locale: String
+  locale: String,
+  providerLocationInfo: Object
 });
 
 const map = ref(null);
@@ -161,6 +162,18 @@ const rentalPeriodDisplay = computed(() => {
   }
   return `${days} days`;
 });
+
+const formatLocationAddress = (info) => {
+  if (!info) return '';
+  return [
+    info.address_1,
+    info.address_2,
+    info.address_3,
+    info.address_city,
+    info.address_county,
+    info.address_postcode
+  ].filter(Boolean).join(', ');
+};
 </script>
 
 <template>
@@ -315,6 +328,117 @@ const rentalPeriodDisplay = computed(() => {
             >
               <p class="text-sm font-semibold text-[#153B4F] mb-3">{{ _t('customerprofile', 'pickup_location') }}</p>
               <div id="booking-map" class="h-64 rounded-xl border border-gray-200"></div>
+            </div>
+          </div>
+
+          <!-- Provider Pickup Info (GreenMotion/USave) -->
+          <div v-if="providerLocationInfo" class="bg-white rounded-2xl shadow-sm p-6">
+            <h2 class="text-lg font-bold text-[#153B4F] mb-6">Pickup Location Details</h2>
+            <div class="space-y-4">
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Address</p>
+                <p class="font-medium text-[#153B4F]">
+                  {{ formatLocationAddress(providerLocationInfo) || booking?.pickup_location }}
+                </p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div v-if="providerLocationInfo.telephone" class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div class="w-8 h-8 rounded-full bg-[#153B4F1A] flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-[#153B4F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500">Phone</p>
+                    <a :href="`tel:${providerLocationInfo.telephone}`" class="text-sm font-semibold text-[#153B4F] hover:text-[#245f7d]">
+                      {{ providerLocationInfo.telephone }}
+                    </a>
+                  </div>
+                </div>
+
+                <div v-if="providerLocationInfo.email" class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div class="w-8 h-8 rounded-full bg-[#153B4F1A] flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-[#153B4F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500">Email</p>
+                    <a :href="`mailto:${providerLocationInfo.email}`" class="text-sm font-semibold text-[#153B4F] hover:text-[#245f7d] break-all">
+                      {{ providerLocationInfo.email }}
+                    </a>
+                  </div>
+                </div>
+
+                <div v-if="providerLocationInfo.whatsapp" class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div class="w-8 h-8 rounded-full bg-[#153B4F1A] flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-[#153B4F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 12.5a1 1 0 01-1 1H7a1 1 0 01-1-1v-1a1 1 0 011-1h.5a1 1 0 011 1v1zM12 12a1 1 0 011 1v.5a1 1 0 01-1 1h-1a1 1 0 01-1-1V13a1 1 0 011-1h1zM16.5 11.5a1 1 0 011 1V13a1 1 0 01-1 1H16a1 1 0 01-1-1v-.5a1 1 0 011-1h.5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500">WhatsApp</p>
+                    <a :href="`https://wa.me/${providerLocationInfo.whatsapp.replace(/\D/g, '')}`" target="_blank" rel="noopener" class="text-sm font-semibold text-[#153B4F] hover:text-[#245f7d]">
+                      {{ providerLocationInfo.whatsapp }}
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="providerLocationInfo.airport_details?.type">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Airport Info</p>
+                <p class="text-sm text-gray-600">
+                  {{ providerLocationInfo.airport_details.type }}
+                  <span v-if="providerLocationInfo.airport_details.code"> ({{ providerLocationInfo.airport_details.code }})</span>
+                </p>
+              </div>
+
+              <div v-if="providerLocationInfo.opening_hours?.length">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Opening Hours</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div v-for="(day, index) in providerLocationInfo.opening_hours" :key="index" class="text-sm text-gray-700">
+                    <span class="font-medium">{{ day.name }}:</span>
+                    <span v-if="day.is24hrs === '1'"> 24 hours</span>
+                    <span v-else> {{ day.open }} - {{ day.close }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="providerLocationInfo.out_of_hours?.length">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Out of Hours (Pickup)</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div v-for="(day, index) in providerLocationInfo.out_of_hours" :key="index" class="text-sm text-gray-700">
+                    <span class="font-medium">{{ day.name }}:</span>
+                    <span> {{ day.open }} - {{ day.close }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="providerLocationInfo.out_of_hours_dropoff?.length">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Out of Hours (Dropoff)</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div v-for="(day, index) in providerLocationInfo.out_of_hours_dropoff" :key="index" class="text-sm text-gray-700">
+                    <span class="font-medium">{{ day.name }}:</span>
+                    <span> {{ day.start }} - {{ day.end }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="providerLocationInfo.collection_details">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Collection / Parking</p>
+                <p class="text-sm text-gray-600">{{ providerLocationInfo.collection_details }}</p>
+              </div>
+
+              <div v-if="providerLocationInfo.out_of_hours_charge || providerLocationInfo.charge_both_ways">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Out of Hours Charges</p>
+                <p v-if="providerLocationInfo.out_of_hours_charge" class="text-sm text-gray-600">
+                  Charge: {{ providerLocationInfo.out_of_hours_charge }}
+                </p>
+                <p v-if="providerLocationInfo.charge_both_ways" class="text-sm text-gray-600">
+                  Applies both ways: {{ providerLocationInfo.charge_both_ways }}
+                </p>
+              </div>
             </div>
           </div>
 

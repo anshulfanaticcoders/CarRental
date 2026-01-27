@@ -287,6 +287,106 @@ class GreenMotionService
         }
     }
 
+    public function parseLocationInfo($xmlResponse, $locationId): ?array
+    {
+        if (empty($xmlResponse)) {
+            return null;
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xmlResponse);
+        if ($xmlObject === false) {
+            libxml_clear_errors();
+            return null;
+        }
+
+        if (!isset($xmlObject->response->location_info)) {
+            libxml_clear_errors();
+            return null;
+        }
+
+        $loc = $xmlObject->response->location_info;
+        $openingHours = [];
+        if (isset($loc->opening_hours->day)) {
+            foreach ($loc->opening_hours->day as $day) {
+                $openingHours[] = [
+                    'name' => (string) $day['name'],
+                    'is24hrs' => (string) $day['is24hrs'],
+                    'open' => (string) $day['open'],
+                    'close' => (string) $day['close'],
+                ];
+            }
+        }
+
+        $officeOpeningHours = [];
+        if (isset($loc->office_opening_hours->day)) {
+            foreach ($loc->office_opening_hours->day as $day) {
+                $officeOpeningHours[] = [
+                    'name' => (string) $day['name'],
+                    'is24hrs' => (string) $day['is24hrs'],
+                    'open' => (string) $day['open'],
+                    'close' => (string) $day['close'],
+                ];
+            }
+        }
+
+        $outOfHours = [];
+        if (isset($loc->out_of_hours->day)) {
+            foreach ($loc->out_of_hours->day as $day) {
+                $outOfHours[] = [
+                    'name' => (string) $day['name'],
+                    'open' => (string) $day['open'],
+                    'close' => (string) $day['close'],
+                ];
+            }
+        }
+
+        $outOfHoursDropoff = [];
+        if (isset($loc->out_of_hours_dropoff->day)) {
+            foreach ($loc->out_of_hours_dropoff->day as $day) {
+                $outOfHoursDropoff[] = [
+                    'name' => (string) $day['name'],
+                    'start' => (string) $day['start'],
+                    'end' => (string) $day['end'],
+                    'start2' => (string) $day['start2'],
+                    'end2' => (string) $day['end2'],
+                ];
+            }
+        }
+
+        libxml_clear_errors();
+
+        return [
+            'id' => $locationId,
+            'name' => (string) $loc->location_name,
+            'address_1' => (string) $loc->address_1,
+            'address_2' => (string) $loc->address_2,
+            'address_3' => (string) $loc->address_3,
+            'address_city' => (string) $loc->address_city,
+            'address_county' => (string) $loc->address_county,
+            'address_postcode' => (string) $loc->address_postcode,
+            'telephone' => (string) $loc->telephone,
+            'fax' => (string) $loc->fax,
+            'email' => (string) $loc->email,
+            'whatsapp' => (string) $loc->whatsappnumber,
+            'latitude' => (string) $loc->latitude,
+            'longitude' => (string) $loc->longitude,
+            'iata' => (string) $loc->iata,
+            'opening_hours' => $openingHours,
+            'office_opening_hours' => $officeOpeningHours,
+            'airport_details' => [
+                'type' => (string) ($loc->airport_details->Type ?? ''),
+                'code' => (string) ($loc->airport_details->code ?? ''),
+            ],
+            'out_of_hours' => $outOfHours,
+            'out_of_hours_dropoff' => $outOfHoursDropoff,
+            'out_of_hours_charge' => (string) $loc->out_of_hours_charge,
+            'charge_both_ways' => (string) $loc->charge_both_ways,
+            'extra' => (string) $loc->extra,
+            'collection_details' => (string) $loc->collectiondetails,
+        ];
+    }
+
     public function makeReservation(
         $locationId,
         $startDate,
@@ -398,6 +498,7 @@ class GreenMotionService
             return null;
         }
     }
+
 
     public function cancelReservation($locationId, $bookingRef, $reason)
     {

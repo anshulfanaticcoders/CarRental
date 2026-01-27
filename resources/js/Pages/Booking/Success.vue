@@ -10,8 +10,21 @@ const booking = props.booking || {};
 const vehicle = props.vehicle || {};
 const payment = props.payment || {};
 const locale = props.locale || 'en';
+const locationInfo = props.provider_location_info || null;
 
 const showDetailsModal = ref(false);
+
+const formatLocationAddress = (info) => {
+  if (!info) return '';
+  return [
+    info.address_1,
+    info.address_2,
+    info.address_3,
+    info.address_city,
+    info.address_county,
+    info.address_postcode
+  ].filter(Boolean).join(', ');
+};
 </script>
 
 <template>
@@ -92,6 +105,93 @@ const showDetailsModal = ref(false);
               </dd>
             </div>
           </dl>
+        </div>
+      </div>
+
+      <!-- Pickup Location Details (GreenMotion/USave) -->
+      <div v-if="locationInfo" class="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">Pickup Location Details</h3>
+
+        <div class="space-y-3 text-sm text-gray-700">
+          <div>
+            <p class="text-xs font-semibold text-gray-500 uppercase">Address</p>
+            <p class="font-medium">{{ formatLocationAddress(locationInfo) || booking.pickup_location }}</p>
+          </div>
+
+          <div v-if="locationInfo.telephone">
+            <p class="text-xs font-semibold text-gray-500 uppercase">Phone</p>
+            <a :href="`tel:${locationInfo.telephone}`" class="font-medium text-customPrimaryColor hover:underline">
+              {{ locationInfo.telephone }}
+            </a>
+          </div>
+
+          <div v-if="locationInfo.email">
+            <p class="text-xs font-semibold text-gray-500 uppercase">Email</p>
+            <a :href="`mailto:${locationInfo.email}`" class="font-medium text-customPrimaryColor hover:underline">
+              {{ locationInfo.email }}
+            </a>
+          </div>
+
+          <div v-if="locationInfo.whatsapp">
+            <p class="text-xs font-semibold text-gray-500 uppercase">WhatsApp</p>
+            <a :href="`https://wa.me/${locationInfo.whatsapp.replace(/\D/g, '')}`" target="_blank" rel="noopener" class="font-medium text-customPrimaryColor hover:underline">
+              {{ locationInfo.whatsapp }}
+            </a>
+          </div>
+
+          <div v-if="locationInfo.airport_details?.type">
+            <p class="text-xs font-semibold text-gray-500 uppercase">Airport Info</p>
+            <p class="text-sm text-gray-600">
+              {{ locationInfo.airport_details.type }}
+              <span v-if="locationInfo.airport_details.code"> ({{ locationInfo.airport_details.code }})</span>
+            </p>
+          </div>
+
+          <div v-if="locationInfo.opening_hours?.length">
+            <p class="text-xs font-semibold text-gray-500 uppercase">Opening Hours</p>
+            <div class="space-y-1">
+              <p v-for="(day, index) in locationInfo.opening_hours" :key="index" class="text-sm">
+                <span class="font-medium">{{ day.name }}:</span>
+                <span v-if="day.is24hrs === '1'"> 24 hours</span>
+                <span v-else> {{ day.open }} - {{ day.close }}</span>
+              </p>
+            </div>
+          </div>
+
+          <div v-if="locationInfo.out_of_hours?.length">
+            <p class="text-xs font-semibold text-gray-500 uppercase">Out of Hours (Pickup)</p>
+            <div class="space-y-1">
+              <p v-for="(day, index) in locationInfo.out_of_hours" :key="index" class="text-sm">
+                <span class="font-medium">{{ day.name }}:</span>
+                <span> {{ day.open }} - {{ day.close }}</span>
+              </p>
+            </div>
+          </div>
+
+          <div v-if="locationInfo.out_of_hours_dropoff?.length">
+            <p class="text-xs font-semibold text-gray-500 uppercase">Out of Hours (Dropoff)</p>
+            <div class="space-y-1">
+              <p v-for="(day, index) in locationInfo.out_of_hours_dropoff" :key="index" class="text-sm">
+                <span class="font-medium">{{ day.name }}:</span>
+                <span> {{ day.start }} - {{ day.end }}</span>
+              </p>
+            </div>
+          </div>
+
+          <div v-if="locationInfo.collection_details">
+            <p class="text-xs font-semibold text-gray-500 uppercase">Collection / Parking</p>
+            <p class="text-sm text-gray-600">{{ locationInfo.collection_details }}</p>
+          </div>
+
+          <div v-if="locationInfo.out_of_hours_charge || locationInfo.charge_both_ways">
+            <p class="text-xs font-semibold text-gray-500 uppercase">Out of Hours Charges</p>
+            <p v-if="locationInfo.out_of_hours_charge" class="text-sm text-gray-600">
+              Charge: {{ locationInfo.out_of_hours_charge }}
+            </p>
+            <p v-if="locationInfo.charge_both_ways" class="text-sm text-gray-600">
+              Applies both ways: {{ locationInfo.charge_both_ways }}
+            </p>
+          </div>
         </div>
       </div>
 
