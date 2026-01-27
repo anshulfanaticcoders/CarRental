@@ -23,7 +23,9 @@ const props = defineProps({
     selectedCurrencyCode: String,
     paymentPercentage: Number,
     totals: Object, // { grandTotal, payableAmount, pendingAmount }
-    vehicleTotal: [String, Number]
+    vehicleTotal: [String, Number],
+    depositAmount: [String, Number],
+    depositCurrency: String
 });
 
 const emit = defineEmits(['back']);
@@ -49,6 +51,11 @@ const form = ref({
 });
 
 const selectedPaymentMethod = ref('card');
+
+const isGreenMotionOrUSave = computed(() => {
+    const source = props.vehicle?.source;
+    return source === 'greenmotion' || source === 'usave';
+});
 
 const availablePaymentMethods = computed(() => {
     const currency = checkoutCurrency.value;
@@ -207,8 +214,10 @@ const bookingData = computed(() => {
         total_amount: convertTotal(props.totals?.grandTotal),
         currency: checkoutCurrency.value,
         quoteid: props.vehicle.quoteid || null,
-        rentalCode: props.vehicle.rentalCode || null,
+        rentalCode: isGreenMotionOrUSave.value ? props.package : (props.vehicle.rentalCode || null),
         vehicle_total: convertTotal(props.vehicleTotal || 0),
+        deposit_amount: props.depositAmount ?? null,
+        deposit_currency: props.depositCurrency || props.vehicle?.currency || null,
         payment_method: selectedPaymentMethod.value
     };
 });
@@ -488,6 +497,11 @@ const formatPrice = (val) => {
                         <div class="flex justify-between text-sm text-gray-500 px-1">
                             <span>Pay on Arrival</span>
                             <span class="font-semibold text-gray-700">{{ formatPrice(totals.pendingAmount) }}</span>
+                        </div>
+
+                        <div v-if="depositAmount" class="flex justify-between text-sm text-gray-500 px-1">
+                            <span>Security Deposit (at desk)</span>
+                            <span class="font-semibold text-gray-700">{{ formatPrice(depositAmount) }}</span>
                         </div>
                     </div>
 

@@ -169,6 +169,57 @@ const handlePageChange = (page) => {
   });
 };
 
+const showCancelModal = ref(false);
+const cancelReason = ref('');
+const cancelError = ref('');
+const bookingToCancel = ref(null);
+
+const openCancelModal = (booking) => {
+  bookingToCancel.value = booking;
+  cancelReason.value = '';
+  cancelError.value = '';
+  showCancelModal.value = true;
+};
+
+const closeCancelModal = () => {
+  showCancelModal.value = false;
+  bookingToCancel.value = null;
+  cancelReason.value = '';
+  cancelError.value = '';
+};
+
+const submitCancellation = () => {
+  cancelError.value = '';
+  const reason = cancelReason.value.trim();
+  if (reason.length < 3) {
+    cancelError.value = _t('customerbooking', 'cancel_reason_required') || 'Please enter at least 3 characters.';
+    return;
+  }
+
+  if (!bookingToCancel.value?.id) {
+    cancelError.value = 'Missing booking reference.';
+    return;
+  }
+
+  isLoading.value = true;
+  router.post(
+    route('booking.cancel', { locale: usePage().props.locale }),
+    { booking_id: bookingToCancel.value.id, cancellation_reason: reason },
+    {
+      preserveScroll: true,
+      onFinish: () => {
+        isLoading.value = false;
+      },
+      onSuccess: () => {
+        closeCancelModal();
+      },
+      onError: (errors) => {
+        cancelError.value = errors?.cancellation_reason || errors?.message || 'Failed to cancel booking.';
+      }
+    }
+  );
+};
+
 const retryPayment = async (bookingId) => {
   isLoading.value = true;
   try {
@@ -425,6 +476,19 @@ const getCardDelay = (index) => {
                       {{ _t('customerbooking', 'complete_payment') }}
                     </button>
 
+                    <button
+                      v-if="['pending', 'confirmed'].includes(booking.booking_status)"
+                      type="button"
+                      @click="openCancelModal(booking)"
+                      :disabled="isLoading"
+                      class="inline-flex items-center gap-2 px-4 py-2 border border-rose-200 text-rose-700 rounded-lg font-medium hover:bg-rose-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      {{ _t('customerbooking', 'cancel_booking') || 'Cancel Booking' }}
+                    </button>
+
                     <Link
                       v-if="booking.vehicle?.vendor_id"
                       :href="route('messages.index', { locale: usePage().props.locale, vendor_id: booking.vehicle.vendor_id })"
@@ -450,6 +514,48 @@ const getCardDelay = (index) => {
           :total-pages="bookings.last_page"
           @page-change="handlePageChange"
         />
+      </div>
+    </div>
+
+    <!-- Cancel Modal -->
+    <div v-if="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/40" @click="closeCancelModal"></div>
+      <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">
+          {{ _t('customerbooking', 'cancel_booking') || 'Cancel Booking' }}
+        </h3>
+        <p class="text-sm text-gray-500 mb-4">
+          {{ _t('customerbooking', 'cancel_booking_hint') || 'Please tell us why you are cancelling this booking.' }}
+        </p>
+
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          {{ _t('customerbooking', 'cancellation_reason') || 'Cancellation reason' }} *
+        </label>
+        <textarea
+          v-model="cancelReason"
+          rows="4"
+          class="w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#153B4F] transition-colors"
+          placeholder="Customer cancelled online"
+        ></textarea>
+        <p v-if="cancelError" class="text-sm text-rose-600 mt-2">{{ cancelError }}</p>
+
+        <div class="mt-6 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            @click="closeCancelModal"
+            class="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+          >
+            {{ _t('customerbooking', 'close') || 'Close' }}
+          </button>
+          <button
+            type="button"
+            @click="submitCancellation"
+            :disabled="isLoading"
+            class="px-4 py-2 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ _t('customerbooking', 'confirm_cancel') || 'Confirm Cancel' }}
+          </button>
+        </div>
       </div>
     </div>
   </MyProfileLayout>

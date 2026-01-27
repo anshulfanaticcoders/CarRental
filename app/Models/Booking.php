@@ -18,6 +18,7 @@ class Booking extends Model
         'provider_source',
         'provider_vehicle_id',
         'provider_booking_ref',
+        'provider_metadata',
         'vehicle_name',
         'vehicle_image',
         'pickup_date',
@@ -55,6 +56,7 @@ class Booking extends Model
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'pending_amount' => 'decimal:2',
+        'provider_metadata' => 'array',
     ];
 
     // Relationships

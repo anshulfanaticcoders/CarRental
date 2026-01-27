@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import ChatComponent from '@/Components/ChatComponent.vue';
 import BookingSelectionModal from '@/Components/BookingSelectionModal.vue';
+import BookingInsightsPanel from '@/Components/BookingInsightsPanel.vue';
 import axios from 'axios';
 import { Link, usePage, Head  } from '@inertiajs/vue3';
 import arrowBackIcon from '../../../assets/arrowBack.svg'; // Assuming path relative to Pages/Messages
@@ -362,93 +363,66 @@ onUnmounted(() => {
         <meta name="robots" content="noindex, nofollow">
         <title>Inbox</title>
     </Head>
-    <div class="flex flex-col h-screen message-box">
-        <!-- New Page Header -->
+    <div class="concierge-shell">
+        <div class="concierge-layout">
+            <aside v-if="!showChat || !isMobile" class="concierge-sidebar">
+                <div class="concierge-brand">
+                    <span>Velora Rentals</span>
+                    <h1>Concierge Chat</h1>
+                </div>
 
-        <!-- Main Chat Area -->
-        <div class="flex flex-row flex-grow overflow-hidden">
-            <!-- Chat List (Left Panel) -->
-            <div v-if="!showChat || !isMobile"
-                 class="w-full md:w-1/3 lg:w-1/4 border-r flex flex-col flex-shrink-0 chat-list-panel">
-                <!-- Active/Recent Chats Toggle -->
-                <div class="p-3 border-b bg-gray-50">
-                    <div class="flex space-x-2">
-                        <button @click="showRecentChats = false"
-                                :class="{'bg-blue-600 text-white': !showRecentChats, 'bg-gray-200 text-gray-700': showRecentChats}"
-                                class="flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                            Active ({{ activeChatPartners.length }})
-                        </button>
-                        <button @click="showRecentChats = true"
-                                :class="{'bg-blue-600 text-white': showRecentChats, 'bg-gray-200 text-gray-700': !showRecentChats}"
-                                class="flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                            Recent ({{ recentChatPartners.length }})
-                        </button>
-                    </div>
+                <div class="concierge-toggle">
+                    <button @click="showRecentChats = false"
+                            :class="{ active: !showRecentChats }">
+                        Active ({{ activeChatPartners.length }})
+                    </button>
+                    <button @click="showRecentChats = true"
+                            :class="{ active: showRecentChats }">
+                        Recent ({{ recentChatPartners.length }})
+                    </button>
                 </div>
-                <!-- Search bar for chat list -->
-                <div class="p-3 border-b">
-                    <input v-model="searchQuery" type="text" :placeholder="showRecentChats ? 'Search recent chats...' : 'Search active chats...'"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+
+                <div class="concierge-search">
+                    <input v-model="searchQuery" type="text" :placeholder="showRecentChats ? 'Search recent chats...' : 'Search active chats...'" />
                 </div>
-                <!-- Scrollable list of partners -->
-                <div class="overflow-y-auto flex-grow">
-                    <div v-if="!filteredChatPartners || filteredChatPartners.length === 0 && !loadingChat" class="text-center py-10">
-                        <p class="text-gray-500">
-                            {{ showRecentChats ? 'No recent conversations found.' : 'No active conversations found.' }}
-                        </p>
-                        <p v-if="showRecentChats && activeChatPartners.length > 0" class="text-gray-400 text-sm mt-2">
+
+                <div class="concierge-list">
+                    <div v-if="!filteredChatPartners || filteredChatPartners.length === 0 && !loadingChat" class="concierge-empty">
+                        <p>{{ showRecentChats ? 'No recent conversations found.' : 'No active conversations found.' }}</p>
+                        <p v-if="showRecentChats && activeChatPartners.length > 0">
                             You have {{ activeChatPartners.length }} active conversation{{ activeChatPartners.length !== 1 ? 's' : '' }}
                         </p>
-                        <p v-else-if="!showRecentChats && recentChatPartners.length > 0" class="text-gray-400 text-sm mt-2">
+                        <p v-else-if="!showRecentChats && recentChatPartners.length > 0">
                             You have {{ recentChatPartners.length }} recent conversation{{ recentChatPartners.length !== 1 ? 's' : '' }}
                         </p>
                     </div>
                     <div v-else v-for="partner in filteredChatPartners" :key="partner.user.id"
-                        class="border-b cursor-pointer transition-colors chat-list-item"
-                        :class="{'active': selectedPartner && partner.user.id === selectedPartner.user.id}"
+                        class="concierge-card"
+                        :class="{ active: selectedPartner && partner.user.id === selectedPartner.user.id }"
                         @click="loadChat(partner)">
-                        <div class="flex items-center gap-3 px-4 py-3">
-                            <div class="relative flex-shrink-0">
-                                <img :src="getProfileImage(partner.user)"
-                                    :alt="partner.user.first_name"
-                                    class="w-11 h-11 rounded-full object-cover ring-2 ring-white shadow-sm" />
-                                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
-                                    :class="partner.user?.chat_status?.is_online ? 'bg-emerald-500' : 'bg-gray-400'"></span>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-center justify-between gap-2">
-                                    <p class="font-semibold text-slate-900 truncate">
-                                        {{ partner.user.first_name }} {{ partner.user.last_name || '' }}
-                                    </p>
-                                    <span class="text-xs text-slate-500 flex-shrink-0">
-                                        {{ formatTime(partner.last_message_at) }}
-                                    </span>
-                                </div>
-                                <p class="text-sm text-slate-500 truncate" :title="partner.last_message_preview">
-                                    {{ partner.last_message_preview || 'No messages yet' }}
-                                </p>
-                            </div>
-                            <span v-if="partner.unread_count > 0"
-                                class="bg-emerald-600 text-white rounded-full min-w-[24px] h-6 flex items-center justify-center text-xs font-medium px-2">
-                                {{ partner.unread_count }}
-                            </span>
+                        <div class="card-avatar">
+                            <img :src="getProfileImage(partner.user)" :alt="partner.user.first_name" />
+                            <span :class="partner.user?.chat_status?.is_online ? 'online' : 'offline'"></span>
                         </div>
+                        <div class="card-content">
+                            <div class="card-title">
+                                <p>{{ partner.user.first_name }} {{ partner.user.last_name || '' }}</p>
+                                <span>{{ formatTime(partner.last_message_at) }}</span>
+                            </div>
+                            <p class="card-preview" :title="partner.last_message_preview">
+                                {{ partner.last_message_preview || 'No messages yet' }}
+                            </p>
+                        </div>
+                        <span v-if="partner.unread_count > 0" class="card-badge">
+                            {{ partner.unread_count }}
+                        </span>
                     </div>
                 </div>
-            </div>
+            </aside>
 
-            <!-- Chat Component (Right Panel / Full Mobile) -->
-            <div v-if="showChat || !isMobile"
-                 class="w-full md:flex-grow bg-gradient-to-br from-white to-slate-50 flex flex-col min-h-0">
-
-                <div v-if="loadingChat" class="flex-1 flex items-center justify-center">
-                    <p class="text-gray-600">Loading chat...</p>
-                </div>
-
-                <div v-else-if="!selectedPartner" class="flex-1 flex items-center justify-center">
-                    <p class="text-gray-500">Select a conversation to start chatting.</p>
-                </div>
-
+            <section v-if="showChat || !isMobile" class="concierge-chat">
+                <div v-if="loadingChat" class="concierge-loading">Loading chat...</div>
+                <div v-else-if="!selectedPartner" class="concierge-loading">Select a conversation to start chatting.</div>
                 <ChatComponent
                     v-else
                     :bookingId="selectedBookingId"
@@ -465,7 +439,15 @@ onUnmounted(() => {
                     @messagesRead="handleMessagesRead"
                     class="flex-grow"
                 />
-            </div>
+            </section>
+
+            <aside v-if="showChat || !isMobile" class="concierge-panel">
+                <BookingInsightsPanel
+                    :booking="selectedPartner?.booking"
+                    :vehicle="selectedPartner?.vehicle"
+                    :partner="selectedPartner?.user"
+                />
+            </aside>
         </div>
 
         <!-- Booking Selection Modal -->
@@ -480,33 +462,233 @@ onUnmounted(() => {
 </template>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Assistant:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
 
-.message-box {
-    font-family: "Assistant", "Segoe UI", sans-serif;
-    background: #f6f2ea;
+.concierge-shell {
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top left, #e6f4fb 0%, #d9e9f1 42%, #cfe0ea 100%);
+    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
 }
 
-.chat-list-panel {
-    background: #fbfaf7;
-    border-right: 1px solid #e7e0d4;
+.concierge-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 320px;
+    min-height: 100vh;
+    height: 100vh;
+    background: rgba(245, 251, 255, 0.88);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(21, 59, 79, 0.2);
+    overflow: hidden;
 }
 
-.chat-list-item {
+.concierge-sidebar {
+    background: linear-gradient(160deg, rgba(233, 246, 252, 0.95), rgba(210, 231, 242, 0.9));
+    padding: 28px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    border-right: 1px solid rgba(21, 59, 79, 0.14);
+    min-height: 0;
+}
+
+.concierge-brand h1 {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.concierge-brand span {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #5a6a71;
+}
+
+.concierge-toggle {
+    display: flex;
+    background: rgba(21, 59, 79, 0.12);
+    border-radius: 999px;
+    padding: 6px;
+    gap: 6px;
+}
+
+.concierge-toggle button {
+    flex: 1;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
     background: transparent;
+    color: #5a6a71;
+    cursor: pointer;
+    transition: 0.2s ease;
 }
 
-.chat-list-item:hover {
-    background: #f8f5ef;
+.concierge-toggle button.active {
+    background: #153b4f;
+    color: #fffaf2;
 }
 
-.chat-list-item.active {
-    background: #f1ede5;
+.concierge-search input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    outline: none;
 }
 
-@media screen and (max-width:768px) {
-.message-box{
-    padding-bottom: 4rem;
+.concierge-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    padding-right: 4px;
+    flex: 1;
+    min-height: 0;
 }
+
+.concierge-card {
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: 0.25s ease;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.concierge-card.active {
+    border-color: rgba(21, 59, 79, 0.45);
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.card-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, #1f556f, #153b4f);
+    display: grid;
+    place-items: center;
+}
+
+.card-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.card-avatar span {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #fffaf2;
+}
+
+.card-avatar span.online {
+    background: #4ad49f;
+}
+
+.card-avatar span.offline {
+    background: #9ca3af;
+}
+
+.card-content {
+    min-width: 0;
+}
+
+.card-title {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #153b4f;
+}
+
+.card-title span {
+    font-size: 11px;
+    color: #5a6a71;
+}
+
+.card-preview {
+    font-size: 12px;
+    color: #5a6a71;
+    margin-top: 4px;
+}
+
+.card-badge {
+    background: #2f6c5b;
+    color: #fffaf2;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.concierge-chat {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.concierge-panel {
+    display: none;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.concierge-loading {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #5a6a71;
+}
+
+.concierge-empty {
+    text-align: center;
+    font-size: 13px;
+    color: #5a6a71;
+    padding: 20px 12px;
+}
+
+@media (min-width: 1024px) {
+    .concierge-panel {
+        display: block;
+        height: 100%;
+    }
+}
+
+@media (max-width: 1100px) {
+    .concierge-layout {
+        grid-template-columns: 240px 1fr;
+    }
+}
+
+@media (max-width: 820px) {
+    .concierge-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .concierge-sidebar {
+        display: none;
+    }
 }
 </style>

@@ -194,7 +194,10 @@ const fetchLocationDetails = async (locationId) => {
 const handlePackageSelection = (event) => {
     // Event contains { vehicle, package, protection_code }
     console.log('Package Selected:', event);
-    selectedVehicle.value = event.vehicle;
+    const isGreenMotion = event.vehicle.source === 'greenmotion' || event.vehicle.source === 'usave';
+    selectedVehicle.value = isGreenMotion
+        ? { ...event.vehicle, rentalCode: event.package }
+        : event.vehicle;
     selectedPackage.value = event.package;
     selectedProtectionCode.value = event.protection_code || null;
     bookingStep.value = 'extras';
@@ -2538,6 +2541,8 @@ watch(
             :currency-symbol="getCurrencySymbol(selectedCurrency)" :selected-currency-code="selectedCurrency"
             :payment-percentage="paymentPercentage"
             :totals="selectedCheckoutData.totals" :vehicle-total="selectedCheckoutData.vehicle_total"
+            :deposit-amount="selectedCheckoutData.deposit_amount"
+            :deposit-currency="selectedCheckoutData.deposit_currency"
             @back="bookingStep = 'extras'" />
     </div>
 

@@ -12,6 +12,7 @@ use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
+use App\Notifications\Booking\ProviderBookingCancelledNotification;
 use App\Events\NewMessage;
 use Illuminate\Http\Request;
 use App\Models\Booking;
@@ -21,6 +22,8 @@ use App\Models\Customer;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 use App\Services\BookingAmountService;
+use App\Services\GreenMotionService;
+use Illuminate\Validation\ValidationException;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
 use Stripe\Customer as StripeCustomer;
@@ -665,9 +668,77 @@ class BookingController extends Controller
 
         // Check if booking is already cancelled
         if ($booking->booking_status === 'cancelled') {
-            return response()->json([
-                'message' => 'Booking is already cancelled'
-            ], 400);
+            throw ValidationException::withMessages([
+                'cancellation_reason' => 'Booking is already cancelled.'
+            ]);
+        }
+
+        $providerSource = strtolower((string) ($booking->provider_source ?? 'internal'));
+        if (in_array($providerSource, ['greenmotion', 'usave'], true)) {
+            $metadata = $booking->provider_metadata ?? [];
+            $locationId = $metadata['pickup_location_code'] ?? $metadata['dropoff_location_code'] ?? null;
+            $bookingRef = $booking->provider_booking_ref;
+
+            if (empty($locationId) || empty($bookingRef)) {
+                throw ValidationException::withMessages([
+                    'cancellation_reason' => 'Missing provider booking reference or location id.'
+                ]);
+            }
+
+            try {
+                $greenMotionService = app(GreenMotionService::class);
+                $greenMotionService->setProvider($providerSource);
+                $xmlResponse = $greenMotionService->cancelReservation($locationId, $bookingRef, $validatedData['cancellation_reason']);
+
+                if (empty($xmlResponse)) {
+                    throw ValidationException::withMessages([
+                        'cancellation_reason' => 'Failed to cancel booking with provider. Empty response.'
+                    ]);
+                }
+
+                libxml_use_internal_errors(true);
+                $xmlObject = simplexml_load_string($xmlResponse);
+                if ($xmlObject === false) {
+                    libxml_clear_errors();
+                    throw ValidationException::withMessages([
+                        'cancellation_reason' => 'Failed to parse provider cancellation response.'
+                    ]);
+                }
+
+                if (isset($xmlObject->response->errors)) {
+                    $errorMessage = (string) ($xmlObject->response->errors->message
+                        ?? $xmlObject->response->errors->error->message
+                        ?? 'Provider cancellation failed.');
+
+                    throw ValidationException::withMessages([
+                        'cancellation_reason' => $errorMessage
+                    ]);
+                }
+                libxml_clear_errors();
+            } catch (ValidationException $e) {
+                throw $e;
+            } catch (\Exception $e) {
+                Log::error('GreenMotion cancel failed', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage()
+                ]);
+                throw ValidationException::withMessages([
+                    'cancellation_reason' => 'Failed to cancel booking with provider.'
+                ]);
+            }
+
+            $booking->booking_status = 'cancelled';
+            $booking->cancellation_reason = $validatedData['cancellation_reason'];
+            $booking->notes = ($booking->notes ? $booking->notes . "\n" : "") . 'Provider cancellation requested by customer.';
+            $booking->save();
+
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = User::where('email', $adminEmail)->first();
+            if ($admin) {
+                $admin->notify(new ProviderBookingCancelledNotification($booking, $customer));
+            }
+
+            return redirect()->back()->with('success', 'Booking cancelled successfully');
         }
 
         // Update booking status and save cancellation reason
@@ -683,29 +754,30 @@ class BookingController extends Controller
             $admin->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'admin'));
         }
 
-        // Notify Vendor
-        $vendor = User::find($booking->vehicle->vendor_id);
-        if ($vendor) {
-            $vendor->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'vendor'));
-        }
-
-        // Notify Company
-        $vendorProfile = VendorProfile::where('user_id', $booking->vehicle->vendor_id)->first();
-        if ($vendorProfile && $vendorProfile->company_email) {
-            $companyUser = User::where('email', $vendorProfile->company_email)->first();
-            if ($companyUser) {
-                $companyUser->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'company'));
-            }
-        }
-
-        $booking->pickup_date = null;
-        $booking->return_date = null;
-        $booking->save();
-
-        // Update vehicle status to available
         if ($vehicle) {
+            // Notify Vendor
+            $vendor = User::find($vehicle->vendor_id);
+            if ($vendor) {
+                $vendor->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'vendor'));
+            }
+
+            // Notify Company
+            $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
+            if ($vendorProfile && $vendorProfile->company_email) {
+                $companyUser = User::where('email', $vendorProfile->company_email)->first();
+                if ($companyUser) {
+                    $companyUser->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'company'));
+                }
+            }
+
+            $booking->pickup_date = null;
+            $booking->return_date = null;
+
+            // Update vehicle status to available
             $vehicle->update(['status' => 'available']);
         }
+
+        $booking->save();
 
         return redirect()->back()->with('success', 'Booking cancelled successfully');
     }

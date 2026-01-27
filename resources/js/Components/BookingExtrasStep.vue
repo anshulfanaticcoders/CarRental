@@ -1762,7 +1762,9 @@ const formatPaymentMethod = (method) => {
                             payableAmount,
                             pendingAmount
                         },
-                        vehicle_total: isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0))
+                        vehicle_total: isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0)),
+                        deposit_amount: currentProduct?.deposit ?? null,
+                        deposit_currency: currentProduct?.currency || props.vehicle?.currency || null
                     })" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg"
                         :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                         Proceed to Booking

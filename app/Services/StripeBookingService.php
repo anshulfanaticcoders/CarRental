@@ -60,18 +60,33 @@ class StripeBookingService
 
             // Create booking
             // For internal vehicles, set vehicle_id to actual vehicle ID
+            $vehicleSource = $metadata->vehicle_source ?? 'greenmotion';
             $vehicleId = null;
-            if (($metadata->vehicle_source ?? '') === 'internal' && !empty($metadata->vehicle_id)) {
+            if ($vehicleSource === 'internal' && !empty($metadata->vehicle_id)) {
                 $vehicleId = (int) $metadata->vehicle_id;
             }
 
             $bookingCurrency = strtoupper((string) ($metadata->currency ?? 'EUR'));
 
+            $providerMetadata = null;
+            if (in_array($vehicleSource, ['greenmotion', 'usave'], true)) {
+                $providerMetadata = [
+                    'quoteid' => (string) ($metadata->quoteid ?? ''),
+                    'rental_code' => (string) ($metadata->package ?? $metadata->rental_code ?? ''),
+                    'pickup_location_code' => $metadata->pickup_location_code ?? null,
+                    'dropoff_location_code' => $metadata->dropoff_location_code ?? $metadata->return_location_code ?? null,
+                    'deposit_amount' => $metadata->deposit_amount !== null ? (float) $metadata->deposit_amount : null,
+                    'deposit_currency' => $metadata->deposit_currency ?? $bookingCurrency,
+                    'vehicle_total' => $metadata->vehicle_total !== null ? (float) $metadata->vehicle_total : null,
+                    'payment_type' => $metadata->payment_type ?? 'POA',
+                ];
+            }
+
             $booking = Booking::create([
                 'booking_number' => Booking::generateBookingNumber(),
                 'customer_id' => $customer->id,
                 'vehicle_id' => $vehicleId, // Set for internal, null for external
-                'provider_source' => $metadata->vehicle_source ?? 'greenmotion',
+                'provider_source' => $vehicleSource,
                 'provider_vehicle_id' => $metadata->vehicle_id ?? null,
                 'vehicle_name' => ($metadata->vehicle_brand ?? '') . ' ' . ($metadata->vehicle_model ?? ''),
                 'vehicle_image' => $metadata->vehicle_image ?? null,
@@ -94,6 +109,7 @@ class StripeBookingService
                 'stripe_session_id' => $session->id,
                 'stripe_payment_intent_id' => $session->payment_intent,
                 'provider_booking_ref' => $metadata->provider_booking_ref ?? null,
+                'provider_metadata' => $providerMetadata,
             ]);
 
             $extrasTotal = 0.0;
@@ -538,6 +554,27 @@ class StripeBookingService
                 $vehicleId = substr($vehicleId, strlen($booking->provider_source . '_'));
             }
 
+            $quoteId = $metadata->quoteid ?? null;
+            $rentalCode = $metadata->package ?? $metadata->rental_code ?? null;
+
+            if (empty($quoteId) || empty($rentalCode)) {
+                $missing = [];
+                if (empty($quoteId)) {
+                    $missing[] = 'quoteid';
+                }
+                if (empty($rentalCode)) {
+                    $missing[] = 'rentalCode';
+                }
+
+                $message = 'Missing required GreenMotion fields: ' . implode(', ', $missing);
+                Log::error('GreenMotion: ' . $message, ['booking_id' => $booking->id, 'metadata' => (array) $metadata]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . 'GreenMotion Reservation failed: ' . $message
+                ]);
+
+                return;
+            }
+
             $xmlResponse = $greenMotionService->makeReservation(
                 $metadata->pickup_location_code,
                 $metadata->pickup_date,
@@ -551,11 +588,11 @@ class StripeBookingService
                 $metadata->currency,
                 $metadata->total_amount, // grandTotal
                 $booking->stripe_session_id,
-                $metadata->quoteid,
+                $quoteId,
                 $extras,
                 $metadata->dropoff_location_code ?? $metadata->pickup_location_code,
                 'POA', // Payment type
-                $metadata->package ?? $metadata->rental_code ?? '1' // rentalCode (Product Type)
+                $rentalCode // rentalCode (Product Type)
             );
 
             if ($xmlResponse) {

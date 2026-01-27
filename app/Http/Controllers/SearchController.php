@@ -784,7 +784,7 @@ class SearchController extends Controller
                                         'luggageMed' => (string) $vehicle->luggageMed,
                                         'luggageLarge' => (string) $vehicle->luggageLarge,
                                         'products' => $products,
-                                        'quoteid' => (string) $xmlObject->response->quoteid,
+                                        'quoteid' => (string) ($vehicle->quoteid ?? $xmlObject->response->quoteid ?? ''),
                                         'rentalCode' => $validated['rentalCode'] ?? '1',
                                         'options' => [],
                                         'insurance_options' => [],

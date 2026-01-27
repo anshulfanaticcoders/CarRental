@@ -746,31 +746,31 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="flex flex-col h-full min-h-0 bg-gradient-to-b from-gray-50 to-gray-100 rounded-xl shadow-lg overflow-hidden chat-shell">
+    <div class="velora-chat">
         <!-- Header - Fixed -->
-        <div class="p-4 sm:p-5 chat-header border-b border-emerald-100/60 flex items-start gap-3 shadow-sm flex-shrink-0">
+        <div class="velora-header">
             <button v-if="showBackButton" @click="goBack"
-                class="p-2 rounded-full hover:bg-white/70 transition-colors duration-200">
+                class="velora-icon-button">
                 <img :src="arrowBackIcon" alt="Back" class="w-5 h-5" />
             </button>
 
             <div class="relative">
                 <img :src="getProfileImage(otherUser)"
-                    alt="User Avatar" class="w-12 h-12 rounded-full object-cover ring-2 ring-blue-100" />
+                    alt="User Avatar" class="velora-avatar" />
                 <div v-if="otherUser?.chat_status?.is_online"
-                    class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                    class="velora-online-dot"></div>
             </div>
 
             <div class="flex-grow min-w-0">
                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
-                            <h2 class="text-base sm:text-lg font-semibold text-gray-800 truncate chat-title">
+                            <h2 class="velora-title">
                                 {{ otherUser?.first_name || 'Chat Partner' }} {{ otherUser?.last_name || '' }}
                             </h2>
                             <span class="role-pill">{{ roleLabel }}</span>
                         </div>
-                        <p class="text-xs sm:text-sm text-slate-500 truncate">{{ lastSeenText }}</p>
+                        <p class="velora-status">{{ lastSeenText }}</p>
                         <div class="mt-2 flex flex-wrap items-center gap-2 text-[0.7rem]">
                             <span v-if="bookingSummary.id" class="booking-pill">Booking #{{ bookingSummary.id }}</span>
                             <span v-if="bookingSummary.status" :class="['booking-pill', getBookingStatusColor(bookingSummary.status)]">
@@ -778,7 +778,7 @@ onUnmounted(() => {
                             </span>
                             <span v-if="bookingVehicleLabel" class="booking-pill booking-vehicle">{{ bookingVehicleLabel }}</span>
                         </div>
-                        <div class="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                        <div class="velora-subline">
                             <span v-if="bookingSummary.pickupDate">Pickup {{ formatDate(bookingSummary.pickupDate) }}</span>
                             <span v-if="bookingSummary.returnDate">Return {{ formatDate(bookingSummary.returnDate) }}</span>
                             <a v-if="bookingLink" :href="bookingLink" class="booking-link">View booking</a>
@@ -788,7 +788,7 @@ onUnmounted(() => {
                     <!-- Booking Context Dropdown (if multiple bookings) -->
                     <div v-if="allBookings.length > 1" class="booking-dropdown relative flex-shrink-0">
                         <button @click="toggleBookingDropdown"
-                            class="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
+                            class="velora-pill-button"
                             title="Switch booking">
                             <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
@@ -861,18 +861,18 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <button @click="toggleSearch"
-                class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                        <button @click="toggleSearch"
+                class="velora-icon-button">
                 <img :src="searchIcon" alt="Search" class="w-5 h-5" />
             </button>
 
           </div>
 
         <!-- Search Bar - Conditional -->
-        <div v-if="isSearchVisible" class="p-3 bg-white border-b border-gray-200">
+        <div v-if="isSearchVisible" class="velora-search">
             <div class="relative">
                 <input v-model="searchQuery" type="text" placeholder="Search messages..."
-                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all duration-200"
+                    class="velora-search-input"
                     autofocus />
                 <img :src="searchIcon" alt="Search"
                     class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -945,28 +945,28 @@ onUnmounted(() => {
         </div>
 
         <!-- Messages - Scrollable -->
-        <div class="relative flex-1 min-h-0">
-            <div ref="messageContainer" class="h-full min-h-0 overflow-y-auto p-4 pb-16 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+        <div class="velora-scroll">
+            <div ref="messageContainer" class="velora-body scrollbar-thin">
                 <div v-if="filteredMessages.length === 0" class="text-center text-gray-500 py-12">
                     <div class="text-4xl mb-2">💬</div>
                     <p class="text-lg">No messages found</p>
                 </div>
-                <div v-else v-for="message in filteredMessages" :key="message.id" class="group relative">
+                <div v-else v-for="message in filteredMessages" :key="message.id" class="group velora-message" :class="message.sender_id === $page.props.auth.user.id ? 'velora-message-outgoing' : 'velora-message-incoming'">
                     <div :class="[
-                        'p-4 rounded-2xl max-w-[75%] break-words shadow-sm transition-all duration-200 hover:shadow-md w-fit',
+                        'velora-bubble',
                         message.sender_id === $page.props.auth.user.id
-                            ? 'ml-auto bg-customPrimaryColor text-white rounded-br-lg'
-                            : 'mr-auto bg-white text-gray-900 border border-gray-200 rounded-bl-lg'
+                            ? 'velora-bubble-outgoing'
+                            : 'velora-bubble-incoming'
                     ]">
                         <div class="flex justify-between items-start gap-3 mb-2">
                             <span class="font-medium text-sm opacity-90">
                                 {{ message.sender_id === $page.props.auth.user.id ? 'You' : otherUser.first_name }}
                             </span>
                             <div class="flex items-center gap-2">
-                                <span class="text-xs opacity-70">{{ formatTime(message.created_at) }}</span>
-                                <button v-if="message.sender_id === page.props.auth.user.id"
-                                    @click="toggleOptions(message.id)"
-                                    class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-white/20 mobile-show-options">
+                            <span class="velora-time">{{ formatTime(message.created_at) }}</span>
+                            <button v-if="message.sender_id === page.props.auth.user.id"
+                                @click="toggleOptions(message.id)"
+                                    class="velora-options-button mobile-show-options">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
                                     </svg>
@@ -1022,7 +1022,7 @@ onUnmounted(() => {
 
                         <!-- Enhanced Read Status -->
                         <div v-if="message.sender_id === page.props.auth.user.id && !message.deleted_at"
-                            class="text-right mt-2">
+                            class="velora-read">
                             <div class="flex items-center justify-end gap-1">
                                 <!-- Single checkmark for delivered (shown when not read) -->
                                 <span v-if="!message.read_at" class="text-xs text-gray-400">
@@ -1037,7 +1037,7 @@ onUnmounted(() => {
                                 </span>
 
                                 <!-- Read timestamp (shown on hover for better UX) -->
-                                <span v-if="message.read_at" class="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200" :title="`Read at ${formatTime(message.read_at)}`">
+                                <span v-if="message.read_at" class="velora-read-time" :title="`Read at ${formatTime(message.read_at)}`">
                                     {{ formatTime(message.read_at) }}
                                 </span>
                             </div>
@@ -1067,7 +1067,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Typing Indicator -->
-        <div v-if="isAnyoneTyping" class="px-4 py-2 bg-white border-t border-gray-100">
+        <div v-if="isAnyoneTyping" class="velora-typing">
             <div class="flex items-center gap-2 text-sm text-gray-500">
                 <div class="flex gap-1">
                     <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
@@ -1080,7 +1080,7 @@ onUnmounted(() => {
         </div>
 
         <!-- File Preview -->
-        <div v-if="selectedFile" class="bg-white border-t border-gray-200 p-4 preview">
+        <div v-if="selectedFile" class="velora-preview">
             <div class="flex items-start gap-3 bg-blue-50 rounded-lg p-3">
                 <div v-if="getFilePreview(selectedFile)" class="flex-shrink-0">
                     <img :src="getFilePreview(selectedFile)" :alt="selectedFile.name" 
@@ -1104,7 +1104,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Voice Note Preview -->
-        <div v-if="audioUrl" class="bg-white border-t border-gray-200 p-4 preview">
+        <div v-if="audioUrl" class="velora-preview">
             <div class="flex items-center gap-3 bg-green-50 rounded-lg p-3">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -1128,7 +1128,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Recording Status -->
-        <div v-if="isRecording" class="bg-red-50 border-t border-red-200 p-4 preview">
+        <div v-if="isRecording" class="velora-preview">
             <div class="flex items-center justify-center gap-3">
                 <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                 <span class="text-red-700 font-medium">Recording: {{ formatRecordingTime(recordingTime) }}</span>
@@ -1140,7 +1140,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Error Message -->
-        <div v-if="error" class="bg-red-50 border-t border-red-200 p-3">
+        <div v-if="error" class="velora-error">
             <div class="flex items-center gap-2 text-red-700">
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
@@ -1150,7 +1150,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Chat Restriction Notice -->
-        <div v-if="!canSendMessage" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 m-4">
+        <div v-if="!canSendMessage" class="velora-restriction">
             <div class="flex">
                 <div class="flex-shrink-0">
                     <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
@@ -1166,7 +1166,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Input Area - Only show for eligible bookings -->
-        <div v-if="canSendMessage" class="bg-white border-t border-gray-200 p-2 flex-shrink-0 chat-input-area">
+        <div v-if="canSendMessage" class="velora-input">
             <div class="flex items-center gap-3">
                 <!-- Hidden File Input -->
                 <input type="file" ref="fileInput" @change="handleFileChange" class="hidden"
@@ -1175,21 +1175,21 @@ onUnmounted(() => {
                 <!-- Attachment Button -->
                 <button @click="fileInput.click()"
                     :disabled="isRecording || audioUrl"
-                    class="p-3 rounded-full bg-gray-100 hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="velora-icon-button">
                     <img :src="attachmentIcon" alt="Attach File" class="w-5 h-5" />
                 </button>
 
                 <!-- Voice Recording Button -->
                 <button v-if="!isRecording && !audioUrl" @click="startRecording"
                     :disabled="selectedFile || newMessage.trim().length > 0"
-                    class="p-3 rounded-full bg-gray-100 hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="velora-icon-button">
                     <img :src="microphoneIcon" alt="Record Voice" class="w-5 h-5" />
                 </button>
 
                 <!-- Message Input -->
                 <div class="flex-1 flex">
-                    <textarea v-model="newMessage" placeholder="Type your message..."
-                        class="w-full p-3 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[44px] max-h-32 transition-all duration-200 bg-gray-50"
+                    <textarea v-model="newMessage" placeholder="Compose a message, share files, confirm pickup..."
+                        class="velora-textarea"
                         :disabled="isRecording || audioUrl"
                         @keydown.enter.exact.prevent="sendMessage"
                         @input="handleTyping"
@@ -1200,7 +1200,7 @@ onUnmounted(() => {
                 <!-- Send Voice Note Button -->
                 <button v-if="audioUrl" @click="sendVoiceNote"
                     :disabled="isLoading"
-                    class="p-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="velora-send">
                     <img :src="sendVoiceNoteIcon" alt="Send Voice Note" class="w-5 h-5" v-if="!isLoading" />
                     <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -1211,7 +1211,7 @@ onUnmounted(() => {
                 <!-- Send Message Button -->
                 <button v-else @click="sendMessage"
                     :disabled="isLoading || (!newMessage.trim() && !selectedFile)"
-                    class="p-3 rounded-full bg-customPrimaryColor hover:bg-blue-700 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="velora-send">
                     <img :src="sendIcon" alt="Send" class="w-5 h-5" v-if="!isLoading" />
                     <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -1224,19 +1224,98 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Assistant:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
 
-.chat-shell {
-    font-family: "Assistant", "Segoe UI", sans-serif;
+.velora-chat {
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    background: rgba(245, 251, 255, 0.92);
+    border-left: 1px solid rgba(21, 59, 79, 0.14);
+    border-right: 1px solid rgba(21, 59, 79, 0.14);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
 }
 
-.chat-header {
-    background: linear-gradient(135deg, #f6f2ea 0%, #eef4f0 100%);
+.velora-header {
+    padding: 20px 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(21, 59, 79, 0.14);
+    background: rgba(248, 253, 255, 0.92);
+    flex-shrink: 0;
 }
 
-.chat-title {
-    font-family: "Fraunces", "Georgia", serif;
-    letter-spacing: 0.2px;
+.velora-title {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #153b4f;
+}
+
+.velora-status {
+    font-size: 12px;
+    color: #5a6a71;
+}
+
+.velora-subline {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12px;
+    color: #5a6a71;
+}
+
+.velora-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    object-fit: cover;
+    border: 1px solid rgba(21, 59, 79, 0.2);
+}
+
+.velora-online-dot {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    width: 14px;
+    height: 14px;
+    background: #4ad49f;
+    border-radius: 50%;
+    border: 2px solid #fffaf2;
+    box-shadow: 0 0 0 6px rgba(74, 212, 159, 0.12);
+}
+
+.velora-icon-button {
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(21, 59, 79, 0.18);
+    background: rgba(255, 255, 255, 0.85);
+    transition: 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.velora-icon-button:hover {
+    background: rgba(21, 59, 79, 0.08);
+}
+
+.velora-pill-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(21, 59, 79, 0.18);
+    background: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
+    color: #153b4f;
+    font-weight: 600;
 }
 
 .role-pill {
@@ -1314,6 +1393,182 @@ onUnmounted(() => {
 .undo-toast__button:hover {
     background: #0b2d2b;
 }
+
+.velora-search {
+    padding: 16px 24px;
+    border-bottom: 1px solid rgba(21, 59, 79, 0.14);
+    background: rgba(248, 253, 255, 0.92);
+    flex-shrink: 0;
+}
+
+.velora-search-input {
+    width: 100%;
+    padding: 12px 16px 12px 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(21, 59, 79, 0.18);
+    background: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    outline: none;
+}
+
+.velora-scroll {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.velora-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: linear-gradient(180deg, rgba(244, 251, 255, 0.92), rgba(224, 237, 245, 0.96));
+}
+
+.velora-message {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.velora-message-incoming {
+    align-items: flex-start;
+}
+
+.velora-message-outgoing {
+    align-items: flex-end;
+}
+
+.velora-bubble {
+    max-width: 70%;
+    padding: 14px 16px;
+    border-radius: 18px;
+    box-shadow: 0 8px 18px rgba(26, 21, 18, 0.08);
+    transition: 0.2s ease;
+}
+
+.velora-bubble-incoming {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(21, 59, 79, 0.16);
+    color: #153b4f;
+}
+
+.velora-bubble-outgoing {
+    align-self: flex-end;
+    background: linear-gradient(145deg, #1f556f, #153b4f);
+    color: #fffaf2;
+}
+
+.velora-time {
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+.velora-options-button {
+    opacity: 0;
+    transition: 0.2s ease;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.group:hover .velora-options-button {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.velora-read {
+    margin-top: 8px;
+}
+
+.velora-read-time {
+    font-size: 11px;
+    opacity: 0;
+    transition: 0.2s ease;
+}
+
+.group:hover .velora-read-time {
+    opacity: 1;
+}
+
+.velora-typing {
+    padding: 12px 24px;
+    border-top: 1px solid rgba(21, 59, 79, 0.14);
+    background: rgba(248, 253, 255, 0.92);
+    flex-shrink: 0;
+}
+
+.velora-preview {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(21, 59, 79, 0.14);
+    background: rgba(248, 253, 255, 0.92);
+    flex-shrink: 0;
+}
+
+.velora-error {
+    padding: 12px 24px;
+    border-top: 1px solid rgba(211, 158, 146, 0.4);
+    background: rgba(211, 158, 146, 0.18);
+    flex-shrink: 0;
+}
+
+.velora-restriction {
+    margin: 16px 24px;
+    padding: 12px 16px;
+    border-left: 4px solid #c29c6d;
+    background: rgba(242, 195, 107, 0.15);
+    border-radius: 12px;
+    font-size: 12px;
+    color: #5a6a71;
+    flex-shrink: 0;
+}
+
+.velora-input {
+    padding: 16px 24px 20px;
+    border-top: 1px solid rgba(21, 59, 79, 0.14);
+    background: rgba(248, 253, 255, 0.92);
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+}
+
+.velora-textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(21, 59, 79, 0.18);
+    background: rgba(255, 255, 255, 0.95);
+    font-size: 14px;
+    resize: none;
+    min-height: 54px;
+    max-height: 160px;
+    outline: none;
+}
+
+.velora-send {
+    padding: 12px 18px;
+    border-radius: 14px;
+    background: #153b4f;
+    color: #fffaf2;
+    border: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 10px 25px rgba(21, 59, 79, 0.25);
+    transition: 0.2s ease;
+}
+
+.velora-send:hover {
+    background: #0f2b3a;
+}
 </style>
 
 <style scoped>
@@ -1351,28 +1606,25 @@ textarea {
         z-index: 10;
     }
 
-    .flex-1.overflow-y-auto {
+    .velora-body {
         padding-bottom: 20px;
     }
 
-    .max-w-\[75\%\] {
+    .velora-bubble {
         max-width: 85%;
     }
 }
 
 @media (max-width: 768px) {
-    .chat-input-area {
-        position: fixed;
-        bottom: 0;
+    .velora-input {
         left: 0;
         right: 0;
-        z-index: 10;
         width: 100%;
         max-width: 100%;
     }
 
-    .flex-1.overflow-y-auto {
-        padding-bottom: 80px; /* Adjust padding to account for fixed input bar height */
+    .velora-body {
+        padding-bottom: 20px;
     }
 
     .delete-message-popup-mobile {
@@ -1383,7 +1635,7 @@ textarea {
         top: 100%;
         margin-top: 4px; /* Equivalent to Tailwind's mt-1 */
     }
-    .preview{
+    .velora-preview {
         margin-bottom: 67px;
     }
 
@@ -1455,18 +1707,18 @@ textarea {
 /* Tablet responsiveness */
 @media (min-width: 768px) and (max-width: 1024px) {
     /* Medium tablets */
-    .max-w-\[75\%\] {
+    .velora-bubble {
         max-width: 80%;
     }
 
-    .flex-1.overflow-y-auto {
+    .velora-body {
         padding-bottom: 100px; /* More space for fixed input on tablets */
     }
 }
 
 /* Large tablets and desktop */
 @media (min-width: 1025px) {
-    .max-w-\[75\%\] {
+    .velora-bubble {
         max-width: 70%;
     }
 }
@@ -1588,7 +1840,7 @@ textarea {
         padding: 12px;
     }
 
-    .max-w-\[75\%\] {
+    .velora-bubble {
         max-width: 90%;
     }
 }

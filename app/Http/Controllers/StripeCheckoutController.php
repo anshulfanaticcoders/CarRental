@@ -45,6 +45,8 @@ class StripeCheckoutController extends Controller
                 'protection_amount' => 'nullable|numeric',
                 'quoteid' => 'nullable|string',
                 'rentalCode' => 'nullable|string',
+                'deposit_amount' => 'nullable|numeric',
+                'deposit_currency' => 'nullable|string|size:3',
                 'vehicle_total' => 'nullable|numeric',
                 'payment_method' => 'nullable|string',
             ]);
@@ -146,6 +148,8 @@ class StripeCheckoutController extends Controller
                 'extras_data' => json_encode($validated['detailed_extras'] ?? []), // Encode detailed extras
                 'quoteid' => !empty($validated['quoteid']) ? $validated['quoteid'] : ($validated['vehicle']['quoteid'] ?? ''),
                 'rental_code' => !empty($validated['rentalCode']) ? $validated['rentalCode'] : ($validated['vehicle']['rentalCode'] ?? ''),
+                'deposit_amount' => $validated['deposit_amount'] ?? null,
+                'deposit_currency' => $validated['deposit_currency'] ?? $validated['currency'],
                 'vehicle_total' => $validated['vehicle_total'] ?? $validated['total_amount'],
                 'payment_method' => $validated['payment_method'] ?? 'card',
                 'renteon_connector_id' => $validated['vehicle']['connector_id'] ?? null,
