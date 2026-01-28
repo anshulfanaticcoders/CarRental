@@ -222,7 +222,7 @@ const formatPrice = (val) => {
 </script>
 
 <template>
-    <div class="font-['Outfit',sans-serif]">
+    <div id="checkout-form-section" class="font-['Outfit',sans-serif]">
         <div class="flex flex-col lg:flex-row gap-6">
             <!-- Left Column: Form Fields -->
             <div class="flex-1">

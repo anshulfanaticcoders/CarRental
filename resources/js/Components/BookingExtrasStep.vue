@@ -1032,7 +1032,7 @@ const formatPaymentMethod = (method) => {
 
 <template>
     <div>
-        <div class=" px-0 md:p-6 pb-0">
+        <div id="extras-breadcrumb-section" class=" px-0 md:p-6 pb-0">
             <Breadcrumb class="mb-4">
                 <BreadcrumbList>
                     <BreadcrumbItem>
@@ -1273,77 +1273,75 @@ const formatPaymentMethod = (method) => {
             </section>
 
             <!-- 1. Package Upgrade Section -->
-            <section>
+            <section v-if="!isLocautoRent" id="extras-package-section">
                 <!-- GreenMotion/USave: Package Selection -->
-                <template v-if="!isLocautoRent">
-                    <div class="mb-6">
-                        <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Choose Your Package</h2>
-                        <p class="text-gray-600">Select the perfect package for your journey</p>
-                    </div>
+                <div class="mb-6">
+                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Choose Your Package</h2>
+                    <p class="text-gray-600">Select the perfect package for your journey</p>
+                </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div v-for="pkg in availablePackages" :key="pkg.type"
-                            @click="isAdobeCars && pkg.isAddOn ? toggleAdobeProtection(pkg) : selectPackage(pkg.type)"
-                            class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all relative"
-                            :class="(isAdobeCars && pkg.isAddOn ? isAdobeProtectionSelected(pkg) : currentPackage === pkg.type) ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
-                            <!-- Popular Badge -->
-                            <div v-if="pkg.type === 'PMP' || pkg.isBestValue"
-                                class="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-yellow-500 text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl text-white uppercase tracking-wide">
-                                {{ pkg.isBestValue ? 'Recommended' : 'Popular' }}
-                            </div>
-
-                            <!-- Header -->
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <span class="text-sm font-bold text-gray-900 block tracking-wide">{{
-                                        pkg.name || getPackageDisplayName(pkg.type) }}</span>
-                                    <span class="text-xs text-gray-400 uppercase tracking-wider">{{
-                                        pkg.subtitle || getPackageSubtitle(pkg.type) }}</span>
-                                </div>
-                                <div v-if="isAdobeCars && pkg.isAddOn" class="checkbox-custom"
-                                    :class="{ selected: isAdobeProtectionSelected(pkg) }"></div>
-                                <div v-else class="radio-custom" :class="{ selected: currentPackage === pkg.type }">
-                                </div>
-                            </div>
-
-                            <!-- Price -->
-                            <div class="mb-4 pb-4 border-b border-gray-100">
-                                <div class="flex items-baseline gap-1 mb-2">
-                                    <span class="text-3xl font-bold"
-                                        :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                        {{ formatPrice(pkg.total / numberOfDays) }}
-                                    </span>
-                                    <span class="text-sm text-gray-500">/day</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-600">Total:</span>
-                                    <span class="text-lg font-bold"
-                                        :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                        {{ formatPrice(pkg.total) }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Benefits List -->
-                            <ul class="space-y-2.5">
-                                <li v-for="(benefit, idx) in getBenefits(pkg)" :key="idx"
-                                    class="benefit-item flex items-start gap-2.5 text-sm"
-                                    :style="{ animationDelay: `${idx * 0.05}s` }">
-                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
-                                    <span class="leading-snug"
-                                        :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600'">{{
-                                            benefit }}</span>
-                                </li>
-                                <li v-if="pkg.deposit" class="benefit-item text-sm flex items-start gap-2.5">
-                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
-                                    <span
-                                        :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600'">Deposit:
-                                        {{ formatPrice(pkg.deposit) }}</span>
-                                </li>
-                            </ul>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div v-for="pkg in availablePackages" :key="pkg.type"
+                        @click="isAdobeCars && pkg.isAddOn ? toggleAdobeProtection(pkg) : selectPackage(pkg.type)"
+                        class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all relative"
+                        :class="(isAdobeCars && pkg.isAddOn ? isAdobeProtectionSelected(pkg) : currentPackage === pkg.type) ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
+                        <!-- Popular Badge -->
+                        <div v-if="pkg.type === 'PMP' || pkg.isBestValue"
+                            class="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-yellow-500 text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl text-white uppercase tracking-wide">
+                            {{ pkg.isBestValue ? 'Recommended' : 'Popular' }}
                         </div>
+
+                        <!-- Header -->
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <span class="text-sm font-bold text-gray-900 block tracking-wide">{{
+                                    pkg.name || getPackageDisplayName(pkg.type) }}</span>
+                                <span class="text-xs text-gray-400 uppercase tracking-wider">{{
+                                    pkg.subtitle || getPackageSubtitle(pkg.type) }}</span>
+                            </div>
+                            <div v-if="isAdobeCars && pkg.isAddOn" class="checkbox-custom"
+                                :class="{ selected: isAdobeProtectionSelected(pkg) }"></div>
+                            <div v-else class="radio-custom" :class="{ selected: currentPackage === pkg.type }">
+                            </div>
+                        </div>
+
+                        <!-- Price -->
+                        <div class="mb-4 pb-4 border-b border-gray-100">
+                            <div class="flex items-baseline gap-1 mb-2">
+                                <span class="text-3xl font-bold"
+                                    :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                    {{ formatPrice(pkg.total / numberOfDays) }}
+                                </span>
+                                <span class="text-sm text-gray-500">/day</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Total:</span>
+                                <span class="text-lg font-bold"
+                                    :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                    {{ formatPrice(pkg.total) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Benefits List -->
+                        <ul class="space-y-2.5">
+                            <li v-for="(benefit, idx) in getBenefits(pkg)" :key="idx"
+                                class="benefit-item flex items-start gap-2.5 text-sm"
+                                :style="{ animationDelay: `${idx * 0.05}s` }">
+                                <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
+                                <span class="leading-snug"
+                                    :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600'">{{
+                                        benefit }}</span>
+                            </li>
+                            <li v-if="pkg.deposit" class="benefit-item text-sm flex items-start gap-2.5">
+                                <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
+                                <span
+                                    :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600'">Deposit:
+                                    {{ formatPrice(pkg.deposit) }}</span>
+                            </li>
+                        </ul>
                     </div>
-                </template>
+                </div>
             </section>
 
             <section v-if="isRenteon && (renteonIncludedServices.length || renteonDriverPolicy)" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
@@ -1372,7 +1370,7 @@ const formatPaymentMethod = (method) => {
             </section>
 
             <!-- LocautoRent: Protection Plans Section -->
-            <section v-if="isLocautoRent && locautoProtectionPlans.length > 0">
+            <section v-if="isLocautoRent && locautoProtectionPlans.length > 0" id="extras-package-section">
                 <div class="mb-6">
                     <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Choose Your Protection Plan</h2>
                     <p class="text-gray-600">Select the coverage that suits your needs</p>

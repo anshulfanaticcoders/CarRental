@@ -1,6 +1,6 @@
 <script setup>
 import { Link, useForm, usePage, router, Head } from "@inertiajs/vue3";
-import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import axios from 'axios';
 import { toast as sonnerToast } from "vue-sonner";
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
@@ -190,6 +190,13 @@ const fetchLocationDetails = async (locationId) => {
     }
 };
 
+const scrollToSection = async (id) => {
+    await nextTick();
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
 
 const handlePackageSelection = (event) => {
     // Event contains { vehicle, package, protection_code }
@@ -213,7 +220,7 @@ const handlePackageSelection = (event) => {
         locationInstructions.value = null;
     }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToSection('extras-breadcrumb-section');
 };
 
 const handleBackToResults = () => {
@@ -221,6 +228,7 @@ const handleBackToResults = () => {
     selectedVehicle.value = null;
     selectedPackage.value = null;
     selectedProtectionCode.value = null;
+    scrollToSection('results-breadcrumb-section');
 };
 
 const selectedCheckoutData = ref(null);
@@ -233,7 +241,12 @@ const handleProceedToCheckout = (data) => {
         vehicle_total: vehicleTotal
     };
     bookingStep.value = 'checkout';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToSection('checkout-form-section');
+};
+
+const handleBackToExtras = () => {
+    bookingStep.value = 'extras';
+    scrollToSection('extras-breadcrumb-section');
 };
 
 // Moved to consolidated onMounted at the bottom
@@ -2223,7 +2236,7 @@ watch(
 
 
     <!-- Main Content -->
-    <div class="main-container mx-auto px-4 py-4" v-if="bookingStep === 'results'">
+    <div id="results-breadcrumb-section" class="main-container mx-auto px-4 py-4" v-if="bookingStep === 'results'">
         <Breadcrumb>
             <BreadcrumbList>
                 <BreadcrumbItem>
@@ -2538,7 +2551,7 @@ watch(
             :currency-symbol="getCurrencySymbol(selectedCurrency)" :selected-currency-code="selectedCurrency"
             :payment-percentage="paymentPercentage"
             :totals="selectedCheckoutData.totals" :vehicle-total="selectedCheckoutData.vehicle_total"
-            @back="bookingStep = 'extras'" />
+            @back="handleBackToExtras" />
     </div>
 
     <!-- Map Modal (Global) -->
