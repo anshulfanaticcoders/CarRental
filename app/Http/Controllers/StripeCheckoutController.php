@@ -26,7 +26,6 @@ class StripeCheckoutController extends Controller
      */
     public function createSession(Request $request)
     {
-        $pendingBooking = null;
         try {
             $validated = $request->validate([
                 'vehicle' => 'required|array',
@@ -178,51 +177,6 @@ class StripeCheckoutController extends Controller
                 $metadata = array_merge($metadata, $customerMetadata);
             }
 
-            try {
-                $customerData = $this->bookingService->resolveCustomerFromCheckoutPayload($validated, $userId);
-                $customer = $customerData['customer'];
-
-                $vehicleId = null;
-                if (($validated['vehicle']['source'] ?? '') === 'internal' && !empty($validated['vehicle']['id'])) {
-                    $vehicleId = (int) $validated['vehicle']['id'];
-                }
-
-                $providerMetadata = $this->buildProviderMetadata($validated);
-
-                $pendingBooking = Booking::create([
-                    'booking_number' => Booking::generateBookingNumber(),
-                    'customer_id' => $customer->id,
-                    'vehicle_id' => $vehicleId,
-                    'provider_source' => $validated['vehicle']['source'] ?? 'greenmotion',
-                    'provider_vehicle_id' => $validated['vehicle']['id'] ?? null,
-                    'vehicle_name' => ($validated['vehicle']['brand'] ?? '') . ' ' . ($validated['vehicle']['model'] ?? ''),
-                    'vehicle_image' => $vehicleImage ?? null,
-                    'pickup_date' => $validated['pickup_date'],
-                    'pickup_time' => $validated['pickup_time'],
-                    'return_date' => $validated['dropoff_date'],
-                    'return_time' => $validated['dropoff_time'],
-                    'pickup_location' => $validated['pickup_location'],
-                    'return_location' => $validated['dropoff_location'] ?? $validated['pickup_location'],
-                    'plan' => $validated['package'],
-                    'total_days' => (int) ($validated['number_of_days'] ?? 1),
-                    'base_price' => (float) ($validated['total_amount'] ?? 0),
-                    'tax_amount' => 0,
-                    'total_amount' => (float) ($validated['total_amount'] ?? 0),
-                    'amount_paid' => 0,
-                    'pending_amount' => (float) ($validated['total_amount'] ?? 0),
-                    'booking_currency' => $currency,
-                    'payment_status' => 'pending',
-                    'booking_status' => 'pending',
-                    'provider_metadata' => $providerMetadata,
-                ]);
-
-                $metadata['booking_id'] = $pendingBooking->id;
-            } catch (\Exception $e) {
-                Log::warning('StripeCheckoutController: Pending booking creation failed', [
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
 
             // Create Stripe Checkout Session
             $currentLocale = app()->getLocale();
@@ -270,12 +224,6 @@ class StripeCheckoutController extends Controller
                 ],
             ]);
 
-            if ($pendingBooking) {
-                $pendingBooking->update([
-                    'stripe_session_id' => $session->id,
-                ]);
-            }
-
             Log::info('Stripe Checkout Session created', [
                 'session_id' => $session->id,
                 'vehicle' => $validated['vehicle']['brand'] . ' ' . $validated['vehicle']['model'],
@@ -289,12 +237,6 @@ class StripeCheckoutController extends Controller
             ]);
 
         } catch (\Stripe\Exception\ApiErrorException $e) {
-            if ($pendingBooking) {
-                $pendingBooking->update([
-                    'payment_status' => 'failed',
-                    'notes' => ($pendingBooking->notes ? $pendingBooking->notes . "\n" : "") . 'Stripe session creation failed: ' . $e->getMessage(),
-                ]);
-            }
             Log::error('Stripe API Error', [
                 'message' => $e->getMessage(),
                 'code' => $e->getStripeCode(),
@@ -305,12 +247,6 @@ class StripeCheckoutController extends Controller
             ], 500);
 
         } catch (\Exception $e) {
-            if ($pendingBooking) {
-                $pendingBooking->update([
-                    'payment_status' => 'failed',
-                    'notes' => ($pendingBooking->notes ? $pendingBooking->notes . "\n" : "") . 'Stripe session creation failed: ' . $e->getMessage(),
-                ]);
-            }
             Log::error('Checkout Session Error', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -383,8 +319,28 @@ class StripeCheckoutController extends Controller
                 ->with(['customer', 'payments', 'vehicle']) // Corrected relationships
                 ->first();
 
-            // Fallback: If webhook didn't run, fetch from Stripe and create it now
-            if (!$booking) {
+            $session = null;
+
+            if ($booking) {
+                $needsUpdate = !in_array($booking->booking_status, ['confirmed', 'completed'], true)
+                    || !in_array($booking->payment_status, ['partial', 'paid'], true);
+
+                if ($needsUpdate) {
+                    Log::info('Booking pending after success, attempting Stripe fetch', ['booking_id' => $booking->id, 'session_id' => $sessionId]);
+                    $session = StripeSession::retrieve($sessionId);
+
+                    if ($session->payment_status === 'paid') {
+                        Log::info('Session paid, updating booking via service', ['session_id' => $sessionId]);
+                        $booking = $bookingService->createBookingFromSession($session);
+                    } else {
+                        Log::warning('Session not paid', ['session_id' => $sessionId, 'status' => $session->payment_status]);
+                        return redirect('/')->with('error', 'Payment not completed.');
+                    }
+                } else {
+                    Log::info('Booking found locally', ['booking_id' => $booking->id]);
+                }
+            } else {
+                // Fallback: If webhook didn't run, fetch from Stripe and create it now
                 Log::info('Booking not found locally, attempting fetch from Stripe', ['session_id' => $sessionId]);
 
                 $session = StripeSession::retrieve($sessionId);
@@ -396,8 +352,6 @@ class StripeCheckoutController extends Controller
                     Log::warning('Session not paid', ['session_id' => $sessionId, 'status' => $session->payment_status]);
                     return redirect('/')->with('error', 'Payment not completed.');
                 }
-            } else {
-                Log::info('Booking found locally', ['booking_id' => $booking->id]);
             }
 
             // Re-fetch with relations to be sure

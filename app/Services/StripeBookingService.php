@@ -147,13 +147,7 @@ class StripeBookingService
             }
 
             if (empty($booking->provider_metadata)) {
-                $providerMetadata = [
-                    'provider' => $booking->provider_source ?? ($metadata->vehicle_source ?? null),
-                    'quoteid' => $metadata->quoteid ?? null,
-                    'rental_code' => $metadata->package ?? $metadata->rental_code ?? null,
-                    'currency' => $metadata->currency ?? null,
-                    'vehicle_total' => $metadata->vehicle_total ?? null,
-                ];
+                $providerMetadata = $this->buildProviderMetadataFromSession($metadata, $booking);
                 $booking->update([
                     'provider_metadata' => $providerMetadata,
                 ]);
@@ -380,6 +374,42 @@ class StripeBookingService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    protected function buildProviderMetadataFromSession($metadata, Booking $booking): array
+    {
+        $normalizeValue = static function ($value) {
+            if (!is_string($value)) {
+                return $value;
+            }
+
+            $trimmed = trim($value);
+            if ($trimmed === '') {
+                return $value;
+            }
+
+            $decoded = json_decode($trimmed, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $decoded;
+            }
+
+            return $value;
+        };
+
+        return [
+            'provider' => $booking->provider_source ?? ($metadata->vehicle_source ?? null),
+            'quoteid' => $metadata->quoteid ?? null,
+            'rental_code' => $metadata->package ?? $metadata->rental_code ?? null,
+            'currency' => $metadata->currency ?? null,
+            'vehicle_total' => $metadata->vehicle_total ?? null,
+            'pickup_location_id' => $metadata->pickup_location_code ?? null,
+            'dropoff_location_id' => $metadata->dropoff_location_code ?? $metadata->pickup_location_code ?? null,
+            'location' => $normalizeValue($metadata->location_details ?? null),
+            'location_instructions' => $metadata->location_instructions ?? null,
+            'driver_requirements' => $normalizeValue($metadata->driver_requirements ?? null),
+            'terms' => $normalizeValue($metadata->terms ?? null),
+            'extras_selected' => $normalizeValue($metadata->extras_data ?? null),
+        ];
     }
 
     protected function notifyBookingCreated(Booking $booking, Customer $customer, ?string $tempPassword = null): void

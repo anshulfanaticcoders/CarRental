@@ -7,6 +7,7 @@ use App\Models\BookingPayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
+use Stripe\Checkout\Session as StripeSession;
 use Stripe\Webhook;
 use Stripe\Exception\SignatureVerificationException;
 use App\Services\StripeBookingService;
@@ -47,6 +48,10 @@ class StripeWebhookController extends Controller
                 $this->handleCheckoutComplete($event->data->object);
                 break;
 
+            case 'checkout.session.async_payment_succeeded':
+                $this->handleAsyncPaymentSucceeded($event->data->object);
+                break;
+
             case 'checkout.session.expired':
                 $this->handleCheckoutExpired($event->data->object);
                 break;
@@ -68,9 +73,68 @@ class StripeWebhookController extends Controller
     protected function handleCheckoutComplete($session)
     {
         try {
-            $this->bookingService->createBookingFromSession($session);
+            $freshSession = $this->retrieveSession($session);
+
+            if (!$freshSession) {
+                return;
+            }
+
+            if ($freshSession->payment_status !== 'paid') {
+                Log::info('Checkout completed but payment not settled', [
+                    'session_id' => $freshSession->id,
+                    'payment_status' => $freshSession->payment_status,
+                ]);
+                return;
+            }
+
+            $this->bookingService->createBookingFromSession($freshSession);
         } catch (\Exception $e) {
             Log::error('Webhook handler failed to create booking', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Handle checkout.session.async_payment_succeeded - Create booking after delayed methods
+     */
+    protected function handleAsyncPaymentSucceeded($session)
+    {
+        try {
+            $freshSession = $this->retrieveSession($session);
+
+            if (!$freshSession) {
+                return;
+            }
+
+            if ($freshSession->payment_status !== 'paid') {
+                Log::warning('Async payment succeeded event received but session not paid', [
+                    'session_id' => $freshSession->id,
+                    'payment_status' => $freshSession->payment_status,
+                ]);
+                return;
+            }
+
+            $this->bookingService->createBookingFromSession($freshSession);
+        } catch (\Exception $e) {
+            Log::error('Async payment handler failed to create booking', ['error' => $e->getMessage()]);
+        }
+    }
+
+    protected function retrieveSession($session)
+    {
+        $sessionId = $session->id ?? null;
+        if (!$sessionId) {
+            Log::warning('Stripe webhook session missing id');
+            return null;
+        }
+
+        try {
+            return StripeSession::retrieve($sessionId);
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve Stripe session', [
+                'session_id' => $sessionId,
+                'error' => $e->getMessage(),
+            ]);
+            return $session;
         }
     }
 
