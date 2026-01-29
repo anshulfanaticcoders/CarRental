@@ -84,7 +84,7 @@ class StripeBookingService
                 $vehicleId = (int) $metadata->vehicle_id;
             }
 
-            $bookingCurrency = strtoupper((string) ($metadata->currency ?? 'EUR'));
+            $bookingCurrency = $this->normalizeCurrencyCode($metadata->currency ?? 'EUR');
 
             if ($existingBooking) {
                 $booking = $existingBooking;
@@ -400,7 +400,7 @@ class StripeBookingService
             'provider' => $booking->provider_source ?? ($metadata->vehicle_source ?? null),
             'quoteid' => $metadata->quoteid ?? null,
             'rental_code' => $metadata->package ?? $metadata->rental_code ?? null,
-            'currency' => $metadata->currency ?? null,
+            'currency' => $metadata->currency ? $this->normalizeCurrencyCode($metadata->currency) : null,
             'vehicle_total' => $metadata->vehicle_total ?? null,
             'pickup_location_id' => $metadata->pickup_location_code ?? null,
             'dropoff_location_id' => $metadata->dropoff_location_code ?? $metadata->pickup_location_code ?? null,
@@ -410,6 +410,34 @@ class StripeBookingService
             'terms' => $normalizeValue($metadata->terms ?? null),
             'extras_selected' => $normalizeValue($metadata->extras_data ?? null),
         ];
+    }
+
+    protected function normalizeCurrencyCode($currency): string
+    {
+        $value = $currency ?? 'EUR';
+
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed !== '') {
+                $value = $trimmed;
+            }
+        }
+
+        $symbolMap = [
+            "\u{20AC}" => 'EUR',
+            "\u{00A3}" => 'GBP',
+            "\u{20B9}" => 'INR',
+            "\u{20BD}" => 'RUB',
+            'A$' => 'AUD',
+            '$' => 'USD',
+        ];
+
+        if (is_string($value) && array_key_exists($value, $symbolMap)) {
+            return $symbolMap[$value];
+        }
+
+        $upper = strtoupper((string) $value);
+        return $upper !== '' ? $upper : 'EUR';
     }
 
     protected function notifyBookingCreated(Booking $booking, Customer $customer, ?string $tempPassword = null): void
@@ -644,7 +672,7 @@ class StripeBookingService
                 $customerDetails,
                 $vehicleId,
                 $metadata->vehicle_total ?? $metadata->total_amount, // vehicleTotal
-                $metadata->currency,
+                $this->normalizeCurrencyCode($metadata->currency ?? 'EUR'),
                 $metadata->total_amount, // grandTotal
                 $booking->stripe_session_id,
                 $metadata->quoteid,

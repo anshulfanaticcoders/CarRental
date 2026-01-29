@@ -96,12 +96,13 @@ class StripeCheckoutController extends Controller
                 '£' => 'GBP',
             ];
             $currency = $currencyMap[$currency] ?? $currency;
+            $currencyCode = strtoupper($currency);
 
             // Build line items for Stripe
             $lineItems = [
                 [
                     'price_data' => [
-                        'currency' => strtolower($currency),
+                        'currency' => strtolower($currencyCode),
                         'product_data' => [
                             'name' => $validated['vehicle']['brand'] . ' ' . $validated['vehicle']['model'],
                             'description' => $validated['package'] . ' Package - ' . $validated['number_of_days'] . ' day(s)',
@@ -136,7 +137,7 @@ class StripeCheckoutController extends Controller
                 'total_amount' => $validated['total_amount'],
                 'payable_amount' => $payableAmount,
                 'pending_amount' => $pendingAmount,
-                'currency' => $validated['currency'],
+                'currency' => $currencyCode,
                 'customer_name' => $validated['customer']['name'] ?? '',
                 'customer_email' => $validated['customer']['email'] ?? '',
                 'customer_phone' => $validated['customer']['phone'] ?? '',
