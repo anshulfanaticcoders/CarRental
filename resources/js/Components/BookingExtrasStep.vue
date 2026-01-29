@@ -94,6 +94,18 @@ const props = defineProps({
     pickupLocation: String,
     dropoffLocation: String,
     locationInstructions: String,
+    locationDetails: {
+        type: Object,
+        default: null
+    },
+    driverRequirements: {
+        type: Object,
+        default: null
+    },
+    terms: {
+        type: Array,
+        default: null
+    },
     pickupDate: String,
     pickupTime: String,
     dropoffDate: String,
@@ -131,6 +143,85 @@ const vehicleLocationText = computed(() => {
     const fallback = parts.join(', ');
     if (fallback) return fallback;
     return props.pickupLocation || props.locationName || '';
+});
+
+const locationDetailLines = computed(() => {
+    const details = props.locationDetails || {};
+    const parts = [
+        details.address_1,
+        details.address_2,
+        details.address_3,
+        details.address_city,
+        details.address_county,
+        details.address_postcode
+    ];
+    return parts
+        .map(part => `${part || ''}`.trim())
+        .filter(part => part.length > 0);
+});
+
+const locationContact = computed(() => {
+    const details = props.locationDetails || {};
+    return {
+        phone: details.telephone || null,
+        email: details.email || null,
+        iata: details.iata || null
+    };
+});
+
+const locationOpeningHours = computed(() => {
+    const details = props.locationDetails || {};
+    if (Array.isArray(details.opening_hours) && details.opening_hours.length) {
+        return details.opening_hours;
+    }
+    if (Array.isArray(details.office_opening_hours) && details.office_opening_hours.length) {
+        return details.office_opening_hours;
+    }
+    return [];
+});
+
+const locationOutOfHours = computed(() => {
+    const details = props.locationDetails || {};
+    return Array.isArray(details.out_of_hours_dropoff) ? details.out_of_hours_dropoff : [];
+});
+
+const locationDaytimeClosures = computed(() => {
+    const details = props.locationDetails || {};
+    return Array.isArray(details.daytime_closures_hours) ? details.daytime_closures_hours : [];
+});
+
+const formatHourWindow = (window) => {
+    if (!window) return '';
+    const start = window.open || window.start || '';
+    const end = window.close || window.end || '';
+    const start2 = window.start2 || '';
+    const end2 = window.end2 || '';
+    const first = start && end ? `${start} - ${end}` : '';
+    const second = start2 && end2 ? `${start2} - ${end2}` : '';
+    return [first, second].filter(Boolean).join(' / ');
+};
+
+const driverRequirementItems = computed(() => {
+    const requirements = props.driverRequirements || {};
+    const labelMap = {
+        driving_licence: 'Driving licence',
+        driving_licence_valid: 'Valid driving licence',
+        passport: 'Passport',
+        dvla_check_code: 'DVLA check code',
+        two_proofs_of_address: 'Two proofs of address',
+        valid_cc: 'Valid credit card',
+        boarding_pass: 'Boarding pass'
+    };
+
+    return Object.entries(requirements)
+        .filter(([key, value]) => key !== 'mileage_type' && ['1', 'true', 'yes', 'y', true].includes(`${value}`.toLowerCase()))
+        .map(([key]) => labelMap[key] || key.replace(/_/g, ' '))
+        .sort();
+});
+
+const mileageTypeLabel = computed(() => {
+    const mileageType = props.driverRequirements?.mileage_type;
+    return mileageType ? `${mileageType}` : null;
 });
 
 const hasVehicleCoords = computed(() => {
@@ -1083,9 +1174,90 @@ const formatPaymentMethod = (method) => {
                 <p class="text-sm text-gray-600 mb-4">
                     {{ vehicleLocationText || 'Location details unavailable.' }}
                 </p>
+                <div v-if="locationDetailLines.length" class="text-sm text-gray-600 space-y-1 mb-4">
+                    <p v-for="(line, index) in locationDetailLines" :key="`location-line-${index}`">
+                        {{ line }}
+                    </p>
+                </div>
+                <div v-if="locationContact.phone || locationContact.email || locationContact.iata" class="text-sm text-gray-600 mb-4 space-y-1">
+                    <p v-if="locationContact.phone"><span class="font-semibold text-gray-800">Phone:</span> {{ locationContact.phone }}</p>
+                    <p v-if="locationContact.email"><span class="font-semibold text-gray-800">Email:</span> {{ locationContact.email }}</p>
+                    <p v-if="locationContact.iata"><span class="font-semibold text-gray-800">Airport Code:</span> {{ locationContact.iata }}</p>
+                </div>
+                <div v-if="locationOpeningHours.length" class="text-sm text-gray-600 mb-4">
+                    <p class="font-semibold text-gray-800 mb-2">Opening Hours</p>
+                    <div class="space-y-1">
+                        <p v-for="(day, index) in locationOpeningHours" :key="`opening-hour-${index}`">
+                            <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                            <span class="ml-1">{{ formatHourWindow(day) || 'Closed' }}</span>
+                        </p>
+                    </div>
+                </div>
+                <div v-if="locationOutOfHours.length" class="text-sm text-gray-600 mb-4">
+                    <p class="font-semibold text-gray-800 mb-2">Out of Hours Dropoff</p>
+                    <div class="space-y-1">
+                        <p v-for="(day, index) in locationOutOfHours" :key="`out-hours-${index}`">
+                            <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                            <span class="ml-1">{{ formatHourWindow(day) || 'Unavailable' }}</span>
+                        </p>
+                    </div>
+                </div>
+                <div v-if="locationDaytimeClosures.length" class="text-sm text-gray-600 mb-4">
+                    <p class="font-semibold text-gray-800 mb-2">Daytime Closures</p>
+                    <div class="space-y-1">
+                        <p v-for="(day, index) in locationDaytimeClosures" :key="`daytime-closure-${index}`">
+                            <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                            <span class="ml-1">{{ formatHourWindow(day) || 'None' }}</span>
+                        </p>
+                    </div>
+                </div>
+                <p v-if="locationDetails?.out_of_hours_charge" class="text-sm text-gray-600 mb-4">
+                    <span class="font-semibold text-gray-800">Out of Hours Charge:</span>
+                    {{ locationDetails.out_of_hours_charge }}
+                </p>
                 <div v-if="hasVehicleCoords" ref="vehicleMapRef"
                     class="h-56 rounded-xl overflow-hidden border border-gray-200"></div>
                 <p v-else class="text-xs text-gray-500">Map not available for this vehicle.</p>
+            </div>
+
+            <div v-if="driverRequirementItems.length || mileageTypeLabel" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 10a4 4 0 11-6 0m1 10h4m-4 0a2 2 0 01-2-2v-1a4 4 0 014-4h2a4 4 0 014 4v1a2 2 0 01-2 2m-6 0h6" />
+                    </svg>
+                    <h4 class="font-display text-xl font-bold text-gray-900">Driver Requirements</h4>
+                </div>
+                <p v-if="mileageTypeLabel" class="text-sm text-gray-600 mb-3">
+                    <span class="font-semibold text-gray-800">Mileage type:</span> {{ mileageTypeLabel }}
+                </p>
+                <ul v-if="driverRequirementItems.length" class="text-sm text-gray-600 space-y-2">
+                    <li v-for="item in driverRequirementItems" :key="item" class="flex items-start gap-2">
+                        <span class="mt-0.5 w-2 h-2 rounded-full bg-[#1e3a5f]"></span>
+                        <span>{{ item }}</span>
+                    </li>
+                </ul>
+                <p v-else class="text-sm text-gray-500">Requirement details unavailable for this location.</p>
+            </div>
+
+            <div v-if="terms && terms.length" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <h4 class="font-display text-xl font-bold text-gray-900">Terms & Conditions</h4>
+                </div>
+                <div v-for="(category, index) in terms" :key="`term-${index}`" class="mb-4">
+                    <p class="font-semibold text-gray-800 mb-2">{{ category.name }}</p>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li v-for="(condition, conditionIndex) in category.conditions" :key="`term-${index}-${conditionIndex}`">
+                            {{ condition }}
+                        </li>
+                    </ul>
+                </div>
             </div>
 
             <!-- Vendor Info & Guidelines (Internal Only) -->

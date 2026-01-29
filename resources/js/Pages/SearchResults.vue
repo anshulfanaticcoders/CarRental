@@ -171,6 +171,11 @@ const selectedProtectionCode = ref(null);
 
 const selectedBookingExtras = ref({});
 const locationInstructions = ref(null);
+const locationDetails = ref(null);
+const driverRequirements = ref(null);
+const termsData = ref(null);
+const greenMotionCountries = ref(null);
+const termsCountryId = ref(null);
 const paymentPercentage = ref(0);
 
 const fetchLocationDetails = async (locationId) => {
@@ -179,15 +184,73 @@ const fetchLocationDetails = async (locationId) => {
         const response = await axios.get(route('green-motion-locations'), {
             params: { location_id: locationId }
         });
-        if (response.data && response.data.collection_details) {
-            locationInstructions.value = response.data.collection_details;
+        if (response.data) {
+            locationDetails.value = response.data;
+            locationInstructions.value = response.data.collection_details || null;
         } else {
+            locationDetails.value = null;
             locationInstructions.value = null;
         }
     } catch (error) {
         console.error("Error fetching location details:", error);
         locationInstructions.value = null;
+        locationDetails.value = null;
     }
+};
+
+const fetchGreenMotionCountries = async () => {
+    if (greenMotionCountries.value) return greenMotionCountries.value;
+    try {
+        const response = await axios.get(route('green-motion-countries'));
+        greenMotionCountries.value = Array.isArray(response.data) ? response.data : [];
+        return greenMotionCountries.value;
+    } catch (error) {
+        console.error('Error fetching Green Motion countries:', error);
+        greenMotionCountries.value = [];
+        return [];
+    }
+};
+
+const fetchGreenMotionTerms = async (countryId) => {
+    if (!countryId) {
+        termsData.value = null;
+        return;
+    }
+    try {
+        const response = await axios.get(route('green-motion-terms-and-conditions'), {
+            params: { country_id: countryId, language: form.language || 'en' }
+        });
+        termsData.value = Array.isArray(response.data) ? response.data : null;
+    } catch (error) {
+        console.error('Error fetching Green Motion terms:', error);
+        termsData.value = null;
+    }
+};
+
+const resolveGreenMotionRequirements = async () => {
+    const countryName = form.country || '';
+    if (!countryName) {
+        driverRequirements.value = null;
+        termsData.value = null;
+        termsCountryId.value = null;
+        return;
+    }
+
+    const countries = await fetchGreenMotionCountries();
+    const match = countries.find(country =>
+        `${country.countryName || ''}`.toLowerCase() === countryName.toLowerCase()
+    );
+
+    if (!match) {
+        driverRequirements.value = null;
+        termsData.value = null;
+        termsCountryId.value = null;
+        return;
+    }
+
+    driverRequirements.value = match.driver_requirements || null;
+    termsCountryId.value = match.countryID || null;
+    await fetchGreenMotionTerms(termsCountryId.value);
 };
 
 const scrollToSection = async (id) => {
@@ -215,9 +278,15 @@ const handlePackageSelection = (event) => {
         } else {
             console.warn('No location_id found in vehicle data', event.vehicle);
             locationInstructions.value = null;
+            locationDetails.value = null;
         }
+        resolveGreenMotionRequirements();
     } else {
         locationInstructions.value = null;
+        locationDetails.value = null;
+        driverRequirements.value = null;
+        termsData.value = null;
+        termsCountryId.value = null;
     }
 
     scrollToSection('extras-breadcrumb-section');
@@ -2537,7 +2606,9 @@ watch(
             :pickup-location="form.where" :dropoff-location="form.dropoff_where || form.where"
             :pickup-date="form.date_from" :pickup-time="form.start_time" :dropoff-date="form.date_to"
             :dropoff-time="form.end_time" :number-of-days="numberOfRentalDays"
-            :location-instructions="locationInstructions" :payment-percentage="paymentPercentage"
+            :location-instructions="locationInstructions" :location-details="locationDetails"
+            :driver-requirements="driverRequirements" :terms="termsData"
+            :payment-percentage="paymentPercentage"
             @back="handleBackToResults" @proceed-to-checkout="handleProceedToCheckout" />
 
         <BookingCheckoutStep v-else-if="bookingStep === 'checkout' && selectedVehicle" class="w-full"
@@ -2551,6 +2622,8 @@ watch(
             :currency-symbol="getCurrencySymbol(selectedCurrency)" :selected-currency-code="selectedCurrency"
             :payment-percentage="paymentPercentage"
             :totals="selectedCheckoutData.totals" :vehicle-total="selectedCheckoutData.vehicle_total"
+            :location-details="locationDetails" :location-instructions="locationInstructions"
+            :driver-requirements="driverRequirements" :terms="termsData"
             @back="handleBackToExtras" />
     </div>
 

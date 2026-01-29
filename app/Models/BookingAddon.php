@@ -11,6 +11,7 @@ class BookingAddon extends Model
     use HasFactory;
 
     protected $fillable = [
+        'vendor_id',
         'extra_type',
         'extra_name',
         'description',

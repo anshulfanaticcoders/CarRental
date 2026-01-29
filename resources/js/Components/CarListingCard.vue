@@ -382,6 +382,15 @@ const getBenefits = (product) => {
 
     if (product.costperextradistance !== undefined && parseFloat(product.costperextradistance) === 0) {
         benefits.push('Unlimited mileage');
+    } else if (product.mileage !== undefined && product.mileage !== null && `${product.mileage}`.trim() !== '') {
+        benefits.push(`Mileage included: ${product.mileage}`);
+        if (product.costperextradistance !== undefined && parseFloat(product.costperextradistance) > 0) {
+            const convertedExtra = convertPrice(product.costperextradistance, originalCurrency);
+            benefits.push(`Extra distance charge: ${getSelectedCurrencySymbol()}${convertedExtra.toFixed(2)}`);
+        }
+    } else if (product.costperextradistance !== undefined && parseFloat(product.costperextradistance) > 0) {
+        const convertedExtra = convertPrice(product.costperextradistance, originalCurrency);
+        benefits.push(`Extra distance charge: ${getSelectedCurrencySymbol()}${convertedExtra.toFixed(2)}`);
     }
 
     // Static based on type (only what's not in API)
@@ -396,6 +405,10 @@ const getBenefits = (product) => {
 
     if (type === 'PLU' || type === 'PRE' || type === 'PMP') {
         benefits.push('Cancellation in line with T&Cs');
+    }
+
+    if (product.minage !== undefined && product.minage !== null && `${product.minage}`.trim() !== '') {
+        benefits.push(`Minimum driver age: ${product.minage}`);
     }
 
     return benefits;

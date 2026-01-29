@@ -18,6 +18,19 @@ const props = defineProps({
     dropoffTime: String,
     pickupLocation: String,
     dropoffLocation: String,
+    locationDetails: {
+        type: Object,
+        default: null
+    },
+    locationInstructions: String,
+    driverRequirements: {
+        type: Object,
+        default: null
+    },
+    terms: {
+        type: Array,
+        default: null
+    },
     numberOfDays: Number,
     currencySymbol: String,
     selectedCurrencyCode: String,
@@ -196,6 +209,10 @@ const bookingData = computed(() => {
         protection_amount: props.protectionAmount || 0,
         extras: props.extras,
         detailed_extras: props.detailedExtras,
+        location_details: props.locationDetails || null,
+        location_instructions: props.locationInstructions || null,
+        driver_requirements: props.driverRequirements || null,
+        terms: props.terms || null,
         customer: form.value,
         pickup_date: props.pickupDate,
         pickup_time: pickupTime,

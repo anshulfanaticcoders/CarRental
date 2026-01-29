@@ -24,6 +24,24 @@ use Illuminate\Support\Str;
 
 class StripeBookingService
 {
+    public function resolveCustomerFromCheckoutPayload(array $payload, ?int $userId = null): array
+    {
+        $customer = $payload['customer'] ?? [];
+        $metadata = (object) [
+            'customer_name' => $customer['name'] ?? null,
+            'customer_email' => $customer['email'] ?? null,
+            'customer_phone' => $customer['phone'] ?? null,
+            'customer_driver_age' => $customer['driver_age'] ?? null,
+            'flight_number' => $customer['flight_number'] ?? null,
+            'customer_address' => $customer['address'] ?? null,
+            'customer_city' => $customer['city'] ?? null,
+            'customer_postal_code' => $customer['postal_code'] ?? null,
+            'customer_country' => $customer['country'] ?? null,
+            'user_id' => $userId,
+        ];
+
+        return $this->findOrCreateCustomer($metadata);
+    }
     protected $adobeCarService;
     protected $renteonService;
 
@@ -40,14 +58,17 @@ class StripeBookingService
     {
         Log::info('StripeBookingService: Starting creation', ['session_id' => $session->id]);
 
+        $metadata = $session->metadata;
+
         // Idempotency check
         $existingBooking = Booking::where('stripe_session_id', $session->id)->first();
-        if ($existingBooking) {
-            Log::info('StripeBookingService: Booking already exists', ['booking_id' => $existingBooking->id]);
+        if (!$existingBooking && !empty($metadata->booking_id)) {
+            $existingBooking = Booking::find($metadata->booking_id);
+        }
+        if ($existingBooking && in_array($existingBooking->booking_status, ['confirmed', 'completed'], true)) {
+            Log::info('StripeBookingService: Booking already confirmed', ['booking_id' => $existingBooking->id]);
             return $existingBooking;
         }
-
-        $metadata = $session->metadata;
 
         // Start Transaction
         DB::beginTransaction();
@@ -58,8 +79,6 @@ class StripeBookingService
             $customer = $customerData['customer'];
             Log::info('StripeBookingService: Customer processed', ['customer_id' => $customer->id]);
 
-            // Create booking
-            // For internal vehicles, set vehicle_id to actual vehicle ID
             $vehicleId = null;
             if (($metadata->vehicle_source ?? '') === 'internal' && !empty($metadata->vehicle_id)) {
                 $vehicleId = (int) $metadata->vehicle_id;
@@ -67,34 +86,78 @@ class StripeBookingService
 
             $bookingCurrency = strtoupper((string) ($metadata->currency ?? 'EUR'));
 
-            $booking = Booking::create([
-                'booking_number' => Booking::generateBookingNumber(),
-                'customer_id' => $customer->id,
-                'vehicle_id' => $vehicleId, // Set for internal, null for external
-                'provider_source' => $metadata->vehicle_source ?? 'greenmotion',
-                'provider_vehicle_id' => $metadata->vehicle_id ?? null,
-                'vehicle_name' => ($metadata->vehicle_brand ?? '') . ' ' . ($metadata->vehicle_model ?? ''),
-                'vehicle_image' => $metadata->vehicle_image ?? null,
-                'pickup_date' => $metadata->pickup_date,
-                'pickup_time' => $metadata->pickup_time,
-                'return_date' => $metadata->dropoff_date,
-                'return_time' => $metadata->dropoff_time,
-                'pickup_location' => $metadata->pickup_location,
-                'return_location' => $metadata->dropoff_location ?? $metadata->pickup_location,
-                'plan' => $metadata->package ?? 'BAS',
-                'total_days' => (int) ($metadata->number_of_days ?? 1),
-                'base_price' => (float) ($metadata->total_amount ?? 0),
-                'tax_amount' => 0,
-                'total_amount' => (float) ($metadata->total_amount ?? 0),
-                'amount_paid' => (float) ($metadata->payable_amount ?? 0),
-                'pending_amount' => (float) ($metadata->pending_amount ?? 0),
-                'booking_currency' => $bookingCurrency,
-                'payment_status' => 'partial',
-                'booking_status' => 'confirmed',
-                'stripe_session_id' => $session->id,
-                'stripe_payment_intent_id' => $session->payment_intent,
-                'provider_booking_ref' => $metadata->provider_booking_ref ?? null,
-            ]);
+            if ($existingBooking) {
+                $booking = $existingBooking;
+                $booking->update([
+                    'customer_id' => $customer->id,
+                    'vehicle_id' => $booking->vehicle_id ?? $vehicleId,
+                    'provider_source' => $booking->provider_source ?? ($metadata->vehicle_source ?? 'greenmotion'),
+                    'provider_vehicle_id' => $booking->provider_vehicle_id ?? ($metadata->vehicle_id ?? null),
+                    'vehicle_name' => $booking->vehicle_name ?: (($metadata->vehicle_brand ?? '') . ' ' . ($metadata->vehicle_model ?? '')),
+                    'vehicle_image' => $booking->vehicle_image ?: ($metadata->vehicle_image ?? null),
+                    'pickup_date' => $metadata->pickup_date ?? $booking->pickup_date,
+                    'pickup_time' => $metadata->pickup_time ?? $booking->pickup_time,
+                    'return_date' => $metadata->dropoff_date ?? $booking->return_date,
+                    'return_time' => $metadata->dropoff_time ?? $booking->return_time,
+                    'pickup_location' => $metadata->pickup_location ?? $booking->pickup_location,
+                    'return_location' => $metadata->dropoff_location ?? $metadata->pickup_location ?? $booking->return_location,
+                    'plan' => $metadata->package ?? $booking->plan ?? 'BAS',
+                    'total_days' => (int) ($metadata->number_of_days ?? $booking->total_days ?? 1),
+                    'base_price' => (float) ($metadata->total_amount ?? $booking->base_price ?? 0),
+                    'tax_amount' => 0,
+                    'total_amount' => (float) ($metadata->total_amount ?? $booking->total_amount ?? 0),
+                    'amount_paid' => (float) ($metadata->payable_amount ?? $booking->amount_paid ?? 0),
+                    'pending_amount' => (float) ($metadata->pending_amount ?? $booking->pending_amount ?? 0),
+                    'booking_currency' => $bookingCurrency,
+                    'payment_status' => 'partial',
+                    'booking_status' => 'confirmed',
+                    'stripe_session_id' => $session->id,
+                    'stripe_payment_intent_id' => $session->payment_intent,
+                    'provider_booking_ref' => $booking->provider_booking_ref ?? ($metadata->provider_booking_ref ?? null),
+                ]);
+            } else {
+                $booking = Booking::create([
+                    'booking_number' => Booking::generateBookingNumber(),
+                    'customer_id' => $customer->id,
+                    'vehicle_id' => $vehicleId,
+                    'provider_source' => $metadata->vehicle_source ?? 'greenmotion',
+                    'provider_vehicle_id' => $metadata->vehicle_id ?? null,
+                    'vehicle_name' => ($metadata->vehicle_brand ?? '') . ' ' . ($metadata->vehicle_model ?? ''),
+                    'vehicle_image' => $metadata->vehicle_image ?? null,
+                    'pickup_date' => $metadata->pickup_date,
+                    'pickup_time' => $metadata->pickup_time,
+                    'return_date' => $metadata->dropoff_date,
+                    'return_time' => $metadata->dropoff_time,
+                    'pickup_location' => $metadata->pickup_location,
+                    'return_location' => $metadata->dropoff_location ?? $metadata->pickup_location,
+                    'plan' => $metadata->package ?? 'BAS',
+                    'total_days' => (int) ($metadata->number_of_days ?? 1),
+                    'base_price' => (float) ($metadata->total_amount ?? 0),
+                    'tax_amount' => 0,
+                    'total_amount' => (float) ($metadata->total_amount ?? 0),
+                    'amount_paid' => (float) ($metadata->payable_amount ?? 0),
+                    'pending_amount' => (float) ($metadata->pending_amount ?? 0),
+                    'booking_currency' => $bookingCurrency,
+                    'payment_status' => 'partial',
+                    'booking_status' => 'confirmed',
+                    'stripe_session_id' => $session->id,
+                    'stripe_payment_intent_id' => $session->payment_intent,
+                    'provider_booking_ref' => $metadata->provider_booking_ref ?? null,
+                ]);
+            }
+
+            if (empty($booking->provider_metadata)) {
+                $providerMetadata = [
+                    'provider' => $booking->provider_source ?? ($metadata->vehicle_source ?? null),
+                    'quoteid' => $metadata->quoteid ?? null,
+                    'rental_code' => $metadata->package ?? $metadata->rental_code ?? null,
+                    'currency' => $metadata->currency ?? null,
+                    'vehicle_total' => $metadata->vehicle_total ?? null,
+                ];
+                $booking->update([
+                    'provider_metadata' => $providerMetadata,
+                ]);
+            }
 
             $extrasTotal = 0.0;
             $extrasData = json_decode($metadata->extras_data ?? '[]', true);
@@ -124,53 +187,54 @@ class StripeBookingService
 
             Log::info('StripeBookingService: Booking record created', ['booking_id' => $booking->id]);
 
-            // Create payment record
-            BookingPayment::create([
-                'booking_id' => $booking->id,
-                'payment_method' => $metadata->payment_method ?? 'stripe',
-                'transaction_id' => $session->payment_intent,
-                'amount' => (float) ($metadata->payable_amount ?? 0),
-                'payment_status' => 'succeeded',
-                'payment_date' => now(),
-            ]);
+            $existingPayment = BookingPayment::where('booking_id', $booking->id)
+                ->where('transaction_id', $session->payment_intent)
+                ->first();
 
-            // Create extras
-            $extrasData = json_decode($metadata->extras_data ?? '[]', true);
+            if (!$existingPayment) {
+                BookingPayment::create([
+                    'booking_id' => $booking->id,
+                    'payment_method' => $metadata->payment_method ?? 'stripe',
+                    'transaction_id' => $session->payment_intent,
+                    'amount' => (float) ($metadata->payable_amount ?? 0),
+                    'payment_status' => 'succeeded',
+                    'payment_date' => now(),
+                ]);
+            }
 
-            if (!empty($extrasData)) {
-                // New Logic: Use detailed data from frontend
-                foreach ($extrasData as $extraItem) {
-                    BookingExtra::create([
-                        'booking_id' => $booking->id,
-                        'extra_type' => 'optional',
-                        'extra_name' => $extraItem['name'] ?? 'Unknown Extra',
-                        'quantity' => (int) ($extraItem['qty'] ?? 1),
-                        'price' => (float) ($extraItem['total'] ?? 0),
-                    ]);
-                }
-            } else {
-                // Fallback Logic (Old)
-                $extras = json_decode($metadata->extras ?? '[]', true);
-                if (!empty($extras)) {
-                    // Pre-fetch all needed addons to avoid N+1
-                    $addonIds = array_keys($extras);
-                    $addons = \App\Models\BookingAddon::whereIn('id', $addonIds)->get()->keyBy('id');
+            if (!$booking->extras()->exists()) {
+                $extrasData = json_decode($metadata->extras_data ?? '[]', true);
 
-                    foreach ($extras as $extraId => $quantity) {
-                        if ($quantity > 0) {
-                            $addon = $addons->find($extraId);
+                if (!empty($extrasData)) {
+                    foreach ($extrasData as $extraItem) {
+                        BookingExtra::create([
+                            'booking_id' => $booking->id,
+                            'extra_type' => 'optional',
+                            'extra_name' => $extraItem['name'] ?? 'Unknown Extra',
+                            'quantity' => (int) ($extraItem['qty'] ?? 1),
+                            'price' => (float) ($extraItem['total'] ?? 0),
+                        ]);
+                    }
+                } else {
+                    $extras = json_decode($metadata->extras ?? '[]', true);
+                    if (!empty($extras)) {
+                        $addonIds = array_keys($extras);
+                        $addons = \App\Models\BookingAddon::whereIn('id', $addonIds)->get()->keyBy('id');
 
-                            // Fallback if addon not found (shouldn't happen if IDs are valid)
-                            $name = $addon ? $addon->extra_name : "Extra #$extraId";
-                            $price = $addon ? $addon->price : 0;
+                        foreach ($extras as $extraId => $quantity) {
+                            if ($quantity > 0) {
+                                $addon = $addons->find($extraId);
+                                $name = $addon ? $addon->extra_name : "Extra #$extraId";
+                                $price = $addon ? $addon->price : 0;
 
-                            BookingExtra::create([
-                                'booking_id' => $booking->id,
-                                'extra_type' => 'optional',
-                                'extra_name' => $name,
-                                'quantity' => (int) $quantity,
-                                'price' => (float) $price,
-                            ]);
+                                BookingExtra::create([
+                                    'booking_id' => $booking->id,
+                                    'extra_type' => 'optional',
+                                    'extra_name' => $name,
+                                    'quantity' => (int) $quantity,
+                                    'price' => (float) $price,
+                                ]);
+                            }
                         }
                     }
                 }
@@ -181,12 +245,14 @@ class StripeBookingService
 
             $this->notifyBookingCreated($booking, $customer, $customerData['temp_password']);
 
+            $shouldTriggerProvider = empty($booking->provider_booking_ref);
+
             // Phase 2: Trigger Provider Reservations
-            if ($booking->provider_source === 'locauto_rent') {
+            if ($booking->provider_source === 'locauto_rent' && $shouldTriggerProvider) {
                 $this->triggerLocautoReservation($booking, $metadata);
-            } elseif ($booking->provider_source === 'greenmotion' || $booking->provider_source === 'usave') {
+            } elseif (($booking->provider_source === 'greenmotion' || $booking->provider_source === 'usave') && $shouldTriggerProvider) {
                 $this->triggerGreenMotionReservation($booking, $metadata);
-            } elseif ($booking->provider_source === 'adobe') {
+            } elseif ($booking->provider_source === 'adobe' && $shouldTriggerProvider) {
                 $this->triggerAdobeReservation($booking, $metadata);
             } elseif ($booking->provider_source === 'internal') {
                 // Internal vehicles don't require external API reservation
@@ -196,9 +262,9 @@ class StripeBookingService
                     'plan' => $booking->plan,
                     'total_amount' => $booking->total_amount,
                 ]);
-            } elseif ($booking->provider_source === 'renteon') {
+            } elseif ($booking->provider_source === 'renteon' && $shouldTriggerProvider) {
                 $this->triggerRenteonReservation($booking, $metadata);
-            } elseif ($booking->provider_source === 'okmobility') {
+            } elseif ($booking->provider_source === 'okmobility' && $shouldTriggerProvider) {
                 $this->triggerOkMobilityReservation($booking, $metadata);
             }
 

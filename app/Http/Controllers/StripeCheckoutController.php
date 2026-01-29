@@ -8,6 +8,7 @@ use App\Models\BookingExtra;
 use App\Models\Customer;
 use App\Models\PayableSetting;
 use App\Services\AdobeCarService;
+use App\Services\StripeBookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
@@ -15,7 +16,7 @@ use Stripe\Checkout\Session as StripeSession;
 
 class StripeCheckoutController extends Controller
 {
-    public function __construct()
+    public function __construct(private StripeBookingService $bookingService)
     {
         Stripe::setApiKey(config('services.stripe.secret'));
     }
@@ -25,6 +26,7 @@ class StripeCheckoutController extends Controller
      */
     public function createSession(Request $request)
     {
+        $pendingBooking = null;
         try {
             $validated = $request->validate([
                 'vehicle' => 'required|array',
@@ -47,6 +49,10 @@ class StripeCheckoutController extends Controller
                 'rentalCode' => 'nullable|string',
                 'vehicle_total' => 'nullable|numeric',
                 'payment_method' => 'nullable|string',
+                'location_details' => 'nullable|array',
+                'location_instructions' => 'nullable|string',
+                'driver_requirements' => 'nullable|array',
+                'terms' => 'nullable|array',
             ]);
 
             // Get payment percentage from settings
@@ -172,6 +178,51 @@ class StripeCheckoutController extends Controller
                 $metadata = array_merge($metadata, $customerMetadata);
             }
 
+            try {
+                $customerData = $this->bookingService->resolveCustomerFromCheckoutPayload($validated, $userId);
+                $customer = $customerData['customer'];
+
+                $vehicleId = null;
+                if (($validated['vehicle']['source'] ?? '') === 'internal' && !empty($validated['vehicle']['id'])) {
+                    $vehicleId = (int) $validated['vehicle']['id'];
+                }
+
+                $providerMetadata = $this->buildProviderMetadata($validated);
+
+                $pendingBooking = Booking::create([
+                    'booking_number' => Booking::generateBookingNumber(),
+                    'customer_id' => $customer->id,
+                    'vehicle_id' => $vehicleId,
+                    'provider_source' => $validated['vehicle']['source'] ?? 'greenmotion',
+                    'provider_vehicle_id' => $validated['vehicle']['id'] ?? null,
+                    'vehicle_name' => ($validated['vehicle']['brand'] ?? '') . ' ' . ($validated['vehicle']['model'] ?? ''),
+                    'vehicle_image' => $vehicleImage ?? null,
+                    'pickup_date' => $validated['pickup_date'],
+                    'pickup_time' => $validated['pickup_time'],
+                    'return_date' => $validated['dropoff_date'],
+                    'return_time' => $validated['dropoff_time'],
+                    'pickup_location' => $validated['pickup_location'],
+                    'return_location' => $validated['dropoff_location'] ?? $validated['pickup_location'],
+                    'plan' => $validated['package'],
+                    'total_days' => (int) ($validated['number_of_days'] ?? 1),
+                    'base_price' => (float) ($validated['total_amount'] ?? 0),
+                    'tax_amount' => 0,
+                    'total_amount' => (float) ($validated['total_amount'] ?? 0),
+                    'amount_paid' => 0,
+                    'pending_amount' => (float) ($validated['total_amount'] ?? 0),
+                    'booking_currency' => $currency,
+                    'payment_status' => 'pending',
+                    'booking_status' => 'pending',
+                    'provider_metadata' => $providerMetadata,
+                ]);
+
+                $metadata['booking_id'] = $pendingBooking->id;
+            } catch (\Exception $e) {
+                Log::warning('StripeCheckoutController: Pending booking creation failed', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
 
             // Create Stripe Checkout Session
             $currentLocale = app()->getLocale();
@@ -219,6 +270,12 @@ class StripeCheckoutController extends Controller
                 ],
             ]);
 
+            if ($pendingBooking) {
+                $pendingBooking->update([
+                    'stripe_session_id' => $session->id,
+                ]);
+            }
+
             Log::info('Stripe Checkout Session created', [
                 'session_id' => $session->id,
                 'vehicle' => $validated['vehicle']['brand'] . ' ' . $validated['vehicle']['model'],
@@ -232,6 +289,12 @@ class StripeCheckoutController extends Controller
             ]);
 
         } catch (\Stripe\Exception\ApiErrorException $e) {
+            if ($pendingBooking) {
+                $pendingBooking->update([
+                    'payment_status' => 'failed',
+                    'notes' => ($pendingBooking->notes ? $pendingBooking->notes . "\n" : "") . 'Stripe session creation failed: ' . $e->getMessage(),
+                ]);
+            }
             Log::error('Stripe API Error', [
                 'message' => $e->getMessage(),
                 'code' => $e->getStripeCode(),
@@ -242,6 +305,12 @@ class StripeCheckoutController extends Controller
             ], 500);
 
         } catch (\Exception $e) {
+            if ($pendingBooking) {
+                $pendingBooking->update([
+                    'payment_status' => 'failed',
+                    'notes' => ($pendingBooking->notes ? $pendingBooking->notes . "\n" : "") . 'Stripe session creation failed: ' . $e->getMessage(),
+                ]);
+            }
             Log::error('Checkout Session Error', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -251,6 +320,47 @@ class StripeCheckoutController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function buildProviderMetadata(array $validated): array
+    {
+        $vehicle = $validated['vehicle'] ?? [];
+        $package = $validated['package'] ?? null;
+        $product = null;
+        if (!empty($vehicle['products']) && is_array($vehicle['products'])) {
+            foreach ($vehicle['products'] as $entry) {
+                if (($entry['type'] ?? null) === $package) {
+                    $product = $entry;
+                    break;
+                }
+            }
+        }
+
+        return [
+            'provider' => $vehicle['source'] ?? null,
+            'quoteid' => $validated['quoteid'] ?? ($vehicle['quoteid'] ?? null),
+            'rental_code' => $package,
+            'currency' => $validated['currency'] ?? ($vehicle['currency'] ?? null),
+            'vehicle_total' => $validated['vehicle_total'] ?? null,
+            'pickup_location_id' => $vehicle['provider_pickup_id'] ?? null,
+            'dropoff_location_id' => $vehicle['provider_return_id'] ?? null,
+            'location' => $validated['location_details'] ?? null,
+            'location_instructions' => $validated['location_instructions'] ?? null,
+            'driver_requirements' => $validated['driver_requirements'] ?? null,
+            'terms' => $validated['terms'] ?? null,
+            'selected_product' => [
+                'type' => $product['type'] ?? $package,
+                'total' => $product['total'] ?? ($validated['vehicle_total'] ?? null),
+                'currency' => $product['currency'] ?? ($validated['currency'] ?? null),
+                'deposit' => $product['deposit'] ?? null,
+                'excess' => $product['excess'] ?? null,
+                'mileage' => $product['mileage'] ?? null,
+                'costperextradistance' => $product['costperextradistance'] ?? null,
+                'fuelpolicy' => $product['fuelpolicy'] ?? null,
+                'minage' => $product['minage'] ?? null,
+            ],
+            'extras_selected' => $validated['detailed_extras'] ?? [],
+        ];
     }
 
     /**
