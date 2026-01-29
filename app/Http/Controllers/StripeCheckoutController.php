@@ -87,16 +87,8 @@ class StripeCheckoutController extends Controller
 
             // Normalize currency (symbols to ISO codes)
             $currency = $validated['currency'] ?? 'EUR';
-            $currencyMap = [
-                '€' => 'EUR',
-                '$' => 'USD',
-                '₹' => 'INR',
-                '₽' => 'RUB',
-                'A$' => 'AUD',
-                '£' => 'GBP',
-            ];
-            $currency = $currencyMap[$currency] ?? $currency;
-            $currencyCode = strtoupper($currency);
+            $currencyCode = $this->normalizeCurrencyCode($currency);
+            $providerCurrency = $this->resolveProviderCurrency($validated, $currencyCode);
 
             // Build line items for Stripe
             $lineItems = [
@@ -138,6 +130,7 @@ class StripeCheckoutController extends Controller
                 'payable_amount' => $payableAmount,
                 'pending_amount' => $pendingAmount,
                 'currency' => $currencyCode,
+                'provider_currency' => $providerCurrency,
                 'customer_name' => $validated['customer']['name'] ?? '',
                 'customer_email' => $validated['customer']['email'] ?? '',
                 'customer_phone' => $validated['customer']['phone'] ?? '',
@@ -298,6 +291,67 @@ class StripeCheckoutController extends Controller
             ],
             'extras_selected' => $validated['detailed_extras'] ?? [],
         ];
+    }
+
+    private function resolveProviderCurrency(array $validated, string $fallback): string
+    {
+        $vehicle = $validated['vehicle'] ?? [];
+        $providerCurrency = $vehicle['currency'] ?? null;
+
+        if (!$providerCurrency && !empty($vehicle['products']) && is_array($vehicle['products'])) {
+            $package = $validated['package'] ?? null;
+            foreach ($vehicle['products'] as $product) {
+                if (!is_array($product)) {
+                    continue;
+                }
+                if ($package !== null && ($product['type'] ?? null) !== $package) {
+                    continue;
+                }
+                $providerCurrency = $product['currency'] ?? null;
+                if ($providerCurrency) {
+                    break;
+                }
+            }
+
+            if (!$providerCurrency) {
+                foreach ($vehicle['products'] as $product) {
+                    if (is_array($product) && !empty($product['currency'])) {
+                        $providerCurrency = $product['currency'];
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $this->normalizeCurrencyCode($providerCurrency ?: $fallback);
+    }
+
+    private function normalizeCurrencyCode($currency): string
+    {
+        $value = $currency ?? 'EUR';
+
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed !== '') {
+                $value = $trimmed;
+            }
+        }
+
+        $symbolMap = [
+            "\u{20AC}" => 'EUR',
+            "\u{00A3}" => 'GBP',
+            "\u{20B9}" => 'INR',
+            "\u{20BD}" => 'RUB',
+            'A$' => 'AUD',
+            '$' => 'USD',
+        ];
+
+        if (is_string($value) && array_key_exists($value, $symbolMap)) {
+            return $symbolMap[$value];
+        }
+
+        $upper = strtoupper((string) $value);
+        return $upper !== '' ? $upper : 'EUR';
     }
 
     /**

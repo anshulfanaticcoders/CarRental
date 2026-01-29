@@ -400,7 +400,9 @@ class StripeBookingService
             'provider' => $booking->provider_source ?? ($metadata->vehicle_source ?? null),
             'quoteid' => $metadata->quoteid ?? null,
             'rental_code' => $metadata->package ?? $metadata->rental_code ?? null,
-            'currency' => $metadata->currency ? $this->normalizeCurrencyCode($metadata->currency) : null,
+            'currency' => ($metadata->provider_currency ?? $metadata->currency)
+                ? $this->normalizeCurrencyCode($metadata->provider_currency ?? $metadata->currency)
+                : null,
             'vehicle_total' => $metadata->vehicle_total ?? null,
             'pickup_location_id' => $metadata->pickup_location_code ?? null,
             'dropoff_location_id' => $metadata->dropoff_location_code ?? $metadata->pickup_location_code ?? null,
@@ -672,7 +674,7 @@ class StripeBookingService
                 $customerDetails,
                 $vehicleId,
                 $metadata->vehicle_total ?? $metadata->total_amount, // vehicleTotal
-                $this->normalizeCurrencyCode($metadata->currency ?? 'EUR'),
+                $this->normalizeCurrencyCode($metadata->provider_currency ?? $metadata->currency ?? 'EUR'),
                 $metadata->total_amount, // grandTotal
                 $booking->stripe_session_id,
                 $metadata->quoteid,

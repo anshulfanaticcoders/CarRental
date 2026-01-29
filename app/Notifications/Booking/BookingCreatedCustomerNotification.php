@@ -32,6 +32,9 @@ class BookingCreatedCustomerNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $amounts = $this->getCustomerAmounts($this->booking);
+        $vehicleName = $this->getVehicleName();
+        $location = $this->getLocation();
+        $address = $this->getAddress();
         // $addressParts = array_filter([
         //     $this->vehicle->city,
         //     $this->vehicle->state,
@@ -45,9 +48,9 @@ class BookingCreatedCustomerNotification extends Notification
             ->line('Thank you for your booking! It has been successfully submitted and is pending confirmation.')
             ->line('**Booking Details:**')
             ->line('**Booking Number:** ' . $this->booking->booking_number)
-            ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
-            ->line('**Location:** ' . $this->vehicle->location)
-            ->line('**Address:** ' . $this->vehicle->city . ', ' . $this->vehicle->state . ', ' .$this->vehicle->country)
+            ->line('**Vehicle:** ' . $vehicleName)
+            ->line('**Location:** ' . $location)
+            ->line('**Address:** ' . $address)
             ->line('**Pickup Date:** ' . $this->booking->pickup_date->format('Y-m-d'))
             ->line('**Pickup Time:** ' . $this->booking->pickup_time)
             ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
@@ -61,6 +64,9 @@ class BookingCreatedCustomerNotification extends Notification
     public function toArray(object $notifiable): array
     {
         $amounts = $this->getCustomerAmounts($this->booking);
+        $vehicleName = $this->getVehicleName();
+        $location = $this->getLocation();
+        $address = $this->getAddress();
         // $addressParts = array_filter([
         //     $this->vehicle->city,
         //     $this->vehicle->state,
@@ -71,9 +77,9 @@ class BookingCreatedCustomerNotification extends Notification
         return [
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
-            'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
-            'location' => $this->vehicle->location,
-            'address' => $this->vehicle->city . ', ' . $this->vehicle->state . ', ' .$this->vehicle->country,
+            'vehicle' => $vehicleName,
+            'location' => $location,
+            'address' => $address,
             'pickup_date' => $this->booking->pickup_date->format('Y-m-d'),
             'pickup_time' => $this->booking->pickup_time,
             'return_date' => $this->booking->return_date->format('Y-m-d'),
@@ -84,5 +90,45 @@ class BookingCreatedCustomerNotification extends Notification
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'message' => 'Your booking has been submitted and is pending confirmation.',
         ];
+    }
+
+    private function getVehicleName(): string
+    {
+        $brand = $this->vehicle->brand ?? '';
+        $model = $this->vehicle->model ?? '';
+        $name = trim($brand . ' ' . $model);
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return $this->booking->vehicle_name ?? 'Vehicle';
+    }
+
+    private function getLocation(): string
+    {
+        $location = $this->vehicle->location ?? null;
+        if (!empty($location)) {
+            return $location;
+        }
+
+        return $this->booking->pickup_location
+            ?? $this->booking->return_location
+            ?? 'N/A';
+    }
+
+    private function getAddress(): string
+    {
+        $parts = array_filter([
+            $this->vehicle->city ?? null,
+            $this->vehicle->state ?? null,
+            $this->vehicle->country ?? null,
+        ]);
+
+        if (!empty($parts)) {
+            return implode(', ', $parts);
+        }
+
+        return $this->getLocation();
     }
 }
