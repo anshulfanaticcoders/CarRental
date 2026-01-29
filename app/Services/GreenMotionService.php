@@ -398,4 +398,44 @@ class GreenMotionService
             return null;
         }
     }
+
+    public function cancelReservation($locationId, $bookingRef, $reason = null)
+    {
+        $reasonText = trim((string) $reason);
+        if ($reasonText === '') {
+            $reasonText = 'Cancelled by user';
+        }
+
+        $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
+            <gm_webservice>
+                <header>
+                    <username>' . $this->username . '</username>
+                    <password>' . $this->password . '</password>
+                    <version>1.5</version>
+                </header>
+                <request type="Cancel Reservation">
+                    <location_id>' . $locationId . '</location_id>
+                    <booking_ref>' . $bookingRef . '</booking_ref>
+                    <cancellationreason>' . htmlspecialchars($reasonText, ENT_XML1) . '</cancellationreason>
+                </request>
+            </gm_webservice>';
+
+        try {
+            Log::info('GreenMotion API Request (Cancel Reservation): ' . $xmlRequest);
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/xml',
+            ])->send('POST', $this->baseUrl, ['body' => $xmlRequest]);
+
+            $response->throw();
+            Log::info('GreenMotion API Response (Cancel Reservation): ' . $response->body());
+
+            return $response->body();
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            Log::error('GreenMotion API Request Error (Cancel Reservation): ' . $e->getMessage() . ' Response: ' . $e->response->body());
+            return null;
+        } catch (\Exception $e) {
+            Log::error('GreenMotion API General Error (Cancel Reservation): ' . $e->getMessage());
+            return null;
+        }
+    }
 }

@@ -100,8 +100,8 @@ class BookingCreatedAdminNotification extends Notification
 
     private function getVehicleName(): string
     {
-        $brand = $this->vehicle->brand ?? '';
-        $model = $this->vehicle->model ?? '';
+        $brand = $this->vehicle?->brand ?? '';
+        $model = $this->vehicle?->model ?? '';
         $name = trim($brand . ' ' . $model);
 
         if ($name !== '') {
@@ -113,7 +113,7 @@ class BookingCreatedAdminNotification extends Notification
 
     private function getLocation(): string
     {
-        $location = $this->vehicle->location ?? null;
+        $location = $this->vehicle?->location ?? null;
         if (!empty($location)) {
             return $location;
         }
@@ -126,9 +126,9 @@ class BookingCreatedAdminNotification extends Notification
     private function getAddress(): string
     {
         $parts = array_filter([
-            $this->vehicle->city ?? null,
-            $this->vehicle->state ?? null,
-            $this->vehicle->country ?? null,
+            $this->vehicle?->city ?? null,
+            $this->vehicle?->state ?? null,
+            $this->vehicle?->country ?? null,
         ]);
 
         if (!empty($parts)) {

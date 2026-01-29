@@ -188,6 +188,48 @@ const retryPayment = async (bookingId) => {
   }
 };
 
+const isGreenMotionBooking = (booking) => {
+  const source = booking.provider_source?.toLowerCase();
+  return source === 'greenmotion' || source === 'usave';
+};
+
+const canCancelGreenMotion = (booking) => {
+  if (!isGreenMotionBooking(booking)) return false;
+  if (!booking.provider_booking_ref) return false;
+  return !['cancelled', 'completed'].includes(booking.booking_status);
+};
+
+const cancelGreenMotionBooking = async (booking) => {
+  const confirmMessage = _t('customerbooking', 'modal_confirm_cancellation_message')
+    || 'Are you sure you want to cancel this booking?';
+  if (!confirm(confirmMessage)) return;
+
+  const reasonPrompt = 'Please enter a cancellation reason:';
+  const reason = prompt(reasonPrompt) || '';
+  const trimmedReason = reason.trim();
+
+  if (trimmedReason.length < 3) {
+    alert('Cancellation reason is required.');
+    return;
+  }
+
+  isLoading.value = true;
+  try {
+    const axios = (await import('axios')).default;
+    await axios.post(route('booking.cancel', { locale: usePage().props.locale }), {
+      booking_id: booking.id,
+      cancellation_reason: trimmedReason
+    });
+    router.reload({ preserveScroll: true });
+  } catch (error) {
+    console.error('Error canceling booking:', error);
+    const message = error?.response?.data?.message || 'Failed to cancel booking. Please try again.';
+    alert(message);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 // Stagger animation delays
 const getCardDelay = (index) => {
   return index * 50;
@@ -435,6 +477,18 @@ const getCardDelay = (index) => {
                       </svg>
                       Chat
                     </Link>
+
+                    <button
+                      v-if="canCancelGreenMotion(booking)"
+                      @click="cancelGreenMotionBooking(booking)"
+                      :disabled="isLoading"
+                      class="inline-flex items-center gap-2 px-4 py-2 border border-rose-200 text-rose-700 rounded-lg font-medium hover:bg-rose-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      {{ _t('customerbooking', 'cancel_booking_button') || 'Cancel Booking' }}
+                    </button>
                   </div>
                 </div>
               </div>

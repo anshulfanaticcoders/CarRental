@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Notifications\Concerns\FormatsBookingAmounts;
+use Illuminate\Support\Carbon;
 
 class BookingCancelledNotification extends Notification
 {
@@ -44,17 +45,25 @@ class BookingCancelledNotification extends Notification
             ? $this->getAdminAmounts($this->booking)
             : $this->getVendorAmounts($this->booking);
 
+        $vehicleName = $this->getVehicleName();
+        $location = $this->getLocation();
+        $address = $this->getAddress();
+        $pickupDate = $this->formatDate($this->booking->pickup_date ?? null);
+        $returnDate = $this->formatDate($this->booking->return_date ?? null);
+        $pickupTime = $this->booking->pickup_time ?? 'N/A';
+        $returnTime = $this->booking->return_time ?? 'N/A';
+
         $mailMessage = (new MailMessage)
             ->subject('Booking Cancelled - #' . $this->booking->booking_number)
             ->line('**Booking Details:**')
             ->line('**Booking Number:** ' . $this->booking->booking_number)
-            ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
-            ->line('**Location:** ' . $this->vehicle->location)
-            ->line('**Address:** ' . $this->vehicle->city . ', ' . $this->vehicle->state . ', ' .$this->vehicle->country)
-            ->line('**Pickup Date:** ' . $this->booking->pickup_date->format('Y-m-d'))
-            ->line('**Pickup Time:** ' . $this->booking->pickup_time)
-            ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
-            ->line('**Return Time:** ' . $this->booking->return_time)
+            ->line('**Vehicle:** ' . $vehicleName)
+            ->line('**Location:** ' . $location)
+            ->line('**Address:** ' . $address)
+            ->line('**Pickup Date:** ' . $pickupDate)
+            ->line('**Pickup Time:** ' . $pickupTime)
+            ->line('**Return Date:** ' . $returnDate)
+            ->line('**Return Time:** ' . $returnTime)
             ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
             ->line('**Cancellation Reason:** ' . $this->booking->cancellation_reason)
             ->line('**Customer Details:**')
@@ -90,23 +99,24 @@ class BookingCancelledNotification extends Notification
         $amounts = $this->recipientType === 'admin'
             ? $this->getAdminAmounts($this->booking)
             : $this->getVendorAmounts($this->booking);
-        // $addressParts = array_filter([
-        //     $this->vehicle->city,
-        //     $this->vehicle->state,
-        //     $this->vehicle->country,
-        // ]);
-        // $formattedAddress = implode(', ', $addressParts);
+        $vehicleName = $this->getVehicleName();
+        $location = $this->getLocation();
+        $address = $this->getAddress();
+        $pickupDate = $this->formatDate($this->booking->pickup_date ?? null);
+        $returnDate = $this->formatDate($this->booking->return_date ?? null);
+        $pickupTime = $this->booking->pickup_time ?? 'N/A';
+        $returnTime = $this->booking->return_time ?? 'N/A';
 
         return [
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
-            'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
-            'location' => $this->vehicle->location,
-            'address' => $this->vehicle->city . ', ' . $this->vehicle->state . ', ' .$this->vehicle->country,
-            'pickup_date' => $this->booking->pickup_date->format('Y-m-d'),
-            'pickup_time' => $this->booking->pickup_time,
-            'return_date' => $this->booking->return_date->format('Y-m-d'),
-            'return_time' => $this->booking->return_time,
+            'vehicle' => $vehicleName,
+            'location' => $location,
+            'address' => $address,
+            'pickup_date' => $pickupDate,
+            'pickup_time' => $pickupTime,
+            'return_date' => $returnDate,
+            'return_time' => $returnTime,
             'total_amount' => $amounts['total'],
             'cancellation_reason' => $this->booking->cancellation_reason,
             'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
@@ -114,5 +124,58 @@ class BookingCancelledNotification extends Notification
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'message' => 'Booking #' . $this->booking->booking_number . ' has been cancelled.',
         ];
+    }
+
+    private function getVehicleName(): string
+    {
+        $brand = $this->vehicle?->brand ?? '';
+        $model = $this->vehicle?->model ?? '';
+        $name = trim($brand . ' ' . $model);
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return $this->booking->vehicle_name ?? 'Vehicle';
+    }
+
+    private function getLocation(): string
+    {
+        $location = $this->vehicle?->location ?? null;
+        if (!empty($location)) {
+            return $location;
+        }
+
+        return $this->booking->pickup_location
+            ?? $this->booking->return_location
+            ?? 'N/A';
+    }
+
+    private function getAddress(): string
+    {
+        $parts = array_filter([
+            $this->vehicle?->city ?? null,
+            $this->vehicle?->state ?? null,
+            $this->vehicle?->country ?? null,
+        ]);
+
+        if (!empty($parts)) {
+            return implode(', ', $parts);
+        }
+
+        return $this->getLocation();
+    }
+
+    private function formatDate($value): string
+    {
+        if ($value instanceof Carbon) {
+            return $value->format('Y-m-d');
+        }
+
+        if (!empty($value)) {
+            return (string) $value;
+        }
+
+        return 'N/A';
     }
 }
