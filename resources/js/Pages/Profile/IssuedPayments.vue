@@ -42,9 +42,7 @@
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ payment.booking?.booking_number || _t('customerprofilepages', 'not_applicable') }}
                             </td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">
-                                {{ payment.booking?.vehicle?.brand || _t('customerprofilepages', 'not_applicable') }} <span
-                                    class="bg-customLightPrimaryColor ml-2 p-1 rounded-[12px]">{{ payment.booking?.vehicle?.model || _t('customerprofilepages', 'not_applicable')
-                                    }}</span>
+                                {{ payment.booking?.vehicle_name || _t('customerprofilepages', 'not_applicable') }}
                             </td>
                             <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
                                 formatDate(payment.created_at) }}</td>

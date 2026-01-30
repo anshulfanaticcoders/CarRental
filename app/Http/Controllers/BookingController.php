@@ -645,6 +645,34 @@ class BookingController extends Controller
 
     public function cancelBooking(Request $request)
     {
+        $appendBookingNote = static function (Booking $booking, string $note): void {
+            $note = trim($note);
+            if ($note === '') {
+                return;
+            }
+
+            $existingNotes = $booking->notes ?? '';
+            if ($existingNotes !== '' && str_contains($existingNotes, $note)) {
+                return;
+            }
+
+            $booking->notes = ($existingNotes ? $existingNotes . "\n" : '') . $note;
+        };
+
+        $stripGreenMotionCancelFailures = static function (?string $notes): string {
+            if (!$notes) {
+                return '';
+            }
+
+            $lines = preg_split("/\r?\n/", $notes);
+            $filtered = array_values(array_filter($lines, static function ($line) {
+                $trimmed = trim((string) $line);
+                return $trimmed !== '' && stripos($trimmed, 'GreenMotion Cancel failed:') !== 0;
+            }));
+
+            return implode("\n", $filtered);
+        };
+
         // Validate the request
         $validatedData = $request->validate([
             'booking_id' => 'required|exists:bookings,id',
@@ -699,8 +727,7 @@ class BookingController extends Controller
 
                 if (empty($xmlResponse)) {
                     $message = 'Failed to cancel reservation with provider.';
-                    $booking->notes = ($booking->notes ? $booking->notes . "\n" : "")
-                        . 'GreenMotion Cancel failed: empty response.';
+                    $appendBookingNote($booking, 'GreenMotion Cancel failed: empty response.');
                     $booking->save();
 
                     if ($request->wantsJson()) {
@@ -767,9 +794,11 @@ class BookingController extends Controller
                     $message = $providerNotes !== ''
                         ? 'Provider cancellation failed: ' . $providerNotes
                         : ($xmlObject === false ? 'Provider cancellation failed: invalid response.' : 'Provider cancellation failed.');
-                    $booking->notes = ($booking->notes ? $booking->notes . "\n" : "")
-                        . 'GreenMotion Cancel failed: '
-                        . ($providerNotes !== '' ? $providerNotes : ($xmlObject === false ? 'Invalid response format.' : 'Missing success confirmation in response.'));
+                    $appendBookingNote(
+                        $booking,
+                        'GreenMotion Cancel failed: '
+                        . ($providerNotes !== '' ? $providerNotes : ($xmlObject === false ? 'Invalid response format.' : 'Missing success confirmation in response.'))
+                    );
                     $booking->save();
 
                     if ($request->wantsJson()) {
@@ -778,17 +807,18 @@ class BookingController extends Controller
                     return redirect()->back()->with('error', $message);
                 }
 
-                $booking->notes = ($booking->notes ? $booking->notes . "\n" : "")
-                    . 'GreenMotion Cancel: '
-                    . ($providerNotes !== '' ? $providerNotes : 'Cancellation requested.');
+                $booking->notes = $stripGreenMotionCancelFailures($booking->notes);
+                $appendBookingNote(
+                    $booking,
+                    'GreenMotion Cancel: ' . ($providerNotes !== '' ? $providerNotes : 'Cancellation requested.')
+                );
             } catch (\Exception $e) {
                 Log::error('GreenMotion cancel failed', [
                     'booking_id' => $booking->id,
                     'error' => $e->getMessage(),
                 ]);
 
-                $booking->notes = ($booking->notes ? $booking->notes . "\n" : "")
-                    . 'GreenMotion Cancel failed: ' . $e->getMessage();
+                $appendBookingNote($booking, 'GreenMotion Cancel failed: ' . $e->getMessage());
                 $booking->save();
 
                 $message = 'Failed to cancel reservation with provider.';
@@ -829,8 +859,6 @@ class BookingController extends Controller
             }
         }
 
-        $booking->pickup_date = null;
-        $booking->return_date = null;
         $booking->save();
 
         // Update vehicle status to available

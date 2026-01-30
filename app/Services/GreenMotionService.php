@@ -408,36 +408,59 @@ class GreenMotionService
             $reasonText = 'Cancelled by user';
         }
 
-        $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
-            <gm_webservice>
-                <header>
-                    <username>' . $this->username . '</username>
-                    <password>' . $this->password . '</password>
-                    <version>1.5</version>
-                </header>
-                <request type="Cancel Reservation">
-                    <location_id>' . $locationId . '</location_id>
-                    <booking_ref>' . $bookingRef . '</booking_ref>
-                    <cancellationreason>' . htmlspecialchars($reasonText, ENT_XML1) . '</cancellationreason>
-                </request>
-            </gm_webservice>';
+        $requestTypes = ['Cancel Reservation', 'CancelReservation'];
 
-        try {
-            Log::info('GreenMotion API Request (Cancel Reservation): ' . $xmlRequest);
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/xml',
-            ])->send('POST', $this->baseUrl, ['body' => $xmlRequest]);
+        foreach ($requestTypes as $requestType) {
+            $xmlRequest = '<?xml version="1.0" encoding="utf-8"?>
+                <gm_webservice>
+                    <header>
+                        <username>' . $this->username . '</username>
+                        <password>' . $this->password . '</password>
+                        <version>1.5</version>
+                    </header>
+                    <request type="' . $requestType . '">
+                        <location_id>' . $locationId . '</location_id>
+                        <booking_ref>' . $bookingRef . '</booking_ref>
+                        <cancellationreason>' . htmlspecialchars($reasonText, ENT_XML1) . '</cancellationreason>
+                    </request>
+                </gm_webservice>';
 
-            $response->throw();
-            Log::info('GreenMotion API Response (Cancel Reservation): ' . $response->body());
+            try {
+                Log::info('GreenMotion API Request (Cancel Reservation): ' . $xmlRequest);
+                $response = Http::withHeaders([
+                    'Content-Type' => 'application/xml',
+                ])->send('POST', $this->baseUrl, ['body' => $xmlRequest]);
 
-            return $response->body();
-        } catch (\Illuminate\Http\Client\RequestException $e) {
-            Log::error('GreenMotion API Request Error (Cancel Reservation): ' . $e->getMessage() . ' Response: ' . $e->response->body());
-            return null;
-        } catch (\Exception $e) {
-            Log::error('GreenMotion API General Error (Cancel Reservation): ' . $e->getMessage());
-            return null;
+                $response->throw();
+                $body = $response->body();
+                Log::info('GreenMotion API Response (Cancel Reservation): ' . $body);
+
+                if ($body && preg_match('/Server\s+Method\s+Not\s+Found/i', $body)) {
+                    Log::warning('GreenMotion API Cancel Reservation method not found', [
+                        'request_type' => $requestType,
+                    ]);
+                    continue;
+                }
+
+                return $body;
+            } catch (\Illuminate\Http\Client\RequestException $e) {
+                $responseBody = $e->response ? $e->response->body() : '';
+                Log::error('GreenMotion API Request Error (Cancel Reservation): ' . $e->getMessage() . ' Response: ' . $responseBody);
+
+                if ($responseBody && preg_match('/Server\s+Method\s+Not\s+Found/i', $responseBody)) {
+                    Log::warning('GreenMotion API Cancel Reservation method not found', [
+                        'request_type' => $requestType,
+                    ]);
+                    continue;
+                }
+
+                return null;
+            } catch (\Exception $e) {
+                Log::error('GreenMotion API General Error (Cancel Reservation): ' . $e->getMessage());
+                return null;
+            }
         }
+
+        return null;
     }
 }
