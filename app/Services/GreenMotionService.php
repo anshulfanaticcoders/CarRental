@@ -98,7 +98,9 @@ class GreenMotionService
             Log::info('GreenMotion API Request (GetVehicles): ' . $xmlRequest); // Log request
             $response = Http::withHeaders([
                 'Content-Type' => 'application/xml',
-            ])->send('POST', $this->baseUrl, ['body' => $xmlRequest]);
+            ])
+                ->timeout(20)
+                ->send('POST', $this->baseUrl, ['body' => $xmlRequest]);
 
             $response->throw();
             Log::info('GreenMotion API Response (GetVehicles): ' . $response->body()); // Log response

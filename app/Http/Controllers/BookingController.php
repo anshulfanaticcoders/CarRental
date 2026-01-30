@@ -675,53 +675,128 @@ class BookingController extends Controller
         $isGreenMotion = in_array($providerSource, ['greenmotion', 'usave'], true);
 
         if ($isGreenMotion) {
-            $bookingRef = $booking->provider_booking_ref;
-            $providerMetadata = $booking->provider_metadata ?? [];
-            $locationId = $providerMetadata['pickup_location_id']
-                ?? $providerMetadata['dropoff_location_id']
-                ?? null;
+            try {
+                $bookingRef = $booking->provider_booking_ref;
+                $providerMetadata = $booking->provider_metadata ?? [];
+                $locationId = $providerMetadata['pickup_location_id']
+                    ?? $providerMetadata['dropoff_location_id']
+                    ?? null;
 
-            if (!$bookingRef || !$locationId) {
-                $message = 'Provider booking reference or location is missing.';
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => $message], 422);
+                if (!$bookingRef || !$locationId) {
+                    $message = 'Provider booking reference or location is missing.';
+                    if ($request->wantsJson()) {
+                        return response()->json(['message' => $message], 422);
+                    }
+                    return redirect()->back()->with('error', $message);
                 }
-                return redirect()->back()->with('error', $message);
-            }
 
-            $greenMotionService = app(GreenMotionService::class)->setProvider($providerSource);
-            $xmlResponse = $greenMotionService->cancelReservation(
-                $locationId,
-                $bookingRef,
-                $validatedData['cancellation_reason']
-            );
+                $greenMotionService = app(GreenMotionService::class)->setProvider($providerSource);
+                $xmlResponse = $greenMotionService->cancelReservation(
+                    $locationId,
+                    $bookingRef,
+                    $validatedData['cancellation_reason']
+                );
 
-            if (empty($xmlResponse)) {
+                if (empty($xmlResponse)) {
+                    $message = 'Failed to cancel reservation with provider.';
+                    $booking->notes = ($booking->notes ? $booking->notes . "\n" : "")
+                        . 'GreenMotion Cancel failed: empty response.';
+                    $booking->save();
+
+                    if ($request->wantsJson()) {
+                        return response()->json(['message' => $message], 502);
+                    }
+                    return redirect()->back()->with('error', $message);
+                }
+
+                libxml_use_internal_errors(true);
+                $xmlObject = simplexml_load_string($xmlResponse);
+                $xmlErrors = libxml_get_errors();
+                libxml_clear_errors();
+
+                $extractTagValue = static function (string $xml, array $tags): string {
+                    foreach ($tags as $tag) {
+                        $pattern = '/<\s*' . preg_quote($tag, '/') . '\b[^>]*>(.*?)<\/\s*' . preg_quote($tag, '/') . '\s*>/is';
+                        if (preg_match($pattern, $xml, $matches)) {
+                            $value = trim(strip_tags($matches[1] ?? ''));
+                            if ($value !== '') {
+                                return $value;
+                            }
+                        }
+                    }
+
+                    return '';
+                };
+
+                $responseNode = $xmlObject ? ($xmlObject->response ?? $xmlObject->Response ?? $xmlObject) : null;
+                $providerRef = $responseNode ? trim((string) ($responseNode->booking_ref ?? $responseNode->bookingref ?? $responseNode->bookingRef ?? '')) : '';
+                $providerNotes = $responseNode ? trim((string) ($responseNode->booking_notes ?? $responseNode->bookingnotes ?? $responseNode->bookingNotes ?? $responseNode->notes ?? $responseNode->note ?? $responseNode->message ?? '')) : '';
+                $statusValue = $responseNode ? strtolower(trim((string) ($responseNode->status ?? $responseNode->result ?? $responseNode->response ?? $responseNode->status_message ?? $responseNode->response_status ?? ''))) : '';
+
+                if ($providerRef === '') {
+                    $providerRef = $extractTagValue($xmlResponse, ['booking_ref', 'bookingref', 'bookingRef']);
+                }
+
+                if ($providerNotes === '') {
+                    $providerNotes = $extractTagValue($xmlResponse, ['booking_notes', 'bookingnotes', 'bookingNotes', 'notes', 'note', 'message', 'response_message', 'status_message']);
+                }
+
+                if ($statusValue === '') {
+                    $statusValue = strtolower($extractTagValue($xmlResponse, ['status', 'result', 'response', 'response_status', 'status_message']));
+                }
+
+                if ($xmlObject === false && !empty($xmlErrors)) {
+                    Log::warning('GreenMotion cancel response parsing failed', [
+                        'booking_id' => $booking->id,
+                        'errors' => array_map(static fn ($error) => trim($error->message), $xmlErrors),
+                    ]);
+                }
+
+                $successStatuses = ['success', 'successful', 'ok', 'cancelled', 'canceled', 'true', '1'];
+                $failureStatuses = ['failed', 'fail', 'error', 'invalid', 'denied', 'false', '0'];
+                $hasSuccessStatus = $statusValue !== '' && in_array($statusValue, $successStatuses, true);
+                $hasFailureStatus = $statusValue !== '' && in_array($statusValue, $failureStatuses, true);
+
+                if ($hasFailureStatus || (!$hasSuccessStatus && $providerRef === '')) {
+                    Log::warning('GreenMotion cancel response missing success indicator', [
+                        'booking_id' => $booking->id,
+                        'provider_ref' => $providerRef,
+                        'status' => $statusValue,
+                    ]);
+
+                    $message = $providerNotes !== ''
+                        ? 'Provider cancellation failed: ' . $providerNotes
+                        : ($xmlObject === false ? 'Provider cancellation failed: invalid response.' : 'Provider cancellation failed.');
+                    $booking->notes = ($booking->notes ? $booking->notes . "\n" : "")
+                        . 'GreenMotion Cancel failed: '
+                        . ($providerNotes !== '' ? $providerNotes : ($xmlObject === false ? 'Invalid response format.' : 'Missing success confirmation in response.'));
+                    $booking->save();
+
+                    if ($request->wantsJson()) {
+                        return response()->json(['message' => $message], 502);
+                    }
+                    return redirect()->back()->with('error', $message);
+                }
+
+                $booking->notes = ($booking->notes ? $booking->notes . "\n" : "")
+                    . 'GreenMotion Cancel: '
+                    . ($providerNotes !== '' ? $providerNotes : 'Cancellation requested.');
+            } catch (\Exception $e) {
+                Log::error('GreenMotion cancel failed', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $booking->notes = ($booking->notes ? $booking->notes . "\n" : "")
+                    . 'GreenMotion Cancel failed: ' . $e->getMessage();
+                $booking->save();
+
                 $message = 'Failed to cancel reservation with provider.';
                 if ($request->wantsJson()) {
                     return response()->json(['message' => $message], 502);
                 }
                 return redirect()->back()->with('error', $message);
             }
-
-            libxml_use_internal_errors(true);
-            $xmlObject = simplexml_load_string($xmlResponse);
-            libxml_clear_errors();
-
-            $providerRef = $xmlObject ? (string) ($xmlObject->response->booking_ref ?? '') : '';
-            $providerNotes = $xmlObject ? (string) ($xmlObject->response->booking_notes ?? '') : '';
-
-            if ($providerRef === '') {
-                $message = 'Provider cancellation failed.';
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => $message], 502);
-                }
-                return redirect()->back()->with('error', $message);
-            }
-
-            $booking->notes = ($booking->notes ? $booking->notes . "\n" : "")
-                . 'GreenMotion Cancel: '
-                . ($providerNotes !== '' ? $providerNotes : 'Cancellation requested.');
         }
 
         // Update booking status and save cancellation reason
