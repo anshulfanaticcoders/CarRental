@@ -22,6 +22,61 @@ const props = defineProps({
 
 const map = ref(null);
 const isDownloading = ref(false);
+const showHoursModal = ref(false);
+const hoursTab = ref('pickup');
+
+const providerMetadata = computed(() => props.booking?.provider_metadata || {});
+const pickupDetails = computed(() => providerMetadata.value?.pickup_location_details || providerMetadata.value?.location || null);
+const dropoffDetails = computed(() => providerMetadata.value?.dropoff_location_details || null);
+const pickupInstructions = computed(() => providerMetadata.value?.location_instructions || pickupDetails.value?.collection_details || null);
+const dropoffInstructions = computed(() => dropoffDetails.value?.collection_details || null);
+const isGreenMotionBooking = computed(() => {
+  const source = `${props.booking?.provider_source || ''}`.toLowerCase();
+  return source === 'greenmotion' || source === 'usave';
+});
+const amountPaidLabel = computed(() => (isGreenMotionBooking.value ? 'Deposit paid' : _t('customerprofile', 'amount_paid')));
+const pendingAmountLabel = computed(() => (isGreenMotionBooking.value ? 'Pay at pickup' : _t('customerprofile', 'pending_amount')));
+
+const formatLocationLines = (details) => {
+  if (!details) return [];
+  return [
+    details.address_1,
+    details.address_2,
+    details.address_3,
+    details.address_city,
+    details.address_county,
+    details.address_postcode,
+  ].filter(Boolean);
+};
+
+const pickupLines = computed(() => formatLocationLines(pickupDetails.value));
+const dropoffLines = computed(() => formatLocationLines(dropoffDetails.value));
+
+const formatHourWindow = (window) => {
+  if (!window) return '';
+  const start = window.open || window.start || '';
+  const end = window.close || window.end || '';
+  const start2 = window.start2 || '';
+  const end2 = window.end2 || '';
+  const first = start && end ? `${start} - ${end}` : '';
+  const second = start2 && end2 ? `${start2} - ${end2}` : '';
+  return [first, second].filter(Boolean).join(' / ');
+};
+
+const hasHours = (details) => {
+  if (!details) return false;
+  return (
+    (details.opening_hours && details.opening_hours.length)
+    || (details.office_opening_hours && details.office_opening_hours.length)
+    || (details.out_of_hours && details.out_of_hours.length)
+    || (details.out_of_hours_dropoff && details.out_of_hours_dropoff.length)
+    || (details.daytime_closures_hours && details.daytime_closures_hours.length)
+    || details.out_of_hours_charge
+  );
+};
+
+const hasPickupHours = computed(() => hasHours(pickupDetails.value));
+const hasDropoffHours = computed(() => hasHours(dropoffDetails.value));
 
 // Status timeline configuration
 const statusTimeline = computed(() => {
@@ -38,9 +93,11 @@ const statusTimeline = computed(() => {
 
 // Map initialization
 const initMap = () => {
-  if (!props.vehicle?.latitude || !props.vehicle?.longitude) {
-    return;
-  }
+  const rawLat = props.vehicle?.latitude || pickupDetails.value?.latitude;
+  const rawLng = props.vehicle?.longitude || pickupDetails.value?.longitude;
+  const lat = rawLat !== null && rawLat !== undefined ? parseFloat(rawLat) : null;
+  const lng = rawLng !== null && rawLng !== undefined ? parseFloat(rawLng) : null;
+  if (!lat || !lng) return;
 
   if (map.value) {
     map.value.remove();
@@ -51,7 +108,7 @@ const initMap = () => {
     maxZoom: 18,
     minZoom: 4,
     scrollWheelZoom: false
-  }).setView([props.vehicle.latitude, props.vehicle.longitude], 15);
+  }).setView([lat, lng], 15);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
@@ -65,11 +122,15 @@ const initMap = () => {
     popupAnchor: [0, -40]
   });
 
-  L.marker([props.vehicle.latitude, props.vehicle.longitude], { icon: customIcon })
+  const popupAddress = pickupDetails.value
+    ? formatLocationLines(pickupDetails.value).join(', ')
+    : (props.vehicle?.full_vehicle_address || props.booking.pickup_location || 'Location');
+
+  L.marker([lat, lng], { icon: customIcon })
     .bindPopup(`
       <div class="text-center p-2">
         <p class="font-semibold text-[#153B4F]">Vehicle Location</p>
-        <p class="text-sm text-gray-600">${props.vehicle.full_vehicle_address || props.booking.pickup_location || 'Location'}</p>
+        <p class="text-sm text-gray-600">${popupAddress}</p>
       </div>
     `)
     .addTo(map.value);
@@ -160,6 +221,30 @@ const rentalPeriodDisplay = computed(() => {
     return `${days / 30} ${days / 30 === 1 ? 'month' : 'months'}`;
   }
   return `${days} days`;
+});
+
+const displayExtras = computed(() => {
+  const extras = props.booking?.extras || [];
+  if (extras.length) {
+    return extras.map(extra => ({
+      name: extra.extra_name,
+      qty: extra.quantity,
+      total: (extra.price || 0) * (props.booking?.total_days || 1),
+      isFree: false,
+    }));
+  }
+
+  const providerExtras = providerMetadata.value?.extras_selected;
+  if (Array.isArray(providerExtras)) {
+    return providerExtras.map(extra => ({
+      name: extra.name || extra.Name || 'Extra',
+      qty: extra.qty || extra.quantity || 1,
+      total: extra.total ?? 0,
+      isFree: extra.isFree || false,
+    }));
+  }
+
+  return [];
 });
 </script>
 
@@ -310,11 +395,77 @@ const rentalPeriodDisplay = computed(() => {
 
             <!-- Map -->
             <div
-              v-if="vehicle && vehicle.latitude && vehicle.longitude"
+              v-if="(vehicle && vehicle.latitude && vehicle.longitude) || pickupDetails?.latitude"
               class="mt-6"
             >
               <p class="text-sm font-semibold text-[#153B4F] mb-3">{{ _t('customerprofile', 'pickup_location') }}</p>
               <div id="booking-map" class="h-64 rounded-xl border border-gray-200"></div>
+            </div>
+          </div>
+
+          <!-- Location Details (Providers) -->
+          <div v-if="pickupDetails || dropoffDetails" class="bg-white rounded-2xl shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-6">
+              <h2 class="text-lg font-bold text-[#153B4F]">Location Details</h2>
+              <button
+                v-if="hasPickupHours || hasDropoffHours"
+                @click="showHoursModal = true"
+                class="text-sm font-semibold text-[#153B4F] hover:text-[#0f2a38]"
+              >
+                View hours & policies
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div v-if="pickupDetails" class="rounded-xl border border-gray-100 p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-sm font-semibold text-gray-600">Pickup Location</p>
+                  <button
+                    v-if="hasPickupHours"
+                    @click="() => { hoursTab = 'pickup'; showHoursModal = true; }"
+                    class="text-xs font-semibold text-[#153B4F] hover:text-[#0f2a38]"
+                  >
+                    Hours
+                  </button>
+                </div>
+                <p v-if="pickupDetails.name" class="font-semibold text-[#153B4F]">{{ pickupDetails.name }}</p>
+                <div v-if="pickupLines.length" class="text-sm text-gray-600 mt-2 space-y-1">
+                  <p v-for="(line, index) in pickupLines" :key="`pickup-line-${index}`">{{ line }}</p>
+                </div>
+                <div class="text-sm text-gray-600 mt-3 space-y-1">
+                  <p v-if="pickupDetails.telephone"><span class="font-semibold text-gray-700">Phone:</span> {{ pickupDetails.telephone }}</p>
+                  <p v-if="pickupDetails.email"><span class="font-semibold text-gray-700">Email:</span> {{ pickupDetails.email }}</p>
+                  <p v-if="pickupDetails.iata"><span class="font-semibold text-gray-700">Airport:</span> {{ pickupDetails.iata }}</p>
+                </div>
+                <p v-if="pickupInstructions" class="text-sm text-gray-600 mt-3">
+                  <span class="font-semibold text-gray-700">Instructions:</span> {{ pickupInstructions }}
+                </p>
+              </div>
+
+              <div v-if="dropoffDetails" class="rounded-xl border border-gray-100 p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-sm font-semibold text-gray-600">Dropoff Location</p>
+                  <button
+                    v-if="hasDropoffHours"
+                    @click="() => { hoursTab = 'dropoff'; showHoursModal = true; }"
+                    class="text-xs font-semibold text-[#153B4F] hover:text-[#0f2a38]"
+                  >
+                    Hours
+                  </button>
+                </div>
+                <p v-if="dropoffDetails.name" class="font-semibold text-[#153B4F]">{{ dropoffDetails.name }}</p>
+                <div v-if="dropoffLines.length" class="text-sm text-gray-600 mt-2 space-y-1">
+                  <p v-for="(line, index) in dropoffLines" :key="`dropoff-line-${index}`">{{ line }}</p>
+                </div>
+                <div class="text-sm text-gray-600 mt-3 space-y-1">
+                  <p v-if="dropoffDetails.telephone"><span class="font-semibold text-gray-700">Phone:</span> {{ dropoffDetails.telephone }}</p>
+                  <p v-if="dropoffDetails.email"><span class="font-semibold text-gray-700">Email:</span> {{ dropoffDetails.email }}</p>
+                  <p v-if="dropoffDetails.iata"><span class="font-semibold text-gray-700">Airport:</span> {{ dropoffDetails.iata }}</p>
+                </div>
+                <p v-if="dropoffInstructions" class="text-sm text-gray-600 mt-3">
+                  <span class="font-semibold text-gray-700">Instructions:</span> {{ dropoffInstructions }}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -545,11 +696,11 @@ const rentalPeriodDisplay = computed(() => {
               </div>
 
               <!-- Extras -->
-              <div v-if="booking?.extras?.length" class="pt-3 border-t border-white/20">
+              <div v-if="displayExtras.length" class="pt-3 border-t border-white/20">
                 <p class="text-sm font-semibold text-white/90 mb-2">{{ _t('customerprofile', 'extras') }}</p>
-                <div v-for="extra in booking.extras" :key="extra.id" class="flex justify-between items-center text-sm text-white/80 mb-1">
-                  <span>{{ extra.extra_name }} × {{ extra.quantity }}</span>
-                  <span>+{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(extra.price * booking.total_days) }}</span>
+                <div v-for="(extra, index) in displayExtras" :key="`extra-${index}`" class="flex justify-between items-center text-sm text-white/80 mb-1">
+                  <span>{{ extra.name }} × {{ extra.qty }}</span>
+                  <span>+{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(extra.isFree ? 0 : extra.total) }}</span>
                 </div>
               </div>
 
@@ -577,12 +728,12 @@ const rentalPeriodDisplay = computed(() => {
               </div>
 
               <div v-if="booking?.amount_paid > 0" class="flex justify-between items-center">
-                <span class="text-green-300">{{ _t('customerprofile', 'amount_paid') }}</span>
+                <span class="text-green-300">{{ amountPaidLabel }}</span>
                 <span class="text-xl font-semibold text-green-300">{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(booking.amount_paid) }}</span>
               </div>
 
               <div v-if="booking?.pending_amount > 0" class="flex justify-between items-center mt-2">
-                <span class="text-amber-300">{{ _t('customerprofile', 'pending_amount') }}</span>
+                <span class="text-amber-300">{{ pendingAmountLabel }}</span>
                 <span class="text-lg font-semibold text-amber-300">{{ getCurrencySymbol(booking?.booking_currency) }}{{ formatNumber(booking.pending_amount) }}</span>
               </div>
             </div>
@@ -618,6 +769,105 @@ const rentalPeriodDisplay = computed(() => {
   </div>
 
   <Footer />
+
+  <div v-if="showHoursModal" class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 px-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full">
+      <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div class="flex items-center gap-3">
+          <h3 class="text-lg font-bold text-[#153B4F]">Hours & Policies</h3>
+          <div v-if="pickupDetails && dropoffDetails" class="flex gap-2">
+            <button
+              @click="hoursTab = 'pickup'"
+              class="px-3 py-1 rounded-full text-xs font-semibold"
+              :class="hoursTab === 'pickup' ? 'bg-[#153B4F] text-white' : 'bg-gray-100 text-gray-600'"
+            >
+              Pickup
+            </button>
+            <button
+              @click="hoursTab = 'dropoff'"
+              class="px-3 py-1 rounded-full text-xs font-semibold"
+              :class="hoursTab === 'dropoff' ? 'bg-[#153B4F] text-white' : 'bg-gray-100 text-gray-600'"
+            >
+              Dropoff
+            </button>
+          </div>
+        </div>
+        <button @click="showHoursModal = false" class="text-gray-500 hover:text-gray-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="px-6 py-5 max-h-[70vh] overflow-y-auto">
+        <div v-if="hoursTab === 'pickup' && pickupDetails">
+          <p class="text-sm font-semibold text-gray-600 mb-3">Pickup Location</p>
+
+          <div v-if="pickupDetails.opening_hours?.length" class="mb-4">
+            <p class="text-sm font-semibold text-gray-800 mb-2">Opening Hours</p>
+            <div class="space-y-1 text-sm text-gray-600">
+              <p v-for="(day, index) in pickupDetails.opening_hours" :key="`pickup-open-${index}`">
+                <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                <span class="ml-1">{{ formatHourWindow(day) || 'Closed' }}</span>
+              </p>
+            </div>
+          </div>
+
+          <div v-if="pickupDetails.office_opening_hours?.length" class="mb-4">
+            <p class="text-sm font-semibold text-gray-800 mb-2">Office Hours</p>
+            <div class="space-y-1 text-sm text-gray-600">
+              <p v-for="(day, index) in pickupDetails.office_opening_hours" :key="`pickup-office-${index}`">
+                <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                <span class="ml-1">{{ formatHourWindow(day) || 'Closed' }}</span>
+              </p>
+            </div>
+          </div>
+
+          <div v-if="pickupDetails.out_of_hours?.length" class="mb-4">
+            <p class="text-sm font-semibold text-gray-800 mb-2">Out of Hours</p>
+            <div class="space-y-1 text-sm text-gray-600">
+              <p v-for="(day, index) in pickupDetails.out_of_hours" :key="`pickup-out-${index}`">
+                <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                <span class="ml-1">{{ formatHourWindow(day) || 'Unavailable' }}</span>
+              </p>
+            </div>
+          </div>
+
+          <div v-if="pickupDetails.out_of_hours_charge" class="text-sm text-gray-600">
+            <span class="font-semibold text-gray-800">Out of Hours Charge:</span> {{ pickupDetails.out_of_hours_charge }}
+          </div>
+        </div>
+
+        <div v-if="hoursTab === 'dropoff' && dropoffDetails">
+          <p class="text-sm font-semibold text-gray-600 mb-3">Dropoff Location</p>
+
+          <div v-if="dropoffDetails.out_of_hours_dropoff?.length" class="mb-4">
+            <p class="text-sm font-semibold text-gray-800 mb-2">Out of Hours Dropoff</p>
+            <div class="space-y-1 text-sm text-gray-600">
+              <p v-for="(day, index) in dropoffDetails.out_of_hours_dropoff" :key="`dropoff-out-${index}`">
+                <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                <span class="ml-1">{{ formatHourWindow(day) || 'Unavailable' }}</span>
+              </p>
+            </div>
+          </div>
+
+          <div v-if="dropoffDetails.daytime_closures_hours?.length" class="mb-4">
+            <p class="text-sm font-semibold text-gray-800 mb-2">Daytime Closures</p>
+            <div class="space-y-1 text-sm text-gray-600">
+              <p v-for="(day, index) in dropoffDetails.daytime_closures_hours" :key="`dropoff-closure-${index}`">
+                <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                <span class="ml-1">{{ formatHourWindow(day) || 'None' }}</span>
+              </p>
+            </div>
+          </div>
+
+          <div v-if="dropoffDetails.out_of_hours_charge" class="text-sm text-gray-600">
+            <span class="font-semibold text-gray-800">Out of Hours Charge:</span> {{ dropoffDetails.out_of_hours_charge }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>

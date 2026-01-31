@@ -16,6 +16,7 @@ use App\Notifications\Booking\BookingCreatedVendorNotification;
 use App\Models\VendorProfile;
 use App\Services\AdobeCarService;
 use App\Services\BookingAmountService;
+use App\Services\CurrencyConversionService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -153,9 +154,11 @@ class StripeBookingService
                 ]);
             }
 
-            $extrasTotal = 0.0;
+            $this->ensureProviderLocationDetails($booking);
+
+            $extrasTotal = (float) ($metadata->extras_total ?? 0);
             $extrasData = json_decode($metadata->extras_data ?? '[]', true);
-            if (!empty($extrasData)) {
+            if ($extrasTotal <= 0 && !empty($extrasData)) {
                 foreach ($extrasData as $extraItem) {
                     $extrasTotal += (float) ($extraItem['total'] ?? 0);
                 }
@@ -191,6 +194,7 @@ class StripeBookingService
                     'payment_method' => $metadata->payment_method ?? 'stripe',
                     'transaction_id' => $session->payment_intent,
                     'amount' => (float) ($metadata->payable_amount ?? 0),
+                    'currency' => $bookingCurrency,
                     'payment_status' => 'succeeded',
                     'payment_date' => now(),
                 ]);
@@ -200,13 +204,23 @@ class StripeBookingService
                 $extrasData = json_decode($metadata->extras_data ?? '[]', true);
 
                 if (!empty($extrasData)) {
+                    $providerCurrency = $metadata->provider_currency ?? $metadata->currency ?? null;
+                    $bookingCurrency = $metadata->currency ?? null;
                     foreach ($extrasData as $extraItem) {
+                        $price = (float) ($extraItem['total'] ?? 0);
+                        if ($price > 0 && $providerCurrency && $bookingCurrency && $providerCurrency !== $bookingCurrency) {
+                            $conversion = app(CurrencyConversionService::class)->convert($price, $providerCurrency, $bookingCurrency);
+                            if ($conversion['success'] ?? false) {
+                                $price = (float) ($conversion['converted_amount'] ?? $price);
+                            }
+                        }
+
                         BookingExtra::create([
                             'booking_id' => $booking->id,
                             'extra_type' => 'optional',
                             'extra_name' => $extraItem['name'] ?? 'Unknown Extra',
                             'quantity' => (int) ($extraItem['qty'] ?? 1),
-                            'price' => (float) ($extraItem['total'] ?? 0),
+                            'price' => $price,
                         ]);
                     }
                 } else {
@@ -396,21 +410,57 @@ class StripeBookingService
             return $value;
         };
 
+        $providerCurrency = ($metadata->provider_currency ?? $metadata->currency)
+            ? $this->normalizeCurrencyCode($metadata->provider_currency ?? $metadata->currency)
+            : null;
+        $bookingCurrency = $metadata->currency ? $this->normalizeCurrencyCode($metadata->currency) : null;
+
+        $pickupLocationDetails = $normalizeValue($metadata->location_details ?? null);
+
         return [
             'provider' => $booking->provider_source ?? ($metadata->vehicle_source ?? null),
             'quoteid' => $metadata->quoteid ?? null,
             'rental_code' => $metadata->package ?? $metadata->rental_code ?? null,
-            'currency' => ($metadata->provider_currency ?? $metadata->currency)
-                ? $this->normalizeCurrencyCode($metadata->provider_currency ?? $metadata->currency)
-                : null,
+            'currency' => $providerCurrency,
+            'booking_currency' => $bookingCurrency,
             'vehicle_total' => $metadata->vehicle_total ?? null,
+            'extras_total' => $metadata->extras_total ?? null,
+            'grand_total' => $metadata->total_amount ?? null,
+            'provider_pricing' => [
+                'currency' => $providerCurrency,
+                'vehicle_total' => $metadata->provider_vehicle_total ?? null,
+                'extras_total' => $metadata->provider_extras_total ?? null,
+                'grand_total' => $metadata->provider_grand_total ?? null,
+                'deposit_percentage' => $metadata->deposit_percentage ?? null,
+                'deposit_total' => isset($metadata->provider_grand_total, $metadata->deposit_percentage)
+                    ? round((float) $metadata->provider_grand_total * ((float) $metadata->deposit_percentage / 100), 2)
+                    : null,
+                'due_at_pickup_total' => isset($metadata->provider_grand_total, $metadata->deposit_percentage)
+                    ? round((float) $metadata->provider_grand_total - ((float) $metadata->provider_grand_total * ((float) $metadata->deposit_percentage / 100)), 2)
+                    : null,
+            ],
             'pickup_location_id' => $metadata->pickup_location_code ?? null,
             'dropoff_location_id' => $metadata->dropoff_location_code ?? $metadata->pickup_location_code ?? null,
-            'location' => $normalizeValue($metadata->location_details ?? null),
+            'location' => $pickupLocationDetails,
+            'pickup_location_details' => $pickupLocationDetails,
+            'dropoff_location_details' => $normalizeValue($metadata->dropoff_location_details ?? null),
             'location_instructions' => $metadata->location_instructions ?? null,
             'driver_requirements' => $normalizeValue($metadata->driver_requirements ?? null),
             'terms' => $normalizeValue($metadata->terms ?? null),
             'extras_selected' => $normalizeValue($metadata->extras_data ?? null),
+            'customer_snapshot' => [
+                'name' => $metadata->customer_name ?? null,
+                'email' => $metadata->customer_email ?? null,
+                'phone' => $metadata->customer_phone ?? null,
+                'driver_age' => $metadata->customer_driver_age ?? null,
+                'driver_license_number' => $metadata->driver_license_number ?? null,
+                'address' => $metadata->customer_address ?? null,
+                'city' => $metadata->customer_city ?? null,
+                'postal_code' => $metadata->customer_postal_code ?? null,
+                'country' => $metadata->customer_country ?? null,
+                'flight_number' => $metadata->flight_number ?? null,
+                'notes' => $metadata->notes ?? null,
+            ],
         ];
     }
 
@@ -440,6 +490,172 @@ class StripeBookingService
 
         $upper = strtoupper((string) $value);
         return $upper !== '' ? $upper : 'EUR';
+    }
+
+    private function ensureProviderLocationDetails(Booking $booking): void
+    {
+        if (!in_array($booking->provider_source, ['greenmotion', 'usave'], true)) {
+            return;
+        }
+
+        $metadata = $booking->provider_metadata ?? [];
+        $pickupId = $metadata['pickup_location_id'] ?? null;
+        $dropoffId = $metadata['dropoff_location_id'] ?? null;
+
+        if (!$pickupId) {
+            return;
+        }
+
+        $updated = false;
+
+        $pickupDetails = $metadata['pickup_location_details'] ?? $metadata['location'] ?? null;
+        if (!$pickupDetails) {
+            $pickupDetails = $this->fetchGreenMotionLocationDetails($pickupId, $booking->provider_source);
+            if ($pickupDetails) {
+                $metadata['pickup_location_details'] = $pickupDetails;
+                $metadata['location'] = $pickupDetails;
+                $updated = true;
+            }
+        }
+
+        if ($dropoffId) {
+            if ($dropoffId === $pickupId) {
+                if (empty($metadata['dropoff_location_details']) && $pickupDetails) {
+                    $metadata['dropoff_location_details'] = $pickupDetails;
+                    $updated = true;
+                }
+            } elseif (empty($metadata['dropoff_location_details'])) {
+                $dropoffDetails = $this->fetchGreenMotionLocationDetails($dropoffId, $booking->provider_source);
+                if ($dropoffDetails) {
+                    $metadata['dropoff_location_details'] = $dropoffDetails;
+                    $updated = true;
+                }
+            }
+        }
+
+        if ($updated) {
+            $booking->update([
+                'provider_metadata' => $metadata,
+            ]);
+        }
+    }
+
+    private function fetchGreenMotionLocationDetails(string $locationId, string $provider): ?array
+    {
+        try {
+            $service = app(\App\Services\GreenMotionService::class);
+            $service->setProvider($provider);
+            $response = $service->getLocationInfo($locationId);
+            if (!$response) {
+                return null;
+            }
+
+            return $this->parseGreenMotionLocationXml($response, $locationId);
+        } catch (\Exception $e) {
+            Log::warning('StripeBookingService: Failed to fetch provider location details', [
+                'provider' => $provider,
+                'location_id' => $locationId,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    private function parseGreenMotionLocationXml(string $xml, string $locationId): ?array
+    {
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($xml);
+        libxml_clear_errors();
+
+        if (!$xmlObject || !isset($xmlObject->response->location_info)) {
+            return null;
+        }
+
+        $loc = $xmlObject->response->location_info;
+        $openingHours = [];
+        if (isset($loc->opening_hours->day)) {
+            foreach ($loc->opening_hours->day as $day) {
+                $openingHours[] = [
+                    'name' => (string) $day['name'],
+                    'is24hrs' => (string) $day['is24hrs'],
+                    'open' => (string) $day['open'],
+                    'close' => (string) $day['close'],
+                ];
+            }
+        }
+
+        $officeOpeningHours = [];
+        if (isset($loc->office_opening_hours->day)) {
+            foreach ($loc->office_opening_hours->day as $day) {
+                $officeOpeningHours[] = [
+                    'name' => (string) $day['name'],
+                    'is24hrs' => (string) $day['is24hrs'],
+                    'open' => (string) $day['open'],
+                    'close' => (string) $day['close'],
+                ];
+            }
+        }
+
+        $outOfHours = [];
+        if (isset($loc->out_of_hours->day)) {
+            foreach ($loc->out_of_hours->day as $day) {
+                $outOfHours[] = [
+                    'name' => (string) $day['name'],
+                    'open' => (string) $day['open'],
+                    'close' => (string) $day['close'],
+                ];
+            }
+        }
+
+        $outOfHoursDropoff = [];
+        if (isset($loc->out_of_hours_dropoff->day)) {
+            foreach ($loc->out_of_hours_dropoff->day as $day) {
+                $outOfHoursDropoff[] = [
+                    'name' => (string) $day['name'],
+                    'start' => (string) $day['start'],
+                    'end' => (string) $day['end'],
+                    'start2' => (string) $day['start2'],
+                    'end2' => (string) $day['end2'],
+                ];
+            }
+        }
+
+        $daytimeClosuresHours = [];
+        if (isset($loc->daytime_closures_hours->day)) {
+            foreach ($loc->daytime_closures_hours->day as $day) {
+                $daytimeClosuresHours[] = [
+                    'name' => (string) $day['name'],
+                    'start' => (string) $day['start'],
+                    'end' => (string) $day['end'],
+                ];
+            }
+        }
+
+        return [
+            'id' => $locationId,
+            'name' => (string) $loc->location_name,
+            'address_1' => (string) $loc->address_1,
+            'address_2' => (string) $loc->address_2,
+            'address_3' => (string) $loc->address_3,
+            'address_city' => (string) $loc->address_city,
+            'address_county' => (string) $loc->address_county,
+            'address_postcode' => (string) $loc->address_postcode,
+            'telephone' => (string) $loc->telephone,
+            'fax' => (string) $loc->fax,
+            'email' => (string) $loc->email,
+            'latitude' => (string) $loc->latitude,
+            'longitude' => (string) $loc->longitude,
+            'iata' => (string) $loc->iata,
+            'opening_hours' => $openingHours,
+            'office_opening_hours' => $officeOpeningHours,
+            'out_of_hours' => $outOfHours,
+            'out_of_hours_dropoff' => $outOfHoursDropoff,
+            'daytime_closures_hours' => $daytimeClosuresHours,
+            'out_of_hours_charge' => (string) $loc->out_of_hours_charge,
+            'charge_both_ways' => (string) $loc->charge_both_ways,
+            'extra' => (string) $loc->extra,
+            'collection_details' => (string) $loc->collectiondetails,
+        ];
     }
 
     protected function notifyBookingCreated(Booking $booking, Customer $customer, ?string $tempPassword = null): void
@@ -642,6 +858,11 @@ class StripeBookingService
                 'phone' => $metadata->customer_phone,
                 'email' => $metadata->customer_email,
                 'flight_number' => $metadata->flight_number ?? '',
+                'address1' => $metadata->customer_address ?? '',
+                'town' => $metadata->customer_city ?? '',
+                'postcode' => $metadata->customer_postal_code ?? '',
+                'country' => $metadata->customer_country ?? '',
+                'driver_licence_number' => $metadata->driver_license_number ?? '',
             ];
 
             // Parse detailed extras if available
@@ -649,11 +870,17 @@ class StripeBookingService
             $rawExtras = json_decode($metadata->extras_data ?? '[]', true);
             foreach ($rawExtras as $ex) {
                 if (($ex['qty'] ?? 0) > 0) {
+                    $optionId = $ex['option_id'] ?? $ex['optionID'] ?? $ex['id'] ?? null;
+                    $optionTotal = $ex['total'] ?? $ex['total_for_booking'] ?? null;
+                    if ($optionId === null || $optionTotal === null) {
+                        continue;
+                    }
+
                     $extras[] = [
-                        'id' => $ex['id'] ?? $ex['optionID'],
+                        'id' => $optionId,
                         'option_qty' => $ex['qty'],
-                        'option_total' => $ex['total'],
-                        'pre_pay' => $ex['pre_pay'] ?? 'No'
+                        'option_total' => $optionTotal,
+                        'pre_pay' => 'No',
                     ];
                 }
             }
@@ -664,6 +891,12 @@ class StripeBookingService
                 $vehicleId = substr($vehicleId, strlen($booking->provider_source . '_'));
             }
 
+            $providerVehicleTotal = $metadata->provider_vehicle_total ?? $metadata->vehicle_total ?? $metadata->total_amount;
+            $providerGrandTotal = $metadata->provider_grand_total
+                ?? (($metadata->provider_vehicle_total ?? null) !== null && ($metadata->provider_extras_total ?? null) !== null
+                    ? (float) $metadata->provider_vehicle_total + (float) $metadata->provider_extras_total
+                    : ($metadata->total_amount ?? null));
+
             $xmlResponse = $greenMotionService->makeReservation(
                 $metadata->pickup_location_code,
                 $metadata->pickup_date,
@@ -673,15 +906,16 @@ class StripeBookingService
                 $metadata->customer_driver_age ?? 35,
                 $customerDetails,
                 $vehicleId,
-                $metadata->vehicle_total ?? $metadata->total_amount, // vehicleTotal
+                $providerVehicleTotal, // vehicleTotal (provider currency)
                 $this->normalizeCurrencyCode($metadata->provider_currency ?? $metadata->currency ?? 'EUR'),
-                $metadata->total_amount, // grandTotal
+                $providerGrandTotal, // grandTotal (provider currency)
                 $booking->stripe_session_id,
                 $metadata->quoteid,
                 $extras,
                 $metadata->dropoff_location_code ?? $metadata->pickup_location_code,
                 'POA', // Payment type
-                $metadata->package ?? $metadata->rental_code ?? '1' // rentalCode (Product Type)
+                $metadata->package ?? $metadata->rental_code ?? '1', // rentalCode (Product Type)
+                $metadata->notes ?? null
             );
 
             if ($xmlResponse) {
@@ -697,23 +931,31 @@ class StripeBookingService
                         'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "GreenMotion Conf: " . $confirmationNumber
                     ]);
                 } else {
-                    $errorMessage = 'Confirmation number missing in response.';
-                    if ($xmlObject !== false && isset($xmlObject->response->errors->message)) {
-                        $errorMessage = (string) $xmlObject->response->errors->message;
-                    } elseif ($xmlObject !== false && isset($xmlObject->response->errors->error->message)) {
-                        $errorMessage = (string) $xmlObject->response->errors->error->message;
+                    $errorDetails = $this->extractGreenMotionErrorDetails($xmlObject);
+                    $errorCode = $errorDetails['code'] ?? null;
+                    $errorMessage = $errorDetails['message'] ?? 'Confirmation number missing in response.';
+                    if ($xmlObject === false) {
+                        $errorMessage = 'Failed to parse provider response.';
                     }
-                    
-                    Log::error('GreenMotion: Reservation failed', ['error' => $errorMessage, 'response' => $xmlResponse]);
+                    $friendlyNote = $this->mapGreenMotionReservationErrorNote($errorCode, $errorMessage);
+                    $notePrefix = $errorCode ? "GreenMotion Reservation failed (Code {$errorCode}): " : 'GreenMotion Reservation failed: ';
+
+                    Log::error('GreenMotion: Reservation failed', [
+                        'booking_id' => $booking->id,
+                        'error_code' => $errorCode,
+                        'error_message' => $errorMessage,
+                    ]);
                     $booking->update([
-                        'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "GreenMotion Reservation failed: " . $errorMessage
+                        'notes' => ($booking->notes ? $booking->notes . "\n" : "") . $notePrefix . $friendlyNote
                     ]);
                 }
                 libxml_clear_errors();
             } else {
-                Log::error('GreenMotion: Empty response from API');
+                Log::error('GreenMotion: Empty response from API', [
+                    'booking_id' => $booking->id,
+                ]);
                 $booking->update([
-                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "GreenMotion Reservation failed: No response from API."
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . 'GreenMotion Reservation failed: No response from API.'
                 ]);
             }
 
@@ -725,6 +967,71 @@ class StripeBookingService
             $booking->update([
                 'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "GreenMotion Reservation Error: " . $e->getMessage()
             ]);
+        }
+    }
+
+    private function extractGreenMotionErrorDetails($xmlObject): array
+    {
+        if (!$xmlObject || !isset($xmlObject->response)) {
+            return ['code' => null, 'message' => null];
+        }
+
+        $errors = $xmlObject->response->errors ?? null;
+        if (!$errors) {
+            return ['code' => null, 'message' => null];
+        }
+
+        $primaryError = isset($errors->error) ? $errors->error[0] : $errors;
+
+        $message = null;
+        if (isset($primaryError->message)) {
+            $message = (string) $primaryError->message;
+        } elseif (isset($primaryError->Message)) {
+            $message = (string) $primaryError->Message;
+        } elseif (isset($errors->message)) {
+            $message = (string) $errors->message;
+        } elseif (isset($errors->Message)) {
+            $message = (string) $errors->Message;
+        }
+
+        if ($message === null || trim($message) === '') {
+            $message = trim((string) $primaryError);
+        }
+
+        $code = (string) (
+            $primaryError['code']
+            ?? $primaryError['errorCode']
+            ?? $primaryError->code
+            ?? $primaryError->errorCode
+            ?? $errors['code']
+            ?? $errors->code
+            ?? ''
+        );
+        $code = trim($code) !== '' ? trim($code) : null;
+
+        return [
+            'code' => $code,
+            'message' => $message ?: null,
+        ];
+    }
+
+    private function mapGreenMotionReservationErrorNote(?string $code, ?string $message): string
+    {
+        $code = $code ? trim($code) : null;
+
+        switch ($code) {
+            case '0414':
+            case '0415':
+                return 'Vehicle no longer available. Please search again or choose another vehicle.';
+            case '0417':
+            case '0418':
+                return 'Quote expired or pricing changed. Please refresh and try again.';
+            case '0422':
+                return 'Provider pricing mismatch. Please refresh and try again.';
+            case '0603':
+                return 'Customer details are incomplete. Please update and try again.';
+            default:
+                return $message ?: 'Reservation failed. Please contact support.';
         }
     }
 

@@ -8,8 +8,14 @@ trait FormatsBookingAmounts
     {
         $value = $amount ?? 0.0;
         $code = $currency ?: 'USD';
+        $symbol = $this->getCurrencySymbol($code);
+        $separator = '';
 
-        return $this->getCurrencySymbol($code) . number_format($value, 2);
+        if (preg_match('/^[A-Za-z]{2,}$/', $symbol)) {
+            $separator = ' ';
+        }
+
+        return $symbol . $separator . number_format($value, 2);
     }
 
     protected function getCurrencySymbol(string $currency): string
@@ -34,7 +40,9 @@ trait FormatsBookingAmounts
             'AED' => 'AED',
         ];
 
-        return $symbols[strtoupper($currency)] ?? '$';
+        $currency = strtoupper($currency);
+
+        return $symbols[$currency] ?? $currency;
     }
 
     protected function getAdminAmounts($booking): array

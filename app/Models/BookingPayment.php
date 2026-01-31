@@ -15,6 +15,7 @@ class BookingPayment extends Model
         'payment_method',
         'transaction_id',
         'amount',
+        'currency',
         'payment_status',
         'payment_date'
     ];
@@ -43,7 +44,18 @@ class BookingPayment extends Model
     // Get formatted amount
     public function getFormattedAmountAttribute(): string
     {
-        return '€' . number_format($this->amount, 2);
+        $symbolMap = [
+            'EUR' => '€',
+            'USD' => '$',
+            'GBP' => '£',
+            'JPY' => '¥',
+            'AUD' => 'A$',
+            'CAD' => 'C$',
+        ];
+        $currency = strtoupper((string) ($this->currency ?? 'EUR'));
+        $symbol = $symbolMap[$currency] ?? $currency . ' ';
+
+        return $symbol . number_format($this->amount, 2);
     }
 
     // Check if payment is completed

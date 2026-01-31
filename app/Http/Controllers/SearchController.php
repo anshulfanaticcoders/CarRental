@@ -652,15 +652,6 @@ class SearchController extends Controller
                             libxml_use_internal_errors(true);
                             $xmlObject = simplexml_load_string($gmResponse);
 
-                            // Parse Extras
-                            if ($xmlObject !== false) {
-                                $extractedExtras = $this->parseOptionalExtras($xmlObject);
-                                // Merge or set (avoiding duplicates if multiple locations - though unlikely for single search)
-                                foreach ($extractedExtras as $ex) {
-                                    $searchOptionalExtras[$ex['id']] = $ex;
-                                }
-                            }
-
                             if ($xmlObject !== false && isset($xmlObject->response->vehicles->vehicle)) {
                                 foreach ($xmlObject->response->vehicles->vehicle as $vehicle) {
                                     $products = [];
@@ -681,6 +672,52 @@ class SearchController extends Controller
                                                 'oneway' => (string) $product->oneway,
                                                 'oneway_fee' => (string) $product->oneway_fee,
                                                 'cancellation_rules' => json_decode(json_encode($product->CancellationRules), true),
+                                            ];
+                                        }
+                                    }
+
+                                    $vehicleOptions = [];
+                                    if (isset($vehicle->options->option)) {
+                                        foreach ($vehicle->options->option as $option) {
+                                            $optionId = (string) $option->optionID;
+                                            $vehicleOptions[] = [
+                                                'id' => 'gm_option_' . $optionId,
+                                                'option_id' => $optionId,
+                                                'name' => (string) $option->Name,
+                                                'description' => (string) $option->Description,
+                                                'required' => (string) ($option->required ?? $option['required'] ?? ''),
+                                                'numberAllowed' => (string) ($option->numberAllowed ?? ''),
+                                                'prepay_available' => strtolower((string) ($option->prepay_available ?? '')),
+                                                'daily_rate' => (string) $option->Daily_rate,
+                                                'daily_rate_currency' => (string) $option->Daily_rate['currency'],
+                                                'total_for_booking' => (string) $option->Total_for_this_booking,
+                                                'total_for_booking_currency' => (string) $option->Total_for_this_booking['currency'],
+                                                'prepay_total_for_booking' => (string) $option->Prepay_total_for_this_booking,
+                                                'prepay_total_for_booking_currency' => (string) $option->Prepay_total_for_this_booking['currency'],
+                                                'type' => 'option',
+                                            ];
+                                        }
+                                    }
+
+                                    $vehicleInsuranceOptions = [];
+                                    if (isset($vehicle->insurance_options->option)) {
+                                        foreach ($vehicle->insurance_options->option as $option) {
+                                            $optionId = (string) $option->optionID;
+                                            $vehicleInsuranceOptions[] = [
+                                                'id' => 'gm_insurance_' . $optionId,
+                                                'option_id' => $optionId,
+                                                'name' => (string) $option->Name,
+                                                'description' => (string) $option->Description,
+                                                'required' => (string) ($option->required ?? $option['required'] ?? ''),
+                                                'numberAllowed' => (string) ($option->numberAllowed ?? ''),
+                                                'prepay_available' => strtolower((string) ($option->prepay_available ?? '')),
+                                                'daily_rate' => (string) $option->Daily_rate,
+                                                'daily_rate_currency' => (string) $option->Daily_rate['currency'],
+                                                'total_for_booking' => (string) $option->Total_for_this_booking,
+                                                'total_for_booking_currency' => (string) $option->Total_for_this_booking['currency'],
+                                                'prepay_total_for_booking' => (string) $option->Prepay_total_for_this_booking,
+                                                'prepay_total_for_booking_currency' => (string) $option->Prepay_total_for_this_booking['currency'],
+                                                'type' => 'insurance',
                                             ];
                                         }
                                     }
@@ -771,6 +808,7 @@ class SearchController extends Controller
                                         'longitude' => (float) $locationLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
+                                        'provider_return_id' => $validated['dropoff_location_id'] ?? $currentProviderLocationId,
                                         'ok_mobility_pickup_time' => $startTimeForProvider,
                                         'ok_mobility_dropoff_time' => $endTimeForProvider,
                                         'features' => $features,
@@ -786,8 +824,8 @@ class SearchController extends Controller
                                         'products' => $products,
                                         'quoteid' => (string) $xmlObject->response->quoteid,
                                         'rentalCode' => $validated['rentalCode'] ?? '1',
-                                        'options' => [],
-                                        'insurance_options' => [],
+                                        'options' => $vehicleOptions,
+                                        'insurance_options' => $vehicleInsuranceOptions,
                                     ]);
                                 }
                             } else {

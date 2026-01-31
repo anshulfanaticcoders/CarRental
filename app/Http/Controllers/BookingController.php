@@ -190,11 +190,13 @@ class BookingController extends Controller
             $stripeCustomerId = $stripeCustomer->id;
         }
 
+        $paymentCurrency = $booking->booking_currency ?? 'USD';
+
         // Create a payment intent with Stripe
         try {
             $paymentIntent = PaymentIntent::create([
                 'amount' => $request->input('amount_paid') * 100, // Amount in cents
-                'currency' => 'USD',
+                'currency' => strtolower($paymentCurrency),
                 'customer' => $stripeCustomerId,
                 'payment_method' => $request->input('payment_method_id'),
                 'off_session' => true, // Allow payments even if the user is not present
@@ -211,6 +213,7 @@ class BookingController extends Controller
                 'payment_method' => 'Stripe',
                 'transaction_id' => $paymentIntent->id,
                 'amount' => $request->input('amount_paid'),
+                'currency' => $paymentCurrency,
                 'payment_status' => $paymentIntent->status,
             ]);
 
@@ -474,23 +477,42 @@ class BookingController extends Controller
             }
         } else {
             // External Vehicle (Fallback)
+            $providerMetadata = $booking->provider_metadata ?? [];
+            $pickupDetails = $providerMetadata['pickup_location_details']
+                ?? $providerMetadata['location']
+                ?? null;
+
+            $addressParts = [];
+            if (is_array($pickupDetails)) {
+                $addressParts = array_filter([
+                    $pickupDetails['address_1'] ?? null,
+                    $pickupDetails['address_2'] ?? null,
+                    $pickupDetails['address_3'] ?? null,
+                    $pickupDetails['address_city'] ?? null,
+                    $pickupDetails['address_county'] ?? null,
+                    $pickupDetails['address_postcode'] ?? null,
+                ]);
+            }
+
             $vehicleData = [
                 'id' => null, // No internal ID
                 'brand' => explode(' ', $booking->vehicle_name)[0] ?? 'Vehicle',
                 'model' => $booking->vehicle_name, // Full name as model fallback
                 'vehicle_name' => $booking->vehicle_name,
-                'transmission' => 'Manual', // Default or need to store this if available
-                'fuel' => 'Petrol', // Default
-                'seating_capacity' => 5, // Default
+                'transmission' => null,
+                'fuel' => null,
+                'seating_capacity' => null,
                 'images' => $booking->vehicle_image ? [
                     ['image_url' => $booking->vehicle_image, 'image_type' => 'primary']
                 ] : [],
                 'category' => [
-                    'name' => 'Standard' // Default
+                    'name' => 'Standard'
                 ],
-                // Add this to prevent map errors if latitude/longitude are missing on normalized object
-                'latitude' => null,
-                'longitude' => null
+                'latitude' => is_array($pickupDetails) ? ($pickupDetails['latitude'] ?? null) : null,
+                'longitude' => is_array($pickupDetails) ? ($pickupDetails['longitude'] ?? null) : null,
+                'full_vehicle_address' => !empty($addressParts)
+                    ? implode(', ', $addressParts)
+                    : $booking->pickup_location,
             ];
             // No vendor profile for external providers usually, or generic
         }

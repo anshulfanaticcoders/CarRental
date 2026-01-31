@@ -15,6 +15,8 @@ import flagNl from '../../assets/flag-nl.svg';
 import flagEs from '../../assets/flag-es.svg';
 import flagAr from '../../assets/flag-ar.svg';
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
+import whatsappIcon from '../../assets/whatsapp.svg';
+import FloatingSocialIcons from '@/Components/FloatingSocialIcons.vue';
 
 // Get page properties
 const page = usePage();
@@ -36,6 +38,15 @@ const toggleMobileNotification = () => {
 // Notifications
 const notifications = ref([]);
 const unreadCount = ref(0);
+const contactInfo = ref(null);
+
+// WhatsApp Link
+const whatsappLink = computed(() => {
+  const phone = '+32493000000';
+  const message = "Hello, I would like to inquire about renting a car. Could you please assist me?";
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+});
 
 // Refs for dropdowns
 const navRef = ref(null);
@@ -63,8 +74,11 @@ onMounted(() => {
   if (page.props.auth?.user) {
     fetchUserProfile();
     fetchNotifications();
+    fetchContactInfo();
+  } else {
+    fetchContactInfo();
   }
-  
+
   document.addEventListener('click', closeNavOnOutsideClick);
   document.addEventListener('click', closeNotificationDropdownOnOutsideClick);
 });
@@ -89,50 +103,60 @@ const fetchUserProfile = async () => {
   }
 };
 
+// Fetch contact info
+const fetchContactInfo = async () => {
+  try {
+    const response = await axios.get('/api/footer-contact-info');
+    contactInfo.value = response.data;
+  } catch (error) {
+    console.error("Error fetching contact info:", error);
+  }
+};
+
 // Fetch notifications
 const fetchNotifications = async () => {
-    try {
-        const response = await axios.get(route('notifications.index', { locale: currentLocale.value }));
-        notifications.value = response.data.notifications.data;
-        unreadCount.value = response.data.unread_count;
-    } catch (error) {
-        console.error("Error fetching notifications:", error);
-    }
+  try {
+    const response = await axios.get(route('notifications.index', { locale: currentLocale.value }));
+    notifications.value = response.data.notifications.data;
+    unreadCount.value = response.data.unread_count;
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
+  }
 };
 
 // Mark a notification as read
 const markAsRead = async (notification) => {
-    if (notification.read_at) return;
-    try {
-        await axios.post(route('notifications.mark-read', { locale: currentLocale.value, id: notification.id }));
-        notification.read_at = new Date().toISOString();
-        unreadCount.value--;
-    } catch (error) {
-        console.error("Error marking notification as read:", error);
-    }
+  if (notification.read_at) return;
+  try {
+    await axios.post(route('notifications.mark-read', { locale: currentLocale.value, id: notification.id }));
+    notification.read_at = new Date().toISOString();
+    unreadCount.value--;
+  } catch (error) {
+    console.error("Error marking notification as read:", error);
+  }
 };
 
 // Mark all notifications as read
 const markAllAsRead = async () => {
-    try {
-        await axios.post(route('notifications.mark-all-read', { locale: currentLocale.value }));
-        notifications.value.forEach(n => n.read_at = new Date().toISOString());
-        unreadCount.value = 0;
-    } catch (error) {
-        console.error("Error marking all notifications as read:", error);
-    }
+  try {
+    await axios.post(route('notifications.mark-all-read', { locale: currentLocale.value }));
+    notifications.value.forEach(n => n.read_at = new Date().toISOString());
+    unreadCount.value = 0;
+  } catch (error) {
+    console.error("Error marking all notifications as read:", error);
+  }
 };
 
 // Clear all notifications
 const clearAllNotifications = async () => {
-    try {
-        await axios.delete(route('notifications.clear-all', { locale: currentLocale.value }));
-        notifications.value = [];
-        unreadCount.value = 0;
-        showingNotificationDropdown.value = false;
-    } catch (error) {
-        console.error("Error clearing notifications:", error);
-    }
+  try {
+    await axios.delete(route('notifications.clear-all', { locale: currentLocale.value }));
+    notifications.value = [];
+    unreadCount.value = 0;
+    showingNotificationDropdown.value = false;
+  } catch (error) {
+    console.error("Error clearing notifications:", error);
+  }
 };
 
 // Function to get the appropriate link for a notification
@@ -285,81 +309,81 @@ const availableLocales = {
 };
 
 const changeLanguage = (newLocale) => {
-    // Trigger flag animation
-    animatedFlagUrl.value = availableLocales[newLocale].flag;
-    
-    const animationDuration = 1500; // 1.5 seconds for animation and delay
+  // Trigger flag animation
+  animatedFlagUrl.value = availableLocales[newLocale].flag;
 
-    setTimeout(() => {
-        animatedFlagUrl.value = null; // Hide flag after animation
-        
-        const currentUrl = new URL(window.location.href);
-        const pathParts = currentUrl.pathname.split('/');
+  const animationDuration = 1500; // 1.5 seconds for animation and delay
 
-        // Handle page translations
-        if (pathParts.length > 2 && pathParts[2] === 'page') {
-            const currentSlug = pathParts[3];
-            const pages = page.props.pages;
-            const currentPage = Object.values(pages).find(p => {
-                return p.translations.some(t => t.slug === currentSlug);
-            });
+  setTimeout(() => {
+    animatedFlagUrl.value = null; // Hide flag after animation
 
-            if (currentPage) {
-                const newTranslation = currentPage.translations.find(t => t.locale === newLocale);
-                if (newTranslation) {
-                    router.visit(route('pages.show', { locale: newLocale, slug: newTranslation.slug }));
-                    return;
-                }
-            }
+    const currentUrl = new URL(window.location.href);
+    const pathParts = currentUrl.pathname.split('/');
+
+    // Handle page translations
+    if (pathParts.length > 2 && pathParts[2] === 'page') {
+      const currentSlug = pathParts[3];
+      const pages = page.props.pages;
+      const currentPage = Object.values(pages).find(p => {
+        return p.translations.some(t => t.slug === currentSlug);
+      });
+
+      if (currentPage) {
+        const newTranslation = currentPage.translations.find(t => t.locale === newLocale);
+        if (newTranslation) {
+          router.visit(route('pages.show', { locale: newLocale, slug: newTranslation.slug }));
+          return;
         }
+      }
+    }
 
-        // Handle blog post translations
-        if (pathParts.length > 3 && pathParts[3] === 'blog' && page.props.blog) {
-            const blog = page.props.blog;
-            const newTranslation = blog.translations.find(t => t.locale === newLocale);
-            if (newTranslation && newTranslation.slug) {
-                router.visit(route('blog.show', { locale: newLocale, country: page.props.country, blog: newTranslation.slug }));
-                return;
-            } else {
-                // If no translation, redirect to the blog index page for the new locale
-                router.visit(route('blog', { locale: newLocale, country: page.props.country }));
-                return;
-            }
+    // Handle blog post translations
+    if (pathParts.length > 3 && pathParts[3] === 'blog' && page.props.blog) {
+      const blog = page.props.blog;
+      const newTranslation = blog.translations.find(t => t.locale === newLocale);
+      if (newTranslation && newTranslation.slug) {
+        router.visit(route('blog.show', { locale: newLocale, country: page.props.country, blog: newTranslation.slug }));
+        return;
+      } else {
+        // If no translation, redirect to the blog index page for the new locale
+        router.visit(route('blog', { locale: newLocale, country: page.props.country }));
+        return;
+      }
+    }
+
+    // Handle contact page translations
+    if (page.props.contactPage) {
+      const seoMeta = page.props.seoMeta;
+      if (seoMeta && seoMeta.translations) {
+        const newTranslation = seoMeta.translations.find(t => t.locale === newLocale);
+        if (newTranslation && newTranslation.url_slug) {
+          if (newTranslation.url_slug === 'contact-us') {
+            router.visit(route('contact-us', { locale: newLocale }));
+          } else {
+            router.visit(route('contact-us', { locale: newLocale, slug: newTranslation.url_slug }));
+          }
+          return;
         }
+      }
+    }
 
-        // Handle contact page translations
-        if (page.props.contactPage) {
-            const seoMeta = page.props.seoMeta;
-            if (seoMeta && seoMeta.translations) {
-                const newTranslation = seoMeta.translations.find(t => t.locale === newLocale);
-                if (newTranslation && newTranslation.url_slug) {
-                    if (newTranslation.url_slug === 'contact-us') {
-                        router.visit(route('contact-us', { locale: newLocale }));
-                    } else {
-                        router.visit(route('contact-us', { locale: newLocale, slug: newTranslation.url_slug }));
-                    }
-                    return;
-                }
-            }
-        }
+    // Fallback for other pages or if translation not found
+    pathParts[1] = newLocale;
+    const newPath = pathParts.join('/');
 
-        // Fallback for other pages or if translation not found
-        pathParts[1] = newLocale;
-        const newPath = pathParts.join('/');
-
-        router.visit(newPath + currentUrl.search, {
-            onSuccess: () => {
-                router.post(route('language.change'), {
-                    locale: newLocale,
-                    _method: 'POST'
-                }, {
-                    onSuccess: () => {
-                        window.location.reload();
-                    }
-                });
-            }
+    router.visit(newPath + currentUrl.search, {
+      onSuccess: () => {
+        router.post(route('language.change'), {
+          locale: newLocale,
+          _method: 'POST'
+        }, {
+          onSuccess: () => {
+            window.location.reload();
+          }
         });
-    }, animationDuration); // Delay navigation until animation is complete
+      }
+    });
+  }, animationDuration); // Delay navigation until animation is complete
 };
 
 // Function to toggle mobile navigation
@@ -379,7 +403,8 @@ watch(() => url.value, () => {
       <div class="flex justify-between items-center h-16 md:h-20">
         <!-- Logo Section -->
         <div class="flex-shrink-0">
-          <Link :href="route('welcome', { locale: page.props.locale })" class="block w-32 md:w-40 transition-transform hover:opacity-80">
+          <Link :href="route('welcome', { locale: page.props.locale })"
+            class="block w-32 md:w-40 transition-transform hover:opacity-80">
             <ApplicationLogo class="w-full h-auto" />
           </Link>
         </div>
@@ -388,79 +413,72 @@ watch(() => url.value, () => {
         <div v-if="isAuthenticated" class="hidden md:flex md:items-center md:space-x-6">
           <!-- Vendor/Customer Action Button -->
           <div v-if="isVendor">
-            <Link 
-              :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: props.locale }) : route('vendor.status', { locale: props.locale })" 
-              class="button-secondary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:shadow-md"
-            >
+            <Link
+              :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: props.locale }) : route('vendor.status', { locale: props.locale })"
+              class="button-secondary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:shadow-md">
               <span v-if="vendorStatus === 'approved'">{{ _t('header', 'create_listing') }}</span>
               <span v-else>{{ _t('header', 'complete_verification') }}</span>
             </Link>
           </div>
 
           <div v-else-if="isCustomer">
-            <Link 
-              :href="route('vendor.register', { locale: props.locale })" 
-              class="button-secondary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:shadow-md"
-            >
+            <Link :href="route('vendor.register', { locale: props.locale })"
+              class="button-secondary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:shadow-md">
               {{ _t('header', 'register_as_vendor') }}
             </Link>
           </div>
+
+          <!-- WhatsApp Icon -->
+          <a :href="whatsappLink" target="_blank"
+            class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full p-2 transition duration-150 ease-in-out flex items-center justify-center">
+            <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6">
+          </a>
 
           <!-- Currency Switcher -->
           <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
             <Dropdown align="right" width="max">
               <template #trigger>
-                <button
-                  type="button"
+                <button type="button"
                   class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
-                  :disabled="currencyLoading"
-                >
-                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2" :class="{ 'opacity-60': currencyLoading }">
+                  :disabled="currencyLoading">
+                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2"
+                    :class="{ 'opacity-60': currencyLoading }">
                   <span>{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
                   <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
               </template>
-            <template #content>
-              <div class="max-h-80 overflow-y-auto currency-scrollbar">
-                <div
-                  v-for="currency in supportedCurrencies"
-                  :key="currency"
-                  @click="changeCurrency(currency)"
-                  class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                  :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }"
-                >
-                  <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                  {{ formatCurrencyDisplay(currency) }}
+              <template #content>
+                <div class="max-h-80 overflow-y-auto currency-scrollbar">
+                  <div v-for="currency in supportedCurrencies" :key="currency" @click="changeCurrency(currency)"
+                    class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
+                    :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }">
+                    <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                    {{ formatCurrencyDisplay(currency) }}
+                  </div>
                 </div>
-              </div>
-            </template>
+              </template>
             </Dropdown>
           </div>
 
           <!-- Language Switcher -->
           <Dropdown align="right" width="48" class="bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
             <template #trigger>
-              <button 
-                type="button" 
-                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
-              >
-                <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'" class="w-6 h-6 mr-2 rounded-full">
+              <button type="button"
+                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out">
+                <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'"
+                  class="w-6 h-6 mr-2 rounded-full">
                 <span>{{ availableLocales[currentLocale].name }}</span>
                 <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
             </template>
             <template #content>
-              <div 
-                v-for="(language, code) in availableLocales" 
-                :key="code"
-                @click="changeLanguage(code)"
+              <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
                 class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                :class="{ 'bg-gray-500': currentLocale === code }"
-              >
+                :class="{ 'bg-gray-500': currentLocale === code }">
                 <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
                 {{ language.name }}
               </div>
@@ -468,80 +486,95 @@ watch(() => url.value, () => {
           </Dropdown>
 
           <!-- Notification Bell -->
-            <div class="relative">
-                <button ref="bellIconRef" @click="showingNotificationDropdown = !showingNotificationDropdown; markAllAsRead()" class="relative p-2 rounded-[99px] bg-[#efefef] focus:bg-[#d6d6d6]" :class="{ 'ripple-effect': unreadCount > 0 }">
-                    <img :src="bellIcon" alt="Notifications" class="w-6 h-6 ml-[3px]">
-                    <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
-                </button>
-                <div ref="notificationDropdownRef" v-if="showingNotificationDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-[99999] top-[3rem]">
-                    <div class="p-4 border-b flex justify-between items-center">
-                        <h3 class="text-lg font-medium">Notifications</h3>
-                    </div>
-                    <div class="overflow-y-auto" style="max-height: 400px;">
-                        <div v-if="notifications.length === 0" class="p-4 text-center text-gray-500">
-                            No notifications yet.
-                        </div>
-                        <div v-else>
-                            <div v-for="notification in notifications" :key="notification.id" @click="handleNotificationClick(notification)"
-                                class="p-4 border-b hover:bg-gray-50 cursor-pointer"
-                                :class="{ 'bg-gray-100': !notification.read_at }">
-                                <div class="flex ">
-                                    <div class="font-semibold">{{ notification.data.title }}</div>
-                                    <div class="text-xs text-gray-500">{{ notification.type.split('\\').pop() }}</div>
-                                </div>
-                                <p class="text-sm text-gray-600">{{ notification.data.message }}</p>
-                                <div class="text-xs text-customPrimaryColor mt-1 text-right">{{ new Date(notification.created_at).toLocaleString() }}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-2 border-t text-center">
-                        <button @click="clearAllNotifications" class="text-sm text-red-500 hover:underline">Clear all notifications</button>
-                    </div>
+          <div class="relative">
+            <button ref="bellIconRef"
+              @click="showingNotificationDropdown = !showingNotificationDropdown; markAllAsRead()"
+              class="relative p-2 rounded-[99px] bg-[#efefef] focus:bg-[#d6d6d6]"
+              :class="{ 'ripple-effect': unreadCount > 0 }">
+              <img :src="bellIcon" alt="Notifications" class="w-6 h-6 ml-[3px]">
+              <span v-if="unreadCount > 0"
+                class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{
+                  unreadCount }}</span>
+            </button>
+            <div ref="notificationDropdownRef" v-if="showingNotificationDropdown"
+              class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-[99999] top-[3rem]">
+              <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="text-lg font-medium">Notifications</h3>
+              </div>
+              <div class="overflow-y-auto" style="max-height: 400px;">
+                <div v-if="notifications.length === 0" class="p-4 text-center text-gray-500">
+                  No notifications yet.
                 </div>
+                <div v-else>
+                  <div v-for="notification in notifications" :key="notification.id"
+                    @click="handleNotificationClick(notification)" class="p-4 border-b hover:bg-gray-50 cursor-pointer"
+                    :class="{ 'bg-gray-100': !notification.read_at }">
+                    <div class="flex ">
+                      <div class="font-semibold">{{ notification.data.title }}</div>
+                      <div class="text-xs text-gray-500">{{ notification.type.split('\\').pop() }}</div>
+                    </div>
+                    <p class="text-sm text-gray-600">{{ notification.data.message }}</p>
+                    <div class="text-xs text-customPrimaryColor mt-1 text-right">{{ new
+                      Date(notification.created_at).toLocaleString() }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="p-2 border-t text-center">
+                <button @click="clearAllNotifications" class="text-sm text-red-500 hover:underline">Clear all
+                  notifications</button>
+              </div>
             </div>
-          
+          </div>
+
           <!-- User Profile Dropdown -->
           <div class="relative ml-3">
             <Dropdown align="right" width="48">
               <template #trigger>
-                <button 
-                  type="button"
-                  class="inline-flex items-center gap-2 py-2 border border-transparent text-sm font-medium rounded-full bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] p-4 transition duration-150 ease-in-out group"
-                >
+                <button type="button"
+                  class="inline-flex items-center gap-2 py-2 border border-transparent text-sm font-medium rounded-full bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] p-4 transition duration-150 ease-in-out group">
                   <div v-if="user?.profile?.avatar" class="flex-shrink-0 relative">
-                    <img 
-                      :src="user.profile.avatar || '/storage/avatars/default-avatar.svg'"
-                      alt="User Avatar" 
-                      class="w-8 h-8 rounded-full object-cover ring-2 ring-white"
-                    />
+                    <img :src="user.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
+                      class="w-8 h-8 rounded-full object-cover ring-2 ring-white" />
                   </div>
                   <div v-else class="px-3 py-1">
                     {{ page.props.auth.user.first_name }}
                   </div>
-                  <svg class="h-4 w-4 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                  <svg class="h-4 w-4 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                      clip-rule="evenodd" />
                   </svg>
                 </button>
               </template>
 
               <template #content>
                 <DropdownLink v-if="isAdmin" :href="route('admin.dashboard')" class="flex items-center">
-                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                    </path>
                   </svg>
                   {{ _t('header', 'dashboard') }}
                 </DropdownLink>
-                
+
                 <DropdownLink v-else :href="route('profile.edit', { locale: props.locale })" class="flex items-center">
-                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                   </svg>
                   {{ _t('header', 'profile') }}
                 </DropdownLink>
-                
-                <DropdownLink :href="route('logout', { locale: props.locale })" method="post" as="button" class="flex items-center w-full text-left">
-                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+
+                <DropdownLink :href="route('logout', { locale: props.locale })" method="post" as="button"
+                  class="flex items-center w-full text-left">
+                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                    </path>
                   </svg>
                   {{ _t('header', 'log_out') }}
                 </DropdownLink>
@@ -552,75 +585,67 @@ watch(() => url.value, () => {
 
         <!-- Guest Navigation (Desktop) -->
         <div v-else class="hidden md:flex md:items-center md:space-x-6">
-          <Link 
-            :href="route('login', { locale: props.locale })" 
-            class="button-primary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md"
-          >
+          <Link :href="route('login', { locale: props.locale })"
+            class="button-primary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md">
             {{ _t('header', 'log_in') }}
           </Link>
-          
-          <Link 
-            :href="route('register', { locale: props.locale })" 
-            class="button-secondary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md"
-          >
+
+          <Link :href="route('register', { locale: props.locale })"
+            class="button-secondary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md">
             {{ _t('header', 'create_account') }}
           </Link>
-          
+
+          <!-- WhatsApp Icon -->
+          <a :href="whatsappLink" target="_blank"
+            class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full p-2 transition duration-150 ease-in-out flex items-center justify-center">
+            <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6">
+          </a>
+
           <!-- Currency Switcher -->
           <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
             <Dropdown align="right" width="max">
               <template #trigger>
-                <button
-                  type="button"
+                <button type="button"
                   class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
-                  :disabled="currencyLoading"
-                >
-                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2" :class="{ 'opacity-60': currencyLoading }">
+                  :disabled="currencyLoading">
+                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2"
+                    :class="{ 'opacity-60': currencyLoading }">
                   <span>{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
                   <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
               </template>
-            <template #content>
-              <div class="max-h-64 overflow-y-auto currency-scrollbar">
-                <div
-                  v-for="currency in supportedCurrencies"
-                  :key="currency"
-                  @click="changeCurrency(currency)"
-                  class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                  :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }"
-                >
-                  <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                  {{ formatCurrencyDisplay(currency) }}
+              <template #content>
+                <div class="max-h-64 overflow-y-auto currency-scrollbar">
+                  <div v-for="currency in supportedCurrencies" :key="currency" @click="changeCurrency(currency)"
+                    class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
+                    :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }">
+                    <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                    {{ formatCurrencyDisplay(currency) }}
+                  </div>
                 </div>
-              </div>
-            </template>
+              </template>
             </Dropdown>
           </div>
-          
+
           <!-- Language Switcher for Guests -->
           <Dropdown align="right" width="48" class="bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
             <template #trigger>
-              <button 
-              type="button" 
-              class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
-              >
-                <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'" class="w-6 h-6 mr-2 rounded-full">
+              <button type="button"
+                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out">
+                <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'"
+                  class="w-6 h-6 mr-2 rounded-full">
                 <span>{{ availableLocales[currentLocale].name }}</span>
                 <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
             </template>
             <template #content>
-              <div 
-                v-for="(language, code) in availableLocales" 
-                :key="code"
-                @click="changeLanguage(code)"
+              <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
                 class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                :class="{ 'bg-gray-500': currentLocale === code }"
-              >
+                :class="{ 'bg-gray-500': currentLocale === code }">
                 <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
                 {{ language.name }}
               </div>
@@ -629,32 +654,23 @@ watch(() => url.value, () => {
         </div>
 
         <!-- Mobile menu button -->
-        <div class="flex md:hidden">
-          <button 
-            @click="toggleMobileNav" 
-            type="button" 
+        <div class="flex items-center md:hidden">
+          <!-- WhatsApp Icon Mobile Header -->
+          <a :href="whatsappLink" target="_blank"
+            class="mr-2 relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full p-2 transition duration-150 ease-in-out flex items-center justify-center">
+            <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6">
+          </a>
+          <button @click="toggleMobileNav" type="button"
             class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition duration-150 ease-in-out"
-            aria-controls="mobile-menu" 
-            aria-expanded="false"
-          >
+            aria-controls="mobile-menu" aria-expanded="false">
             <span class="sr-only">{{ showingNavigationDropdown ? 'Close menu' : 'Open menu' }}</span>
-            <svg 
-              class="h-6 w-6" 
-              :class="{ 'hidden': showingNavigationDropdown, 'block': !showingNavigationDropdown }"
-              stroke="currentColor" 
-              fill="none" 
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            <svg class="h-6 w-6" :class="{ 'hidden': showingNavigationDropdown, 'block': !showingNavigationDropdown }"
+              stroke="currentColor" fill="none" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-            <svg 
-              class="h-6 w-6" 
-              :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
-              stroke="currentColor" 
-              fill="none" 
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            <svg class="h-6 w-6" :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
+              stroke="currentColor" fill="none" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
@@ -662,145 +678,145 @@ watch(() => url.value, () => {
     </div>
 
     <!-- Mobile menu, show/hide based on mobile menu state -->
-    <div 
-      id="mobile-menu" 
-      :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
-      class="md:hidden"
-    >
+    <div id="mobile-menu" :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
+      class="md:hidden">
       <div class="pt-2 pb-4 space-y-1 border-t border-gray-200 bg-gray-50">
         <!-- Authenticated User Mobile Menu -->
         <div v-if="isAuthenticated" class="px-4 py-3">
           <div class="flex items-center">
             <div v-if="user?.profile?.avatar" class="flex-shrink-0">
-              <img 
-                :src="user.profile.avatar || '/storage/avatars/default-avatar.svg'"
-                alt="User Avatar" 
-                class="h-10 w-10 rounded-full object-cover"
-              />
+              <img :src="user.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
+                class="h-10 w-10 rounded-full object-cover" />
             </div>
             <div class="ml-3">
               <div class="text-base font-medium text-gray-800">{{ page.props.auth.user.first_name }}</div>
               <div class="text-sm font-medium text-gray-500">{{ page.props.auth.user.email }}</div>
             </div>
             <div class="ml-auto">
-              <button @click="toggleMobileNotification(); markAllAsRead();" class="relative p-2 rounded-[99px] focus:bg-[#efefef]" :class="{ 'ripple-effect': unreadCount > 0 }">
+              <button @click="toggleMobileNotification(); markAllAsRead();"
+                class="relative p-2 rounded-[99px] focus:bg-[#efefef]" :class="{ 'ripple-effect': unreadCount > 0 }">
                 <img :src="bellIcon" alt="Notifications" class="w-6 h-6">
-                <span v-if="unreadCount > 0" class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ unreadCount }}</span>
+                <span v-if="unreadCount > 0"
+                  class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{
+                    unreadCount }}</span>
               </button>
             </div>
           </div>
-          
+
           <div class="mt-4 space-y-2">
             <!-- Admin Dashboard Link -->
             <ResponsiveNavLink v-if="isAdmin" :href="route('admin.dashboard')" class="flex items-center">
               <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                </path>
               </svg>
               Dashboard
             </ResponsiveNavLink>
-            
+
             <!-- Profile Link -->
             <ResponsiveNavLink v-else :href="route('profile.edit', { locale: props.locale })" class="flex items-center">
               <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
               </svg>
               Profile
             </ResponsiveNavLink>
-            
+
             <!-- Vendor-specific actions -->
-            <ResponsiveNavLink 
-              v-if="isVendor"
-              :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: props.locale }) : route('vendor.status', { locale: props.locale })" 
-              class="flex items-center"
-            >
+            <ResponsiveNavLink v-if="isVendor"
+              :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: props.locale }) : route('vendor.status', { locale: props.locale })"
+              class="flex items-center">
               <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6">
+                </path>
               </svg>
               {{ vendorStatus === 'approved' ? 'Create a Listing' : 'Complete Verification' }}
             </ResponsiveNavLink>
-            
+
             <!-- Customer-specific actions -->
-            <ResponsiveNavLink 
-              v-if="isCustomer"
-              :href="route('vendor.register', { locale: props.locale })" 
-              class="flex items-center"
-            >
+            <ResponsiveNavLink v-if="isCustomer" :href="route('vendor.register', { locale: props.locale })"
+              class="flex items-center">
               <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 21H5v-6l2.257-2.257A6 6 0 0119 9z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 21H5v-6l2.257-2.257A6 6 0 0119 9z"></path>
               </svg>
               Register as Vendor
             </ResponsiveNavLink>
-            
+
             <!-- Language Options -->
             <div class="mt-3 px-4 py-2 border-t border-gray-200">
               <div class="text-sm font-medium text-gray-600 mb-2">Language</div>
               <div class="grid grid-cols-3 gap-2">
-                <button 
-                  v-for="(language, code) in availableLocales" 
-                  :key="code"
-                  @click="changeLanguage(code)"
+                <button v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
                   class="flex items-center justify-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
-                  :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'"
-                >
+                  :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'">
                   <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-1 rounded-full">
                   {{ language.name }}
                 </button>
               </div>
             </div>
-            
+
             <!-- Logout Button -->
-     
-              <ResponsiveNavLink :href="route('logout', { locale: props.locale })" method="post" as="button"  class="flex items-center w-full">
-                <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                </svg>
-                Log Out
-              </ResponsiveNavLink>
-        
+
+            <ResponsiveNavLink :href="route('logout', { locale: props.locale })" method="post" as="button"
+              class="flex items-center w-full">
+              <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+              </svg>
+              Log Out
+            </ResponsiveNavLink>
+
+            <!-- WhatsApp Mobile (Auth) -->
+            <div class="mt-3 px-4 py-2 border-t border-gray-200">
+              <a :href="whatsappLink" target="_blank" class="flex items-center text-gray-600 hover:text-gray-900">
+                <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5 mr-3">
+                <span class="text-sm font-medium">WhatsApp</span>
+              </a>
+            </div>
+
           </div>
         </div>
-        
+
         <!-- Guest User Mobile Menu -->
         <div v-else class="px-4 py-3 space-y-3">
-          <Link 
-            :href="route('login', { locale: props.locale })" 
-            class="block w-full py-2 px-4 text-center font-medium text-white bg-customPrimaryColor hover:bg-[#153b4fef] rounded-md transition duration-150 ease-in-out"
-          >
+          <Link :href="route('login', { locale: props.locale })"
+            class="block w-full py-2 px-4 text-center font-medium text-white bg-customPrimaryColor hover:bg-[#153b4fef] rounded-md transition duration-150 ease-in-out">
             Log in
           </Link>
-          
-          <Link 
-            :href="route('register', { locale: props.locale })" 
-            class="block w-full py-2 px-4 text-center font-medium text-blue-600 bg-white border border-customPrimaryColor hover:bg-blue-50 rounded-md transition duration-150 ease-in-out"
-          >
+
+          <Link :href="route('register', { locale: props.locale })"
+            class="block w-full py-2 px-4 text-center font-medium text-blue-600 bg-white border border-customPrimaryColor hover:bg-blue-50 rounded-md transition duration-150 ease-in-out">
             Create an Account
           </Link>
 
+          <!-- WhatsApp Mobile -->
+          <div class="mt-3 px-4 py-2 border-t border-gray-200">
+            <a :href="whatsappLink" target="_blank" class="flex items-center text-gray-600 hover:text-gray-900">
+              <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6 mr-2">
+              <span class="text-sm font-medium">WhatsApp</span>
+            </a>
+          </div>
+
           <!-- Currency Options -->
-            <div class="mt-3 px-4 py-2 border-t border-gray-200">
-              <div class="text-sm font-medium text-gray-600 mb-2">Currency</div>
-                <select
-                    v-model="selectedCurrency"
-                    @change="changeCurrency($event.target.value)"
-                    class="block w-full px-2 py-1 text-sm rounded-md border-gray-300 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                >
-                    <option v-for="currency in supportedCurrencies" :key="currency" :value="currency">
-                        {{ formatCurrencyDisplay(currency) }}
-                    </option>
-                </select>
-            </div>
-          
+          <div class="mt-3 px-4 py-2 border-t border-gray-200">
+            <div class="text-sm font-medium text-gray-600 mb-2">Currency</div>
+            <select v-model="selectedCurrency" @change="changeCurrency($event.target.value)"
+              class="block w-full px-2 py-1 text-sm rounded-md border-gray-300 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+              <option v-for="currency in supportedCurrencies" :key="currency" :value="currency">
+                {{ formatCurrencyDisplay(currency) }}
+              </option>
+            </select>
+          </div>
+
           <!-- Language Options -->
           <div class="mt-3 pt-3 border-t border-gray-200">
             <div class="text-sm font-medium text-gray-600 mb-2">Language</div>
             <div class="grid grid-cols-3 gap-2">
-              <button 
-                v-for="(language, code) in availableLocales" 
-                :key="code"
-                @click="changeLanguage(code)"
+              <button v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
                 class="flex items-center justify-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
-                :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'"
-              >
+                :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'">
                 <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-1 rounded-full">
                 {{ language.name }}
               </button>
@@ -809,7 +825,7 @@ watch(() => url.value, () => {
         </div>
       </div>
     </div>
-    
+
     <!-- Animated Flag Overlay -->
     <div v-if="animatedFlagUrl" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
       <img :src="animatedFlagUrl" alt="Flag" class="animated-flag" />
@@ -841,22 +857,26 @@ watch(() => url.value, () => {
           No notifications yet.
         </div>
         <div v-else>
-          <div v-for="notification in notifications" :key="notification.id" @click="handleNotificationClick(notification)"
-            class="p-4 border-b hover:bg-gray-50 cursor-pointer"
+          <div v-for="notification in notifications" :key="notification.id"
+            @click="handleNotificationClick(notification)" class="p-4 border-b hover:bg-gray-50 cursor-pointer"
             :class="{ 'bg-gray-100': !notification.read_at }">
             <div class="flex ">
               <div class="font-semibold">{{ notification.data.title }}</div>
               <div class="text-xs text-gray-500">{{ notification.type.split('\\').pop() }}</div>
             </div>
             <p class="text-sm text-gray-600">{{ notification.data.message }}</p>
-            <div class="text-xs text-customPrimaryColor mt-1 text-right">{{ new Date(notification.created_at).toLocaleString() }}</div>
+            <div class="text-xs text-customPrimaryColor mt-1 text-right">{{ new
+              Date(notification.created_at).toLocaleString() }}</div>
           </div>
         </div>
       </div>
       <div class="p-2 border-t text-center">
-        <button @click="clearAllNotifications" class="text-sm text-red-500 hover:underline">Clear all notifications</button>
+        <button @click="clearAllNotifications" class="text-sm text-red-500 hover:underline">Clear all
+          notifications</button>
       </div>
     </div>
+    <!-- Floating Social Icons -->
+    <FloatingSocialIcons />
   </header>
 </template>
 
@@ -881,7 +901,9 @@ header {
 
 /* Responsive adjustments */
 @media (max-width: 640px) {
-  .button-primary, .button-secondary {
+
+  .button-primary,
+  .button-secondary {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
   }
@@ -901,11 +923,15 @@ header {
 /* Ripple effect animation */
 @keyframes ripple {
   0% {
-    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.4); /* Darker ripple, slightly less opaque */
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.4);
+    /* Darker ripple, slightly less opaque */
   }
+
   70% {
-    box-shadow: 0 0 0 20px rgba(0, 0, 0, 0); /* Increased spread */
+    box-shadow: 0 0 0 20px rgba(0, 0, 0, 0);
+    /* Increased spread */
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
   }
@@ -936,10 +962,13 @@ header {
 
 /* Flag animation styles */
 .animated-flag {
-  animation: zoom-fade 1.5s forwards; /* Set animation duration to 1.5 seconds */
-  width: 100px; /* Initial size */
+  animation: zoom-fade 1.5s forwards;
+  /* Set animation duration to 1.5 seconds */
+  width: 100px;
+  /* Initial size */
   height: 100px;
-  border-radius: 50%; /* Make it circular */
+  border-radius: 50%;
+  /* Make it circular */
   object-fit: cover;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
@@ -949,10 +978,12 @@ header {
     transform: scale(0.5);
     opacity: 0;
   }
+
   50% {
     transform: scale(1.5);
     opacity: 1;
   }
+
   100% {
     transform: scale(2);
     opacity: 0;
@@ -998,11 +1029,13 @@ header {
 }
 
 @keyframes currencyDots {
+
   0%,
   100% {
     transform: translateY(0);
     opacity: 0.5;
   }
+
   50% {
     transform: translateY(-6px);
     opacity: 1;

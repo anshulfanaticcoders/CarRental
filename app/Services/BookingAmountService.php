@@ -16,7 +16,7 @@ class BookingAmountService
         }
 
         $bookingCurrency = $this->normalizeCurrency($bookingCurrency ?: config('currency.default', 'EUR'));
-        $adminCurrency = $this->normalizeCurrency(config('currency.default', $bookingCurrency));
+        $adminCurrency = $this->normalizeCurrency(config('currency.base_currency', 'EUR'));
         $vendorCurrency = $vendorCurrency ? $this->normalizeCurrency($vendorCurrency) : null;
 
         $normalized = $this->normalizeAmounts($amounts);
@@ -53,6 +53,11 @@ class BookingAmountService
 
         return BookingAmount::create([
             'booking_id' => $booking->id,
+            'booking_currency' => $bookingCurrency,
+            'booking_total_amount' => $normalized['total_amount'],
+            'booking_paid_amount' => $normalized['amount_paid'],
+            'booking_pending_amount' => $normalized['pending_amount'],
+            'booking_extra_amount' => $normalized['extra_amount'],
             'admin_currency' => $adminCurrency,
             'admin_total_amount' => $adminAmounts['values']['total_amount'],
             'admin_paid_amount' => $adminAmounts['values']['amount_paid'],
@@ -63,6 +68,8 @@ class BookingAmountService
             'vendor_paid_amount' => $vendorAmounts['values']['amount_paid'] ?? null,
             'vendor_pending_amount' => $vendorAmounts['values']['pending_amount'] ?? null,
             'vendor_extra_amount' => $vendorAmounts['values']['extra_amount'] ?? null,
+            'booking_to_admin_rate' => $adminAmounts['rate'] ?? null,
+            'booking_to_vendor_rate' => $vendorAmounts['rate'] ?? null,
         ]);
     }
 
@@ -107,10 +114,12 @@ class BookingAmountService
             return [
                 'success' => true,
                 'values' => $amounts,
+                'rate' => 1.0,
             ];
         }
 
         $converted = [];
+        $rate = null;
         foreach ($amounts as $key => $amount) {
             $result = $conversionService->convert((float) $amount, $fromCurrency, $toCurrency);
             if (!($result['success'] ?? false)) {
@@ -126,7 +135,12 @@ class BookingAmountService
                 return [
                     'success' => false,
                     'values' => [],
+                    'rate' => null,
                 ];
+            }
+
+            if ($rate === null && isset($result['rate'])) {
+                $rate = (float) $result['rate'];
             }
 
             $converted[$key] = round((float) ($result['converted_amount'] ?? $amount), 2);
@@ -135,6 +149,7 @@ class BookingAmountService
         return [
             'success' => true,
             'values' => $converted,
+            'rate' => $rate,
         ];
     }
 

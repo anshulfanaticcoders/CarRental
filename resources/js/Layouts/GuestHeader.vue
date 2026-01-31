@@ -1,7 +1,9 @@
 <script setup>
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
+import axios from "axios";
+import whatsappIcon from '../../assets/whatsapp.svg';
 import Dropdown from "@/Components/Dropdown.vue";
 import { useCurrency } from '@/composables/useCurrency';
 import globeIcon from '../../assets/globe.svg';
@@ -11,6 +13,7 @@ import flagNl from '../../assets/flag-nl.svg';
 import flagEs from '../../assets/flag-es.svg';
 import flagAr from '../../assets/flag-ar.svg';
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
+import FloatingSocialIcons from '@/Components/FloatingSocialIcons.vue';
 // hamburgerIcon is not used from assets anymore, using SVG directly
 import {
     Sheet,
@@ -32,16 +35,38 @@ const showingNavigationDropdown = ref(false);
 
 const isLoginPage = computed(() => page.url.includes('/login'));
 const isRegisterPage = computed(() => page.url.includes('/register'));
+const contactInfo = ref(null);
+
+// WhatsApp Link
+const whatsappLink = computed(() => {
+    const phone = '+32493000000';
+    const message = "Hello, I would like to inquire about renting a car. Could you please assist me?";
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+});
+
+const fetchContactInfo = async () => {
+    try {
+        const response = await axios.get('/api/footer-contact-info');
+        contactInfo.value = response.data;
+    } catch (error) {
+        console.error("Error fetching contact info:", error);
+    }
+};
+
+onMounted(() => {
+    fetchContactInfo();
+});
 
 // Language switcher logic
 const currentLocale = computed(() => page.props.locale || 'en');
 
 const availableLocales = {
-  en: { name: 'En', flag: flagEn },
-  fr: { name: 'Fr', flag: flagFr },
-  nl: { name: 'Nl', flag: flagNl },
-  es: { name: 'Es', flag: flagEs },
-  ar: { name: 'Ar', flag: flagAr },
+    en: { name: 'En', flag: flagEn },
+    fr: { name: 'Fr', flag: flagFr },
+    nl: { name: 'Nl', flag: flagNl },
+    es: { name: 'Es', flag: flagEs },
+    ar: { name: 'Ar', flag: flagAr },
 };
 
 const changeLanguage = (newLocale) => {
@@ -66,81 +91,81 @@ const changeLanguage = (newLocale) => {
 
 // Currency names mapping for better display
 const currencyNames = {
-  'USD': 'United States Dollar',
-  'EUR': 'Euro',
-  'GBP': 'British Pound Sterling',
-  'JPY': 'Japanese Yen',
-  'AUD': 'Australian Dollar',
-  'CAD': 'Canadian Dollar',
-  'CHF': 'Swiss Franc',
-  'CNH': 'Chinese Yuan',
-  'HKD': 'Hong Kong Dollar',
-  'SGD': 'Singapore Dollar',
-  'SEK': 'Swedish Krona',
-  'KRW': 'South Korean Won',
-  'NOK': 'Norwegian Krone',
-  'NZD': 'New Zealand Dollar',
-  'INR': 'Indian Rupee',
-  'MXN': 'Mexican Peso',
-  'BRL': 'Brazilian Real',
-  'RUB': 'Russian Ruble',
-  'ZAR': 'South African Rand',
-  'AED': 'United Arab Emirates Dirham',
-  'MAD': 'Moroccan Dirham',
-  'TRY': 'Turkish Lira',
-  'JOD': 'Jordanian Dinar',
-  'ISK': 'Iceland Krona',
-  'AZN': 'Azerbaijanian Manat',
-  'MYR': 'Malaysian Ringgit',
-  'OMR': 'Rial Omani',
-  'UGX': 'Uganda Shilling',
-  'NIO': 'Nicaragua Cordoba Oro'
+    'USD': 'United States Dollar',
+    'EUR': 'Euro',
+    'GBP': 'British Pound Sterling',
+    'JPY': 'Japanese Yen',
+    'AUD': 'Australian Dollar',
+    'CAD': 'Canadian Dollar',
+    'CHF': 'Swiss Franc',
+    'CNH': 'Chinese Yuan',
+    'HKD': 'Hong Kong Dollar',
+    'SGD': 'Singapore Dollar',
+    'SEK': 'Swedish Krona',
+    'KRW': 'South Korean Won',
+    'NOK': 'Norwegian Krone',
+    'NZD': 'New Zealand Dollar',
+    'INR': 'Indian Rupee',
+    'MXN': 'Mexican Peso',
+    'BRL': 'Brazilian Real',
+    'RUB': 'Russian Ruble',
+    'ZAR': 'South African Rand',
+    'AED': 'United Arab Emirates Dirham',
+    'MAD': 'Moroccan Dirham',
+    'TRY': 'Turkish Lira',
+    'JOD': 'Jordanian Dinar',
+    'ISK': 'Iceland Krona',
+    'AZN': 'Azerbaijanian Manat',
+    'MYR': 'Malaysian Ringgit',
+    'OMR': 'Rial Omani',
+    'UGX': 'Uganda Shilling',
+    'NIO': 'Nicaragua Cordoba Oro'
 };
 
 // Currency symbols mapping
 const currencySymbols = {
-  'USD': '$',
-  'EUR': '€',
-  'GBP': '£',
-  'JPY': '¥',
-  'AUD': 'A$',
-  'CAD': 'C$',
-  'CHF': 'Fr',
-  'CNH': '¥',
-  'HKD': 'HK$',
-  'SGD': 'S$',
-  'SEK': 'kr',
-  'KRW': '₩',
-  'NOK': 'kr',
-  'NZD': 'NZ$',
-  'INR': '₹',
-  'MXN': '$',
-  'BRL': 'R$',
-  'RUB': '₽',
-  'ZAR': 'R',
-  'AED': 'د.إ',
-  'MAD': 'د.م.‏',
-  'TRY': '₺',
-  'JOD': 'د.ا.‏',
-  'ISK': 'kr.',
-  'AZN': '₼',
-  'MYR': 'RM',
-  'OMR': '﷼',
-  'UGX': 'USh',
-  'NIO': 'C$'
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'AUD': 'A$',
+    'CAD': 'C$',
+    'CHF': 'Fr',
+    'CNH': '¥',
+    'HKD': 'HK$',
+    'SGD': 'S$',
+    'SEK': 'kr',
+    'KRW': '₩',
+    'NOK': 'kr',
+    'NZD': 'NZ$',
+    'INR': '₹',
+    'MXN': '$',
+    'BRL': 'R$',
+    'RUB': '₽',
+    'ZAR': 'R',
+    'AED': 'د.إ',
+    'MAD': 'د.م.‏',
+    'TRY': '₺',
+    'JOD': 'د.ا.‏',
+    'ISK': 'kr.',
+    'AZN': '₼',
+    'MYR': 'RM',
+    'OMR': '﷼',
+    'UGX': 'USh',
+    'NIO': 'C$'
 };
 
 // Function to format currency display
 const formatCurrencyDisplay = (currency) => {
-  const name = currencyNames[currency] || currency;
-  const symbol = currencySymbols[currency] || '';
-  return `${currency}(${name})${symbol}`;
+    const name = currencyNames[currency] || currency;
+    const symbol = currencySymbols[currency] || '';
+    return `${currency}(${name})${symbol}`;
 };
 
 // Function to format currency display for the trigger
 const formatCurrencyTriggerDisplay = (currency) => {
-  const symbol = currencySymbols[currency] || '';
-  return `${currency}(${symbol})`;
+    const symbol = currencySymbols[currency] || '';
+    return `${currency}(${symbol})`;
 };
 
 const toggleMobileNav = () => {
@@ -160,7 +185,7 @@ watch(() => url.value, () => {
                 <!-- Logo Section -->
                 <div class="flex-shrink-0">
                     <Link href="/" class="block w-32 md:w-40 transition-transform hover:opacity-80">
-                    <ApplicationLogo class="w-full h-auto" />
+                        <ApplicationLogo class="w-full h-auto" />
                     </Link>
                 </div>
 
@@ -168,69 +193,71 @@ watch(() => url.value, () => {
                 <div class="hidden md:flex md:items-center md:space-x-6">
                     <Link v-if="isRegisterPage" :href="route('login')"
                         class="button-primary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md">
-                    {{ _t('header', 'log_in') }}
+                        {{ _t('header', 'log_in') }}
                     </Link>
                     <Link v-if="isLoginPage" :href="route('register')"
                         class="button-secondary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md">
-                    {{ _t('header', 'create_account') }}
+                        {{ _t('header', 'create_account') }}
                     </Link>
+
+                    <!-- WhatsApp Icon -->
+                    <a :href="whatsappLink" target="_blank"
+                        class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full p-2 transition duration-150 ease-in-out flex items-center justify-center">
+                        <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6">
+                    </a>
 
                     <!-- Currency Switcher -->
                     <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
                         <Dropdown align="right" width="max">
                             <template #trigger>
-                                <button
-                                    type="button"
+                                <button type="button"
                                     class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
-                                    :disabled="currencyLoading"
-                                >
+                                    :disabled="currencyLoading">
                                     <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2">
                                     <span>{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
                                     <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
                             </template>
-                        <template #content>
-                            <div class="max-h-64 overflow-y-auto currency-scrollbar">
-                                <div
-                                    v-for="currency in supportedCurrencies"
-                                    :key="currency"
-                                    @click="changeCurrency(currency)"
-                                    class="flex items-center min-w-max px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                                    :class="{ 'bg-white !text-[#153B4F]': selectedCurrency === currency }"
-                                >
-                                    <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                                    {{ formatCurrencyDisplay(currency) }}
-                                 </div>
-                            </div>
-                        </template>
+                            <template #content>
+                                <div class="max-h-64 overflow-y-auto currency-scrollbar">
+                                    <div v-for="currency in supportedCurrencies" :key="currency"
+                                        @click="changeCurrency(currency)"
+                                        class="flex items-center min-w-max px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
+                                        :class="{ 'bg-white !text-[#153B4F]': selectedCurrency === currency }">
+                                        <span v-if="selectedCurrency === currency"
+                                            class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                        {{ formatCurrencyDisplay(currency) }}
+                                    </div>
+                                </div>
+                            </template>
                         </Dropdown>
                     </div>
 
                     <!-- Language Switcher for Guests (Desktop) -->
-                    <Dropdown align="right" width="48" class="bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
+                    <Dropdown align="right" width="48"
+                        class="bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
                         <template #trigger>
-                            <button 
-                            type="button" 
-                            class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
-                            >
-                                <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'" class="w-6 h-6 mr-2 rounded-full">
+                            <button type="button"
+                                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out">
+                                <img :src="availableLocales[currentLocale].flag"
+                                    :alt="availableLocales[currentLocale].name + ' Flag'"
+                                    class="w-6 h-6 mr-2 rounded-full">
                                 <span>{{ availableLocales[currentLocale].name }}</span>
                                 <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
                         </template>
                         <template #content>
-                            <div 
-                                v-for="(language, code) in availableLocales" 
-                                :key="code"
-                                @click="changeLanguage(code)"
+                            <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
                                 class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                                :class="{ 'bg-gray-500': currentLocale === code }"
-                            >
-                                <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
+                                :class="{ 'bg-gray-500': currentLocale === code }">
+                                <img :src="language.flag" :alt="language.name + ' Flag'"
+                                    class="w-5 h-5 mr-2 rounded-full">
                                 {{ language.name }}
                             </div>
                         </template>
@@ -238,7 +265,12 @@ watch(() => url.value, () => {
                 </div>
 
                 <!-- Mobile menu button -->
-                <div class="flex md:hidden">
+                <div class="flex items-center md:hidden">
+                    <!-- WhatsApp Icon Mobile Header -->
+                    <a :href="whatsappLink" target="_blank"
+                        class="mr-2 relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full p-2 transition duration-150 ease-in-out flex items-center justify-center">
+                        <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6">
+                    </a>
                     <button @click="toggleMobileNav" type="button"
                         class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition duration-150 ease-in-out"
                         aria-controls="mobile-menu" aria-expanded="false">
@@ -267,21 +299,27 @@ watch(() => url.value, () => {
                 <div class="px-4 py-3 space-y-3">
                     <Link v-if="isRegisterPage" :href="route('login')"
                         class="block w-full py-2 px-4 text-center font-medium text-white bg-customPrimaryColor hover:bg-[#153b4fef] rounded-md transition duration-150 ease-in-out">
-                    {{ _t('header', 'log_in') }}
+                        {{ _t('header', 'log_in') }}
                     </Link>
                     <Link v-if="isLoginPage" :href="route('register')"
                         class="block w-full py-2 px-4 text-center font-medium text-blue-600 bg-white border border-customPrimaryColor hover:bg-blue-50 rounded-md transition duration-150 ease-in-out">
-                    {{ _t('header', 'create_account') }}
+                        {{ _t('header', 'create_account') }}
                     </Link>
+
+                    <!-- WhatsApp Mobile -->
+                    <div class="mt-3 px-4 py-2 border-t border-gray-200">
+                        <a :href="whatsappLink" target="_blank"
+                            class="flex items-center text-gray-600 hover:text-gray-900">
+                            <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6 mr-2">
+                            <span class="text-sm font-medium">WhatsApp</span>
+                        </a>
+                    </div>
 
                     <!-- Currency Options -->
                     <div class="mt-3 px-4 py-2 border-t border-gray-200">
                         <div class="text-sm font-medium text-gray-600 mb-2">Currency</div>
-                        <select
-                            v-model="selectedCurrency"
-                            @change="changeCurrency($event.target.value)"
-                            class="block w-full px-2 py-1 text-sm rounded-md border-gray-300 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                        >
+                        <select v-model="selectedCurrency" @change="changeCurrency($event.target.value)"
+                            class="block w-full px-2 py-1 text-sm rounded-md border-gray-300 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                             <option v-for="currency in supportedCurrencies" :key="currency" :value="currency">
                                 {{ formatCurrencyDisplay(currency) }}
                             </option>
@@ -292,14 +330,12 @@ watch(() => url.value, () => {
                     <div class="mt-3 pt-3 border-t border-gray-200">
                         <div class="text-sm font-medium text-gray-600 mb-2">Language</div>
                         <div class="grid grid-cols-3 gap-2">
-                            <button 
-                                v-for="(language, code) in availableLocales" 
-                                :key="code"
+                            <button v-for="(language, code) in availableLocales" :key="code"
                                 @click="changeLanguage(code)"
                                 class="flex items-center justify-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
-                                :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'"
-                            >
-                                <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-1 rounded-full">
+                                :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'">
+                                <img :src="language.flag" :alt="language.name + ' Flag'"
+                                    class="w-5 h-5 mr-1 rounded-full">
                                 {{ language.name }}
                             </button>
                         </div>
@@ -309,9 +345,12 @@ watch(() => url.value, () => {
         </div>
 
         <!-- Full-screen loader for currency change -->
-        <div v-if="currencyLoading" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
+        <div v-if="currencyLoading"
+            class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
             <img :src="moneyExchangeSymbol" alt="Loading..." class="w-16 h-16 animate-spin" />
         </div>
+        <!-- Floating Social Icons -->
+        <FloatingSocialIcons />
     </header>
 </template>
 
@@ -325,19 +364,19 @@ watch(() => url.value, () => {
 
 /* Custom scrollbar for currency dropdown */
 .currency-scrollbar::-webkit-scrollbar {
-  width: 6px;
+    width: 6px;
 }
 
 .currency-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 
 .currency-scrollbar::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
+    background: #d1d5db;
+    border-radius: 3px;
 }
 
 .currency-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+    background: #9ca3af;
 }
 </style>

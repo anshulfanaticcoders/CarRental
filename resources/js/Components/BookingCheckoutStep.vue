@@ -45,17 +45,18 @@ const { convertPrice, getSelectedCurrencySymbol, fetchExchangeRates, selectedCur
 
 // Pre-fill from auth user if available
 const user = usePage().props.auth?.user || {};
+const profile = user.profile || {};
 
 const form = ref({
-    name: user.name || '',
+    name: user.name || [user.first_name, user.last_name].filter(Boolean).join(' ') || '',
     email: user.email || '',
     phone: user.phone || '',
     driver_age: '',
     driver_license_number: '',
-    address: user.address || '',
-    city: user.city || '',
-    postal_code: user.postal_code || '',
-    country: user.country || '',
+    address: profile.address_line1 || '',
+    city: profile.city || '',
+    postal_code: profile.postal_code || '',
+    country: profile.country || '',
     flight_number: '',
     preferred_day: '',
     notes: '',
@@ -113,9 +114,28 @@ const validate = () => {
         isValid = false;
     }
 
-    if (isOkMobility.value && !form.value.driver_license_number.trim()) {
-        errors.value.driver_license_number = 'Driver License Number is required for OK Mobility';
+    if ((isOkMobility.value || isGreenMotion.value) && !form.value.driver_license_number.trim()) {
+        errors.value.driver_license_number = 'Driver License Number is required for this provider';
         isValid = false;
+    }
+
+    if (isGreenMotion.value) {
+        if (!form.value.address.trim()) {
+            errors.value.address = 'Address is required for this provider';
+            isValid = false;
+        }
+        if (!form.value.city.trim()) {
+            errors.value.city = 'City is required for this provider';
+            isValid = false;
+        }
+        if (!form.value.postal_code.trim()) {
+            errors.value.postal_code = 'Postal code is required for this provider';
+            isValid = false;
+        }
+        if (!form.value.country.trim()) {
+            errors.value.country = 'Country is required for this provider';
+            isValid = false;
+        }
     }
 
     return isValid;
@@ -127,6 +147,11 @@ const isLocautoRent = computed(() => {
 
 const isOkMobility = computed(() => {
     return props.vehicle?.source === 'okmobility';
+});
+
+const isGreenMotion = computed(() => {
+    const source = props.vehicle?.source;
+    return source === 'greenmotion' || source === 'usave';
 });
 
 const isInternal = computed(() => {
@@ -289,7 +314,7 @@ const formatPrice = (val) => {
                         </div>
 
                         <!-- Driver License Number (OK Mobility) -->
-                        <div v-if="isOkMobility">
+                        <div v-if="isOkMobility || isGreenMotion">
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Driver License Number *</label>
                             <input v-model="form.driver_license_number" type="text"
                                 class="w-full rounded-xl border-2 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
@@ -300,34 +325,42 @@ const formatPrice = (val) => {
 
                         <!-- Address -->
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Address</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Address<span v-if="isGreenMotion"> *</span></label>
                             <input v-model="form.address" type="text"
-                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                class="w-full rounded-xl border-2 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                :class="{ 'border-red-500 bg-red-50': errors.address, 'border-gray-200': !errors.address }"
                                 placeholder="Street Address" />
+                            <p v-if="errors.address" class="text-red-500 text-xs mt-1">{{ errors.address }}</p>
                         </div>
 
                         <!-- City -->
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">City</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">City<span v-if="isGreenMotion"> *</span></label>
                             <input v-model="form.city" type="text"
-                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                class="w-full rounded-xl border-2 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                :class="{ 'border-red-500 bg-red-50': errors.city, 'border-gray-200': !errors.city }"
                                 placeholder="Madrid" />
+                            <p v-if="errors.city" class="text-red-500 text-xs mt-1">{{ errors.city }}</p>
                         </div>
 
                         <!-- Postal Code -->
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Postal Code</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Postal Code<span v-if="isGreenMotion"> *</span></label>
                             <input v-model="form.postal_code" type="text"
-                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                class="w-full rounded-xl border-2 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                :class="{ 'border-red-500 bg-red-50': errors.postal_code, 'border-gray-200': !errors.postal_code }"
                                 placeholder="28001" />
+                            <p v-if="errors.postal_code" class="text-red-500 text-xs mt-1">{{ errors.postal_code }}</p>
                         </div>
 
                         <!-- Country -->
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Country</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Country<span v-if="isGreenMotion"> *</span></label>
                             <input v-model="form.country" type="text"
-                                class="w-full rounded-xl border-2 border-gray-200 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                class="w-full rounded-xl border-2 px-4 py-2.5 focus:outline-none focus:border-[#1e3a5f] transition-colors"
+                                :class="{ 'border-red-500 bg-red-50': errors.country, 'border-gray-200': !errors.country }"
                                 placeholder="Spain" />
+                            <p v-if="errors.country" class="text-red-500 text-xs mt-1">{{ errors.country }}</p>
                         </div>
 
                         <!-- Flight Number -->

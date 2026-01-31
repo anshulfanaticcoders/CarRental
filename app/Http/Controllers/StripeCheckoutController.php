@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\PayableSetting;
 use App\Services\AdobeCarService;
 use App\Services\StripeBookingService;
+use App\Services\CurrencyConversionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
@@ -54,13 +55,68 @@ class StripeCheckoutController extends Controller
                 'terms' => 'nullable|array',
             ]);
 
+            $providerSource = strtolower((string) ($validated['vehicle']['source'] ?? ''));
+            if (in_array($providerSource, ['greenmotion', 'usave'], true)) {
+                $missing = [];
+                $customer = $validated['customer'] ?? [];
+
+                if (empty($customer['driver_license_number'])) {
+                    $missing[] = 'driver_license_number';
+                }
+                if (empty($customer['address'])) {
+                    $missing[] = 'address';
+                }
+                if (empty($customer['city'])) {
+                    $missing[] = 'city';
+                }
+                if (empty($customer['postal_code'])) {
+                    $missing[] = 'postal_code';
+                }
+                if (empty($customer['country'])) {
+                    $missing[] = 'country';
+                }
+
+                if (!empty($missing)) {
+                    return response()->json([
+                        'error' => 'Please complete the required driver details before checkout.',
+                        'missing_fields' => $missing,
+                    ], 422);
+                }
+
+                $quoteId = $validated['quoteid'] ?? ($validated['vehicle']['quoteid'] ?? null);
+                if (!$quoteId) {
+                    return response()->json([
+                        'error' => 'Quote expired or missing. Please search again.',
+                    ], 422);
+                }
+
+                if (empty($validated['package'])) {
+                    return response()->json([
+                        'error' => 'Please select a package before checkout.',
+                    ], 422);
+                }
+            }
+
             // Get payment percentage from settings
             $payableSetting = PayableSetting::first();
             $paymentPercentage = $payableSetting ? $payableSetting->payment_percentage : 15;
 
-            // Calculate payable amount (percentage of total)
-            $payableAmount = round($validated['total_amount'] * ($paymentPercentage / 100), 2);
-            $pendingAmount = round($validated['total_amount'] - $payableAmount, 2);
+            // Normalize currency (symbols to ISO codes)
+            $currency = $validated['currency'] ?? 'EUR';
+            $currencyCode = $this->normalizeCurrencyCode($currency);
+            $providerCurrency = $this->resolveProviderCurrency($validated, $currencyCode);
+
+            $computedTotals = $this->computeServerTotals($validated, $currencyCode, $providerCurrency, $paymentPercentage);
+
+            if (!$computedTotals['success']) {
+                return response()->json([
+                    'error' => $computedTotals['error'] ?? 'Unable to validate pricing.',
+                ], 422);
+            }
+
+            $totalAmount = $computedTotals['booking_total'];
+            $payableAmount = $computedTotals['booking_deposit'];
+            $pendingAmount = $computedTotals['booking_pending'];
 
             // Get vehicle image (handle internal vehicles with images array)
             $vehicleImage = null;
@@ -84,11 +140,6 @@ class StripeCheckoutController extends Controller
             } else {
                 $vehicleImage = $validated['vehicle']['image'] ?? null;
             }
-
-            // Normalize currency (symbols to ISO codes)
-            $currency = $validated['currency'] ?? 'EUR';
-            $currencyCode = $this->normalizeCurrencyCode($currency);
-            $providerCurrency = $this->resolveProviderCurrency($validated, $currencyCode);
 
             // Build line items for Stripe
             $lineItems = [
@@ -126,11 +177,15 @@ class StripeCheckoutController extends Controller
                 'pickup_location' => $validated['pickup_location'],
                 'dropoff_location' => $validated['dropoff_location'] ?? $validated['pickup_location'],
                 'number_of_days' => $validated['number_of_days'],
-                'total_amount' => $validated['total_amount'],
+                'total_amount' => $totalAmount,
                 'payable_amount' => $payableAmount,
                 'pending_amount' => $pendingAmount,
                 'currency' => $currencyCode,
                 'provider_currency' => $providerCurrency,
+                'provider_vehicle_total' => $computedTotals['provider_vehicle_total'] ?? null,
+                'provider_extras_total' => $computedTotals['provider_options_total'] ?? null,
+                'provider_grand_total' => $computedTotals['provider_grand_total'] ?? null,
+                'deposit_percentage' => $paymentPercentage,
                 'customer_name' => $validated['customer']['name'] ?? '',
                 'customer_email' => $validated['customer']['email'] ?? '',
                 'customer_phone' => $validated['customer']['phone'] ?? '',
@@ -144,8 +199,9 @@ class StripeCheckoutController extends Controller
                 'extras' => json_encode($validated['extras'] ?? []),
                 'extras_data' => json_encode($validated['detailed_extras'] ?? []), // Encode detailed extras
                 'quoteid' => !empty($validated['quoteid']) ? $validated['quoteid'] : ($validated['vehicle']['quoteid'] ?? ''),
-                'rental_code' => !empty($validated['rentalCode']) ? $validated['rentalCode'] : ($validated['vehicle']['rentalCode'] ?? ''),
-                'vehicle_total' => $validated['vehicle_total'] ?? $validated['total_amount'],
+                'rental_code' => $validated['package'] ?? ($validated['vehicle']['rentalCode'] ?? ''),
+                'vehicle_total' => $computedTotals['booking_vehicle_total'],
+                'extras_total' => $computedTotals['booking_options_total'],
                 'payment_method' => $validated['payment_method'] ?? 'card',
                 'renteon_connector_id' => $validated['vehicle']['connector_id'] ?? null,
                 'renteon_pickup_office_id' => $validated['vehicle']['provider_pickup_office_id'] ?? null,
@@ -169,6 +225,24 @@ class StripeCheckoutController extends Controller
 
             if (!empty($customerMetadata)) {
                 $metadata = array_merge($metadata, $customerMetadata);
+            }
+
+            if (!empty($validated['location_details'])) {
+                $metadata['location_details'] = json_encode($validated['location_details']);
+                if (!empty($metadata['pickup_location_code'])
+                    && !empty($metadata['return_location_code'])
+                    && $metadata['pickup_location_code'] === $metadata['return_location_code']) {
+                    $metadata['dropoff_location_details'] = $metadata['location_details'];
+                }
+            }
+            if (!empty($validated['location_instructions'])) {
+                $metadata['location_instructions'] = $validated['location_instructions'];
+            }
+            if (!empty($validated['driver_requirements'])) {
+                $metadata['driver_requirements'] = json_encode($validated['driver_requirements']);
+            }
+            if (!empty($validated['terms'])) {
+                $metadata['terms'] = json_encode($validated['terms']);
             }
 
 
@@ -324,6 +398,338 @@ class StripeCheckoutController extends Controller
         }
 
         return $this->normalizeCurrencyCode($providerCurrency ?: $fallback);
+    }
+
+    private function computeServerTotals(array $validated, string $bookingCurrency, string $providerCurrency, float $paymentPercentage): array
+    {
+        $vehicle = $validated['vehicle'] ?? [];
+        $days = max(1, (int) ($validated['number_of_days'] ?? 1));
+        $package = $validated['package'] ?? null;
+        $protectionAmount = (float) ($validated['protection_amount'] ?? 0);
+        $vehicleSource = strtolower((string) ($vehicle['source'] ?? ''));
+
+        if (in_array($vehicleSource, ['greenmotion', 'usave'], true)) {
+            return $this->computeGreenMotionTotals($validated, $bookingCurrency, $providerCurrency, $paymentPercentage, $days);
+        }
+
+        $baseTotal = $this->resolvePackageTotal($vehicle, $package, $days, $vehicleSource, $validated);
+        if ($baseTotal === null) {
+            return [
+                'success' => false,
+                'error' => 'Unable to resolve package pricing. Please refresh and try again.',
+            ];
+        }
+
+        $baseTotalConverted = $baseTotal;
+        if ($vehicleSource !== 'internal' && $providerCurrency && $providerCurrency !== $bookingCurrency) {
+            $conversion = app(CurrencyConversionService::class)->convert($baseTotal, $providerCurrency, $bookingCurrency);
+            if (!($conversion['success'] ?? false)) {
+                Log::warning('StripeCheckout: base total conversion failed', [
+                    'provider_currency' => $providerCurrency,
+                    'booking_currency' => $bookingCurrency,
+                    'base_total' => $baseTotal,
+                    'error' => $conversion['error'] ?? null,
+                ]);
+            } else {
+                $baseTotalConverted = (float) ($conversion['converted_amount'] ?? $baseTotal);
+            }
+        }
+
+        $extrasTotalRaw = $this->resolveExtrasTotal($validated['detailed_extras'] ?? [], $days);
+        $extrasTotalConverted = $extrasTotalRaw;
+        if ($vehicleSource !== 'internal' && $providerCurrency && $providerCurrency !== $bookingCurrency && $extrasTotalConverted > 0) {
+            $conversion = app(CurrencyConversionService::class)->convert($extrasTotalConverted, $providerCurrency, $bookingCurrency);
+            if (!($conversion['success'] ?? false)) {
+                Log::warning('StripeCheckout: extras total conversion failed', [
+                    'provider_currency' => $providerCurrency,
+                    'booking_currency' => $bookingCurrency,
+                    'extras_total' => $extrasTotalConverted,
+                    'error' => $conversion['error'] ?? null,
+                ]);
+            } else {
+                $extrasTotalConverted = (float) ($conversion['converted_amount'] ?? $extrasTotalConverted);
+            }
+        }
+
+        $bookingVehicleTotal = round($baseTotalConverted + $protectionAmount, 2);
+        $bookingOptionsTotal = round($extrasTotalConverted, 2);
+        $bookingTotal = round($bookingVehicleTotal + $bookingOptionsTotal, 2);
+
+        $depositProvider = round(($baseTotal + $extrasTotalRaw) * ($paymentPercentage / 100), 2);
+        $depositBooking = $depositProvider;
+        if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
+            $conversion = app(CurrencyConversionService::class)->convert($depositProvider, $providerCurrency, $bookingCurrency);
+            if (!($conversion['success'] ?? false)) {
+                return [
+                    'success' => false,
+                    'error' => 'Unable to convert deposit amount. Please try again later.',
+                ];
+            }
+            $depositBooking = (float) ($conversion['converted_amount'] ?? $depositProvider);
+        }
+
+        $bookingPending = round($bookingTotal - $depositBooking, 2);
+
+        $clientTotal = isset($validated['total_amount']) ? (float) $validated['total_amount'] : null;
+        if ($clientTotal !== null && $clientTotal > 0) {
+            $delta = abs($clientTotal - $bookingTotal);
+            if ($delta > 0.5) {
+                Log::warning('StripeCheckout: total mismatch', [
+                    'client_total' => $clientTotal,
+                    'server_total' => $bookingTotal,
+                    'delta' => $delta,
+                    'vehicle_source' => $vehicleSource,
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => 'Pricing has changed. Please refresh and try again.',
+                ];
+            }
+        }
+
+        return [
+            'success' => true,
+            'booking_vehicle_total' => $bookingVehicleTotal,
+            'booking_options_total' => $bookingOptionsTotal,
+            'booking_total' => $bookingTotal,
+            'booking_deposit' => $depositBooking,
+            'booking_pending' => $bookingPending,
+            'provider_vehicle_total' => $baseTotal,
+            'provider_options_total' => $extrasTotalRaw,
+            'provider_grand_total' => $baseTotal + $extrasTotalRaw,
+        ];
+    }
+
+    private function computeGreenMotionTotals(
+        array $validated,
+        string $bookingCurrency,
+        string $providerCurrency,
+        float $paymentPercentage,
+        int $days
+    ): array {
+        $vehicle = $validated['vehicle'] ?? [];
+        $package = $validated['package'] ?? null;
+
+        $product = null;
+        if (!empty($vehicle['products']) && is_array($vehicle['products'])) {
+            foreach ($vehicle['products'] as $entry) {
+                if (($entry['type'] ?? null) === $package) {
+                    $product = $entry;
+                    break;
+                }
+            }
+        }
+
+        if (!$product || empty($product['total'])) {
+            return [
+                'success' => false,
+                'error' => 'Unable to resolve selected package. Please search again.',
+            ];
+        }
+
+        $providerVehicleTotal = (float) $product['total'];
+
+        $options = array_merge($vehicle['options'] ?? [], $vehicle['insurance_options'] ?? []);
+        $optionsById = [];
+        foreach ($options as $option) {
+            $optionId = $option['option_id'] ?? $option['optionID'] ?? $option['id'] ?? null;
+            if ($optionId === null) {
+                continue;
+            }
+            $optionsById[(string) $optionId] = $option;
+        }
+
+        $selectedExtras = $validated['detailed_extras'] ?? [];
+        $selectedMap = [];
+        foreach ($selectedExtras as $extra) {
+            if (!is_array($extra)) {
+                continue;
+            }
+            $optionId = $extra['option_id'] ?? $extra['optionID'] ?? $extra['id'] ?? null;
+            if ($optionId === null) {
+                continue;
+            }
+            $qty = (int) ($extra['qty'] ?? $extra['quantity'] ?? 1);
+            $selectedMap[(string) $optionId] = max($qty, 1);
+        }
+
+        $missingRequired = [];
+        foreach ($optionsById as $optionId => $option) {
+            $required = strtolower((string) ($option['required'] ?? '')) === 'required';
+            if ($required && !isset($selectedMap[$optionId])) {
+                $missingRequired[] = $optionId;
+            }
+        }
+
+        if (!empty($missingRequired)) {
+            return [
+                'success' => false,
+                'error' => 'Required extras are missing. Please review your selection.',
+            ];
+        }
+
+        $providerOptionsTotal = 0.0;
+        foreach ($selectedMap as $optionId => $qty) {
+            $option = $optionsById[$optionId] ?? null;
+            if (!$option) {
+                continue;
+            }
+            $max = $option['numberAllowed'] ?? null;
+            if ($max !== null && (int) $max > 0 && $qty > (int) $max) {
+                return [
+                    'success' => false,
+                    'error' => 'Selected extras exceed the allowed quantity.',
+                ];
+            }
+
+            $optionTotal = $option['total_for_booking'] ?? $option['Total_for_this_booking'] ?? null;
+            if ($optionTotal === null) {
+                $dailyRate = $option['daily_rate'] ?? $option['Daily_rate'] ?? null;
+                if ($dailyRate !== null) {
+                    $optionTotal = (float) $dailyRate * $days;
+                } else {
+                    $optionTotal = 0.0;
+                }
+            }
+
+            $providerOptionsTotal += (float) $optionTotal * $qty;
+        }
+
+        $providerGrandTotal = $providerVehicleTotal + $providerOptionsTotal;
+
+        $conversionService = app(CurrencyConversionService::class);
+        $bookingVehicleTotal = $providerVehicleTotal;
+        if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
+            $conversion = $conversionService->convert($providerVehicleTotal, $providerCurrency, $bookingCurrency);
+            if (!($conversion['success'] ?? false)) {
+                return [
+                    'success' => false,
+                    'error' => 'Unable to convert provider totals. Please try again later.',
+                ];
+            }
+            $bookingVehicleTotal = (float) ($conversion['converted_amount'] ?? $providerVehicleTotal);
+        }
+
+        $bookingOptionsTotal = $providerOptionsTotal;
+        if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
+            $conversion = $conversionService->convert($providerOptionsTotal, $providerCurrency, $bookingCurrency);
+            if (!($conversion['success'] ?? false)) {
+                return [
+                    'success' => false,
+                    'error' => 'Unable to convert provider options. Please try again later.',
+                ];
+            }
+            $bookingOptionsTotal = (float) ($conversion['converted_amount'] ?? $providerOptionsTotal);
+        }
+
+        $bookingTotal = round($bookingVehicleTotal + $bookingOptionsTotal, 2);
+
+        $providerDeposit = round($providerGrandTotal * ($paymentPercentage / 100), 2);
+        $bookingDeposit = $providerDeposit;
+        if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
+            $conversion = $conversionService->convert($providerDeposit, $providerCurrency, $bookingCurrency);
+            if (!($conversion['success'] ?? false)) {
+                return [
+                    'success' => false,
+                    'error' => 'Unable to convert deposit amount. Please try again later.',
+                ];
+            }
+            $bookingDeposit = (float) ($conversion['converted_amount'] ?? $providerDeposit);
+        }
+
+        $bookingPending = round($bookingTotal - $bookingDeposit, 2);
+
+        return [
+            'success' => true,
+            'booking_vehicle_total' => round($bookingVehicleTotal, 2),
+            'booking_options_total' => round($bookingOptionsTotal, 2),
+            'booking_total' => $bookingTotal,
+            'booking_deposit' => round($bookingDeposit, 2),
+            'booking_pending' => $bookingPending,
+            'provider_vehicle_total' => round($providerVehicleTotal, 2),
+            'provider_options_total' => round($providerOptionsTotal, 2),
+            'provider_grand_total' => round($providerGrandTotal, 2),
+        ];
+    }
+
+    private function resolvePackageTotal(array $vehicle, ?string $package, int $days, string $source, array $validated): ?float
+    {
+        if (!empty($vehicle['products']) && is_array($vehicle['products']) && $package) {
+            foreach ($vehicle['products'] as $product) {
+                if (!is_array($product)) {
+                    continue;
+                }
+                if (($product['type'] ?? null) === $package && isset($product['total'])) {
+                    return (float) $product['total'];
+                }
+            }
+        }
+
+        if ($source === 'internal') {
+            if (isset($validated['vehicle_total'])) {
+                return (float) $validated['vehicle_total'];
+            }
+
+            $pricePerDay = $vehicle['price_per_day'] ?? null;
+            if ($pricePerDay !== null) {
+                return (float) $pricePerDay * $days;
+            }
+        }
+
+        if (isset($vehicle['total_price'])) {
+            return (float) $vehicle['total_price'];
+        }
+
+        if (isset($validated['vehicle_total'])) {
+            return (float) $validated['vehicle_total'];
+        }
+
+        if (isset($validated['total_amount'])) {
+            return (float) $validated['total_amount'];
+        }
+
+        return null;
+    }
+
+    private function resolveExtrasTotal(array $extras, int $days): float
+    {
+        $total = 0.0;
+        foreach ($extras as $extra) {
+            if (!is_array($extra)) {
+                continue;
+            }
+            $isFree = isset($extra['isFree']) ? (bool) $extra['isFree'] : false;
+            if ($isFree) {
+                continue;
+            }
+
+            $qty = (int) ($extra['qty'] ?? $extra['quantity'] ?? 1);
+            $totalForBooking = $extra['total_for_booking']
+                ?? $extra['Total_for_this_booking']
+                ?? $extra['total_for_this_booking']
+                ?? null;
+            if ($totalForBooking !== null) {
+                $extraTotal = (float) $totalForBooking * max(1, $qty);
+            } else {
+                $extraTotal = $extra['total'] ?? null;
+                if ($extraTotal === null) {
+                    $dailyRate = $extra['daily_rate'] ?? $extra['dailyRate'] ?? null;
+                    $price = $extra['price'] ?? $extra['amount'] ?? null;
+                    if ($dailyRate !== null) {
+                        $extraTotal = (float) $dailyRate * $days * max(1, $qty);
+                    } elseif ($price !== null) {
+                        $extraTotal = (float) $price * max(1, $qty);
+                    }
+                }
+            }
+
+            if ($extraTotal !== null) {
+                $total += (float) $extraTotal;
+            }
+        }
+
+        return round($total, 2);
     }
 
     private function normalizeCurrencyCode($currency): string

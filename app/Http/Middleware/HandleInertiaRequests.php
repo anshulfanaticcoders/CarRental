@@ -34,8 +34,9 @@ class HandleInertiaRequests extends Middleware
         $sharedData = parent::share($request);
 
         if ($request->user()) {
+            $user = $request->user()->load('profile');
             // Fetch the user document (single record)
-            $document = UserDocument::where('user_id', $request->user()->id)
+            $document = UserDocument::where('user_id', $user->id)
                 ->first([
                     'driving_license_front',
                     'driving_license_back',
@@ -56,8 +57,8 @@ class HandleInertiaRequests extends Middleware
             // Merge user and document into shared data
             $sharedData = array_merge($sharedData, [
                 'auth' => [
-                    'user' => $request->user(),
-                    'name' => $request->user()->first_name,
+                    'user' => $user,
+                    'name' => $user->first_name,
                     'documents' => $documentData, // Share the single document record
                 ],
                 'vendorStatus' => function () {

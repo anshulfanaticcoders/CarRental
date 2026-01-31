@@ -400,7 +400,6 @@ const getBenefits = (product) => {
     }
 
     if (type === 'PMP') {
-        benefits.push('Two free extras on collection');
     }
 
     if (type === 'PLU' || type === 'PRE' || type === 'PMP') {

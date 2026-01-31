@@ -59,6 +59,11 @@ const isOkMobility = computed(() => {
     return props.vehicle?.source === 'okmobility';
 });
 
+const isGreenMotion = computed(() => {
+    const source = props.vehicle?.source;
+    return source === 'greenmotion' || source === 'usave';
+});
+
 const isValidCoordinate = (coord) => {
     const num = parseFloat(coord);
     return !isNaN(num) && isFinite(num);
@@ -188,6 +193,14 @@ const locationOutOfHours = computed(() => {
 const locationDaytimeClosures = computed(() => {
     const details = props.locationDetails || {};
     return Array.isArray(details.daytime_closures_hours) ? details.daytime_closures_hours : [];
+});
+
+const hasLocationHours = computed(() => {
+    const details = props.locationDetails || {};
+    return locationOpeningHours.value.length
+        || locationOutOfHours.value.length
+        || locationDaytimeClosures.value.length
+        || !!details.out_of_hours_charge;
 });
 
 const formatHourWindow = (window) => {
@@ -320,10 +333,19 @@ const currentPackage = ref(props.initialPackage || 'BAS');
 // (Forcing PLI removed as per user request to show Basic first)
 
 const selectedExtras = ref({});
-const selectedExtrasOrder = ref([]); // Track selection order for "First 2 Free" logic
 const showDetailsModal = ref(false);
+const showLocationHoursModal = ref(false);
 
 const ratesReady = computed(() => !!exchangeRates.value && !loading.value);
+
+watchEffect(() => {
+    if (!isGreenMotion.value) return;
+    greenMotionExtras.value.forEach((extra) => {
+        if (extra.required) {
+            setExtraQuantity(extra, Math.max(selectedExtras.value[extra.id] || 0, 1));
+        }
+    });
+});
 
 // (Moved above)
 
@@ -665,6 +687,35 @@ const okMobilityOptionalExtras = computed(() => {
     }).filter(extra => extra.price > 0 || extra.required || extra.included);
 });
 
+const greenMotionExtras = computed(() => {
+    if (!isGreenMotion.value) return [];
+    const options = [];
+    const collect = (items) => {
+        (items || []).forEach((extra) => {
+            const optionId = extra.option_id || extra.optionID || extra.id;
+            const totalForBooking = extra.total_for_booking ?? extra.Total_for_this_booking ?? extra.total ?? 0;
+            options.push({
+                id: extra.id || `gm_option_${optionId}`,
+                option_id: optionId,
+                name: extra.name || extra.Name || extra.Description || 'Extra',
+                description: extra.description || extra.Description || '',
+                required: (extra.required || '').toString().toLowerCase() === 'required',
+                numberAllowed: extra.numberAllowed ? parseInt(extra.numberAllowed) : null,
+                prepay_available: (extra.prepay_available || '').toString().toLowerCase(),
+                daily_rate: extra.daily_rate || extra.Daily_rate || 0,
+                total_for_booking: totalForBooking,
+                total_for_booking_currency: extra.total_for_booking_currency || extra.Total_for_this_booking_currency || extra.currency || null,
+                type: extra.type || 'option',
+            });
+        });
+    };
+
+    collect(props.vehicle?.options || []);
+    collect(props.vehicle?.insurance_options || []);
+
+    return options;
+});
+
 const availablePackages = computed(() => {
     if (isAdobeCars.value) {
         return adobePackages.value;
@@ -780,9 +831,6 @@ const getBenefits = (product) => {
         benefits.push('Non-amendable');
     }
 
-    if (type === 'PMP') {
-        benefits.push('Two free extras on collection');
-    }
 
     if (type === 'PLU' || type === 'PRE' || type === 'PMP') {
         benefits.push('Cancellation in line with T&Cs');
@@ -791,22 +839,43 @@ const getBenefits = (product) => {
     return benefits;
 };
 
+const isRequiredExtra = (extra) => {
+    return !!extra.required;
+};
+
+const getMaxQuantity = (extra) => {
+    const max = extra.numberAllowed || extra.maxQuantity || null;
+    return max ? Math.max(parseInt(max), 1) : 1;
+};
+
+const setExtraQuantity = (extra, quantity) => {
+    const id = extra.id;
+    const max = getMaxQuantity(extra);
+    const required = isRequiredExtra(extra);
+    const clamped = Math.min(Math.max(quantity, required ? 1 : 0), max);
+    if (clamped <= 0) {
+        delete selectedExtras.value[id];
+        return;
+    }
+    selectedExtras.value[id] = clamped;
+};
+
+const updateExtraQuantity = (extra, delta) => {
+    const id = extra.id;
+    const current = selectedExtras.value[id] || 0;
+    setExtraQuantity(extra, current + delta);
+};
+
 const toggleExtra = (extra) => {
+    if (isRequiredExtra(extra)) {
+        return;
+    }
     const id = extra.id;
     if (selectedExtras.value[id]) {
         delete selectedExtras.value[id];
-        selectedExtrasOrder.value = selectedExtrasOrder.value.filter(item => item !== id);
     } else {
         selectedExtras.value[id] = 1;
-        selectedExtrasOrder.value.push(id);
     }
-};
-
-const isExtraFree = (extraId) => {
-    if (currentPackage.value !== 'PMP') return false;
-    // The first 2 items in the selection order are free
-    const index = selectedExtrasOrder.value.indexOf(extraId);
-    return index !== -1 && index < 2;
 };
 
 const extrasTotal = computed(() => {
@@ -824,18 +893,21 @@ const extrasTotal = computed(() => {
             extra = renteonOptionalExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
             extra = okMobilityOptionalExtras.value.find(e => e.id === id);
+        } else if (isGreenMotion.value) {
+            extra = greenMotionExtras.value.find(e => e.id === id);
         } else {
             extra = props.optionalExtras.find(e => e.id === id);
         }
 
         if (extra) {
-            if (isExtraFree(id)) {
-                continue; // It's free
+            if (extra.total_for_booking !== undefined && extra.total_for_booking !== null) {
+                total += parseFloat(extra.total_for_booking) * qty;
+            } else {
+                const dailyRate = extra.daily_rate !== undefined
+                    ? parseFloat(extra.daily_rate)
+                    : (parseFloat(extra.price) / props.numberOfDays);
+                total += dailyRate * props.numberOfDays * qty;
             }
-            // Calculate total: daily_rate * days * quantity
-            // Fallback to extra.price if daily_rate is missing (though it should be there)
-            const dailyRate = extra.daily_rate !== undefined ? parseFloat(extra.daily_rate) : (parseFloat(extra.price) / props.numberOfDays);
-            total += dailyRate * props.numberOfDays * qty;
         }
     }
     return total;
@@ -878,7 +950,7 @@ const pendingAmount = computed(() => {
 
 const selectPackage = (pkgType) => {
     currentPackage.value = pkgType;
-    // Re-evaluate free extras is automatic via computed/isExtraFree
+    // Package change updates totals automatically
 };
 
 // Adobe Helper: Toggle Protection Add-on
@@ -918,21 +990,27 @@ const getSelectedExtrasDetails = computed(() => {
             extra = renteonOptionalExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
             extra = okMobilityOptionalExtras.value.find(e => e.id === id);
+        } else if (isGreenMotion.value) {
+            extra = greenMotionExtras.value.find(e => e.id === id);
         } else {
             extra = props.optionalExtras.find(e => e.id === id);
         }
 
         if (extra) {
-            const isFree = isExtraFree(id);
-            const dailyRate = extra.daily_rate !== undefined ? parseFloat(extra.daily_rate) : (parseFloat(extra.price) / props.numberOfDays);
-            const total = isFree ? 0 : (dailyRate * props.numberOfDays * qty);
+            const total = extra.total_for_booking !== undefined && extra.total_for_booking !== null
+                ? parseFloat(extra.total_for_booking) * qty
+                : (parseFloat(extra.daily_rate !== undefined ? extra.daily_rate : (extra.price / props.numberOfDays))
+                    * props.numberOfDays * qty);
 
             details.push({
                 id: extra.id, // Good for key
+                option_id: extra.option_id ?? extra.id,
                 name: extra.name,
                 qty,
-                isFree,
                 total,
+                required: extra.required || false,
+                numberAllowed: extra.numberAllowed ?? null,
+                prepay_available: extra.prepay_available ?? null,
                 service_id: extra.service_id,
                 code: extra.code
             });
@@ -1184,37 +1262,14 @@ const formatPaymentMethod = (method) => {
                     <p v-if="locationContact.email"><span class="font-semibold text-gray-800">Email:</span> {{ locationContact.email }}</p>
                     <p v-if="locationContact.iata"><span class="font-semibold text-gray-800">Airport Code:</span> {{ locationContact.iata }}</p>
                 </div>
-                <div v-if="locationOpeningHours.length" class="text-sm text-gray-600 mb-4">
-                    <p class="font-semibold text-gray-800 mb-2">Opening Hours</p>
-                    <div class="space-y-1">
-                        <p v-for="(day, index) in locationOpeningHours" :key="`opening-hour-${index}`">
-                            <span class="font-medium text-gray-700">{{ day.name }}:</span>
-                            <span class="ml-1">{{ formatHourWindow(day) || 'Closed' }}</span>
-                        </p>
-                    </div>
+                <div v-if="hasLocationHours" class="mt-4">
+                    <button
+                        @click="showLocationHoursModal = true"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-[#1e3a5f] hover:bg-gray-50"
+                    >
+                        View hours & policies
+                    </button>
                 </div>
-                <div v-if="locationOutOfHours.length" class="text-sm text-gray-600 mb-4">
-                    <p class="font-semibold text-gray-800 mb-2">Out of Hours Dropoff</p>
-                    <div class="space-y-1">
-                        <p v-for="(day, index) in locationOutOfHours" :key="`out-hours-${index}`">
-                            <span class="font-medium text-gray-700">{{ day.name }}:</span>
-                            <span class="ml-1">{{ formatHourWindow(day) || 'Unavailable' }}</span>
-                        </p>
-                    </div>
-                </div>
-                <div v-if="locationDaytimeClosures.length" class="text-sm text-gray-600 mb-4">
-                    <p class="font-semibold text-gray-800 mb-2">Daytime Closures</p>
-                    <div class="space-y-1">
-                        <p v-for="(day, index) in locationDaytimeClosures" :key="`daytime-closure-${index}`">
-                            <span class="font-medium text-gray-700">{{ day.name }}:</span>
-                            <span class="ml-1">{{ formatHourWindow(day) || 'None' }}</span>
-                        </p>
-                    </div>
-                </div>
-                <p v-if="locationDetails?.out_of_hours_charge" class="text-sm text-gray-600 mb-4">
-                    <span class="font-semibold text-gray-800">Out of Hours Charge:</span>
-                    {{ locationDetails.out_of_hours_charge }}
-                </p>
                 <div v-if="hasVehicleCoords" ref="vehicleMapRef"
                     class="h-56 rounded-xl overflow-hidden border border-gray-200"></div>
                 <p v-else class="text-xs text-gray-500">Map not available for this vehicle.</p>
@@ -1630,7 +1685,7 @@ const formatPaymentMethod = (method) => {
 
             <!-- 2. Extras Section -->
             <section
-                v-if="(optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0)">
+                v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0)">
                 <div class="mb-6">
                     <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Optional Extras</h2>
                     <p class="text-gray-600">Enhance your journey with these add-ons</p>
@@ -1638,11 +1693,11 @@ const formatPaymentMethod = (method) => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template
-                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : optionalExtras)))))"
+                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras))))))"
                         :key="extra.id">
                         <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
                             class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
-                            :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id] }">
+                            :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id], 'opacity-80 cursor-not-allowed': extra.required }">
                             <div class="flex flex-col gap-3">
                                 <!-- Top Row: Checkbox + Icon + Title -->
                                 <div class="flex items-center gap-3">
@@ -1653,31 +1708,42 @@ const formatPaymentMethod = (method) => {
                                         <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
                                             :class="getIconColorClass(extra.name)" />
                                     </div>
-                                    <h4 class="font-bold text-gray-900 text-[1rem] flex-1">{{ extra.name }}</h4>
+                                    <div class="flex items-center justify-between w-full">
+                                        <h4 class="font-bold text-gray-900 text-[1rem]">{{ extra.name }}</h4>
+                                        <span v-if="extra.required" class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
+                                    </div>
                                 </div>
 
                                 <!-- Middle: Description (Removed as per request) -->
                                 <!-- <p class="text-xs text-gray-500 pl-8">{{ extra.description }}</p> -->
 
                                 <!-- Bottom: Price -->
-                                <div class="flex justify-end pl-8 mt-auto">
-                                    <div v-if="isExtraFree(extra.id)" class="text-right">
-                                        <span class="text-base font-bold text-green-600">Free</span>
-                                        <span class="text-gray-400 line-through text-xs block">
-                                            {{ formatPrice(extra.daily_rate !== undefined ? extra.daily_rate :
-                                                (extra.price
-                                                    /
-                                                    numberOfDays)) }}/day
-                                        </span>
+                                <div class="flex items-center justify-between pl-8 mt-auto">
+                                    <div v-if="extra.numberAllowed && extra.numberAllowed > 1" class="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                            @click.stop="updateExtraQuantity(extra, -1)"
+                                            :disabled="selectedExtras[extra.id] <= (extra.required ? 1 : 0)"
+                                        >-</button>
+                                        <span class="text-sm font-semibold text-gray-700">{{ selectedExtras[extra.id] || (extra.required ? 1 : 0) }}</span>
+                                        <button
+                                            type="button"
+                                            class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                            @click.stop="updateExtraQuantity(extra, 1)"
+                                            :disabled="selectedExtras[extra.id] >= extra.numberAllowed"
+                                        >+</button>
                                     </div>
-                                    <div v-else class="text-right">
+                                    <div class="text-right ml-auto">
                                         <span class="text-base font-bold text-gray-900">
-                                            {{ formatPrice(extra.daily_rate !== undefined ? extra.daily_rate :
-                                                (extra.price
-                                                    /
-                                                    numberOfDays)) }}
+                                            {{ formatPrice(extra.total_for_booking !== undefined && extra.total_for_booking !== null
+                                                ? extra.total_for_booking
+                                                : (extra.daily_rate !== undefined ? extra.daily_rate :
+                                                    (extra.price / numberOfDays))) }}
                                         </span>
-                                        <span class="text-xs text-gray-500 block">/day</span>
+                                        <span class="text-xs text-gray-500 block">
+                                            {{ (extra.total_for_booking !== undefined && extra.total_for_booking !== null) ? '/booking' : '/day' }}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -2059,6 +2125,56 @@ const formatPaymentMethod = (method) => {
             </div>
         </div>
     </Transition>
+    </div>
+
+    <div v-if="showLocationHoursModal" class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 px-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full">
+            <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                <h3 class="text-lg font-bold text-[#1e3a5f]">Hours & Policies</h3>
+                <button @click="showLocationHoursModal = false" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="px-6 py-5 max-h-[70vh] overflow-y-auto">
+                <div v-if="locationOpeningHours.length" class="mb-4">
+                    <p class="text-sm font-semibold text-gray-800 mb-2">Opening Hours</p>
+                    <div class="space-y-1 text-sm text-gray-600">
+                        <p v-for="(day, index) in locationOpeningHours" :key="`modal-open-${index}`">
+                            <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                            <span class="ml-1">{{ formatHourWindow(day) || 'Closed' }}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div v-if="locationOutOfHours.length" class="mb-4">
+                    <p class="text-sm font-semibold text-gray-800 mb-2">Out of Hours Dropoff</p>
+                    <div class="space-y-1 text-sm text-gray-600">
+                        <p v-for="(day, index) in locationOutOfHours" :key="`modal-out-${index}`">
+                            <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                            <span class="ml-1">{{ formatHourWindow(day) || 'Unavailable' }}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div v-if="locationDaytimeClosures.length" class="mb-4">
+                    <p class="text-sm font-semibold text-gray-800 mb-2">Daytime Closures</p>
+                    <div class="space-y-1 text-sm text-gray-600">
+                        <p v-for="(day, index) in locationDaytimeClosures" :key="`modal-closure-${index}`">
+                            <span class="font-medium text-gray-700">{{ day.name }}:</span>
+                            <span class="ml-1">{{ formatHourWindow(day) || 'None' }}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <p v-if="locationDetails?.out_of_hours_charge" class="text-sm text-gray-600">
+                    <span class="font-semibold text-gray-800">Out of Hours Charge:</span>
+                    {{ locationDetails.out_of_hours_charge }}
+                </p>
+            </div>
+        </div>
     </div>
 </template>
 

@@ -332,15 +332,23 @@ class GreenMotionController extends Controller
 
     public function getGreenMotionVehicles(Request $request)
     {
-        $locationId = $request->input('location_id', 61627);
-        $startDateInput = $request->input('start_date', '2032-01-06');
-        $startDate = date('Y-m-d', strtotime($startDateInput));
-        $startTime = $request->input('start_time', '09:00');
-        $endDateInput = $request->input('end_date', '2032-01-08');
-        $endDate = date('Y-m-d', strtotime($endDateInput));
-        $endTime = $request->input('end_time', '09:00');
+        $locationId = $request->input('location_id');
+        $startDateInput = $request->input('start_date');
+        $startTimestamp = $startDateInput ? strtotime($startDateInput) : false;
+        $startDate = $startTimestamp ? date('Y-m-d', $startTimestamp) : null;
+        $startTime = $request->input('start_time');
+        $endDateInput = $request->input('end_date');
+        $endTimestamp = $endDateInput ? strtotime($endDateInput) : false;
+        $endDate = $endTimestamp ? date('Y-m-d', $endTimestamp) : null;
+        $endTime = $request->input('end_time');
         $age = $request->input('age', 35);
         $rentalCode = $request->input('rentalCode', null);
+
+        if (!$locationId || !$startDate || !$endDate || !$startTime || !$endTime) {
+            return response()->json([
+                'error' => 'Location, pickup, and return details are required.',
+            ], 422);
+        }
 
         $options = [
             'rentalCode' => $rentalCode,
@@ -395,15 +403,22 @@ class GreenMotionController extends Controller
 
     public function showGreenMotionCars(Request $request)
     {
-        $locationId = $request->input('location_id', 61627);
-        $startDateInput = $request->input('start_date', '2032-01-06');
-        $startDate = date('Y-m-d', strtotime($startDateInput));
-        $startTime = $request->input('start_time', '09:00');
-        $endDateInput = $request->input('end_date', '2032-01-08');
-        $endDate = date('Y-m-d', strtotime($endDateInput));
-        $endTime = $request->input('end_time', '09:00');
+        $locationId = $request->input('location_id');
+        $startDateInput = $request->input('start_date');
+        $startTimestamp = $startDateInput ? strtotime($startDateInput) : false;
+        $startDate = $startTimestamp ? date('Y-m-d', $startTimestamp) : null;
+        $startTime = $request->input('start_time');
+        $endDateInput = $request->input('end_date');
+        $endTimestamp = $endDateInput ? strtotime($endDateInput) : false;
+        $endDate = $endTimestamp ? date('Y-m-d', $endTimestamp) : null;
+        $endTime = $request->input('end_time');
         $age = $request->input('age', 35);
         $rentalCode = $request->input('rentalCode', null);
+
+        if (!$locationId || !$startDate || !$endDate || !$startTime || !$endTime) {
+            return redirect()->route('search', $request->input('locale', app()->getLocale()))
+                ->with('error', 'Pickup and return details are required. Please search again.');
+        }
 
         $vehicleOptions = [
             'rentalCode' => $rentalCode,
@@ -484,16 +499,18 @@ class GreenMotionController extends Controller
                 'locale' => $locale,
             ]);
         }
-        $locationId = $request->input('location_id', 61627);
+        $locationId = $request->input('location_id');
         $startDateInput = $request->input('start_date');
-        $startDate = $startDateInput ? date('Y-m-d', strtotime($startDateInput)) : null;
-        $startTime = $request->input('start_time', '09:00');
+        $startTimestamp = $startDateInput ? strtotime($startDateInput) : false;
+        $startDate = $startTimestamp ? date('Y-m-d', $startTimestamp) : null;
+        $startTime = $request->input('start_time');
         $endDateInput = $request->input('end_date');
-        $endDate = $endDateInput ? date('Y-m-d', strtotime($endDateInput)) : null;
-        $endTime = $request->input('end_time', '09:00');
+        $endTimestamp = $endDateInput ? strtotime($endDateInput) : false;
+        $endDate = $endTimestamp ? date('Y-m-d', $endTimestamp) : null;
+        $endTime = $request->input('end_time');
 
         // Validate required parameters
-        if (!$startDate || !$endDate) {
+        if (!$locationId || !$startDate || !$endDate || !$startTime || !$endTime) {
             return redirect()->route('search', $locale)
                 ->with('error', 'Pickup and return dates are required. Please search again.');
         }
@@ -636,15 +653,22 @@ class GreenMotionController extends Controller
                 'locale' => $locale,
             ]);
         }
-        $locationId = $request->input('location_id', 61627);
-        $startDateInput = $request->input('start_date', '2032-01-06');
-        $startDate = date('Y-m-d', strtotime($startDateInput));
-        $startTime = $request->input('start_time', '09:00');
-        $endDateInput = $request->input('end_date', '2032-01-08');
-        $endDate = date('Y-m-d', strtotime($endDateInput));
-        $endTime = $request->input('end_time', '09:00');
+        $locationId = $request->input('location_id');
+        $startDateInput = $request->input('start_date');
+        $startTimestamp = $startDateInput ? strtotime($startDateInput) : false;
+        $startDate = $startTimestamp ? date('Y-m-d', $startTimestamp) : null;
+        $startTime = $request->input('start_time');
+        $endDateInput = $request->input('end_date');
+        $endTimestamp = $endDateInput ? strtotime($endDateInput) : false;
+        $endDate = $endTimestamp ? date('Y-m-d', $endTimestamp) : null;
+        $endTime = $request->input('end_time');
         $age = $request->input('age', 35);
         $rentalCode = $request->input('rentalCode', null);
+
+        if (!$locationId || !$startDate || !$endDate || !$startTime || !$endTime) {
+            return redirect()->route('search', $locale)
+                ->with('error', 'Pickup and return details are required. Please search again.');
+        }
 
         $vehicleOptions = [
             'rentalCode' => $rentalCode,
