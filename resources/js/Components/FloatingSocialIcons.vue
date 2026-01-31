@@ -51,10 +51,10 @@ onMounted(() => {
 
 <template>
     <div v-if="isVisible"
-        class="fixed right-0 top-1/2 transform -translate-y-1/2 z-[100] flex flex-col gap-2 p-2 bg-customPrimaryColor rounded-l-lg shadow-lg border-l border-t border-b border-white/20 transition-all duration-300">
+        class="fixed right-0 top-1/2 transform -translate-y-1/2 z-[100] flex flex-col gap-3 p-2 transition-all duration-300">
         <!-- Close Button -->
         <button @click="closeSidebar"
-            class="absolute -top-3 -left-3 bg-white text-customPrimaryColor hover:bg-gray-100 rounded-full p-1 shadow-md border border-gray-200 flex items-center justify-center w-6 h-6 z-[101]">
+            class="absolute -top-1 -left-1 bg-white text-customPrimaryColor hover:bg-gray-100 rounded-full p-1 shadow-md border border-gray-200 flex items-center justify-center w-6 h-6 z-[101]">
             <X :size="14" />
         </button>
 
@@ -66,32 +66,38 @@ onMounted(() => {
             start_time: '10:00',
             end_time: '10:00'
         })"
-            class="block relative w-6 h-6 md:w-8 md:h-8 transition-transform hover:scale-110 flex items-center justify-center">
-            <img :src="carIcon" alt="Rent A Car" class="w-full h-full object-contain brightness-0 invert" />
+            class="block relative w-9 h-9 md:w-10 md:h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center transition-transform hover:scale-110">
+            <img :src="carIcon" alt="Rent A Car" class="w-5 h-5 object-contain primary-filter" />
         </Link>
 
         <!-- WhatsApp -->
         <a :href="whatsappLink" target="_blank"
-            class="block relative w-6 h-6 md:w-8 md:h-8 transition-transform hover:scale-110">
-            <img :src="whatsappIcon" alt="WhatsApp" class="w-full h-full object-contain brightness-0 invert" />
+            class="block relative w-9 h-9 md:w-10 md:h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center transition-transform hover:scale-110">
+            <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5 object-contain primary-filter" />
         </a>
 
         <!-- Facebook -->
         <a v-if="socialLinks.facebook" :href="socialLinks.facebook" target="_blank"
-            class="block relative w-6 h-6 md:w-8 md:h-8 transition-transform hover:scale-110">
-            <img :src="facebookLogo" alt="Facebook" class="w-full h-full object-contain brightness-0 invert" />
+            class="block relative w-9 h-9 md:w-10 md:h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center transition-transform hover:scale-110">
+            <img :src="facebookLogo" alt="Facebook" class="w-5 h-5 object-contain primary-filter" />
         </a>
 
         <!-- Instagram -->
         <a v-if="socialLinks.instagram" :href="socialLinks.instagram" target="_blank"
-            class="block relative w-6 h-6 md:w-8 md:h-8 transition-transform hover:scale-110">
-            <img :src="instagramLogo" alt="Instagram" class="w-full h-full object-contain brightness-0 invert" />
+            class="block relative w-9 h-9 md:w-10 md:h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center transition-transform hover:scale-110">
+            <img :src="instagramLogo" alt="Instagram" class="w-5 h-5 object-contain primary-filter" />
         </a>
 
         <!-- Twitter / X -->
         <a v-if="socialLinks.twitter" :href="socialLinks.twitter" target="_blank"
-            class="block relative w-6 h-6 md:w-8 md:h-8 transition-transform hover:scale-110">
-            <img :src="twitterLogo" alt="Twitter" class="w-full h-full object-contain brightness-0 invert" />
+            class="block relative w-9 h-9 md:w-10 md:h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center transition-transform hover:scale-110">
+            <img :src="twitterLogo" alt="Twitter" class="w-5 h-5 object-contain primary-filter" />
         </a>
     </div>
 </template>
+
+<style scoped>
+.primary-filter {
+    filter: brightness(0) saturate(100%) invert(18%) sepia(13%) saturate(3203%) hue-rotate(171deg) brightness(97%) contrast(94%);
+}
+</style>
