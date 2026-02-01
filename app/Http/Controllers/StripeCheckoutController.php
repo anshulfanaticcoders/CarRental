@@ -43,6 +43,7 @@ class StripeCheckoutController extends Controller
                 'currency' => 'required|string',
                 'number_of_days' => 'required|integer|min:1',
                 'detailed_extras' => 'nullable|array',
+                'optional_extras' => 'nullable|array',
                 'protection_code' => 'nullable|string',
                 'protection_amount' => 'nullable|numeric',
                 'quoteid' => 'nullable|string',
@@ -530,7 +531,12 @@ class StripeCheckoutController extends Controller
 
         $providerVehicleTotal = (float) $product['total'];
 
-        $options = array_merge($vehicle['options'] ?? [], $vehicle['insurance_options'] ?? []);
+        $options = array_merge(
+            $vehicle['options'] ?? [],
+            $vehicle['insurance_options'] ?? [],
+            $vehicle['optional_extras'] ?? [],
+            $validated['optional_extras'] ?? []
+        );
         $optionsById = [];
         foreach ($options as $option) {
             $optionId = $option['option_id'] ?? $option['optionID'] ?? $option['id'] ?? null;

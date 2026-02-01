@@ -234,6 +234,7 @@ const bookingData = computed(() => {
         protection_amount: props.protectionAmount || 0,
         extras: props.extras,
         detailed_extras: props.detailedExtras,
+        optional_extras: props.optionalExtras || [],
         location_details: props.locationDetails || null,
         location_instructions: props.locationInstructions || null,
         driver_requirements: props.driverRequirements || null,

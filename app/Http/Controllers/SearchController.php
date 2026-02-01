@@ -652,6 +652,19 @@ class SearchController extends Controller
                             libxml_use_internal_errors(true);
                             $xmlObject = simplexml_load_string($gmResponse);
 
+                            if ($xmlObject !== false) {
+                                $parsedOptionalExtras = $this->parseOptionalExtras($xmlObject);
+                                if (!empty($parsedOptionalExtras)) {
+                                    foreach ($parsedOptionalExtras as $extra) {
+                                        $key = (string) ($extra['option_id'] ?? $extra['optionID'] ?? $extra['id'] ?? '');
+                                        if ($key === '') {
+                                            continue;
+                                        }
+                                        $searchOptionalExtras[$key] = $extra;
+                                    }
+                                }
+                            }
+
                             if ($xmlObject !== false && isset($xmlObject->response->vehicles->vehicle)) {
                                 foreach ($xmlObject->response->vehicles->vehicle as $vehicle) {
                                     $products = [];
@@ -1871,25 +1884,105 @@ class SearchController extends Controller
         $optionalExtras = [];
         if (isset($xmlObject->response->optionalextras->extra)) {
             foreach ($xmlObject->response->optionalextras->extra as $extra) {
-                // Determine price (Total for booking)
-                $price = (float) (string) $extra->Total_for_this_booking;
-                $currency = (string) $extra->Total_for_this_booking['currency'];
+                $required = (string) $extra['required'];
+                $numberAllowed = (string) $extra['numberAllowed'];
 
-                // If options logic needed later, add handling here. For now simpler structure.
+                if (isset($extra->options->option)) {
+                    foreach ($extra->options->option as $option) {
+                        $optionId = (string) $option->optionID;
+                        if ($optionId === '') {
+                            continue;
+                        }
+
+                        $maxQty = $this->resolveOptionalExtraMaxQuantity(
+                            (string) $option->Choices,
+                            $numberAllowed
+                        );
+
+                        $optionalExtras[] = [
+                            'id' => 'gm_optional_' . $optionId,
+                            'option_id' => $optionId,
+                            'optionID' => $optionId,
+                            'name' => (string) ($option->Name ?: $extra->Name),
+                            'description' => (string) ($option->Description ?: $extra->Description),
+                            'required' => $required,
+                            'numberAllowed' => $maxQty,
+                            'prepay_available' => (string) $option->Prepay_available,
+                            'daily_rate' => (string) $option->Daily_rate,
+                            'daily_rate_currency' => (string) $option->Daily_rate['currency'],
+                            'total_for_booking' => (string) $option->Total_for_this_booking,
+                            'total_for_booking_currency' => (string) $option->Total_for_this_booking['currency'],
+                            'code' => (string) $option->code,
+                            'type' => 'optional',
+                        ];
+                    }
+                    continue;
+                }
+
+                $optionId = (string) $extra->optionID;
+                if ($optionId === '') {
+                    continue;
+                }
+
+                $maxQty = $this->resolveOptionalExtraMaxQuantity(
+                    (string) $extra->Choices,
+                    $numberAllowed
+                );
 
                 $optionalExtras[] = [
-                    'id' => (string) $extra->optionID,
+                    'id' => 'gm_optional_' . $optionId,
+                    'option_id' => $optionId,
+                    'optionID' => $optionId,
                     'name' => (string) $extra->Name,
                     'description' => (string) $extra->Description,
-                    'price' => $price,
-                    'currency' => $currency,
+                    'required' => $required,
+                    'numberAllowed' => $maxQty,
+                    'prepay_available' => (string) $extra->Prepay_available,
+                    'daily_rate' => (string) $extra->Daily_rate,
+                    'daily_rate_currency' => (string) $extra->Daily_rate['currency'],
+                    'total_for_booking' => (string) $extra->Total_for_this_booking,
+                    'total_for_booking_currency' => (string) $extra->Total_for_this_booking['currency'],
                     'code' => (string) $extra->code,
-                    'daily_rate' => (float) (string) $extra->Daily_rate,
-                    'category' => (string) $extra->Category,
-                    'img' => (string) $extra->Image ?? null,
+                    'type' => 'optional',
                 ];
             }
         }
+
         return $optionalExtras;
+    }
+
+    private function resolveOptionalExtraMaxQuantity(string $choices, string $numberAllowed): ?int
+    {
+        $numberAllowed = trim($numberAllowed);
+        if ($numberAllowed !== '') {
+            $value = (int) $numberAllowed;
+            if ($value > 0) {
+                return $value;
+            }
+        }
+
+        $choices = trim($choices);
+        if ($choices === '') {
+            return null;
+        }
+
+        $parts = array_map('trim', explode(',', $choices));
+        $numeric = [];
+        foreach ($parts as $part) {
+            if (is_numeric($part)) {
+                $numeric[] = (int) $part;
+            }
+        }
+
+        if (!empty($numeric)) {
+            return max($numeric);
+        }
+
+        $upper = strtoupper(implode(',', $parts));
+        if (str_contains($upper, 'YES')) {
+            return 1;
+        }
+
+        return null;
     }
 }

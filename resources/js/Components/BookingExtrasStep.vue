@@ -338,15 +338,6 @@ const showLocationHoursModal = ref(false);
 
 const ratesReady = computed(() => !!exchangeRates.value && !loading.value);
 
-watchEffect(() => {
-    if (!isGreenMotion.value) return;
-    greenMotionExtras.value.forEach((extra) => {
-        if (extra.required) {
-            setExtraQuantity(extra, Math.max(selectedExtras.value[extra.id] || 0, 1));
-        }
-    });
-});
-
 // (Moved above)
 
 // Watch for changes to initialPackage prop
@@ -690,30 +681,80 @@ const okMobilityOptionalExtras = computed(() => {
 const greenMotionExtras = computed(() => {
     if (!isGreenMotion.value) return [];
     const options = [];
-    const collect = (items) => {
-        (items || []).forEach((extra) => {
-            const optionId = extra.option_id || extra.optionID || extra.id;
-            const totalForBooking = extra.total_for_booking ?? extra.Total_for_this_booking ?? extra.total ?? 0;
-            options.push({
-                id: extra.id || `gm_option_${optionId}`,
-                option_id: optionId,
-                name: extra.name || extra.Name || extra.Description || 'Extra',
-                description: extra.description || extra.Description || '',
-                required: (extra.required || '').toString().toLowerCase() === 'required',
-                numberAllowed: extra.numberAllowed ? parseInt(extra.numberAllowed) : null,
-                prepay_available: (extra.prepay_available || '').toString().toLowerCase(),
-                daily_rate: extra.daily_rate || extra.Daily_rate || 0,
-                total_for_booking: totalForBooking,
-                total_for_booking_currency: extra.total_for_booking_currency || extra.Total_for_this_booking_currency || extra.currency || null,
-                type: extra.type || 'option',
-            });
+    const seen = new Set();
+
+    const normalizeRequired = (value) => {
+        if (value === true) return true;
+        if (value === false || value === null || value === undefined) return false;
+        return `${value}`.toLowerCase() === 'required';
+    };
+
+    const pushExtra = (extra, fallbackPrefix = 'gm_option_', typeOverride = null) => {
+        if (!extra) return;
+        const optionId = extra.option_id || extra.optionID || extra.id;
+        if (!optionId) return;
+        const key = String(optionId);
+        if (seen.has(key)) return;
+        seen.add(key);
+
+        const totalForBooking = extra.total_for_booking ?? extra.Total_for_this_booking ?? extra.total ?? null;
+        const numberAllowed = extra.numberAllowed ? parseInt(extra.numberAllowed) : null;
+        const required = normalizeRequired(extra.required);
+
+        options.push({
+            id: extra.id || `${fallbackPrefix}${optionId}`,
+            option_id: extra.option_id || extra.optionID || optionId,
+            name: extra.name || extra.Name || extra.Description || 'Extra',
+            description: extra.description || extra.Description || '',
+            required,
+            numberAllowed,
+            prepay_available: (extra.prepay_available || extra.Prepay_available || '').toString().toLowerCase(),
+            daily_rate: extra.daily_rate || extra.Daily_rate || 0,
+            total_for_booking: totalForBooking,
+            total_for_booking_currency: extra.total_for_booking_currency || extra.Total_for_this_booking_currency || extra.currency || null,
+            code: extra.code || extra.Code || null,
+            type: typeOverride || extra.type || 'option',
         });
     };
 
-    collect(props.vehicle?.options || []);
-    collect(props.vehicle?.insurance_options || []);
+    const collect = (items, fallbackPrefix, typeOverride = null) => {
+        (items || []).forEach((extra) => pushExtra(extra, fallbackPrefix, typeOverride));
+    };
+
+    const collectOptionalExtras = (items) => {
+        (items || []).forEach((extra) => {
+            if (Array.isArray(extra.options) && extra.options.length > 0) {
+                extra.options.forEach((option) => {
+                    pushExtra({
+                        ...option,
+                        name: option.name || option.Name || extra.Name,
+                        description: option.description || option.Description || extra.Description,
+                        required: option.required ?? extra.required,
+                        numberAllowed: option.numberAllowed ?? extra.numberAllowed,
+                        code: option.code || extra.code,
+                        type: option.type || extra.type || 'optional'
+                    }, 'gm_optional_', 'optional');
+                });
+                return;
+            }
+            pushExtra(extra, 'gm_optional_', 'optional');
+        });
+    };
+
+    collect(props.vehicle?.options || [], 'gm_option_', 'option');
+    collect(props.vehicle?.insurance_options || [], 'gm_insurance_', 'insurance');
+    collectOptionalExtras(props.optionalExtras || []);
 
     return options;
+});
+
+watchEffect(() => {
+    if (!isGreenMotion.value) return;
+    greenMotionExtras.value.forEach((extra) => {
+        if (extra.required) {
+            setExtraQuantity(extra, Math.max(selectedExtras.value[extra.id] || 0, 1));
+        }
+    });
 });
 
 const availablePackages = computed(() => {
