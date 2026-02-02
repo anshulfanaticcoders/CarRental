@@ -724,6 +724,7 @@ class BookingController extends Controller
         $providerSource = $booking->provider_source ? strtolower($booking->provider_source) : null;
         $isGreenMotion = in_array($providerSource, ['greenmotion', 'usave'], true);
         $isFavrica = $providerSource === 'favrica';
+        $isXDrive = $providerSource === 'xdrive';
 
         if ($isGreenMotion) {
             try {
@@ -899,6 +900,63 @@ class BookingController extends Controller
                 ]);
 
                 $appendBookingNote($booking, 'Favrica Cancel failed: ' . $e->getMessage());
+                $booking->save();
+
+                $message = 'Failed to cancel reservation with provider.';
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => $message], 502);
+                }
+                return redirect()->back()->with('error', $message);
+            }
+        } elseif ($isXDrive) {
+            try {
+                $bookingRef = $booking->provider_booking_ref;
+
+                if (!$bookingRef) {
+                    $message = 'Provider booking reference is missing.';
+                    if ($request->wantsJson()) {
+                        return response()->json(['message' => $message], 422);
+                    }
+                    return redirect()->back()->with('error', $message);
+                }
+
+                $xdriveService = app(\App\Services\XDriveService::class);
+                $response = $xdriveService->cancelReservation($bookingRef);
+
+                if (empty($response) || !is_array($response)) {
+                    $message = 'Failed to cancel reservation with provider.';
+                    $appendBookingNote($booking, 'XDrive Cancel failed: empty response.');
+                    $booking->save();
+
+                    if ($request->wantsJson()) {
+                        return response()->json(['message' => $message], 502);
+                    }
+                    return redirect()->back()->with('error', $message);
+                }
+
+                $payload = $response[0] ?? null;
+                $statusValue = strtolower(trim((string) (($payload['success'] ?? $payload['Status'] ?? ''))));
+                $success = $statusValue === 'true' || $statusValue === '1';
+
+                if (!$success) {
+                    $errorMessage = $payload['error'] ?? 'Provider cancellation failed.';
+                    $appendBookingNote($booking, 'XDrive Cancel failed: ' . $errorMessage);
+                    $booking->save();
+
+                    if ($request->wantsJson()) {
+                        return response()->json(['message' => $errorMessage], 502);
+                    }
+                    return redirect()->back()->with('error', $errorMessage);
+                }
+
+                $appendBookingNote($booking, 'XDrive Cancel: cancellation requested.');
+            } catch (\Exception $e) {
+                Log::error('XDrive cancel failed', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $appendBookingNote($booking, 'XDrive Cancel failed: ' . $e->getMessage());
                 $booking->save();
 
                 $message = 'Failed to cancel reservation with provider.';

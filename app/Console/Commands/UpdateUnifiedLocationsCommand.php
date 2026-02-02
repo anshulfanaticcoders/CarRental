@@ -29,6 +29,7 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $wheelsysService;
     protected $renteonService;
     protected $favricaService;
+    protected $xdriveService;
 
     public function __construct(
         \App\Services\GreenMotionService $greenMotionService,
@@ -39,7 +40,8 @@ class UpdateUnifiedLocationsCommand extends Command
         \App\Services\LocautoRentService $locautoRentService,
         \App\Services\WheelsysService $wheelsysService,
         \App\Services\RenteonService $renteonService,
-        \App\Services\FavricaService $favricaService
+        \App\Services\FavricaService $favricaService,
+        \App\Services\XDriveService $xdriveService
     ) {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
@@ -51,6 +53,7 @@ class UpdateUnifiedLocationsCommand extends Command
         $this->wheelsysService = $wheelsysService;
         $this->renteonService = $renteonService;
         $this->favricaService = $favricaService;
+        $this->xdriveService = $xdriveService;
     }
 
     /**
@@ -87,6 +90,9 @@ class UpdateUnifiedLocationsCommand extends Command
         $favricaLocations = $this->fetchFavricaLocations();
         $this->info('Fetched ' . count($favricaLocations) . ' Favrica locations.');
 
+        $xdriveLocations = $this->fetchXDriveLocations();
+        $this->info('Fetched ' . count($xdriveLocations) . ' XDrive locations.');
+
         $unifiedLocations = $this->mergeAndNormalizeLocations(
             $internalLocations,
             $greenMotionLocations,
@@ -96,7 +102,8 @@ class UpdateUnifiedLocationsCommand extends Command
             $locautoLocations,
             $wheelsysLocations,
             $renteonLocations,
-            $favricaLocations
+            $favricaLocations,
+            $xdriveLocations
         );
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
@@ -655,6 +662,56 @@ class UpdateUnifiedLocationsCommand extends Command
         } catch (\Exception $e) {
             $this->error('Error fetching Favrica locations: ' . $e->getMessage());
             \Illuminate\Support\Facades\Log::error('Favrica location fetch error: ' . $e->getMessage(), ['exception' => $e]);
+            return [];
+        }
+    }
+
+    private function fetchXDriveLocations(): array
+    {
+        $this->info('Fetching XDrive locations...');
+
+        try {
+            $locations = $this->xdriveService->getLocations();
+            if (empty($locations)) {
+                $this->error('Failed to retrieve locations from XDrive API or empty response.');
+                \Illuminate\Support\Facades\Log::warning('XDrive API returned empty locations response.');
+                return [];
+            }
+
+            $formattedLocations = [];
+            foreach ($locations as $location) {
+                if (empty($location['location_id']) || empty($location['location_name'])) {
+                    continue;
+                }
+
+                [$lat, $lng] = $this->parseFavricaMapsPoint($location['maps_point'] ?? null);
+                $address = trim((string) ($location['address'] ?? ''));
+                $city = $this->extractFavricaCity($address, $location['location_name'] ?? '');
+                $country = $location['country'] ?? null;
+
+                $locationName = trim((string) $location['location_name']);
+                $formattedLocations[] = [
+                    'id' => 'xdrive_' . $location['location_id'],
+                    'label' => $locationName,
+                    'below_label' => $address !== '' ? $address : implode(', ', array_filter([$city, $country])),
+                    'location' => $locationName,
+                    'city' => $city,
+                    'state' => null,
+                    'country' => $country,
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'source' => 'xdrive',
+                    'matched_field' => 'location',
+                    'provider_location_id' => (string) $location['location_id'],
+                    'location_type' => $this->resolveFavricaLocationType($location),
+                ];
+            }
+
+            $this->info('Processed ' . count($formattedLocations) . ' XDrive locations (from ' . count($locations) . ' total).');
+            return $formattedLocations;
+        } catch (\Exception $e) {
+            $this->error('Error fetching XDrive locations: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('XDrive location fetch error: ' . $e->getMessage(), ['exception' => $e]);
             return [];
         }
     }

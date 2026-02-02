@@ -278,6 +278,8 @@ class StripeBookingService
                 $this->triggerOkMobilityReservation($booking, $metadata);
             } elseif ($booking->provider_source === 'favrica' && $shouldTriggerProvider) {
                 $this->triggerFavricaReservation($booking, $metadata);
+            } elseif ($booking->provider_source === 'xdrive' && $shouldTriggerProvider) {
+                $this->triggerXDriveReservation($booking, $metadata);
             }
 
             return $booking;
@@ -1716,6 +1718,148 @@ class StripeBookingService
         }
     }
 
+    /**
+     * Trigger reservation on XDrive API
+     */
+    protected function triggerXDriveReservation($booking, $metadata)
+    {
+        Log::info('XDrive: Triggering reservation for booking', ['booking_id' => $booking->id]);
+
+        try {
+            $rezId = $metadata->xdrive_rez_id ?? null;
+            $carsParkId = $metadata->xdrive_cars_park_id ?? null;
+            $groupId = $metadata->xdrive_group_id ?? null;
+            $carWebId = $metadata->xdrive_car_web_id ?? null;
+            $reservationSourceId = $metadata->xdrive_reservation_source_id ?? null;
+            $pickupId = $metadata->pickup_location_code ?? null;
+            $dropoffId = $metadata->return_location_code ?? $pickupId;
+
+            if (!$rezId || !$carsParkId || !$groupId || !$carWebId || !$reservationSourceId || !$pickupId) {
+                Log::error('XDrive: Missing identifiers in metadata', [
+                    'booking_id' => $booking->id,
+                    'rez_id_present' => (bool) $rezId,
+                    'cars_park_id_present' => (bool) $carsParkId,
+                    'group_id_present' => (bool) $groupId,
+                    'car_web_id_present' => (bool) $carWebId,
+                    'reservation_source_id_present' => (bool) $reservationSourceId,
+                    'pickup_id_present' => (bool) $pickupId,
+                ]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "XDrive Reservation failed: Missing identifiers."
+                ]);
+                return;
+            }
+
+            $pickupParts = $this->splitDateTimeForFavrica($metadata->pickup_date ?? null, $metadata->pickup_time ?? null);
+            $dropoffParts = $this->splitDateTimeForFavrica($metadata->dropoff_date ?? null, $metadata->dropoff_time ?? null);
+
+            $customerName = trim((string) ($metadata->customer_name ?? 'Guest User'));
+            $nameParts = preg_split('/\s+/', $customerName, 2);
+            $firstName = $nameParts[0] ?? 'Guest';
+            $lastName = $nameParts[1] ?? 'Guest';
+
+            $currency = $this->normalizeFavricaRequestCurrency(
+                $metadata->provider_currency ?? $metadata->currency ?? null
+            );
+
+            $rentAmount = (float) ($metadata->provider_vehicle_total ?? $metadata->vehicle_total ?? $booking->total_amount ?? 0);
+            $extraAmount = (float) ($metadata->provider_extras_total ?? $metadata->extras_total ?? 0);
+            $dropAmount = (float) ($metadata->xdrive_drop_fee ?? 0);
+            $totalAmount = $rentAmount + $extraAmount + $dropAmount;
+
+            $rentPrice = $this->formatFavricaAmount($rentAmount);
+            $extraPrice = $this->formatFavricaAmount($extraAmount);
+            $totalPrice = $this->formatFavricaAmount($totalAmount);
+
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+            $flags = $this->resolveXDriveServiceFlags($extrasPayload['detailed_extras'] ?? []);
+
+            $payload = [
+                'Pickup_ID' => $pickupId,
+                'Drop_Off_ID' => $dropoffId,
+                'Pickup_Day' => $pickupParts['day'],
+                'Pickup_Month' => $pickupParts['month'],
+                'Pickup_Year' => $pickupParts['year'],
+                'Pickup_Hour' => $pickupParts['hour'],
+                'Pickup_Min' => $pickupParts['minute'],
+                'Drop_Off_Day' => $dropoffParts['day'],
+                'Drop_Off_Month' => $dropoffParts['month'],
+                'Drop_Off_Year' => $dropoffParts['year'],
+                'Drop_Off_Hour' => $dropoffParts['hour'],
+                'Drop_Off_Min' => $dropoffParts['minute'],
+                'Currency' => $currency,
+                'Car_Web_ID' => $carWebId,
+                'Rez_ID' => $rezId,
+                'Cars_Park_ID' => $carsParkId,
+                'Group_ID' => $groupId,
+                'Reservation_Source_ID' => $reservationSourceId,
+                'Name' => $firstName,
+                'SurName' => $lastName,
+                'Mail_Adress' => $metadata->customer_email ?? '',
+                'MobilePhone' => $metadata->customer_phone ?? '',
+                'Fly_No' => $metadata->flight_number ?? '',
+                'Baby_Seat' => $flags['Baby_Seat'] ? 'ON' : 'OFF',
+                'Navigation' => $flags['Navigation'] ? 'ON' : 'OFF',
+                'Addition_Drive' => $flags['Addition_Drive'] ? 'ON' : 'OFF',
+                'Your_Rent_Price' => $rentPrice,
+                'Your_Extra_Price' => $extraPrice,
+                'Your_Total_Price' => $totalPrice,
+                'Payment_Type' => 1,
+            ];
+
+            $xdriveService = app(\App\Services\XDriveService::class);
+            $response = $xdriveService->createReservation($payload);
+
+            if (empty($response) || !is_array($response)) {
+                Log::error('XDrive: Empty reservation response', ['booking_id' => $booking->id]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "XDrive Reservation failed: No response from API."
+                ]);
+                return;
+            }
+
+            $payloadResponse = $response[0] ?? null;
+            if (!is_array($payloadResponse)) {
+                Log::error('XDrive: Reservation response malformed', ['booking_id' => $booking->id, 'response' => $response]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "XDrive Reservation failed: Invalid response format."
+                ]);
+                return;
+            }
+
+            $status = strtolower(trim((string) ($payloadResponse['success'] ?? $payloadResponse['Status'] ?? '')));
+            $providerRef = $payloadResponse['rez_id'] ?? $payloadResponse['Rez_ID'] ?? null;
+            $providerId = $payloadResponse['id'] ?? $payloadResponse['ID'] ?? null;
+
+            if ($status === 'true' && $providerRef) {
+                Log::info('XDrive: Reservation successful', ['conf' => $providerRef]);
+                $note = "XDrive Conf: {$providerRef}";
+                if ($providerId) {
+                    $note .= " (ID: {$providerId})";
+                }
+                $booking->update([
+                    'provider_booking_ref' => $providerRef,
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . $note,
+                ]);
+                return;
+            }
+
+            $errorMessage = $payloadResponse['error'] ?? 'Reservation failed';
+            Log::error('XDrive: Reservation failed', ['error' => $errorMessage, 'response' => $payloadResponse]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "XDrive Reservation failed: {$errorMessage}"
+            ]);
+        } catch (\Exception $e) {
+            Log::error('XDrive: Exception during reservation trigger', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "XDrive Reservation Error: " . $e->getMessage()
+            ]);
+        }
+    }
+
     private function splitDateTimeForFavrica(?string $date, ?string $time): array
     {
         $stamp = trim((string) $date . ' ' . (string) $time);
@@ -1802,6 +1946,46 @@ class StripeBookingService
             }
             if ($code === 'PAI') {
                 $flags['PAI'] = true;
+            }
+        }
+
+        return $flags;
+    }
+
+    private function resolveXDriveServiceFlags($extrasData): array
+    {
+        $flags = [
+            'Baby_Seat' => false,
+            'Navigation' => false,
+            'Addition_Drive' => false,
+        ];
+
+        if (empty($extrasData)) {
+            return $flags;
+        }
+
+        $extras = is_array($extrasData) ? $extrasData : $this->decodeJsonArray($extrasData);
+
+        foreach ($extras as $extra) {
+            if (!is_array($extra)) {
+                continue;
+            }
+            $qty = (int) ($extra['qty'] ?? $extra['quantity'] ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $code = strtoupper(trim((string) ($extra['code'] ?? $extra['service_id'] ?? $extra['id'] ?? '')));
+            $name = strtolower(trim((string) ($extra['name'] ?? $extra['description'] ?? '')));
+
+            if ($code === 'BABY_SEAT' || str_contains($name, 'baby')) {
+                $flags['Baby_Seat'] = true;
+            }
+            if ($code === 'NAVIGATION' || str_contains($name, 'nav')) {
+                $flags['Navigation'] = true;
+            }
+            if (in_array($code, ['ADDITION_DRIVE', 'ADDITIONAL_DRIVER'], true) || str_contains($name, 'driver')) {
+                $flags['Addition_Drive'] = true;
             }
         }
 

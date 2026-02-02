@@ -83,6 +83,18 @@ return [
         'connect_timeout' => env('FAVRICA_CONNECT_TIMEOUT', 10),
     ],
 
+    'xdrive' => [
+        'base_url' => env('XDRIVE_BASE_URL', 'http://xdrivejson.turevsistem.com'),
+        'key_hack' => env('XDRIVE_KEY_HACK'),
+        'username' => env('XDRIVE_USERNAME'),
+        'password' => env('XDRIVE_PASSWORD'),
+        'image_base_url' => env('XDRIVE_IMAGE_BASE_URL'),
+        'user_agent' => env('XDRIVE_USER_AGENT', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
+        'verify_ssl' => env('XDRIVE_VERIFY_SSL', false),
+        'timeout' => env('XDRIVE_TIMEOUT', 30),
+        'connect_timeout' => env('XDRIVE_CONNECT_TIMEOUT', 10),
+    ],
+
     'esim_access' => [
         'api_key' => env('ESIM_ACCESS_API_KEY'),
         'base_url' => env('ESIM_ACCESS_API_URL'),

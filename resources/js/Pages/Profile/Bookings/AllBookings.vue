@@ -83,6 +83,8 @@ const getProviderBadge = (provider) => {
     okmobility: { bg: 'bg-purple-50', text: 'text-purple-700' },
     locauto_rent: { bg: 'bg-pink-50', text: 'text-pink-700' },
     renteon: { bg: 'bg-cyan-50', text: 'text-cyan-700' },
+    xdrive: { bg: 'bg-amber-50', text: 'text-amber-700' },
+    favrica: { bg: 'bg-amber-50', text: 'text-amber-700' },
     internal: { bg: 'bg-sky-50', text: 'text-sky-700' }
   };
 
@@ -193,13 +195,13 @@ const isGreenMotionBooking = (booking) => {
   return source === 'greenmotion' || source === 'usave';
 };
 
-const canCancelGreenMotion = (booking) => {
+const canCancelProviderBooking = (booking) => {
   if (!isGreenMotionBooking(booking)) return false;
   if (!booking.provider_booking_ref) return false;
   return !['cancelled', 'completed'].includes(booking.booking_status);
 };
 
-const cancelGreenMotionBooking = async (booking) => {
+const cancelProviderBooking = async (booking) => {
   const confirmMessage = _t('customerbooking', 'modal_confirm_cancellation_message')
     || 'Are you sure you want to cancel this booking?';
   if (!confirm(confirmMessage)) return;
@@ -479,8 +481,8 @@ const getCardDelay = (index) => {
                     </Link>
 
                     <button
-                      v-if="canCancelGreenMotion(booking)"
-                      @click="cancelGreenMotionBooking(booking)"
+                      v-if="canCancelProviderBooking(booking)"
+                      @click="cancelProviderBooking(booking)"
                       :disabled="isLoading"
                       class="inline-flex items-center gap-2 px-4 py-2 border border-rose-200 text-rose-700 rounded-lg font-medium hover:bg-rose-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >

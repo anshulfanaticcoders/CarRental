@@ -1077,19 +1077,19 @@ class GreenMotionController extends Controller
             }
         }
 
-        if ($provider === 'favrica') {
+        if ($provider === 'favrica' || $provider === 'xdrive') {
             $locationsFilePath = public_path('unified_locations.json');
             if (!File::exists($locationsFilePath)) {
                 return response()->json(['error' => 'Unified locations file not found.'], 500);
             }
 
             $allLocations = json_decode(File::get($locationsFilePath), true);
-            $dropoffLocations = collect($allLocations)->filter(function ($location) {
+            $dropoffLocations = collect($allLocations)->filter(function ($location) use ($provider) {
                 if (!isset($location['providers'])) {
                     return false;
                 }
                 foreach ($location['providers'] as $p) {
-                    if (($p['provider'] ?? null) === 'favrica') {
+                    if (($p['provider'] ?? null) === $provider) {
                         return true;
                     }
                 }
@@ -1098,7 +1098,7 @@ class GreenMotionController extends Controller
 
             return response()->json([
                 'locations' => $dropoffLocations,
-                'message' => 'Favrica locations - select your preferred dropoff location'
+                'message' => ucfirst($provider) . ' locations - select your preferred dropoff location'
             ]);
         }
 

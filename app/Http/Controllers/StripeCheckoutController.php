@@ -236,6 +236,13 @@ class StripeCheckoutController extends Controller
                 'favrica_car_web_id' => $validated['vehicle']['favrica_car_web_id'] ?? null,
                 'favrica_reservation_source_id' => $validated['vehicle']['favrica_reservation_source_id'] ?? null,
                 'favrica_drop_fee' => $validated['vehicle']['favrica_drop_fee'] ?? null,
+                'xdrive_rez_id' => $validated['vehicle']['xdrive_rez_id'] ?? null,
+                'xdrive_cars_park_id' => $validated['vehicle']['xdrive_cars_park_id'] ?? null,
+                'xdrive_group_id' => $validated['vehicle']['xdrive_group_id'] ?? null,
+                'xdrive_car_web_id' => $validated['vehicle']['xdrive_car_web_id'] ?? null,
+                'xdrive_reservation_source_id' => $validated['vehicle']['xdrive_reservation_source_id'] ?? null,
+                'xdrive_reservation_source' => $validated['vehicle']['xdrive_reservation_source'] ?? null,
+                'xdrive_drop_fee' => $validated['vehicle']['xdrive_drop_fee'] ?? null,
                 'driver_license_number' => $validated['customer']['driver_license_number'] ?? null,
                 'notes' => $validated['customer']['notes'] ?? null,
             ];
