@@ -1077,6 +1077,31 @@ class GreenMotionController extends Controller
             }
         }
 
+        if ($provider === 'favrica') {
+            $locationsFilePath = public_path('unified_locations.json');
+            if (!File::exists($locationsFilePath)) {
+                return response()->json(['error' => 'Unified locations file not found.'], 500);
+            }
+
+            $allLocations = json_decode(File::get($locationsFilePath), true);
+            $dropoffLocations = collect($allLocations)->filter(function ($location) {
+                if (!isset($location['providers'])) {
+                    return false;
+                }
+                foreach ($location['providers'] as $p) {
+                    if (($p['provider'] ?? null) === 'favrica') {
+                        return true;
+                    }
+                }
+                return false;
+            })->values()->all();
+
+            return response()->json([
+                'locations' => $dropoffLocations,
+                'message' => 'Favrica locations - select your preferred dropoff location'
+            ]);
+        }
+
         try {
             $this->greenMotionService->setProvider($provider);
         } catch (\Exception $e) {

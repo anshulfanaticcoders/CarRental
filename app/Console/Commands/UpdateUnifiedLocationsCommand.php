@@ -28,6 +28,7 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $locautoRentService;
     protected $wheelsysService;
     protected $renteonService;
+    protected $favricaService;
 
     public function __construct(
         \App\Services\GreenMotionService $greenMotionService,
@@ -37,7 +38,8 @@ class UpdateUnifiedLocationsCommand extends Command
         \App\Services\AdobeCarService $adobeCarService,
         \App\Services\LocautoRentService $locautoRentService,
         \App\Services\WheelsysService $wheelsysService,
-        \App\Services\RenteonService $renteonService
+        \App\Services\RenteonService $renteonService,
+        \App\Services\FavricaService $favricaService
     ) {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
@@ -48,6 +50,7 @@ class UpdateUnifiedLocationsCommand extends Command
         $this->locautoRentService = $locautoRentService;
         $this->wheelsysService = $wheelsysService;
         $this->renteonService = $renteonService;
+        $this->favricaService = $favricaService;
     }
 
     /**
@@ -81,7 +84,20 @@ class UpdateUnifiedLocationsCommand extends Command
         $renteonLocations = $this->fetchRenteonLocations();
         $this->info('Fetched ' . count($renteonLocations) . ' Renteon locations.');
 
-        $unifiedLocations = $this->mergeAndNormalizeLocations($internalLocations, $greenMotionLocations, $usaveLocations, $okMobilityLocations, $adobeLocations, $locautoLocations, $wheelsysLocations, $renteonLocations);
+        $favricaLocations = $this->fetchFavricaLocations();
+        $this->info('Fetched ' . count($favricaLocations) . ' Favrica locations.');
+
+        $unifiedLocations = $this->mergeAndNormalizeLocations(
+            $internalLocations,
+            $greenMotionLocations,
+            $usaveLocations,
+            $okMobilityLocations,
+            $adobeLocations,
+            $locautoLocations,
+            $wheelsysLocations,
+            $renteonLocations,
+            $favricaLocations
+        );
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
         $this->saveUnifiedLocations(array_values($unifiedLocations));
@@ -591,6 +607,99 @@ class UpdateUnifiedLocationsCommand extends Command
             \Illuminate\Support\Facades\Log::error('Renteon location fetch error: ' . $e->getMessage(), ['exception' => $e]);
             return [];
         }
+    }
+
+    private function fetchFavricaLocations(): array
+    {
+        $this->info('Fetching Favrica locations...');
+
+        try {
+            $locations = $this->favricaService->getLocations();
+            if (empty($locations)) {
+                $this->error('Failed to retrieve locations from Favrica API or empty response.');
+                \Illuminate\Support\Facades\Log::warning('Favrica API returned empty locations response.');
+                return [];
+            }
+
+            $formattedLocations = [];
+            foreach ($locations as $location) {
+                if (empty($location['location_id']) || empty($location['location_name'])) {
+                    continue;
+                }
+
+                [$lat, $lng] = $this->parseFavricaMapsPoint($location['maps_point'] ?? null);
+                $address = trim((string) ($location['address'] ?? ''));
+                $city = $this->extractFavricaCity($address, $location['location_name'] ?? '');
+                $country = $location['country'] ?? null;
+
+                $locationName = trim((string) $location['location_name']);
+                $formattedLocations[] = [
+                    'id' => 'favrica_' . $location['location_id'],
+                    'label' => $locationName,
+                    'below_label' => $address !== '' ? $address : implode(', ', array_filter([$city, $country])),
+                    'location' => $locationName,
+                    'city' => $city,
+                    'state' => null,
+                    'country' => $country,
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'source' => 'favrica',
+                    'matched_field' => 'location',
+                    'provider_location_id' => (string) $location['location_id'],
+                    'location_type' => $this->resolveFavricaLocationType($location),
+                ];
+            }
+
+            $this->info('Processed ' . count($formattedLocations) . ' Favrica locations (from ' . count($locations) . ' total).');
+            return $formattedLocations;
+        } catch (\Exception $e) {
+            $this->error('Error fetching Favrica locations: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Favrica location fetch error: ' . $e->getMessage(), ['exception' => $e]);
+            return [];
+        }
+    }
+
+    private function parseFavricaMapsPoint(?string $mapsPoint): array
+    {
+        $mapsPoint = trim((string) $mapsPoint);
+        if ($mapsPoint === '') {
+            return [0.0, 0.0];
+        }
+
+        preg_match_all('/-?\d+(?:\.\d+)?/', $mapsPoint, $matches);
+        if (!empty($matches[0]) && count($matches[0]) >= 2) {
+            return [(float) $matches[0][0], (float) $matches[0][1]];
+        }
+
+        return [0.0, 0.0];
+    }
+
+    private function extractFavricaCity(string $address, string $fallback): ?string
+    {
+        $address = trim($address);
+        if ($address === '') {
+            return trim($fallback) ?: null;
+        }
+
+        $parts = explode(',', $address);
+        $city = trim($parts[0] ?? '');
+        return $city !== '' ? $city : (trim($fallback) ?: null);
+    }
+
+    private function resolveFavricaLocationType(array $location): string
+    {
+        $iata = trim((string) ($location['iata'] ?? ''));
+        $isAirport = strtolower((string) ($location['isairport'] ?? '')) === 'true';
+        if ($iata !== '' || $isAirport) {
+            return 'airport';
+        }
+
+        $name = strtolower((string) ($location['location_name'] ?? ''));
+        if (str_contains($name, 'airport')) {
+            return 'airport';
+        }
+
+        return 'unknown';
     }
 
     private function extractCityFromPath($path): ?string

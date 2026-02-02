@@ -17,6 +17,7 @@ use App\Services\AdobeCarService; // Import AdobeCarService
 use App\Services\WheelsysService; // Import WheelsysService
 use App\Services\LocautoRentService; // Import LocautoRentService
 use App\Services\RenteonService; // Import RenteonService
+use App\Services\FavricaService;
 use Illuminate\Support\Facades\Log; // Import Log facade
 
 class SearchController extends Controller
@@ -28,6 +29,7 @@ class SearchController extends Controller
     protected $wheelsysService;
     protected $locautoRentService;
     protected $renteonService;
+    protected $favricaService;
 
     public function __construct(
         GreenMotionService $greenMotionService,
@@ -36,7 +38,8 @@ class SearchController extends Controller
         AdobeCarService $adobeCarService,
         WheelsysService $wheelsysService,
         LocautoRentService $locautoRentService,
-        RenteonService $renteonService
+        RenteonService $renteonService,
+        FavricaService $favricaService
     ) {
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
@@ -45,6 +48,7 @@ class SearchController extends Controller
         $this->wheelsysService = $wheelsysService;
         $this->locautoRentService = $locautoRentService;
         $this->renteonService = $renteonService;
+        $this->favricaService = $favricaService;
     }
 
     public function search(Request $request)
@@ -94,7 +98,7 @@ class SearchController extends Controller
             $max = 20 * 60;
 
             // Providers known to be strict about office hours.
-            $strictProviders = ['okmobility', 'greenmotion', 'usave', 'locauto_rent', 'wheelsys', 'adobe'];
+            $strictProviders = ['okmobility', 'greenmotion', 'usave', 'locauto_rent', 'wheelsys', 'adobe', 'favrica'];
             if (!in_array($provider, $strictProviders, true)) {
                 return $time;
             }
@@ -1169,6 +1173,176 @@ class SearchController extends Controller
                             'trace' => $e->getTraceAsString()
                         ]);
                     }
+                } elseif ($providerToFetch === 'favrica') {
+                    try {
+                        Log::info('Attempting to fetch Favrica vehicles for location ID: ' . $currentProviderLocationId);
+                        $dropoffId = $validated['dropoff_location_id'] ?? $currentProviderLocationId;
+                        $requestCurrency = $this->toFavricaRequestCurrency($validated['currency'] ?? 'EUR');
+
+                        $favricaResponse = $this->favricaService->searchRez(
+                            (string) $currentProviderLocationId,
+                            (string) $dropoffId,
+                            (string) $validated['date_from'],
+                            $startTimeForProvider,
+                            (string) $validated['date_to'],
+                            $endTimeForProvider,
+                            $requestCurrency
+                        );
+
+                        if (!empty($favricaResponse)) {
+                            $startDate = \Carbon\Carbon::parse($validated['date_from']);
+                            $endDate = \Carbon\Carbon::parse($validated['date_to']);
+                            $rentalDays = max(1, $startDate->diffInDays($endDate));
+
+                            foreach ($favricaResponse as $vehicle) {
+                                if (!is_array($vehicle)) {
+                                    continue;
+                                }
+                                if (isset($vehicle['success']) && strtolower((string) $vehicle['success']) === 'false') {
+                                    continue;
+                                }
+
+                                $sippCode = (string) ($vehicle['sipp'] ?? '');
+                                $parsedSipp = $sippCode !== '' ? $this->parseSippCode($sippCode) : [];
+                                $categoryName = $parsedSipp['category'] ?? 'Unknown';
+                                if ($categoryName === 'Unknown' && !empty($vehicle['group_str'])) {
+                                    $categoryName = $vehicle['group_str'];
+                                }
+
+                                $totalRental = $this->parseFavricaNumber($vehicle['total_rental'] ?? null);
+                                $dailyRental = $this->parseFavricaNumber($vehicle['daily_rental'] ?? null);
+                                if (!$dailyRental && $totalRental) {
+                                    $dailyRental = $totalRental / $rentalDays;
+                                }
+                                $currency = $this->normalizeFavricaCurrency($vehicle['currency'] ?? $requestCurrency);
+                                $provision = $this->parseFavricaNumber($vehicle['provision'] ?? null);
+                                $dropFee = $this->parseFavricaNumber($vehicle['drop'] ?? null);
+
+                                $carName = trim((string) ($vehicle['car_name'] ?? ''));
+                                $brand = trim((string) ($vehicle['brand'] ?? ''));
+                                if ($brand === '' && $carName !== '') {
+                                    $brand = trim(strtok($carName, ' ')) ?: 'Favrica';
+                                }
+                                if ($brand === '') {
+                                    $brand = 'Favrica';
+                                }
+                                $model = $carName;
+                                if ($brand !== '' && $carName !== '') {
+                                    $model = trim(str_ireplace($brand, '', $carName));
+                                    $model = ltrim($model, '- ');
+                                }
+                                if ($model === '') {
+                                    $model = $vehicle['type'] ?? 'Vehicle';
+                                }
+
+                                $transmission = $this->normalizeFavricaTransmission($vehicle['transmission'] ?? null, $parsedSipp['transmission'] ?? null);
+                                $fuel = $this->normalizeFavricaFuel($vehicle['fuel'] ?? null, $parsedSipp['fuel'] ?? null);
+
+                                $chairs = $vehicle['chairs'] ?? null;
+                                $seatingCapacity = $chairs !== null ? (int) $chairs : (int) ($parsedSipp['seating_capacity'] ?? 5);
+                                $doors = (int) ($parsedSipp['doors'] ?? 4);
+
+                                $kmLimit = $this->parseFavricaNumber($vehicle['km_limit'] ?? null);
+                                $mileage = ($kmLimit !== null && $kmLimit > 0) ? (string) $kmLimit : 'Unlimited';
+
+                                $smallBags = (int) ($vehicle['small_bags'] ?? 0);
+                                $bigBags = (int) ($vehicle['big_bags'] ?? 0);
+
+                                $features = [];
+                                if (!empty($parsedSipp['air_conditioning'])) {
+                                    $features[] = 'Air Conditioning';
+                                }
+
+                                $extras = [];
+                                $services = $vehicle['Services'] ?? [];
+                                if (is_array($services)) {
+                                    foreach ($services as $service) {
+                                        if (!is_array($service)) {
+                                            continue;
+                                        }
+                                        $serviceCode = $service['service_name'] ?? null;
+                                        if (!$serviceCode) {
+                                            continue;
+                                        }
+                                        $servicePrice = $this->parseFavricaNumber($service['service_total_price'] ?? null) ?? 0.0;
+                                        $extras[] = [
+                                            'id' => 'favrica_extra_' . $serviceCode,
+                                            'code' => $serviceCode,
+                                            'name' => $service['service_title'] ?? $serviceCode,
+                                            'description' => $service['service_desc'] ?? ($service['service_title'] ?? ''),
+                                            'price' => $servicePrice,
+                                            'daily_rate' => $rentalDays > 0 ? $servicePrice / $rentalDays : $servicePrice,
+                                            'amount' => $servicePrice,
+                                            'total_for_booking' => $servicePrice,
+                                            'currency' => $currency,
+                                            'service_id' => $serviceCode,
+                                            'required' => false,
+                                            'numberAllowed' => 1,
+                                        ];
+                                    }
+                                }
+
+                                $products = [[
+                                    'type' => 'BAS',
+                                    'total' => $totalRental ?? 0,
+                                    'currency' => $currency,
+                                    'deposit' => $provision,
+                                    'mileage' => $mileage,
+                                ]];
+
+                                $idSuffix = $vehicle['rez_id'] ?? ($vehicle['group_id'] ?? md5($carName . '|' . $currentProviderLocationId));
+
+                                $providerVehicles->push([
+                                    'id' => 'favrica_' . $currentProviderLocationId . '_' . $idSuffix,
+                                    'location_id' => $currentProviderLocationId,
+                                    'source' => 'favrica',
+                                    'brand' => $brand,
+                                    'model' => $model,
+                                    'category' => $categoryName,
+                                    'image' => $this->resolveFavricaImageUrl($vehicle['image_path'] ?? null),
+                                    'total_price' => $totalRental ?? 0,
+                                    'price_per_day' => $dailyRental ?? 0,
+                                    'price_per_week' => null,
+                                    'price_per_month' => null,
+                                    'currency' => $currency,
+                                    'transmission' => $transmission,
+                                    'fuel' => $fuel,
+                                    'seating_capacity' => $seatingCapacity,
+                                    'mileage' => $mileage,
+                                    'latitude' => (float) $locationLat,
+                                    'longitude' => (float) $locationLng,
+                                    'full_vehicle_address' => $currentProviderLocationName,
+                                    'provider_pickup_id' => (string) $currentProviderLocationId,
+                                    'provider_return_id' => (string) $dropoffId,
+                                    'features' => $features,
+                                    'airConditioning' => !empty($parsedSipp['air_conditioning']),
+                                    'sipp_code' => $sippCode,
+                                    'bags' => $smallBags,
+                                    'suitcases' => $bigBags,
+                                    'doors' => $doors,
+                                    'products' => $products,
+                                    'extras' => $extras,
+                                    'favrica_rez_id' => $vehicle['rez_id'] ?? null,
+                                    'favrica_cars_park_id' => $vehicle['cars_park_id'] ?? null,
+                                    'favrica_group_id' => $vehicle['group_id'] ?? null,
+                                    'favrica_car_web_id' => $vehicle['car_web_id'] ?? null,
+                                    'favrica_reservation_source_id' => $vehicle['reservation_source_id'] ?? null,
+                                    'favrica_reservation_source' => $vehicle['reservation_source'] ?? null,
+                                    'favrica_drop_fee' => $dropFee,
+                                    'favrica_provision' => $provision,
+                                ]);
+                            }
+                        } else {
+                            Log::info('Favrica API returned empty vehicle list', [
+                                'location_id' => $currentProviderLocationId,
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Error fetching Favrica vehicles: ' . $e->getMessage(), [
+                            'provider_location_id' => $currentProviderLocationId,
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                    }
                 } elseif ($providerToFetch === 'wheelsys') {
                     Log::info('Attempting to fetch Wheelsys vehicles for location ID: ' . $currentProviderLocationId);
                         Log::info('Search params: ', [
@@ -1702,6 +1876,127 @@ class SearchController extends Controller
         }
 
         return $photo;
+    }
+
+    private function normalizeFavricaCurrency(?string $currency): string
+    {
+        $value = strtoupper(trim((string) $currency));
+        if ($value === '') {
+            return 'EUR';
+        }
+        if ($value === 'EURO') {
+            return 'EUR';
+        }
+        if ($value === 'TL') {
+            return 'TRY';
+        }
+        return $value;
+    }
+
+    private function toFavricaRequestCurrency(?string $currency): string
+    {
+        $value = strtoupper(trim((string) $currency));
+        if ($value === '') {
+            return 'EURO';
+        }
+        if ($value === 'EUR') {
+            return 'EURO';
+        }
+        if ($value === 'TRY') {
+            return 'TL';
+        }
+        return $value;
+    }
+
+    private function parseFavricaNumber($value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+
+        $hasComma = str_contains($raw, ',');
+        $hasDot = str_contains($raw, '.');
+
+        if ($hasComma && !$hasDot) {
+            $raw = str_replace('.', '', $raw);
+            $raw = str_replace(',', '.', $raw);
+        } elseif ($hasComma && $hasDot) {
+            $lastComma = strrpos($raw, ',');
+            $lastDot = strrpos($raw, '.');
+            if ($lastComma !== false && $lastDot !== false && $lastComma > $lastDot) {
+                $raw = str_replace('.', '', $raw);
+                $raw = str_replace(',', '.', $raw);
+            } else {
+                $raw = str_replace(',', '', $raw);
+            }
+        }
+
+        $raw = preg_replace('/[^0-9.\-]/', '', $raw);
+        if ($raw === '' || $raw === '-' || $raw === '.') {
+            return null;
+        }
+
+        return is_numeric($raw) ? (float) $raw : null;
+    }
+
+    private function resolveFavricaImageUrl(?string $path): ?string
+    {
+        $path = trim((string) $path);
+        if ($path === '') {
+            return null;
+        }
+
+        if (preg_match('#^https?://#i', $path)) {
+            return $path;
+        }
+
+        $base = trim((string) config('services.favrica.image_base_url', ''));
+        if ($base === '') {
+            return null;
+        }
+
+        return rtrim($base, '/') . '/' . ltrim($path, '/');
+    }
+
+    private function normalizeFavricaTransmission(?string $value, ?string $fallback): string
+    {
+        $val = strtolower(trim((string) $value));
+        if ($val === '') {
+            return $fallback ?: 'manual';
+        }
+        if (str_contains($val, 'auto') || str_contains($val, 'otomat')) {
+            return 'automatic';
+        }
+        if (str_contains($val, 'man')) {
+            return 'manual';
+        }
+        return $fallback ?: $val;
+    }
+
+    private function normalizeFavricaFuel(?string $value, ?string $fallback): string
+    {
+        $val = strtolower(trim((string) $value));
+        if ($val === '') {
+            return $fallback ?: 'petrol';
+        }
+        if (str_contains($val, 'diesel') || str_contains($val, 'dizel')) {
+            return 'diesel';
+        }
+        if (str_contains($val, 'hybrid')) {
+            return 'hybrid';
+        }
+        if (str_contains($val, 'electric') || str_contains($val, 'elektrik')) {
+            return 'electric';
+        }
+        if (str_contains($val, 'petrol') || str_contains($val, 'benzin') || str_contains($val, 'gasoline')) {
+            return 'petrol';
+        }
+        return $fallback ?: $val;
     }
 
     /**

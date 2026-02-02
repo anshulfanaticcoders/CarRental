@@ -71,6 +71,18 @@ return [
         'provider_code' => env('RENTEON_PROVIDER_CODE', 'demo'),
     ],
 
+    'favrica' => [
+        'base_url' => env('FAVRICA_BASE_URL', 'http://favricarjson.turevrent.com'),
+        'key_hack' => env('FAVRICA_KEY_HACK'),
+        'username' => env('FAVRICA_USERNAME'),
+        'password' => env('FAVRICA_PASSWORD'),
+        'image_base_url' => env('FAVRICA_IMAGE_BASE_URL'),
+        'user_agent' => env('FAVRICA_USER_AGENT', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
+        'verify_ssl' => env('FAVRICA_VERIFY_SSL', false),
+        'timeout' => env('FAVRICA_TIMEOUT', 30),
+        'connect_timeout' => env('FAVRICA_CONNECT_TIMEOUT', 10),
+    ],
+
     'esim_access' => [
         'api_key' => env('ESIM_ACCESS_API_KEY'),
         'base_url' => env('ESIM_ACCESS_API_URL'),

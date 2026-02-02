@@ -746,6 +746,10 @@ const getVehiclePriceConverted = (vehicle) => {
         // For Renteon, use price_per_day or calculate from products
         originalPrice = vehicle.price_per_day || parseFloat(vehicle.products?.[0]?.total || 0);
         originalCurrency = vehicle.currency || vehicle.products?.[0]?.currency || 'EUR';
+    } else if (vehicle.source === 'favrica') {
+        const days = numberOfRentalDays.value || 1;
+        originalPrice = vehicle.price_per_day || (parseFloat(vehicle.products?.[0]?.total || 0) / days);
+        originalCurrency = vehicle.currency || vehicle.products?.[0]?.currency || 'EUR';
     } else {
         // Internal vehicles
         originalPrice = vehicle.price_per_day;
@@ -1201,7 +1205,7 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
         if (vehicle.source === 'adobe') {
             const total = parseFloat(vehicle.tdr || 0);
             priceValue = convertCurrency(total, 'USD');
-        } else if ((vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent' || vehicle.source === 'renteon') && vehicle.price_per_day) {
+        } else if ((vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent' || vehicle.source === 'renteon' || vehicle.source === 'favrica') && vehicle.price_per_day) {
             priceValue = convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD');
         } else {
             // For GreenMotion/USave, show total rental price

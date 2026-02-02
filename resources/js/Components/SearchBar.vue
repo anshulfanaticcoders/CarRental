@@ -683,7 +683,7 @@ const selectLocation = (result) => {
   }
 };
 
-const providersWithDropoffList = new Set(['greenmotion', 'usave', 'adobe', 'locauto_rent', 'renteon']);
+const providersWithDropoffList = new Set(['greenmotion', 'usave', 'adobe', 'locauto_rent', 'renteon', 'favrica']);
 const providerSupportsDropoffList = (provider) => providersWithDropoffList.has(provider);
 
 const selectProvider = async (provider) => {

@@ -213,6 +213,11 @@ class StripeCheckoutController extends Controller
                 'ok_mobility_token' => $validated['vehicle']['ok_mobility_token'] ?? null,
                 'ok_mobility_group_id' => $validated['vehicle']['ok_mobility_group_id'] ?? null,
                 'ok_mobility_rate_code' => $validated['vehicle']['ok_mobility_rate_code'] ?? null,
+                'favrica_rez_id' => $validated['vehicle']['favrica_rez_id'] ?? null,
+                'favrica_cars_park_id' => $validated['vehicle']['favrica_cars_park_id'] ?? null,
+                'favrica_group_id' => $validated['vehicle']['favrica_group_id'] ?? null,
+                'favrica_car_web_id' => $validated['vehicle']['favrica_car_web_id'] ?? null,
+                'favrica_reservation_source_id' => $validated['vehicle']['favrica_reservation_source_id'] ?? null,
                 'driver_license_number' => $validated['customer']['driver_license_number'] ?? null,
                 'notes' => $validated['customer']['notes'] ?? null,
             ];

@@ -59,6 +59,10 @@ const isOkMobility = computed(() => {
     return props.vehicle?.source === 'okmobility';
 });
 
+const isFavrica = computed(() => {
+    return props.vehicle?.source === 'favrica';
+});
+
 const isGreenMotion = computed(() => {
     const source = props.vehicle?.source;
     return source === 'greenmotion' || source === 'usave';
@@ -678,6 +682,29 @@ const okMobilityOptionalExtras = computed(() => {
     }).filter(extra => extra.price > 0 || extra.required || extra.included);
 });
 
+const favricaOptionalExtras = computed(() => {
+    if (!isFavrica.value) return [];
+    const extras = props.vehicle?.extras || [];
+    return extras.map((extra) => {
+        const price = parseFloat(extra.total_for_booking ?? extra.price ?? extra.amount ?? 0);
+        const dailyRate = parseFloat(extra.daily_rate ?? 0);
+        const id = extra.id || `favrica_extra_${extra.code || extra.service_id || ''}`;
+        return {
+            id,
+            code: extra.code || extra.service_id,
+            name: extra.name || extra.description || 'Extra',
+            description: extra.description || extra.name || 'Optional Extra',
+            price,
+            daily_rate: dailyRate,
+            amount: extra.amount ?? price,
+            total_for_booking: extra.total_for_booking ?? price,
+            currency: extra.currency,
+            maxQuantity: extra.numberAllowed || extra.maxQuantity || 1,
+            service_id: extra.service_id || extra.code
+        };
+    }).filter(extra => extra.price > 0);
+});
+
 const greenMotionExtras = computed(() => {
     if (!isGreenMotion.value) return [];
     const options = [];
@@ -816,7 +843,9 @@ const normalizeCurrencyCode = (currency) => {
         'A$': 'AUD',
         'C$': 'CAD',
         'د.إ': 'AED',
-        '¥': 'JPY'
+        '¥': 'JPY',
+        'EURO': 'EUR',
+        'TL': 'TRY'
     };
     const trimmed = `${currency}`.trim();
     return (currencyMap[trimmed] || trimmed).toUpperCase();
@@ -934,6 +963,8 @@ const extrasTotal = computed(() => {
             extra = renteonOptionalExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
             extra = okMobilityOptionalExtras.value.find(e => e.id === id);
+        } else if (isFavrica.value) {
+            extra = favricaOptionalExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
             extra = greenMotionExtras.value.find(e => e.id === id);
         } else {
@@ -1031,6 +1062,8 @@ const getSelectedExtrasDetails = computed(() => {
             extra = renteonOptionalExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
             extra = okMobilityOptionalExtras.value.find(e => e.id === id);
+        } else if (isFavrica.value) {
+            extra = favricaOptionalExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
             extra = greenMotionExtras.value.find(e => e.id === id);
         } else {
@@ -1049,6 +1082,10 @@ const getSelectedExtrasDetails = computed(() => {
                 name: extra.name,
                 qty,
                 total,
+                total_for_booking: extra.total_for_booking ?? null,
+                daily_rate: extra.daily_rate ?? null,
+                price: extra.price ?? null,
+                currency: extra.currency ?? null,
                 required: extra.required || false,
                 numberAllowed: extra.numberAllowed ?? null,
                 prepay_available: extra.prepay_available ?? null,
@@ -1726,7 +1763,7 @@ const formatPaymentMethod = (method) => {
 
             <!-- 2. Extras Section -->
             <section
-                v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0)">
+                v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || (isFavrica && favricaOptionalExtras.length > 0)">
                 <div class="mb-6">
                     <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Optional Extras</h2>
                     <p class="text-gray-600">Enhance your journey with these add-ons</p>
@@ -1734,7 +1771,7 @@ const formatPaymentMethod = (method) => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template
-                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras))))))"
+                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : (isFavrica ? favricaOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras)))))))"
                         :key="extra.id">
                         <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
                             class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
