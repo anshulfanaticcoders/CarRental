@@ -1254,6 +1254,7 @@ class SearchController extends Controller
                                 }
 
                                 $extras = [];
+                                $insuranceOptions = [];
                                 $services = $vehicle['Services'] ?? [];
                                 if (is_array($services)) {
                                     foreach ($services as $service) {
@@ -1265,11 +1266,17 @@ class SearchController extends Controller
                                             continue;
                                         }
                                         $servicePrice = $this->parseFavricaNumber($service['service_total_price'] ?? null) ?? 0.0;
-                                        $extras[] = [
+                                        if ($servicePrice < 0) {
+                                            continue;
+                                        }
+                                        $serviceTitle = $service['service_title'] ?? $serviceCode;
+                                        $serviceDesc = $service['service_desc'] ?? $serviceTitle;
+                                        $isInsurance = $this->isFavricaInsuranceService($serviceCode, $serviceTitle, $serviceDesc);
+                                        $payload = [
                                             'id' => 'favrica_extra_' . $serviceCode,
                                             'code' => $serviceCode,
-                                            'name' => $service['service_title'] ?? $serviceCode,
-                                            'description' => $service['service_desc'] ?? ($service['service_title'] ?? ''),
+                                            'name' => $serviceTitle,
+                                            'description' => $serviceDesc,
                                             'price' => $servicePrice,
                                             'daily_rate' => $rentalDays > 0 ? $servicePrice / $rentalDays : $servicePrice,
                                             'amount' => $servicePrice,
@@ -1278,7 +1285,14 @@ class SearchController extends Controller
                                             'service_id' => $serviceCode,
                                             'required' => false,
                                             'numberAllowed' => 1,
+                                            'type' => $isInsurance ? 'insurance' : 'extra',
                                         ];
+
+                                        if ($isInsurance) {
+                                            $insuranceOptions[] = $payload;
+                                        } else {
+                                            $extras[] = $payload;
+                                        }
                                     }
                                 }
 
@@ -1321,6 +1335,7 @@ class SearchController extends Controller
                                     'suitcases' => $bigBags,
                                     'doors' => $doors,
                                     'products' => $products,
+                                    'insurance_options' => $insuranceOptions,
                                     'extras' => $extras,
                                     'favrica_rez_id' => $vehicle['rez_id'] ?? null,
                                     'favrica_cars_park_id' => $vehicle['cars_park_id'] ?? null,
@@ -1997,6 +2012,28 @@ class SearchController extends Controller
             return 'petrol';
         }
         return $fallback ?: $val;
+    }
+
+    private function isFavricaInsuranceService(?string $code, ?string $title, ?string $description): bool
+    {
+        $codeValue = strtoupper(trim((string) $code));
+        if (in_array($codeValue, ['CDW', 'SCDW', 'LCF', 'PAI'], true)) {
+            return true;
+        }
+
+        $text = strtolower(trim((string) ($title . ' ' . $description)));
+        if ($text === '') {
+            return false;
+        }
+
+        $keywords = ['insurance', 'damage', 'waiver', 'glass', 'tire', 'tyre', 'headlight', 'fuse'];
+        foreach ($keywords as $keyword) {
+            if (str_contains($text, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

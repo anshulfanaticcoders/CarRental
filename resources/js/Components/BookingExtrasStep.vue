@@ -682,27 +682,72 @@ const okMobilityOptionalExtras = computed(() => {
     }).filter(extra => extra.price > 0 || extra.required || extra.included);
 });
 
+const normalizeFavricaExtra = (extra) => {
+    const price = parseFloat(extra.total_for_booking ?? extra.price ?? extra.amount ?? 0);
+    const dailyRate = parseFloat(extra.daily_rate ?? 0);
+    const id = extra.id || `favrica_extra_${extra.code || extra.service_id || ''}`;
+    return {
+        id,
+        code: extra.code || extra.service_id,
+        name: extra.name || extra.description || 'Extra',
+        description: extra.description || extra.name || 'Optional Extra',
+        price,
+        daily_rate: dailyRate,
+        amount: extra.amount ?? price,
+        total_for_booking: extra.total_for_booking ?? price,
+        currency: extra.currency,
+        numberAllowed: extra.numberAllowed || extra.maxQuantity || 1,
+        maxQuantity: extra.numberAllowed || extra.maxQuantity || 1,
+        service_id: extra.service_id || extra.code,
+        type: extra.type || null
+    };
+};
+
+const favricaServicePool = computed(() => {
+    if (!isFavrica.value) return [];
+    const raw = [
+        ...(props.vehicle?.insurance_options || []),
+        ...(props.vehicle?.extras || [])
+    ];
+    const byId = new Map();
+    raw.forEach((extra) => {
+        if (!extra) return;
+        const key = extra.id || extra.service_id || extra.code || extra.service_name;
+        if (key && !byId.has(key)) {
+            byId.set(key, extra);
+        }
+    });
+    return Array.from(byId.values());
+});
+
+const isFavricaInsuranceService = (extra) => {
+    if (!extra) return false;
+    if (extra.type === 'insurance') return true;
+    const code = `${extra.code || extra.service_id || extra.service_name || ''}`.trim().toUpperCase();
+    if (['CDW', 'SCDW', 'LCF', 'PAI'].includes(code)) return true;
+    const text = `${extra.name || ''} ${extra.description || ''}`.toLowerCase();
+    return ['insurance', 'damage', 'waiver', 'glass', 'tire', 'tyre', 'headlight', 'fuse'].some(keyword => text.includes(keyword));
+};
+
+const favricaInsuranceOptions = computed(() => {
+    if (!isFavrica.value) return [];
+    return favricaServicePool.value
+        .filter(isFavricaInsuranceService)
+        .map(normalizeFavricaExtra)
+        .filter(extra => extra.price > 0);
+});
+
 const favricaOptionalExtras = computed(() => {
     if (!isFavrica.value) return [];
-    const extras = props.vehicle?.extras || [];
-    return extras.map((extra) => {
-        const price = parseFloat(extra.total_for_booking ?? extra.price ?? extra.amount ?? 0);
-        const dailyRate = parseFloat(extra.daily_rate ?? 0);
-        const id = extra.id || `favrica_extra_${extra.code || extra.service_id || ''}`;
-        return {
-            id,
-            code: extra.code || extra.service_id,
-            name: extra.name || extra.description || 'Extra',
-            description: extra.description || extra.name || 'Optional Extra',
-            price,
-            daily_rate: dailyRate,
-            amount: extra.amount ?? price,
-            total_for_booking: extra.total_for_booking ?? price,
-            currency: extra.currency,
-            maxQuantity: extra.numberAllowed || extra.maxQuantity || 1,
-            service_id: extra.service_id || extra.code
-        };
-    }).filter(extra => extra.price > 0);
+    return favricaServicePool.value
+        .filter(extra => !isFavricaInsuranceService(extra))
+        .map(normalizeFavricaExtra)
+        .filter(extra => extra.price > 0);
+});
+
+const favricaAllExtras = computed(() => {
+    if (!isFavrica.value) return [];
+    return [...favricaInsuranceOptions.value, ...favricaOptionalExtras.value];
 });
 
 const greenMotionExtras = computed(() => {
@@ -964,7 +1009,7 @@ const extrasTotal = computed(() => {
         } else if (isOkMobility.value) {
             extra = okMobilityOptionalExtras.value.find(e => e.id === id);
         } else if (isFavrica.value) {
-            extra = favricaOptionalExtras.value.find(e => e.id === id);
+            extra = favricaAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
             extra = greenMotionExtras.value.find(e => e.id === id);
         } else {
@@ -1063,7 +1108,7 @@ const getSelectedExtrasDetails = computed(() => {
         } else if (isOkMobility.value) {
             extra = okMobilityOptionalExtras.value.find(e => e.id === id);
         } else if (isFavrica.value) {
-            extra = favricaOptionalExtras.value.find(e => e.id === id);
+            extra = favricaAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
             extra = greenMotionExtras.value.find(e => e.id === id);
         } else {
@@ -1761,12 +1806,71 @@ const formatPaymentMethod = (method) => {
                 </div>
             </section>
 
+            <section v-if="isFavrica && favricaInsuranceOptions.length > 0" id="extras-insurance-section">
+                <div class="mb-6">
+                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Insurance Packages</h2>
+                    <p class="text-gray-600">Select the coverage that suits your needs</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <template v-for="extra in favricaInsuranceOptions" :key="extra.id">
+                        <div @click="toggleExtra(extra)"
+                            class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
+                            :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id], 'opacity-80 cursor-not-allowed': extra.required }">
+                            <div class="flex flex-col gap-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="checkbox-custom flex-shrink-0"
+                                        :class="{ selected: !!selectedExtras[extra.id] }"></div>
+                                    <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                                        :class="getIconBackgroundClass(extra.name)">
+                                        <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
+                                            :class="getIconColorClass(extra.name)" />
+                                    </div>
+                                    <div class="flex items-center justify-between w-full">
+                                        <h4 class="font-bold text-gray-900 text-[1rem]">{{ extra.name }}</h4>
+                                        <span v-if="extra.required"
+                                            class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-between pl-8 mt-auto">
+                                    <div v-if="extra.numberAllowed && extra.numberAllowed > 1" class="flex items-center gap-2">
+                                        <button type="button"
+                                            class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                            @click.stop="updateExtraQuantity(extra, -1)"
+                                            :disabled="selectedExtras[extra.id] <= (extra.required ? 1 : 0)">
+                                            -
+                                        </button>
+                                        <span class="text-sm font-semibold text-gray-700">{{ selectedExtras[extra.id] || (extra.required ? 1 : 0) }}</span>
+                                        <button type="button"
+                                            class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                            @click.stop="updateExtraQuantity(extra, 1)"
+                                            :disabled="selectedExtras[extra.id] >= extra.numberAllowed">
+                                            +
+                                        </button>
+                                    </div>
+                                    <div class="text-right ml-auto">
+                                        <span class="text-base font-bold text-gray-900">
+                                            {{ formatPrice(extra.total_for_booking !== undefined && extra.total_for_booking !== null
+                                                ? extra.total_for_booking
+                                                : (extra.daily_rate !== undefined ? extra.daily_rate :
+                                                    (extra.price / numberOfDays))) }}
+                                        </span>
+                                        <p class="text-xs text-gray-400">{{ extra.total_for_booking !== undefined && extra.total_for_booking !== null ? 'Total' : 'Per Day' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+
             <!-- 2. Extras Section -->
             <section
                 v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || (isFavrica && favricaOptionalExtras.length > 0)">
                 <div class="mb-6">
-                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Optional Extras</h2>
-                    <p class="text-gray-600">Enhance your journey with these add-ons</p>
+                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">{{ isFavrica ? 'Additional Services' : 'Optional Extras' }}</h2>
+                    <p class="text-gray-600">{{ isFavrica ? 'Add helpful services to your booking' : 'Enhance your journey with these add-ons' }}</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

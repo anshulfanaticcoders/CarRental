@@ -112,6 +112,37 @@ class FavricaService
         return $response;
     }
 
+    public function createReservation(array $payload): ?array
+    {
+        if ($this->username === '' || $this->password === '') {
+            Log::warning('Favrica reservation attempted without username/password.');
+            return null;
+        }
+
+        $params = array_merge([
+            'Key_Hack' => $this->keyHack,
+            'User_Name' => $this->username,
+            'User_Pass' => $this->password,
+        ], $payload);
+
+        return $this->get('JsonRez_Save.aspx', $params);
+    }
+
+    public function cancelReservation(string $rezId): ?array
+    {
+        if ($this->username === '' || $this->password === '') {
+            Log::warning('Favrica cancel attempted without username/password.');
+            return null;
+        }
+
+        return $this->get('JsonCancel.aspx', [
+            'Key_Hack' => $this->keyHack,
+            'User_Name' => $this->username,
+            'User_Pass' => $this->password,
+            'Rez_ID' => $rezId,
+        ]);
+    }
+
     private function get(string $endpoint, array $params): ?array
     {
         if ($this->isCircuitOpen()) {

@@ -274,6 +274,8 @@ class StripeBookingService
                 $this->triggerRenteonReservation($booking, $metadata);
             } elseif ($booking->provider_source === 'okmobility' && $shouldTriggerProvider) {
                 $this->triggerOkMobilityReservation($booking, $metadata);
+            } elseif ($booking->provider_source === 'favrica' && $shouldTriggerProvider) {
+                $this->triggerFavricaReservation($booking, $metadata);
             }
 
             return $booking;
@@ -1494,5 +1496,244 @@ class StripeBookingService
                 'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "OK Mobility Reservation Error: " . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Trigger reservation on Favrica API
+     */
+    protected function triggerFavricaReservation($booking, $metadata)
+    {
+        Log::info('Favrica: Triggering reservation for booking', ['booking_id' => $booking->id]);
+
+        try {
+            $rezId = $metadata->favrica_rez_id ?? null;
+            $carsParkId = $metadata->favrica_cars_park_id ?? null;
+            $groupId = $metadata->favrica_group_id ?? null;
+            $pickupId = $metadata->pickup_location_code ?? null;
+            $dropoffId = $metadata->return_location_code ?? $pickupId;
+
+            if (!$rezId || !$carsParkId || !$groupId || !$pickupId) {
+                Log::error('Favrica: Missing identifiers in metadata', [
+                    'booking_id' => $booking->id,
+                    'rez_id_present' => (bool) $rezId,
+                    'cars_park_id_present' => (bool) $carsParkId,
+                    'group_id_present' => (bool) $groupId,
+                    'pickup_id_present' => (bool) $pickupId,
+                ]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Favrica Reservation failed: Missing identifiers."
+                ]);
+                return;
+            }
+
+            $pickupParts = $this->splitDateTimeForFavrica($metadata->pickup_date ?? null, $metadata->pickup_time ?? null);
+            $dropoffParts = $this->splitDateTimeForFavrica($metadata->dropoff_date ?? null, $metadata->dropoff_time ?? null);
+
+            $customerName = trim((string) ($metadata->customer_name ?? 'Guest User'));
+            $nameParts = preg_split('/\s+/', $customerName, 2);
+            $firstName = $nameParts[0] ?? 'Guest';
+            $lastName = $nameParts[1] ?? 'Guest';
+
+            $currency = $this->normalizeFavricaRequestCurrency(
+                $metadata->provider_currency ?? $metadata->currency ?? null
+            );
+
+            $rentPrice = $this->formatFavricaAmount(
+                $metadata->provider_vehicle_total ?? $metadata->vehicle_total ?? $booking->total_amount ?? 0
+            );
+            $extraPrice = $this->formatFavricaAmount(
+                $metadata->provider_extras_total ?? $metadata->extras_total ?? 0
+            );
+            $dropPrice = $this->formatFavricaAmount($metadata->favrica_drop_fee ?? 0);
+
+            $flags = $this->resolveFavricaServiceFlags($metadata->extras_data ?? null);
+
+            $payload = [
+                'Pickup_ID' => $pickupId,
+                'Drop_Off_ID' => $dropoffId,
+                'Pickup_Day' => $pickupParts['day'],
+                'Pickup_Month' => $pickupParts['month'],
+                'Pickup_Year' => $pickupParts['year'],
+                'Pickup_Hour' => $pickupParts['hour'],
+                'Pickup_Min' => $pickupParts['minute'],
+                'Drop_Off_Day' => $dropoffParts['day'],
+                'Drop_Off_Month' => $dropoffParts['month'],
+                'Drop_Off_Year' => $dropoffParts['year'],
+                'Drop_Off_Hour' => $dropoffParts['hour'],
+                'Drop_Off_Min' => $dropoffParts['minute'],
+                'Currency' => $currency,
+                'Rez_ID' => $rezId,
+                'Cars_Park_ID' => $carsParkId,
+                'Group_ID' => $groupId,
+                'Name' => $firstName,
+                'SurName' => $lastName,
+                'MobilePhone' => $metadata->customer_phone ?? '',
+                'Mail_Adress' => $metadata->customer_email ?? '',
+                'Rental_ID' => $metadata->driver_license_number ?? $booking->booking_number,
+                'Adress' => $metadata->customer_address ?? '',
+                'District' => $metadata->customer_city ?? '',
+                'City' => $metadata->customer_city ?? '',
+                'Country' => $metadata->customer_country ?? '',
+                'Flight_Number' => $metadata->flight_number ?? '',
+                'Baby_Seat' => $flags['Baby_Seat'] ? 'ON' : 'OFF',
+                'Navigation' => $flags['Navigation'] ? 'ON' : 'OFF',
+                'Additional_Driver' => $flags['Additional_Driver'] ? 'ON' : 'OFF',
+                'CDW' => $flags['CDW'] ? 'ON' : 'OFF',
+                'SCDW' => $flags['SCDW'] ? 'ON' : 'OFF',
+                'LCF' => $flags['LCF'] ? 'ON' : 'OFF',
+                'PAI' => $flags['PAI'] ? 'ON' : 'OFF',
+                'Your_Rez_ID' => $booking->booking_number,
+                'Your_Rent_Price' => $rentPrice,
+                'Your_Extra_Price' => $extraPrice,
+                'Your_Drop_Price' => $dropPrice,
+                'Payment_Type' => 1,
+            ];
+
+            $favricaService = app(\App\Services\FavricaService::class);
+            $response = $favricaService->createReservation($payload);
+
+            if (empty($response) || !is_array($response)) {
+                Log::error('Favrica: Empty reservation response', ['booking_id' => $booking->id]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Favrica Reservation failed: No response from API."
+                ]);
+                return;
+            }
+
+            $payloadResponse = $response[0] ?? null;
+            if (!is_array($payloadResponse)) {
+                Log::error('Favrica: Reservation response malformed', ['booking_id' => $booking->id, 'response' => $response]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Favrica Reservation failed: Invalid response format."
+                ]);
+                return;
+            }
+
+            $status = strtolower(trim((string) ($payloadResponse['success'] ?? $payloadResponse['Status'] ?? '')));
+            $providerRef = $payloadResponse['rez_id'] ?? $payloadResponse['Rez_ID'] ?? null;
+            $providerId = $payloadResponse['id'] ?? $payloadResponse['ID'] ?? null;
+
+            if ($status === 'true' && $providerRef) {
+                Log::info('Favrica: Reservation successful', ['conf' => $providerRef]);
+                $note = "Favrica Conf: {$providerRef}";
+                if ($providerId) {
+                    $note .= " (ID: {$providerId})";
+                }
+                $booking->update([
+                    'provider_booking_ref' => $providerRef,
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . $note,
+                ]);
+                return;
+            }
+
+            $errorMessage = $payloadResponse['error'] ?? 'Reservation failed';
+            Log::error('Favrica: Reservation failed', ['error' => $errorMessage, 'response' => $payloadResponse]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Favrica Reservation failed: {$errorMessage}"
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Favrica: Exception during reservation trigger', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Favrica Reservation Error: " . $e->getMessage()
+            ]);
+        }
+    }
+
+    private function splitDateTimeForFavrica(?string $date, ?string $time): array
+    {
+        $stamp = trim((string) $date . ' ' . (string) $time);
+        try {
+            $dt = \Carbon\Carbon::parse($stamp);
+        } catch (\Exception $e) {
+            $dt = \Carbon\Carbon::now();
+        }
+
+        return [
+            'day' => $dt->format('d'),
+            'month' => $dt->format('m'),
+            'year' => $dt->format('Y'),
+            'hour' => $dt->format('H'),
+            'minute' => $dt->format('i'),
+        ];
+    }
+
+    private function normalizeFavricaRequestCurrency(?string $currency): string
+    {
+        $value = strtoupper(trim((string) $currency));
+        if ($value === '' || $value === 'EUR') {
+            return 'EURO';
+        }
+        if ($value === 'TRY') {
+            return 'TL';
+        }
+        return $value;
+    }
+
+    private function formatFavricaAmount($value): string
+    {
+        $numeric = (float) ($value ?? 0);
+        return number_format($numeric, 2, '.', '');
+    }
+
+    private function resolveFavricaServiceFlags(?string $extrasData): array
+    {
+        $flags = [
+            'Baby_Seat' => false,
+            'Navigation' => false,
+            'Additional_Driver' => false,
+            'CDW' => false,
+            'SCDW' => false,
+            'LCF' => false,
+            'PAI' => false,
+        ];
+
+        if (!$extrasData) {
+            return $flags;
+        }
+
+        $extras = json_decode($extrasData, true);
+        if (!is_array($extras)) {
+            return $flags;
+        }
+
+        foreach ($extras as $extra) {
+            if (!is_array($extra)) {
+                continue;
+            }
+            $qty = (int) ($extra['qty'] ?? $extra['quantity'] ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $code = strtoupper(trim((string) ($extra['code'] ?? $extra['service_id'] ?? $extra['id'] ?? '')));
+            $name = strtolower(trim((string) ($extra['name'] ?? $extra['description'] ?? '')));
+
+            if ($code === 'BABY_SEAT' || str_contains($name, 'baby')) {
+                $flags['Baby_Seat'] = true;
+            }
+            if ($code === 'NAVIGATION' || str_contains($name, 'nav')) {
+                $flags['Navigation'] = true;
+            }
+            if (in_array($code, ['ADDITION_DRIVE', 'ADDITIONAL_DRIVER'], true) || str_contains($name, 'driver')) {
+                $flags['Additional_Driver'] = true;
+            }
+            if ($code === 'CDW') {
+                $flags['CDW'] = true;
+            }
+            if ($code === 'SCDW') {
+                $flags['SCDW'] = true;
+            }
+            if ($code === 'LCF') {
+                $flags['LCF'] = true;
+            }
+            if ($code === 'PAI') {
+                $flags['PAI'] = true;
+            }
+        }
+
+        return $flags;
     }
 }
