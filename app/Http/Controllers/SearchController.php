@@ -1179,6 +1179,35 @@ class SearchController extends Controller
                         $dropoffId = $validated['dropoff_location_id'] ?? $currentProviderLocationId;
                         $requestCurrency = $this->toFavricaRequestCurrency($validated['currency'] ?? 'EUR');
 
+                        $favricaLocationMap = [];
+                        try {
+                            $favricaLocations = $this->favricaService->getLocations();
+                            $favricaLocationMap = $this->buildFavricaLocationMap($favricaLocations);
+                        } catch (\Exception $e) {
+                            Log::warning('Favrica location lookup failed', [
+                                'location_id' => $currentProviderLocationId,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+
+                        $pickupLocationDetails = $favricaLocationMap[(string) $currentProviderLocationId] ?? null;
+                        if ($pickupLocationDetails) {
+                            if (empty($pickupLocationDetails['latitude']) && $locationLat !== null) {
+                                $pickupLocationDetails['latitude'] = (string) $locationLat;
+                            }
+                            if (empty($pickupLocationDetails['longitude']) && $locationLng !== null) {
+                                $pickupLocationDetails['longitude'] = (string) $locationLng;
+                            }
+                            if (empty($pickupLocationDetails['name']) && $currentProviderLocationName) {
+                                $pickupLocationDetails['name'] = $currentProviderLocationName;
+                            }
+                        }
+
+                        $dropoffLocationDetails = null;
+                        if ($dropoffId) {
+                            $dropoffLocationDetails = $favricaLocationMap[(string) $dropoffId] ?? null;
+                        }
+
                         $favricaResponse = $this->favricaService->searchRez(
                             (string) $currentProviderLocationId,
                             (string) $dropoffId,
@@ -1306,10 +1335,10 @@ class SearchController extends Controller
 
                                 $idSuffix = $vehicle['rez_id'] ?? ($vehicle['group_id'] ?? md5($carName . '|' . $currentProviderLocationId));
 
-                                $providerVehicles->push([
-                                    'id' => 'favrica_' . $currentProviderLocationId . '_' . $idSuffix,
-                                    'location_id' => $currentProviderLocationId,
-                                    'source' => 'favrica',
+                                    $providerVehicles->push([
+                                        'id' => 'favrica_' . $currentProviderLocationId . '_' . $idSuffix,
+                                        'location_id' => $currentProviderLocationId,
+                                        'source' => 'favrica',
                                     'brand' => $brand,
                                     'model' => $model,
                                     'category' => $categoryName,
@@ -1323,11 +1352,14 @@ class SearchController extends Controller
                                     'fuel' => $fuel,
                                     'seating_capacity' => $seatingCapacity,
                                     'mileage' => $mileage,
-                                    'latitude' => (float) $locationLat,
-                                    'longitude' => (float) $locationLng,
-                                    'full_vehicle_address' => $currentProviderLocationName,
-                                    'provider_pickup_id' => (string) $currentProviderLocationId,
-                                    'provider_return_id' => (string) $dropoffId,
+                                        'latitude' => (float) $locationLat,
+                                        'longitude' => (float) $locationLng,
+                                        'full_vehicle_address' => $currentProviderLocationName,
+                                        'location_details' => $pickupLocationDetails,
+                                        'dropoff_location_details' => $dropoffLocationDetails,
+                                        'location_instructions' => $pickupLocationDetails['collection_details'] ?? null,
+                                        'provider_pickup_id' => (string) $currentProviderLocationId,
+                                        'provider_return_id' => (string) $dropoffId,
                                     'features' => $features,
                                     'airConditioning' => !empty($parsedSipp['air_conditioning']),
                                     'sipp_code' => $sippCode,
@@ -1957,6 +1989,111 @@ class SearchController extends Controller
         }
 
         return is_numeric($raw) ? (float) $raw : null;
+    }
+
+    private function buildFavricaLocationMap($locations): array
+    {
+        if (!is_array($locations)) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($locations as $location) {
+            if (!is_array($location)) {
+                continue;
+            }
+
+            $locationId = (string) ($location['location_id'] ?? $location['locationID'] ?? $location['id'] ?? '');
+            if ($locationId === '') {
+                continue;
+            }
+
+            $map[$locationId] = $this->formatFavricaLocationDetails($location);
+        }
+
+        return $map;
+    }
+
+    private function formatFavricaLocationDetails(array $location): array
+    {
+        $locationId = (string) ($location['location_id'] ?? $location['locationID'] ?? $location['id'] ?? '');
+        $name = $this->pickFavricaValue($location, ['location_name', 'name', 'location', 'title']);
+        $addressRaw = $this->pickFavricaValue($location, ['address', 'address_1', 'address1', 'addressline']);
+        $addressLines = $this->splitFavricaAddress($addressRaw);
+
+        $lat = $this->parseFavricaNumber($this->pickFavricaValue($location, ['latitude', 'lat']));
+        $lng = $this->parseFavricaNumber($this->pickFavricaValue($location, ['longitude', 'lng', 'lon']));
+        if ($lat === null || $lng === null) {
+            [$parsedLat, $parsedLng] = $this->parseFavricaMapsPoint($this->pickFavricaValue($location, ['maps_point', 'map_point']));
+            $lat = $lat ?? $parsedLat;
+            $lng = $lng ?? $parsedLng;
+        }
+
+        return [
+            'id' => $locationId,
+            'name' => $name,
+            'address_1' => $addressLines[0] ?? null,
+            'address_2' => $addressLines[1] ?? null,
+            'address_3' => $addressLines[2] ?? null,
+            'address_city' => $this->pickFavricaValue($location, ['city', 'town', 'address_city']),
+            'address_county' => $this->pickFavricaValue($location, ['state', 'province', 'region', 'address_county']),
+            'address_postcode' => $this->pickFavricaValue($location, ['postcode', 'postal_code', 'zip', 'zipcode']),
+            'telephone' => $this->pickFavricaValue($location, ['telephone', 'phone', 'tel', 'gsm', 'mobile', 'phone1', 'phone2']),
+            'fax' => $this->pickFavricaValue($location, ['fax']),
+            'email' => $this->pickFavricaValue($location, ['email', 'mail', 'mail_adress', 'mail_address']),
+            'whatsapp' => $this->pickFavricaValue($location, ['whatsapp', 'whatsapp_phone', 'whatsapp_number', 'wa_phone']),
+            'latitude' => $lat !== null ? (string) $lat : null,
+            'longitude' => $lng !== null ? (string) $lng : null,
+            'iata' => $this->pickFavricaValue($location, ['iata', 'airport_code']),
+            'collection_details' => $this->pickFavricaValue($location, ['collection_details', 'collectiondetails', 'instructions', 'pickup_instructions']),
+        ];
+    }
+
+    private function pickFavricaValue(array $location, array $keys): ?string
+    {
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $location)) {
+                continue;
+            }
+            $value = trim((string) $location[$key]);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function splitFavricaAddress(?string $address): array
+    {
+        $address = trim((string) $address);
+        if ($address === '') {
+            return [];
+        }
+
+        $address = str_replace(["\r\n", "\r"], "\n", $address);
+        $parts = preg_split('/\n|,/', $address);
+        if (!is_array($parts)) {
+            return [$address];
+        }
+
+        $lines = array_values(array_filter(array_map('trim', $parts), static fn($part) => $part !== ''));
+        return array_slice($lines, 0, 3);
+    }
+
+    private function parseFavricaMapsPoint(?string $mapsPoint): array
+    {
+        $mapsPoint = trim((string) $mapsPoint);
+        if ($mapsPoint === '') {
+            return [null, null];
+        }
+
+        preg_match_all('/-?\d+(?:\.\d+)?/', $mapsPoint, $matches);
+        if (!empty($matches[0]) && count($matches[0]) >= 2) {
+            return [(float) $matches[0][0], (float) $matches[0][1]];
+        }
+
+        return [null, null];
     }
 
     private function resolveFavricaImageUrl(?string $path): ?string

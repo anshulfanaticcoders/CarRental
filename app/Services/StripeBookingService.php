@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Customer;
+use App\Models\StripeCheckoutPayload;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Notifications\Booking\BookingCreatedAdminNotification;
@@ -156,8 +157,9 @@ class StripeBookingService
 
             $this->ensureProviderLocationDetails($booking);
 
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
             $extrasTotal = (float) ($metadata->extras_total ?? 0);
-            $extrasData = json_decode($metadata->extras_data ?? '[]', true);
+            $extrasData = $extrasPayload['detailed_extras'] ?? [];
             if ($extrasTotal <= 0 && !empty($extrasData)) {
                 foreach ($extrasData as $extraItem) {
                     $extrasTotal += (float) ($extraItem['total'] ?? 0);
@@ -201,7 +203,7 @@ class StripeBookingService
             }
 
             if (!$booking->extras()->exists()) {
-                $extrasData = json_decode($metadata->extras_data ?? '[]', true);
+                $extrasData = $extrasPayload['detailed_extras'] ?? [];
 
                 if (!empty($extrasData)) {
                     $providerCurrency = $metadata->provider_currency ?? $metadata->currency ?? null;
@@ -224,7 +226,7 @@ class StripeBookingService
                         ]);
                     }
                 } else {
-                    $extras = json_decode($metadata->extras ?? '[]', true);
+                    $extras = $extrasPayload['extras'] ?? [];
                     if (!empty($extras)) {
                         $addonIds = array_keys($extras);
                         $addons = \App\Models\BookingAddon::whereIn('id', $addonIds)->get()->keyBy('id');
@@ -392,6 +394,72 @@ class StripeBookingService
         }
     }
 
+    private function decodeJsonArray($value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (!is_string($value)) {
+            return [];
+        }
+
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return [];
+        }
+
+        $decoded = json_decode($trimmed, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function resolveExtrasPayloadFromMetadata($metadata): array
+    {
+        if (isset($metadata->resolved_extras_payload) && is_array($metadata->resolved_extras_payload)) {
+            return $metadata->resolved_extras_payload;
+        }
+
+        $resolved = [
+            'payload_id' => null,
+            'detailed_extras' => [],
+            'extras' => [],
+        ];
+
+        $payloadId = $metadata->extras_payload_id ?? null;
+        if ($payloadId) {
+            $resolved['payload_id'] = (string) $payloadId;
+            try {
+                $payloadRecord = StripeCheckoutPayload::find($payloadId);
+                if ($payloadRecord) {
+                    $payload = $payloadRecord->payload ?? [];
+                    $resolved['detailed_extras'] = $this->decodeJsonArray($payload['detailed_extras'] ?? []);
+                    $resolved['extras'] = $this->decodeJsonArray($payload['extras'] ?? []);
+                } else {
+                    Log::warning('StripeBookingService: Extras payload missing', [
+                        'payload_id' => $payloadId,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::warning('StripeBookingService: Extras payload lookup failed', [
+                    'payload_id' => $payloadId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if (empty($resolved['detailed_extras'])) {
+            $resolved['detailed_extras'] = $this->decodeJsonArray($metadata->extras_data ?? null);
+        }
+
+        if (empty($resolved['extras'])) {
+            $resolved['extras'] = $this->decodeJsonArray($metadata->extras ?? null);
+        }
+
+        $metadata->resolved_extras_payload = $resolved;
+
+        return $resolved;
+    }
+
     protected function buildProviderMetadataFromSession($metadata, Booking $booking): array
     {
         $normalizeValue = static function ($value) {
@@ -418,6 +486,7 @@ class StripeBookingService
         $bookingCurrency = $metadata->currency ? $this->normalizeCurrencyCode($metadata->currency) : null;
 
         $pickupLocationDetails = $normalizeValue($metadata->location_details ?? null);
+        $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
 
         return [
             'provider' => $booking->provider_source ?? ($metadata->vehicle_source ?? null),
@@ -449,7 +518,7 @@ class StripeBookingService
             'location_instructions' => $metadata->location_instructions ?? null,
             'driver_requirements' => $normalizeValue($metadata->driver_requirements ?? null),
             'terms' => $normalizeValue($metadata->terms ?? null),
-            'extras_selected' => $normalizeValue($metadata->extras_data ?? null),
+            'extras_selected' => $extrasPayload['detailed_extras'] ?? ($extrasPayload['extras'] ?? null),
             'customer_snapshot' => [
                 'name' => $metadata->customer_name ?? null,
                 'email' => $metadata->customer_email ?? null,
@@ -869,7 +938,8 @@ class StripeBookingService
 
             // Parse detailed extras if available
             $extras = [];
-            $rawExtras = json_decode($metadata->extras_data ?? '[]', true);
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+            $rawExtras = $extrasPayload['detailed_extras'] ?? [];
             foreach ($rawExtras as $ex) {
                 if (($ex['qty'] ?? 0) > 0) {
                     $optionId = $ex['option_id'] ?? $ex['optionID'] ?? $ex['id'] ?? null;
@@ -1104,8 +1174,9 @@ class StripeBookingService
             Log::info('Adobe: Selected protection codes', ['codes' => $selectedProtectionCodes]);
             
             // Parse extras from both 'extras' and 'extras_data' fields
-            $extrasData = json_decode($metadata->extras_data ?? '[]', true);
-            $extrasSimple = json_decode($metadata->extras ?? '[]', true);
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+            $extrasData = $extrasPayload['detailed_extras'] ?? [];
+            $extrasSimple = $extrasPayload['extras'] ?? [];
             
             // Merge both sources
             if (!empty($extrasSimple) && is_array($extrasSimple)) {
@@ -1130,8 +1201,8 @@ class StripeBookingService
             Log::info('Adobe: Extracted extras from metadata', [
                 'protection_codes' => $selectedProtectionCodes,
                 'extra_codes' => $selectedExtraCodes,
-                'raw_extras_data' => $metadata->extras_data ?? 'null',
-                'raw_extras' => $metadata->extras ?? 'null'
+                'raw_extras_data' => $extrasPayload['detailed_extras'] ?? 'null',
+                'raw_extras' => $extrasPayload['extras'] ?? 'null'
             ]);
 
 
@@ -1294,8 +1365,9 @@ class StripeBookingService
             // Extras
             $extras = [];
             // Parse extras similar to other providers if needed
-            if (!empty($metadata->extras_data)) {
-                 $extras = json_decode($metadata->extras_data, true);
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+            if (!empty($extrasPayload['detailed_extras'])) {
+                $extras = $extrasPayload['detailed_extras'];
             }
 
             $normalizedExtras = [];
@@ -1405,7 +1477,8 @@ class StripeBookingService
             $lastName = $nameParts[1] ?? 'Guest';
 
             $extras = [];
-            $extrasData = json_decode($metadata->extras_data ?? '[]', true);
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+            $extrasData = $extrasPayload['detailed_extras'] ?? [];
             if (is_array($extrasData)) {
                 foreach ($extrasData as $extra) {
                     $code = $extra['code'] ?? $extra['id'] ?? null;
@@ -1546,7 +1619,8 @@ class StripeBookingService
             );
             $dropPrice = $this->formatFavricaAmount($metadata->favrica_drop_fee ?? 0);
 
-            $flags = $this->resolveFavricaServiceFlags($metadata->extras_data ?? null);
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+            $flags = $this->resolveFavricaServiceFlags($extrasPayload['detailed_extras'] ?? []);
 
             $payload = [
                 'Pickup_ID' => $pickupId,
@@ -1678,7 +1752,7 @@ class StripeBookingService
         return number_format($numeric, 2, '.', '');
     }
 
-    private function resolveFavricaServiceFlags(?string $extrasData): array
+    private function resolveFavricaServiceFlags($extrasData): array
     {
         $flags = [
             'Baby_Seat' => false,
@@ -1690,14 +1764,11 @@ class StripeBookingService
             'PAI' => false,
         ];
 
-        if (!$extrasData) {
+        if (empty($extrasData)) {
             return $flags;
         }
 
-        $extras = json_decode($extrasData, true);
-        if (!is_array($extras)) {
-            return $flags;
-        }
+        $extras = is_array($extrasData) ? $extrasData : $this->decodeJsonArray($extrasData);
 
         foreach ($extras as $extra) {
             if (!is_array($extra)) {

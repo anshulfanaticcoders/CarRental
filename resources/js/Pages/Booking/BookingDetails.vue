@@ -435,6 +435,7 @@ const displayExtras = computed(() => {
                 <div class="text-sm text-gray-600 mt-3 space-y-1">
                   <p v-if="pickupDetails.telephone"><span class="font-semibold text-gray-700">Phone:</span> {{ pickupDetails.telephone }}</p>
                   <p v-if="pickupDetails.email"><span class="font-semibold text-gray-700">Email:</span> {{ pickupDetails.email }}</p>
+                  <p v-if="pickupDetails.whatsapp"><span class="font-semibold text-gray-700">WhatsApp:</span> {{ pickupDetails.whatsapp }}</p>
                   <p v-if="pickupDetails.iata"><span class="font-semibold text-gray-700">Airport:</span> {{ pickupDetails.iata }}</p>
                 </div>
                 <p v-if="pickupInstructions" class="text-sm text-gray-600 mt-3">
@@ -460,6 +461,7 @@ const displayExtras = computed(() => {
                 <div class="text-sm text-gray-600 mt-3 space-y-1">
                   <p v-if="dropoffDetails.telephone"><span class="font-semibold text-gray-700">Phone:</span> {{ dropoffDetails.telephone }}</p>
                   <p v-if="dropoffDetails.email"><span class="font-semibold text-gray-700">Email:</span> {{ dropoffDetails.email }}</p>
+                  <p v-if="dropoffDetails.whatsapp"><span class="font-semibold text-gray-700">WhatsApp:</span> {{ dropoffDetails.whatsapp }}</p>
                   <p v-if="dropoffDetails.iata"><span class="font-semibold text-gray-700">Airport:</span> {{ dropoffDetails.iata }}</p>
                 </div>
                 <p v-if="dropoffInstructions" class="text-sm text-gray-600 mt-3">

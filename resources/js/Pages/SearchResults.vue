@@ -281,6 +281,14 @@ const handlePackageSelection = (event) => {
             locationDetails.value = null;
         }
         resolveGreenMotionRequirements();
+    } else if (event.vehicle.location_details) {
+        locationDetails.value = event.vehicle.location_details;
+        locationInstructions.value = event.vehicle.location_instructions
+            || event.vehicle.location_details.collection_details
+            || null;
+        driverRequirements.value = null;
+        termsData.value = null;
+        termsCountryId.value = null;
     } else {
         locationInstructions.value = null;
         locationDetails.value = null;

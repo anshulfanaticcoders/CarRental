@@ -7,6 +7,7 @@ use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Customer;
 use App\Models\PayableSetting;
+use App\Models\StripeCheckoutPayload;
 use App\Services\AdobeCarService;
 use App\Services\StripeBookingService;
 use App\Services\CurrencyConversionService;
@@ -119,6 +120,23 @@ class StripeCheckoutController extends Controller
             $payableAmount = $computedTotals['booking_deposit'];
             $pendingAmount = $computedTotals['booking_pending'];
 
+            $extrasPayloadId = null;
+            $extrasPayload = [
+                'detailed_extras' => $validated['detailed_extras'] ?? [],
+                'extras' => $validated['extras'] ?? [],
+                'vehicle_source' => $validated['vehicle']['source'] ?? null,
+                'vehicle_id' => $validated['vehicle']['id'] ?? null,
+                'provider_currency' => $providerCurrency,
+                'booking_currency' => $currencyCode,
+            ];
+
+            if (!empty($extrasPayload['detailed_extras']) || !empty($extrasPayload['extras'])) {
+                $payloadRecord = StripeCheckoutPayload::create([
+                    'payload' => $extrasPayload,
+                ]);
+                $extrasPayloadId = $payloadRecord->id;
+            }
+
             // Get vehicle image (handle internal vehicles with images array)
             $vehicleImage = null;
             if ($validated['vehicle']['source'] === 'internal' && !empty($validated['vehicle']['images'])) {
@@ -198,7 +216,6 @@ class StripeCheckoutController extends Controller
                 'pickup_location_code' => $validated['vehicle']['provider_pickup_id'] ?? '', // For Locauto, this holds the XML location code
                 'return_location_code' => $validated['vehicle']['provider_return_id'] ?? $validated['vehicle']['provider_pickup_id'] ?? '',
                 'extras' => json_encode($validated['extras'] ?? []),
-                'extras_data' => json_encode($validated['detailed_extras'] ?? []), // Encode detailed extras
                 'quoteid' => !empty($validated['quoteid']) ? $validated['quoteid'] : ($validated['vehicle']['quoteid'] ?? ''),
                 'rental_code' => $validated['package'] ?? ($validated['vehicle']['rentalCode'] ?? ''),
                 'vehicle_total' => $computedTotals['booking_vehicle_total'],
@@ -222,6 +239,10 @@ class StripeCheckoutController extends Controller
                 'driver_license_number' => $validated['customer']['driver_license_number'] ?? null,
                 'notes' => $validated['customer']['notes'] ?? null,
             ];
+
+            if ($extrasPayloadId) {
+                $metadata['extras_payload_id'] = (string) $extrasPayloadId;
+            }
 
             $customerMetadata = array_filter([
                 'customer_address' => $validated['customer']['address'] ?? null,
@@ -298,6 +319,20 @@ class StripeCheckoutController extends Controller
                     'metadata' => $metadata,
                 ],
             ]);
+
+            if ($extrasPayloadId) {
+                try {
+                    StripeCheckoutPayload::whereKey($extrasPayloadId)->update([
+                        'stripe_session_id' => $session->id,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Stripe Checkout: Failed to update payload session id', [
+                        'payload_id' => $extrasPayloadId,
+                        'session_id' => $session->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             Log::info('Stripe Checkout Session created', [
                 'session_id' => $session->id,

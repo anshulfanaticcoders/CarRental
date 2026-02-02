@@ -174,7 +174,8 @@ const locationContact = computed(() => {
     return {
         phone: details.telephone || null,
         email: details.email || null,
-        iata: details.iata || null
+        iata: details.iata || null,
+        whatsapp: details.whatsapp || null
     };
 });
 
@@ -1380,9 +1381,10 @@ const formatPaymentMethod = (method) => {
                         {{ line }}
                     </p>
                 </div>
-                <div v-if="locationContact.phone || locationContact.email || locationContact.iata" class="text-sm text-gray-600 mb-4 space-y-1">
+                <div v-if="locationContact.phone || locationContact.email || locationContact.iata || locationContact.whatsapp" class="text-sm text-gray-600 mb-4 space-y-1">
                     <p v-if="locationContact.phone"><span class="font-semibold text-gray-800">Phone:</span> {{ locationContact.phone }}</p>
                     <p v-if="locationContact.email"><span class="font-semibold text-gray-800">Email:</span> {{ locationContact.email }}</p>
+                    <p v-if="locationContact.whatsapp"><span class="font-semibold text-gray-800">WhatsApp:</span> {{ locationContact.whatsapp }}</p>
                     <p v-if="locationContact.iata"><span class="font-semibold text-gray-800">Airport Code:</span> {{ locationContact.iata }}</p>
                 </div>
                 <div v-if="hasLocationHours" class="mt-4">
