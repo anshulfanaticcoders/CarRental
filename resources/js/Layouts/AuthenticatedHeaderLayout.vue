@@ -2,13 +2,12 @@
 import { ref, onMounted, computed, watch, onUnmounted } from "vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import Dropdown from "@/Components/Dropdown.vue";
-import DropdownLink from "@/Components/DropdownLink.vue";
-import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
 import axios from "axios";
 import { useCurrency } from '@/composables/useCurrency';
-import globeIcon from '../../assets/globe.svg'
 import bellIcon from '../../assets/bell.svg'
+import whatsappIcon from '../../assets/whatsapp.svg';
+import callIcon from '../../assets/call.svg';
 import flagEn from '../../assets/flag-en.svg';
 import flagFr from '../../assets/flag-fr.svg';
 import flagNl from '../../assets/flag-nl.svg';
@@ -24,16 +23,8 @@ const { url, props } = page;
 const { selectedCurrency, supportedCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
 const showingNavigationDropdown = ref(false);
 const showingNotificationDropdown = ref(false);
-const mobileNotificationsOpen = ref(false);
 const animatedFlagUrl = ref(null); // New ref for animated flag URL
-
-// User data
-const user = ref(null);
-
-// Function to toggle mobile notification
-const toggleMobileNotification = () => {
-  mobileNotificationsOpen.value = !mobileNotificationsOpen.value;
-};
+const showingAccountDropdown = ref(false);
 
 // Notifications
 const notifications = ref([]);
@@ -43,16 +34,8 @@ const contactInfo = ref(null);
 
 
 // Refs for dropdowns
-const navRef = ref(null);
 const notificationDropdownRef = ref(null);
 const bellIconRef = ref(null);
-
-// Close mobile menu when clicking outside
-const closeNavOnOutsideClick = (event) => {
-  if (showingNavigationDropdown.value && navRef.value && !navRef.value.contains(event.target)) {
-    showingNavigationDropdown.value = false;
-  }
-};
 
 // Close notification dropdown when clicking outside
 const closeNotificationDropdownOnOutsideClick = (event) => {
@@ -66,36 +49,17 @@ const closeNotificationDropdownOnOutsideClick = (event) => {
 // Add click event listeners on mount
 onMounted(() => {
   if (page.props.auth?.user) {
-    fetchUserProfile();
     fetchNotifications();
-    fetchContactInfo();
-  } else {
-    fetchContactInfo();
   }
+  fetchContactInfo();
 
-  document.addEventListener('click', closeNavOnOutsideClick);
   document.addEventListener('click', closeNotificationDropdownOnOutsideClick);
 });
 
 // Clean up event listeners on unmount
 onUnmounted(() => {
-  document.removeEventListener('click', closeNavOnOutsideClick);
   document.removeEventListener('click', closeNotificationDropdownOnOutsideClick);
 });
-
-// Fetch user profile data
-const fetchUserProfile = async () => {
-  try {
-    const response = await axios.get(route('user.profile'));
-    if (response.data.status === "success") {
-      user.value = response.data.data;
-    } else {
-      console.error("Failed to fetch user:", response.data.message);
-    }
-  } catch (error) {
-    console.error("Error fetching user:", error);
-  }
-};
 
 // Fetch contact info
 const fetchContactInfo = async () => {
@@ -292,6 +256,9 @@ const isAuthenticated = computed(() => !!page.props.auth?.user);
 const isVendor = computed(() => page.props.auth?.user?.role === 'vendor');
 const isCustomer = computed(() => page.props.auth?.user?.role === 'customer');
 const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
+const authUser = computed(() => page.props.auth?.user || null);
+
+const pages = computed(() => page.props.pages);
 
 // Language switcher
 const availableLocales = {
@@ -380,6 +347,98 @@ const changeLanguage = (newLocale) => {
   }, animationDuration); // Delay navigation until animation is complete
 };
 
+const getTranslatedSlug = (pageSlug) => {
+  let targetPage = null;
+  const defaultLocale = 'en';
+
+  if (pages.value) {
+    for (const key in pages.value) {
+      const pageItem = pages.value[key];
+      if (pageItem && pageItem.translations && Array.isArray(pageItem.translations)) {
+        const defaultTranslation = pageItem.translations.find(
+          (t) => t.locale === defaultLocale && t.slug === pageSlug
+        );
+        if (defaultTranslation) {
+          targetPage = pageItem;
+          break;
+        }
+      }
+    }
+  }
+
+  if (!targetPage || !targetPage.translations || !Array.isArray(targetPage.translations)) {
+    return pageSlug;
+  }
+
+  const translation = targetPage.translations.find((t) => t.locale === currentLocale.value);
+  return translation ? translation.slug : pageSlug;
+};
+
+const welcomeBaseUrl = computed(() => route('welcome', { locale: currentLocale.value }));
+const middleNavItems = [
+  { label: 'How it works', id: 'how-it-works' },
+  { label: 'Blogs', id: 'blogs' },
+  { label: 'Testimonials', id: 'testimonials' },
+  { label: 'FAQ', id: 'faq' },
+  { label: 'eSIM', id: 'esim' },
+];
+
+const whatsappLink = computed(() => {
+  const phone = contactInfo.value?.phone_number || '+32493000000';
+  const digits = phone.replace(/[^\d]/g, '');
+  return digits ? `https://wa.me/${digits}` : null;
+});
+
+const callLink = computed(() => {
+  if (!contactInfo.value?.phone_number) return null;
+  return `tel:${contactInfo.value.phone_number}`;
+});
+
+const displayName = computed(() => {
+  const user = authUser.value;
+  if (!user) return 'Account';
+  const first = user.first_name || '';
+  const last = user.last_name || '';
+  const full = `${first} ${last}`.trim();
+  return full || user.name || user.email || 'Account';
+});
+
+const roleLabel = computed(() => {
+  if (isAdmin.value) return 'Admin';
+  if (isVendor.value) return 'Vendor';
+  if (isCustomer.value) return 'User';
+  return 'User';
+});
+
+const avatarUrl = computed(() => {
+  const user = authUser.value;
+  return user?.profile?.avatar || user?.avatar || null;
+});
+
+const userInitials = computed(() => {
+  const user = authUser.value;
+  if (!user) return 'A';
+  const base = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || user.email || 'A';
+  const parts = base.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return base[0]?.toUpperCase() || 'A';
+});
+
+const isWelcomeRoute = computed(() => {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  return path === `/${currentLocale.value}` || path === `/${currentLocale.value}/` || path === '/';
+});
+
+const handleNavClick = (event, targetId) => {
+  if (!isWelcomeRoute.value) return;
+  event.preventDefault();
+  const section = document.getElementById(targetId);
+  if (section) {
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+};
+
 // Function to toggle mobile navigation
 const toggleMobileNav = () => {
   showingNavigationDropdown.value = !showingNavigationDropdown.value;
@@ -388,14 +447,18 @@ const toggleMobileNav = () => {
 // Watch for route changes to close mobile menu
 watch(() => url.value, () => {
   showingNavigationDropdown.value = false;
+  showingAccountDropdown.value = false;
+});
+
+watch(() => showingNavigationDropdown.value, (isOpen) => {
+  if (!isOpen) showingAccountDropdown.value = false;
 });
 </script>
 
 <template>
-  <header class="border-b border-gray-200 shadow-sm bg-white relative z-[99999]" ref="navRef">
+  <header class="border-b border-gray-200 shadow-sm bg-white relative z-40">
     <div class="full-w-container mx-auto">
-      <div class="flex justify-between items-center h-16 md:h-20">
-        <!-- Logo Section -->
+      <div class="flex items-center justify-between h-16 md:h-20 gap-4">
         <div class="flex-shrink-0">
           <Link :href="route('welcome', { locale: page.props.locale })"
             class="block w-32 md:w-40 transition-transform hover:opacity-80">
@@ -403,87 +466,22 @@ watch(() => url.value, () => {
           </Link>
         </div>
 
-        <!-- Desktop Navigation (only for authenticated users) -->
-        <div v-if="isAuthenticated" class="hidden md:flex md:items-center md:space-x-6">
-          <!-- Vendor/Customer Action Button -->
-          <div v-if="isVendor">
-            <Link
-              :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: props.locale }) : route('vendor.status', { locale: props.locale })"
-              class="button-secondary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:shadow-md">
-              <span v-if="vendorStatus === 'approved'">{{ _t('header', 'create_listing') }}</span>
-              <span v-else>{{ _t('header', 'complete_verification') }}</span>
-            </Link>
-          </div>
+        <nav v-if="isWelcomeRoute" class="hidden lg:flex items-center gap-6 font-medium text-gray-700">
+          <Link v-for="item in middleNavItems" :key="item.id" :href="`${welcomeBaseUrl}#${item.id}`"
+            class="header-nav-link" @click="handleNavClick($event, item.id)">
+            {{ item.label }}
+          </Link>
+        </nav>
 
-          <div v-else-if="isCustomer">
-            <Link :href="route('vendor.register', { locale: props.locale })"
-              class="button-secondary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:shadow-md">
-              {{ _t('header', 'register_as_vendor') }}
-            </Link>
-          </div>
-
-
-
-          <!-- Currency Switcher -->
-          <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
-            <Dropdown align="right" width="max">
-              <template #trigger>
-                <button type="button"
-                  class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
-                  :disabled="currencyLoading">
-                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2"
-                    :class="{ 'opacity-60': currencyLoading }">
-                  <span>{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
-                  <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </template>
-              <template #content>
-                <div class="max-h-80 overflow-y-auto currency-scrollbar">
-                  <div v-for="currency in supportedCurrencies" :key="currency" @click="changeCurrency(currency)"
-                    class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                    :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }">
-                    <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                    {{ formatCurrencyDisplay(currency) }}
-                  </div>
-                </div>
-              </template>
-            </Dropdown>
-          </div>
-
-          <!-- Language Switcher -->
-          <Dropdown align="right" width="48" class="bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
-            <template #trigger>
-              <button type="button"
-                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out">
-                <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'"
-                  class="w-6 h-6 mr-2 rounded-full">
-                <span>{{ availableLocales[currentLocale].name }}</span>
-                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </template>
-            <template #content>
-              <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
-                class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                :class="{ 'bg-gray-500': currentLocale === code }">
-                <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
-                {{ language.name }}
-              </div>
-            </template>
-          </Dropdown>
-
-          <!-- Notification Bell -->
-          <div class="relative">
+        <div class="flex items-center gap-3">
+          <div v-if="isAuthenticated" class="relative">
             <button ref="bellIconRef"
               @click="showingNotificationDropdown = !showingNotificationDropdown; markAllAsRead()"
-              class="relative p-2 rounded-[99px] bg-[#efefef] focus:bg-[#d6d6d6]"
+              class="bell-minimal relative"
               :class="{ 'ripple-effect': unreadCount > 0 }">
-              <img :src="bellIcon" alt="Notifications" class="w-6 h-6 ml-[3px]">
+              <img :src="bellIcon" alt="Notifications" class="w-5 h-5">
               <span v-if="unreadCount > 0"
-                class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{
+                class="bell-badge absolute inline-flex items-center justify-center text-xs font-bold leading-none text-white bg-red-600 rounded-full">{{
                   unreadCount }}</span>
             </button>
             <div ref="notificationDropdownRef" v-if="showingNotificationDropdown"
@@ -516,136 +514,9 @@ watch(() => url.value, () => {
             </div>
           </div>
 
-          <!-- User Profile Dropdown -->
-          <div class="relative ml-3">
-            <Dropdown align="right" width="48">
-              <template #trigger>
-                <button type="button"
-                  class="inline-flex items-center gap-2 py-2 border border-transparent text-sm font-medium rounded-full bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] p-4 transition duration-150 ease-in-out group">
-                  <div v-if="user?.profile?.avatar" class="flex-shrink-0 relative">
-                    <img :src="user.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
-                      class="w-8 h-8 rounded-full object-cover ring-2 ring-white" />
-                  </div>
-                  <div v-else class="px-3 py-1">
-                    {{ page.props.auth.user.first_name }}
-                  </div>
-                  <svg class="h-4 w-4 text-gray-400 group-hover:text-gray-500" xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                      clip-rule="evenodd" />
-                  </svg>
-                </button>
-              </template>
-
-              <template #content>
-                <DropdownLink v-if="isAdmin" :href="route('admin.dashboard')" class="flex items-center">
-                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
-                    </path>
-                  </svg>
-                  {{ _t('header', 'dashboard') }}
-                </DropdownLink>
-
-                <DropdownLink v-else :href="route('profile.edit', { locale: props.locale })" class="flex items-center">
-                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                  </svg>
-                  {{ _t('header', 'profile') }}
-                </DropdownLink>
-
-                <DropdownLink :href="route('logout', { locale: props.locale })" method="post" as="button"
-                  class="flex items-center w-full text-left">
-                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
-                    </path>
-                  </svg>
-                  {{ _t('header', 'log_out') }}
-                </DropdownLink>
-              </template>
-            </Dropdown>
-          </div>
-        </div>
-
-        <!-- Guest Navigation (Desktop) -->
-        <div v-else class="hidden md:flex md:items-center md:space-x-6">
-          <Link :href="route('login', { locale: props.locale })"
-            class="button-primary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md">
-            {{ _t('header', 'log_in') }}
-          </Link>
-
-          <Link :href="route('register', { locale: props.locale })"
-            class="button-secondary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md">
-            {{ _t('header', 'create_account') }}
-          </Link>
-
-          <!-- WhatsApp Icon -->
-
-
-          <!-- Currency Switcher -->
-          <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
-            <Dropdown align="right" width="max">
-              <template #trigger>
-                <button type="button"
-                  class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
-                  :disabled="currencyLoading">
-                  <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2"
-                    :class="{ 'opacity-60': currencyLoading }">
-                  <span>{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
-                  <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </template>
-              <template #content>
-                <div class="max-h-64 overflow-y-auto currency-scrollbar">
-                  <div v-for="currency in supportedCurrencies" :key="currency" @click="changeCurrency(currency)"
-                    class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                    :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }">
-                    <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                    {{ formatCurrencyDisplay(currency) }}
-                  </div>
-                </div>
-              </template>
-            </Dropdown>
-          </div>
-
-          <!-- Language Switcher for Guests -->
-          <Dropdown align="right" width="48" class="bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
-            <template #trigger>
-              <button type="button"
-                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out">
-                <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'"
-                  class="w-6 h-6 mr-2 rounded-full">
-                <span>{{ availableLocales[currentLocale].name }}</span>
-                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </template>
-            <template #content>
-              <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
-                class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                :class="{ 'bg-gray-500': currentLocale === code }">
-                <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
-                {{ language.name }}
-              </div>
-            </template>
-          </Dropdown>
-        </div>
-
-        <!-- Mobile menu button -->
-        <div class="flex items-center md:hidden">
-
           <button @click="toggleMobileNav" type="button"
             class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition duration-150 ease-in-out"
-            aria-controls="mobile-menu" aria-expanded="false">
+            aria-controls="offcanvas-menu" aria-expanded="false">
             <span class="sr-only">{{ showingNavigationDropdown ? 'Close menu' : 'Open menu' }}</span>
             <svg class="h-6 w-6" :class="{ 'hidden': showingNavigationDropdown, 'block': !showingNavigationDropdown }"
               stroke="currentColor" fill="none" viewBox="0 0 24 24">
@@ -660,144 +531,184 @@ watch(() => url.value, () => {
       </div>
     </div>
 
-    <!-- Mobile menu, show/hide based on mobile menu state -->
-    <div id="mobile-menu" :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
-      class="md:hidden">
-      <div class="pt-2 pb-4 space-y-1 border-t border-gray-200 bg-gray-50">
-        <!-- Authenticated User Mobile Menu -->
-        <div v-if="isAuthenticated" class="px-4 py-3">
-          <div class="flex items-center">
-            <div v-if="user?.profile?.avatar" class="flex-shrink-0">
-              <img :src="user.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
-                class="h-10 w-10 rounded-full object-cover" />
-            </div>
-            <div class="ml-3">
-              <div class="text-base font-medium text-gray-800">{{ page.props.auth.user.first_name }}</div>
-              <div class="text-sm font-medium text-gray-500">{{ page.props.auth.user.email }}</div>
-            </div>
-            <div class="ml-auto">
-              <button @click="toggleMobileNotification(); markAllAsRead();"
-                class="relative p-2 rounded-[99px] focus:bg-[#efefef]" :class="{ 'ripple-effect': unreadCount > 0 }">
-                <img :src="bellIcon" alt="Notifications" class="w-6 h-6">
-                <span v-if="unreadCount > 0"
-                  class="absolute w-[18px] h-[18px] border-2 border-white top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{
-                    unreadCount }}</span>
-              </button>
+    <div class="offcanvas-overlay" :class="{ 'is-open': showingNavigationDropdown }"
+      @click="showingNavigationDropdown = false" aria-hidden="true"></div>
+    <aside class="offcanvas-panel" :class="{ 'is-open': showingNavigationDropdown }" role="dialog"
+      aria-modal="true" :aria-hidden="!showingNavigationDropdown">
+      <div class="flex h-full flex-col">
+        <div class="flex items-center justify-between px-6 py-5 border-b">
+          <div v-if="isAuthenticated" class="relative">
+            <button type="button" class="account-trigger" @click="showingAccountDropdown = !showingAccountDropdown">
+              <div class="account-avatar">
+                <img v-if="avatarUrl" :src="avatarUrl" alt="User avatar" />
+                <span v-else>{{ userInitials }}</span>
+              </div>
+              <div class="account-meta">
+                <span class="account-name">{{ displayName }}</span>
+                <span class="account-role">{{ roleLabel }}</span>
+              </div>
+              <svg class="account-chevron" :class="{ 'is-open': showingAccountDropdown }" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15l6-6 6 6" />
+              </svg>
+            </button>
+            <div v-if="showingAccountDropdown" class="account-menu">
+              <Link v-if="!isAdmin" :href="route('profile.edit', { locale: props.locale })"
+                class="account-menu-item">Profile</Link>
+              <Link :href="route('logout', { locale: props.locale })" method="post" as="button"
+                class="account-menu-item">Log Out</Link>
             </div>
           </div>
+          <Link v-else :href="route('welcome', { locale: page.props.locale })" class="w-28">
+            <ApplicationLogo class="w-full h-auto" />
+          </Link>
+          <button type="button" class="offcanvas-close" @click="showingNavigationDropdown = false">
+            <span class="sr-only">Close menu</span>
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-          <div class="mt-4 space-y-2">
-            <!-- Admin Dashboard Link -->
-            <ResponsiveNavLink v-if="isAdmin" :href="route('admin.dashboard')" class="flex items-center">
-              <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
-                </path>
-              </svg>
-              Dashboard
-            </ResponsiveNavLink>
+        <div class="flex-1 overflow-y-auto px-6 py-5">
+          <div class="flex min-h-full flex-col gap-6">
+            <div class="space-y-3">
+              <div class="text-xs uppercase tracking-widest text-gray-400">Account</div>
+              <div class="space-y-2">
+                <Link v-if="isAdmin" :href="route('admin.dashboard')"
+                  class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  Admin Dashboard
+                </Link>
 
-            <!-- Profile Link -->
-            <ResponsiveNavLink v-else :href="route('profile.edit', { locale: props.locale })" class="flex items-center">
-              <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-              </svg>
-              Profile
-            </ResponsiveNavLink>
 
-            <!-- Vendor-specific actions -->
-            <ResponsiveNavLink v-if="isVendor"
-              :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: props.locale }) : route('vendor.status', { locale: props.locale })"
-              class="flex items-center">
-              <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6">
-                </path>
-              </svg>
-              {{ vendorStatus === 'approved' ? 'Create a Listing' : 'Complete Verification' }}
-            </ResponsiveNavLink>
+                <Link v-if="isVendor"
+                  :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: props.locale }) : route('vendor.status', { locale: props.locale })"
+                  class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  <span v-if="vendorStatus === 'approved'">Create Listing</span>
+                  <span v-else>Complete Verification</span>
+                </Link>
 
-            <!-- Customer-specific actions -->
-            <ResponsiveNavLink v-if="isCustomer" :href="route('vendor.register', { locale: props.locale })"
-              class="flex items-center">
-              <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 21H5v-6l2.257-2.257A6 6 0 0119 9z"></path>
-              </svg>
-              Register as Vendor
-            </ResponsiveNavLink>
+                <Link v-if="isCustomer" :href="route('vendor.register', { locale: props.locale })"
+                  class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  Register as Vendor
+                </Link>
 
-            <!-- Language Options -->
-            <div class="mt-3 px-4 py-2 border-t border-gray-200">
-              <div class="text-sm font-medium text-gray-600 mb-2">Language</div>
-              <div class="grid grid-cols-3 gap-2">
-                <button v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
-                  class="flex items-center justify-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
-                  :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'">
-                  <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-1 rounded-full">
-                  {{ language.name }}
-                </button>
+                <Link v-if="!isAuthenticated" :href="route('login', { locale: props.locale })"
+                  class="flex items-center justify-between rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-4 py-3 text-sm font-medium text-white hover:bg-[#153b4fef]">
+                  Log in
+                </Link>
+
+                <Link v-if="!isAuthenticated" :href="route('register', { locale: props.locale })"
+                  class="flex items-center justify-between rounded-lg border border-customPrimaryColor px-4 py-3 text-sm font-medium text-customPrimaryColor hover:bg-blue-50">
+                  Create Account
+                </Link>
+
               </div>
             </div>
 
-            <!-- Logout Button -->
+            <div class="space-y-3">
+              <div class="text-xs uppercase tracking-widest text-gray-400">Currency</div>
+              <Dropdown align="right" width="max">
+                <template #trigger>
+                  <button type="button"
+                    class="inline-flex w-full items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:border-customPrimaryColor"
+                    :disabled="currencyLoading">
+                    <span class="flex items-center">
+                      <img :src="moneyExchangeSymbol" alt="Currency" class="w-5 h-5 mr-2"
+                        :class="{ 'opacity-60': currencyLoading }">
+                      {{ formatCurrencyTriggerDisplay(selectedCurrency) }}
+                    </span>
+                    <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </template>
+                <template #content>
+                  <div class="max-h-64 overflow-y-auto currency-scrollbar">
+                    <div v-for="currency in supportedCurrencies" :key="currency" @click="changeCurrency(currency)"
+                      class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
+                      :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }">
+                      <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                      {{ formatCurrencyDisplay(currency) }}
+                    </div>
+                  </div>
+                </template>
+              </Dropdown>
+            </div>
 
-            <ResponsiveNavLink :href="route('logout', { locale: props.locale })" method="post" as="button"
-              class="flex items-center w-full">
-              <svg class="mr-3 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-              </svg>
-              Log Out
-            </ResponsiveNavLink>
+            <div class="space-y-3">
+              <div class="text-xs uppercase tracking-widest text-gray-400">Language</div>
+              <Dropdown align="right" width="48">
+                <template #trigger>
+                  <button type="button"
+                    class="inline-flex w-full items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:border-customPrimaryColor">
+                    <span class="flex items-center">
+                      <img :src="availableLocales[currentLocale].flag"
+                        :alt="availableLocales[currentLocale].name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
+                      {{ availableLocales[currentLocale].name }}
+                    </span>
+                    <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </template>
+                <template #content>
+                  <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
+                    class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
+                    :class="{ 'bg-gray-500': currentLocale === code }">
+                    <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
+                    {{ language.name }}
+                  </div>
+                </template>
+              </Dropdown>
+            </div>
 
+            <div class="space-y-3">
+              <div class="text-xs uppercase tracking-widest text-gray-400">Pages</div>
+              <div class="space-y-2">
+                <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })"
+                  class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  About Us
+                </Link>
+                <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })"
+                  class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  Blogs
+                </Link>
+                <Link :href="route('faq.show', { locale: page.props.locale })"
+                  class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  FAQ
+                </Link>
+                <Link :href="route('contact-us', { locale: page.props.locale })"
+                  class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  Contact Us
+                </Link>
+                <Link :href="`/${page.props.locale}/business/register`"
+                  class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  Business
+                </Link>
+              </div>
+            </div>
 
-
-          </div>
-        </div>
-
-        <!-- Guest User Mobile Menu -->
-        <div v-else class="px-4 py-3 space-y-3">
-          <Link :href="route('login', { locale: props.locale })"
-            class="block w-full py-2 px-4 text-center font-medium text-white bg-customPrimaryColor hover:bg-[#153b4fef] rounded-md transition duration-150 ease-in-out">
-            Log in
-          </Link>
-
-          <Link :href="route('register', { locale: props.locale })"
-            class="block w-full py-2 px-4 text-center font-medium text-blue-600 bg-white border border-customPrimaryColor hover:bg-blue-50 rounded-md transition duration-150 ease-in-out">
-            Create an Account
-          </Link>
-
-
-
-          <!-- Currency Options -->
-          <div class="mt-3 px-4 py-2 border-t border-gray-200">
-            <div class="text-sm font-medium text-gray-600 mb-2">Currency</div>
-            <select v-model="selectedCurrency" @change="changeCurrency($event.target.value)"
-              class="block w-full px-2 py-1 text-sm rounded-md border-gray-300 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-              <option v-for="currency in supportedCurrencies" :key="currency" :value="currency">
-                {{ formatCurrencyDisplay(currency) }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Language Options -->
-          <div class="mt-3 pt-3 border-t border-gray-200">
-            <div class="text-sm font-medium text-gray-600 mb-2">Language</div>
-            <div class="grid grid-cols-3 gap-2">
-              <button v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
-                class="flex items-center justify-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
-                :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'">
-                <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-1 rounded-full">
-                {{ language.name }}
-              </button>
+            <div v-if="whatsappLink || callLink" class="mt-auto space-y-3 border-t border-gray-200 pt-6">
+              <div class="text-xs uppercase tracking-widest text-gray-400">Contact</div>
+              <div class="grid gap-2">
+                <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer"
+                  class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5">
+                  Chat on WhatsApp
+                </a>
+                <a v-if="callLink" :href="callLink"
+                  class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  <img :src="callIcon" alt="Call" class="w-5 h-5">
+                  Call Us
+                </a>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </aside>
 
-    <!-- Animated Flag Overlay -->
     <div v-if="animatedFlagUrl" class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
       <img :src="animatedFlagUrl" alt="Flag" class="animated-flag" />
     </div>
@@ -810,43 +721,6 @@ watch(() => url.value, () => {
       </div>
     </div>
 
-
-    <!-- Full-screen notification component -->
-    <div v-if="mobileNotificationsOpen" class="fixed top-0 left-0 w-full h-full bg-white z-50">
-      <div class="flex justify-end p-4">
-        <button @click="toggleMobileNotification" class="text-gray-500 hover:text-gray-700">
-          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-      </div>
-      <div class="p-4 border-b flex justify-between items-center">
-        <h3 class="text-lg font-medium">Notifications</h3>
-      </div>
-      <div class="overflow-y-auto" style="max-height: calc(100vh - 100px);">
-        <div v-if="notifications.length === 0" class="p-4 text-center text-gray-500">
-          No notifications yet.
-        </div>
-        <div v-else>
-          <div v-for="notification in notifications" :key="notification.id"
-            @click="handleNotificationClick(notification)" class="p-4 border-b hover:bg-gray-50 cursor-pointer"
-            :class="{ 'bg-gray-100': !notification.read_at }">
-            <div class="flex ">
-              <div class="font-semibold">{{ notification.data.title }}</div>
-              <div class="text-xs text-gray-500">{{ notification.type.split('\\').pop() }}</div>
-            </div>
-            <p class="text-sm text-gray-600">{{ notification.data.message }}</p>
-            <div class="text-xs text-customPrimaryColor mt-1 text-right">{{ new
-              Date(notification.created_at).toLocaleString() }}</div>
-          </div>
-        </div>
-      </div>
-      <div class="p-2 border-t text-center">
-        <button @click="clearAllNotifications" class="text-sm text-red-500 hover:underline">Clear all
-          notifications</button>
-      </div>
-    </div>
-    <!-- Floating Social Icons -->
     <FloatingSocialIcons />
   </header>
 </template>
@@ -859,17 +733,6 @@ watch(() => url.value, () => {
   transition-duration: 150ms;
 }
 
-/* Mobile menu transition */
-#mobile-menu {
-  transition: max-height 0.3s ease-in-out;
-  overflow: hidden;
-}
-
-/* Ensure header stays on top */
-header {
-  z-index: 99999;
-}
-
 /* Responsive adjustments */
 @media (max-width: 640px) {
 
@@ -880,36 +743,88 @@ header {
   }
 }
 
-/* Mobile notification bell */
-.md\\:hidden .ml-auto {
-  display: block !important;
-}
-
-/* Full-screen notification styles */
-.fixed.top-0.left-0.w-full.h-full.bg-white.z-50 {
-  display: flex;
-  flex-direction: column;
-}
-
 /* Ripple effect animation */
 @keyframes ripple {
   0% {
-    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.4);
-    /* Darker ripple, slightly less opaque */
+    box-shadow: 0 0 0 0 rgba(46, 167, 173, 0.2);
   }
 
   70% {
-    box-shadow: 0 0 0 20px rgba(0, 0, 0, 0);
-    /* Increased spread */
+    box-shadow: 0 0 0 18px rgba(46, 167, 173, 0);
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    box-shadow: 0 0 0 0 rgba(46, 167, 173, 0);
   }
 }
 
 .ripple-effect {
   animation: ripple 1.5s infinite;
+}
+
+.bell-minimal {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #334155;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.bell-minimal:hover {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(148, 163, 184, 0.6);
+  color: #0f172a;
+}
+
+.bell-minimal:focus-visible {
+  outline: 2px solid rgba(46, 167, 173, 0.5);
+  outline-offset: 2px;
+}
+
+.bell-badge {
+  top: 6px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border: 2px solid #ffffff;
+  font-size: 0.65rem;
+  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.2);
+}
+
+.header-nav-link {
+  position: relative;
+  padding-bottom: 6px;
+  font-size: 1.05rem;
+  color: #334155;
+  transition: color 200ms ease;
+}
+
+.header-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 0;
+  height: 2px;
+  background: #153b4f;
+  transform: translateX(-50%);
+  transition: width 220ms ease;
+}
+
+.header-nav-link:hover,
+.header-nav-link:focus-visible {
+  color: #153b4f;
+}
+
+.header-nav-link:hover::after,
+.header-nav-link:focus-visible::after {
+  width: 100%;
 }
 
 /* Custom scrollbar for currency dropdown */
@@ -1010,6 +925,163 @@ header {
   50% {
     transform: translateY(-6px);
     opacity: 1;
+  }
+}
+
+.offcanvas-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+  z-index: 100000;
+}
+
+.offcanvas-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.offcanvas-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 320px;
+  max-width: 92vw;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+  transform: translateX(100%);
+  transition: transform 320ms ease;
+  z-index: 100001;
+}
+
+.offcanvas-panel.is-open {
+  transform: translateX(0);
+}
+
+.offcanvas-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  color: #4b5563;
+  background: rgba(15, 23, 42, 0.05);
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.offcanvas-close:hover {
+  color: #111827;
+  background: rgba(15, 23, 42, 0.12);
+}
+
+.account-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 6px 10px 6px 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #ffffff;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.account-trigger:hover {
+  border-color: rgba(46, 167, 173, 0.35);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.account-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.08);
+  color: #1f2937;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.account-name {
+  font-weight: 600;
+  color: #111827;
+  font-size: 0.95rem;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-role {
+  font-size: 0.78rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.account-chevron {
+  width: 18px;
+  height: 18px;
+  color: #64748b;
+  margin-left: 4px;
+  transition: transform 160ms ease;
+}
+
+.account-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 180px;
+  padding: 8px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  z-index: 10;
+}
+
+.account-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  color: #111827;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.account-menu-item:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+
+@media (min-width: 640px) {
+  .offcanvas-panel {
+    width: 380px;
   }
 }
 </style>

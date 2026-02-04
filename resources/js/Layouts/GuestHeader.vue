@@ -6,7 +6,8 @@ import axios from "axios";
 
 import Dropdown from "@/Components/Dropdown.vue";
 import { useCurrency } from '@/composables/useCurrency';
-import globeIcon from '../../assets/globe.svg';
+import whatsappIcon from '../../assets/whatsapp.svg';
+import callIcon from '../../assets/call.svg';
 import flagEn from '../../assets/flag-en.svg';
 import flagFr from '../../assets/flag-fr.svg';
 import flagNl from '../../assets/flag-nl.svg';
@@ -15,16 +16,6 @@ import flagAr from '../../assets/flag-ar.svg';
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
 import FloatingSocialIcons from '@/Components/FloatingSocialIcons.vue';
 // hamburgerIcon is not used from assets anymore, using SVG directly
-import {
-    Sheet,
-    SheetClose,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from "@/Components/ui/sheet";
 
 const page = usePage();
 const { url } = page; // for watch
@@ -36,6 +27,7 @@ const showingNavigationDropdown = ref(false);
 const isLoginPage = computed(() => page.url.includes('/login'));
 const isRegisterPage = computed(() => page.url.includes('/register'));
 const contactInfo = ref(null);
+const pages = computed(() => page.props.pages);
 
 
 
@@ -62,6 +54,53 @@ const availableLocales = {
     es: { name: 'Es', flag: flagEs },
     ar: { name: 'Ar', flag: flagAr },
 };
+
+const getTranslatedSlug = (pageSlug) => {
+    let targetPage = null;
+    const defaultLocale = 'en';
+
+    if (pages.value) {
+        for (const key in pages.value) {
+            const pageItem = pages.value[key];
+            if (pageItem && pageItem.translations && Array.isArray(pageItem.translations)) {
+                const defaultTranslation = pageItem.translations.find(
+                    (t) => t.locale === defaultLocale && t.slug === pageSlug
+                );
+                if (defaultTranslation) {
+                    targetPage = pageItem;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!targetPage || !targetPage.translations || !Array.isArray(targetPage.translations)) {
+        return pageSlug;
+    }
+
+    const translation = targetPage.translations.find((t) => t.locale === currentLocale.value);
+    return translation ? translation.slug : pageSlug;
+};
+
+const welcomeBaseUrl = computed(() => route('welcome', { locale: currentLocale.value }));
+const middleNavItems = [
+    { label: 'How it works', id: 'how-it-works' },
+    { label: 'Blogs', id: 'blogs' },
+    { label: 'Testimonials', id: 'testimonials' },
+    { label: 'FAQ', id: 'faq' },
+    { label: 'eSIM', id: 'esim' },
+];
+
+const whatsappLink = computed(() => {
+    const phone = contactInfo.value?.phone_number || '+32493000000';
+    const digits = phone.replace(/[^\d]/g, '');
+    return digits ? `https://wa.me/${digits}` : null;
+});
+
+const callLink = computed(() => {
+    if (!contactInfo.value?.phone_number) return null;
+    return `tel:${contactInfo.value.phone_number}`;
+});
 
 const changeLanguage = (newLocale) => {
     const currentUrl = new URL(window.location.href);
@@ -162,6 +201,21 @@ const formatCurrencyTriggerDisplay = (currency) => {
     return `${currency}(${symbol})`;
 };
 
+const isWelcomeRoute = computed(() => {
+    if (typeof window === 'undefined') return false;
+    const path = window.location.pathname;
+    return path === `/${currentLocale.value}` || path === `/${currentLocale.value}/` || path === '/';
+});
+
+const handleNavClick = (event, targetId) => {
+    if (!isWelcomeRoute.value) return;
+    event.preventDefault();
+    const section = document.getElementById(targetId);
+    if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+};
+
 const toggleMobileNav = () => {
     showingNavigationDropdown.value = !showingNavigationDropdown.value;
 };
@@ -173,38 +227,90 @@ watch(() => url.value, () => {
 </script>
 
 <template>
-    <header class="border-b border-gray-200 shadow-sm bg-white">
+    <header class="border-b border-gray-200 shadow-sm bg-white relative z-40">
         <div class="full-w-container mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16 md:h-20">
-                <!-- Logo Section -->
+            <div class="flex items-center justify-between h-16 md:h-20 gap-4">
                 <div class="flex-shrink-0">
-                    <Link href="/" class="block w-32 md:w-40 transition-transform hover:opacity-80">
+                    <Link :href="route('welcome', { locale: page.props.locale })"
+                        class="block w-32 md:w-40 transition-transform hover:opacity-80">
                         <ApplicationLogo class="w-full h-auto" />
                     </Link>
                 </div>
 
-                <!-- Desktop Navigation -->
-                <div class="hidden md:flex md:items-center md:space-x-6">
-                    <Link v-if="isRegisterPage" :href="route('login')"
-                        class="button-primary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md">
-                        {{ _t('header', 'log_in') }}
+                <nav v-if="isWelcomeRoute" class="hidden lg:flex items-center gap-6 font-medium text-gray-700">
+                    <Link v-for="item in middleNavItems" :key="item.id" :href="`${welcomeBaseUrl}#${item.id}`"
+                        class="header-nav-link" @click="handleNavClick($event, item.id)">
+                        {{ item.label }}
                     </Link>
-                    <Link v-if="isLoginPage" :href="route('register')"
-                        class="button-secondary py-2 px-4 text-sm font-medium rounded-md transition-all duration-200 hover:shadow-md">
-                        {{ _t('header', 'create_account') }}
+                </nav>
+
+                <div class="flex items-center gap-3">
+                    <button @click="toggleMobileNav" type="button"
+                        class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition duration-150 ease-in-out"
+                        aria-controls="offcanvas-menu" aria-expanded="false">
+                        <span class="sr-only">{{ showingNavigationDropdown ? 'Close menu' : 'Open menu' }}</span>
+                        <svg class="h-6 w-6"
+                            :class="{ 'hidden': showingNavigationDropdown, 'block': !showingNavigationDropdown }"
+                            stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <svg class="h-6 w-6"
+                            :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
+                            stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="offcanvas-overlay" :class="{ 'is-open': showingNavigationDropdown }"
+            @click="showingNavigationDropdown = false" aria-hidden="true"></div>
+        <aside class="offcanvas-panel" :class="{ 'is-open': showingNavigationDropdown }" role="dialog"
+            aria-modal="true" :aria-hidden="!showingNavigationDropdown">
+            <div class="flex h-full flex-col">
+                <div class="flex items-center justify-between px-6 py-5 border-b">
+                    <Link :href="route('welcome', { locale: page.props.locale })" class="w-28">
+                        <ApplicationLogo class="w-full h-auto" />
                     </Link>
+                    <button type="button" class="offcanvas-close" @click="showingNavigationDropdown = false">
+                        <span class="sr-only">Close menu</span>
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
 
+                <div class="flex-1 overflow-y-auto px-6 py-5">
+                    <div class="flex min-h-full flex-col gap-6">
+                    <div class="space-y-3">
+                        <div class="text-xs uppercase tracking-widest text-gray-400">Account</div>
+                        <div class="space-y-2">
+                            <Link v-if="!isLoginPage" :href="route('login', { locale: page.props.locale })"
+                                class="flex items-center justify-between rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-4 py-3 text-sm font-medium text-white hover:bg-[#153b4fef]">
+                                Log in
+                            </Link>
+                            <Link v-if="!isRegisterPage" :href="route('register', { locale: page.props.locale })"
+                                class="flex items-center justify-between rounded-lg border border-customPrimaryColor px-4 py-3 text-sm font-medium text-customPrimaryColor hover:bg-blue-50">
+                                Create Account
+                            </Link>
+                        </div>
+                    </div>
 
-
-                    <!-- Currency Switcher -->
-                    <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
+                    <div class="space-y-3">
+                        <div class="text-xs uppercase tracking-widest text-gray-400">Currency</div>
                         <Dropdown align="right" width="max">
                             <template #trigger>
                                 <button type="button"
-                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out"
+                                    class="inline-flex w-full items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:border-customPrimaryColor"
                                     :disabled="currencyLoading">
-                                    <img :src="moneyExchangeSymbol" alt="Currency" class="w-6 h-6 mr-2">
-                                    <span>{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
+                                    <span class="flex items-center">
+                                        <img :src="moneyExchangeSymbol" alt="Currency" class="w-5 h-5 mr-2">
+                                        {{ formatCurrencyTriggerDisplay(selectedCurrency) }}
+                                    </span>
                                     <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M19 9l-7 7-7-7" />
@@ -226,109 +332,88 @@ watch(() => url.value, () => {
                         </Dropdown>
                     </div>
 
-                    <!-- Language Switcher for Guests (Desktop) -->
-                    <Dropdown align="right" width="48"
-                        class="bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
-                        <template #trigger>
-                            <button type="button"
-                                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition duration-150 ease-in-out">
-                                <img :src="availableLocales[currentLocale].flag"
-                                    :alt="availableLocales[currentLocale].name + ' Flag'"
-                                    class="w-6 h-6 mr-2 rounded-full">
-                                <span>{{ availableLocales[currentLocale].name }}</span>
-                                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                        </template>
-                        <template #content>
-                            <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
-                                class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                                :class="{ 'bg-gray-500': currentLocale === code }">
-                                <img :src="language.flag" :alt="language.name + ' Flag'"
-                                    class="w-5 h-5 mr-2 rounded-full">
-                                {{ language.name }}
-                            </div>
-                        </template>
-                    </Dropdown>
-                </div>
-
-                <!-- Mobile menu button -->
-                <div class="flex items-center md:hidden">
-
-                    <button @click="toggleMobileNav" type="button"
-                        class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition duration-150 ease-in-out"
-                        aria-controls="mobile-menu" aria-expanded="false">
-                        <span class="sr-only">{{ showingNavigationDropdown ? 'Close menu' : 'Open menu' }}</span>
-                        <svg class="h-6 w-6"
-                            :class="{ 'hidden': showingNavigationDropdown, 'block': !showingNavigationDropdown }"
-                            stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                        <svg class="h-6 w-6"
-                            :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
-                            stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Mobile menu, show/hide based on mobile menu state -->
-        <div id="mobile-menu" :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
-            class="md:hidden">
-            <div class="pt-2 pb-4 space-y-1 border-t border-gray-200 bg-gray-50">
-                <div class="px-4 py-3 space-y-3">
-                    <Link v-if="isRegisterPage" :href="route('login')"
-                        class="block w-full py-2 px-4 text-center font-medium text-white bg-customPrimaryColor hover:bg-[#153b4fef] rounded-md transition duration-150 ease-in-out">
-                        {{ _t('header', 'log_in') }}
-                    </Link>
-                    <Link v-if="isLoginPage" :href="route('register')"
-                        class="block w-full py-2 px-4 text-center font-medium text-blue-600 bg-white border border-customPrimaryColor hover:bg-blue-50 rounded-md transition duration-150 ease-in-out">
-                        {{ _t('header', 'create_account') }}
-                    </Link>
-
-
-
-                    <!-- Currency Options -->
-                    <div class="mt-3 px-4 py-2 border-t border-gray-200">
-                        <div class="text-sm font-medium text-gray-600 mb-2">Currency</div>
-                        <select v-model="selectedCurrency" @change="changeCurrency($event.target.value)"
-                            class="block w-full px-2 py-1 text-sm rounded-md border-gray-300 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                            <option v-for="currency in supportedCurrencies" :key="currency" :value="currency">
-                                {{ formatCurrencyDisplay(currency) }}
-                            </option>
-                        </select>
+                    <div class="space-y-3">
+                        <div class="text-xs uppercase tracking-widest text-gray-400">Language</div>
+                        <Dropdown align="right" width="48">
+                            <template #trigger>
+                                <button type="button"
+                                    class="inline-flex w-full items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:border-customPrimaryColor">
+                                    <span class="flex items-center">
+                                        <img :src="availableLocales[currentLocale].flag"
+                                            :alt="availableLocales[currentLocale].name + ' Flag'"
+                                            class="w-5 h-5 mr-2 rounded-full">
+                                        {{ availableLocales[currentLocale].name }}
+                                    </span>
+                                    <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                            </template>
+                            <template #content>
+                                <div v-for="(language, code) in availableLocales" :key="code"
+                                    @click="changeLanguage(code)"
+                                    class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
+                                    :class="{ 'bg-gray-500': currentLocale === code }">
+                                    <img :src="language.flag" :alt="language.name + ' Flag'"
+                                        class="w-5 h-5 mr-2 rounded-full">
+                                    {{ language.name }}
+                                </div>
+                            </template>
+                        </Dropdown>
                     </div>
 
-                    <!-- Language Options -->
-                    <div class="mt-3 pt-3 border-t border-gray-200">
-                        <div class="text-sm font-medium text-gray-600 mb-2">Language</div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button v-for="(language, code) in availableLocales" :key="code"
-                                @click="changeLanguage(code)"
-                                class="flex items-center justify-center px-2 py-1 text-sm rounded-md transition-all duration-200 hover:bg-gray-200"
-                                :class="currentLocale === code ? 'bg-gray-200 font-medium' : 'bg-gray-100'">
-                                <img :src="language.flag" :alt="language.name + ' Flag'"
-                                    class="w-5 h-5 mr-1 rounded-full">
-                                {{ language.name }}
-                            </button>
+                    <div class="space-y-3">
+                        <div class="text-xs uppercase tracking-widest text-gray-400">Pages</div>
+                        <div class="space-y-2">
+                            <Link
+                                :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })"
+                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                                About Us
+                            </Link>
+                            <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })"
+                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                                Blogs
+                            </Link>
+                            <Link :href="route('faq.show', { locale: page.props.locale })"
+                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                                FAQ
+                            </Link>
+                            <Link :href="route('contact-us', { locale: page.props.locale })"
+                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                                Contact Us
+                            </Link>
+                            <Link :href="`/${page.props.locale}/business/register`"
+                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                                Business
+                            </Link>
                         </div>
                     </div>
+
+                    <div v-if="whatsappLink || callLink" class="mt-auto space-y-3 border-t border-gray-200 pt-6">
+                        <div class="text-xs uppercase tracking-widest text-gray-400">Contact</div>
+                        <div class="grid gap-2">
+                            <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer"
+                                class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                                <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5">
+                                Chat on WhatsApp
+                            </a>
+                            <a v-if="callLink" :href="callLink"
+                                class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                                <img :src="callIcon" alt="Call" class="w-5 h-5">
+                                Call Us
+                            </a>
+                        </div>
+                    </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </aside>
 
-        <!-- Full-screen loader for currency change -->
         <div v-if="currencyLoading"
             class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
             <img :src="moneyExchangeSymbol" alt="Loading..." class="w-16 h-16 animate-spin" />
         </div>
-        <!-- Floating Social Icons -->
         <FloatingSocialIcons />
     </header>
 </template>
@@ -357,5 +442,91 @@ watch(() => url.value, () => {
 
 .currency-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #9ca3af;
+}
+
+.header-nav-link {
+    position: relative;
+    padding-bottom: 6px;
+    font-size: 1.05rem;
+    color: #334155;
+    transition: color 200ms ease;
+}
+
+.header-nav-link::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 0;
+    height: 2px;
+    background: #153b4f;
+    transform: translateX(-50%);
+    transition: width 220ms ease;
+}
+
+.header-nav-link:hover,
+.header-nav-link:focus-visible {
+    color: #153b4f;
+}
+
+.header-nav-link:hover::after,
+.header-nav-link:focus-visible::after {
+    width: 100%;
+}
+
+.offcanvas-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 240ms ease;
+    z-index: 100000;
+}
+
+.offcanvas-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.offcanvas-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 320px;
+    max-width: 92vw;
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+    transform: translateX(100%);
+    transition: transform 320ms ease;
+    z-index: 100001;
+}
+
+.offcanvas-panel.is-open {
+    transform: translateX(0);
+}
+
+.offcanvas-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    color: #4b5563;
+    background: rgba(15, 23, 42, 0.05);
+    transition: color 150ms ease, background 150ms ease;
+}
+
+.offcanvas-close:hover {
+    color: #111827;
+    background: rgba(15, 23, 42, 0.12);
+}
+
+@media (min-width: 640px) {
+    .offcanvas-panel {
+        width: 380px;
+    }
 }
 </style>

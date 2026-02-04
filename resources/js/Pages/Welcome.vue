@@ -599,7 +599,9 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!------------------------------- eSIM Section -------------------------------------->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <EsimSection />
+        <section id="esim">
+            <EsimSection />
+        </section>
         <!------------------------------ <End>  -------------------------------------------------->
 
         <!------------------------------- WHY CHOOSE US -------------------------------------->
@@ -693,12 +695,14 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!------------------------------- How It Works -------------------------------------->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <HowItWorks />
+        <section id="how-it-works">
+            <HowItWorks />
+        </section>
         <!------------------------------ <End>  -------------------------------------------------->
 
         <!-- ------------------------Testimonials Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section v-if="props.testimonials && props.testimonials.length" class="py-customVerticalSpacing">
+        <section id="testimonials" v-if="props.testimonials && props.testimonials.length" class="py-customVerticalSpacing">
             <Testimonials />
         </section>
         <!-- ---------------------------<End>---------------------------------------------------->
@@ -706,7 +710,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!-- ------------------------Blogs Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section v-if="!isLoading && blogs && blogs.length"
+        <section id="blogs" v-if="!isLoading && blogs && blogs.length"
             class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0 blogs-trigger">
             <div
                 class="column text-center flex flex-col items-center w-[650px] py-8 max-[768px]:py-0 max-[768px]:w-full max-[768px]:mb-10 blog-title-section">
@@ -794,7 +798,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!-- ------------------------FAQ Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section v-if="props.faqs && props.faqs.length" class="my-customVerticalSpacing">
+        <section id="faq" v-if="props.faqs && props.faqs.length" class="my-customVerticalSpacing">
             <!-- Pass the faqs prop to the Faq component -->
             <Faq :faqs="props.faqs" />
         </section>
