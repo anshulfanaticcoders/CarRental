@@ -1,14 +1,6 @@
 <script setup>
-import gridLines from "../../../assets/gridLines.png";
-import gridLinesForegroundImage from "../../../assets/gridLineFoegroundimage.jpeg";
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from "@/Components/ui/accordion";
-import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 
 // Access page props
 const page = usePage();
@@ -38,8 +30,6 @@ const _p = (key, replacements = {}) => {
     return translation;
 };
 
-const defaultValue = "item-1";
-
 const accordionItems = computed(() => [
     {
         value: "item-1",
@@ -61,47 +51,22 @@ const accordionItems = computed(() => [
 
 <template>
     <section
-        class="how-it-works bg-contain bg-no-repeat mt-[4rem] max-[768px]:mt-0"
-        :style="{ backgroundImage: `url(${gridLines})` }"
+        class="how-it-works home-section home-section--light"
     >
-        <div
-            class="full-w-container flex justify-between gap-20 h-[100vh] py-16 items-center
-            max-[768px]:flex-col max-[768px]:h-auto max-[768px]:pb-0 max-[768px]:py-0 max-[768px]:gap-10"
-        >
-            <div
-                class="column bg-cover bg-center rounded-[200px] h-full w-[35%]
-                max-[768px]:w-full max-[768px]:h-[450px]"
-                :style="{ backgroundImage: `url(${gridLinesForegroundImage})` }"
-            ></div>
-            <div class="column flex flex-col gap-10 w-[55%]
-            max-[768px]:w-full">
-                <div class="col flex flex-col gap-5">
-                    <span class="text-cutomPrimaryColor text-[1.25rem] max-[768px]:text-[1rem]">- {{ _p('how_it_works_title') }} -</span>
-                    <h3>{{ _p('how_it_works_subtitle') }}</h3>
-                    <p class="text-[1.25rem] text-customLightGrayColor max-[768px]:text-[1rem]">
-                        {{ _p('how_it_works_description') }}
-                    </p>
-                </div>
-                <div class="col">
-                    <Accordion
-                        type="single"
-                        class="w-full flex flex-col gap-5"
-                        collapsible
-                        :default-value="defaultValue"
-                    >
-                        <AccordionItem
-                            v-for="item in accordionItems"
-                            :key="item.value"
-                            :value="item.value"
-                        >
-                            <AccordionTrigger class="text-[1.5rem] text-customPrimaryColor max-[768px]:mb-2 max-[768px]:text-[1rem]">
-                                {{ item.title }}
-                            </AccordionTrigger>
-                            <AccordionContent class="text-[1.25rem] text-customLightGrayColor max-[768px]:text-[0.95rem] max-[768px]:leading-6">
-                                {{ item.content }}
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
+        <div class="full-w-container how-it-works-inner">
+            <div class="how-it-works-header">
+                <span class="how-it-works-tag">{{ _p('how_it_works_title') }}</span>
+                <h3 class="how-it-works-title">{{ _p('how_it_works_subtitle') }}</h3>
+                <p class="how-it-works-description">
+                    {{ _p('how_it_works_description') }}
+                </p>
+            </div>
+
+            <div class="how-it-works-steps">
+                <div v-for="(item, index) in accordionItems" :key="item.value" class="how-it-works-card">
+                    <div class="how-it-works-index">0{{ index + 1 }}</div>
+                    <h4>{{ item.title }}</h4>
+                    <p>{{ item.content }}</p>
                 </div>
             </div>
         </div>
@@ -109,6 +74,118 @@ const accordionItems = computed(() => [
 </template>
 
 <style scoped>
+.how-it-works-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+}
+
+.how-it-works-header {
+    text-align: center;
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.how-it-works-tag {
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    color: #2ea7ad;
+}
+
+.how-it-works-title {
+    font-size: clamp(2.1rem, 4vw, 3.2rem);
+    color: #0f172a;
+    margin: 0;
+}
+
+.how-it-works-description {
+    font-size: 1.1rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.how-it-works-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2rem;
+    position: relative;
+}
+
+.how-it-works-steps::before {
+    content: "";
+    position: absolute;
+    top: 52px;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(46, 167, 173, 0.4), transparent);
+}
+
+.how-it-works-card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 2rem;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.how-it-works-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+}
+
+.how-it-works-index {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    background: rgba(46, 167, 173, 0.12);
+    color: #153b4f;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    position: relative;
+    z-index: 1;
+}
+
+.how-it-works-card h4 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: #0f172a;
+}
+
+.how-it-works-card p {
+    margin: 0;
+    color: #64748b;
+    line-height: 1.6;
+}
+
+@media screen and (max-width: 1024px) {
+    .how-it-works-steps {
+        grid-template-columns: 1fr;
+    }
+
+    .how-it-works-steps::before {
+        top: 0;
+        left: 24px;
+        right: auto;
+        bottom: 10px;
+        width: 1px;
+        height: calc(100% - 20px);
+        background: linear-gradient(180deg, transparent, rgba(46, 167, 173, 0.4), transparent);
+    }
+}
 @media screen and (max-width: 768px) {
     .how-it-works {
         background-image: none !important;

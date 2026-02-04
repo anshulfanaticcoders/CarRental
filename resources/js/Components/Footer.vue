@@ -149,50 +149,40 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="bg-customPrimaryColor py-customVerticalSpacing text-customPrimaryColor-foreground
-        max-[768px]:py-0">
+    <div class="footer-shell">
         <div class="full-w-container">
-            <div class="column py-[3rem] flex justify-between gap-6
-            max-[768px]:flex-col">
-                <div class="col w-[30%] flex flex-col gap-5
-                max-[768px]:w-full">
+            <div class="footer-top">
+                <div class="footer-brand">
                     <Link class="w-full" href="/">
                     <ApplicationLogo logoColor="#FFFFFF" />
                     </Link>
-                    <div class="socialIcons flex gap-6">
-                        <Link href="" @mouseenter="isFacebookHovered = true" @mouseleave="isFacebookHovered = false" class="relative">
+                    <div class="footer-social">
+                        <Link href="" @mouseenter="isFacebookHovered = true" @mouseleave="isFacebookHovered = false" class="footer-social-icon">
                             <img :src="facebookLogo" alt="Facebook" class="absolute inset-0 transition-opacity duration-300" :class="{ 'opacity-0': isFacebookHovered }" />
                             <img :src="facebookLogoColored" alt="Facebook Colored" class="relative transition-opacity duration-300" :class="{ 'opacity-0': !isFacebookHovered }" />
                         </Link>
                         <a href="https://www.instagram.com/vrooemofficial?igsh=ZXZkMTdycmN6Mmhz" target="_blank"
-                            rel="noopener noreferrer" @mouseenter="isInstagramHovered = true" @mouseleave="isInstagramHovered = false" class="relative">
+                            rel="noopener noreferrer" @mouseenter="isInstagramHovered = true" @mouseleave="isInstagramHovered = false" class="footer-social-icon">
                             <img :src="instagramLogo" alt="Instagram" class="absolute inset-0 transition-opacity duration-300" :class="{ 'opacity-0': isInstagramHovered }" />
                             <img :src="instagramLogoColored" alt="Instagram Colored" class="relative transition-opacity duration-300" :class="{ 'opacity-0': !isInstagramHovered }" />
                         </a>
 
-                        <Link href="" @mouseenter="isTwitterHovered = true" @mouseleave="isTwitterHovered = false" class="relative">
+                        <Link href="" @mouseenter="isTwitterHovered = true" @mouseleave="isTwitterHovered = false" class="footer-social-icon">
                             <img :src="twitterLogo" alt="Twitter" class="absolute inset-0 transition-opacity duration-300" :class="{ 'opacity-0': isTwitterHovered }" />
                             <img :src="twitterLogoColored" alt="Twitter Colored" class="relative transition-opacity duration-300" :class="{ 'opacity-0': !isTwitterHovered }" />
                         </Link>
                     </div>
-                    <div class="column flex flex-col gap-4 mt-[1rem]">
-                        <span class="text-[1.5rem] max-[768px]:text-[1.2rem]">Subscribe to Newsletter</span>
-                        <div class="max-w-[450px]">
-                            <div class="relative">
-                                <input type="text" placeholder="Email address"
-                                    class="bg-transparent rounded-[100px] text-white p-3 border-[1px] w-full pl-4" />
-                                <button
-                                    class="h-full absolute right-0 button-tertiary w-[30%] max-[768px]:text-[0.875rem]">
-                                    Subscribe
-                                </button>
-                            </div>
+                    <div class="footer-newsletter">
+                        <span class="footer-newsletter-title">Subscribe to Newsletter</span>
+                        <div class="footer-newsletter-form">
+                            <input type="text" placeholder="Email address" class="footer-input" />
+                            <button class="footer-subscribe">Subscribe</button>
                         </div>
                     </div>
                 </div>
-                <div class="col w-[50%] grid grid-cols-4 gap-4
-                max-[768px]:grid max-[768px]:grid-cols-2 max-[768px]:w-full max-[768px]:mt-5">
-                    <div class="col flex flex-col gap-8 max-[768px]:gap-4">
-                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Company</label>
+                <div class="footer-links">
+                    <div class="col flex flex-col gap-6 max-[768px]:gap-4">
+                        <label for="" class="footer-heading">Company</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li class="relative group">
                                 <Link
@@ -214,8 +204,8 @@ onMounted(async () => {
                             </li>
                         </ul>
                     </div>
-                    <div class="col flex flex-col gap-8 max-[768px]:gap-4">
-                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Information</label>
+                    <div class="col flex flex-col gap-6 max-[768px]:gap-4">
+                        <label for="" class="footer-heading">Information</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li class="relative group">
                                 <Link
@@ -237,8 +227,8 @@ onMounted(async () => {
                             </li>
                         </ul>
                     </div>
-                    <div class="col flex flex-col gap-8 max-[768px]:gap-4">
-                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Location</label>
+                    <div class="col flex flex-col gap-6 max-[768px]:gap-4">
+                        <label for="" class="footer-heading">Location</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li v-for="place in footerPlaces" :key="place.id" class="relative group">
                                 <a
@@ -256,8 +246,8 @@ onMounted(async () => {
                             </li>
                         </ul>
                     </div>
-                    <div class="col flex flex-col gap-8 max-[768px]:gap-4">
-                        <label for="" class="text-[1.25rem] font-medium max-[768px]:text-[1rem]">Contact</label>
+                    <div class="col flex flex-col gap-6 max-[768px]:gap-4">
+                        <label for="" class="footer-heading">Contact</label>
                         <ul class="flex flex-col gap-4 max-[768px]:text-[0.875rem]">
                             <li v-if="footerContactInfo.phone_number" class="flex gap-2 items-center">
                                 <Phone :size="20" />
@@ -278,7 +268,7 @@ onMounted(async () => {
         </div>
     </div>
 
-    <div class="bg-customDarkBlackColor py-[2rem] text-white">
+    <div class="footer-bottom">
         <div
             class="full-w-container flex justify-between items-center max-[768px]:flex-col max-[768px]:justify-center max-[768px]:gap-5">
             <div class="column max-[768px]:flex">
@@ -294,23 +284,191 @@ onMounted(async () => {
 </template>
 
 <style>
-.footer-link-underline {
-    display: inline-block; /* Ensures the link wraps its content */
+.footer-shell {
+    background: linear-gradient(135deg, #0c1f2b 0%, #153b4f 45%, #0a1822 100%);
+    color: #f8fafc;
     position: relative;
+    overflow: hidden;
+}
+
+.footer-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 20% 20%, rgba(46, 167, 173, 0.25), transparent 45%),
+        radial-gradient(circle at 80% 70%, rgba(21, 59, 79, 0.35), transparent 55%);
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.footer-top {
+    position: relative;
+    z-index: 1;
+    padding: 3rem 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 3rem;
+    flex-wrap: wrap;
+}
+
+.footer-brand {
+    width: min(450px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.footer-social {
+    display: flex;
+    gap: 1rem;
+}
+
+.footer-social-icon {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.footer-social-icon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(46, 167, 173, 0.25);
+}
+
+.footer-newsletter {
+    background: rgba(11, 27, 38, 0.6);
+    border-radius: 20px;
+    padding: 1.5rem;
+    border: 1px solid rgba(46, 167, 173, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.28);
+}
+
+.footer-newsletter-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.footer-newsletter-form {
+    display: flex;
+    gap: 0.6rem;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    padding: 0.4rem;
+    overflow: hidden;
+    align-items: stretch;
+}
+
+.footer-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    padding: 0.7rem 1rem;
+    outline: none;
+    min-height: 46px;
+    box-sizing: border-box;
+}
+
+.footer-input::placeholder {
+    color: rgba(248, 250, 252, 0.6);
+}
+
+.footer-subscribe {
+    background: linear-gradient(135deg, #153b4f, #2ea7ad);
+    border-radius: 999px;
+    color: white;
+    padding: 0.7rem 1.6rem;
+    font-weight: 600;
+    white-space: nowrap;
+    border: none;
+    height: 100%;
+    min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.footer-links {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 2rem;
+    min-width: min(680px, 100%);
+}
+
+.footer-heading {
+    font-size: 0.95rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(248, 250, 252, 0.8);
+}
+
+.footer-link-underline {
+    display: inline-block;
+    position: relative;
+    color: rgba(248, 250, 252, 0.85);
+    transition: color 0.2s ease;
 }
 
 .footer-link-underline::after {
     content: '';
     position: absolute;
-    bottom: 0;
+    bottom: -4px;
     left: 0;
     height: 2px;
-    width: 0; /* Initial width */
-    background-color: white;
+    width: 0;
+    background-color: rgba(46, 167, 173, 0.8);
     transition: width 0.3s ease-in-out;
 }
 
+.footer-link-underline:hover {
+    color: #ffffff;
+}
+
 .footer-link-underline:hover::after {
-    width: 100%; /* Stretches to content width of the inline-block parent */
+    width: 100%;
+}
+
+.footer-bottom {
+    background: rgba(7, 16, 24, 0.95);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(248, 250, 252, 0.8);
+    padding: 1.5rem 0;
+}
+
+@media (max-width: 1024px) {
+    .footer-links {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .footer-top {
+        padding: 2.5rem 0;
+    }
+
+    .footer-links {
+        grid-template-columns: 1fr;
+    }
+
+    .footer-newsletter-form {
+        flex-direction: column;
+        align-items: stretch;
+        border-radius: 16px;
+    }
+
+    .footer-subscribe {
+        width: 100%;
+    }
 }
 </style>

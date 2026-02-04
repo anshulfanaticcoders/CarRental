@@ -199,7 +199,7 @@ body {
 }
 
 .full-w-container {
-    width: 96%;
+    width: min(92%, 1440px);
     margin-inline: auto;
 }
 
@@ -342,9 +342,37 @@ input[type='time'] {
     }
 
     .full-w-container {
-        width: 90%;
+        width: min(90%, 1440px);
         margin-inline: auto;
     }
+}
+
+.home-section {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    padding-block: clamp(3rem, 6vw, 6rem);
+}
+
+.home-section--light {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 45%, #f1f5f9 100%);
+    color: #0f172a;
+}
+
+.home-section--dark {
+    background: linear-gradient(135deg, #0b2230 0%, #153b4f 45%, #0b1b26 100%);
+    color: #f8fafc;
+}
+
+.home-section--dark::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 18% 12%, rgba(46, 167, 173, 0.35), transparent 45%),
+        radial-gradient(circle at 80% 78%, rgba(15, 23, 42, 0.35), transparent 55%);
+    opacity: 0.7;
+    z-index: 0;
+    pointer-events: none;
 }
 
 /* Override nprogress z-index to appear above header (header has z-index: 99999) */

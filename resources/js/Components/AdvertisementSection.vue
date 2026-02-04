@@ -65,68 +65,71 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <section v-if="currentAd" class="w-full py-6 sm:py-8 md:py-10 lg:py-12 ad-section-trigger overflow-hidden">
-        <div class="full-w-container mx-auto sm:px-6 lg:px-8 ad-content-wrapper">
+    <section v-if="currentAd"
+        class="w-full ad-section-trigger overflow-hidden home-section home-section--light">
+        <div class="full-w-container ad-content-wrapper">
             <!-- Section Header -->
-            <div class="mb-6 sm:mb-8 lg:mb-10 px-4 sm:px-0">
-                <span class="text-[1rem] sm:text-[1.15rem] text-customPrimaryColor">- Exclusive Offers -</span>
+            <div class="mb-6 sm:mb-8 lg:mb-10">
+                <span class="text-[1rem] sm:text-[1.15rem] text-customPrimaryColor tracking-[0.2em] uppercase">Exclusive Offers</span>
                 <h3 class="text-customDarkBlackColor text-2xl sm:text-3xl lg:text-[2.5rem] font-bold mt-2 max-[768px]:text-[1.75rem] max-[768px]:mt-[1rem]">
                     Don't Miss Out on These Deals
                 </h3>
             </div>
-            
+
             <div class="relative" @mouseenter="stopTimer" @mouseleave="startTimer">
                 <Transition name="fade" mode="out-in">
-                    <div :key="currentAd.id" class="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 h-auto">
-                        
-                        <!-- Main Featured Banner -->
-                        <div class="col-span-1 md:col-span-7 lg:col-span-8 relative group cursor-pointer ad-card-main h-[20rem] sm:h-[22rem] md:h-[24rem] lg:h-[28rem]">
-                            <div class="absolute inset-0 bg-gradient-to-r from-customPrimaryColor to-[#1e4b63] rounded-[1rem] sm:rounded-[1.5rem] lg:rounded-[2rem] transform transition-transform duration-500 hover:scale-[1.01] shadow-xl overflow-hidden">
-                                <!-- Decorative Circles -->
-                                <div class="absolute top-[-50%] right-[-10%] w-[20rem] sm:w-[25rem] lg:w-[30rem] h-[20rem] sm:h-[25rem] lg:h-[30rem] rounded-full bg-white/5 blur-3xl"></div>
-                                <div class="absolute bottom-[-20%] left-[-10%] w-[15rem] sm:w-[18rem] lg:w-[20rem] h-[15rem] sm:h-[18rem] lg:h-[20rem] rounded-full bg-white/10 blur-2xl"></div>
-                                
-                                <!-- Content -->
-                                <div class="relative z-10 h-full flex flex-col justify-center p-5 sm:p-6 md:p-8 lg:p-12 text-white">
-                                    <span class="inline-block py-1 px-2 sm:px-3 rounded-full bg-white/20 backdrop-blur-md text-[10px] sm:text-xs font-semibold tracking-wider mb-3 sm:mb-4 w-fit border border-white/10 uppercase">
-                                        {{ currentAd.offer_type }}
-                                    </span>
-                                    <h2 class="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-bold mb-2 sm:mb-3 lg:mb-4 leading-tight">
+                    <div :key="currentAd.id" class="ad-grid">
+                        <!-- Main Featured Card -->
+                        <div class="ad-hero">
+                            <div class="ad-hero-media"
+                                :style="{ backgroundImage: `url(${currentAd.image_path || heroImage})` }">
+                                <div class="ad-hero-overlay"></div>
+                                <div class="ad-hero-content">
+                                    <span class="ad-pill">{{ currentAd.offer_type }}</span>
+                                    <h2 class="ad-title">
                                         {{ currentAd.title }}
                                     </h2>
-                                    <p class="text-blue-100 text-sm sm:text-base lg:text-lg mb-4 sm:mb-6 lg:mb-8 max-w-md line-clamp-3">
+                                    <p class="ad-description">
                                         {{ currentAd.description }}
                                     </p>
-                                    
-                                    <a  v-if="currentAd.is_external"
-                                        :href="currentAd.button_link" 
-                                        target="_blank"
-                                        class="group/btn flex items-center gap-2 sm:gap-3 bg-white text-customPrimaryColor px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 lg:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base transition-all hover:bg-blue-50 hover:gap-3 sm:hover:gap-4 w-fit shadow-lg hover:shadow-white/20">
+
+                                    <a v-if="currentAd.is_external" :href="currentAd.button_link" target="_blank"
+                                        class="ad-cta">
                                         {{ currentAd.button_text }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 transform transition-transform group-hover/btn:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                         </svg>
                                     </a>
-                                    <a  v-else
-                                        :href="`/${page.props.locale}${currentAd.button_link || ''}`" 
-                                        class="group/btn flex items-center gap-2 sm:gap-3 bg-white text-customPrimaryColor px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 lg:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base transition-all hover:bg-blue-50 hover:gap-3 sm:hover:gap-4 w-fit shadow-lg hover:shadow-white/20">
+                                    <a v-else :href="`/${page.props.locale}${currentAd.button_link || ''}`"
+                                        class="ad-cta">
                                         {{ currentAd.button_text }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 transform transition-transform group-hover/btn:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M17 8l4 4m0 0l-4 4m4-4H3" />
                                         </svg>
                                     </a>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Secondary Vertical Banner (Right Side) -->
-                        <div class="col-span-1 md:col-span-5 lg:col-span-4 relative group cursor-pointer ad-card-secondary h-[16rem] sm:h-[18rem] md:h-[24rem] lg:h-[28rem]">
-                            <div 
-                                class="absolute inset-0 bg-customPrimaryColor rounded-[1rem] sm:rounded-[1.5rem] lg:rounded-[2rem] transform transition-transform duration-500 hover:scale-[1.01] shadow-xl overflow-hidden"
-                                :style="{ backgroundImage: `url(${currentAd.image_path || heroImage})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }"
-                            >
-                                <!-- Subtle overlay for hover effect -->
-                                <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors"></div>
+                        <!-- Editorial Side Cards -->
+                        <div class="ad-side">
+                            <div class="ad-side-card">
+                                <span class="ad-side-label">Limited</span>
+                                <h4>{{ currentAd.title }}</h4>
+                                <p>{{ currentAd.description }}</p>
+                                <div class="ad-side-meta">
+                                    <span>{{ currentAd.offer_type }}</span>
+                                    <span>Ends soon</span>
+                                </div>
+                            </div>
+                            <div class="ad-side-card ad-side-image"
+                                :style="{ backgroundImage: `url(${currentAd.image_path || heroImage})` }">
+                                <div class="ad-side-image-overlay"></div>
+                                <span>VROOEM Picks</span>
                             </div>
                         </div>
                     </div>
@@ -134,18 +137,13 @@ onUnmounted(() => {
 
                 <!-- Dot Indicators (Only show if multiple ads) -->
                 <div v-if="advertisements.length > 1" class="flex justify-center gap-2 mt-6 sm:mt-8">
-                    <button 
-                        v-for="(ad, index) in advertisements" 
-                        :key="ad.id"
-                        @click="setAd(index)"
+                    <button v-for="(ad, index) in advertisements" :key="ad.id" @click="setAd(index)"
                         class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-300 focus:outline-none"
                         :class="[
-                            currentIndex === index 
-                                ? 'bg-customPrimaryColor scale-110 w-6 sm:w-8' 
+                            currentIndex === index
+                                ? 'bg-customPrimaryColor scale-110 w-6 sm:w-8'
                                 : 'bg-gray-300 hover:bg-gray-400'
-                        ]"
-                        :aria-label="`Go to slide ${index + 1}`"
-                    ></button>
+                        ]" :aria-label="`Go to slide ${index + 1}`"></button>
                 </div>
             </div>
         </div>
@@ -153,6 +151,174 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.ad-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: 2rem;
+}
+
+.ad-hero {
+    min-height: 360px;
+}
+
+.ad-hero-media {
+    position: relative;
+    border-radius: 28px;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    min-height: 360px;
+    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.ad-hero-media:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.22);
+}
+
+.ad-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(11, 34, 48, 0.88) 0%, rgba(21, 59, 79, 0.55) 55%, rgba(11, 27, 38, 0.2) 100%);
+}
+
+.ad-hero-content {
+    position: relative;
+    z-index: 1;
+    padding: 2.5rem;
+    max-width: 460px;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.ad-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    width: fit-content;
+}
+
+.ad-title {
+    font-size: clamp(1.75rem, 3vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0;
+}
+
+.ad-description {
+    font-size: 1rem;
+    color: rgba(248, 250, 252, 0.85);
+    margin: 0;
+    line-height: 1.6;
+}
+
+.ad-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1.6rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #153b4f, #2ea7ad);
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 16px 30px rgba(21, 59, 79, 0.28);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    width: fit-content;
+}
+
+.ad-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 22px 42px rgba(21, 59, 79, 0.35);
+}
+
+.ad-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.ad-side-card {
+    background: #ffffff;
+    border-radius: 22px;
+    padding: 1.5rem;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.ad-side-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+}
+
+.ad-side-card h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0 0 0.6rem;
+}
+
+.ad-side-card p {
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0 0 1.2rem;
+}
+
+.ad-side-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #2ea7ad;
+    display: inline-block;
+    margin-bottom: 0.8rem;
+}
+
+.ad-side-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.ad-side-image {
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    min-height: 180px;
+    color: #ffffff;
+    display: flex;
+    align-items: flex-end;
+}
+
+.ad-side-image-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(11, 27, 38, 0.1) 0%, rgba(11, 27, 38, 0.7) 100%);
+}
+
+.ad-side-image span {
+    position: relative;
+    z-index: 1;
+    padding: 1rem 1.4rem;
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
 /* Glassmorphism utility */
 .backdrop-blur-md {
     backdrop-filter: blur(12px);
@@ -167,5 +333,21 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+
+@media (max-width: 1024px) {
+    .ad-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ad-hero-content {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .ad-hero-content {
+        padding: 2rem 1.5rem;
+    }
 }
 </style>

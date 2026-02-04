@@ -528,17 +528,18 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!------------------------------- Top Destination Places -------------------------------------->
         <section v-if="!props.popularPlaces || props.popularPlaces.length > 0"
-            class="flex flex-col gap-2 py-customVerticalSpacing popular-places max-[768px]:py-[1rem] max-[768px]:gap-8 popular-places-trigger">
-            <div class="column ml-[2%]">
-                <span class="text-[1.15rem] text-customPrimaryColor">-{{ _p('top_destinations') }} -</span>
-                <h3 class="text-customDarkBlackColor max-[768px]:text-[1.75rem] max-[768px]:mt-[1rem]">{{
-                    _p('popular_places') }}</h3>
-            </div>
-            <div class="column"
-                :class="{ 'max-[768px]:px-[1.5rem]': !props.popularPlaces || props.popularPlaces.length > 0 }">
-                <Carousel v-if="!props.popularPlaces || props.popularPlaces.length > 0" class="relative w-full"
-                    :plugins="[plugin]">
-                    <CarouselContent class="pl-10 pt-[2rem] max-[768px]:pr-10 max-[768px]:pl-2 max-[768px]:pt-0">
+            class="home-section home-section--dark popular-places popular-places-trigger">
+            <div class="full-w-container flex flex-col gap-2 max-[768px]:gap-8">
+                <div class="column">
+                    <span class="text-[1.15rem] text-slate-100">-{{ _p('top_destinations') }} -</span>
+                    <h3 class="text-slate-100 max-[768px]:text-[1.75rem] max-[768px]:mt-[1rem]">{{
+                        _p('popular_places') }}</h3>
+                </div>
+                <div class="column"
+                    :class="{ 'max-[768px]:px-[1.5rem]': !props.popularPlaces || props.popularPlaces.length > 0 }">
+                    <Carousel v-if="!props.popularPlaces || props.popularPlaces.length > 0" class="relative w-full"
+                        :plugins="[plugin]">
+                        <CarouselContent class="pl-10 pt-[2rem] max-[768px]:pr-10 max-[768px]:pl-2 max-[768px]:pt-0">
                         <!-- Show actual places when data is loaded from props -->
                         <template v-if="props.popularPlaces && props.popularPlaces.length > 0">
                             <CarouselItem v-for="place in props.popularPlaces" :key="place.id"
@@ -547,7 +548,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                     <a :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name)}`"
                                         @click.prevent="navigateToSearch(place)">
                                         <Card
-                                            class="h-[18rem] border-0 rounded-[0.75rem] transition-all duration-300 hover:mt-[-1rem] max-[768px]:hover:mt-0">
+                                            class="h-[18rem] border-0 rounded-[0.75rem] shadow-lg">
                                             <CardContent class="flex flex-col gap-2 justify-center px-1 h-full">
                                                 <img :src="`${place.image}`" :alt="place.place_name"
                                                     class="rounded-[0.75rem] h-[12rem] w-full object-cover mb-2" />
@@ -583,8 +584,9 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                         </template>
                     </CarouselContent>
 
-                    <CarouselPrevious v-if="props.popularPlaces && props.popularPlaces.length > 0" />
-                </Carousel>
+                        <CarouselPrevious v-if="props.popularPlaces && props.popularPlaces.length > 0" />
+                    </Carousel>
+                </div>
             </div>
         </section>
 
@@ -606,14 +608,14 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!------------------------------- WHY CHOOSE US -------------------------------------->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section class="py-customVerticalSpacing why-choose-us-trigger why-choose-surface">
+        <section class="home-section home-section--dark why-choose-us-trigger why-choose-surface">
             <div class="full-w-container flex flex-col gap-16">
                 <div class="column text-center flex flex-col gap-5 items-center why-choose-us-title">
-                    <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('why_choose_us') }}-</span>
-                    <h3 class="max-w-[883px] text-customDarkBlackColor">
+                    <span class="text-[1.25rem] text-slate-100">-{{ _p('why_choose_us') }}-</span>
+                    <h3 class="max-w-[883px] text-white">
                         {{ _p('why_subtitle') }}
                     </h3>
-                    <p class="max-w-[720px] text-customLightGrayColor text-[1.1rem]">
+                    <p class="max-w-[720px] text-slate-200 text-[1.1rem]">
                         Travel with the confidence of a premium concierge and the ease of a local expert.
                     </p>
                 </div>
@@ -702,7 +704,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!-- ------------------------Testimonials Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section id="testimonials" v-if="props.testimonials && props.testimonials.length" class="py-customVerticalSpacing">
+        <section id="testimonials" v-if="props.testimonials && props.testimonials.length">
             <Testimonials />
         </section>
         <!-- ---------------------------<End>---------------------------------------------------->
@@ -711,7 +713,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
         <!-- ------------------------Blogs Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
         <section id="blogs" v-if="!isLoading && blogs && blogs.length"
-            class="blogs min-h-[80vh] flex flex-col gap-10 items-center py-customVerticalSpacing max-[768px]:py-0 max-[768px]:gap-0 blogs-trigger">
+            class="home-section home-section--light blogs min-h-[80vh] flex flex-col gap-10 items-center blogs-trigger">
             <div
                 class="column text-center flex flex-col items-center w-[650px] py-8 max-[768px]:py-0 max-[768px]:w-full max-[768px]:mb-10 blog-title-section">
                 <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('blogs_title') }}-</span>
@@ -798,7 +800,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
         <!-- ------------------------FAQ Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
-        <section id="faq" v-if="props.faqs && props.faqs.length" class="my-customVerticalSpacing">
+        <section id="faq" v-if="props.faqs && props.faqs.length">
             <!-- Pass the faqs prop to the Faq component -->
             <Faq :faqs="props.faqs" />
         </section>
@@ -809,7 +811,6 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 </template>
 
 <style>
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600&display=swap");
 
 .bg-dots-darker {
     background-image: url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.22676 0C1.91374 0 2.45351 0.539773 2.45351 1.22676C2.45351 1.91374 1.91374 2.45351 1.22676 2.45351C0.539773 2.45351 0 1.91374 0 1.22676C0 0.539773 0.539773 0 1.22676 0Z' fill='rgba(0,0,0,0.07)'/%3E%3C/svg%3E");
@@ -856,7 +857,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     content: "";
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at top, rgba(15, 23, 42, 0.05), transparent 65%);
+    background: radial-gradient(circle at top, rgba(46, 167, 173, 0.2), transparent 65%);
     pointer-events: none;
 }
 
@@ -1192,7 +1193,6 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     position: relative;
     overflow: hidden;
     box-shadow: 0 30px 70px rgba(6, 18, 27, 0.45);
-    font-family: "Manrope", sans-serif;
 }
 
 .hero-left::before {
@@ -1222,7 +1222,6 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 }
 
 .hero-title {
-    font-family: "Fraunces", serif;
     font-size: clamp(2.7rem, 4.2vw, 4rem);
     line-height: 1.08;
     color: #ffffff;
