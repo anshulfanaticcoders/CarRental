@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\SeoMetaController;
 use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\Admin\AdminAdvertisementController; // Import the controller
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\Auth\EmailValidationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BookingController;
@@ -100,6 +101,16 @@ use Stevebauman\Location\Facades\Location;
 Route::post('/admin/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware(['auth', 'role:admin'])
     ->name('admin.logout');
+
+Route::middleware('guest')->group(function () {
+    Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])
+        ->whereIn('provider', ['google', 'facebook'])
+        ->name('oauth.redirect.global');
+
+    Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])
+        ->whereIn('provider', ['google', 'facebook'])
+        ->name('oauth.callback.global');
+});
 
 Route::post('/language/change', [LanguageController::class, 'change'])->name('language.change');
 

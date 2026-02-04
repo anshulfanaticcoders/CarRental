@@ -8,6 +8,7 @@ use App\Models\ChatStatus; // Added import
 use Illuminate\Database\Eloquent\Relations\HasOne; // Added import
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\ProviderFavorite;
+use App\Models\SocialAccount;
 
 class User extends Authenticatable
 {
@@ -103,5 +104,10 @@ public function bookings()
     public function providerFavorites(): HasMany
     {
         return $this->hasMany(ProviderFavorite::class);
+    }
+
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
     }
 }

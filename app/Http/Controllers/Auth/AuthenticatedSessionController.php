@@ -55,13 +55,9 @@ class AuthenticatedSessionController extends Controller
             $affiliateService->updateCustomerInAffiliateScans($user->id);
         }
 
-        // Redirect based on role
-        if ($user->role === 'admin') {
-            return Inertia::location('/admin-dashboard');
-        }
+        $locale = $request->route('locale') ?? config('app.fallback_locale', 'en');
 
-        // Use the intended URL, falling back to the HOME constant.
-        return Inertia::location(session()->pull('url.intended', RouteServiceProvider::HOME));
+        return Inertia::location(route('profile.edit', ['locale' => $locale]));
     }
 
     /**

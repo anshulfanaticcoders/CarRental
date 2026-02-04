@@ -6,7 +6,7 @@ import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import loginBg from '../../../assets/loginpageImage.jpg'
 import GuestHeader from '@/Layouts/GuestHeader.vue';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { toast } from 'vue-sonner';
 import { Toaster } from "@/Components/ui/sonner";
 import { watch, onMounted } from 'vue';
@@ -28,6 +28,7 @@ const props = defineProps({
 
 const showPassword = ref(false);
 const isLoggingIn = ref(false);
+const oauthError = computed(() => page.props.errors?.oauth || null);
 
 const form = useForm({
     email: '',
@@ -102,6 +103,9 @@ watch(() => props.status, (newStatus) => {
                         class='text-customLightGrayColor max-[768px]:text-white max-[768px]:text-[1rem] max-[768px]:mt-2 form-subtitle'>
                         {{ _t('login', 'login_description') }}</p>
                 </div>
+                <div v-if="oauthError" class="oauth-error">
+                    {{ oauthError }}
+                </div>
                 <form @submit.prevent="submit" class="form-body">
                     <div class="form-field">
                         <InputLabel for="email" :value="_t('login', 'email_address')" class="max-[768px]:!text-white form-label" />
@@ -153,6 +157,36 @@ watch(() => props.status, (newStatus) => {
                             </span>
                             <span v-else>{{ _t('login', 'sign_in_button') }}</span>
                         </button>
+                    </div>
+
+                    <div class="social-divider">
+                        <span>or continue with</span>
+                    </div>
+
+                    <div class="social-buttons">
+                        <a :href="route('oauth.redirect.global', { locale: page.props.locale, provider: 'google' })"
+                            class="social-button">
+                            <span class="social-icon" aria-hidden="true">
+                                <svg viewBox="0 0 48 48" class="social-svg">
+                                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.73 1.22 9.25 3.6l6.9-6.9C35.7 2.57 30.23 0 24 0 14.62 0 6.53 5.38 2.55 13.22l8.06 6.26C12.5 13.04 17.8 9.5 24 9.5z"/>
+                                    <path fill="#4285F4" d="M46.98 24.55c0-1.64-.15-3.22-.43-4.75H24v9.02h12.98c-.56 3.02-2.25 5.58-4.77 7.3l7.32 5.68c4.28-3.95 6.45-9.77 6.45-17.25z"/>
+                                    <path fill="#FBBC05" d="M10.61 28.74c-.48-1.45-.76-2.99-.76-4.74 0-1.75.27-3.29.76-4.74l-8.06-6.26C.92 16.24 0 19.9 0 24c0 4.1.92 7.76 2.55 11l8.06-6.26z"/>
+                                    <path fill="#34A853" d="M24 48c6.23 0 11.45-2.06 15.27-5.6l-7.32-5.68c-2.02 1.36-4.6 2.16-7.95 2.16-6.2 0-11.5-3.54-13.39-8.29l-8.06 6.26C6.53 42.62 14.62 48 24 48z"/>
+                                    <path fill="none" d="M0 0h48v48H0z"/>
+                                </svg>
+                            </span>
+                            Continue with Google
+                        </a>
+                        <a :href="route('oauth.redirect.global', { locale: page.props.locale, provider: 'facebook' })"
+                            class="social-button">
+                            <span class="social-icon" aria-hidden="true">
+                                <svg viewBox="0 0 48 48" class="social-svg">
+                                    <path fill="#1877F2" d="M48 24c0 13.26-10.74 24-24 24S0 37.26 0 24 10.74 0 24 0s24 10.74 24 24z"/>
+                                    <path fill="#fff" d="M26.67 24.98h5.15l.81-5.3h-5.96v-3.44c0-1.53.75-3.02 3.17-3.02h2.45V8.7s-2.22-.38-4.35-.38c-4.44 0-7.34 2.69-7.34 7.56v3.8h-4.94v5.3h4.94V40h6.07V24.98z"/>
+                                </svg>
+                            </span>
+                            Continue with Facebook
+                        </a>
                     </div>
                 </form>
                 </div>
@@ -251,6 +285,17 @@ watch(() => props.status, (newStatus) => {
 
 .form-subtitle {
     color: #475569;
+}
+
+.oauth-error {
+    margin-bottom: 1.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #b91c1c;
+    font-weight: 600;
+    text-align: center;
 }
 
 .form-label {
@@ -398,6 +443,68 @@ watch(() => props.status, (newStatus) => {
     color: #ef4444;
     font-size: 0.75rem;
     font-weight: 500;
+}
+
+.social-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 2rem 0 1.25rem;
+    color: #64748b;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.social-divider::before,
+.social-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(148, 163, 184, 0.4);
+}
+
+.social-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.social-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    background: #ffffff;
+    font-weight: 600;
+    color: #0f172a;
+    transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.social-button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(15, 23, 42, 0.3);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.social-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.social-svg {
+    width: 18px;
+    height: 18px;
+    display: block;
 }
 
 @keyframes slideInUp {

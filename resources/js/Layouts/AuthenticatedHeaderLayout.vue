@@ -374,7 +374,6 @@ const getTranslatedSlug = (pageSlug) => {
   return translation ? translation.slug : pageSlug;
 };
 
-const welcomeBaseUrl = computed(() => route('welcome', { locale: currentLocale.value }));
 const middleNavItems = [
   { label: 'How it works', id: 'how-it-works' },
   { label: 'Blogs', id: 'blogs' },
@@ -466,11 +465,11 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
           </Link>
         </div>
 
-        <nav v-if="isWelcomeRoute" class="hidden lg:flex items-center gap-6 font-medium text-gray-700">
-          <Link v-for="item in middleNavItems" :key="item.id" :href="`${welcomeBaseUrl}#${item.id}`"
-            class="header-nav-link" @click="handleNavClick($event, item.id)">
+        <nav v-if="isWelcomeRoute" class="hidden lg:flex items-center gap-8 font-medium text-gray-700">
+          <button v-for="item in middleNavItems" :key="item.id" type="button" class="header-nav-link"
+            @click="handleNavClick($event, item.id)">
             {{ item.label }}
-          </Link>
+          </button>
         </nav>
 
         <div class="flex items-center gap-3">
@@ -512,6 +511,46 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
                   notifications</button>
               </div>
             </div>
+          </div>
+
+          <div class="hidden lg:flex items-center gap-2">
+            <Dropdown align="right" width="max">
+              <template #trigger>
+                <button type="button" class="header-icon-trigger" :disabled="currencyLoading"
+                  aria-label="Change currency">
+                  <img :src="moneyExchangeSymbol" alt="" class="w-5 h-5"
+                    :class="{ 'opacity-60': currencyLoading }">
+                  <span class="sr-only">Currency</span>
+                </button>
+              </template>
+              <template #content>
+                <div class="max-h-64 overflow-y-auto currency-scrollbar">
+                  <div v-for="currency in supportedCurrencies" :key="currency" @click="changeCurrency(currency)"
+                    class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
+                    :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }">
+                    <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                    {{ formatCurrencyDisplay(currency) }}
+                  </div>
+                </div>
+              </template>
+            </Dropdown>
+
+            <Dropdown align="right" width="48">
+              <template #trigger>
+                <button type="button" class="header-icon-trigger" aria-label="Change language">
+                  <img :src="availableLocales[currentLocale].flag" alt="" class="w-5 h-5 rounded-full">
+                  <span class="sr-only">Language</span>
+                </button>
+              </template>
+              <template #content>
+                <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)"
+                  class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
+                  :class="{ 'bg-gray-500': currentLocale === code }">
+                  <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
+                  {{ language.name }}
+                </div>
+              </template>
+            </Dropdown>
           </div>
 
           <button @click="toggleMobileNav" type="button"
@@ -797,11 +836,53 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
   box-shadow: 0 6px 12px rgba(239, 68, 68, 0.2);
 }
 
+.header-icon-trigger {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  color: #475569;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease,
+    background 160ms ease, color 160ms ease;
+}
+
+.header-icon-trigger:hover {
+  background: #ffffff;
+  border-color: rgba(46, 167, 173, 0.45);
+  color: #0f172a;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+.header-icon-trigger:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+}
+
+.header-icon-trigger:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+
+.header-icon-trigger[disabled] {
+  cursor: not-allowed;
+  opacity: 0.75;
+  box-shadow: none;
+}
+
 .header-nav-link {
   position: relative;
-  padding-bottom: 6px;
   font-size: 1.05rem;
   color: #334155;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   transition: color 200ms ease;
 }
 

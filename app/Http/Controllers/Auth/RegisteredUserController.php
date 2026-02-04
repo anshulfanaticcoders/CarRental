@@ -123,7 +123,9 @@ class RegisteredUserController extends Controller
             // Continue with registration flow even if notification fails
         }
 
-        return redirect(RouteServiceProvider::HOME);
+        $locale = $request->route('locale') ?? config('app.fallback_locale', 'en');
+
+        return redirect()->route('profile.edit', ['locale' => $locale]);
     }
 
     public function getUserWithRelations()
