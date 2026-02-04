@@ -985,6 +985,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     margin-left: 0.75rem;
 }
 
+
 .cursor-blink {
     animation: blink 0.7s infinite;
     font-weight: bold;

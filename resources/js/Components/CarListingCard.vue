@@ -84,6 +84,17 @@ const showAllPlans = ref(false);
 
 const ratesReady = computed(() => !!exchangeRates.value && !loading.value);
 
+const PROVIDER_NET_SHARE = 0.85; // provider API net share (85%)
+const providerGrossMultiplier = computed(() => {
+    return props.vehicle?.source === 'internal' ? 1 : (PROVIDER_NET_SHARE > 0 ? (1 / PROVIDER_NET_SHARE) : 1);
+});
+
+// Convert to selected currency and gross-up for provider vehicles (except internal).
+const convertRentalPrice = (price, fromCurrency) => {
+    const converted = convertPrice(parseFloat(price || 0), fromCurrency);
+    return converted * providerGrossMultiplier.value;
+};
+
 const canConvertFrom = (fromCurrency) => {
     if (!fromCurrency || !selectedCurrency.value) return false;
     if (!exchangeRates.value || loading.value) return false;
@@ -298,7 +309,7 @@ const dailyPrice = computed(() => {
     const originalPrice = parseFloat(product.total) / numberOfRentalDays.value;
     const originalCurrency = product.currency || props.vehicle.currency || 'USD';
     if (!canConvertFrom(originalCurrency)) return null;
-    return convertPrice(originalPrice, originalCurrency).toFixed(2);
+    return convertRentalPrice(originalPrice, originalCurrency).toFixed(2);
 });
 
 // Get Premium Plus daily price for display
@@ -309,7 +320,7 @@ const premiumPlusDailyPrice = computed(() => {
     const originalPrice = parseFloat(product.total) / numberOfRentalDays.value;
     const originalCurrency = product.currency || props.vehicle.currency || 'USD';
     if (!canConvertFrom(originalCurrency)) return null;
-    return convertPrice(originalPrice, originalCurrency).toFixed(2);
+    return convertRentalPrice(originalPrice, originalCurrency).toFixed(2);
 });
 
 // Get LocautoRent converted daily price
@@ -320,7 +331,7 @@ const locautoDailyPrice = computed(() => {
     const originalPrice = basePrice + protectionPrice;
     const originalCurrency = props.vehicle.currency || 'EUR';
     if (!canConvertFrom(originalCurrency)) return null;
-    return convertPrice(originalPrice, originalCurrency).toFixed(2);
+    return convertRentalPrice(originalPrice, originalCurrency).toFixed(2);
 });
 
 // Get Adobe converted daily price
@@ -330,7 +341,7 @@ const adobeDailyPrice = computed(() => {
     const protectionTotal = selectedAdobeProtection.value ? parseFloat(selectedAdobeProtection.value.amount) : 0;
     const originalPrice = (baseTotal + protectionTotal) / numberOfRentalDays.value;
     if (!canConvertFrom('USD')) return null;
-    return convertPrice(originalPrice, 'USD').toFixed(2);
+    return convertRentalPrice(originalPrice, 'USD').toFixed(2);
 });
 
 // Get Renteon converted daily price
@@ -339,7 +350,7 @@ const renteonDailyPrice = computed(() => {
     const originalPrice = parseFloat(props.vehicle?.price_per_day || 0);
     const originalCurrency = props.vehicle?.currency || 'EUR';
     if (!canConvertFrom(originalCurrency)) return null;
-    return convertPrice(originalPrice, originalCurrency).toFixed(2);
+    return convertRentalPrice(originalPrice, originalCurrency).toFixed(2);
 });
 
 // Get package name from type
@@ -1013,14 +1024,14 @@ onUnmounted(() => {
 
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">
-                                    {{ getSelectedCurrencySymbol() }}{{ convertPrice(parseFloat(product.total) /
+                                    {{ getSelectedCurrencySymbol() }}{{ convertRentalPrice(parseFloat(product.total) /
                                         numberOfRentalDays, product.currency || props.vehicle.currency || 'USD').toFixed(2)
                                     }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">
                                     Total: {{ getSelectedCurrencySymbol() }}{{
-                                        convertPrice(parseFloat(product.total), product.currency || props.vehicle.currency
+                                        convertRentalPrice(parseFloat(product.total), product.currency || props.vehicle.currency
                                             || 'USD').toFixed(2) }}
                                 </div>
                             </div>
@@ -1065,10 +1076,10 @@ onUnmounted(() => {
                             </div>
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">{{ getSelectedCurrencySymbol() }}{{
-                                    convertPrice(parseFloat(vehicle.price_per_day), vehicle.currency ||
+                                    convertRentalPrice(parseFloat(vehicle.price_per_day), vehicle.currency ||
                                         'EUR').toFixed(2) }} <span>/day</span></div>
                                 <div class="plan-total-price">Total: {{ getSelectedCurrencySymbol() }}{{
-                                    convertPrice(parseFloat(vehicle.total_price), vehicle.currency || 'EUR').toFixed(2)
+                                    convertRentalPrice(parseFloat(vehicle.total_price), vehicle.currency || 'EUR').toFixed(2)
                                 }}</div>
                             </div>
                             <ul class="plan-features">
@@ -1094,12 +1105,12 @@ onUnmounted(() => {
                             </div>
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">{{ getSelectedCurrencySymbol() }}{{
-                                    convertPrice(parseFloat(vehicle.price_per_day) + parseFloat(protection.amount),
+                                    convertRentalPrice(parseFloat(vehicle.price_per_day) + parseFloat(protection.amount),
                                         vehicle.currency || 'EUR').toFixed(2) }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">Total: {{ getSelectedCurrencySymbol() }}{{
-                                    convertPrice(parseFloat(vehicle.total_price) + (parseFloat(protection.amount) *
+                                    convertRentalPrice(parseFloat(vehicle.total_price) + (parseFloat(protection.amount) *
                                         numberOfRentalDays), vehicle.currency || 'EUR').toFixed(2) }}</div>
                             </div>
                             <ul class="plan-features">
@@ -1128,12 +1139,12 @@ onUnmounted(() => {
                             </div>
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">
-                                    {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total / numberOfRentalDays,
+                                    {{ getSelectedCurrencySymbol() }}{{ convertRentalPrice(product.total / numberOfRentalDays,
                                         'USD').toFixed(2) }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">
-                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total,
+                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertRentalPrice(product.total,
                                         'USD').toFixed(2) }}
                                 </div>
                             </div>
@@ -1169,12 +1180,12 @@ onUnmounted(() => {
                             </div>
                             <div class="plan-price-box">
                                 <div class="plan-daily-price">
-                                    {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.price_per_day,
+                                    {{ getSelectedCurrencySymbol() }}{{ convertRentalPrice(product.price_per_day,
                                         product.currency).toFixed(2) }}
                                     <span>/day</span>
                                 </div>
                                 <div class="plan-total-price">
-                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.total,
+                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertRentalPrice(product.total,
                                         product.currency).toFixed(2) }}
                                 </div>
                             </div>

@@ -18,9 +18,35 @@ use Stripe\Checkout\Session as StripeSession;
 
 class StripeCheckoutController extends Controller
 {
+    /**
+     * Provider APIs return net pricing (customer price minus commission).
+     * We display/charge the grossed-up price to customers but still send net totals to providers.
+     */
+    private const PROVIDER_COMMISSION_RATE = 0.15; // 15%
+
     public function __construct(private StripeBookingService $bookingService)
     {
         Stripe::setApiKey(config('services.stripe.secret'));
+    }
+
+    private function isExternalProviderSource(?string $source): bool
+    {
+        $normalized = strtolower(trim((string) $source));
+        return $normalized !== '' && $normalized !== 'internal';
+    }
+
+    private function grossUpProviderAmount(float $netAmount, ?string $vehicleSource): float
+    {
+        if (!$this->isExternalProviderSource($vehicleSource)) {
+            return round($netAmount, 2);
+        }
+
+        $netShare = 1 - self::PROVIDER_COMMISSION_RATE;
+        if ($netShare <= 0) {
+            return round($netAmount, 2);
+        }
+
+        return round($netAmount / $netShare, 2);
     }
 
     /**
@@ -120,6 +146,10 @@ class StripeCheckoutController extends Controller
             $payableAmount = $computedTotals['booking_deposit'];
             $pendingAmount = $computedTotals['booking_pending'];
 
+            $isProviderVehicle = $this->isExternalProviderSource($providerSource);
+            $commissionRate = $isProviderVehicle ? self::PROVIDER_COMMISSION_RATE : 0.0;
+            $commissionAmount = $isProviderVehicle ? round(((float) $totalAmount) * $commissionRate, 2) : 0.0;
+
             $extrasPayloadId = null;
             $extrasPayload = [
                 'detailed_extras' => $validated['detailed_extras'] ?? [],
@@ -204,6 +234,9 @@ class StripeCheckoutController extends Controller
                 'provider_vehicle_total' => $computedTotals['provider_vehicle_total'] ?? null,
                 'provider_extras_total' => $computedTotals['provider_options_total'] ?? null,
                 'provider_grand_total' => $computedTotals['provider_grand_total'] ?? null,
+                'provider_protection_total' => $computedTotals['provider_protection_total'] ?? null,
+                'provider_commission_rate' => $commissionRate,
+                'commission_amount' => $commissionAmount,
                 'deposit_percentage' => $paymentPercentage,
                 'customer_name' => $validated['customer']['name'] ?? '',
                 'customer_email' => $validated['customer']['email'] ?? '',
@@ -454,7 +487,6 @@ class StripeCheckoutController extends Controller
         $vehicle = $validated['vehicle'] ?? [];
         $days = max(1, (int) ($validated['number_of_days'] ?? 1));
         $package = $validated['package'] ?? null;
-        $protectionAmount = (float) ($validated['protection_amount'] ?? 0);
         $vehicleSource = strtolower((string) ($vehicle['source'] ?? ''));
 
         if (in_array($vehicleSource, ['greenmotion', 'usave'], true)) {
@@ -470,7 +502,7 @@ class StripeCheckoutController extends Controller
         }
 
         $baseTotalConverted = $baseTotal;
-        if ($vehicleSource !== 'internal' && $providerCurrency && $providerCurrency !== $bookingCurrency) {
+        if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
             $conversion = app(CurrencyConversionService::class)->convert($baseTotal, $providerCurrency, $bookingCurrency);
             if (!($conversion['success'] ?? false)) {
                 Log::warning('StripeCheckout: base total conversion failed', [
@@ -485,8 +517,20 @@ class StripeCheckoutController extends Controller
         }
 
         $extrasTotalRaw = $this->resolveExtrasTotal($validated['detailed_extras'] ?? [], $days);
+
+        // Locauto protection amount is a daily rate; treat it as provider-priced add-on (net) and multiply by days.
+        $providerProtectionTotal = 0.0;
+        if ($vehicleSource === 'locauto_rent') {
+            $protectionDaily = (float) ($validated['protection_amount'] ?? 0);
+            if ($protectionDaily > 0) {
+                $providerProtectionTotal = round($protectionDaily * $days, 2);
+            }
+        }
+
+        $providerOptionsTotal = round($extrasTotalRaw + $providerProtectionTotal, 2);
+
         $extrasTotalConverted = $extrasTotalRaw;
-        if ($vehicleSource !== 'internal' && $providerCurrency && $providerCurrency !== $bookingCurrency && $extrasTotalConverted > 0) {
+        if ($providerCurrency && $providerCurrency !== $bookingCurrency && $extrasTotalConverted > 0) {
             $conversion = app(CurrencyConversionService::class)->convert($extrasTotalConverted, $providerCurrency, $bookingCurrency);
             if (!($conversion['success'] ?? false)) {
                 Log::warning('StripeCheckout: extras total conversion failed', [
@@ -500,23 +544,32 @@ class StripeCheckoutController extends Controller
             }
         }
 
-        $bookingVehicleTotal = round($baseTotalConverted + $protectionAmount, 2);
-        $bookingOptionsTotal = round($extrasTotalConverted, 2);
-        $bookingTotal = round($bookingVehicleTotal + $bookingOptionsTotal, 2);
-
-        $depositProvider = round(($baseTotal + $extrasTotalRaw) * ($paymentPercentage / 100), 2);
-        $depositBooking = $depositProvider;
-        if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
-            $conversion = app(CurrencyConversionService::class)->convert($depositProvider, $providerCurrency, $bookingCurrency);
-            if (!($conversion['success'] ?? false)) {
-                return [
-                    'success' => false,
-                    'error' => 'Unable to convert deposit amount. Please try again later.',
-                ];
+        $protectionTotalConverted = 0.0;
+        if ($providerProtectionTotal > 0) {
+            $protectionTotalConverted = $providerProtectionTotal;
+            if ($vehicleSource !== 'internal' && $providerCurrency && $providerCurrency !== $bookingCurrency) {
+                $conversion = app(CurrencyConversionService::class)->convert($providerProtectionTotal, $providerCurrency, $bookingCurrency);
+                if (!($conversion['success'] ?? false)) {
+                    return [
+                        'success' => false,
+                        'error' => 'Unable to convert protection amount. Please try again later.',
+                    ];
+                }
+                $protectionTotalConverted = (float) ($conversion['converted_amount'] ?? $providerProtectionTotal);
             }
-            $depositBooking = (float) ($conversion['converted_amount'] ?? $depositProvider);
         }
 
+        // Booking totals (customer-facing) are grossed-up for external providers.
+        $bookingVehicleTotalNet = round($baseTotalConverted, 2);
+        $bookingOptionsTotalNet = round($extrasTotalConverted + $protectionTotalConverted, 2);
+        $bookingTotalNet = round($bookingVehicleTotalNet + $bookingOptionsTotalNet, 2);
+
+        $bookingVehicleTotal = $this->grossUpProviderAmount($bookingVehicleTotalNet, $vehicleSource);
+        $bookingOptionsTotal = $this->grossUpProviderAmount($bookingOptionsTotalNet, $vehicleSource);
+        $bookingTotal = $this->grossUpProviderAmount($bookingTotalNet, $vehicleSource);
+
+        // Deposit/pending are based on the gross booking total (customer-facing).
+        $depositBooking = round($bookingTotal * ($paymentPercentage / 100), 2);
         $bookingPending = round($bookingTotal - $depositBooking, 2);
 
         $clientTotal = isset($validated['total_amount']) ? (float) $validated['total_amount'] : null;
@@ -545,8 +598,10 @@ class StripeCheckoutController extends Controller
             'booking_deposit' => $depositBooking,
             'booking_pending' => $bookingPending,
             'provider_vehicle_total' => $baseTotal,
-            'provider_options_total' => $extrasTotalRaw,
-            'provider_grand_total' => $baseTotal + $extrasTotalRaw,
+            'provider_options_total' => $providerOptionsTotal,
+            'provider_grand_total' => round($baseTotal + $providerOptionsTotal, 2),
+            'provider_protection_total' => $providerProtectionTotal,
+            'provider_commission_rate' => $this->isExternalProviderSource($vehicleSource) ? self::PROVIDER_COMMISSION_RATE : 0,
         ];
     }
 
@@ -677,33 +732,26 @@ class StripeCheckoutController extends Controller
             $bookingOptionsTotal = (float) ($conversion['converted_amount'] ?? $providerOptionsTotal);
         }
 
-        $bookingTotal = round($bookingVehicleTotal + $bookingOptionsTotal, 2);
+        $bookingTotalNet = round($bookingVehicleTotal + $bookingOptionsTotal, 2);
 
-        $providerDeposit = round($providerGrandTotal * ($paymentPercentage / 100), 2);
-        $bookingDeposit = $providerDeposit;
-        if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
-            $conversion = $conversionService->convert($providerDeposit, $providerCurrency, $bookingCurrency);
-            if (!($conversion['success'] ?? false)) {
-                return [
-                    'success' => false,
-                    'error' => 'Unable to convert deposit amount. Please try again later.',
-                ];
-            }
-            $bookingDeposit = (float) ($conversion['converted_amount'] ?? $providerDeposit);
-        }
+        $bookingVehicleTotalGross = $this->grossUpProviderAmount(round($bookingVehicleTotal, 2), $vehicle['source'] ?? null);
+        $bookingOptionsTotalGross = $this->grossUpProviderAmount(round($bookingOptionsTotal, 2), $vehicle['source'] ?? null);
+        $bookingTotal = $this->grossUpProviderAmount($bookingTotalNet, $vehicle['source'] ?? null);
 
+        $bookingDeposit = round($bookingTotal * ($paymentPercentage / 100), 2);
         $bookingPending = round($bookingTotal - $bookingDeposit, 2);
 
         return [
             'success' => true,
-            'booking_vehicle_total' => round($bookingVehicleTotal, 2),
-            'booking_options_total' => round($bookingOptionsTotal, 2),
+            'booking_vehicle_total' => $bookingVehicleTotalGross,
+            'booking_options_total' => $bookingOptionsTotalGross,
             'booking_total' => $bookingTotal,
             'booking_deposit' => round($bookingDeposit, 2),
             'booking_pending' => $bookingPending,
             'provider_vehicle_total' => round($providerVehicleTotal, 2),
             'provider_options_total' => round($providerOptionsTotal, 2),
             'provider_grand_total' => round($providerGrandTotal, 2),
+            'provider_commission_rate' => self::PROVIDER_COMMISSION_RATE,
         ];
     }
 

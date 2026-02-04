@@ -49,6 +49,12 @@ const isInternal = computed(() => {
     return props.vehicle?.source === 'internal';
 });
 
+const PROVIDER_NET_SHARE = 0.85; // provider API net share (85%)
+const providerGrossMultiplier = computed(() => {
+    if (isInternal.value) return 1;
+    return PROVIDER_NET_SHARE > 0 ? (1 / PROVIDER_NET_SHARE) : 1;
+});
+
 // Check if vehicle is Renteon
 const isRenteon = computed(() => {
     return props.vehicle?.source === 'renteon';
@@ -1042,6 +1048,12 @@ const formatPrice = (val) => {
     return `${getSelectedCurrencySymbol()}${converted.toFixed(2)}`;
 };
 
+// Provider vehicles: show customer price (gross) while keeping net values for provider payloads.
+const formatRentalPrice = (val) => {
+    const numeric = parseFloat(val ?? 0);
+    return formatPrice(numeric * providerGrossMultiplier.value);
+};
+
 const getBenefits = (product) => {
     if (!product) return [];
 
@@ -1170,14 +1182,14 @@ const extrasTotal = computed(() => {
     return total;
 });
 
-const grandTotal = computed(() => {
+const netGrandTotal = computed(() => {
     if (isLocautoRent.value) {
         // For LocautoRent: base price + selected protection + extras
         const basePrice = locautoBaseTotal.value;
         const protectionAmount = selectedLocautoProtection.value
             ? parseFloat(locautoProtectionPlans.value.find(p => p.code === selectedLocautoProtection.value)?.amount || 0) * props.numberOfDays
             : 0;
-        return (basePrice + protectionAmount + extrasTotal.value).toFixed(2);
+        return basePrice + protectionAmount + extrasTotal.value;
     }
     // For GreenMotion/USave and Adobe
     const pkgPrice = parseFloat(currentProduct.value?.total || 0);
@@ -1186,14 +1198,19 @@ const grandTotal = computed(() => {
     // For Renteon, if simplistic logic:
     if (isRenteon.value) {
         // Base price (from package) + extras
-        return (pkgPrice + extrasTotal.value).toFixed(2);
+        return pkgPrice + extrasTotal.value;
     }
 
     if (isOkMobility.value) {
-        return (okMobilityBaseTotal.value + extrasTotal.value).toFixed(2);
+        return okMobilityBaseTotal.value + extrasTotal.value;
     }
 
-    return (pkgPrice + mandatoryExtra + extrasTotal.value).toFixed(2);
+    return pkgPrice + mandatoryExtra + extrasTotal.value;
+});
+
+// Customer-facing grand total (grossed up for provider vehicles)
+const grandTotal = computed(() => {
+    return (parseFloat(netGrandTotal.value || 0) * providerGrossMultiplier.value).toFixed(2);
 });
 
 const payableAmount = computed(() => {
@@ -1801,7 +1818,7 @@ const formatPaymentMethod = (method) => {
                             <div class="flex items-baseline gap-1 mb-2">
                                 <span class="text-3xl font-bold"
                                     :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatPrice(pkg.total / numberOfDays) }}
+                                    {{ formatRentalPrice(pkg.total / numberOfDays) }}
                                 </span>
                                 <span class="text-sm text-gray-500">/day</span>
                             </div>
@@ -1809,7 +1826,7 @@ const formatPaymentMethod = (method) => {
                                 <span class="text-sm text-gray-600">Total:</span>
                                 <span class="text-lg font-bold"
                                     :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatPrice(pkg.total) }}
+                                    {{ formatRentalPrice(pkg.total) }}
                                 </span>
                             </div>
                         </div>
@@ -1884,7 +1901,7 @@ const formatPaymentMethod = (method) => {
                             <div class="flex items-baseline gap-1 mb-2">
                                 <span class="text-3xl font-bold"
                                     :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatPrice(locautoBaseDaily) }}
+                                    {{ formatRentalPrice(locautoBaseDaily) }}
                                 </span>
                                 <span class="text-sm text-gray-500">/day</span>
                             </div>
@@ -1892,7 +1909,7 @@ const formatPaymentMethod = (method) => {
                                 <span class="text-sm text-gray-600">Total:</span>
                                 <span class="text-lg font-bold"
                                     :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatPrice(locautoBaseTotal) }}
+                                    {{ formatRentalPrice(locautoBaseTotal) }}
                                 </span>
                             </div>
                         </div>
@@ -1924,7 +1941,7 @@ const formatPaymentMethod = (method) => {
                             <div class="flex items-baseline gap-1 mb-2">
                                 <span class="text-3xl font-bold"
                                     :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatPrice(locautoBaseDaily + protection.amount) }}
+                                    {{ formatRentalPrice(locautoBaseDaily + protection.amount) }}
                                 </span>
                                 <span class="text-sm text-gray-500">/day</span>
                             </div>
@@ -1932,7 +1949,7 @@ const formatPaymentMethod = (method) => {
                                 <span class="text-sm text-gray-600">Total:</span>
                                 <span class="text-lg font-bold"
                                     :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatPrice(locautoBaseTotal + (protection.amount * numberOfDays)) }}
+                                    {{ formatRentalPrice(locautoBaseTotal + (protection.amount * numberOfDays)) }}
                                 </span>
                             </div>
                         </div>
@@ -1992,7 +2009,7 @@ const formatPaymentMethod = (method) => {
                                     </div>
                                     <div class="text-right ml-auto">
                                         <span class="text-base font-bold text-gray-900">
-                                            {{ formatPrice(extra.total_for_booking !== undefined && extra.total_for_booking !== null
+                                            {{ formatRentalPrice(extra.total_for_booking !== undefined && extra.total_for_booking !== null
                                                 ? extra.total_for_booking
                                                 : (extra.daily_rate !== undefined ? extra.daily_rate :
                                                     (extra.price / numberOfDays))) }}
@@ -2059,7 +2076,7 @@ const formatPaymentMethod = (method) => {
                                     </div>
                                     <div class="text-right ml-auto">
                                         <span class="text-base font-bold text-gray-900">
-                                            {{ formatPrice(extra.total_for_booking !== undefined && extra.total_for_booking !== null
+                                            {{ formatRentalPrice(extra.total_for_booking !== undefined && extra.total_for_booking !== null
                                                 ? extra.total_for_booking
                                                 : (extra.daily_rate !== undefined ? extra.daily_rate :
                                                     (extra.price / numberOfDays))) }}
@@ -2250,12 +2267,12 @@ const formatPaymentMethod = (method) => {
                 <div class="space-y-3 text-sm text-gray-700 mb-6 pb-6 border-b border-gray-100">
                     <div class="flex justify-between">
                         <span>Car Package ({{ currentPackage }})</span>
-                        <span class="font-medium" v-if="ratesReady">{{ formatPrice(isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || 0))) }}</span>
+                        <span class="font-medium" v-if="ratesReady">{{ formatRentalPrice(isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || 0))) }}</span>
                         <span class="price-skeleton price-skeleton-sm" v-else></span>
                     </div>
                     <div v-if="isAdobeCars && adobeMandatoryProtection > 0" class="flex justify-between text-amber-600">
                         <span>Mandatory Liability (PLI)</span>
-                        <span class="font-medium" v-if="ratesReady">+{{ formatPrice(adobeMandatoryProtection) }}</span>
+                        <span class="font-medium" v-if="ratesReady">+{{ formatRentalPrice(adobeMandatoryProtection) }}</span>
                         <span class="price-skeleton price-skeleton-sm" v-else></span>
                     </div>
                     <!-- Selected Extras List -->
@@ -2265,7 +2282,7 @@ const formatPaymentMethod = (method) => {
                         <span class="font-medium">
                             <span v-if="item.isFree" class="text-green-600 font-bold">Free</span>
                             <template v-else>
-                                <span v-if="ratesReady">+{{ formatPrice(item.total) }}</span>
+                                <span v-if="ratesReady">+{{ formatRentalPrice(item.total) }}</span>
                                 <span class="price-skeleton price-skeleton-sm" v-else></span>
                             </template>
                         </span>
@@ -2378,13 +2395,13 @@ const formatPaymentMethod = (method) => {
                         <div class="space-y-4">
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Car Package ({{ currentPackage }})</span>
-                                <span class="font-semibold text-gray-900">{{ formatPrice(isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || 0))
+                                <span class="font-semibold text-gray-900">{{ formatRentalPrice(isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || 0))
                                 }}</span>
                             </div>
                             <div v-if="isAdobeCars && adobeMandatoryProtection > 0"
                                 class="flex justify-between text-sm">
                                 <span class="text-amber-600">Mandatory Liability (PLI)</span>
-                                <span class="font-semibold text-amber-600">+{{ formatPrice(adobeMandatoryProtection)
+                                <span class="font-semibold text-amber-600">+{{ formatRentalPrice(adobeMandatoryProtection)
                                 }}</span>
                             </div>
                             <div v-for="item in getSelectedExtrasDetails" :key="item.id"
@@ -2392,7 +2409,7 @@ const formatPaymentMethod = (method) => {
                                 <span class="text-gray-600">{{ item.name }} <span v-if="item.qty > 1"
                                         class="text-xs text-gray-400">x{{ item.qty }}</span></span>
                                 <span class="font-semibold" :class="item.isFree ? 'text-green-600' : 'text-gray-800'">
-                                    {{ item.isFree ? 'FREE' : formatPrice(item.total) }}
+                                    {{ item.isFree ? 'FREE' : formatRentalPrice(item.total) }}
                                 </span>
                             </div>
                         </div>

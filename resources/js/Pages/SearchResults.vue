@@ -729,6 +729,14 @@ const allVehiclesForMap = computed(() => {
 });
 
 // Helper to get vehicle price in selected currency
+const PROVIDER_NET_SHARE = 0.85;
+const grossUpProviderPrice = (value, vehicle) => {
+    const numeric = parseFloat(value);
+    if (!Number.isFinite(numeric)) return null;
+    if (!vehicle || vehicle.source === 'internal') return numeric;
+    return PROVIDER_NET_SHARE > 0 ? (numeric / PROVIDER_NET_SHARE) : numeric;
+};
+
 const getVehiclePriceConverted = (vehicle) => {
     if (!vehicle) return null;
 
@@ -766,7 +774,9 @@ const getVehiclePriceConverted = (vehicle) => {
 
     if (originalPrice === null || isNaN(parseFloat(originalPrice))) return null;
 
-    return convertCurrency(parseFloat(originalPrice), originalCurrency);
+    const converted = convertCurrency(parseFloat(originalPrice), originalCurrency);
+    if (converted === null) return null;
+    return grossUpProviderPrice(converted, vehicle);
 };
 
 // Compute dynamic min/max price range from all vehicles
@@ -1241,6 +1251,10 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
             }
         }
         currencySymbol = getCurrencySymbol(selectedCurrency.value);
+    }
+
+    if (vehicle.source !== 'internal' && priceValue !== null) {
+        priceValue = grossUpProviderPrice(priceValue, vehicle);
     }
 
     if (priceValue !== null && priceValue > 0) { // Ensure priceValue is greater than 0
