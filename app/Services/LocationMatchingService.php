@@ -17,7 +17,7 @@ class LocationMatchingService
     /**
      * Thresholds
      */
-    private const SIMILARITY_THRESHOLD = 0.75;  // 75% similarity to merge
+    private const SIMILARITY_THRESHOLD = 0.82;  // Conservative similarity to merge
     private const GPS_MERGE_RADIUS_KM = 5;      // Default: locations within 5km can merge
     private const GPS_AIRPORT_RADIUS_KM = 8;    // Airports: within 8km (they're large)
     private const GPS_DOWNTOWN_RADIUS_KM = 2;   // Downtown: within 2km
@@ -50,40 +50,63 @@ class LocationMatchingService
             return [];
         }
 
-        $clusters = [];
-        $assigned = []; // Track which locations are already assigned to a cluster
+        $count = count($locations);
+        $parent = range(0, $count - 1);
+        $rank = array_fill(0, $count, 0);
 
-        foreach ($locations as $i => $location) {
-            if (in_array($i, $assigned)) {
-                continue; // Already assigned to a cluster
+        $find = function (int $node) use (&$parent, &$find): int {
+            if ($parent[$node] !== $node) {
+                $parent[$node] = $find($parent[$node]);
+            }
+            return $parent[$node];
+        };
+
+        $union = function (int $a, int $b) use (&$parent, &$rank, $find): void {
+            $rootA = $find($a);
+            $rootB = $find($b);
+            if ($rootA === $rootB) {
+                return;
+            }
+            if ($rank[$rootA] < $rank[$rootB]) {
+                $parent[$rootA] = $rootB;
+                return;
+            }
+            if ($rank[$rootA] > $rank[$rootB]) {
+                $parent[$rootB] = $rootA;
+                return;
+            }
+            $parent[$rootB] = $rootA;
+            $rank[$rootA]++;
+        };
+
+        $buckets = $this->buildBuckets($locations);
+
+        foreach ($buckets as $bucketIndexes) {
+            $bucketIndexes = array_values(array_unique($bucketIndexes));
+            $bucketCount = count($bucketIndexes);
+            if ($bucketCount < 2) {
+                continue;
             }
 
-            // Start a new cluster with this location
-            $cluster = [$location];
-            $assigned[] = $i;
-
-            // Find all similar locations
-            foreach ($locations as $j => $otherLocation) {
-                if ($i === $j || in_array($j, $assigned)) {
-                    continue;
-                }
-
-                $similarity = $this->calculateSimilarityScore($location, $otherLocation);
-
-                if ($similarity >= self::SIMILARITY_THRESHOLD) {
-                    $cluster[] = $otherLocation;
-                    $assigned[] = $j;
-
-                    Log::debug("Merged locations", [
-                        'location1' => $location['label'] ?? 'Unknown',
-                        'location2' => $otherLocation['label'] ?? 'Unknown',
-                        'similarity' => round($similarity * 100, 2) . '%'
-                    ]);
+            for ($i = 0; $i < $bucketCount; $i++) {
+                $indexA = $bucketIndexes[$i];
+                for ($j = $i + 1; $j < $bucketCount; $j++) {
+                    $indexB = $bucketIndexes[$j];
+                    $similarity = $this->calculateSimilarityScore($locations[$indexA], $locations[$indexB]);
+                    if ($similarity >= self::SIMILARITY_THRESHOLD) {
+                        $union($indexA, $indexB);
+                    }
                 }
             }
-
-            $clusters[] = $cluster;
         }
+
+        $clusterMap = [];
+        foreach ($locations as $index => $location) {
+            $root = $find($index);
+            $clusterMap[$root][] = $location;
+        }
+
+        $clusters = array_values($clusterMap);
 
         Log::info("Location clustering complete", [
             'total_locations' => count($locations),
@@ -110,9 +133,30 @@ class LocationMatchingService
             return 1.0;
         }
 
+        $iata1 = $this->getIataCode($loc1);
+        $iata2 = $this->getIataCode($loc2);
+        if ($iata1 !== '' && $iata2 !== '' && $iata1 === $iata2) {
+            return 1.0;
+        }
+        if ($iata1 !== '' && $iata2 !== '' && $iata1 !== $iata2) {
+            return 0;
+        }
+
+        $countryKey1 = $this->normalizeValue($loc1['country'] ?? '');
+        $countryKey2 = $this->normalizeValue($loc2['country'] ?? '');
+        if ($countryKey1 !== '' && $countryKey2 !== '' && $countryKey1 !== $countryKey2) {
+            return 0;
+        }
+
         // Check for terminal conflict FIRST - different terminals should NEVER merge
         // e.g., "Dubai Terminal 1" and "Dubai Terminal 2" should stay separate
         if ($this->hasTerminalConflict($loc1, $loc2)) {
+            return 0;
+        }
+
+        $type1 = $this->detectLocationType($loc1);
+        $type2 = $this->detectLocationType($loc2);
+        if ($type1 !== 'unknown' && $type2 !== 'unknown' && $type1 !== $type2) {
             return 0;
         }
 
@@ -122,8 +166,18 @@ class LocationMatchingService
         $cityScore = $this->calculateCitySimilarity($loc1, $loc2);
         $typeScore = $this->calculateTypeSimilarity($loc1, $loc2);
 
+        if (($countryKey1 === '' || $countryKey2 === '') && $gpsScore < 0.9) {
+            return 0;
+        }
+
+        $cityKey1 = $this->normalizeLocationName($loc1['city'] ?? '');
+        $cityKey2 = $this->normalizeLocationName($loc2['city'] ?? '');
+        if ($cityKey1 !== '' && $cityKey2 !== '' && $cityKey1 !== $cityKey2 && $gpsScore < 0.9) {
+            return 0;
+        }
+
         // If GPS distance is too far (> 50km), don't merge regardless of name
-        if ($gpsScore < 0.1) {
+        if ($gpsScore < 0.2) {
             return 0;
         }
 
@@ -219,15 +273,12 @@ class LocationMatchingService
      */
     private function calculateGpsSimilarity(array $loc1, array $loc2): float
     {
-        $lat1 = $loc1['latitude'] ?? null;
-        $lon1 = $loc1['longitude'] ?? null;
-        $lat2 = $loc2['latitude'] ?? null;
-        $lon2 = $loc2['longitude'] ?? null;
-
-        // If coordinates are missing, return neutral score
-        if (!$lat1 || !$lon1 || !$lat2 || !$lon2) {
-            return 0.5;
+        if (!$this->hasValidCoordinates($loc1) || !$this->hasValidCoordinates($loc2)) {
+            return 0.0;
         }
+
+        [$lat1, $lon1] = $this->getCoordinates($loc1);
+        [$lat2, $lon2] = $this->getCoordinates($loc2);
 
         // If coordinates are exactly the same
         if ($lat1 == $lat2 && $lon1 == $lon2) {
@@ -419,13 +470,13 @@ class LocationMatchingService
 
         if (empty($city1) || empty($city2)) {
             // Check country as fallback
-            $country1 = $this->normalizeLocationName($loc1['country'] ?? '');
-            $country2 = $this->normalizeLocationName($loc2['country'] ?? '');
+            $country1 = $this->normalizeValue($loc1['country'] ?? '');
+            $country2 = $this->normalizeValue($loc2['country'] ?? '');
 
-            if (!empty($country1) && !empty($country2) && $country1 === $country2) {
-                return 0.5; // Same country, unknown city
+            if ($country1 !== '' && $country2 !== '' && $country1 === $country2) {
+                return 0.2; // Same country, unknown city
             }
-            return 0.3; // Neutral
+            return 0.05; // Very weak signal
         }
 
         if ($city1 === $city2) {
@@ -458,7 +509,7 @@ class LocationMatchingService
 
         // Different types but could still be same location
         if ($type1 === 'unknown' || $type2 === 'unknown') {
-            return 0.7;
+            return 0.4;
         }
 
         return 0.3; // Different types (e.g., airport vs downtown)
@@ -517,10 +568,16 @@ class LocationMatchingService
         $bestName = '';
         $bestLocation = $cluster[0];
         $aliases = [];
+        $iataCodes = [];
 
         foreach ($cluster as $location) {
             $name = $location['label'] ?? $location['name'] ?? '';
             $aliases[] = $name;
+
+            $iata = $this->getIataCode($location);
+            if ($iata !== '') {
+                $iataCodes[] = $iata;
+            }
 
             // Prefer names with more meaningful words
             if (strlen($name) > strlen($bestName) && !preg_match('/\d{4,5}$/', $name)) {
@@ -529,7 +586,10 @@ class LocationMatchingService
             }
         }
 
-        $resolvedType = $bestLocation['location_type'] ?? $this->detectLocationType($bestLocation);
+        $resolvedType = strtolower(trim((string) ($bestLocation['location_type'] ?? '')));
+        if ($resolvedType === '') {
+            $resolvedType = $this->detectLocationType($bestLocation);
+        }
         $resolvedCity = trim((string) ($bestLocation['city'] ?? ''));
 
         if ($resolvedType === 'unknown') {
@@ -542,6 +602,9 @@ class LocationMatchingService
 
         // Remove duplicates and the main name from aliases
         $aliases = array_values(array_unique(array_filter($aliases, fn($a) => $a !== $bestName)));
+
+        $iataCodes = array_values(array_unique($iataCodes));
+        $resolvedIata = count($iataCodes) === 1 ? $iataCodes[0] : null;
 
         // Collect all provider information
         $providers = [];
@@ -600,7 +663,8 @@ class LocationMatchingService
             'country' => $bestLocation['country'] ?? null,
             'latitude' => round($avgLat, 6),
             'longitude' => round($avgLon, 6),
-            'location_type' => $this->detectLocationType($bestLocation),
+            'location_type' => $resolvedType,
+            'iata' => $resolvedIata,
             'providers' => $providers,
             'our_location_id' => $ourLocationId,
         ];
@@ -621,7 +685,7 @@ class LocationMatchingService
             // Skip self-comparison
             if (
                 ($location['id'] ?? '') === ($otherLocation['id'] ?? '') &&
-                ($location['source'] ?? '') === ($otherSource['source'] ?? '')
+                ($location['source'] ?? '') === ($otherLocation['source'] ?? '')
             ) {
                 continue;
             }
@@ -650,5 +714,85 @@ class LocationMatchingService
     public function getSimilarityThreshold(): float
     {
         return self::SIMILARITY_THRESHOLD;
+    }
+
+    private function buildBuckets(array $locations): array
+    {
+        $buckets = [];
+
+        foreach ($locations as $index => $location) {
+            $countryKey = $this->normalizeValue($location['country'] ?? '');
+            $cityKey = $this->normalizeLocationName($location['city'] ?? '');
+            $iata = $this->getIataCode($location);
+            $type = strtolower(trim((string) ($location['location_type'] ?? '')));
+            if ($type === '' || $type === 'unknown') {
+                $type = $this->detectLocationType($location);
+            }
+
+            if ($iata !== '') {
+                $bucketKey = $countryKey !== '' ? 'iata:' . $countryKey . ':' . $iata : 'iata:' . $iata;
+                $buckets[$bucketKey][] = $index;
+            } elseif ($cityKey !== '' && $countryKey !== '') {
+                $buckets['city:' . $countryKey . ':' . $cityKey][] = $index;
+            } elseif ($countryKey !== '') {
+                $buckets['country:' . $countryKey . ':' . $type][] = $index;
+            } elseif ($cityKey !== '') {
+                $buckets['nocountry:' . $cityKey][] = $index;
+            } else {
+                $nameKey = $this->normalizeLocationName($location['label'] ?? $location['name'] ?? '');
+                $nameKey = $nameKey !== '' ? $nameKey[0] : 'unknown';
+                $buckets['misc:' . $nameKey][] = $index;
+            }
+
+            if ($this->hasValidCoordinates($location)) {
+                [$lat, $lon] = $this->getCoordinates($location);
+                $geoKey = sprintf('geo:%0.1f:%0.1f', round($lat, 1), round($lon, 1));
+                $buckets[$geoKey][] = $index;
+            }
+        }
+
+        return $buckets;
+    }
+
+    private function normalizeValue(?string $value): string
+    {
+        return $this->locationSearchService->normalizeString((string) $value);
+    }
+
+    private function getIataCode(array $location): string
+    {
+        $iata = strtoupper(trim((string) ($location['iata'] ?? '')));
+        if ($iata === '') {
+            return '';
+        }
+        return preg_match('/^[A-Z]{3}$/', $iata) ? $iata : '';
+    }
+
+    private function hasValidCoordinates(array $location): bool
+    {
+        $lat = $location['latitude'] ?? null;
+        $lon = $location['longitude'] ?? null;
+
+        if (!is_numeric($lat) || !is_numeric($lon)) {
+            return false;
+        }
+
+        $lat = (float) $lat;
+        $lon = (float) $lon;
+
+        if ($lat == 0.0 && $lon == 0.0) {
+            return false;
+        }
+
+        if ($lat < -90 || $lat > 90 || $lon < -180 || $lon > 180) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function getCoordinates(array $location): array
+    {
+        return [(float) $location['latitude'], (float) $location['longitude']];
     }
 }

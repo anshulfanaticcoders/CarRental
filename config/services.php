@@ -69,6 +69,7 @@ return [
         'password' => env('RENTEON_PASSWORD'),
         'base_url' => env('RENTEON_BASE_URL'),
         'provider_code' => env('RENTEON_PROVIDER_CODE', 'demo'),
+        'allowed_providers' => env('RENTEON_ALLOWED_PROVIDERS'),
     ],
 
     'favrica' => [

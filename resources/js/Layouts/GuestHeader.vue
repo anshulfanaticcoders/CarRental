@@ -3,7 +3,7 @@ import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
 import { computed, ref, watch, onMounted } from "vue";
 import axios from "axios";
-import whatsappIcon from '../../assets/whatsapp.svg';
+
 import Dropdown from "@/Components/Dropdown.vue";
 import { useCurrency } from '@/composables/useCurrency';
 import globeIcon from '../../assets/globe.svg';
@@ -37,13 +37,7 @@ const isLoginPage = computed(() => page.url.includes('/login'));
 const isRegisterPage = computed(() => page.url.includes('/register'));
 const contactInfo = ref(null);
 
-// WhatsApp Link
-const whatsappLink = computed(() => {
-    const phone = '+32493000000';
-    const message = "Hello, I would like to inquire about renting a car. Could you please assist me?";
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-});
+
 
 const fetchContactInfo = async () => {
     try {
@@ -200,11 +194,7 @@ watch(() => url.value, () => {
                         {{ _t('header', 'create_account') }}
                     </Link>
 
-                    <!-- WhatsApp Icon -->
-                    <a :href="whatsappLink" target="_blank"
-                        class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full p-2 transition duration-150 ease-in-out flex items-center justify-center">
-                        <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6">
-                    </a>
+
 
                     <!-- Currency Switcher -->
                     <div class="relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full">
@@ -266,11 +256,7 @@ watch(() => url.value, () => {
 
                 <!-- Mobile menu button -->
                 <div class="flex items-center md:hidden">
-                    <!-- WhatsApp Icon Mobile Header -->
-                    <a :href="whatsappLink" target="_blank"
-                        class="mr-2 relative bg-[#efefef] hover:bg-[#d6d6d6] focus:bg-[#d6d6d6] rounded-full p-2 transition duration-150 ease-in-out flex items-center justify-center">
-                        <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6">
-                    </a>
+
                     <button @click="toggleMobileNav" type="button"
                         class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition duration-150 ease-in-out"
                         aria-controls="mobile-menu" aria-expanded="false">
@@ -306,14 +292,7 @@ watch(() => url.value, () => {
                         {{ _t('header', 'create_account') }}
                     </Link>
 
-                    <!-- WhatsApp Mobile -->
-                    <div class="mt-3 px-4 py-2 border-t border-gray-200">
-                        <a :href="whatsappLink" target="_blank"
-                            class="flex items-center text-gray-600 hover:text-gray-900">
-                            <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6 mr-2">
-                            <span class="text-sm font-medium">WhatsApp</span>
-                        </a>
-                    </div>
+
 
                     <!-- Currency Options -->
                     <div class="mt-3 px-4 py-2 border-t border-gray-200">

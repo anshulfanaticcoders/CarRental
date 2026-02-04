@@ -63,6 +63,89 @@ const isFavrica = computed(() => {
     return props.vehicle?.source === 'favrica';
 });
 
+const isXDrive = computed(() => {
+    return props.vehicle?.source === 'xdrive';
+});
+
+const resolveInternalProviderLabel = () => {
+    return props.vehicle?.vendorProfileData?.company_name
+        || props.vehicle?.vendor_profile_data?.company_name
+        || props.vehicle?.vendor?.profile?.company_name
+        || props.vehicle?.vendorProfile?.company_name
+        || props.vehicle?.vendor_profile?.company_name
+        || 'Vrooem';
+};
+
+const toTitleCase = (value) => {
+    return `${value}`
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const providerBadge = computed(() => {
+    const source = (props.vehicle?.source || '').toString().toLowerCase();
+    if (!source) return null;
+
+    const badgeMap = {
+        internal: {
+            label: resolveInternalProviderLabel(),
+            className: 'bg-slate-900 text-white',
+            ribbonClassName: 'bg-gradient-to-r from-slate-900 to-slate-800 text-white'
+        },
+        greenmotion: {
+            label: 'Green Motion',
+            className: 'bg-emerald-100 text-emerald-700',
+            ribbonClassName: 'bg-gradient-to-r from-emerald-700 to-emerald-500 text-white'
+        },
+        usave: {
+            label: 'U-Save',
+            className: 'bg-emerald-100 text-emerald-700',
+            ribbonClassName: 'bg-gradient-to-r from-emerald-700 to-emerald-500 text-white'
+        },
+        locauto_rent: {
+            label: 'Locauto',
+            className: 'bg-indigo-100 text-indigo-700',
+            ribbonClassName: 'bg-gradient-to-r from-indigo-700 to-indigo-500 text-white'
+        },
+        adobe: {
+            label: 'Adobe',
+            className: 'bg-amber-100 text-amber-700',
+            ribbonClassName: 'bg-gradient-to-r from-amber-700 to-amber-500 text-white'
+        },
+        okmobility: {
+            label: 'OK Mobility',
+            className: 'bg-cyan-100 text-cyan-700',
+            ribbonClassName: 'bg-gradient-to-r from-cyan-700 to-cyan-500 text-white'
+        },
+        renteon: {
+            label: 'Renteon',
+            className: 'bg-sky-100 text-sky-700',
+            ribbonClassName: 'bg-gradient-to-r from-sky-700 to-sky-500 text-white'
+        },
+        favrica: {
+            label: 'Favrica',
+            className: 'bg-pink-100 text-pink-700',
+            ribbonClassName: 'bg-gradient-to-r from-pink-700 to-pink-500 text-white'
+        },
+        xdrive: {
+            label: 'XDrive',
+            className: 'bg-purple-100 text-purple-700',
+            ribbonClassName: 'bg-gradient-to-r from-violet-700 to-violet-500 text-white'
+        },
+        wheelsys: {
+            label: 'Wheelsys',
+            className: 'bg-slate-100 text-slate-700',
+            ribbonClassName: 'bg-gradient-to-r from-slate-700 to-slate-500 text-white'
+        }
+    };
+
+    return badgeMap[source] || {
+        label: toTitleCase(source),
+        className: 'bg-gray-100 text-gray-700',
+        ribbonClassName: 'bg-gradient-to-r from-gray-800 to-gray-700 text-white'
+    };
+});
+
 const isGreenMotion = computed(() => {
     const source = props.vehicle?.source;
     return source === 'greenmotion' || source === 'usave';
@@ -84,7 +167,7 @@ const vehicleImage = computed(() => {
         if (galleryImg) return galleryImg.image_url;
     }
     // Other providers: use direct image property
-    return props.vehicle?.image || props.vehicle?.largeImage || null;
+    return props.vehicle?.image || props.vehicle?.image_url || props.vehicle?.image_path || props.vehicle?.largeImage || null;
 });
 
 const props = defineProps({
@@ -721,6 +804,23 @@ const favricaServicePool = computed(() => {
     return Array.from(byId.values());
 });
 
+const xdriveServicePool = computed(() => {
+    if (!isXDrive.value) return [];
+    const raw = [
+        ...(props.vehicle?.insurance_options || []),
+        ...(props.vehicle?.extras || [])
+    ];
+    const byId = new Map();
+    raw.forEach((extra) => {
+        if (!extra) return;
+        const key = extra.id || extra.service_id || extra.code || extra.service_name;
+        if (key && !byId.has(key)) {
+            byId.set(key, extra);
+        }
+    });
+    return Array.from(byId.values());
+});
+
 const isFavricaInsuranceService = (extra) => {
     if (!extra) return false;
     if (extra.type === 'insurance') return true;
@@ -738,6 +838,14 @@ const favricaInsuranceOptions = computed(() => {
         .filter(extra => extra.price > 0);
 });
 
+const xdriveInsuranceOptions = computed(() => {
+    if (!isXDrive.value) return [];
+    return xdriveServicePool.value
+        .filter(isFavricaInsuranceService)
+        .map(normalizeFavricaExtra)
+        .filter(extra => extra.price > 0);
+});
+
 const favricaOptionalExtras = computed(() => {
     if (!isFavrica.value) return [];
     return favricaServicePool.value
@@ -746,9 +854,40 @@ const favricaOptionalExtras = computed(() => {
         .filter(extra => extra.price > 0);
 });
 
+const xdriveOptionalExtras = computed(() => {
+    if (!isXDrive.value) return [];
+    return xdriveServicePool.value
+        .filter(extra => !isFavricaInsuranceService(extra))
+        .map(normalizeFavricaExtra)
+        .filter(extra => extra.price > 0);
+});
+
 const favricaAllExtras = computed(() => {
     if (!isFavrica.value) return [];
     return [...favricaInsuranceOptions.value, ...favricaOptionalExtras.value];
+});
+
+const xdriveAllExtras = computed(() => {
+    if (!isXDrive.value) return [];
+    return [...xdriveInsuranceOptions.value, ...xdriveOptionalExtras.value];
+});
+
+const providerInsuranceOptions = computed(() => {
+    if (isFavrica.value) return favricaInsuranceOptions.value;
+    if (isXDrive.value) return xdriveInsuranceOptions.value;
+    return [];
+});
+
+const providerOptionalExtras = computed(() => {
+    if (isFavrica.value) return favricaOptionalExtras.value;
+    if (isXDrive.value) return xdriveOptionalExtras.value;
+    return [];
+});
+
+const providerAllExtras = computed(() => {
+    if (isFavrica.value) return favricaAllExtras.value;
+    if (isXDrive.value) return xdriveAllExtras.value;
+    return [];
 });
 
 const greenMotionExtras = computed(() => {
@@ -1009,8 +1148,8 @@ const extrasTotal = computed(() => {
             extra = renteonOptionalExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
             extra = okMobilityOptionalExtras.value.find(e => e.id === id);
-        } else if (isFavrica.value) {
-            extra = favricaAllExtras.value.find(e => e.id === id);
+        } else if (isFavrica.value || isXDrive.value) {
+            extra = providerAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
             extra = greenMotionExtras.value.find(e => e.id === id);
         } else {
@@ -1108,8 +1247,8 @@ const getSelectedExtrasDetails = computed(() => {
             extra = renteonOptionalExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
             extra = okMobilityOptionalExtras.value.find(e => e.id === id);
-        } else if (isFavrica.value) {
-            extra = favricaAllExtras.value.find(e => e.id === id);
+        } else if (isFavrica.value || isXDrive.value) {
+            extra = providerAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
             extra = greenMotionExtras.value.find(e => e.id === id);
         } else {
@@ -1808,14 +1947,14 @@ const formatPaymentMethod = (method) => {
                 </div>
             </section>
 
-            <section v-if="isFavrica && favricaInsuranceOptions.length > 0" id="extras-insurance-section">
+            <section v-if="(isFavrica || isXDrive) && providerInsuranceOptions.length > 0" id="extras-insurance-section">
                 <div class="mb-6">
                     <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Insurance Packages</h2>
                     <p class="text-gray-600">Select the coverage that suits your needs</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <template v-for="extra in favricaInsuranceOptions" :key="extra.id">
+                    <template v-for="extra in providerInsuranceOptions" :key="extra.id">
                         <div @click="toggleExtra(extra)"
                             class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
                             :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id], 'opacity-80 cursor-not-allowed': extra.required }">
@@ -1869,15 +2008,15 @@ const formatPaymentMethod = (method) => {
 
             <!-- 2. Extras Section -->
             <section
-                v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || (isFavrica && favricaOptionalExtras.length > 0)">
+                v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && !isXDrive && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || ((isFavrica || isXDrive) && providerOptionalExtras.length > 0)">
                 <div class="mb-6">
-                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">{{ isFavrica ? 'Additional Services' : 'Optional Extras' }}</h2>
-                    <p class="text-gray-600">{{ isFavrica ? 'Add helpful services to your booking' : 'Enhance your journey with these add-ons' }}</p>
+                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">{{ (isFavrica || isXDrive) ? 'Additional Services' : 'Optional Extras' }}</h2>
+                    <p class="text-gray-600">{{ (isFavrica || isXDrive) ? 'Add helpful services to your booking' : 'Enhance your journey with these add-ons' }}</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template
-                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : (isFavrica ? favricaOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras)))))))"
+                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : ((isFavrica || isXDrive) ? providerOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras)))))))"
                         :key="extra.id">
                         <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
                             class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
@@ -1939,8 +2078,14 @@ const formatPaymentMethod = (method) => {
 
         <!-- Right Column: Sticky Summary -->
         <div class="lg:w-96 xl:w-[420px]" ref="summarySection">
-            <div class="sticky-summary bg-white rounded-3xl shadow-2xl border border-gray-100 p-6">
+            <div class="sticky-summary bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 relative overflow-hidden">
                 <h3 class="font-display text-2xl font-bold text-gray-900 mb-6 pb-4 border-b">Booking Summary</h3>
+                <span v-if="providerBadge"
+                    class="pointer-events-none absolute top-6 right-[-72px] rotate-45 w-56 text-center py-1.5 text-[11px] font-extrabold uppercase tracking-widest shadow-lg z-10"
+                    :class="providerBadge.ribbonClassName"
+                    :title="providerBadge.label">
+                    {{ providerBadge.label }}
+                </span>
 
                 <!-- Car Details -->
                 <div class="flex flex-col gap-4 mb-6 pb-6 border-b border-gray-100">

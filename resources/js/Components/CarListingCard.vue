@@ -38,6 +38,10 @@ const isFavrica = computed(() => {
     return props.vehicle?.source === 'favrica';
 });
 
+const isXDrive = computed(() => {
+    return props.vehicle?.source === 'xdrive';
+});
+
 // Helper for highlighting benefits
 const isKeyBenefit = (text) => {
     if (!text) return false;
@@ -451,6 +455,13 @@ const selectFavricaPackage = () => {
     });
 };
 
+const selectXDrivePackage = () => {
+    emit('select-package', {
+        vehicle: props.vehicle,
+        package: 'BAS'
+    });
+};
+
 // Select LocautoRent protection plan (null = Basic, no extra protection)
 const selectLocautoProtection = (protection) => {
     selectedLocautoProtection.value = protection;
@@ -519,6 +530,11 @@ const getImageSource = (vehicle) => {
         return vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png';
     }
     if (vehicle.image) return vehicle.image;
+    if (vehicle.image_url) return vehicle.image_url;
+    if (vehicle.image_path) return vehicle.image_path;
+    if (Array.isArray(vehicle.images)) {
+        return vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png';
+    }
     if (vehicle.source === 'wheelsys') return '/wheelsys-placeholder.jpg';
     return '/images/dummyCarImaage.png';
 };
@@ -933,6 +949,15 @@ onUnmounted(() => {
                 </button>
 
                 <button v-else-if="isFavrica" @click="selectFavricaPackage" class="header-btn primary"
+                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
+                    Book Deal
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+
+                <button v-else-if="isXDrive" @click="selectXDrivePackage" class="header-btn primary"
                     :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

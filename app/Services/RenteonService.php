@@ -11,6 +11,7 @@ class RenteonService
     private $username;
     private $password;
     private $providerCode;
+    private $allowedProviders;
 
     public function __construct()
     {
@@ -24,6 +25,7 @@ class RenteonService
         $this->password = $config['password'];
         $this->baseUrl = rtrim($config['base_url'], '/');
         $this->providerCode = $config['provider_code'] ?? 'demo';
+        $this->allowedProviders = $this->parseAllowedProviders($config['allowed_providers'] ?? null);
     }
 
     /**
@@ -97,7 +99,7 @@ class RenteonService
 
     /**
      * Search for available vehicles from Renteon API
-     * Uses /api/bookings/availability
+     * Uses /api/bookings/search (per Renteon docs)
      *
      * @param string $pickupCode Pickup location code
      * @param string $dropoffCode Dropoff location code
@@ -112,60 +114,47 @@ class RenteonService
     public function getVehicles($pickupCode, $dropoffCode, $startDate, $startTime, $endDate, $endTime, $options = [], $providerCode = null)
     {
         $provider = $providerCode ?? $this->providerCode;
-        $pickupDateTime = $this->formatLocalDateTime($startDate, $startTime);
-        $dropoffDateTime = $this->formatLocalDateTime($endDate, $endTime);
 
-        $driverAge = isset($options['driver_age']) ? (int) $options['driver_age'] : null;
-        $drivers = $driverAge ? [['DriverAge' => $driverAge]] : [];
+        if (!$this->isProviderAllowed($provider)) {
+            Log::warning('Renteon provider not allowed', [
+                'provider' => $provider,
+                'allowed_providers' => $this->getAllowedProviderCodes(),
+            ]);
+            return [];
+        }
 
         $data = [
-            'Prepaid' => isset($options['prepaid']) ? (bool) $options['prepaid'] : true,
-            'IncludeOnRequest' => isset($options['include_on_request']) ? (bool) $options['include_on_request'] : false,
-            'Providers' => [
-                [
-                    'Code' => $provider,
-                ]
-            ],
-            'PickupLocation' => $pickupCode,
-            'DropOffLocation' => $dropoffCode ?? $pickupCode,
-            'PickupDate' => $pickupDateTime,
-            'DropOffDate' => $dropoffDateTime,
-            'Currency' => $options['currency'] ?? 'EUR',
-            'HasDelivery' => (bool) ($options['has_delivery'] ?? false),
-            'HasCollection' => (bool) ($options['has_collection'] ?? false),
+            'Provider' => $provider,
+            'PickupLocationCode' => $pickupCode,
+            'DropoffLocationCode' => $dropoffCode ?? $pickupCode,
+            'PickupDate' => $startDate,
+            'DropoffDate' => $endDate,
         ];
 
-        if (!empty($options['providers'])) {
-            $providers = [];
-            foreach ($options['providers'] as $providerEntry) {
-                if (!is_array($providerEntry) || empty($providerEntry['Code'])) {
-                    continue;
-                }
-                $providers[] = $providerEntry;
-            }
-            if (!empty($providers)) {
-                $data['Providers'] = $providers;
-            }
-        }
-
-        if (!empty($options['car_categories'])) {
-            $data['CarCategories'] = $options['car_categories'];
-        }
-
-        if (!empty($drivers)) {
-            $data['Drivers'] = $drivers;
-        }
-
-        Log::info('Renteon availability API call', [
+        Log::info('Renteon search API call', [
             'provider' => $provider,
             'pickup_code' => $pickupCode,
             'dropoff_code' => $dropoffCode ?? $pickupCode,
-            'pickup_date' => $pickupDateTime,
-            'dropoff_date' => $dropoffDateTime,
-            'currency' => $data['Currency']
+            'pickup_date' => $startDate,
+            'dropoff_date' => $endDate,
         ]);
 
-        $response = $this->makeRequest('POST', 'api/bookings/availability', $data);
+        $response = $this->makeRequest('POST', 'api/bookings/search', $data);
+
+        if (is_array($response) && !empty($response)) {
+            $vehicles = $response;
+            if (array_key_exists('Vehicles', $response) && is_array($response['Vehicles'])) {
+                $vehicles = $response['Vehicles'];
+            }
+
+            $firstVehicle = $vehicles[0] ?? null;
+            if (is_array($firstVehicle)) {
+                Log::info('Renteon search response summary', [
+                    'total' => is_array($vehicles) ? count($vehicles) : 0,
+                    'first_vehicle_keys' => array_keys($firstVehicle),
+                ]);
+            }
+        }
 
         if ($response === null) {
             Log::warning('Renteon API returned null response', [
@@ -200,13 +189,27 @@ class RenteonService
     {
         // Get the list of providers to search
         if (empty($providerCodes)) {
-            // Get all available providers from Renteon
-            $providers = $this->getProviders();
-            if (!$providers) {
-                Log::warning('Failed to get providers list from Renteon API');
-                return [];
+            if (!empty($this->allowedProviders)) {
+                $providerCodes = $this->getAllowedProviderCodes();
+                Log::info('Renteon: Using allowlisted providers for multi-provider search', [
+                    'providers' => $providerCodes,
+                ]);
+            } else {
+                // Get all available providers from Renteon
+                $providers = $this->getProviders();
+                if (!$providers) {
+                    Log::warning('Failed to get providers list from Renteon API');
+                    return [];
+                }
+                $providerCodes = array_column($providers, 'Code');
             }
-            $providerCodes = array_column($providers, 'Code');
+        } else {
+            $providerCodes = $this->filterAllowedProviderCodes($providerCodes);
+        }
+
+        if (empty($providerCodes)) {
+            Log::warning('Renteon: No providers available after allowlist filtering');
+            return [];
         }
 
         Log::info('Renteon: Searching vehicles from multiple providers', [
@@ -591,6 +594,57 @@ class RenteonService
             'options' => [],
             'insurance_options' => [],
         ];
+    }
+
+    private function parseAllowedProviders($allowedProviders): array
+    {
+        if (empty($allowedProviders)) {
+            return [];
+        }
+
+        $providers = [];
+        $list = is_array($allowedProviders) ? $allowedProviders : explode(',', (string) $allowedProviders);
+
+        foreach ($list as $provider) {
+            $provider = trim((string) $provider);
+            if ($provider === '') {
+                continue;
+            }
+            $providers[$this->normalizeProviderCode($provider)] = $provider;
+        }
+
+        return $providers;
+    }
+
+    private function normalizeProviderCode($providerCode): string
+    {
+        return strtolower(trim((string) $providerCode));
+    }
+
+    private function isProviderAllowed($providerCode): bool
+    {
+        if (empty($this->allowedProviders)) {
+            return true;
+        }
+
+        $normalized = $this->normalizeProviderCode($providerCode);
+        return $normalized !== '' && isset($this->allowedProviders[$normalized]);
+    }
+
+    private function getAllowedProviderCodes(): array
+    {
+        return array_values($this->allowedProviders);
+    }
+
+    private function filterAllowedProviderCodes(array $providerCodes): array
+    {
+        if (empty($this->allowedProviders)) {
+            return $providerCodes;
+        }
+
+        return array_values(array_filter($providerCodes, function ($providerCode) {
+            return $this->isProviderAllowed($providerCode);
+        }));
     }
 
     /**

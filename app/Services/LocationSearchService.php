@@ -51,6 +51,15 @@ class LocationSearchService
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             Log::error('Error decoding unified_locations.json: ' . json_last_error_msg());
+            $backupPath = $this->unifiedLocationsPath . '.bak';
+            if (File::exists($backupPath)) {
+                $backupContent = File::get($backupPath);
+                $locations = json_decode($backupContent, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    Log::warning('Loaded unified locations from backup file.');
+                    return $locations;
+                }
+            }
             return [];
         }
 
@@ -73,17 +82,39 @@ class LocationSearchService
         $allLocations = $this->getAllLocations();
 
         $filteredLocations = collect($allLocations)->filter(function ($location) use ($normalizedSearchTerm) {
-            $label = $this->normalizeString($location['label'] ?? '');
+            $label = $this->normalizeString($location['name'] ?? ($location['label'] ?? ''));
             $belowLabel = $this->normalizeString($location['below_label'] ?? '');
             $city = $this->normalizeString($location['city'] ?? '');
             $state = $this->normalizeString($location['state'] ?? '');
             $country = $this->normalizeString($location['country'] ?? '');
 
+            $aliases = $location['aliases'] ?? [];
+            $aliasMatch = false;
+            foreach ($aliases as $alias) {
+                if (str_contains($this->normalizeString($alias), $normalizedSearchTerm)) {
+                    $aliasMatch = true;
+                    break;
+                }
+            }
+
+            $providerMatch = false;
+            if (!empty($location['providers'])) {
+                foreach ($location['providers'] as $provider) {
+                    $originalName = $provider['original_name'] ?? '';
+                    if ($originalName !== '' && str_contains($this->normalizeString($originalName), $normalizedSearchTerm)) {
+                        $providerMatch = true;
+                        break;
+                    }
+                }
+            }
+
             return str_contains($label, $normalizedSearchTerm) ||
                    str_contains($belowLabel, $normalizedSearchTerm) ||
                    str_contains($city, $normalizedSearchTerm) ||
                    str_contains($state, $normalizedSearchTerm) ||
-                   str_contains($country, $normalizedSearchTerm);
+                   str_contains($country, $normalizedSearchTerm) ||
+                   $aliasMatch ||
+                   $providerMatch;
         })->values()->all();
 
         return $filteredLocations;

@@ -1439,6 +1439,23 @@ class SearchController extends Controller
                             $requestCurrency
                         );
 
+                        if (empty($xdriveResponse) && strtoupper($requestCurrency) !== 'USD') {
+                            Log::info('XDrive returned empty response, retrying with USD', [
+                                'location_id' => $currentProviderLocationId,
+                                'currency' => $requestCurrency,
+                            ]);
+                            $requestCurrency = 'USD';
+                            $xdriveResponse = $this->xdriveService->searchRez(
+                                (string) $currentProviderLocationId,
+                                (string) $dropoffId,
+                                (string) $validated['date_from'],
+                                $startTimeForProvider,
+                                (string) $validated['date_to'],
+                                $endTimeForProvider,
+                                $requestCurrency
+                            );
+                        }
+
                         if (!empty($xdriveResponse)) {
                             $startDate = \Carbon\Carbon::parse($validated['date_from']);
                             $endDate = \Carbon\Carbon::parse($validated['date_to']);
@@ -1563,7 +1580,7 @@ class SearchController extends Controller
                                     'brand' => $brand,
                                     'model' => $model,
                                     'category' => $categoryName,
-                                    'image' => $this->resolveXDriveImageUrl($vehicle['image_path'] ?? null),
+                                    'image' => $this->resolveXDriveImageUrl($vehicle['image_path'] ?? $vehicle['image'] ?? $vehicle['image_url'] ?? $vehicle['imagepath'] ?? null),
                                     'total_price' => $totalRental ?? 0,
                                     'price_per_day' => $dailyRental ?? 0,
                                     'price_per_week' => null,
@@ -2381,6 +2398,9 @@ class SearchController extends Controller
         }
 
         $base = trim((string) config('services.xdrive.image_base_url', ''));
+        if ($base === '') {
+            $base = trim((string) config('services.xdrive.base_url', ''));
+        }
         if ($base === '') {
             return null;
         }
