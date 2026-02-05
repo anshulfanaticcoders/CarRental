@@ -4,7 +4,7 @@ return [
     // Hero Section
     'tagline' => 'Ga op pad met de perfecte rit',
     'typewriter_text_1' => 'In een flits geboekt. Weg in een Vrooem.',
-    'typewriter_text_2' => 'Stap 1: Boek online. Stap 2: Ophalen. Stap 3: Afleveren.',
+    'typewriter_text_2' => 'Boek online. Ophalen. Afleveren.',
     'typewriter_text_3' => 'Geen verborgen kosten. Geen stress. Vrooem regelt alles.',
 
     // Categories Section

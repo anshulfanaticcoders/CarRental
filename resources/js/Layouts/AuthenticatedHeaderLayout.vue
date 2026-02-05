@@ -636,7 +636,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
                   Register as Vendor
                 </Link>
 
-                <div v-if="!isAuthenticated" class="flex flex-wrap gap-2">
+                <div v-if="!isAuthenticated" class="flex flex-nowrap gap-2">
                   <Link :href="route('login', { locale: props.locale })"
                     class="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-4 py-3 text-sm font-medium text-white hover:bg-[#153b4fef]">
                     Log in
@@ -738,21 +738,21 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
               </div>
             </div>
 
-            <div v-if="whatsappLink || callLink" class="mt-auto space-y-3 border-t border-gray-200 pt-6">
-              <div class="text-xs uppercase tracking-widest text-gray-400">Contact</div>
-              <div class="flex flex-wrap gap-2">
-                <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer"
-                  class="flex-1 min-w-[160px] flex items-center gap-3 rounded-lg border border-emerald-500 bg-emerald-500 px-4 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:border-emerald-600 hover:bg-emerald-600">
-                  <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5 filter brightness-0 invert">
-                  Chat on WhatsApp
-                </a>
-                <a v-if="callLink" :href="callLink"
-                  class="flex-1 min-w-[160px] flex items-center gap-3 rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-4 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:border-[#153b4fef] hover:bg-[#153b4fef]">
-                  <img :src="callIcon" alt="Call" class="w-5 h-5 filter brightness-0 invert">
-                  Call Now
-                </a>
-              </div>
-            </div>
+          </div>
+        </div>
+        <div v-if="whatsappLink || callLink" class="offcanvas-footer">
+          <div class="text-xs uppercase tracking-widest text-gray-400">Contact</div>
+          <div class="flex flex-nowrap gap-2">
+            <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer"
+              class="flex-1 min-w-0 flex items-center gap-3 rounded-lg border border-emerald-500 bg-emerald-500 px-3 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:border-emerald-600 hover:bg-emerald-600">
+              <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5 filter brightness-0 invert">
+              Chat on WhatsApp
+            </a>
+            <a v-if="callLink" :href="callLink"
+              class="flex-1 min-w-0 flex items-center gap-3 rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-3 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:border-[#153b4fef] hover:bg-[#153b4fef]">
+              <img :src="callIcon" alt="Call" class="w-5 h-5 filter brightness-0 invert">
+              Call Now
+            </a>
           </div>
         </div>
       </div>
@@ -1105,13 +1105,17 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
 }
 
 .offcanvas-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 240ms ease;
-  z-index: 100000;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 240ms ease;
+    z-index: 100000;
+    height: 100vh;
+    height: 100dvh;
+    width: 100vw;
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 .offcanvas-overlay.is-open {
@@ -1120,18 +1124,30 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
 }
 
 .offcanvas-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  height: 100vh;
-  width: 320px;
-  max-width: 92vw;
-  background: #ffffff;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
-  transform: translateX(100%);
-  transition: transform 320ms ease;
-  z-index: 100001;
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: 80vw;
+    max-width: 420px;
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+    transform: translateX(100%);
+    transition: transform 320ms ease;
+    z-index: 100001;
+    padding-bottom: env(safe-area-inset-bottom);
 }
+
+.offcanvas-footer {
+  border-top: 1px solid rgba(148, 163, 184, 0.4);
+  padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: #ffffff;
+}
+
 
 .offcanvas-panel.is-open {
   transform: translateX(0);

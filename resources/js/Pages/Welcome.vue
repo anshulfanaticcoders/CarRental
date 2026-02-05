@@ -123,10 +123,6 @@ const translatedPhrases = computed(() => [
 ]);
 
 const displayedText = ref('');
-const isHeroMobile = ref(false);
-const updateHeroMobile = () => {
-    isHeroMobile.value = window.innerWidth <= 600;
-};
 let currentPhraseIndex = 0;
 let currentCharIndex = 0;
 let isDeleting = false;
@@ -140,11 +136,6 @@ const DELAY_AFTER_DELETE = 500; // Delay after deleting
 // Function to handle the typing animation
 const typeWriter = () => {
     const currentPhrase = translatedPhrases.value[currentPhraseIndex];
-    if (isHeroMobile.value) {
-        // On mobile, we use CSS marquee, so just keep the timer alive to check for resize
-        timer = setTimeout(typeWriter, 1000);
-        return;
-    }
     if (isDeleting) {
         // Deleting characters (stop before empty to avoid blank)
         if (currentCharIndex <= 1) {
@@ -186,14 +177,11 @@ const scrollToSearch = () => {
 onMounted(() => {
     // Start the typing animation
     timer = setTimeout(typeWriter, 500);
-    updateHeroMobile();
-    window.addEventListener('resize', updateHeroMobile);
 });
 
 onBeforeUnmount(() => {
     // Clean up the timer when component is destroyed
     if (timer) clearTimeout(timer);
-    window.removeEventListener('resize', updateHeroMobile);
 });
 
 
@@ -446,11 +434,9 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
             <div class="hero-bubble bubble-5"></div>
             <div class="hero-wrapper full-w-container">
                 <div class="hero-left">
-                    <div class="hero-label">{{ heroBadge }}</div>
                     <h1 class="hero-title anim-title clip-path-anim" v-html="animatedTagline"></h1>
                     <p class="hero-subtitle">{{ heroSubtitle }}</p>
-                    <!-- Desktop Typewriter -->
-                    <div v-show="!isHeroMobile" class="hero-typewriter">
+                    <div class="hero-typewriter">
                         <span class="typewriter-text">{{ displayedText }}</span>
                         <span class="cursor-blink ml-1"></span>
                     </div>
@@ -462,7 +448,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                     d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z"
                                     fill="currentColor" />
                             </svg>
-                            Fast booking
+                            Free Internet Included
                         </span>
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -471,7 +457,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                 <path d="M9 6V5a3 3 0 016 0v1" fill="none" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" />
                             </svg>
-                            Transparent pricing
+                            Instant Replacement Guarantee
                         </span>
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -480,7 +466,38 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                 <path d="M12 6v5l3 2" fill="none" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
-                            Real-time support
+                            Fair Damage Protection
+                        </span>
+                        <span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 3l7 4v6c0 4.2-2.8 7.5-7 9-4.2-1.5-7-4.8-7-9V7l7-4z"
+                                    fill="none" stroke="currentColor" stroke-width="1.5" />
+                                <path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            Best Price Guarantee
+                        </span>
+                        <span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M12 2a10 10 0 1010 10" fill="none" stroke="currentColor"
+                                    stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M21 2l-4 4" fill="none" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" />
+                            </svg>
+                            24/7 Worldwide Support
+                        </span>
+                        <span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 5v14" fill="none" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" />
+                                <path d="M6 9l6-4 6 4" fill="none" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M6 15l6 4 6-4" fill="none" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            No Rushing, No Waiting
                         </span>
                     </div>
 
@@ -1438,7 +1455,13 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     }
 
     .hero-trust {
-        gap: 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1rem;
+    }
+
+    .hero-trust span {
+        flex: 0 0 calc(50% - 0.5rem);
     }
 
     .hero-title {

@@ -4,7 +4,7 @@ return [
     // Hero Section
     'tagline' => 'انطلق في الطريق مع الرحلة المثالية',
     'typewriter_text_1' => 'تم الحجز في لمح البصر. انطلق في Vrooem.',
-    'typewriter_text_2' => 'الخطوة 1: احجز عبر الإنترنت. الخطوة 2: استلمها. الخطوة 3: أعدها.',
+    'typewriter_text_2' => 'احجز عبر الإنترنت. استلمها. أعدها.',
     'typewriter_text_3' => 'لا توجد رسوم خفية. لا يوجد توتر. Vrooem يغطيك.',
 
     // Categories Section

@@ -4,7 +4,7 @@ return [
     // Hero Section
     'tagline' => 'Sal a la Carretera con el Vehículo Perfecto',
     'typewriter_text_1' => 'Reservado en un instante. Desaparecido en un Vrooem.',
-    'typewriter_text_2' => 'Paso 1: Reserva online. Paso 2: Recógelo. Paso 3: Devuélvelo.',
+    'typewriter_text_2' => 'Reserva online. Recógelo. Devuélvelo.',
     'typewriter_text_3' => 'Sin cargos ocultos. Sin estrés. Vrooem te cubre.',
 
     // Categories Section
