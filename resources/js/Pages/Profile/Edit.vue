@@ -4,14 +4,34 @@ import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import { Head } from '@inertiajs/vue3';
+import { onMounted, watch } from 'vue';
+import { toast } from 'vue-sonner';
 
-defineProps({
+const props = defineProps({
     mustVerifyEmail: {
         type: Boolean,
     },
     status: {
         type: String,
     },
+});
+
+const showStatusToast = (message) => {
+    if (message) {
+        toast.success(message);
+    }
+};
+
+onMounted(() => {
+    if (props.status) {
+        setTimeout(() => {
+            showStatusToast(props.status);
+        }, 100);
+    }
+});
+
+watch(() => props.status, (newStatus) => {
+    showStatusToast(newStatus);
 });
 </script>
 

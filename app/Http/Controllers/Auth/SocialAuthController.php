@@ -31,10 +31,9 @@ class SocialAuthController extends Controller
         }
 
         $locale = $request->route('locale') ?? $request->query('locale') ?? config('app.fallback_locale', 'en');
-        $callbackRoute = $request->route('locale') ? 'oauth.callback' : 'oauth.callback.global';
-        $redirectUrl = route($callbackRoute, ['locale' => $locale, 'provider' => $provider]);
+        $request->session()->put('oauth.locale', $locale);
 
-        $driver = Socialite::driver($provider)->redirectUrl($redirectUrl);
+        $driver = Socialite::driver($provider);
         if ($provider === 'facebook') {
             $driver->scopes(['email'])->fields(['name', 'email']);
         }
@@ -48,12 +47,12 @@ class SocialAuthController extends Controller
             abort(404);
         }
 
-        $locale = $request->route('locale') ?? $request->query('locale') ?? config('app.fallback_locale', 'en');
-        $callbackRoute = $request->route('locale') ? 'oauth.callback' : 'oauth.callback.global';
-        $redirectUrl = route($callbackRoute, ['locale' => $locale, 'provider' => $provider]);
+        $locale = $request->route('locale')
+            ?? $request->query('locale')
+            ?? $request->session()->pull('oauth.locale', config('app.fallback_locale', 'en'));
 
         try {
-            $driver = Socialite::driver($provider)->redirectUrl($redirectUrl)->stateless();
+            $driver = Socialite::driver($provider)->stateless();
             if ($provider === 'facebook') {
                 $driver->scopes(['email'])->fields(['name', 'email']);
             }
@@ -79,6 +78,7 @@ class SocialAuthController extends Controller
         $account = SocialAccount::where('provider', $provider)
             ->where('provider_id', $socialUser->getId())
             ->first();
+        $wasCreated = false;
 
         if ($account) {
             $user = $account->user;
@@ -87,6 +87,7 @@ class SocialAuthController extends Controller
 
             if (!$user) {
                 $user = $this->createUserFromProvider($socialUser);
+                $wasCreated = true;
             }
 
             SocialAccount::create([
@@ -112,9 +113,13 @@ class SocialAuthController extends Controller
         $affiliateService = new AffiliateQrCodeService();
         $affiliateService->updateCustomerInAffiliateScans($user->id);
 
+        $statusMessage = $wasCreated
+            ? 'Account created successfully. Please complete your profile.'
+            : 'Welcome back!';
+
         return redirect()
             ->route('profile.edit', ['locale' => $locale])
-            ->with('status', 'Please complete your profile.');
+            ->with('status', $statusMessage);
     }
 
     private function createUserFromProvider($socialUser): User

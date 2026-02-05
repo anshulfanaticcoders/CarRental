@@ -7,6 +7,7 @@ import { ref, watch, computed, onMounted } from "vue";
 import { Button } from "@/Components/ui/button";
 import { Toaster } from "@/Components/ui/sonner";
 import { toast } from "vue-sonner";
+import registerBg from "../../../assets/registerbgimage.jpg";
 import {
     Stepper,
     StepperItem,
@@ -372,7 +373,8 @@ watch(dateOfBirth, (newValue) => {
         <title>Register</title>
     </Head>
 
-    <div class="flex justify-center items-center register py-customVerticalSpacing min-h-[100vh]">
+    <div class="flex justify-center items-center register py-customVerticalSpacing min-h-[100vh]"
+        :style="{ '--register-hero-image': `url('${registerBg}')` }">
         <div class="register-shell">
             <div class="register-left">
                 <div class="register-card">
@@ -804,9 +806,32 @@ watch(dateOfBirth, (newValue) => {
 
 <style scoped>
 .register {
-    background: radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.05), transparent 55%),
-        radial-gradient(circle at 85% 10%, rgba(124, 179, 204, 0.08), transparent 70%),
-        linear-gradient(160deg, #f9fcfe, #ffffff 70%);
+    --register-hero-image: none;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(160deg, #f3f6f9, #ffffff 70%);
+}
+
+.register::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--register-hero-image);
+    background-size: cover;
+    background-position: center;
+    filter: saturate(1.05) contrast(1.05);
+    transform: scale(1.02);
+}
+
+.register::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.12), transparent 55%),
+        radial-gradient(circle at 85% 10%, rgba(124, 179, 204, 0.18), transparent 70%),
+        linear-gradient(160deg, rgba(248, 251, 253, 0.85), rgba(255, 255, 255, 0.7) 70%);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
 }
 
 .register-shell {
@@ -815,6 +840,8 @@ watch(dateOfBirth, (newValue) => {
     gap: 2.5rem;
     padding: 0 2rem;
     align-items: stretch;
+    position: relative;
+    z-index: 1;
 }
 
 .register-divider {

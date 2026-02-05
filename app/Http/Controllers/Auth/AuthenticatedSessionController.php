@@ -57,6 +57,8 @@ class AuthenticatedSessionController extends Controller
 
         $locale = $request->route('locale') ?? config('app.fallback_locale', 'en');
 
+        $request->session()->flash('status', 'Welcome back!');
+
         return Inertia::location(route('profile.edit', ['locale' => $locale]));
     }
 

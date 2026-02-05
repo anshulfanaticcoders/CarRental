@@ -125,7 +125,9 @@ class RegisteredUserController extends Controller
 
         $locale = $request->route('locale') ?? config('app.fallback_locale', 'en');
 
-        return redirect()->route('profile.edit', ['locale' => $locale]);
+        return redirect()
+            ->route('profile.edit', ['locale' => $locale])
+            ->with('status', 'Account created successfully.');
     }
 
     public function getUserWithRelations()
