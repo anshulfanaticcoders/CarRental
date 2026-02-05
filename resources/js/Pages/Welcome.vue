@@ -486,7 +486,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
                 </div>
             </div>
-            <div class="search-bar-section hero-search full-w-container">
+            <div class="search-bar-section hero-search">
                 <SearchBar class="searchbar-in-header search-bar-animation" :simple="true" />
             </div>
         </section>
@@ -1023,7 +1023,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 .hero {
     position: relative;
     overflow: visible;
-    padding: 5.6rem 0 7.2rem;
+    padding: 2.6rem 0 7.2rem;
     background: radial-gradient(circle at 14% 18%, rgba(46, 167, 173, 0.28), transparent 55%),
         radial-gradient(circle at 78% 12%, rgba(255, 236, 206, 0.26), transparent 45%),
         linear-gradient(132deg, #122a3a 0%, #1a3f53 48%, #102531 100%);
