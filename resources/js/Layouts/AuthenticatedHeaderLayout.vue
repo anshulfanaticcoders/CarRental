@@ -5,6 +5,7 @@ import Dropdown from "@/Components/Dropdown.vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
 import axios from "axios";
 import { useCurrency } from '@/composables/useCurrency';
+import { hideTawk, showTawk } from '@/lib/tawk';
 import bellIcon from '../../assets/bell.svg'
 import whatsappIcon from '../../assets/whatsapp.svg';
 import callIcon from '../../assets/call.svg';
@@ -389,8 +390,10 @@ const whatsappLink = computed(() => {
 });
 
 const callLink = computed(() => {
-  if (!contactInfo.value?.phone_number) return null;
-  return `tel:${contactInfo.value.phone_number}`;
+  const phone = contactInfo.value?.phone_number || '+32493000000';
+  const cleaned = phone.replace(/[^\d+]/g, '');
+  if (!cleaned) return null;
+  return `tel:${cleaned}`;
 });
 
 const displayName = computed(() => {
@@ -451,6 +454,11 @@ watch(() => url.value, () => {
 
 watch(() => showingNavigationDropdown.value, (isOpen) => {
   if (!isOpen) showingAccountDropdown.value = false;
+  if (isOpen) {
+    hideTawk();
+  } else {
+    showTawk();
+  }
 });
 </script>
 
@@ -516,11 +524,13 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
           <div class="hidden lg:flex items-center gap-2">
             <Dropdown align="right" width="max">
               <template #trigger>
-                <button type="button" class="header-icon-trigger" :disabled="currencyLoading"
+                <button type="button" class="header-icon-trigger is-labeled" :disabled="currencyLoading"
                   aria-label="Change currency">
                   <img :src="moneyExchangeSymbol" alt="" class="w-5 h-5"
                     :class="{ 'opacity-60': currencyLoading }">
-                  <span class="sr-only">Currency</span>
+                  <span class="header-trigger-label" :class="{ 'opacity-60': currencyLoading }">
+                    {{ formatCurrencyTriggerDisplay(selectedCurrency) }}
+                  </span>
                 </button>
               </template>
               <template #content>
@@ -537,9 +547,9 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
 
             <Dropdown align="right" width="48">
               <template #trigger>
-                <button type="button" class="header-icon-trigger" aria-label="Change language">
+                <button type="button" class="header-icon-trigger is-labeled" aria-label="Change language">
                   <img :src="availableLocales[currentLocale].flag" alt="" class="w-5 h-5 rounded-full">
-                  <span class="sr-only">Language</span>
+                  <span class="header-trigger-label">{{ availableLocales[currentLocale].name }}</span>
                 </button>
               </template>
               <template #content>
@@ -553,18 +563,12 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
             </Dropdown>
           </div>
 
-          <button @click="toggleMobileNav" type="button"
-            class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition duration-150 ease-in-out"
-            aria-controls="offcanvas-menu" aria-expanded="false">
+          <button @click="toggleMobileNav" type="button" class="menu-toggle"
+            :class="{ 'is-open': showingNavigationDropdown }" aria-controls="offcanvas-menu" aria-expanded="false">
             <span class="sr-only">{{ showingNavigationDropdown ? 'Close menu' : 'Open menu' }}</span>
-            <svg class="h-6 w-6" :class="{ 'hidden': showingNavigationDropdown, 'block': !showingNavigationDropdown }"
-              stroke="currentColor" fill="none" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            <svg class="h-6 w-6" :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
-              stroke="currentColor" fill="none" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <span class="menu-bar bar-top"></span>
+            <span class="menu-bar bar-mid"></span>
+            <span class="menu-bar bar-bottom"></span>
           </button>
         </div>
       </div>
@@ -632,15 +636,17 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
                   Register as Vendor
                 </Link>
 
-                <Link v-if="!isAuthenticated" :href="route('login', { locale: props.locale })"
-                  class="flex items-center justify-between rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-4 py-3 text-sm font-medium text-white hover:bg-[#153b4fef]">
-                  Log in
-                </Link>
+                <div v-if="!isAuthenticated" class="flex flex-wrap gap-2">
+                  <Link :href="route('login', { locale: props.locale })"
+                    class="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-4 py-3 text-sm font-medium text-white hover:bg-[#153b4fef]">
+                    Log in
+                  </Link>
 
-                <Link v-if="!isAuthenticated" :href="route('register', { locale: props.locale })"
-                  class="flex items-center justify-between rounded-lg border border-customPrimaryColor px-4 py-3 text-sm font-medium text-customPrimaryColor hover:bg-blue-50">
-                  Create Account
-                </Link>
+                  <Link :href="route('register', { locale: props.locale })"
+                    class="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-customPrimaryColor px-4 py-3 text-sm font-medium text-customPrimaryColor hover:bg-blue-50">
+                    Create Account
+                  </Link>
+                </div>
 
               </div>
             </div>
@@ -717,6 +723,10 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
                   class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
                   FAQ
                 </Link>
+                <a href="https://vrooem.esimqr.link/" target="_blank" rel="noopener noreferrer"
+                  class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
+                  eSIM
+                </a>
                 <Link :href="route('contact-us', { locale: page.props.locale })"
                   class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
                   Contact Us
@@ -730,16 +740,16 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
 
             <div v-if="whatsappLink || callLink" class="mt-auto space-y-3 border-t border-gray-200 pt-6">
               <div class="text-xs uppercase tracking-widest text-gray-400">Contact</div>
-              <div class="grid gap-2">
+              <div class="flex flex-wrap gap-2">
                 <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer"
-                  class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
-                  <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5">
+                  class="flex-1 min-w-[160px] flex items-center gap-3 rounded-lg border border-emerald-500 bg-emerald-500 px-4 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:border-emerald-600 hover:bg-emerald-600">
+                  <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5 filter brightness-0 invert">
                   Chat on WhatsApp
                 </a>
                 <a v-if="callLink" :href="callLink"
-                  class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
-                  <img :src="callIcon" alt="Call" class="w-5 h-5">
-                  Call Us
+                  class="flex-1 min-w-[160px] flex items-center gap-3 rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-4 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:border-[#153b4fef] hover:bg-[#153b4fef]">
+                  <img :src="callIcon" alt="Call" class="w-5 h-5 filter brightness-0 invert">
+                  Call Now
                 </a>
               </div>
             </div>
@@ -849,6 +859,91 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease,
     background 160ms ease, color 160ms ease;
+}
+
+.header-icon-trigger.is-labeled {
+  width: auto;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+.header-trigger-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1;
+}
+
+.menu-toggle {
+  width: 46px;
+  height: 46px;
+  padding: 0 11px;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  color: #334155;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease,
+    background 160ms ease;
+}
+
+.menu-toggle:hover {
+  border-color: rgba(46, 167, 173, 0.45);
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+.menu-toggle:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+
+.menu-bar {
+  height: 2px;
+  background: #334155;
+  border-radius: 999px;
+  align-self: flex-start;
+  transition: transform 200ms ease, opacity 200ms ease, width 200ms ease;
+}
+
+.bar-top {
+  width: 100%;
+}
+
+.bar-mid {
+  width: 70%;
+}
+
+.bar-bottom {
+  width: 85%;
+}
+
+.menu-toggle:hover .bar-mid {
+  width: 85%;
+}
+
+.menu-toggle:hover .bar-bottom {
+  width: 100%;
+}
+
+.menu-toggle.is-open .bar-top {
+  transform: translateY(8px) rotate(45deg);
+  width: 100%;
+}
+
+.menu-toggle.is-open .bar-mid {
+  opacity: 0;
+  transform: scaleX(0.2);
+}
+
+.menu-toggle.is-open .bar-bottom {
+  transform: translateY(-8px) rotate(-45deg);
+  width: 100%;
 }
 
 .header-icon-trigger:hover {

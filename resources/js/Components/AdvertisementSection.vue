@@ -79,59 +79,40 @@ onUnmounted(() => {
             <div class="relative" @mouseenter="stopTimer" @mouseleave="startTimer">
                 <Transition name="fade" mode="out-in">
                     <div :key="currentAd.id" class="ad-grid">
-                        <!-- Main Featured Card -->
-                        <div class="ad-hero">
-                            <div class="ad-hero-media"
-                                :style="{ backgroundImage: `url(${currentAd.image_path || heroImage})` }">
-                                <div class="ad-hero-overlay"></div>
-                                <div class="ad-hero-content">
-                                    <span class="ad-pill">{{ currentAd.offer_type }}</span>
-                                    <h2 class="ad-title">
-                                        {{ currentAd.title }}
-                                    </h2>
-                                    <p class="ad-description">
-                                        {{ currentAd.description }}
-                                    </p>
-
-                                    <a v-if="currentAd.is_external" :href="currentAd.button_link" target="_blank"
-                                        class="ad-cta">
-                                        {{ currentAd.button_text }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                        </svg>
-                                    </a>
-                                    <a v-else :href="`/${page.props.locale}${currentAd.button_link || ''}`"
-                                        class="ad-cta">
-                                        {{ currentAd.button_text }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                        </svg>
-                                    </a>
-                                </div>
+                        <div class="ad-copy">
+                            <span class="ad-pill">{{ currentAd.offer_type || 'Exclusive' }}</span>
+                            <h2 class="ad-title">
+                                {{ currentAd.title }}
+                            </h2>
+                            <p class="ad-description">
+                                {{ currentAd.description }}
+                            </p>
+                            <div class="ad-meta">
+                                <span>{{ currentAd.offer_type || 'Limited offer' }}</span>
+                                <span>{{ currentAd.is_external ? 'Partner deal' : 'VROOEM deal' }}</span>
                             </div>
+
+                            <a v-if="currentAd.is_external" :href="currentAd.button_link" target="_blank" class="ad-cta">
+                                {{ currentAd.button_text || 'View offer' }}
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </a>
+                            <a v-else :href="`/${page.props.locale}${currentAd.button_link || ''}`" class="ad-cta">
+                                {{ currentAd.button_text || 'View offer' }}
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                </svg>
+                            </a>
                         </div>
 
-                        <!-- Editorial Side Cards -->
-                        <div class="ad-side">
-                            <div class="ad-side-card">
-                                <span class="ad-side-label">Limited</span>
-                                <h4>{{ currentAd.title }}</h4>
-                                <p>{{ currentAd.description }}</p>
-                                <div class="ad-side-meta">
-                                    <span>{{ currentAd.offer_type }}</span>
-                                    <span>Ends soon</span>
-                                </div>
-                            </div>
-                            <div class="ad-side-card ad-side-image"
-                                :style="{ backgroundImage: `url(${currentAd.image_path || heroImage})` }">
-                                <div class="ad-side-image-overlay"></div>
-                                <span>VROOEM Picks</span>
-                            </div>
-                        </div>
+                        <div class="ad-image"
+                            :style="{ backgroundImage: `url(${currentAd.image_path || heroImage})` }"
+                            :aria-label="currentAd.title || 'Advertisement'" role="img"></div>
                     </div>
                 </Transition>
 
@@ -153,43 +134,18 @@ onUnmounted(() => {
 <style scoped>
 .ad-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
     gap: 2rem;
+    align-items: stretch;
 }
 
-.ad-hero {
-    min-height: 360px;
-}
 
-.ad-hero-media {
-    position: relative;
-    border-radius: 28px;
-    overflow: hidden;
-    background-size: cover;
-    background-position: center;
-    min-height: 360px;
-    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18);
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    transition: transform 0.4s ease, box-shadow 0.4s ease;
-}
-
-.ad-hero-media:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.22);
-}
-
-.ad-hero-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(120deg, rgba(11, 34, 48, 0.88) 0%, rgba(21, 59, 79, 0.55) 55%, rgba(11, 27, 38, 0.2) 100%);
-}
-
-.ad-hero-content {
-    position: relative;
-    z-index: 1;
-    padding: 2.5rem;
-    max-width: 460px;
-    color: #ffffff;
+.ad-copy {
+    background: #ffffff;
+    border-radius: 26px;
+    padding: 2.4rem;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
@@ -200,12 +156,13 @@ onUnmounted(() => {
     align-items: center;
     padding: 0.35rem 0.85rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(21, 59, 79, 0.08);
+    border: 1px solid rgba(21, 59, 79, 0.2);
     font-size: 0.75rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     width: fit-content;
+    color: #153b4f;
 }
 
 .ad-title {
@@ -213,13 +170,24 @@ onUnmounted(() => {
     font-weight: 700;
     line-height: 1.1;
     margin: 0;
+    color: #0f172a;
 }
 
 .ad-description {
     font-size: 1rem;
-    color: rgba(248, 250, 252, 0.85);
+    color: #475569;
     margin: 0;
     line-height: 1.6;
+}
+
+.ad-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #64748b;
 }
 
 .ad-cta {
@@ -228,11 +196,11 @@ onUnmounted(() => {
     gap: 0.6rem;
     padding: 0.85rem 1.6rem;
     border-radius: 999px;
-    background: linear-gradient(135deg, #153b4f, #2ea7ad);
+    background: #153b4f;
     color: #ffffff;
     font-weight: 600;
     font-size: 0.95rem;
-    box-shadow: 0 16px 30px rgba(21, 59, 79, 0.28);
+    box-shadow: 0 16px 30px rgba(21, 59, 79, 0.22);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     width: fit-content;
 }
@@ -242,81 +210,17 @@ onUnmounted(() => {
     box-shadow: 0 22px 42px rgba(21, 59, 79, 0.35);
 }
 
-.ad-side {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
 
-.ad-side-card {
-    background: #ffffff;
-    border-radius: 22px;
-    padding: 1.5rem;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.ad-side-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
-}
-
-.ad-side-card h4 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #0f172a;
-    margin: 0 0 0.6rem;
-}
-
-.ad-side-card p {
-    color: #64748b;
-    font-size: 0.95rem;
-    line-height: 1.6;
-    margin: 0 0 1.2rem;
-}
-
-.ad-side-label {
-    font-size: 0.7rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: #2ea7ad;
-    display: inline-block;
-    margin-bottom: 0.8rem;
-}
-
-.ad-side-meta {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.8rem;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.ad-side-image {
-    position: relative;
+.ad-image {
+    border-radius: 26px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    box-shadow: 0 20px 44px rgba(15, 23, 42, 0.14);
+    background: #f8fafc;
     background-size: cover;
     background-position: center;
-    min-height: 180px;
-    color: #ffffff;
-    display: flex;
-    align-items: flex-end;
-}
-
-.ad-side-image-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(11, 27, 38, 0.1) 0%, rgba(11, 27, 38, 0.7) 100%);
-}
-
-.ad-side-image span {
-    position: relative;
-    z-index: 1;
-    padding: 1rem 1.4rem;
-    font-size: 0.85rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+    min-height: 320px;
+    aspect-ratio: 4 / 3;
 }
 
 /* Glassmorphism utility */
@@ -339,15 +243,15 @@ onUnmounted(() => {
     .ad-grid {
         grid-template-columns: 1fr;
     }
-
-    .ad-hero-content {
-        max-width: 100%;
-    }
 }
 
 @media (max-width: 640px) {
-    .ad-hero-content {
+    .ad-copy {
         padding: 2rem 1.5rem;
+    }
+
+    .ad-image {
+        aspect-ratio: 3 / 4;
     }
 }
 </style>
