@@ -6,6 +6,7 @@ import UpdateProfileInformationForm from './Partials/UpdateProfileInformationFor
 import { Head } from '@inertiajs/vue3';
 import { onMounted, watch } from 'vue';
 import { toast } from 'vue-sonner';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
 
 const props = defineProps({
     mustVerifyEmail: {
@@ -38,25 +39,40 @@ watch(() => props.status, (newStatus) => {
 <template>
     <MyProfileLayout>
         <Head title="Profile" />
-        <div class="">
-            <h4 class="text-[1.5rem] mb-0 ml-[1rem] text-customPrimaryColor font-medium max-[768px]:ml-0 max-[768px]:mb-3">My Profile</h4>
-            <div class=" mx-auto">
-                <div class="">
+        <div class="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>My Profile</CardTitle>
+                    <CardDescription>Keep your personal details up to date.</CardDescription>
+                </CardHeader>
+                <CardContent>
                     <UpdateProfileInformationForm
                         :must-verify-email="mustVerifyEmail"
                         :status="status"
-                        class="max-w-xl"
+                        class="w-full"
                     />
-                </div>
+                </CardContent>
+            </Card>
 
-                <div class=" ">
-                    <UpdatePasswordForm class="max-w-xl" />
-                </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Security</CardTitle>
+                    <CardDescription>Update your password to keep your account safe.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <UpdatePasswordForm class="w-full" />
+                </CardContent>
+            </Card>
 
-                <div class=" ">
-                    <DeleteUserForm class="max-w-xl" />
-                </div>
-            </div>
+            <Card class="border-rose-200/70">
+                <CardHeader>
+                    <CardTitle class="text-rose-600">Danger Zone</CardTitle>
+                    <CardDescription>Delete your account and all data permanently.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <DeleteUserForm class="w-full" />
+                </CardContent>
+            </Card>
         </div>
     </MyProfileLayout>
 </template>

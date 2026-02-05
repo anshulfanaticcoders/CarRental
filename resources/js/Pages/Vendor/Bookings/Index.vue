@@ -4,62 +4,38 @@
         <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
             <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
         </div>
-        <div class="">
-            <p
-                class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem] max-[768px]:text-[1.2rem]">
-                {{ _t('vendorprofilepages', 'booking_details_header') }}</p>
+        <Card>
+            <CardHeader>
+                <CardTitle>{{ _t('vendorprofilepages', 'booking_details_header') }}</CardTitle>
+                <CardDescription>{{ _t('vendorprofilepages', 'booking_details_subtitle') || 'Manage and update booking records.' }}</CardDescription>
+            </CardHeader>
+            <CardContent class="space-y-4">
+                <div>
+                    <input type="text" v-model="searchQuery"
+                        :placeholder="_t('vendorprofilepages', 'search_bookings_placeholder')"
+                        class="w-full" />
+                </div>
 
-            <div class="mb-4">
-                <input type="text" v-model="searchQuery"
-                    :placeholder="_t('vendorprofilepages', 'search_bookings_placeholder')"
-                    class="px-4 py-2 border border-gray-300 rounded-md w-full" />
-            </div>
-
-            <div v-if="filteredBookings.length" class="bg-white rounded-lg shadow overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {{ _t('vendorprofilepages', 'table_id_header') }}</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'table_booking_id_header') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">
-                                {{ _t('vendorprofilepages', 'table_customer_name_header') }}</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'table_vehicle_header') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'table_booking_date_header') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'table_return_date_header') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'table_booking_location_header') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'table_total_payment_header') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'table_amount_paid_header') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'table_amount_pending_header') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'table_payment_status_header') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'table_booking_status_header') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">
-                                {{ _t('vendorprofilepages', 'table_cancellation_reason_header') }}</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{
-                                _t('vendorprofilepages', 'actions_table_header') }}
-                            </th>
-                        </tr>
-                    </thead>
+                <div v-if="filteredBookings.length" class="overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ _t('vendorprofilepages', 'table_id_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_booking_id_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_customer_name_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_vehicle_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_booking_date_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_return_date_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_booking_location_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_total_payment_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_amount_paid_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_amount_pending_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_payment_status_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_booking_status_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'table_cancellation_reason_header') }}</th>
+                                <th>{{ _t('vendorprofilepages', 'actions_table_header') }}</th>
+                            </tr>
+                        </thead>
                     <tbody>
                         <tr v-for="(booking, index) in filteredBookings" :key="booking.id"
                             class="border-b hover:bg-gray-50">
@@ -148,14 +124,15 @@
                 </table>
             </div>
 
-            <div v-else class="text-center py-6">
-                <span class="text-gray-500">{{ _t('vendorprofilepages', 'no_bookings_found_text') }}</span>
-            </div>
-            <div class="mt-[1rem] flex justify-end">
-                <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
-                    @page-change="handlePageChange" />
-            </div>
-        </div>
+                <div v-else class="rounded-xl border border-dashed border-slate-200 px-6 py-10 text-center text-sm text-slate-500">
+                    {{ _t('vendorprofilepages', 'no_bookings_found_text') }}
+                </div>
+                <div class="flex justify-end">
+                    <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
+                        @page-change="handlePageChange" />
+                </div>
+            </CardContent>
+        </Card>
 
         <!-- Customer Documents Dialog -->
         <Dialog v-model:open="isCustomerDocumentsDialogOpen">
@@ -211,6 +188,7 @@ import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
 import { useToast } from 'vue-toastification';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import loaderVariant from '../../../../assets/loader-variant.svg';

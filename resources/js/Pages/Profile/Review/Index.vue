@@ -1,10 +1,13 @@
 <template>
     <MyProfileLayout>
-        <div class="">
-            <p class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]"> {{ _t('customerprofilepages', 'my_reviews_header') }} </p>
-
-            <div v-if="reviews.data.length > 0">
-                <div v-for="review in reviews.data" :key="review.id" class="border rounded-lg p-6 mb-4 shadow-md">
+        <Card>
+            <CardHeader>
+                <CardTitle>{{ _t('customerprofilepages', 'my_reviews_header') }}</CardTitle>
+                <CardDescription>See what you shared about your rentals.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div v-if="reviews.data.length > 0" class="space-y-6">
+                <div v-for="review in reviews.data" :key="review.id" class="border rounded-xl p-6 shadow-sm">
                     <div class="flex justify-between items-start mb-4 max-[768px]:flex-col">
                         <div class="flex items-start gap-8 max-[768px]:flex-col">
                             <div class="max-w-[308px] max-[768px]:max-w-full">
@@ -101,10 +104,11 @@
                 <Pagination :current-page="reviews.current_page" :total-pages="reviews.last_page"
                     @page-change="handlePageChange" />
             </div>
-            <div v-else>
-                <p>{{ _t('customerprofilepages', 'no_reviews_submitted') }}</p>
+            <div v-else class="rounded-xl border border-dashed border-slate-200 px-6 py-10 text-center text-sm text-slate-500">
+                {{ _t('customerprofilepages', 'no_reviews_submitted') }}
             </div>
-        </div>
+            </CardContent>
+        </Card>
     </MyProfileLayout>
 </template>
 
@@ -116,6 +120,7 @@ import { ref, getCurrentInstance } from 'vue';
 import fullStar from "../../../../assets/fullstar.svg";
 import halfStar from "../../../../assets/halfstar.svg";
 import blankStar from "../../../../assets/blankstar.svg";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;

@@ -21,6 +21,9 @@ return [
         'inbox' => 'Inbox',
         'favorites' => 'Favorieten',
         'my_reviews' => 'Mijn beoordelingen',
+        'quick_links' => 'Snelle links',
+        'profile_completion' => 'Profielvoltooiing',
+        'logout_confirmation' => 'Weet je zeker dat je wilt uitloggen?',
         // Vendor Menus
         'dashboard' => 'Dashboard',
         'overview' => 'Overzicht',
@@ -41,6 +44,7 @@ return [
         'error_missing_payment_intent' => 'De betalingsintentie-ID ontbreekt in de URL.',
         // Button
         'log_out' => 'Uitloggen',
+        'button_cancel' => 'Annuleren',
 
         // Booking Details Page
         'booking_details' => 'Boekingdetails',

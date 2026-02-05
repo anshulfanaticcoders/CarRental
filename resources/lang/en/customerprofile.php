@@ -21,6 +21,9 @@ return [
         'inbox' => 'Inbox',
         'favorites' => 'Favorites',
         'my_reviews' => 'My Reviews',
+        'quick_links' => 'Quick Links',
+        'profile_completion' => 'Profile completion',
+        'logout_confirmation' => 'Are you sure you want to log out?',
         // Vendor Menus
         'dashboard' => 'Dashboard',
         'overview' => 'Overview',
@@ -41,6 +44,7 @@ return [
         'error_missing_payment_intent' => 'Payment Intent ID is missing from the URL.',
         // Button
         'log_out' => 'Log out',
+        'button_cancel' => 'Cancel',
 
         // Booking Details Page
         'booking_details' => 'Booking Details',

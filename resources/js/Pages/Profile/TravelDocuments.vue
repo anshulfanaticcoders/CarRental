@@ -1,6 +1,8 @@
 <script setup>
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import InputError from '@/Components/InputError.vue';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Button } from '@/Components/ui/button';
 import { useForm } from '@inertiajs/vue3';
 
 const form = useForm({
@@ -28,53 +30,52 @@ const submitDocument = (documentType) => {
 </script>
 <template>
 <MyProfileLayout>
-    <div class="">
-        <h4 class="text-2xl ml-[1rem] text-customPrimaryColor mb-[2rem] font-medium">Travel Documents</h4>
-        <h2 class="text-[1.75rem] font-medium text-gray-900 mb-[1rem] border-b-2">Some of Your Documents are Missing</h2>
-        <div class="space-y-8 w-[24rem]">
-            <!-- Driving License -->
-            <div>
-                <h5 class="font-medium text-[1.15rem] mb-[0.75rem]">Driving Licence</h5>
-                <p class="text-sm text-gray-500">Upload a clear photo of both sides of your driving license.</p>
+    <Card>
+        <CardHeader>
+            <CardTitle>Travel Documents</CardTitle>
+            <CardDescription>Upload the required documents to complete your profile.</CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-6">
+            <div class="rounded-xl border border-slate-200 p-4">
+                <h5 class="font-semibold text-slate-900">Driving Licence</h5>
+                <p class="text-sm text-slate-500">Upload a clear photo of both sides of your driving license.</p>
                 <input
                     type="file"
                     @change="e => form.driving_license = e.target.files[0]"
                     accept="image/*,application/pdf"
-                    class="mt-2 block w-full text-sm"
+                    class="mt-3 block w-full text-sm"
                 />
                 <InputError :message="form.errors.driving_license" />
-                <button class="button-secondary mt-[1rem]" :disabled="form.processing" @click.prevent="submitDocument('driving_license')">Upload Driving License</button>
+                <Button class="mt-4" :disabled="form.processing" @click.prevent="submitDocument('driving_license')">Upload Driving License</Button>
             </div>
 
-            <!-- ID Proof -->
-            <div>
-                <h5 class="font-medium text-[1.15rem] mb-[0.75rem]">Passport/Identity Card (Both Sides)</h5>
-                <p class="text-sm text-gray-500">Upload the photo page of your passport or both sides of your ID.</p>
+            <div class="rounded-xl border border-slate-200 p-4">
+                <h5 class="font-semibold text-slate-900">Passport/Identity Card (Both Sides)</h5>
+                <p class="text-sm text-slate-500">Upload the photo page of your passport or both sides of your ID.</p>
                 <input
                     type="file"
                     @change="e => form.id_proof = e.target.files[0]"
                     accept="image/*,application/pdf"
-                    class="mt-2 block w-full text-sm"
+                    class="mt-3 block w-full text-sm"
                 />
                 <InputError :message="form.errors.id_proof" />
-                <button class="mt-[1rem] button-secondary" :disabled="form.processing" @click.prevent="submitDocument('id_proof')">Upload ID Proof</button>
+                <Button class="mt-4" :disabled="form.processing" @click.prevent="submitDocument('id_proof')">Upload ID Proof</Button>
             </div>
 
-            <!-- Address Proof -->
-            <div>
-                <h5 class="font-medium text-[1.15rem] mb-[0.75rem]">Proof of Address</h5>
-                <p class="text-sm text-gray-500">Upload a clear photo of a proof of address (utility bill), issued less than 3 months ago. This must be a utility bill (electricity, gas or water) or a recent council tax bill, on which your full name, current address and date are clearly visible.</p>
+            <div class="rounded-xl border border-slate-200 p-4">
+                <h5 class="font-semibold text-slate-900">Proof of Address</h5>
+                <p class="text-sm text-slate-500">Upload a proof of address issued within 3 months.</p>
                 <input
                     type="file"
                     @change="e => form.address_proof = e.target.files[0]"
                     accept="image/*,application/pdf"
-                    class="mt-2 block w-full text-sm"
+                    class="mt-3 block w-full text-sm"
                 />
                 <InputError :message="form.errors.address_proof" />
-                <button class="mt-[1rem] button-secondary" :disabled="form.processing" @click.prevent="submitDocument('address_proof')">Upload Address Proof</button>
+                <Button class="mt-4" :disabled="form.processing" @click.prevent="submitDocument('address_proof')">Upload Address Proof</Button>
             </div>
-        </div>
-    </div>
+        </CardContent>
+    </Card>
 </MyProfileLayout>
 </template>
 

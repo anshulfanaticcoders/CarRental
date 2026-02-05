@@ -21,6 +21,9 @@ return [
         'inbox' => 'صندوق الوارد',
         'favorites' => 'المفضلة',
         'my_reviews' => 'مراجعاتي',
+        'quick_links' => 'روابط سريعة',
+        'profile_completion' => 'اكتمال الملف الشخصي',
+        'logout_confirmation' => 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
         // Vendor Menus
         'dashboard' => 'لوحة التحكم',
         'overview' => 'نظرة عامة',
@@ -41,6 +44,7 @@ return [
         'error_missing_payment_intent' => 'معرف نية الدفع مفقود من الرابط.',
         // Button
         'log_out' => 'تسجيل الخروج',
+        'button_cancel' => 'إلغاء',
 
         // Booking Details Page
         'booking_details' => 'تفاصيل الحجز',

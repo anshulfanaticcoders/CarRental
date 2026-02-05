@@ -21,6 +21,9 @@ return [
         'inbox' => 'Boîte de réception',
         'favorites' => 'Favoris',
         'my_reviews' => 'Mes avis',
+        'quick_links' => 'Liens rapides',
+        'profile_completion' => 'Complétion du profil',
+        'logout_confirmation' => 'Voulez-vous vraiment vous déconnecter ?',
         // Vendor Menus
         'dashboard' => 'Tableau de bord',
         'overview' => 'Aperçu',
@@ -41,6 +44,7 @@ return [
         'error_missing_payment_intent' => 'L’ID de l’intention de paiement est manquant dans l’URL.',
         // Button
         'log_out' => 'Se déconnecter',
+        'button_cancel' => 'Annuler',
 
         // Booking Details Page
         'booking_details' => 'Détails de la réservation',

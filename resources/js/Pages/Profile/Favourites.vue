@@ -7,6 +7,7 @@ import Pagination from '@/Components/ReusableComponents/Pagination.vue'; // Adde
 import carIcon from "../../../assets/carIcon.svg";
 import mileageIcon from "../../../assets/mileageIcon.svg";
 import { Heart } from "lucide-vue-next";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
 
 // Props will now come from Inertia controller
 const props = defineProps({
@@ -128,84 +129,90 @@ const handlePageChange = (page) => {
 
 <template>
     <MyProfileLayout>
-        <p class="text-[1.5rem] max-[768px]:text-[1.2rem] text-customPrimaryColor font-bold mb-[2rem] bg-[#154D6A0D] rounded-[12px] px-[1rem] py-[1rem]">
-            {{ _t('common','favorite_title') }}
-        </p>
-        <div v-if="favoriteVehiclesState.length === 0 && providerFavoritesState.length === 0" class="text-gray-500">
-            No favorite vehicles yet.
-        </div>
-        <div v-if="favoriteVehiclesState.length > 0" class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
-            <div v-for="vehicle in favoriteVehiclesState" :key="vehicle.id"
-                class="favorite-card">
-                <div class="favorite-image">
-                    <img v-if="vehicle.images" :src="`${vehicle.images.find(
-                        (image) =>
-                            image.image_type === 'primary'
-                    )?.image_url
-                        }`" alt="Primary Image" />
-                    <button class="favorite-toggle" :class="{ 'is-loading': favoriteLoading[vehicle.id] }"
-                        :disabled="favoriteLoading[vehicle.id]" @click.stop="toggleFavourite(vehicle)"
-                        :aria-busy="favoriteLoading[vehicle.id] ? 'true' : 'false'">
-                        <Heart class="w-5 h-5 transition-all duration-300 fill-red-500 stroke-red-500" />
-                    </button>
-                </div>
-                <div class="favorite-content">
-                    <span class="favorite-pill">{{ vehicle.model }}</span>
-                    <h5 class="favorite-title">{{ vehicle.brand }}</h5>
-                    <div class="favorite-meta">
-                        <img :src="carIcon" alt="" />
-                        <span>{{ vehicle.transmission }} · {{ vehicle.fuel }} · {{ vehicle.seating_capacity }} Seats</span>
+        <div class="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>{{ _t('common','favorite_title') }}</CardTitle>
+                    <CardDescription>Your saved vehicles across providers.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div v-if="favoriteVehiclesState.length === 0 && providerFavoritesState.length === 0"
+                        class="rounded-xl border border-dashed border-slate-200 px-6 py-10 text-center text-sm text-slate-500">
+                        No favorite vehicles yet.
                     </div>
-                    <div class="favorite-meta">
-                        <img :src="mileageIcon" alt="" />
-                        <span>{{ vehicle.mileage }}km/d</span>
+                    <div v-if="favoriteVehiclesState.length > 0" class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
+                        <div v-for="vehicle in favoriteVehiclesState" :key="vehicle.id"
+                            class="favorite-card">
+                            <div class="favorite-image">
+                                <img v-if="vehicle.images" :src="`${vehicle.images.find(
+                                    (image) =>
+                                        image.image_type === 'primary'
+                                )?.image_url
+                                    }`" alt="Primary Image" />
+                                <button class="favorite-toggle" :class="{ 'is-loading': favoriteLoading[vehicle.id] }"
+                                    :disabled="favoriteLoading[vehicle.id]" @click.stop="toggleFavourite(vehicle)"
+                                    :aria-busy="favoriteLoading[vehicle.id] ? 'true' : 'false'">
+                                    <Heart class="w-5 h-5 transition-all duration-300 fill-red-500 stroke-red-500" />
+                                </button>
+                            </div>
+                            <div class="favorite-content">
+                                <span class="favorite-pill">{{ vehicle.model }}</span>
+                                <h5 class="favorite-title">{{ vehicle.brand }}</h5>
+                                <div class="favorite-meta">
+                                    <img :src="carIcon" alt="" />
+                                    <span>{{ vehicle.transmission }} · {{ vehicle.fuel }} · {{ vehicle.seating_capacity }} Seats</span>
+                                </div>
+                                <div class="favorite-meta">
+                                    <img :src="mileageIcon" alt="" />
+                                    <span>{{ vehicle.mileage }}km/d</span>
+                                </div>
+                                <div class="favorite-price">
+                                    <span class="favorite-amount">{{ formatPrice(vehicle.price_per_day, vehicle) }}</span>
+                                    <span class="favorite-unit">/day</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="favorite-price">
-                        <span class="favorite-amount">{{ formatPrice(vehicle.price_per_day, vehicle) }}</span>
-                        <span class="favorite-unit">/day</span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <div v-if="providerFavoritesState.length > 0" class="mt-10">
-            <p class="text-[1.25rem] text-customPrimaryColor font-semibold mb-[1rem]">
-                Provider favorites
-            </p>
-            <div class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
-                <div v-for="favorite in providerFavoritesState" :key="favorite.id"
-                    class="favorite-card">
-                    <div class="favorite-image">
-                        <img :src="favorite.payload?.image || '/images/dummyCarImaage.png'" alt="Primary Image" />
-                        <button class="favorite-toggle" :class="{ 'is-loading': favoriteLoading[favorite.id] }"
-                            :disabled="favoriteLoading[favorite.id]"
-                            @click.stop="toggleProviderFavourite(favorite)"
-                            :aria-busy="favoriteLoading[favorite.id] ? 'true' : 'false'">
-                            <Heart class="w-5 h-5 transition-all duration-300 fill-red-500 stroke-red-500" />
-                        </button>
-                    </div>
-                    <div class="favorite-content">
-                        <span class="favorite-pill">{{ favorite.payload?.model || 'Vehicle' }}</span>
-                        <h5 class="favorite-title">{{ favorite.payload?.brand || 'Provider Vehicle' }}</h5>
-                        <div class="favorite-meta">
-                            <img :src="mileageIcon" alt="" />
-                            <span>Provider listing</span>
+                    <div v-if="providerFavoritesState.length > 0" class="mt-8">
+                        <p class="text-sm font-semibold text-slate-700 mb-4">Provider favorites</p>
+                        <div class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
+                            <div v-for="favorite in providerFavoritesState" :key="favorite.id"
+                                class="favorite-card">
+                                <div class="favorite-image">
+                                    <img :src="favorite.payload?.image || '/images/dummyCarImaage.png'" alt="Primary Image" />
+                                    <button class="favorite-toggle" :class="{ 'is-loading': favoriteLoading[favorite.id] }"
+                                        :disabled="favoriteLoading[favorite.id]"
+                                        @click.stop="toggleProviderFavourite(favorite)"
+                                        :aria-busy="favoriteLoading[favorite.id] ? 'true' : 'false'">
+                                        <Heart class="w-5 h-5 transition-all duration-300 fill-red-500 stroke-red-500" />
+                                    </button>
+                                </div>
+                                <div class="favorite-content">
+                                    <span class="favorite-pill">{{ favorite.payload?.model || 'Vehicle' }}</span>
+                                    <h5 class="favorite-title">{{ favorite.payload?.brand || 'Provider Vehicle' }}</h5>
+                                    <div class="favorite-meta">
+                                        <img :src="mileageIcon" alt="" />
+                                        <span>Provider listing</span>
+                                    </div>
+                                    <div class="favorite-price">
+                                        <span class="favorite-amount">{{ formatProviderPrice(favorite.payload) }}</span>
+                                        <span class="favorite-unit">/day</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="favorite-price">
-                            <span class="favorite-amount">{{ formatProviderPrice(favorite.payload) }}</span>
-                            <span class="favorite-unit">/day</span>
-                        </div>
                     </div>
-                </div>
+                </CardContent>
+            </Card>
+
+            <div v-if="props.favoriteVehicles && props.favoriteVehicles.last_page > 1" class="flex justify-center">
+                <Pagination
+                    :currentPage="props.favoriteVehicles.current_page"
+                    :totalPages="props.favoriteVehicles.last_page"
+                    @page-change="handlePageChange"
+                />
             </div>
-        </div>
-        <!-- Pagination -->
-        <div v-if="props.favoriteVehicles && props.favoriteVehicles.last_page > 1" class="mt-6 flex justify-center">
-            <Pagination
-                :currentPage="props.favoriteVehicles.current_page"
-                :totalPages="props.favoriteVehicles.last_page"
-                @page-change="handlePageChange"
-            />
         </div>
     </MyProfileLayout>
 </template>

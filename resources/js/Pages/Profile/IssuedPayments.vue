@@ -4,76 +4,64 @@
         <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
             <div class="loader h-12 w-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
         </div>
-        <div class="">
-            <p
-                class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[1rem] max-[768px]:text-[1.2rem]">
-                {{ _t('customerprofilepages', 'issued_payments_header') }}</p>
+        <Card>
+            <CardHeader>
+                <CardTitle>{{ _t('customerprofilepages', 'issued_payments_header') }}</CardTitle>
+                <CardDescription>{{ _t('customerprofilepages', 'issued_payments_subtitle') || 'Track payments issued for your bookings.' }}</CardDescription>
+            </CardHeader>
+            <CardContent class="space-y-4">
+                <div>
+                    <input type="text" v-model="searchQuery" :placeholder="_t('customerprofilepages', 'search_payments_placeholder')"
+                        class="w-full" />
+                </div>
 
-            <div class="mb-4">
-                <input type="text" v-model="searchQuery" :placeholder="_t('customerprofilepages', 'search_payments_placeholder')"
-                    class="px-4 py-2 border border-gray-300 rounded-md w-full" />
-            </div>
+                <div v-if="filteredPayments.length" class="overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ _t('customerprofilepages', 'table_header_id') }}</th>
+                                <th>{{ _t('customerprofilepages', 'table_header_booking_id') }}</th>
+                                <th>{{ _t('customerprofilepages', 'table_header_vehicle') }}</th>
+                                <th>{{ _t('customerprofilepages', 'table_header_payment_date') }}</th>
+                                <th>{{ _t('customerprofilepages', 'table_header_amount_paid') }}</th>
+                                <th>{{ _t('customerprofilepages', 'table_header_payment_method') }}</th>
+                                <th>{{ _t('customerprofilepages', 'table_header_payment_status') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(payment, index) in filteredPayments" :key="payment.id">
+                                <td>{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
+                                <td>{{ payment.booking?.booking_number || _t('customerprofilepages', 'not_applicable') }}</td>
+                                <td>{{ payment.booking?.vehicle_name || _t('customerprofilepages', 'not_applicable') }}</td>
+                                <td>{{ formatDate(payment.created_at) }}</td>
+                                <td class="text-emerald-600 font-semibold">
+                                    {{ getCurrencySymbol(getBookingCurrency(payment)) }} {{ formatNumber(getBookingAmount(payment, 'amount_paid')) }}
+                                </td>
+                                <td>{{ payment.payment_method || _t('customerprofilepages', 'not_applicable') }}</td>
+                                <td>
+                                    <span :class="{
+                                        'text-emerald-600 font-semibold': payment.payment_status === 'succeeded',
+                                        'text-amber-500 font-semibold': payment.payment_status === 'pending',
+                                        'text-rose-500 font-semibold': payment.payment_status === 'failed',
+                                        'text-slate-500 font-semibold': !payment.payment_status
+                                    }">
+                                        {{ payment.payment_status || _t('customerprofilepages', 'not_applicable') }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-            <div v-if="filteredPayments.length" class="bg-white rounded-lg shadow overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {{ _t('customerprofilepages', 'table_header_id') }}</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('customerprofilepages', 'table_header_booking_id') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('customerprofilepages', 'table_header_vehicle') }}
-                            </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('customerprofilepages', 'table_header_payment_date') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('customerprofilepages', 'table_header_amount_paid') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('customerprofilepages', 'table_header_payment_method') }}
-                                </th>
-                            <th class="px-4 py-2 text-left text-sm font-medium tracking-wider whitespace-nowrap">{{ _t('customerprofilepages', 'table_header_payment_status') }}
-                                </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="(payment, index) in filteredPayments" :key="payment.id"
-                            class="border-b hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap">{{ (pagination.current_page - 1) *
-                                pagination.per_page + index + 1 }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ payment.booking?.booking_number || _t('customerprofilepages', 'not_applicable') }}
-                            </td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">
-                                {{ payment.booking?.vehicle_name || _t('customerprofilepages', 'not_applicable') }}
-                            </td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
-                                formatDate(payment.created_at) }}</td>
-                            <td class="px-4 py-2 text-sm text-green-600 whitespace-nowrap font-medium">
-                                {{ getCurrencySymbol(getBookingCurrency(payment)) }} {{ formatNumber(getBookingAmount(payment, 'amount_paid')) }}
-                            </td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ payment.payment_method || _t('customerprofilepages', 'not_applicable') }}
-                            </td>
-                            <td class="px-4 py-2 text-sm capitalize">
-                                <span :class="{
-                                    'text-green-600 font-semibold': payment.payment_status === 'succeeded',
-                                    'text-yellow-500 font-semibold': payment.payment_status === 'pending',
-                                    'text-red-500 font-semibold': payment.payment_status === 'failed',
-                                    'text-gray-500 font-semibold': !payment.payment_status
-                                }">
-                                    {{ payment.payment_status || _t('customerprofilepages', 'not_applicable') }}
-                                </span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div v-else class="text-center py-6">
-                <span class="text-gray-500">{{ _t('customerprofilepages', 'no_payments_found_text') }}</span>
-            </div>
-            <div v-if="pagination && pagination.last_page > 1" class="mt-[1rem] flex justify-end">
-                <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
-                    @page-change="handlePageChange" />
-            </div>
-        </div>
+                <div v-else class="rounded-xl border border-dashed border-slate-200 px-6 py-10 text-center text-sm text-slate-500">
+                    {{ _t('customerprofilepages', 'no_payments_found_text') }}
+                </div>
+                <div v-if="pagination && pagination.last_page > 1" class="flex justify-end">
+                    <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
+                        @page-change="handlePageChange" />
+                </div>
+            </CardContent>
+        </Card>
     </MyProfileLayout>
 </template>
 
@@ -82,6 +70,7 @@ import { ref, computed, onMounted, watch, getCurrentInstance } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router } from '@inertiajs/vue3';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
 
 const props = defineProps({
     payments: {

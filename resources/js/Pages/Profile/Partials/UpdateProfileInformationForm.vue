@@ -202,15 +202,7 @@ onMounted(() => {
     <header>
         <h2 class="text-[1.75rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">{{ _t('customerprofilepages',
             'personal_details') }}</h2>
-        <div class="w-[25rem] max-[768px]:w-full">
-            <div class="profile-completion">
-                <p class="mb-2">{{ _t('customerprofilepages', 'profile_completion') }}{{ profileCompletion }}%</p>
-                <div class="progress-bar">
-                    <div class="progress-fill" :style="{ width: profileCompletion + '%' }"></div>
-                </div>
-            </div>
-
-        </div>
+        <div class="w-[25rem] max-[768px]:w-full"></div>
     </header>
     <section v-bind="$attrs">
         <form @submit.prevent="handleSubmit" class="mt-6 space-y-6">

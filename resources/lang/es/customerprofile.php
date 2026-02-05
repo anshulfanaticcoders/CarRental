@@ -21,6 +21,9 @@ return [
         'inbox' => 'Bandeja de Entrada',
         'favorites' => 'Favoritos',
         'my_reviews' => 'Mis Reseñas',
+        'quick_links' => 'Enlaces rápidos',
+        'profile_completion' => 'Completado del perfil',
+        'logout_confirmation' => '¿Seguro que quieres cerrar sesión?',
         // Vendor Menus
         'dashboard' => 'Panel de Control',
         'overview' => 'Resumen',
@@ -41,6 +44,7 @@ return [
         'error_missing_payment_intent' => 'Falta el ID de Intención de Pago en la URL.',
         // Button
         'log_out' => 'Cerrar sesión',
+        'button_cancel' => 'Cancelar',
 
         // Booking Details Page
         'booking_details' => 'Detalles de la Reserva',

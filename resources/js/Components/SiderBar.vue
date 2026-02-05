@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch, inject, getCurrentInstance } from "vue";
+import { ref, computed, onMounted, watch, getCurrentInstance } from "vue";
 import { Link, usePage } from "@inertiajs/vue3";
 import chevronIcon from "../../assets/chaveronDown.svg";
 import profileIcon from "../../assets/userDashIcon.svg";
@@ -22,41 +22,46 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/Components/ui/alert-dialog'
+} from '@/Components/ui/alert-dialog';
+import {
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarSeparator,
+  useSidebar,
+} from '@/Components/ui/sidebar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
 
-// Get the states from parent component
+const page = usePage();
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
 
-const isCollapsed = inject('isSidebarCollapsed', ref(false));
-const isMobileMenuOpen = inject('isMobileMenuOpen', ref(false));
-const isMobile = inject('isMobile', ref(false));
+const { state, isMobile, setOpen, setOpenMobile } = useSidebar();
+const isCollapsed = computed(() => state.value === 'collapsed');
 
-const toggleSidebar = inject('toggleSidebar', () => {
-  isCollapsed.value = !isCollapsed.value;
-  // Emit the event for the parent layout
-  emit('toggle-sidebar');
+const user = computed(() => page.props.auth?.user || null);
+const userInitials = computed(() => {
+  const first = user.value?.first_name?.[0] || '';
+  const last = user.value?.last_name?.[0] || '';
+  return `${first}${last}`.toUpperCase() || 'U';
 });
 
-const toggleMobileMenu = inject('toggleMobileMenu', () => {
-  isMobileMenuOpen.value = !isMobileMenuOpen.value;
-  // Emit the event for the parent layout
-  emit('toggle-mobile-menu');
-});
-
-// Define emits
-const emit = defineEmits(['toggle-sidebar', 'toggle-mobile-menu']);
-
-// Existing logic
-const user = ref(null);
 const booking = ref(null);
 const payment = ref(null);
 const vehicle = ref(null);
 const error = ref(null);
-const userId = usePage().props.auth.user.id;
 
 onMounted(async () => {
-  const paymentIntentId = usePage().props.payment_intent;
+  const paymentIntentId = page.props.payment_intent;
 
   if (paymentIntentId) {
     try {
@@ -81,8 +86,7 @@ const activeMenu = ref(null);
 const activeSubmenu = ref(null);
 const activeLink = ref(null);
 
-// Determine user role from props
-const userRole = usePage().props.auth.user.role;
+const userRole = page.props.auth?.user?.role;
 
 // Menus for "customer" (existing logic)
 const menus = [
@@ -153,7 +157,7 @@ const activeOtherLinks = userRole === "vendor" ? vendorOtherLinks : otherLinks;
 
 const toggleMenu = (menuKey) => {
   if (isCollapsed.value && !isMobile.value) {
-    toggleSidebar();
+    setOpen(true);
   }
   activeMenu.value = activeMenu.value === menuKey ? null : menuKey;
 };
@@ -170,7 +174,7 @@ const greetingMessage = computed(() => {
 });
 
 const setActiveLinkFromRoute = () => {
-  const currentPath = usePage().url.split("?")[0];
+  const currentPath = page.url.split("?")[0];
   const foundLink = activeOtherLinks.find((link) => {
     try {
       return new URL(link.path).pathname === currentPath;
@@ -187,7 +191,7 @@ const setActiveLinkFromRoute = () => {
 };
 
 const setActiveSubmenuFromRoute = () => {
-  const currentPath = usePage().url.split("?")[0];
+  const currentPath = page.url.split("?")[0];
   let wasFound = false;
   activeMenus.forEach((menu) => {
     const foundItem = menu.items.find((item) => {
@@ -213,35 +217,18 @@ onMounted(() => {
   setActiveSubmenuFromRoute();
 });
 
-watch(() => usePage().url, () => {
+watch(() => page.url, () => {
   setActiveLinkFromRoute();
   setActiveSubmenuFromRoute();
 });
 
 import axios from "axios";
 
-const fetchUserProfile = async () => {
-  try {
-    // Make the request to fetch the current user's profile
-    const response = await axios.get(route('user.profile'));
-
-    if (response.data.status === "success") {
-      user.value = response.data.data;
-    } else {
-      console.error("Failed to fetch user:", response.data.message);
-    }
-  } catch (error) {
-    console.error("Error fetching user:", error);
-  }
-};
-
-onMounted(fetchUserProfile);
-
 const unreadMessageCount = ref(0);
 
 const fetchUnreadMessageCount = async () => {
   try {
-    const response = await axios.get(route('messages.unreadCount', { locale: usePage().props.locale }));
+  const response = await axios.get(route('messages.unreadCount', { locale: page.props.locale }));
     if (response.data && typeof response.data.unread_count === 'number') {
       unreadMessageCount.value = response.data.unread_count;
     }
@@ -256,7 +243,7 @@ watch(() => usePage().url, fetchUnreadMessageCount); // Re-fetch on route change
 // Function to close mobile menu when clicking a link (for mobile view)
 const handleLinkClick = (name) => {
   if (isMobile.value) {
-    toggleMobileMenu();
+    setOpenMobile(false);
   }
   activeLink.value = name;
 };
@@ -264,17 +251,27 @@ const handleLinkClick = (name) => {
 // Function to handle submenu item click
 const handleSubmenuClick = (name) => {
   if (isMobile.value) {
-    toggleMobileMenu();
+    setOpenMobile(false);
   }
   setActiveSubmenu(name);
 };
 
 
 const profileCompletion = ref(0);
+const safeCompletion = computed(() => {
+  const value = Number(profileCompletion.value) || 0;
+  return Math.min(100, Math.max(0, value));
+});
+
+const completionColor = computed(() => {
+  if (safeCompletion.value >= 90) return 'bg-[#4caf50]';
+  if (safeCompletion.value >= 50) return 'bg-amber-400';
+  return 'bg-rose-400';
+});
 
 const fetchProfileCompletion = async () => {
   try {
-    const response = await fetch(route('profile.completion', { locale: usePage().props.locale }));
+    const response = await fetch(route('profile.completion', { locale: page.props.locale }));
     const data = await response.json();
     profileCompletion.value = data.percentage;
   } catch (error) {
@@ -283,7 +280,6 @@ const fetchProfileCompletion = async () => {
 };
 
 onMounted(fetchProfileCompletion);
-const showProfileAlert = computed(() => profileCompletion.value < 90);
 
 // Transition Hooks for Accordion Animation
 const beforeEnter = (el) => {
@@ -313,192 +309,169 @@ const leave = (el) => {
 
 <template>
   <div class="sidebar-inner">
-    <!-- Mobile close button -->
-    <div v-if="isMobile && isMobileMenuOpen" class="mobile-close-btn flex justify-end py-4 px-4 absolute top-0 right-0">
-      <button @click="toggleMobileMenu" class="bg-[#153b4f] text-white p-2 rounded-full">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Collapse toggle button (desktop only) -->
-    <div v-if="!isMobile" class="flex justify-end py-4 pr-4">
-      <button @click="toggleSidebar" class="collapse-toggle" :class="{ 'toggle-collapsed': isCollapsed }"
-        title="collapse menu">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6" v-if="!isCollapsed"></polyline>
-          <polyline points="9 18 15 12 9 6" v-else></polyline>
-        </svg>
-      </button>
-    </div>
-
-    <div :class="{ 'collapsed': isCollapsed && !isMobile }">
-      <div class="user-info p-4 w-full" v-if="!isCollapsed || isMobile">
-        <div class="flex items-center space-x-3">
-          <img :src="user?.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
-            class="w-10 h-10 rounded-full object-cover" />
-          <div>
-            <p class="text-sm text-gray-500">
-              Hello, {{ greetingMessage }}
-            </p>
-            <p class="text-lg font-semibold text-gray-800">
+    <SidebarHeader>
+      <div v-if="isCollapsed" class="profile-collapsed">
+        <Avatar class="h-10 w-10">
+          <AvatarImage :src="user?.profile?.avatar || '/storage/avatars/default-avatar.svg'" />
+          <AvatarFallback>{{ userInitials }}</AvatarFallback>
+        </Avatar>
+      </div>
+      <div v-else class="profile-card">
+        <div class="flex items-center gap-3">
+          <Avatar class="h-10 w-10">
+            <AvatarImage :src="user?.profile?.avatar || '/storage/avatars/default-avatar.svg'" />
+            <AvatarFallback>{{ userInitials }}</AvatarFallback>
+          </Avatar>
+          <div class="min-w-0">
+            <p class="text-xs text-white/70">{{ greetingMessage }}</p>
+            <p class="text-sm font-semibold text-white truncate">
               {{ user?.first_name }} {{ user?.last_name }}
             </p>
-            <p class="capitalize text-md text-[#009900]">
-              {{ user?.role }}
+            <p class="text-[0.65rem] uppercase tracking-[0.2em] text-white/80">
+              {{ user?.role || 'User' }}
             </p>
           </div>
         </div>
-      </div>
-
-      <!-- User avatar only when collapsed (desktop) -->
-      <div class="collapsed-avatar mt-4 flex justify-center" v-if="isCollapsed && !isMobile">
-        <img :src="user?.profile.avatar || '/storage/avatars/default-avatar.svg'" alt="User Avatar"
-          class="w-10 h-10 rounded-full object-cover" />
-      </div>
-
-      <!-- Dynamic Menus -->
-      <div v-for="menu in activeMenus" :key="menu.key" class="menu-item flex flex-col gap-2">
-        <button class="menu-header" :class="{
-          active: activeMenu === menu.key,
-          'collapsed-menu': isCollapsed && !isMobile,
-          'justify-between': !isCollapsed || isMobile
-        }" @click="toggleMenu(menu.key)">
-          <div class="flex gap-2 items-center">
-            <img :src="menu.icon" alt="" class="icon-button active"
-              :class="{ 'brightness-active': activeMenu === menu.key }" />
-            <span v-if="!isCollapsed || isMobile">{{ menu.title }}</span>
+        <div class="mt-3">
+          <div class="flex items-center justify-between text-[0.7rem] text-white/70">
+            <span>{{ _t('customerprofile', 'profile_completion') || 'Profile completion' }}</span>
+            <span>{{ safeCompletion }}%</span>
           </div>
-          <img v-if="(!isCollapsed || isMobile)" class="chevron" :class="{ rotated: activeMenu === menu.key }"
-            :src="chevronIcon" alt="" />
-        </button>
-        <Transition name="accordion" @before-enter="beforeEnter" @enter="enter" @after-enter="afterEnter"
-          @before-leave="beforeLeave" @leave="leave">
-          <ul v-if="activeMenu === menu.key && (!isCollapsed || isMobile)" class="submenu">
-            <li v-for="item in menu.items" :key="item.name" :class="{ 'submenu-active': activeSubmenu === item.name }">
-              <Link :href="item.path" class="submenu-link flex items-center gap-2"
-                @click="handleSubmenuClick(item.name)">
-                {{ item.name }}
+          <div class="mt-1 h-2 rounded-full bg-white/20 overflow-hidden">
+            <div class="h-full" :class="completionColor" :style="{ width: `${safeCompletion}%` }"></div>
+          </div>
+        </div>
+      </div>
+    </SidebarHeader>
+
+    <SidebarSeparator class="my-2" />
+
+    <SidebarContent>
+      <SidebarGroup v-for="menu in activeMenus" :key="menu.key">
+        <SidebarGroupLabel>{{ menu.title }}</SidebarGroupLabel>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              :is-active="activeMenu === menu.key"
+              :tooltip="menu.title"
+              size="lg"
+              :class="['profile-nav-button', isCollapsed ? 'justify-center' : '']"
+              @click="toggleMenu(menu.key)"
+            >
+              <img :src="menu.icon" alt="" class="h-5 w-5 nav-icon" />
+              <span v-if="!isCollapsed" class="nav-label">{{ menu.title }}</span>
+              <img
+                v-if="!isCollapsed"
+                :src="chevronIcon"
+                alt=""
+                class="ml-auto h-3 w-3 transition-transform"
+                :class="{ 'rotate-180': activeMenu === menu.key }"
+              />
+            </SidebarMenuButton>
+            <Transition name="accordion" @before-enter="beforeEnter" @enter="enter" @after-enter="afterEnter"
+              @before-leave="beforeLeave" @leave="leave">
+              <SidebarMenuSub v-if="activeMenu === menu.key && !isCollapsed">
+                <SidebarMenuSubItem v-for="item in menu.items" :key="item.name">
+                  <SidebarMenuSubButton :is-active="activeSubmenu === item.name" as-child class="profile-sub-button">
+                    <Link :href="item.path" @click="handleSubmenuClick(item.name)">
+                      <span>{{ item.name }}</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              </SidebarMenuSub>
+            </Transition>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarGroup>
+
+      <SidebarSeparator class="my-2" />
+
+      <SidebarGroup>
+        <SidebarGroupLabel>{{ _t('customerprofile', 'quick_links') || 'Quick Links' }}</SidebarGroupLabel>
+        <SidebarMenu>
+          <SidebarMenuItem v-for="link in activeOtherLinks" :key="link.name">
+            <SidebarMenuButton
+              :is-active="activeLink === link.name"
+              :tooltip="link.name"
+              size="lg"
+              as-child
+              :class="['profile-nav-button', isCollapsed ? 'justify-center' : '']"
+            >
+              <Link :href="link.path" class="items-center" @click="handleLinkClick(link.name)">
+                <img :src="link.icon" alt="" class="h-5 w-5 nav-icon" />
+                <span v-if="!isCollapsed" class="nav-label">{{ link.name }}</span>
               </Link>
-            </li>
-          </ul>
-        </Transition>
-      </div>
+            </SidebarMenuButton>
+            <SidebarMenuBadge
+              v-if="link.isInbox && unreadMessageCount > 0"
+              class="bg-rose-500 text-white"
+            >
+              {{ unreadMessageCount }}
+            </SidebarMenuBadge>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarGroup>
+    </SidebarContent>
 
-      <!-- Other Links -->
-      <div v-for="link in activeOtherLinks" :key="link.name" class="menu-item">
-        <Link :href="link.path" class="menu-link flex items-center gap-2" :class="{
-          active: activeLink === link.name,
-          'collapsed-menu': isCollapsed && !isMobile,
-          'justify-center': isCollapsed && !isMobile
-        }" @click="handleLinkClick(link.name)">
-          <img :src="link.icon" alt="" class="icon w-[24px] h-[24px]"
-            :class="{ 'brightness-active': activeLink === link.name }" />
-          <span v-if="!isCollapsed || isMobile">{{ link.name }}</span>
-          <span v-if="link.isInbox && unreadMessageCount > 0 && (!isCollapsed || isMobile)" class="unread-badge">
-            {{ unreadMessageCount }}
-          </span>
-        </Link>
-      </div>
-
-      <!-- Logout Button -->
-      <Link :href="route('logout')" method="post" as="button"
-        class="text-[#EE1D52] flex items-center gap-1 mt-[4rem] w-full pb-[2rem]" :class="{
-          'justify-center': isCollapsed && !isMobile,
-          'ml-[1rem]': !isCollapsed || isMobile,
-          'ml-0': isCollapsed && !isMobile
-        }">
-        <img :src="logoutIcon" alt="">
-        <span v-if="!isCollapsed || isMobile">{{ _t('customerprofile', 'log_out') }}</span>
-      </Link>
-    </div>
+    <SidebarFooter>
+      <AlertDialog>
+        <AlertDialogTrigger as-child>
+          <SidebarMenuButton
+            variant="outline"
+            size="lg"
+            class="profile-nav-button bg-rose-600 text-white hover:text-white hover:bg-rose-700 border-rose-600"
+            :tooltip="_t('customerprofile', 'log_out')"
+          >
+            <img :src="logoutIcon" alt="" class="h-5 w-5 nav-icon nav-icon--white" />
+            <span v-if="!isCollapsed" class="nav-label text-white">{{ _t('customerprofile', 'log_out') }}</span>
+          </SidebarMenuButton>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{{ _t('customerprofile', 'log_out') }}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {{ _t('customerprofile', 'logout_confirmation') || 'Are you sure you want to log out?' }}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{{ _t('customerprofile', 'button_cancel') || 'Cancel' }}</AlertDialogCancel>
+            <AlertDialogAction as-child>
+              <Link :href="route('logout')" method="post" as="button">
+                {{ _t('customerprofile', 'log_out') }}
+              </Link>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </SidebarFooter>
   </div>
 </template>
 
 <style scoped>
 .sidebar-inner {
-  position: relative;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
 }
 
-.collapse-toggle {
-  width: 30px;
-  height: 30px;
-  background-color: #153b4f;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10;
-  transition: all 0.3s;
-  border: none;
-}
-
-.collapsed {
+.profile-card {
+  border-radius: 16px;
+  border: 1px solid rgba(21, 59, 79, 0.35);
+  background: #153b4f;
+  padding: 0.85rem 0.9rem;
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.18);
   width: 100%;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
-a {
-  display: flex !important;
-}
-
-.user-info {
-  margin-bottom: 20px;
-}
-
-.menu-header {
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  border-radius: 12px;
+.profile-collapsed {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  font-size: 1rem;
-  color: #153b4f;
-  font-weight: 500;
-}
-
-.menu-header.collapsed-menu {
-  padding: 1rem;
   justify-content: center;
+  padding: 0.75rem 0.5rem;
 }
 
-.menu-header.active {
-  background-color: #153b4f;
-  color: white;
-}
-
-.chevron {
-  transition: transform 0.3s;
-}
-
-.chevron.rotated {
-  transform: rotate(180deg);
-  filter: brightness(10);
-}
-
-.submenu {
-  list-style: none;
-  margin: 0;
-  padding: 0 20px;
-  border-radius: 12px;
-  overflow: hidden;
-  /* Important for height transition */
-}
-
-/* Accordion Transition Styles */
 .accordion-enter-active,
 .accordion-leave-active {
   transition: height 0.3s ease, opacity 0.3s ease;
@@ -511,68 +484,38 @@ a {
   opacity: 0;
 }
 
-.submenu li {
-  padding: 8px;
-  border-radius: 4px;
-  transition: background-color 0.3s;
-}
-
-.submenu li.submenu-active {
-  background-color: #153b4f1a;
-  color: #153b4f;
+.profile-nav-button {
+  color: #334155;
   border-radius: 12px;
+  font-size: 1.2rem;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
-.menu-link {
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  display: block;
-  transition: color 0.3s;
+.profile-nav-button:hover {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.profile-nav-button[data-active='true'] {
+  background: rgba(21, 59, 79, 0.12);
   color: #153b4f;
-  font-weight: 500;
+  box-shadow: inset 3px 0 0 #153b4f;
 }
 
-.menu-link.collapsed-menu {
-  padding: 1rem;
-  justify-content: center;
+.nav-label {
+  font-weight: 600;
 }
 
-.menu-link.active {
-  color: white;
-  background-color: #153b4f;
-  border-radius: 12px;
+.nav-icon {
+  opacity: 0.9;
 }
 
-.brightness-active {
-  filter: brightness(15);
+.nav-icon--white {
+  filter: brightness(0) invert(1);
 }
 
-.collapsed-avatar {
-  margin-bottom: 20px;
-}
-
-.unread-badge {
-  background-color: #EE1D52;
-  /* Red background */
-  color: white;
-  border-radius: 50%;
-  /* Circular shape */
-  padding: 2px 8px;
-  /* Adjust padding to make it look like a badge */
-  font-size: 0.75rem;
-  /* Smaller font size */
-  font-weight: bold;
-  margin-left: auto;
-  /* Push to the right */
-  min-width: 24px;
-  /* Ensure it's circular even for single digits */
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 24px;
-  /* Ensure height matches min-width for circular shape */
+.profile-sub-button[data-active='true'] {
+  background: rgba(21, 59, 79, 0.12);
+  color: #153b4f;
+  font-weight: 600;
 }
 </style>
