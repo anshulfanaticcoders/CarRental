@@ -444,7 +444,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
             <div class="hero-bubble bubble-3"></div>
             <div class="hero-bubble bubble-4"></div>
             <div class="hero-bubble bubble-5"></div>
-            <div class="hero-wrapper">
+            <div class="hero-wrapper full-w-container">
                 <div class="hero-left">
                     <div class="hero-label">{{ heroBadge }}</div>
                     <h1 class="hero-title anim-title clip-path-anim" v-html="animatedTagline"></h1>
@@ -455,17 +455,6 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                         <span class="cursor-blink ml-1"></span>
                     </div>
 
-                    <!-- Mobile Marquee -->
-                    <div v-show="isHeroMobile" class="hero-marquee">
-                        <div class="marquee-track">
-                            <span v-for="(phrase, index) in translatedPhrases" :key="index" class="marquee-item">{{
-                                phrase
-                                }}</span>
-                            <span v-for="(phrase, index) in translatedPhrases" :key="'dup-' + index"
-                                class="marquee-item">{{
-                                    phrase }}</span>
-                        </div>
-                    </div>
                     <div class="hero-trust">
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -495,24 +484,10 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                         </span>
                     </div>
 
-                    <div v-show="isHeroMobile" class="mobile-scroll-btn" @click="scrollToSearch">
-                        <span class="scroll-text">Let's Start Booking</span>
-                        <div class="scroll-arrows">
-                            <svg viewBox="0 0 24 24" class="scroll-arrow arrow-1">
-                                <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" />
-                            </svg>
-                            <svg viewBox="0 0 24 24" class="scroll-arrow arrow-2">
-                                <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" />
-                            </svg>
-                            <svg viewBox="0 0 24 24" class="scroll-arrow arrow-3">
-                                <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" />
-                            </svg>
-                        </div>
-                    </div>
                 </div>
             </div>
-            <div class="search-bar-section hero-search">
-                <SearchBar class="search-bar-animation" :simple="true" />
+            <div class="search-bar-section hero-search full-w-container">
+                <SearchBar class="searchbar-in-header search-bar-animation" :simple="true" />
             </div>
         </section>
 
@@ -1048,33 +1023,43 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 .hero {
     position: relative;
     overflow: visible;
-    padding: 5rem 4vw 7rem;
-    background: radial-gradient(circle at 20% 20%, rgba(46, 167, 173, 0.2), transparent 55%),
-        radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.08), transparent 40%),
-        linear-gradient(125deg, #081824 0%, #0b2f3f 45%, #08141d 100%);
+    padding: 5.6rem 0 7.2rem;
+    background: radial-gradient(circle at 14% 18%, rgba(46, 167, 173, 0.28), transparent 55%),
+        radial-gradient(circle at 78% 12%, rgba(255, 236, 206, 0.26), transparent 45%),
+        linear-gradient(132deg, #122a3a 0%, #1a3f53 48%, #102531 100%);
+}
+
+.hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 12%, rgba(255, 255, 255, 0.16), transparent 48%),
+        radial-gradient(circle at 70% 75%, rgba(46, 167, 173, 0.18), transparent 60%);
+    opacity: 0.8;
+    pointer-events: none;
 }
 
 .hero::after {
     content: "";
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.08), transparent 45%),
-        url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 120C40 120 60 90 100 90C140 90 160 120 200 120' stroke='rgba(255,255,255,0.06)' stroke-width='1'/%3E%3Cpath d='M0 150C40 150 60 120 100 120C140 120 160 150 200 150' stroke='rgba(255,255,255,0.04)' stroke-width='1'/%3E%3Cpath d='M0 60C40 60 60 30 100 30C140 30 160 60 200 60' stroke='rgba(255,255,255,0.05)' stroke-width='1'/%3E%3C/svg%3E");
-    opacity: 0.55;
+    background-image: radial-gradient(circle at 76% 18%, rgba(255, 255, 255, 0.16), transparent 48%),
+        url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 120C40 120 60 90 100 90C140 90 160 120 200 120' stroke='rgba(255,255,255,0.05)' stroke-width='1'/%3E%3Cpath d='M0 150C40 150 60 120 100 120C140 120 160 150 200 150' stroke='rgba(255,255,255,0.03)' stroke-width='1'/%3E%3Cpath d='M0 60C40 60 60 30 100 30C140 30 160 60 200 60' stroke='rgba(255,255,255,0.04)' stroke-width='1'/%3E%3C/svg%3E");
+    opacity: 0.3;
     pointer-events: none;
 }
 
 .hero-bg-image {
     position: absolute;
-    top: -5%;
-    right: -3%;
-    width: 55%;
+    top: -8%;
+    right: -6%;
+    width: 60%;
     height: 120%;
     background-size: cover;
     background-position: center right;
-    opacity: 0.35;
-    filter: saturate(1.1);
-    mix-blend-mode: screen;
+    opacity: 0.5;
+    filter: saturate(1.08) contrast(1.02);
+    mix-blend-mode: normal;
     pointer-events: none;
 }
 
@@ -1082,43 +1067,43 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, rgba(8, 20, 29, 0.95) 0%, rgba(8, 20, 29, 0.35) 45%, rgba(8, 20, 29, 0) 100%),
-        linear-gradient(180deg, rgba(8, 20, 29, 0.85) 0%, rgba(8, 20, 29, 0) 35%, rgba(8, 20, 29, 0) 65%, rgba(8, 20, 29, 0.85) 100%);
+    background: linear-gradient(90deg, rgba(10, 30, 42, 0.72) 0%, rgba(10, 30, 42, 0.28) 45%, rgba(10, 30, 42, 0) 100%),
+        linear-gradient(180deg, rgba(10, 30, 42, 0.68) 0%, rgba(10, 30, 42, 0) 40%, rgba(10, 30, 42, 0) 60%, rgba(10, 30, 42, 0.68) 100%);
 }
 
 .hero-orb {
     position: absolute;
     border-radius: 50%;
     filter: blur(0px);
-    opacity: 0.7;
+    opacity: 0.6;
     mix-blend-mode: screen;
     pointer-events: none;
 }
 
 .hero-orb.orb-1 {
-    width: 260px;
-    height: 260px;
-    background: radial-gradient(circle, rgba(46, 167, 173, 0.4), transparent 70%);
-    top: -60px;
-    left: 10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(46, 167, 173, 0.38), transparent 70%);
+    top: -80px;
+    left: 8%;
 }
 
 .hero-orb.orb-2 {
-    width: 180px;
-    height: 180px;
-    background: radial-gradient(circle, rgba(255, 211, 155, 0.25), transparent 70%);
-    bottom: 10%;
-    right: 18%;
+    width: 210px;
+    height: 210px;
+    background: radial-gradient(circle, rgba(255, 214, 168, 0.22), transparent 70%);
+    bottom: 12%;
+    right: 16%;
 }
 
 .hero-bubble {
     position: absolute;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, rgb(255 255 255 / 8%), rgba(46, 167, 173, 0.05));
-    border: 1px solid rgb(255 255 255 / 9%);
+    background: radial-gradient(circle at 30% 30%, rgb(255 255 255 / 10%), rgba(46, 167, 173, 0.05));
+    border: 1px solid rgba(255, 255, 255, 0.12);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
-    box-shadow: 0 10px 22px rgba(5, 15, 24, 0.28);
+    box-shadow: 0 14px 30px rgba(5, 15, 24, 0.28);
     pointer-events: none;
     animation: floatBubble 10s ease-in-out infinite;
 }
@@ -1176,7 +1161,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 }
 
 .hero-wrapper {
-    max-width: 1280px;
+    max-width: none;
     margin: 0 auto;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -1184,60 +1169,59 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     position: relative;
     z-index: 1;
     align-items: stretch;
+    justify-items: start;
 }
 
 .hero-left {
-    padding: 3.2rem 2.6rem 3.2rem 3.2rem;
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(9, 27, 36, 0.75));
-    border-radius: 30px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 3.6rem 0 3.4rem;
+    border-radius: 32px;
+    border: none;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 30px 70px rgba(6, 18, 27, 0.45);
-}
-
-.hero-left::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 12% 18%, rgba(46, 167, 173, 0.18), transparent 60%);
-    pointer-events: none;
+    background: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    max-width: 680px;
+    width: 100%;
 }
 
 .hero-label {
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.26);
     border-radius: 999px;
     padding: 0.45rem 0.95rem;
     font-size: 0.8rem;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: #e8dccf;
+    color: #f1e7d6;
     font-weight: 600;
     margin-bottom: 1.6rem;
     position: relative;
     z-index: 1;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .hero-title {
     font-size: clamp(2.7rem, 4.2vw, 4rem);
     line-height: 1.08;
-    color: #ffffff;
+    color: #f9f4ec;
     margin-bottom: 1.6rem;
     position: relative;
     z-index: 1;
+    letter-spacing: -0.01em;
+    text-shadow: 0 24px 60px rgba(2, 10, 16, 0.45);
 }
 
 .hero-title .anim-title-word {
-    color: #e8dccf;
+    color: #f0d7ad;
 }
 
 .hero-subtitle {
     font-size: 1.08rem;
-    color: rgba(255, 255, 255, 0.75);
+    color: rgba(240, 234, 224, 0.82);
     max-width: 28rem;
     line-height: 1.65;
     margin-bottom: 1.9rem;
@@ -1251,13 +1235,13 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     gap: 1rem;
     padding: 0.8rem 1.35rem;
     border-radius: 999px;
-    background: rgba(6, 19, 28, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    color: #e8dccf;
+    background: rgba(8, 22, 32, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f1e7d6;
     font-size: 0.98rem;
     position: relative;
     z-index: 1;
-    box-shadow: inset 0 0 0 1px rgba(46, 167, 173, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 12px 24px rgba(5, 14, 22, 0.28);
     min-height: 2.6rem;
 }
 
@@ -1266,8 +1250,8 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    background: #2ea7ad;
-    box-shadow: 0 0 0 6px rgba(46, 167, 173, 0.35);
+    background: #f0d7ad;
+    box-shadow: 0 0 0 6px rgba(240, 215, 173, 0.28);
     position: relative;
     z-index: 1;
     animation: premiumPulse 2.4s ease-in-out infinite;
@@ -1279,20 +1263,20 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 @keyframes premiumPulse {
     0% {
-        background: #2ea7ad;
-        box-shadow: 0 0 0 6px rgba(46, 167, 173, 0.25);
+        background: #f0d7ad;
+        box-shadow: 0 0 0 6px rgba(240, 215, 173, 0.25);
         opacity: 0.9;
     }
 
     50% {
-        background: #e8dccf;
-        box-shadow: 0 0 0 8px rgba(232, 220, 207, 0.2);
+        background: #2ea7ad;
+        box-shadow: 0 0 0 8px rgba(46, 167, 173, 0.25);
         opacity: 1;
     }
 
     100% {
-        background: #2ea7ad;
-        box-shadow: 0 0 0 6px rgba(46, 167, 173, 0.25);
+        background: #f0d7ad;
+        box-shadow: 0 0 0 6px rgba(240, 215, 173, 0.25);
         opacity: 0.9;
     }
 }
@@ -1305,11 +1289,11 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 .hero-trust {
     display: flex;
-    gap: 1.5rem;
+    gap: 1.35rem;
     flex-wrap: wrap;
     margin-top: 2.6rem;
-    color: rgba(255, 255, 255, 0.65);
-    font-size: 0.95rem;
+    color: rgba(229, 223, 212, 0.7);
+    font-size: 0.93rem;
     position: relative;
     z-index: 1;
 }
@@ -1323,97 +1307,55 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 .hero-trust svg {
     width: 18px;
     height: 18px;
-    color: #d9cbb8;
+    color: #e8d7c0;
     flex-shrink: 0;
 }
 
-.search-bar-section .search_bar {
-    border-radius: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 18px 50px rgba(5, 15, 24, 0.45);
-    background: rgba(10, 20, 26, 0.92);
-    overflow: visible;
-    position: relative;
-    width: 100%;
-    max-width: 1280px;
+/* SearchBar in Hero (match SearchResults header style) */
+.searchbar-in-header :deep(.full-w-container) {
+    padding-bottom: 0 !important;
 }
 
-.search-bar-section .search_bar::before {
-    content: "";
-    position: absolute;
-    top: 0.6rem;
-    left: 1.2rem;
-    right: 1.2rem;
-    height: 2px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #2ea7ad, transparent);
-    animation: none;
-    opacity: 1;
-    z-index: 0;
-}
-
-.search-bar-section .search_bar form {
+.searchbar-in-header :deep(.search_bar) {
     background: transparent !important;
-    backdrop-filter: blur(14px);
-    position: relative;
-    z-index: 1;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
 }
 
-.search-bar-section .search_bar .bg-gray-50 {
-    background: rgba(255, 255, 255, 0.08) !important;
+.searchbar-in-header :deep(.search_bar > .flex > .column:first-child) {
+    display: none !important;
 }
 
-.search-bar-section .search_bar .border-gray-200 {
-    border-color: rgba(255, 255, 255, 0.12) !important;
+.searchbar-in-header :deep(.search_bar > .flex > .column:last-child) {
+    width: 100% !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
 }
 
-.search-bar-section .search_bar form .text-customDarkBlackColor {
-    color: #f6f2ec !important;
+.searchbar-in-header :deep(.search_bar form) {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
+    align-items: end;
 }
 
-.search-bar-section .search_bar form svg {
-    color: #f6f2ec !important;
+.searchbar-in-header :deep(.search_bar form input),
+.searchbar-in-header :deep(.search_bar form select) {
+    background: white !important;
 }
 
-.search-bar-section .search_bar form .text-customLightGrayColor {
-    color: rgba(230, 235, 238, 0.7) !important;
-}
-
-.search-bar-section .search_bar form input,
-.search-bar-section .search_bar form .text-customPrimaryColor,
-.search-bar-section .search_bar form .text-gray-400,
-.search-bar-section .search_bar form .text-gray-500 {
-    color: #f6f2ec !important;
-}
-
-.search-bar-section .search_bar form input::placeholder {
-    color: rgba(230, 235, 238, 0.5) !important;
-}
-
-.search-bar-section .search-results {
-    background: #ffffff !important;
-    color: #0f172a !important;
-}
-
-.search-bar-section .search-results .text-gray-500,
-.search-bar-section .search-results .text-gray-600,
-.search-bar-section .search-results .text-customDarkBlackColor {
-    color: #334155 !important;
-}
-
-.search-bar-section .search_bar button[type="submit"] {
-    background: linear-gradient(135deg, #0d3342, #2ea7ad) !important;
-    border-radius: 18px;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-
-.search-bar-section .search_bar button[type="submit"]:hover {
-    box-shadow: 0 16px 30px rgba(12, 63, 78, 0.25);
+.searchbar-in-header :deep(label) {
+    display: none;
 }
 
 .hero-search {
-    max-width: 1280px;
-    margin: 2.5rem auto 0;
+    max-width: none;
+    margin: 2.8rem auto 0;
     position: relative;
     z-index: 10;
 }
@@ -1421,13 +1363,20 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 @media (max-width: 768px) {
     .hero-search {
         margin-top: 4rem;
-        padding: 0 1rem;
+        padding: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero-search .search_bar,
+    .hero-search :deep(.search_bar) {
+        border-radius: 0 !important;
     }
 }
 
 @media (max-width: 900px) {
     .hero {
-        padding: 0rem 0vw 1rem;
+        padding: 1.5rem 0vw 2rem;
     }
 
     .hero-wrapper {
@@ -1435,7 +1384,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     }
 
     .hero-left {
-        padding: 2.8rem 2.4rem 3rem;
+        padding: 3rem 2.4rem 3rem;
         border-radius: 0;
     }
 
@@ -1469,7 +1418,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
         height: 70%;
         top: 30%;
         right: 0;
-        opacity: 0.28;
+        opacity: 0.22;
     }
 
 
@@ -1477,7 +1426,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 @media (max-width: 600px) {
     .hero-left {
-        padding: 3.4rem 1.6rem;
+        padding: 3.4rem 0 0;
     }
 
     .hero-trust {
@@ -1488,121 +1437,8 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
         font-size: clamp(2rem, 8vw, 2.6rem);
     }
 
-    .hero-marquee {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        min-height: 3.2rem;
-        border-radius: 16px;
-        padding: 0.8rem 1.1rem;
-        overflow: hidden;
-        background: rgba(6, 19, 28, 0.65);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        color: #e8dccf;
-        box-shadow: inset 0 0 0 1px rgba(46, 167, 173, 0.2);
-        position: relative;
-        white-space: nowrap;
-    }
 
-    .marquee-track {
-        display: flex;
-        gap: 2rem;
-        animation: marquee 30s linear infinite;
-        width: max-content;
-    }
 
-    .mobile-scroll-btn {
-        margin-top: 2.5rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        cursor: pointer;
-        color: #e8dccf;
-        width: 100%;
-    }
-
-    .scroll-text {
-        font-family: "Fraunces", serif;
-        font-size: 1.2rem;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        color: #2ea7ad;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-    }
-
-    .scroll-arrows {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        height: 40px;
-        margin-top: -10px;
-    }
-
-    .scroll-arrow {
-        width: 24px;
-        height: 24px;
-        margin-top: -12px;
-        /* Overlap them slightly */
-        animation: arrowFade 2s infinite;
-        opacity: 0;
-    }
-
-    .arrow-1 {
-        animation-delay: 0s;
-        width: 24px;
-        height: 24px;
-        opacity: 0.6;
-    }
-
-    .arrow-2 {
-        animation-delay: 0.2s;
-        width: 30px;
-        height: 30px;
-        margin-top: -12px;
-        opacity: 0.8;
-    }
-
-    .arrow-3 {
-        animation-delay: 0.4s;
-        width: 36px;
-        height: 36px;
-        margin-top: -15px;
-    }
-
-    @keyframes arrowFade {
-        0% {
-            opacity: 0;
-            transform: translateY(-5px);
-        }
-
-        50% {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        100% {
-            opacity: 0;
-            transform: translateY(5px);
-        }
-    }
-
-    .marquee-item {
-        font-size: 1rem;
-        color: #e8dccf;
-        flex-shrink: 0;
-    }
-
-    @keyframes marquee {
-        0% {
-            transform: translateX(0);
-        }
-
-        100% {
-            transform: translateX(-50%);
-        }
-    }
 
     .hero-bubble.bubble-2 {
         width: 70px;
