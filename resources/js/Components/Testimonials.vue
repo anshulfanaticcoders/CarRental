@@ -174,13 +174,20 @@ const plugin = Autoplay({
 }
 
 @media screen and (max-width:768px) {
+    .testimonials button {
+        top: 100% !important;
+        margin-bottom: 16px;
+    }
+
     .testimonials .prev-btn {
-        left: 60% !important;
+        left: 50% !important;
+        transform: translateX(-56px);
         background-color: white;
     }
 
     .testimonials .next-btn {
-        right: 0% !important;
+        left: 50% !important;
+        transform: translateX(16px);
         background-color: white;
     }
 }

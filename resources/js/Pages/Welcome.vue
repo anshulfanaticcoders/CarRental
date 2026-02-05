@@ -435,7 +435,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     <AuthenticatedHeaderLayout />
 
     <main class="overflow-x-hidden">
-        <section class="hero_section hero">
+        <section class="hero_section hero" :style="{ '--hero-image': `url(${heroImageSource})` }">
             <div class="hero-bg-image hero-image" :style="{ backgroundImage: `url(${heroImageSource})` }"></div>
             <div class="hero-orb orb-1"></div>
             <div class="hero-orb orb-2"></div>
@@ -1425,8 +1425,16 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 }
 
 @media (max-width: 600px) {
+    .hero {
+        background-image: linear-gradient(135deg, rgba(12, 40, 56, 0.82), rgba(12, 40, 56, 0.52)),
+            var(--hero-image);
+        background-size: cover;
+        background-position: center;
+    }
+
     .hero-left {
         padding: 3.4rem 0 0;
+        max-width: none;
     }
 
     .hero-trust {
@@ -1453,3 +1461,6 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     }
 }
 </style>
+    .hero-bg-image {
+        display: none;
+    }

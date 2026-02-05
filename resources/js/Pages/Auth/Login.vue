@@ -622,15 +622,34 @@ watch(() => props.status, (newStatus) => {
 
 @media (max-width: 768px) {
     .sign_in {
-        padding: 0 1.5rem;
+        height: auto !important;
+        min-height: calc(100vh - 72px);
+        align-items: flex-start;
+        padding: 2rem 1.5rem 2.5rem;
+        gap: 2rem;
     }
 
     .form-panel {
-        padding: 2.5rem 1.75rem;
+        width: 100%;
+        padding: 2rem 1.5rem;
     }
 
     .form-title {
         font-size: 1.8rem;
+    }
+
+    .form-header {
+        margin-bottom: 2rem;
+    }
+
+    .remember-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .social-buttons {
+        grid-template-columns: 1fr;
     }
 }
 </style>
