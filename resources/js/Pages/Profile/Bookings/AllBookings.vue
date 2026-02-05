@@ -248,7 +248,7 @@ const getCardDelay = (index) => {
       </div>
     </div>
 
-    <div class="container mx-auto px-4 max-[768px]:px-0 py-8">
+    <div class="container mx-auto px-4 max-[768px]:px-0 py-8 overflow-x-hidden">
       <!-- Page Header -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-[#153B4F] mb-2">
@@ -260,13 +260,14 @@ const getCardDelay = (index) => {
       </div>
 
       <!-- Status Filter Tabs -->
-      <div class="mb-8 overflow-x-auto">
-        <div class="flex gap-2 min-w-max">
+      <div class="mb-8">
+        <div class="status-tabs-scroll">
+          <div class="status-tabs-row">
           <button
             v-for="tab in statusTabs"
             :key="tab.key"
             @click="handleTabChange(tab.key)"
-            class="px-5 py-2.5 rounded-full font-medium text-sm transition-all duration-200"
+            class="status-tab-btn px-5 py-2.5 rounded-full font-medium text-sm transition-all duration-200"
             :class="[
               activeTab === tab.key
                 ? 'bg-[#153B4F] text-white shadow-lg shadow-[#153B4F]/20'
@@ -276,6 +277,7 @@ const getCardDelay = (index) => {
             {{ tab.label }}
             <span v-if="tab.key === 'all' && bookings?.total" class="ml-2 opacity-70">({{ bookings.total }})</span>
           </button>
+          </div>
         </div>
       </div>
 
@@ -549,5 +551,29 @@ const getCardDelay = (index) => {
 
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.status-tabs-scroll {
+  width: 100%;
+  max-width: 95vw;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0.25rem 0.25rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+  display: block;
+}
+
+.status-tabs-row {
+  display: inline-flex;
+  gap: 0.5rem;
+  min-width: max-content;
+  padding: 0 0.25rem;
+}
+
+.status-tab-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 </style>

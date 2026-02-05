@@ -79,11 +79,11 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
     </Sidebar>
     <SidebarInset class="bg-slate-50">
       <div class="profile-topbar">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 min-w-0">
           <SidebarTrigger class="!text-slate-700" />
           <SidebarSeparator class="h-5" />
-          <Breadcrumb class="hidden sm:block">
-            <BreadcrumbList>
+          <Breadcrumb class="hidden sm:block max-w-full">
+            <BreadcrumbList class="truncate">
               <BreadcrumbItem>
                 <BreadcrumbLink :href="route('profile.edit', { locale: page.props.locale })">Account</BreadcrumbLink>
               </BreadcrumbItem>
@@ -99,7 +99,7 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
           </Breadcrumb>
           <div class="sm:hidden text-sm font-semibold text-slate-700">{{ pageTitle }}</div>
         </div>
-        <Button as-child class="bg-customPrimaryColor text-white hover:bg-[#153b4fef]">
+        <Button as-child class="bg-customPrimaryColor text-white hover:bg-[#153b4fef] shrink-0 whitespace-nowrap h-9 px-4">
           <Link :href="route('welcome', { locale: page.props.locale })">Home</Link>
         </Button>
       </div>
@@ -116,6 +116,7 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
 .profile-shell {
   min-height: 100svh;
   --profile-gutter: 1.5rem;
+  overflow-x: hidden;
 }
 
 .profile-topbar {
@@ -125,6 +126,8 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   padding: 0.9rem var(--profile-gutter);
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
   background: rgba(248, 250, 252, 0.92);
@@ -134,6 +137,7 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
 .profile-content {
   padding: 1.5rem var(--profile-gutter) 2.5rem;
   width: 100%;
+  overflow-x: hidden;
 }
 
 .profile-content .container {
