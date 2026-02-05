@@ -1,11 +1,9 @@
 <script setup>
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
-import PrimaryButton from "@/Components/PrimaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
 import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
 import { ref, watch, computed, onMounted } from "vue";
-import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import { Button } from "@/Components/ui/button";
 import { Toaster } from "@/Components/ui/sonner";
 import { toast } from "vue-sonner";
@@ -29,15 +27,16 @@ import {
 
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
-import Footer from "@/Components/Footer.vue";
 
 const stepIndex = ref(1);
 const showPassword = ref(false);
 const showconfirmPassword = ref(false);
 const isRegistering = ref(false);
 const isValidating = ref(false);
+const page = usePage();
+
 const _t = (section, key) => {
-    const { props } = usePage();
+    const { props } = page;
     if (props.translations && props.translations[section] && props.translations[section][key]) {
         return props.translations[section][key];
     }
@@ -99,6 +98,10 @@ const passwordsMatch = computed(() => {
 });
 
 const dateOfBirth = ref(null);
+
+const currentStepTitle = computed(() => {
+    return _t('registerUser', `step${stepIndex.value}_title`);
+});
 
 const isStepValid = computed(() => {
     const currentStepFields = steps[stepIndex.value - 1].fields;
@@ -368,17 +371,17 @@ watch(dateOfBirth, (newValue) => {
         <meta name="robots" content="noindex, nofollow">
         <title>Register</title>
     </Head>
-    <AuthenticatedHeaderLayout />
 
     <div class="flex justify-center items-center register py-customVerticalSpacing min-h-[100vh]">
-        <div class="w-[60rem] max-w-full mx-auto px-4 max-[768px]:px-[1.5rem]">
-            <div class="register-card">
-                <Stepper v-model="stepIndex" class="block w-full">
-                <form @submit.prevent="submit">
+        <div class="register-shell">
+            <div class="register-left">
+                <div class="register-card">
+                    <Stepper v-model="stepIndex" class="block w-full">
+                    <form @submit.prevent="submit">
                     <div
-                        class="flex w-full flex-start gap-2 mb-[4rem] max-[768px]:mb-[2rem] max-[768px]:gap-1 max-[768px]:mt-[2rem]">
+                        class="flex w-full flex-start gap-2 mb-[4rem] max-[768px]:mb-[2rem] max-[768px]:gap-1 max-[768px]:mt-[2rem] register-stepper-track">
                         <StepperItem v-for="(step, index) in steps" :key="step.step" v-slot="{ state }"
-                            class="relative flex w-full flex-col items-center justify-center" :step="step.step"
+                            class="relative flex w-full flex-col items-center justify-center register-stepper-item" :step="step.step"
                             @click="handleStepChange(step.step)">
                             <StepperSeparator v-if="
                                 step.step !== steps[steps.length - 1].step
@@ -417,7 +420,8 @@ watch(dateOfBirth, (newValue) => {
                             <div class="mt-5 flex flex-col items-center text-center">
                                 <StepperTitle :class="[
                                     state === 'active' && 'text-primary',
-                                ]" class="text-sm font-semibold transition lg:text-base max-[768px]:text-[0.65rem]">
+                                    state === 'active' && 'stepper-title-active'
+                                ]" class="text-sm font-semibold transition lg:text-base max-[768px]:text-[0.65rem] stepper-title">
                                     {{ _t('registerUser', 'step' + (index + 1) + '_title') }}
                                 </StepperTitle>
                                 <!-- <StepperDescription :class="[
@@ -429,6 +433,7 @@ watch(dateOfBirth, (newValue) => {
                             </div>
                         </StepperItem>
                     </div>
+                    <div class="stepper-mobile-title">{{ currentStepTitle }}</div>
 
                     <!-- Personal Information -->
                     <div v-if="stepIndex === 1">
@@ -734,8 +739,59 @@ watch(dateOfBirth, (newValue) => {
                             </Button>
                         </div>
                     </div>
-                </form>
-            </Stepper>
+                    </form>
+                </Stepper>
+                </div>
+            </div>
+            <div class="register-divider" v-if="stepIndex === 1">
+                <span class="register-divider-text">OR</span>
+            </div>
+            <div class="register-right">
+                <transition name="panel-fade" mode="out-in">
+                    <div v-if="stepIndex === 1" key="social" class="register-social-panel">
+                        <span class="register-social-eyebrow">Express signup</span>
+                        <h2 class="register-social-title">Continue with a trusted account</h2>
+                        <p class="register-social-subtitle">Use Google or Facebook for faster access.</p>
+                        <div class="social-buttons">
+                            <a :href="route('oauth.redirect.global', { locale: page.props.locale, provider: 'google' })"
+                                class="social-button">
+                                <span class="social-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 48 48" class="social-svg">
+                                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.73 1.22 9.25 3.6l6.9-6.9C35.7 2.57 30.23 0 24 0 14.62 0 6.53 5.38 2.55 13.22l8.06 6.26C12.5 13.04 17.8 9.5 24 9.5z"/>
+                                        <path fill="#4285F4" d="M46.98 24.55c0-1.64-.15-3.22-.43-4.75H24v9.02h12.98c-.56 3.02-2.25 5.58-4.77 7.3l7.32 5.68c4.28-3.95 6.45-9.77 6.45-17.25z"/>
+                                        <path fill="#FBBC05" d="M10.61 28.74c-.48-1.45-.76-2.99-.76-4.74 0-1.75.27-3.29.76-4.74l-8.06-6.26C.92 16.24 0 19.9 0 24c0 4.1.92 7.76 2.55 11l8.06-6.26z"/>
+                                        <path fill="#34A853" d="M24 48c6.23 0 11.45-2.06 15.27-5.6l-7.32-5.68c-2.02 1.36-4.6 2.16-7.95 2.16-6.2 0-11.5-3.54-13.39-8.29l-8.06 6.26C6.53 42.62 14.62 48 24 48z"/>
+                                        <path fill="none" d="M0 0h48v48H0z"/>
+                                    </svg>
+                                </span>
+                                Continue with Google
+                            </a>
+                            <a :href="route('oauth.redirect.global', { locale: page.props.locale, provider: 'facebook' })"
+                                class="social-button">
+                                <span class="social-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 48 48" class="social-svg">
+                                        <path fill="#1877F2" d="M48 24c0 13.26-10.74 24-24 24S0 37.26 0 24 10.74 0 24 0s24 10.74 24 24z"/>
+                                        <path fill="#fff" d="M26.67 24.98h5.15l.81-5.3h-5.96v-3.44c0-1.53.75-3.02 3.17-3.02h2.45V8.7s-2.22-.38-4.35-.38c-4.44 0-7.34 2.69-7.34 7.56v3.8h-4.94v5.3h4.94V40h6.07V24.98z"/>
+                                    </svg>
+                                </span>
+                                Continue with Facebook
+                            </a>
+                        </div>
+                        <p class="register-social-note">We never post without permission.</p>
+                    </div>
+                    <div v-else key="info" class="register-info-panel">
+                        <span class="register-social-eyebrow">About the platform</span>
+                        <h2 class="register-social-title">Why we ask for these details</h2>
+                        <p v-if="stepIndex === 2" class="register-info-text">We use your phone and email to keep your booking updated and secure.</p>
+                        <p v-else-if="stepIndex === 3" class="register-info-text">Your address helps us match insurance, taxes, and pickup options.</p>
+                        <p v-else class="register-info-text">Create a secure password to protect your account access.</p>
+                        <ul class="register-info-list">
+                            <li>24/7 support for reservations</li>
+                            <li>Verified providers and transparent pricing</li>
+                            <li>Easy changes and instant confirmations</li>
+                        </ul>
+                    </div>
+                </transition>
             </div>
         </div>
     </div>
@@ -744,7 +800,6 @@ watch(dateOfBirth, (newValue) => {
         style: { background: 'black', color: 'white', border: '1px solid #333' }
     }" />
 
-    <Footer />
 </template>
 
 <style scoped>
@@ -754,7 +809,161 @@ watch(dateOfBirth, (newValue) => {
         linear-gradient(160deg, #f9fcfe, #ffffff 70%);
 }
 
+.register-shell {
+    width: min(1440px, 100%);
+    display: flex;
+    gap: 2.5rem;
+    padding: 0 2rem;
+    align-items: stretch;
+}
+
+.register-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1c4d66;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    position: relative;
+}
+
+.register-divider::before,
+.register-divider::after {
+    content: '';
+    width: 1px;
+    height: 140px;
+    background: linear-gradient(180deg, transparent, rgba(21, 59, 79, 0.35), transparent);
+}
+
+.register-divider-text {
+    padding: 0 0.75rem;
+}
+
+.register-left {
+    flex: 1;
+}
+
+.register-right {
+    flex: 0 0 36%;
+    border-radius: 24px;
+    background: linear-gradient(160deg, #0f2936, #153b4f 55%, #1c4d66);
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 2rem;
+    box-shadow: 0 24px 48px rgba(15, 41, 54, 0.25);
+}
+
+.register-stepper-track {
+    overflow: visible;
+}
+
+.stepper-mobile-title {
+    display: none;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #153b4f;
+    margin-top: -1.75rem;
+    margin-bottom: 2.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.register-right::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 20% 20%, rgba(6, 182, 212, 0.3), transparent 55%);
+    opacity: 0.6;
+}
+
+.register-social-panel {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+}
+
+.register-social-eyebrow {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.register-social-title {
+    margin-top: 0.75rem;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.register-social-subtitle {
+    margin-top: 0.75rem;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.95rem;
+}
+
+.register-social-note {
+    margin-top: 1.5rem;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.85rem;
+}
+
+.register-info-panel {
+    text-align: left;
+}
+
+.register-info-text {
+    margin-top: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.register-info-list {
+    margin-top: 1.75rem;
+    display: grid;
+    gap: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.register-info-list li {
+    position: relative;
+    padding-left: 1.25rem;
+}
+
+.register-info-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: rgba(6, 182, 212, 0.7);
+}
+
+.panel-fade-enter-active,
+.panel-fade-leave-active {
+    transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.panel-fade-enter-from,
+.panel-fade-leave-to {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
 .register-card {
+    width: 100%;
     padding: 3rem 3.5rem 3.5rem;
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.86);
@@ -786,6 +995,54 @@ watch(dateOfBirth, (newValue) => {
 
 .register-secondary-button:hover {
     background: rgba(21, 59, 79, 0.06);
+}
+
+.social-buttons {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 2rem;
+}
+
+.social-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    font-weight: 600;
+    transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+    cursor: pointer;
+}
+
+.social-button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+.social-button:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.7);
+    outline-offset: 2px;
+}
+
+.social-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+}
+
+.social-svg {
+    width: 18px;
+    height: 18px;
+    display: block;
 }
 
 .loader-overlay {
@@ -849,6 +1106,7 @@ watch(dateOfBirth, (newValue) => {
 :deep(.dp__menu) {
     border-radius: 0.5rem;
     padding: 0.5rem;
+    z-index: 50;
 }
 
 :deep(.border-customLightGrayColor svg) {
@@ -875,6 +1133,42 @@ watch(dateOfBirth, (newValue) => {
 }
 
 @media screen and (max-width: 1024px) {
+    .register-shell {
+        flex-direction: column;
+        padding: 0 1.5rem;
+    }
+
+    .register-divider {
+        order: 2;
+        width: 100%;
+        margin: 1.5rem 0;
+    }
+
+    .register-divider::before,
+    .register-divider::after {
+        width: 120px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(21, 59, 79, 0.35), transparent);
+    }
+
+    .register-left {
+        order: 1;
+    }
+
+    .register-right {
+        order: 3;
+    }
+
+    .register-right {
+        flex: 0 0 auto;
+        width: 100%;
+        order: 2;
+    }
+
+    .register-left {
+        order: 1;
+    }
+
     .register-card {
         padding: 2.5rem 2.5rem 3rem;
     }
@@ -909,8 +1203,71 @@ watch(dateOfBirth, (newValue) => {
 }
 
 @media screen and (max-width:768px) {
+    .register {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    .register-shell {
+        gap: 1.5rem;
+        padding: 0;
+    }
+
+    .register-right {
+        padding: 2rem 1.5rem;
+    }
+
+    .register-left {
+        position: relative;
+        z-index: 2;
+    }
+
+    .register-right {
+        position: relative;
+        z-index: 1;
+    }
+
+    .register-right,
+    .social-button {
+        border-radius: 0;
+    }
+
+    .register-card {
+        padding: 1.5rem;
+        border-radius: 0;
+    }
+
     :deep(.dp__input) {
         font-size: 0.75rem;
+    }
+
+    .register-stepper-track {
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .register-stepper-item {
+        flex: 1 1 0;
+    }
+
+    .stepper-button {
+        width: 30px;
+        height: 30px;
+    }
+
+    .register-stepper-track .bg-muted {
+        display: none;
+    }
+
+    .stepper-title {
+        display: none;
+    }
+
+    .stepper-mobile-title {
+        display: block;
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        font-size: 0.8rem;
     }
 
     /* Adjust ripple size for mobile */
