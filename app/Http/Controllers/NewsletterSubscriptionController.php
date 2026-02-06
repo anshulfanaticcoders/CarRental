@@ -63,16 +63,47 @@ class NewsletterSubscriptionController extends Controller
         ], 202);
     }
 
-    public function confirm(Request $request, NewsletterSubscription $subscription)
+    public function confirm(Request $request, $locale, $subscription)
     {
-        if ($subscription->status !== 'subscribed') {
-            $subscription->status = 'subscribed';
-            $subscription->confirmed_at = now();
-            $subscription->unsubscribed_at = null;
-            $subscription->save();
+        $locale = $locale ?: config('app.locale', 'en');
+
+        $subscriptionModel = NewsletterSubscription::find($subscription);
+
+        if (!$subscriptionModel) {
+            \Log::warning('Newsletter confirm: subscription not found', [
+                'subscription' => $subscription,
+                'route_params' => $request->route()?->parameters() ?? [],
+            ]);
+            return redirect()
+                ->route('welcome', ['locale' => $locale])
+                ->with('error', 'Invalid or expired confirmation link.');
         }
 
-        $locale = $request->route('locale') ?? config('app.locale', 'en');
+        if ($subscriptionModel->status !== 'subscribed') {
+            $updated = NewsletterSubscription::whereKey($subscriptionModel->id)->update([
+                'status' => 'subscribed',
+                'confirmed_at' => now(),
+                'unsubscribed_at' => null,
+            ]);
+
+            if ($updated === 0) {
+                \Log::error('Newsletter confirm: update failed', [
+                    'subscription_id' => $subscriptionModel->id,
+                ]);
+            }
+        }
+
+        $subscriptionModel->refresh();
+
+        if ($subscriptionModel->status !== 'subscribed') {
+            \Log::error('Newsletter confirm: status not updated', [
+                'subscription_id' => $subscriptionModel->id,
+                'status' => $subscriptionModel->status,
+            ]);
+            return redirect()
+                ->route('welcome', ['locale' => $locale])
+                ->with('error', 'Unable to confirm subscription. Please try again.');
+        }
 
         return redirect()
             ->route('welcome', ['locale' => $locale])
