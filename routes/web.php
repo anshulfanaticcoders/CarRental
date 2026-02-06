@@ -351,7 +351,7 @@ Route::group([
     require __DIR__ . '/auth.php';
 
     Route::get('/newsletter/confirm/{subscription}', [NewsletterSubscriptionController::class, 'confirm'])
-        ->middleware(['signed', 'throttle:6,1'])
+        ->middleware(['signed:relative', 'throttle:6,1'])
         ->name('newsletter.confirm');
 
     // Sitemap Routes

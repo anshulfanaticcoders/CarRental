@@ -26,14 +26,17 @@ class NewsletterSubscriptionConfirmation extends Notification implements ShouldQ
 
     public function toMail(object $notifiable): MailMessage
     {
-        $confirmUrl = URL::temporarySignedRoute(
+        $relativeUrl = URL::temporarySignedRoute(
             'newsletter.confirm',
             now()->addHours(24),
             [
                 'locale' => $this->subscriptionLocale,
                 'subscription' => $this->subscription->id,
-            ]
+            ],
+            false
         );
+
+        $confirmUrl = url($relativeUrl);
 
         return (new MailMessage)
             ->subject('Confirm your newsletter subscription')
