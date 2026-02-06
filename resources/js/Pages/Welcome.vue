@@ -1387,6 +1387,9 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
         margin-top: 4rem;
         padding: 0;
     }
+    .hero-typewriter {
+        font-size: 0.75em;
+    }
 }
 
 @media (max-width: 768px) {

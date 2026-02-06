@@ -487,7 +487,8 @@ const leave = (el) => {
 .profile-nav-button {
   color: #334155;
   border-radius: 12px;
-  font-size: 1.2rem;
+  font-size: 0.95rem;
+  line-height: 1.3;
   transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -511,6 +512,11 @@ const leave = (el) => {
 
 .nav-icon--white {
   filter: brightness(0) invert(1);
+}
+
+.profile-sub-button {
+  font-size: 0.95rem;
+  line-height: 1.3;
 }
 
 .profile-sub-button[data-active='true'] {

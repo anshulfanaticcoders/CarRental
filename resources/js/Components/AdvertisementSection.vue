@@ -254,7 +254,7 @@ onUnmounted(() => {
     }
 
     .ad-image {
-        aspect-ratio: 3 / 4;
+        aspect-ratio: 1 / 1;
     }
 }
 </style>

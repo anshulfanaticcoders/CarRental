@@ -116,7 +116,7 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
 .profile-shell {
   min-height: 100svh;
   --profile-gutter: 1.5rem;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .profile-topbar {
@@ -137,7 +137,7 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
 .profile-content {
   padding: 1.5rem var(--profile-gutter) 2.5rem;
   width: 100%;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .profile-content .container {
@@ -159,7 +159,7 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .profile-content thead {
