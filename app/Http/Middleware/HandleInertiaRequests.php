@@ -82,6 +82,15 @@ class HandleInertiaRequests extends Middleware
 
         $sharedData['currency'] = session('currency', 'USD');
 
+        $sharedData['flash'] = function () use ($request) {
+            return [
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+                'info' => $request->session()->get('info'),
+                'status' => $request->session()->get('status'),
+            ];
+        };
+
         return $sharedData;
     }
 }

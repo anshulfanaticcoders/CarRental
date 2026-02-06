@@ -16,6 +16,11 @@ const isFacebookHovered = ref(false);
 const isTwitterHovered = ref(false);
 const isInstagramHovered = ref(false);
 
+const newsletterEmail = ref('');
+const newsletterError = ref('');
+const newsletterSuccess = ref('');
+const newsletterLoading = ref(false);
+
 const page = usePage();
 const pages = computed(() => page.props.pages);
 
@@ -123,6 +128,38 @@ const updateSearchUrl = (place) => {
     }
 };
 
+const submitNewsletter = async () => {
+    if (newsletterLoading.value) return;
+    newsletterError.value = '';
+    newsletterSuccess.value = '';
+
+    if (!newsletterEmail.value) {
+        newsletterError.value = 'Please enter your email.';
+        return;
+    }
+
+    newsletterLoading.value = true;
+
+    try {
+        await axios.post('/api/newsletter/subscriptions', {
+            email: newsletterEmail.value,
+            source: 'footer',
+            locale: page.props.locale,
+        });
+        newsletterSuccess.value = 'Check your inbox to confirm your subscription.';
+        newsletterEmail.value = '';
+    } catch (error) {
+        if (error?.response?.status === 422) {
+            const message = error.response?.data?.errors?.email?.[0];
+            newsletterError.value = message || 'Please enter a valid email.';
+        } else {
+            newsletterError.value = 'Unable to subscribe right now. Please try again.';
+        }
+    } finally {
+        newsletterLoading.value = false;
+    }
+};
+
 
 
 defineExpose({
@@ -174,10 +211,24 @@ onMounted(async () => {
                     </div>
                     <div class="footer-newsletter">
                         <span class="footer-newsletter-title">Subscribe to Newsletter</span>
-                        <div class="footer-newsletter-form">
-                            <input type="text" placeholder="Email address" class="footer-input" />
-                            <button class="footer-subscribe">Subscribe</button>
-                        </div>
+                        <form class="footer-newsletter-form" @submit.prevent="submitNewsletter">
+                            <input
+                                v-model="newsletterEmail"
+                                type="email"
+                                placeholder="Email address"
+                                class="footer-input"
+                                :disabled="newsletterLoading"
+                            />
+                            <button class="footer-subscribe" type="submit" :disabled="newsletterLoading">
+                                {{ newsletterLoading ? 'Sending...' : 'Subscribe' }}
+                            </button>
+                        </form>
+                        <p v-if="newsletterError" class="footer-newsletter-hint is-error">
+                            {{ newsletterError }}
+                        </p>
+                        <p v-if="newsletterSuccess" class="footer-newsletter-hint is-success">
+                            {{ newsletterSuccess }}
+                        </p>
                     </div>
                 </div>
                 <div class="footer-links">
@@ -396,6 +447,29 @@ onMounted(async () => {
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
+}
+
+.footer-subscribe:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.footer-input:disabled {
+    opacity: 0.7;
+}
+
+.footer-newsletter-hint {
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.footer-newsletter-hint.is-error {
+    color: rgba(248, 113, 113, 0.95);
+}
+
+.footer-newsletter-hint.is-success {
+    color: rgba(134, 239, 172, 0.95);
 }
 
 .footer-links {

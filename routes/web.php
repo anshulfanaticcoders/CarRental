@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\VehicleAddonsController;
 use App\Http\Controllers\Admin\VehicleDashboardController;
 use App\Http\Controllers\Admin\DamageProtectionController as AdminDamageProtectionController;
 use App\Http\Controllers\Admin\SeoMetaController;
+use App\Http\Controllers\Admin\NewsletterSubscriberController;
 use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\Admin\AdminAdvertisementController; // Import the controller
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\FrontendPageController;
 use App\Http\Controllers\GeocodingController;
 use App\Http\Controllers\CurrencyController;
+use App\Http\Controllers\NewsletterSubscriptionController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
@@ -169,6 +171,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // Payments
     Route::get('/admin/payments', [PaymentDashboardController::class, 'index'])->name('admin.payments.index');
+
+    // Newsletter Subscribers
+    Route::get('/admin/newsletter-subscribers', [NewsletterSubscriberController::class, 'index'])
+        ->name('admin.newsletter-subscribers.index');
+    Route::patch('/admin/newsletter-subscribers/{subscription}/cancel', [NewsletterSubscriberController::class, 'cancel'])
+        ->name('admin.newsletter-subscribers.cancel');
 
     // Analytics
     Route::get('/admin/analytics', [\App\Http\Controllers\Admin\AnalyticsDashboardController::class, 'index'])
@@ -341,6 +349,10 @@ Route::group([
     })->name('welcome');
 
     require __DIR__ . '/auth.php';
+
+    Route::get('/newsletter/confirm/{subscription}', [NewsletterSubscriptionController::class, 'confirm'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('newsletter.confirm');
 
     // Sitemap Routes
     Route::get('/sitemap_en_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsEn']);

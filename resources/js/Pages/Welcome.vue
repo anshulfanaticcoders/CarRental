@@ -427,6 +427,14 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
     <AuthenticatedHeaderLayout />
 
+    <div v-if="$page.props.flash?.success" class="newsletter-flash">
+        <div class="full-w-container">
+            <div class="newsletter-flash-card">
+                <span class="newsletter-flash-text">{{ $page.props.flash.success }}</span>
+            </div>
+        </div>
+    </div>
+
     <main class="overflow-x-hidden">
         <section class="hero_section hero" :style="{ '--hero-image': `url(${heroImageSource})` }">
             <div class="hero-bg-image hero-image" :style="{ backgroundImage: `url(${heroImageSource})` }"></div>
@@ -808,6 +816,24 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 </template>
 
 <style>
+
+.newsletter-flash {
+    padding: 0.75rem 0;
+    background: rgba(240, 253, 244, 0.9);
+    border-bottom: 1px solid rgba(134, 239, 172, 0.4);
+}
+
+.newsletter-flash-card {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #14532d;
+    font-weight: 600;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
 
 .bg-dots-darker {
     background-image: url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.22676 0C1.91374 0 2.45351 0.539773 2.45351 1.22676C2.45351 1.91374 1.91374 2.45351 1.22676 2.45351C0.539773 2.45351 0 1.91374 0 1.22676C0 0.539773 0.539773 0 1.22676 0Z' fill='rgba(0,0,0,0.07)'/%3E%3C/svg%3E");

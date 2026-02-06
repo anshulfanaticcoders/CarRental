@@ -338,6 +338,17 @@ const data = {
       ],
     },
     {
+      title: 'Newsletter',
+      url: '#',
+      icon: Mail,
+      items: [
+        {
+          title: 'Subscribers',
+          url: '/admin/newsletter-subscribers',
+        },
+      ],
+    },
+    {
       title: 'Email Logs',
       url: '#',
       icon: Mail,
