@@ -10,6 +10,7 @@ use App\Models\UserProfile;
 use App\Notifications\AccountCreatedNotification;
 use App\Notifications\AccountCreatedUserConfirmation;
 use App\Services\Affiliate\AffiliateQrCodeService;
+use App\Services\GeoLocationService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -98,12 +99,38 @@ class SocialAuthController extends Controller
             ]);
         }
 
+        $defaultCurrency = 'EUR';
+        $resolvedCountry = $this->resolveCountryFromRequest($request);
+        $resolvedPhoneCode = $this->resolvePhoneCodeFromCountry($resolvedCountry);
+
         if (!$user->profile) {
             UserProfile::create([
                 'user_id' => $user->id,
-                'country' => 'Unknown',
+                'country' => $resolvedCountry,
                 'avatar' => $socialUser->getAvatar(),
+                'currency' => $defaultCurrency,
             ]);
+        } else {
+            $profileNeedsUpdate = false;
+
+            if (!$user->profile->currency) {
+                $user->profile->currency = $defaultCurrency;
+                $profileNeedsUpdate = true;
+            }
+
+            if ($user->profile->country === null || $user->profile->country === '' || $user->profile->country === 'Unknown') {
+                $user->profile->country = $resolvedCountry;
+                $profileNeedsUpdate = true;
+            }
+
+            if ($profileNeedsUpdate) {
+                $user->profile->save();
+            }
+        }
+
+        if (!$user->phone_code && $resolvedPhoneCode) {
+            $user->phone_code = $resolvedPhoneCode;
+            $user->save();
         }
 
         Auth::login($user);
@@ -155,8 +182,9 @@ class SocialAuthController extends Controller
 
         UserProfile::create([
             'user_id' => $user->id,
-            'country' => 'Unknown',
+            'country' => $this->resolveCountryFromRequest(request()),
             'avatar' => $socialUser->getAvatar(),
+            'currency' => 'EUR',
         ]);
 
         event(new Registered($user));
@@ -189,5 +217,102 @@ class SocialAuthController extends Controller
         } while (User::where('phone', $phone)->exists());
 
         return $phone;
+    }
+
+    private function resolveCountryFromRequest(Request $request): string
+    {
+        try {
+            $sessionCountry = $request->session()->get('country');
+            if ($sessionCountry) {
+                $normalized = strtoupper(trim((string) $sessionCountry));
+                return $normalized !== '' ? $normalized : 'Unknown';
+            }
+
+            $detectedCountry = GeoLocationService::detectCountry($request);
+            if ($detectedCountry) {
+                return strtoupper(trim((string) $detectedCountry));
+            }
+        } catch (\Exception $exception) {
+            Log::warning('Social login country detection failed', [
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        return 'Unknown';
+    }
+
+    private function resolvePhoneCodeFromCountry(?string $countryCode): ?string
+    {
+        if (!$countryCode) {
+            return null;
+        }
+
+        $countryCode = strtoupper(trim((string) $countryCode));
+        if ($countryCode === '' || $countryCode === 'UNKNOWN') {
+            return null;
+        }
+
+        $map = $this->getCountryPhoneMap();
+
+        return $map[$countryCode] ?? null;
+    }
+
+    private function getCountryPhoneMap(): array
+    {
+        static $cache = null;
+
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $path = base_path('public/countries.json');
+        if (!is_file($path)) {
+            Log::warning('Countries file not found for phone code lookup', [
+                'path' => $path,
+            ]);
+            $cache = [];
+            return $cache;
+        }
+
+        try {
+            $json = file_get_contents($path);
+            if ($json === false) {
+                Log::warning('Failed to read countries file for phone code lookup', [
+                    'path' => $path,
+                ]);
+                $cache = [];
+                return $cache;
+            }
+
+            $data = json_decode($json, true);
+            if (!is_array($data)) {
+                Log::warning('Invalid countries file for phone code lookup', [
+                    'path' => $path,
+                ]);
+                $cache = [];
+                return $cache;
+            }
+
+            $map = [];
+            foreach ($data as $country) {
+                $code = strtoupper(trim((string) ($country['code'] ?? '')));
+                $phoneCode = trim((string) ($country['phone_code'] ?? ''));
+
+                if ($code !== '' && $phoneCode !== '') {
+                    $map[$code] = $phoneCode;
+                }
+            }
+
+            $cache = $map;
+            return $cache;
+        } catch (\Exception $exception) {
+            Log::warning('Failed to parse countries file for phone code lookup', [
+                'path' => $path,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        $cache = [];
+        return $cache;
     }
 }

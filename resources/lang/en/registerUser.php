@@ -45,4 +45,21 @@ return [
     'enter_phone_number_placeholder' => 'Enter phone number',
     'select_country_placeholder' => 'Select Country',
     'select_code_placeholder' => 'Select Code',
+
+    // Register Right Panel
+    'register_divider_or' => 'OR',
+    'register_social_eyebrow' => 'Express signup',
+    'register_social_title' => 'Continue with a trusted account',
+    'register_social_subtitle' => 'Use Google or Facebook for faster access.',
+    'register_social_google' => 'Continue with Google',
+    'register_social_facebook' => 'Continue with Facebook',
+    'register_social_note' => 'We never post without permission.',
+    'register_info_eyebrow' => 'About the platform',
+    'register_info_title' => 'Why we ask for these details',
+    'register_info_step2' => 'We use your phone and email to keep your booking updated and secure.',
+    'register_info_step3' => 'Your address helps us match insurance, taxes, and pickup options.',
+    'register_info_step4' => 'Create a secure password to protect your account access.',
+    'register_info_list_1' => '24/7 support for reservations',
+    'register_info_list_2' => 'Verified providers and transparent pricing',
+    'register_info_list_3' => 'Easy changes and instant confirmations',
 ];

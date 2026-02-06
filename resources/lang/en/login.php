@@ -15,4 +15,6 @@ return [
         'hide_password' => 'Hide',
         // Button
         'sign_in_button' => 'Sign in',
+        // Social
+        'social_divider' => 'or signup with',
 ];

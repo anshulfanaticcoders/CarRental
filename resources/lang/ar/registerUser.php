@@ -45,4 +45,21 @@ return [
     'enter_phone_number_placeholder' => 'أدخل رقم الهاتف',
     'select_country_placeholder' => 'اختر البلد',
     'select_code_placeholder' => 'اختر الرمز',
+
+    // Register Right Panel
+    'register_divider_or' => 'أو',
+    'register_social_eyebrow' => 'تسجيل سريع',
+    'register_social_title' => 'تابع باستخدام حساب موثوق',
+    'register_social_subtitle' => 'استخدم Google أو Facebook للوصول الأسرع.',
+    'register_social_google' => 'متابعة باستخدام Google',
+    'register_social_facebook' => 'متابعة باستخدام Facebook',
+    'register_social_note' => 'لن ننشر أي شيء دون إذنك.',
+    'register_info_eyebrow' => 'حول المنصة',
+    'register_info_title' => 'لماذا نطلب هذه المعلومات',
+    'register_info_step2' => 'نستخدم هاتفك وبريدك الإلكتروني لإبقاء حجزك محدثًا وآمنًا.',
+    'register_info_step3' => 'يساعدنا عنوانك على مطابقة التأمين والضرائب وخيارات الاستلام.',
+    'register_info_step4' => 'أنشئ كلمة مرور آمنة لحماية الوصول إلى حسابك.',
+    'register_info_list_1' => 'دعم الحجوزات على مدار الساعة',
+    'register_info_list_2' => 'مزودون موثوقون وتسعير شفاف',
+    'register_info_list_3' => 'تعديلات سهلة وتأكيدات فورية',
 ];

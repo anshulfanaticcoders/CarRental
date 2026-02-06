@@ -116,6 +116,11 @@ const heroSubtitle = computed(() => {
         : 'Premium vehicles, moonlit routes, and concierge-level care for travelers who expect quiet elegance at every pickup.';
 });
 
+const getHomepageLabel = (key, fallback) => {
+    const label = _t(key);
+    return label && label !== key ? label : fallback;
+};
+
 const translatedPhrases = computed(() => [
     _t('typewriter_text_1'),
     _t('typewriter_text_2'),
@@ -448,7 +453,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                     d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z"
                                     fill="currentColor" />
                             </svg>
-                            Free Internet Included
+                            {{ getHomepageLabel('hero_trust_1', 'Free Internet Included') }}
                         </span>
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -457,7 +462,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                 <path d="M9 6V5a3 3 0 016 0v1" fill="none" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" />
                             </svg>
-                            Instant Replacement Guarantee
+                            {{ getHomepageLabel('hero_trust_2', 'Instant Replacement Guarantee') }}
                         </span>
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -466,7 +471,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                 <path d="M12 6v5l3 2" fill="none" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
-                            Fair Damage Protection
+                            {{ getHomepageLabel('hero_trust_3', 'Fair Damage Protection') }}
                         </span>
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -475,7 +480,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                 <path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
-                            Best Price Guarantee
+                            {{ getHomepageLabel('hero_trust_4', 'Best Price Guarantee') }}
                         </span>
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -486,7 +491,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                 <path d="M21 2l-4 4" fill="none" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" />
                             </svg>
-                            24/7 Worldwide Support
+                            {{ getHomepageLabel('hero_trust_5', '24/7 Worldwide Support') }}
                         </span>
                         <span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -497,7 +502,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                 <path d="M6 15l6 4 6-4" fill="none" stroke="currentColor" stroke-width="1.5"
                                     stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
-                            No Rushing, No Waiting
+                            {{ getHomepageLabel('hero_trust_6', 'No Rushing, No Waiting') }}
                         </span>
                     </div>
 
@@ -608,7 +613,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                         {{ _p('why_subtitle') }}
                     </h3>
                     <p class="max-w-[720px] text-slate-200 text-[1.1rem]">
-                        Travel with the confidence of a premium concierge and the ease of a local expert.
+                        {{ getHomepageLabel('why_lead', 'Travel with the confidence of a premium concierge and the ease of a local expert.') }}
                     </p>
                 </div>
                 <div class="column why-choose-grid">
@@ -617,9 +622,9 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             <img :src="wifiIcon" alt="Free internet included" />
                         </div>
                         <div class="flex flex-col gap-3">
-                            <span class="why-choose-title">Free Internet Included</span>
+                            <span class="why-choose-title">{{ getHomepageLabel('why_card_1_title', 'Free Internet Included') }}</span>
                             <p class="why-choose-text">
-                                Stay connected from arrival to drop-off with effortless, in-car access.
+                                {{ getHomepageLabel('why_card_1_text', 'Stay connected from arrival to drop-off with effortless, in-car access.') }}
                             </p>
                         </div>
                     </div>
@@ -628,13 +633,13 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             <img :src="replacementIcon" alt="Instant replacement guarantee" />
                         </div>
                         <div class="flex flex-col gap-3">
-                            <span class="why-choose-title">Instant Replacement Guarantee</span>
+                            <span class="why-choose-title">{{ getHomepageLabel('why_card_2_title', 'Instant Replacement Guarantee') }}</span>
                             <p class="why-choose-text">
-                                If your reserved vehicle is unavailable, we secure a replacement instantly.
+                                {{ getHomepageLabel('why_card_2_text', 'If your reserved vehicle is unavailable, we secure a replacement instantly.') }}
                             </p>
                             <div class="why-choose-tag">
                                 <img :src="priceIcon" alt="" />
-                                <span>No extra cost, upgrades when possible.</span>
+                                <span>{{ getHomepageLabel('why_card_2_tag', 'No extra cost, upgrades when possible.') }}</span>
                             </div>
                         </div>
                     </div>
@@ -643,9 +648,9 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             <img :src="protectionIcon" alt="Fair damage protection" />
                         </div>
                         <div class="flex flex-col gap-3">
-                            <span class="why-choose-title">Fair Damage Protection</span>
+                            <span class="why-choose-title">{{ getHomepageLabel('why_card_3_title', 'Fair Damage Protection') }}</span>
                             <p class="why-choose-text">
-                                We protect you from excessive charges for minor scratches or normal wear.
+                                {{ getHomepageLabel('why_card_3_text', 'We protect you from excessive charges for minor scratches or normal wear.') }}
                             </p>
                         </div>
                     </div>
@@ -654,9 +659,9 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             <img :src="priceIcon" alt="Best price guarantee" />
                         </div>
                         <div class="flex flex-col gap-3">
-                            <span class="why-choose-title">Best Price Guarantee</span>
+                            <span class="why-choose-title">{{ getHomepageLabel('why_card_4_title', 'Best Price Guarantee') }}</span>
                             <p class="why-choose-text">
-                                Transparent pricing with the lowest rate available for every trip.
+                                {{ getHomepageLabel('why_card_4_text', 'Transparent pricing with the lowest rate available for every trip.') }}
                             </p>
                         </div>
                     </div>
@@ -665,9 +670,9 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             <img :src="supportIcon" alt="24/7 worldwide support" />
                         </div>
                         <div class="flex flex-col gap-3">
-                            <span class="why-choose-title">24/7 Worldwide Support</span>
+                            <span class="why-choose-title">{{ getHomepageLabel('why_card_5_title', '24/7 Worldwide Support') }}</span>
                             <p class="why-choose-text">
-                                Wherever you are, Vrooem is ready to keep your journey effortless.
+                                {{ getHomepageLabel('why_card_5_text', 'Wherever you are, Vrooem is ready to keep your journey effortless.') }}
                             </p>
                         </div>
                     </div>
@@ -676,9 +681,9 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                             <img :src="replacementIcon" alt="No rushing or waiting" />
                         </div>
                         <div class="flex flex-col gap-3">
-                            <span class="why-choose-title">No Rushing, No Waiting</span>
+                            <span class="why-choose-title">{{ getHomepageLabel('why_card_6_title', 'No Rushing, No Waiting') }}</span>
                             <p class="why-choose-text">
-                                Skip long lines and start your trip relaxed with fast, guided pickup.
+                                {{ getHomepageLabel('why_card_6_text', 'Skip long lines and start your trip relaxed with fast, guided pickup.') }}
                             </p>
                         </div>
                     </div>

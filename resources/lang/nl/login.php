@@ -15,4 +15,6 @@ return [
         'hide_password' => 'Verbergen',
         // Button
         'sign_in_button' => 'Inloggen',
+        // Social
+        'social_divider' => 'of aanmelden met',
 ];

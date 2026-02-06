@@ -15,4 +15,6 @@ return [
         'hide_password' => 'إخفاء',
         // Button
         'sign_in_button' => 'تسجيل الدخول',
+        // Social
+        'social_divider' => 'أو التسجيل باستخدام',
 ];

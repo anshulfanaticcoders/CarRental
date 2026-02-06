@@ -3,9 +3,17 @@
 return [
     // Hero Section
     'tagline' => 'Ga op pad met de perfecte rit',
+    'hero_badge' => 'Vrooem autoverhuur',
+    'hero_subtitle' => 'Premium voertuigen, maanverlichte routes en concierge-service voor reizigers die rustige elegantie verwachten bij elke ophaalbeurt.',
     'typewriter_text_1' => 'In een flits geboekt. Weg in een Vrooem.',
     'typewriter_text_2' => 'Boek online. Ophalen. Afleveren.',
     'typewriter_text_3' => 'Geen verborgen kosten. Geen stress. Vrooem regelt alles.',
+    'hero_trust_1' => 'Gratis internet inbegrepen',
+    'hero_trust_2' => 'Directe vervangingsgarantie',
+    'hero_trust_3' => 'Eerlijke schadebescherming',
+    'hero_trust_4' => 'Besteprijsgarantie',
+    'hero_trust_5' => 'Wereldwijde ondersteuning 24/7',
+    'hero_trust_6' => 'Geen haast, geen wachten',
 
     // Categories Section
     'our_categories' => 'Onze Categorieën',
@@ -17,6 +25,7 @@ return [
     // Why Choose Us Section
     'why_choose_us' => 'Waarom Ons Kiezen',
     'why_subtitle' => 'Van luxe sedans tot budgetvriendelijke compacts, wij hebben iets voor elke reis',
+    'why_lead' => 'Reis met het vertrouwen van een premium conciërge en het gemak van een lokale expert.',
     'convenient_locations' => 'Handige Locaties',
     'convenient_locations_text' => 'Met meerdere verhuurlocaties op luchthavens, in stadscentra en op populaire bestemmingen is het ophalen en terugbrengen van uw huurauto snel en eenvoudig.',
     'fast_booking' => 'Snelle en Eenvoudige Boekingsprocedure',
@@ -25,6 +34,19 @@ return [
     'modern_fleet_text' => 'Selecteer uw gewenste ophaal- en retourdatum, samen met het tijdstip.',
     'insurance_coverage' => 'Verzekeringsdekking',
     'insurance_coverage_text' => 'Selecteer uw gewenste ophaal- en retourdatum, samen met het tijdstip.',
+    'why_card_1_title' => 'Gratis internet inbegrepen',
+    'why_card_1_text' => 'Blijf verbonden van aankomst tot terugbrengen met moeiteloze toegang in de auto.',
+    'why_card_2_title' => 'Directe vervangingsgarantie',
+    'why_card_2_text' => 'Als je gereserveerde voertuig niet beschikbaar is, zorgen we direct voor vervanging.',
+    'why_card_2_tag' => 'Geen extra kosten, upgrades wanneer mogelijk.',
+    'why_card_3_title' => 'Eerlijke schadebescherming',
+    'why_card_3_text' => 'We beschermen je tegen buitensporige kosten voor kleine krassen of normale slijtage.',
+    'why_card_4_title' => 'Besteprijsgarantie',
+    'why_card_4_text' => 'Transparante prijzen met het laagste beschikbare tarief voor elke trip.',
+    'why_card_5_title' => 'Wereldwijde ondersteuning 24/7',
+    'why_card_5_text' => 'Waar je ook bent, Vrooem staat klaar om je reis moeiteloos te houden.',
+    'why_card_6_title' => 'Geen haast, geen wachten',
+    'why_card_6_text' => 'Sla lange rijen over en begin je trip ontspannen met snelle, begeleide ophalen.',
 
     // Blogs Section
     'latest_articles' => 'Laatste Artikelen',

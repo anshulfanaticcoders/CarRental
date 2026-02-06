@@ -221,6 +221,9 @@ onUnmounted(() => {
     background-position: center;
     min-height: 320px;
     aspect-ratio: 4 / 3;
+    background-size: contain;
+    background-color: #153b4f;
+    background-repeat: no-repeat;
 }
 
 /* Glassmorphism utility */

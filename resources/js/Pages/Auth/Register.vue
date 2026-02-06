@@ -746,14 +746,14 @@ watch(dateOfBirth, (newValue) => {
                 </div>
             </div>
             <div class="register-divider" v-if="stepIndex === 1">
-                <span class="register-divider-text">OR</span>
+                <span class="register-divider-text">{{ _t('registerUser', 'register_divider_or') }}</span>
             </div>
             <div class="register-right">
                 <transition name="panel-fade" mode="out-in">
                     <div v-if="stepIndex === 1" key="social" class="register-social-panel">
-                        <span class="register-social-eyebrow">Express signup</span>
-                        <h2 class="register-social-title">Continue with a trusted account</h2>
-                        <p class="register-social-subtitle">Use Google or Facebook for faster access.</p>
+                        <span class="register-social-eyebrow">{{ _t('registerUser', 'register_social_eyebrow') }}</span>
+                        <h2 class="register-social-title">{{ _t('registerUser', 'register_social_title') }}</h2>
+                        <p class="register-social-subtitle">{{ _t('registerUser', 'register_social_subtitle') }}</p>
                         <div class="social-buttons">
                             <a :href="route('oauth.redirect.global', { locale: page.props.locale, provider: 'google' })"
                                 class="social-button">
@@ -766,7 +766,7 @@ watch(dateOfBirth, (newValue) => {
                                         <path fill="none" d="M0 0h48v48H0z"/>
                                     </svg>
                                 </span>
-                                Continue with Google
+                                {{ _t('registerUser', 'register_social_google') }}
                             </a>
                             <a :href="route('oauth.redirect.global', { locale: page.props.locale, provider: 'facebook' })"
                                 class="social-button">
@@ -776,21 +776,21 @@ watch(dateOfBirth, (newValue) => {
                                         <path fill="#fff" d="M26.67 24.98h5.15l.81-5.3h-5.96v-3.44c0-1.53.75-3.02 3.17-3.02h2.45V8.7s-2.22-.38-4.35-.38c-4.44 0-7.34 2.69-7.34 7.56v3.8h-4.94v5.3h4.94V40h6.07V24.98z"/>
                                     </svg>
                                 </span>
-                                Continue with Facebook
+                                {{ _t('registerUser', 'register_social_facebook') }}
                             </a>
                         </div>
-                        <p class="register-social-note">We never post without permission.</p>
+                        <p class="register-social-note">{{ _t('registerUser', 'register_social_note') }}</p>
                     </div>
                     <div v-else key="info" class="register-info-panel">
-                        <span class="register-social-eyebrow">About the platform</span>
-                        <h2 class="register-social-title">Why we ask for these details</h2>
-                        <p v-if="stepIndex === 2" class="register-info-text">We use your phone and email to keep your booking updated and secure.</p>
-                        <p v-else-if="stepIndex === 3" class="register-info-text">Your address helps us match insurance, taxes, and pickup options.</p>
-                        <p v-else class="register-info-text">Create a secure password to protect your account access.</p>
+                        <span class="register-social-eyebrow">{{ _t('registerUser', 'register_info_eyebrow') }}</span>
+                        <h2 class="register-social-title">{{ _t('registerUser', 'register_info_title') }}</h2>
+                        <p v-if="stepIndex === 2" class="register-info-text">{{ _t('registerUser', 'register_info_step2') }}</p>
+                        <p v-else-if="stepIndex === 3" class="register-info-text">{{ _t('registerUser', 'register_info_step3') }}</p>
+                        <p v-else class="register-info-text">{{ _t('registerUser', 'register_info_step4') }}</p>
                         <ul class="register-info-list">
-                            <li>24/7 support for reservations</li>
-                            <li>Verified providers and transparent pricing</li>
-                            <li>Easy changes and instant confirmations</li>
+                            <li>{{ _t('registerUser', 'register_info_list_1') }}</li>
+                            <li>{{ _t('registerUser', 'register_info_list_2') }}</li>
+                            <li>{{ _t('registerUser', 'register_info_list_3') }}</li>
                         </ul>
                     </div>
                 </transition>

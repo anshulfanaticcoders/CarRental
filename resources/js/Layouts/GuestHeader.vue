@@ -1,12 +1,13 @@
 <script setup>
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
-import { computed, ref, watch, onMounted } from "vue";
+import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import axios from "axios";
 
 import Dropdown from "@/Components/Dropdown.vue";
 import { useCurrency } from '@/composables/useCurrency';
 import { hideTawk, showTawk } from '@/lib/tawk';
+import { setScrollLock } from '@/lib/scrollLock';
 import whatsappIcon from '../../assets/whatsapp.svg';
 import callIcon from '../../assets/call.svg';
 import flagEn from '../../assets/flag-en.svg';
@@ -233,6 +234,11 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
     } else {
         showTawk();
     }
+    setScrollLock(isOpen);
+});
+
+onUnmounted(() => {
+    setScrollLock(false);
 });
 </script>
 

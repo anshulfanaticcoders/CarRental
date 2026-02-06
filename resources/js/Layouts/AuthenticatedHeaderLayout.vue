@@ -6,6 +6,7 @@ import { Link, usePage, router } from "@inertiajs/vue3";
 import axios from "axios";
 import { useCurrency } from '@/composables/useCurrency';
 import { hideTawk, showTawk } from '@/lib/tawk';
+import { setScrollLock } from '@/lib/scrollLock';
 import bellIcon from '../../assets/bell.svg'
 import whatsappIcon from '../../assets/whatsapp.svg';
 import callIcon from '../../assets/call.svg';
@@ -60,6 +61,7 @@ onMounted(() => {
 // Clean up event listeners on unmount
 onUnmounted(() => {
   document.removeEventListener('click', closeNotificationDropdownOnOutsideClick);
+  setScrollLock(false);
 });
 
 // Fetch contact info
@@ -459,6 +461,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
   } else {
     showTawk();
   }
+  setScrollLock(isOpen);
 });
 </script>
 

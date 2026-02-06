@@ -45,4 +45,21 @@ return [
     'enter_phone_number_placeholder' => 'Voer telefoonnummer in',
     'select_country_placeholder' => 'Selecteer land',
     'select_code_placeholder' => 'Selecteer code',
+
+    // Register Right Panel
+    'register_divider_or' => 'OF',
+    'register_social_eyebrow' => 'Snelle aanmelding',
+    'register_social_title' => 'Doorgaan met een vertrouwd account',
+    'register_social_subtitle' => 'Gebruik Google of Facebook voor snellere toegang.',
+    'register_social_google' => 'Doorgaan met Google',
+    'register_social_facebook' => 'Doorgaan met Facebook',
+    'register_social_note' => 'We plaatsen nooit iets zonder toestemming.',
+    'register_info_eyebrow' => 'Over het platform',
+    'register_info_title' => 'Waarom we deze gegevens vragen',
+    'register_info_step2' => 'We gebruiken je telefoon en e-mail om je boeking actueel en veilig te houden.',
+    'register_info_step3' => 'Je adres helpt ons bij verzekering, belastingen en ophaalopties.',
+    'register_info_step4' => 'Maak een veilig wachtwoord om je accounttoegang te beschermen.',
+    'register_info_list_1' => '24/7 ondersteuning voor reserveringen',
+    'register_info_list_2' => 'Geverifieerde aanbieders en transparante prijzen',
+    'register_info_list_3' => 'Eenvoudige wijzigingen en directe bevestigingen',
 ];

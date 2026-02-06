@@ -160,7 +160,7 @@ watch(() => props.status, (newStatus) => {
                     </div>
 
                     <div class="social-divider">
-                        <span>or continue with</span>
+                        <span>{{ _t('login', 'social_divider') }}</span>
                     </div>
 
                     <div class="social-buttons">

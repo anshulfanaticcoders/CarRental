@@ -45,4 +45,21 @@ return [
     'enter_phone_number_placeholder' => 'Entrer le numéro de téléphone',
     'select_country_placeholder' => 'Sélectionner le pays',
     'select_code_placeholder' => 'Sélectionner le code',
+
+    // Register Right Panel
+    'register_divider_or' => 'OU',
+    'register_social_eyebrow' => 'Inscription express',
+    'register_social_title' => 'Continuer avec un compte de confiance',
+    'register_social_subtitle' => 'Utilisez Google ou Facebook pour un accès plus rapide.',
+    'register_social_google' => 'Continuer avec Google',
+    'register_social_facebook' => 'Continuer avec Facebook',
+    'register_social_note' => 'Nous ne publions jamais sans autorisation.',
+    'register_info_eyebrow' => 'À propos de la plateforme',
+    'register_info_title' => 'Pourquoi nous demandons ces informations',
+    'register_info_step2' => 'Nous utilisons votre téléphone et votre e-mail pour sécuriser et mettre à jour votre réservation.',
+    'register_info_step3' => 'Votre adresse nous aide à associer assurance, taxes et options de prise en charge.',
+    'register_info_step4' => 'Créez un mot de passe sécurisé pour protéger l’accès à votre compte.',
+    'register_info_list_1' => 'Assistance 24h/24, 7j/7 pour les réservations',
+    'register_info_list_2' => 'Prestataires vérifiés et tarifs transparents',
+    'register_info_list_3' => 'Modifications faciles et confirmations instantanées',
 ];

@@ -16,4 +16,6 @@ return [
         'hide_password' => 'Masquer',
         // Button
         'sign_in_button' => 'Connexion',
+        // Social
+        'social_divider' => 'ou s\'inscrire avec',
 ];

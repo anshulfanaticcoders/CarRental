@@ -15,4 +15,6 @@ return [
         'hide_password' => 'Ocultar',
         // Button
         'sign_in_button' => 'Iniciar Sesión',
+        // Social
+        'social_divider' => 'o registrarte con',
 ];

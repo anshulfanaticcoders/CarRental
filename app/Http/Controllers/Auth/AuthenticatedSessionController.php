@@ -59,6 +59,10 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->flash('status', 'Welcome back!');
 
+        if ($user && $user->role === 'admin') {
+            return Inertia::location(route('admin.dashboard'));
+        }
+
         return Inertia::location(route('profile.edit', ['locale' => $locale]));
     }
 
