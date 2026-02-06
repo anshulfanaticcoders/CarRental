@@ -69,6 +69,7 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
 </script>
 
 <template>
+
   <Head>
     <meta name="robots" content="noindex, nofollow">
     <title>Profile</title>
@@ -99,7 +100,8 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
           </Breadcrumb>
           <div class="sm:hidden text-sm font-semibold text-slate-700">{{ pageTitle }}</div>
         </div>
-        <Button as-child class="bg-customPrimaryColor text-white hover:bg-[#153b4fef] shrink-0 whitespace-nowrap h-9 px-4">
+        <Button as-child
+          class="bg-customPrimaryColor text-white hover:bg-[#153b4fef] shrink-0 whitespace-nowrap h-9 px-4">
           <Link :href="route('welcome', { locale: page.props.locale })">Home</Link>
         </Button>
       </div>
@@ -140,11 +142,7 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
   overflow-x: auto;
 }
 
-.profile-content .container {
-  max-width: 100% !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
+
 
 .profile-page {
   display: flex;

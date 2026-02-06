@@ -255,10 +255,12 @@ class MessageController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
-        // Prepare vehicle image for active booking
+        // Prepare vehicle image (prioritize active booking, fallback to latest completed)
         $vehicleImage = null;
-        if ($activeBooking->vehicle->images && $activeBooking->vehicle->images->isNotEmpty()) {
-            $vehicleImage = $activeBooking->vehicle->images->first()->image_url;
+        $imageSourceBooking = $activeBooking ?? $latestCompletedBooking;
+
+        if ($imageSourceBooking && $imageSourceBooking->vehicle && $imageSourceBooking->vehicle->images && $imageSourceBooking->vehicle->images->isNotEmpty()) {
+            $vehicleImage = $imageSourceBooking->vehicle->images->first()->image_url;
         }
 
         // NEW: Build array of only ACTIVE bookings for this customer (for booking selection dropdown)

@@ -2,7 +2,8 @@
     <MyProfileLayout>
         <div class="container mx-auto p-6 space-y-6">
             <!-- Flash Message -->
-            <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+            <div v-if="$page.props.flash.success"
+                class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
                 {{ $page.props.flash.success }}
             </div>
 
@@ -14,8 +15,10 @@
                             <FileText class="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
-                            <h1 class="text-2xl font-bold text-gray-900">{{ _t('vendorprofilepages', 'plans_title') }}</h1>
-                            <p class="text-sm text-gray-600 mt-1">{{ _t('vendorprofilepages', 'plans_view_edit_plans_info') }}</p>
+                            <h1 class="text-2xl font-bold text-gray-900">{{ _t('vendorprofilepages', 'plans_title') }}
+                            </h1>
+                            <p class="text-sm text-gray-600 mt-1">{{ _t('vendorprofilepages',
+                                'plans_view_edit_plans_info') }}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
@@ -32,11 +35,8 @@
             <!-- Enhanced Search -->
             <div class="relative w-full max-w-md">
                 <Search class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                    v-model="searchQuery"
-                    :placeholder="_t('vendorprofilepages', 'plans_search_placeholder')"
-                    class="pl-10 pr-4 h-12 text-base"
-                />
+                <Input v-model="searchQuery" :placeholder="_t('vendorprofilepages', 'plans_search_placeholder')"
+                    class="pl-10 pr-4 h-12 text-base" />
             </div>
 
             <!-- Enhanced Plans Table -->
@@ -53,11 +53,13 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Price</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Description</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Features</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right">Actions</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right">Actions
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id" class="hover:bg-muted/25 transition-colors">
+                            <TableRow v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id"
+                                class="hover:bg-muted/25 transition-colors">
                                 <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
                                     {{ (vehicles.current_page - 1) * vehicles.per_page + index + 1 }}
                                 </TableCell>
@@ -72,23 +74,15 @@
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="relative group">
-                                        <Link :href="route('vehicle.show', { locale: usePage().props.locale, id: vehicle.id })">
-                                            <img
-                                                :src="getPrimaryImage(vehicle)"
-                                                :alt="vehicle.brand"
-                                                class="h-12 w-20 object-cover rounded-lg border border-gray-200 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md"
-                                            />
-                                        </Link>
+                                        <img :src="getPrimaryImage(vehicle)" :alt="vehicle.brand"
+                                            class="h-12 w-20 object-cover rounded-lg border border-gray-200 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md" />
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div v-if="vehicle.vendor_plans && vehicle.vendor_plans.length > 0" class="space-y-1">
-                                        <Badge
-                                            v-for="plan in vehicle.vendor_plans"
-                                            :key="plan.id"
-                                            variant="secondary"
-                                            class="text-xs mr-1 mb-1"
-                                        >
+                                    <div v-if="vehicle.vendor_plans && vehicle.vendor_plans.length > 0"
+                                        class="space-y-1">
+                                        <Badge v-for="plan in vehicle.vendor_plans" :key="plan.id" variant="secondary"
+                                            class="text-xs mr-1 mb-1">
                                             {{ plan.plan_type }}
                                         </Badge>
                                     </div>
@@ -97,24 +91,20 @@
                                     </Badge>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div v-if="vehicle.vendor_plans && vehicle.vendor_plans.length > 0" class="space-y-1">
-                                        <div
-                                            v-for="plan in vehicle.vendor_plans"
-                                            :key="plan.id"
-                                            class="font-medium text-green-600"
-                                        >
+                                    <div v-if="vehicle.vendor_plans && vehicle.vendor_plans.length > 0"
+                                        class="space-y-1">
+                                        <div v-for="plan in vehicle.vendor_plans" :key="plan.id"
+                                            class="font-medium text-green-600">
                                             ${{ plan.price }}
                                         </div>
                                     </div>
                                     <span v-else class="text-gray-400">-</span>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 max-w-xs">
-                                    <div v-if="vehicle.vendor_plans && vehicle.vendor_plans.length > 0" class="space-y-1">
-                                        <p
-                                            v-for="plan in vehicle.vendor_plans"
-                                            :key="plan.id"
-                                            class="text-sm line-clamp-2"
-                                        >
+                                    <div v-if="vehicle.vendor_plans && vehicle.vendor_plans.length > 0"
+                                        class="space-y-1">
+                                        <p v-for="plan in vehicle.vendor_plans" :key="plan.id"
+                                            class="text-sm line-clamp-2">
                                             {{ plan.plan_description || 'No description' }}
                                         </p>
                                     </div>
@@ -125,11 +115,9 @@
                                         <div v-for="plan in vehicle.vendor_plans" :key="plan.id" class="space-y-1">
                                             <div v-if="isValidJSON(plan.features)">
                                                 <div class="flex flex-wrap gap-1">
-                                                    <span
-                                                        v-for="(feature, index) in JSON.parse(plan.features)"
+                                                    <span v-for="(feature, index) in JSON.parse(plan.features)"
                                                         :key="index"
-                                                        class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800"
-                                                    >
+                                                        class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                                                         {{ feature }}
                                                     </span>
                                                 </div>
@@ -143,15 +131,15 @@
                                     <div class="flex justify-end gap-2">
                                         <Dialog v-model:open="isDialogOpen[vehicle.id]">
                                             <DialogTrigger as-child>
-                                                <Button
-                                                    @click="openEditDialog(vehicle)"
-                                                    size="sm"
+                                                <Button @click="openEditDialog(vehicle)" size="sm"
                                                     :variant="vehicle.vendor_plans && vehicle.vendor_plans.length > 0 ? 'outline' : 'default'"
-                                                    class="flex items-center gap-1"
-                                                >
-                                                    <Edit v-if="vehicle.vendor_plans && vehicle.vendor_plans.length > 0" class="w-3 h-3" />
+                                                    class="flex items-center gap-1">
+                                                    <Edit v-if="vehicle.vendor_plans && vehicle.vendor_plans.length > 0"
+                                                        class="w-3 h-3" />
                                                     <Plus v-else class="w-3 h-3" />
-                                                    {{ vehicle.vendor_plans && vehicle.vendor_plans.length > 0 ? _t('vendorprofilepages', 'plans_edit_button') : _t('vendorprofilepages', 'plans_add_button') }}
+                                                    {{ vehicle.vendor_plans && vehicle.vendor_plans.length > 0 ?
+                                                        _t('vendorprofilepages', 'plans_edit_button') :
+                                                    _t('vendorprofilepages', 'plans_add_button') }}
                                                 </Button>
                                             </DialogTrigger>
                                             <DialogContent class="max-h-[90vh] overflow-y-auto p-6">
@@ -165,115 +153,110 @@
                                                     </DialogDescription>
                                                 </DialogHeader>
                                                 <form @submit.prevent="updatePlan(vehicle.id)">
-                                                    <div v-for="(plan, index) in form.plans" :key="index" class="mb-6 border-b pb-6 last:border-b-0">
+                                                    <div v-for="(plan, index) in form.plans" :key="index"
+                                                        class="mb-6 border-b pb-6 last:border-b-0">
                                                         <div class="flex items-center justify-between mb-4">
-                                                            <h4 class="font-semibold text-gray-900">Plan {{ index + 1 }}</h4>
-                                                            <Button
-                                                                v-if="plan.id"
+                                                            <h4 class="font-semibold text-gray-900">Plan {{ index + 1 }}
+                                                            </h4>
+                                                            <Button v-if="plan.id"
                                                                 @click="deletePlan(plan.id, vehicle.id)"
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                class="flex items-center gap-1"
-                                                            >
+                                                                variant="destructive" size="sm"
+                                                                class="flex items-center gap-1">
                                                                 <Trash2 class="w-3 h-3" />
                                                                 {{ _t('vendorprofilepages', 'plans_delete_button') }}
                                                             </Button>
                                                         </div>
                                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div class="space-y-2">
-                                                                <Label :for="`plan_type_${index}`" class="flex items-center gap-1">
-                                                                    {{ _t('vendorprofilepages', 'plans_plan_type_label') }}
+                                                                <Label :for="`plan_type_${index}`"
+                                                                    class="flex items-center gap-1">
+                                                                    {{ _t('vendorprofilepages', 'plans_plan_type_label')
+                                                                    }}
                                                                     <span class="text-red-500">*</span>
                                                                 </Label>
-                                                                <Input
-                                                                    :id="`plan_type_${index}`"
-                                                                    type="text"
+                                                                <Input :id="`plan_type_${index}`" type="text"
                                                                     v-model="plan.plan_type"
                                                                     placeholder="Enter plan type"
                                                                     :class="formErrors[`plans.${index}.plan_type`] ? 'border-red-500 focus:ring-red-500' : ''"
-                                                                    @input="clearFieldError(`plans.${index}.plan_type`)"
-                                                                />
-                                                                <div v-if="formErrors[`plans.${index}.plan_type`]" class="flex items-center gap-1 text-sm text-red-600 mt-1">
+                                                                    @input="clearFieldError(`plans.${index}.plan_type`)" />
+                                                                <div v-if="formErrors[`plans.${index}.plan_type`]"
+                                                                    class="flex items-center gap-1 text-sm text-red-600 mt-1">
                                                                     <AlertCircle class="w-4 h-4" />
                                                                     {{ formErrors[`plans.${index}.plan_type`] }}
                                                                 </div>
                                                             </div>
                                                             <div class="space-y-2">
-                                                                <Label :for="`price_${index}`" class="flex items-center gap-1">
+                                                                <Label :for="`price_${index}`"
+                                                                    class="flex items-center gap-1">
                                                                     {{ _t('vendorprofilepages', 'plans_price_label') }}
                                                                     <span class="text-red-500">*</span>
                                                                 </Label>
-                                                                <Input
-                                                                    :id="`price_${index}`"
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    min="0"
-                                                                    v-model="plan.price"
+                                                                <Input :id="`price_${index}`" type="number" step="0.01"
+                                                                    min="0" v-model="plan.price"
                                                                     placeholder="Enter price"
                                                                     :class="formErrors[`plans.${index}.price`] ? 'border-red-500 focus:ring-red-500' : ''"
-                                                                    @input="clearFieldError(`plans.${index}.price`)"
-                                                                />
-                                                                <div v-if="formErrors[`plans.${index}.price`]" class="flex items-center gap-1 text-sm text-red-600 mt-1">
+                                                                    @input="clearFieldError(`plans.${index}.price`)" />
+                                                                <div v-if="formErrors[`plans.${index}.price`]"
+                                                                    class="flex items-center gap-1 text-sm text-red-600 mt-1">
                                                                     <AlertCircle class="w-4 h-4" />
                                                                     {{ formErrors[`plans.${index}.price`] }}
                                                                 </div>
                                                             </div>
                                                             <div class="space-y-2 md:col-span-2">
-                                                                <Label :for="`description_${index}`" class="flex items-center gap-1">
-                                                                    {{ _t('vendorprofilepages', 'plans_description_label') }}
+                                                                <Label :for="`description_${index}`"
+                                                                    class="flex items-center gap-1">
+                                                                    {{ _t('vendorprofilepages',
+                                                                    'plans_description_label') }}
                                                                     <span class="text-red-500">*</span>
                                                                 </Label>
-                                                                <Textarea
-                                                                    :id="`description_${index}`"
+                                                                <Textarea :id="`description_${index}`"
                                                                     v-model="plan.plan_description"
-                                                                    placeholder="Enter plan description"
-                                                                    rows="3"
+                                                                    placeholder="Enter plan description" rows="3"
                                                                     :class="formErrors[`plans.${index}.plan_description`] ? 'border-red-500 focus:ring-red-500' : ''"
-                                                                    @input="clearFieldError(`plans.${index}.plan_description`)"
-                                                                />
-                                                                <div v-if="formErrors[`plans.${index}.plan_description`]" class="flex items-center gap-1 text-sm text-red-600 mt-1">
+                                                                    @input="clearFieldError(`plans.${index}.plan_description`)" />
+                                                                <div v-if="formErrors[`plans.${index}.plan_description`]"
+                                                                    class="flex items-center gap-1 text-sm text-red-600 mt-1">
                                                                     <AlertCircle class="w-4 h-4" />
                                                                     {{ formErrors[`plans.${index}.plan_description`] }}
                                                                 </div>
                                                             </div>
                                                             <div class="space-y-2 md:col-span-2">
                                                                 <Label class="flex items-center gap-2">
-                                                                    {{ _t('vendorprofilepages', 'plans_features_label') }}
-                                                                    <span class="text-xs text-gray-500 font-normal">(Optional)</span>
+                                                                    {{ _t('vendorprofilepages', 'plans_features_label')
+                                                                    }}
+                                                                    <span
+                                                                        class="text-xs text-gray-500 font-normal">(Optional)</span>
                                                                 </Label>
                                                                 <div class="space-y-2">
-                                                                    <div v-for="(feature, fIndex) in plan.features" :key="fIndex" class="flex gap-2 group">
-                                                                        <Input
-                                                                            type="text"
+                                                                    <div v-for="(feature, fIndex) in plan.features"
+                                                                        :key="fIndex" class="flex gap-2 group">
+                                                                        <Input type="text"
                                                                             v-model="plan.features[fIndex]"
                                                                             :placeholder="_t('vendorprofilepages', 'plans_feature_description_placeholder')"
-                                                                            class="transition-all duration-200 group-hover:border-blue-300"
-                                                                        />
-                                                                        <Button
-                                                                            type="button"
+                                                                            class="transition-all duration-200 group-hover:border-blue-300" />
+                                                                        <Button type="button"
                                                                             @click="removeFeature(index, fIndex)"
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            class="opacity-60 hover:opacity-100 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all duration-200"
-                                                                        >
+                                                                            variant="outline" size="sm"
+                                                                            class="opacity-60 hover:opacity-100 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all duration-200">
                                                                             <X class="w-4 h-4" />
                                                                         </Button>
                                                                     </div>
-                                                                    <Button
-                                                                        type="button"
-                                                                        @click="addFeature(index)"
-                                                                        variant="outline"
-                                                                        size="sm"
+                                                                    <Button type="button" @click="addFeature(index)"
+                                                                        variant="outline" size="sm"
                                                                         class="flex items-center gap-2 w-full border-dashed hover:border-solid hover:bg-blue-50 transition-all duration-200"
-                                                                        :disabled="plan.features && plan.features.length >= 10"
-                                                                    >
+                                                                        :disabled="plan.features && plan.features.length >= 10">
                                                                         <Plus class="w-4 h-4" />
-                                                                        {{ _t('vendorprofilepages', 'plans_add_feature_button') }}
-                                                                        <span v-if="plan.features && plan.features.length >= 0" class="text-xs text-gray-500">
-                                                                            ({{ plan.features ? plan.features.length : 0 }}/10)
+                                                                        {{ _t('vendorprofilepages',
+                                                                        'plans_add_feature_button') }}
+                                                                        <span
+                                                                            v-if="plan.features && plan.features.length >= 0"
+                                                                            class="text-xs text-gray-500">
+                                                                            ({{ plan.features ? plan.features.length : 0
+                                                                            }}/10)
                                                                         </span>
                                                                     </Button>
-                                                                    <p v-if="plan.features && plan.features.length >= 10" class="text-xs text-gray-500 mt-1">
+                                                                    <p v-if="plan.features && plan.features.length >= 10"
+                                                                        class="text-xs text-gray-500 mt-1">
                                                                         Maximum 10 features allowed per plan.
                                                                     </p>
                                                                 </div>
@@ -281,24 +264,20 @@
                                                         </div>
                                                     </div>
                                                     <DialogFooter class="flex gap-2 mt-6">
-                                                        <Button
-                                                            @click="addPlan(vehicle.id)"
-                                                            type="button"
-                                                            variant="outline"
-                                                            class="flex items-center gap-2"
-                                                            :disabled="form.processing"
-                                                        >
+                                                        <Button @click="addPlan(vehicle.id)" type="button"
+                                                            variant="outline" class="flex items-center gap-2"
+                                                            :disabled="form.processing">
                                                             <Plus class="w-4 h-4" />
                                                             {{ _t('vendorprofilepages', 'plans_add_new_plan_button') }}
                                                         </Button>
-                                                        <Button
-                                                            type="submit"
+                                                        <Button type="submit"
                                                             class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                                                            :disabled="form.processing"
-                                                        >
-                                                            <Loader2 v-if="form.processing" class="w-4 h-4 animate-spin" />
+                                                            :disabled="form.processing">
+                                                            <Loader2 v-if="form.processing"
+                                                                class="w-4 h-4 animate-spin" />
                                                             <Save v-else class="w-4 h-4" />
-                                                            {{ form.processing ? 'Saving...' : _t('vendorprofilepages', 'plans_save_button') }}
+                                                            {{ form.processing ? 'Saving...' : _t('vendorprofilepages',
+                                                            'plans_save_button') }}
                                                         </Button>
                                                     </DialogFooter>
                                                 </form>
@@ -309,11 +288,11 @@
                             </TableRow>
                         </TableBody>
                     </Table>
-                <div class="flex justify-end pt-4 pr-2">
-                    <Pagination :current-page="vehicles.current_page" :total-pages="vehicles.last_page"
-                        @page-change="handlePageChange" />
+                    <div class="flex justify-end pt-4 pr-2">
+                        <Pagination :current-page="vehicles.current_page" :total-pages="vehicles.last_page"
+                            @page-change="handlePageChange" />
+                    </div>
                 </div>
-            </div>
             </div>
 
             <!-- Empty State -->
@@ -583,7 +562,7 @@ const isValidJSON = (str) => {
 };
 
 const getPrimaryImage = (vehicle) => {
-  const primaryImage = vehicle.images.find(img => img.image_type === 'primary');
-  return primaryImage ? primaryImage.image_url : '/images/placeholder.jpg';
+    const primaryImage = vehicle.images.find(img => img.image_type === 'primary');
+    return primaryImage ? primaryImage.image_url : '/images/placeholder.jpg';
 };
 </script>
