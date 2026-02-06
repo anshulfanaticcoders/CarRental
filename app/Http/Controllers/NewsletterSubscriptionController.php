@@ -31,7 +31,11 @@ class NewsletterSubscriptionController extends Controller
                 'ip_address' => $request->ip(),
                 'user_agent' => substr((string) $request->userAgent(), 0, 512),
             ]);
-        } elseif ($subscription->status !== 'subscribed') {
+        } elseif ($subscription->status === 'subscribed') {
+            return response()->json([
+                'message' => 'This email is already subscribed.'
+            ], 409);
+        } else {
             $subscription->status = 'pending';
             $subscription->confirmed_at = null;
             $subscription->unsubscribed_at = null;

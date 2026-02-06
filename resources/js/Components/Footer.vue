@@ -149,7 +149,9 @@ const submitNewsletter = async () => {
         newsletterSuccess.value = 'Check your inbox to confirm your subscription.';
         newsletterEmail.value = '';
     } catch (error) {
-        if (error?.response?.status === 422) {
+        if (error?.response?.status === 409) {
+            newsletterError.value = error.response?.data?.message || 'This email is already subscribed.';
+        } else if (error?.response?.status === 422) {
             const message = error.response?.data?.errors?.email?.[0];
             newsletterError.value = message || 'Please enter a valid email.';
         } else {
