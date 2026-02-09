@@ -1011,6 +1011,12 @@ class SearchController extends Controller
                         ]);
                     }
                 } elseif ($providerToFetch === 'okmobility') {
+                    static $okMobilityGroupDescriptions = null;
+
+                    if ($okMobilityGroupDescriptions === null) {
+                        $okMobilityGroupDescriptions = $this->okMobilityService->getGroupDescriptionMap();
+                    }
+
                     try {
                         Log::info('Attempting to fetch OK Mobility vehicles for location ID: ' . $currentProviderLocationId);
                         Log::info('Search params: ', [
@@ -1065,7 +1071,10 @@ class SearchController extends Controller
                                     $vehicleData = json_decode(json_encode($vehicle), true);
 
                                     // Extract vehicle data with proper fallbacks
-                                    $groupFullName = $vehicleData['Group_Name'] ?? 'Unknown Vehicle';
+                                    $groupFullName = trim((string) ($vehicleData['Group_Name'] ?? 'Unknown Vehicle'));
+                                    if ($groupFullName === '') {
+                                        $groupFullName = 'Unknown Vehicle';
+                                    }
                                     $groupId = $vehicleData['GroupID'] ?? 'unknown';
 
                                     // Use the Group_Name as the vehicle name (what OK Mobility provides)
@@ -1086,6 +1095,137 @@ class SearchController extends Controller
                                     $sippCode = $vehicleData['SIPP'] ?? null;
                                     $parsedSipp = $this->parseSippCode($sippCode, 'okmobility');
 
+                                    $groupKey = $groupId ? strtoupper(trim((string) $groupId)) : null;
+                                    $sippKey = $sippCode ? strtoupper(trim((string) $sippCode)) : null;
+                                    $groupDescription = null;
+                                    $vehicleModelRaw = trim((string) ($vehicleData['VehicleModel'] ?? $vehicleData['vehicleModel'] ?? ''));
+                                    if ($vehicleModelRaw === '' || $vehicleModelRaw === '-') {
+                                        $vehicleModelRaw = null;
+                                    }
+
+                                    $parseExtraList = function ($value): array {
+                                        if (is_array($value)) {
+                                            $items = $value;
+                                        } else {
+                                            $items = preg_split('/\s*,\s*/', (string) $value, -1, PREG_SPLIT_NO_EMPTY);
+                                        }
+
+                                        $items = array_map(static function ($item) {
+                                            return trim((string) $item);
+                                        }, $items);
+
+                                        $items = array_filter($items, static function ($item) {
+                                            return $item !== '' && $item !== '-';
+                                        });
+
+                                        return array_values(array_unique($items));
+                                    };
+
+                                    $normalizeText = static function ($value): ?string {
+                                        if (is_array($value)) {
+                                            $value = $value[0] ?? '';
+                                        }
+                                        $text = trim((string) $value);
+                                        if ($text === '' || $text === '-') {
+                                            return null;
+                                        }
+                                        return $text;
+                                    };
+
+                                    $toBool = static function ($value): bool {
+                                        $text = strtolower(trim((string) $value));
+                                        return in_array($text, ['true', '1', 'yes', 'y'], true);
+                                    };
+
+                                    if ($groupKey && isset($okMobilityGroupDescriptions[$groupKey])) {
+                                        $groupDescription = $okMobilityGroupDescriptions[$groupKey];
+                                    } elseif ($sippKey && isset($okMobilityGroupDescriptions[$sippKey])) {
+                                        $groupDescription = $okMobilityGroupDescriptions[$sippKey];
+                                    }
+
+                                    $extrasIncluded = $parseExtraList($vehicleData['extrasIncluded'] ?? $vehicleData['extras_included'] ?? null);
+                                    $extrasRequired = $parseExtraList($vehicleData['extrasRequired'] ?? $vehicleData['extras_required'] ?? null);
+                                    $extrasAvailable = $parseExtraList($vehicleData['extrasAvailable'] ?? $vehicleData['extras_available'] ?? null);
+
+                                    $valueWithoutTax = isset($vehicleData['valueWithoutTax']) && is_numeric($vehicleData['valueWithoutTax'])
+                                        ? (float) $vehicleData['valueWithoutTax']
+                                        : null;
+                                    $taxRate = isset($vehicleData['taxRate']) && is_numeric($vehicleData['taxRate'])
+                                        ? (float) $vehicleData['taxRate']
+                                        : null;
+                                    $taxValue = null;
+                                    if ($valueWithoutTax !== null && $totalPrice !== null) {
+                                        $taxValue = $totalPrice - $valueWithoutTax;
+                                    }
+
+                                    $pickupStationName = $normalizeText($vehicleData['StationNamePick'] ?? $vehicleData['stationNamePick'] ?? $vehicleData['Station'] ?? null);
+                                    $dropoffStationName = $normalizeText($vehicleData['StationNameDrop'] ?? $vehicleData['stationNameDrop'] ?? null);
+                                    $pickupAddressLine = $normalizeText($vehicleData['AddressPick'] ?? $vehicleData['addressPick'] ?? null);
+                                    $dropoffAddressLine = $normalizeText($vehicleData['AddressDrop'] ?? $vehicleData['addressDrop'] ?? null);
+                                    $pickupCity = $normalizeText($vehicleData['CityPick'] ?? $vehicleData['cityPick'] ?? null);
+                                    $dropoffCity = $normalizeText($vehicleData['CityDrop'] ?? $vehicleData['cityDrop'] ?? null);
+                                    $pickupZip = $normalizeText($vehicleData['ZipCodePick'] ?? $vehicleData['zipCodePick'] ?? null);
+                                    $dropoffZip = $normalizeText($vehicleData['ZipCodeDrop'] ?? $vehicleData['zipCodeDrop'] ?? null);
+                                    $pickupCountry = $normalizeText($vehicleData['CountryPick'] ?? $vehicleData['countryPick'] ?? null);
+                                    $dropoffCountry = $normalizeText($vehicleData['CountryDrop'] ?? $vehicleData['countryDrop'] ?? null);
+
+                                    $pickupAddressFull = implode(', ', array_filter([
+                                        $pickupStationName,
+                                        $pickupAddressLine,
+                                        $pickupCity,
+                                        $pickupZip,
+                                        $pickupCountry,
+                                    ]));
+
+                                    $dropoffAddressFull = implode(', ', array_filter([
+                                        $dropoffStationName ?: $pickupStationName,
+                                        $dropoffAddressLine,
+                                        $dropoffCity,
+                                        $dropoffZip,
+                                        $dropoffCountry,
+                                    ]));
+
+                                    if (!$dropoffAddressFull && $pickupAddressFull) {
+                                        $dropoffAddressFull = $pickupAddressFull;
+                                    }
+
+                                    $rateRestriction = $vehicleData['RateRestriction'] ?? $vehicleData['rateRestriction'] ?? null;
+                                    $rateAttributes = [];
+                                    if (is_array($rateRestriction)) {
+                                        $rateAttributes = $rateRestriction['@attributes'] ?? $rateRestriction;
+                                    }
+
+                                    $cancellationAvailable = $toBool($rateAttributes['CancellationAvailable'] ?? null);
+                                    $cancellationPenalty = $toBool($rateAttributes['CancellationPenaltyInd'] ?? null);
+                                    $cancellationAmount = isset($rateAttributes['Amount']) && is_numeric($rateAttributes['Amount'])
+                                        ? (float) $rateAttributes['Amount']
+                                        : null;
+                                    $cancellationCurrency = $normalizeText($rateAttributes['Currency'] ?? null);
+                                    $cancellationDeadline = $normalizeText($rateAttributes['DateTime'] ?? null);
+
+                                    $charges = $vehicleData['Charges']['Charge'] ?? $vehicleData['charges']['charge'] ?? null;
+                                    if ($charges && !isset($charges[0])) {
+                                        $charges = [$charges];
+                                    }
+
+                                    $fuelPolicy = null;
+                                    if (is_array($charges)) {
+                                        foreach ($charges as $charge) {
+                                            if (!is_array($charge)) {
+                                                continue;
+                                            }
+                                            $chargeAttributes = $charge['@attributes'] ?? $charge;
+                                            $description = $normalizeText($chargeAttributes['Description'] ?? null);
+                                            $purpose = $normalizeText($chargeAttributes['Purpose'] ?? null);
+                                            if ($description) {
+                                                $fuelPolicy = $description;
+                                                if ($purpose === '116') {
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     // Extract extras if available
                                     $extras = [];
                                     if (isset($vehicleData['allExtras']['allExtra'])) {
@@ -1101,19 +1241,32 @@ class SearchController extends Controller
                                         $features[] = 'Air Conditioning';
                                     }
 
-                                    // Extract brand and model with SIPP fallback
+                                    // Extract brand and model (prefer OK Mobility group description)
                                     $brandName = 'OK Mobility';
-                                    $vehicleModel = $groupFullName;
+                                    $displayName = $groupDescription ?: $groupFullName;
 
-                                    if ($vehicleModel === $sippCode || empty($vehicleModel)) {
-                                        $vehicleModel = $parsedSipp['dynamic_name'] ?? $groupFullName;
+                                    if (!$displayName || $displayName === 'Unknown Vehicle') {
+                                        $displayName = $parsedSipp['dynamic_name'] ?? null;
                                     }
+
+                                    if (!$displayName && $vehicleModelRaw) {
+                                        $displayName = $vehicleModelRaw;
+                                    }
+
+                                    if (!$displayName) {
+                                        $displayName = $groupFullName;
+                                    }
+
+                                    $vehicleModel = $displayName;
 
                                     $okMobilityVehicles->push([
                                         'id' => 'okmobility_' . $groupId . '_' . md5($token),
                                         'source' => 'okmobility',
                                         'brand' => $brandName,
                                         'model' => $vehicleModel,
+                                        'display_name' => $displayName,
+                                        'group_description' => $groupDescription,
+                                        'vehicle_model_raw' => $vehicleModelRaw,
                                         'sipp_code' => $sippCode,
                                         'image' => !empty($vehicleData['imageURL']) ? $vehicleData['imageURL'] : $this->getOkMobilityImageUrl($groupId),
                                         'price_per_day' => $pricePerDay,
@@ -1130,13 +1283,28 @@ class SearchController extends Controller
                                         'features' => $features, // Add features here
                                         'latitude' => (float) $locationLat,
                                         'longitude' => (float) $locationLng,
-                                        'full_vehicle_address' => $currentProviderLocationName,
+                                        'full_vehicle_address' => $pickupAddressFull ?: $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
                                         'station' => $vehicleData['Station'] ?? 'OK Mobility Station',
+                                        'pickup_station_name' => $pickupStationName,
+                                        'dropoff_station_name' => $dropoffStationName ?: $pickupStationName,
+                                        'pickup_address' => $pickupAddressFull ?: null,
+                                        'dropoff_address' => $dropoffAddressFull ?: null,
                                         'week_day_open' => $vehicleData['weekDayOpen'] ?? null,
                                         'week_day_close' => $vehicleData['weekDayClose'] ?? null,
                                         'preview_value' => isset($vehicleData['previewValue']) && is_numeric($vehicleData['previewValue']) ? (float) $vehicleData['previewValue'] : null,
                                         'total_day_value_with_tax' => isset($vehicleData['totalDayValueWithTax']) && is_numeric($vehicleData['totalDayValueWithTax']) ? (float) $vehicleData['totalDayValueWithTax'] : null,
+                                        'value_without_tax' => $valueWithoutTax,
+                                        'tax_rate' => $taxRate,
+                                        'tax_value' => $taxValue,
+                                        'fuel_policy' => $fuelPolicy,
+                                        'cancellation' => [
+                                            'available' => $cancellationAvailable,
+                                            'penalty' => $cancellationPenalty,
+                                            'amount' => $cancellationAmount,
+                                            'currency' => $cancellationCurrency,
+                                            'deadline' => $cancellationDeadline,
+                                        ],
                                         'benefits' => [
                                             // Only include mileage info - OK Mobility doesn't provide cancellation, min age, or fuel policy in getMultiplePrices
                                             'limited_km_per_day' => $vehicleData['kmsIncluded'] !== 'true',
@@ -1157,8 +1325,9 @@ class SearchController extends Controller
                                         'ok_mobility_token' => $token,
                                         'ok_mobility_group_id' => $groupId,
                                         'ok_mobility_rate_code' => $vehicleData['rateCode'] ?? null,
-                                        'extras_required' => !empty($vehicleData['extrasRequired']) ? explode(',', $vehicleData['extrasRequired']) : [],
-                                        'extras_available' => !empty($vehicleData['extrasAvailable']) ? explode(',', $vehicleData['extrasAvailable']) : [],
+                                        'extras_included' => $extrasIncluded,
+                                        'extras_required' => $extrasRequired,
+                                        'extras_available' => $extrasAvailable,
                                     ]);
                                 }
                             } else {

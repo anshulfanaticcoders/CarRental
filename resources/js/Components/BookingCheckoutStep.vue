@@ -158,6 +158,14 @@ const isInternal = computed(() => {
     return props.vehicle?.source === 'internal';
 });
 
+const displayVehicleName = computed(() => {
+    if (isOkMobility.value) {
+        return props.vehicle?.display_name || props.vehicle?.group_description || props.vehicle?.model || '';
+    }
+    const parts = [props.vehicle?.brand, props.vehicle?.model].filter(Boolean);
+    return parts.join(' ');
+});
+
 const normalizeCurrencyCode = (currency) => {
     if (!currency) return 'EUR';
     const currencyMap = {
@@ -476,7 +484,7 @@ const formatPrice = (val) => {
                         <img :src="vehicleImage" alt="Car"
                             class="w-24 h-16 object-cover rounded-xl bg-gray-50 shadow-sm" />
                         <div class="flex-1">
-                            <div class="font-bold text-gray-900">{{ vehicle.brand }} {{ vehicle.model }}</div>
+                            <div class="font-bold text-gray-900">{{ displayVehicleName }}</div>
                             <div class="text-sm text-gray-500 mt-0.5">{{ package }} Package</div>
                             <div class="text-xs text-gray-400 mt-1">{{ numberOfDays }} days rental</div>
                         </div>

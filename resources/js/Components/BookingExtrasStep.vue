@@ -65,6 +65,165 @@ const isOkMobility = computed(() => {
     return props.vehicle?.source === 'okmobility';
 });
 
+const normalizeExtraCode = (value) => {
+    const text = `${value || ''}`.trim();
+    return text ? text.toUpperCase() : '';
+};
+
+const normalizeExtraCodeList = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+        return value.map(normalizeExtraCode).filter(Boolean);
+    }
+    return `${value}`
+        .split(',')
+        .map(normalizeExtraCode)
+        .filter(Boolean);
+};
+
+const okMobilityExtrasIncluded = computed(() => normalizeExtraCodeList(props.vehicle?.extras_included));
+const okMobilityExtrasRequired = computed(() => normalizeExtraCodeList(props.vehicle?.extras_required));
+const okMobilityExtrasAvailable = computed(() => normalizeExtraCodeList(props.vehicle?.extras_available));
+
+const okMobilityExtrasByCode = computed(() => {
+    const extras = props.vehicle?.extras || [];
+    const map = new Map();
+    extras.forEach((extra, index) => {
+        const id = extra.id || extra.extraID || extra.extraId || extra.extra_id || extra.code || extra.extra || index;
+        const code = normalizeExtraCode(extra.code || extra.extraID || extra.extraId || extra.extra_id || extra.extra || id);
+        if (!code || map.has(code)) return;
+        const name = extra.name || extra.extra || extra.description || extra.displayName || extra.code || code;
+        const description = extra.description || extra.displayDescription || '';
+        map.set(code, { name, description });
+    });
+    return map;
+});
+
+const resolveOkMobilityExtraLabel = (code) => {
+    const normalized = normalizeExtraCode(code);
+    const extra = okMobilityExtrasByCode.value.get(normalized);
+    if (extra?.name) return extra.name;
+    if (extra?.description) return extra.description;
+    return normalized || code;
+};
+
+const okMobilityExtraLabels = (codes) => {
+    const labels = (codes || []).map(resolveOkMobilityExtraLabel).filter(Boolean);
+    return Array.from(new Set(labels));
+};
+
+const okMobilityIncludedLabels = computed(() => okMobilityExtraLabels(okMobilityExtrasIncluded.value));
+const okMobilityRequiredLabels = computed(() => okMobilityExtraLabels(okMobilityExtrasRequired.value));
+const okMobilityAvailableLabels = computed(() => {
+    const labels = okMobilityExtraLabels(okMobilityExtrasAvailable.value);
+    if (!labels.length) return [];
+    const exclude = new Set([...okMobilityIncludedLabels.value, ...okMobilityRequiredLabels.value]);
+    return labels.filter(label => !exclude.has(label));
+});
+
+const okMobilityPetExtras = computed(() => {
+    const matches = [];
+    okMobilityExtrasByCode.value.forEach((extra) => {
+        const text = `${extra?.name || ''} ${extra?.description || ''}`.toLowerCase();
+        if (text.includes('pet') || text.includes('pets') || text.includes('animal')) {
+            matches.push(extra?.name || extra?.description);
+        }
+    });
+    return Array.from(new Set(matches.filter(Boolean)));
+});
+
+const okMobilityTaxBreakdown = computed(() => {
+    const total = parseFloat(props.vehicle?.preview_value ?? props.vehicle?.total_price ?? 0);
+    const base = parseFloat(props.vehicle?.value_without_tax ?? 0);
+    const rateRaw = props.vehicle?.tax_rate;
+    const rate = rateRaw !== null && rateRaw !== undefined && rateRaw !== '' ? parseFloat(rateRaw) : null;
+    let taxValue = props.vehicle?.tax_value;
+
+    if (taxValue === null || taxValue === undefined || taxValue === '') {
+        if (Number.isFinite(total) && Number.isFinite(base) && total && base) {
+            taxValue = total - base;
+        }
+    }
+
+    const tax = parseFloat(taxValue ?? 0);
+
+    return {
+        base: Number.isFinite(base) && base > 0 ? base : null,
+        tax: Number.isFinite(tax) && tax > 0 ? tax : null,
+        total: Number.isFinite(total) && total > 0 ? total : null,
+        rate: Number.isFinite(rate) && rate > 0 ? rate : null,
+    };
+});
+
+const okMobilityPickupStation = computed(() => props.vehicle?.pickup_station_name || props.vehicle?.station || '');
+const okMobilityDropoffStation = computed(() => props.vehicle?.dropoff_station_name || props.vehicle?.station || '');
+const okMobilityPickupAddress = computed(() => props.vehicle?.pickup_address || '');
+const okMobilityDropoffAddress = computed(() => props.vehicle?.dropoff_address || '');
+const okMobilitySameLocation = computed(() => {
+    return okMobilityPickupStation.value === okMobilityDropoffStation.value
+        && okMobilityPickupAddress.value === okMobilityDropoffAddress.value;
+});
+
+const okMobilityFuelPolicy = computed(() => props.vehicle?.fuel_policy || null);
+
+const okMobilityCancellation = computed(() => props.vehicle?.cancellation || null);
+
+const okMobilityCancellationSummary = computed(() => {
+    const cancellation = okMobilityCancellation.value;
+    if (!cancellation) return null;
+    const available = cancellation.available === true || `${cancellation.available}`.toLowerCase() === 'true';
+    const penalty = cancellation.penalty === true || `${cancellation.penalty}`.toLowerCase() === 'true';
+    const amount = parseFloat(cancellation.amount ?? 0);
+    const currency = cancellation.currency || props.vehicle?.currency || null;
+    const deadline = cancellation.deadline || null;
+    return {
+        available,
+        penalty,
+        amount: Number.isFinite(amount) ? amount : null,
+        currency,
+        deadline
+    };
+});
+
+const okMobilityInfoAvailable = computed(() => {
+    if (!isOkMobility.value) return false;
+    const hasTaxes = okMobilityTaxBreakdown.value.total || okMobilityTaxBreakdown.value.base || okMobilityTaxBreakdown.value.tax;
+    return Boolean(
+        okMobilityPickupAddress.value
+        || okMobilityDropoffAddress.value
+        || okMobilityPickupStation.value
+        || okMobilityDropoffStation.value
+        || vehicleLocationText.value
+        || okMobilityIncludedLabels.value.length
+        || okMobilityRequiredLabels.value.length
+        || okMobilityAvailableLabels.value.length
+        || okMobilityPetExtras.value.length
+        || okMobilityFuelPolicy.value
+        || okMobilityCancellationSummary.value
+        || hasTaxes
+    );
+});
+const isLikelyCode = (value) => {
+    const text = `${value || ''}`.trim();
+    if (!text) return false;
+    return /^[A-Z0-9]{3,5}$/.test(text);
+};
+
+const displayVehicleName = computed(() => {
+    if (isOkMobility.value) {
+        const displayName = props.vehicle?.display_name;
+        const description = props.vehicle?.group_description;
+        const model = props.vehicle?.model;
+
+        if (displayName && !isLikelyCode(displayName)) return displayName;
+        if (description && !isLikelyCode(description)) return description;
+        if (model && !isLikelyCode(model)) return model;
+        return displayName || description || model || '';
+    }
+    const parts = [props.vehicle?.brand, props.vehicle?.model].filter(Boolean);
+    return parts.join(' ');
+});
+
 const isFavrica = computed(() => {
     return props.vehicle?.source === 'favrica';
 });
@@ -744,10 +903,16 @@ const okMobilityPackages = computed(() => {
 
 const okMobilityOptionalExtras = computed(() => {
     if (!isOkMobility.value) return [];
+    const requiredCodes = new Set(okMobilityExtrasRequired.value);
+    const includedCodes = new Set(okMobilityExtrasIncluded.value);
+    const availableCodes = new Set(okMobilityExtrasAvailable.value);
+    const hasAvailableFilter = availableCodes.size > 0;
     const extras = props.vehicle?.extras || [];
     return extras.map((extra, index) => {
         const id = extra.id || extra.extraID || extra.extraId || extra.extra_id || extra.code || extra.extra || index;
-        const name = extra.name || extra.extra || extra.description || extra.displayName || extra.code || 'Extra';
+        const codeRaw = extra.code || extra.extraID || extra.extraId || extra.extra_id || extra.extra || id;
+        const code = normalizeExtraCode(codeRaw);
+        const name = extra.name || extra.extra || extra.description || extra.displayName || extra.code || code || 'Extra';
         const description = extra.description || extra.displayDescription || '';
         const priceValue = parseFloat(
             extra.priceWithTax ?? extra.valueWithTax ?? extra.value ?? extra.price ?? extra.amount ?? 0
@@ -757,19 +922,30 @@ const okMobilityOptionalExtras = computed(() => {
             ? (priceValue / props.numberOfDays)
             : priceValue;
 
+        const isRequired = extra.required || extra.extra_Required === 'true' || (code && requiredCodes.has(code));
+        const isIncluded = extra.included || extra.extra_Included === 'true' || (code && includedCodes.has(code));
+        const isAvailable = !hasAvailableFilter || (code && availableCodes.has(code));
+
         return {
             id: `okmobility_extra_${id}`,
-            code: extra.code || extra.extraID || extra.extra || id,
+            code: code || codeRaw || id,
             name,
             description,
             price: priceValue,
             daily_rate: dailyRate,
             amount: priceValue,
-            included: extra.included || extra.extra_Included === 'true',
-            required: extra.required || extra.extra_Required === 'true',
+            included: isIncluded,
+            required: isRequired,
             is_one_time: pricePerContract
         };
-    }).filter(extra => extra.price > 0 || extra.required || extra.included);
+    }).filter(extra => {
+        if (!extra) return false;
+        if (extra.required || extra.included) return true;
+        if (hasAvailableFilter) {
+            return availableCodes.has(normalizeExtraCode(extra.code));
+        }
+        return extra.price > 0;
+    });
 });
 
 const normalizeFavricaExtra = (extra) => {
@@ -969,6 +1145,15 @@ const greenMotionExtras = computed(() => {
 watchEffect(() => {
     if (!isGreenMotion.value) return;
     greenMotionExtras.value.forEach((extra) => {
+        if (extra.required) {
+            setExtraQuantity(extra, Math.max(selectedExtras.value[extra.id] || 0, 1));
+        }
+    });
+});
+
+watchEffect(() => {
+    if (!isOkMobility.value) return;
+    okMobilityOptionalExtras.value.forEach((extra) => {
         if (extra.required) {
             setExtraQuantity(extra, Math.max(selectedExtras.value[extra.id] || 0, 1));
         }
@@ -1537,7 +1722,7 @@ const formatPaymentMethod = (method) => {
                         {{ line }}
                     </p>
                 </div>
-                <div v-if="locationContact.phone || locationContact.email || locationContact.iata || locationContact.whatsapp" class="text-sm text-gray-600 mb-4 space-y-1">
+                <div v-if="!isOkMobility && (locationContact.phone || locationContact.email || locationContact.iata || locationContact.whatsapp)" class="text-sm text-gray-600 mb-4 space-y-1">
                     <p v-if="locationContact.phone"><span class="font-semibold text-gray-800">Phone:</span> {{ locationContact.phone }}</p>
                     <p v-if="locationContact.email"><span class="font-semibold text-gray-800">Email:</span> {{ locationContact.email }}</p>
                     <p v-if="locationContact.whatsapp"><span class="font-semibold text-gray-800">WhatsApp:</span> {{ locationContact.whatsapp }}</p>
@@ -1554,6 +1739,82 @@ const formatPaymentMethod = (method) => {
                 <div v-if="hasVehicleCoords" ref="vehicleMapRef"
                     class="h-56 rounded-xl overflow-hidden border border-gray-200"></div>
                 <p v-else class="text-xs text-gray-500">Map not available for this vehicle.</p>
+            </div>
+
+            <div v-if="okMobilityInfoAvailable" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4 class="font-display text-xl font-bold text-gray-900">Vehicle Details</h4>
+                </div>
+
+                <div class="space-y-5 text-sm text-gray-600">
+                    <div v-if="okMobilityPickupStation || okMobilityPickupAddress || okMobilityDropoffStation || okMobilityDropoffAddress">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Pickup & Dropoff</p>
+                        <div v-if="okMobilitySameLocation" class="space-y-1">
+                            <p v-if="okMobilityPickupStation" class="font-semibold text-gray-900">{{ okMobilityPickupStation }}</p>
+                            <p v-if="okMobilityPickupAddress">{{ okMobilityPickupAddress }}</p>
+                        </div>
+                        <div v-else class="space-y-4">
+                            <div v-if="okMobilityPickupStation || okMobilityPickupAddress">
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Pickup</p>
+                                <p v-if="okMobilityPickupStation" class="font-semibold text-gray-900">{{ okMobilityPickupStation }}</p>
+                                <p v-if="okMobilityPickupAddress">{{ okMobilityPickupAddress }}</p>
+                            </div>
+                            <div v-if="okMobilityDropoffStation || okMobilityDropoffAddress">
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Dropoff</p>
+                                <p v-if="okMobilityDropoffStation" class="font-semibold text-gray-900">{{ okMobilityDropoffStation }}</p>
+                                <p v-if="okMobilityDropoffAddress">{{ okMobilityDropoffAddress }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="okMobilityTaxBreakdown.total || okMobilityTaxBreakdown.base || okMobilityTaxBreakdown.tax">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Taxes & Fees</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div v-if="okMobilityTaxBreakdown.base">
+                                <p class="text-xs text-gray-500">Before tax</p>
+                                <p class="font-semibold text-gray-900">{{ formatRentalPrice(okMobilityTaxBreakdown.base) }}</p>
+                            </div>
+                            <div v-if="okMobilityTaxBreakdown.tax">
+                                <p class="text-xs text-gray-500">Tax{{ okMobilityTaxBreakdown.rate ? ` (${okMobilityTaxBreakdown.rate}%)` : '' }}</p>
+                                <p class="font-semibold text-gray-900">{{ formatRentalPrice(okMobilityTaxBreakdown.tax) }}</p>
+                            </div>
+                            <div v-if="okMobilityTaxBreakdown.total">
+                                <p class="text-xs text-gray-500">Total (incl. tax)</p>
+                                <p class="font-semibold text-gray-900">{{ formatRentalPrice(okMobilityTaxBreakdown.total) }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="okMobilityFuelPolicy">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Fuel Policy</p>
+                        <p class="text-sm text-gray-600">{{ okMobilityFuelPolicy }}</p>
+                    </div>
+
+                    <div v-if="okMobilityCancellationSummary">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Cancellation</p>
+                        <div v-if="!okMobilityCancellationSummary.available" class="text-sm text-gray-600">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">Not available</span>
+                        </div>
+                        <div v-else class="text-sm text-gray-600 space-y-2">
+                            <p class="text-base font-semibold text-gray-900">
+                                {{ okMobilityCancellationSummary.amount && okMobilityCancellationSummary.amount > 0
+                                    ? `Cancellation fee ${formatRentalPrice(okMobilityCancellationSummary.amount)}`
+                                    : 'Free cancellation' }}
+                            </p>
+                            <p v-if="okMobilityCancellationSummary.deadline" class="text-sm text-gray-600">
+                                Cancel by <span class="font-semibold text-gray-900">{{ okMobilityCancellationSummary.deadline }}</span>
+                            </p>
+                            <p v-if="okMobilityCancellationSummary.penalty" class="text-sm text-amber-700">
+                                Penalty applies after the deadline.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div v-if="driverRequirementItems.length || mileageTypeLabel" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
@@ -2116,9 +2377,7 @@ const formatPaymentMethod = (method) => {
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <div class="font-display font-bold text-gray-900 text-xl">{{ vehicle?.brand }} {{
-                                vehicle?.model }}
-                            </div>
+                            <div class="font-display font-bold text-gray-900 text-xl">{{ displayVehicleName }}</div>
                             <div class="text-sm text-gray-500 mb-3">{{ vehicle?.category || 'Economy' }}</div>
                         </div>
                     </div>
@@ -2387,7 +2646,7 @@ const formatPaymentMethod = (method) => {
                         <!-- Vehicle Info -->
                         <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-5">
                             <p class="text-sm text-gray-500 mb-2">Vehicle</p>
-                            <p class="font-bold text-gray-900 text-lg">{{ vehicle.brand }} {{ vehicle.model }}</p>
+                            <p class="font-bold text-gray-900 text-lg">{{ displayVehicleName }}</p>
                             <p class="text-sm text-gray-500 mt-1">{{ currentPackage }} Package</p>
                         </div>
 

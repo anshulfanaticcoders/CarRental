@@ -1312,11 +1312,14 @@ const resetFilters = () => {
 
 const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
     // Shared content generator for consistency
+    const popupName = vehicle?.source === 'okmobility'
+        ? (vehicle.display_name || vehicle.group_description || vehicle.model || '')
+        : `${vehicle.brand || ''} ${vehicle.model || ''}`.trim();
     const content = `
         <div class="text-center popup-content">
-            <img src="${primaryImage}" alt="${vehicle.brand} ${vehicle.model}" class="popup-image !w-40 !h-20" />
+            <img src="${primaryImage}" alt="${popupName}" class="popup-image !w-40 !h-20" />
             ${vehicle.source === 'internal' && vehicle.average_rating ? `<p class="rating !w-40">${vehicle.average_rating.toFixed(1)} ★ (${vehicle.review_count} reviews)</p>` : ''}
-            <p class="font-semibold !w-40">${vehicle.brand} ${vehicle.model}</p>
+            <p class="font-semibold !w-40">${popupName}</p>
             ${vehicle.sipp_code ? `<p class="!w-40 text-sm">SIPP: ${vehicle.sipp_code}</p>` : ''}
             ${vehicle.acriss_code || vehicle.group_code ? `<p class="!w-40 text-sm">${vehicle.acriss_code || vehicle.group_code}</p>` : ''}
             <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>

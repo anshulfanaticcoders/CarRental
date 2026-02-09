@@ -34,6 +34,27 @@ const isOkMobility = computed(() => {
     return props.vehicle?.source === 'okmobility';
 });
 
+const isLikelyCode = (value) => {
+    const text = `${value || ''}`.trim();
+    if (!text) return false;
+    return /^[A-Z0-9]{3,5}$/.test(text);
+};
+
+const displayVehicleName = computed(() => {
+    if (isOkMobility.value) {
+        const displayName = props.vehicle?.display_name;
+        const model = props.vehicle?.model;
+        const description = props.vehicle?.group_description;
+
+        if (displayName && !isLikelyCode(displayName)) return displayName;
+        if (model && !isLikelyCode(model)) return model;
+        if (description && !isLikelyCode(description)) return description;
+        return displayName || model || description || '';
+    }
+    const parts = [props.vehicle?.brand, props.vehicle?.model].filter(Boolean);
+    return parts.join(' ');
+});
+
 const isFavrica = computed(() => {
     return props.vehicle?.source === 'favrica';
 });
@@ -702,7 +723,7 @@ onUnmounted(() => {
                         <div v-for="(img, index) in allImages" :key="index"
                             class="absolute inset-0 transition-opacity duration-700 ease-in-out"
                             :class="currentImageIndex === index ? 'opacity-100' : 'opacity-0 pointer-events-none'">
-                            <img :src="img" :alt="`${vehicle.brand} ${vehicle.model} - Image ${index + 1}`"
+                            <img :src="img" :alt="`${displayVehicleName} - Image ${index + 1}`"
                                 @error="handleImageError" class="w-full h-full object-cover" loading="lazy" />
                         </div>
                     </div>
@@ -735,7 +756,7 @@ onUnmounted(() => {
                 </div>
             </template>
             <div v-else class="block h-full">
-                <img :src="getImageSource(vehicle)" :alt="`${vehicle.brand} ${vehicle.model}`" @error="handleImageError"
+                <img :src="getImageSource(vehicle)" :alt="displayVehicleName" @error="handleImageError"
                     loading="lazy" />
             </div>
 
@@ -763,7 +784,7 @@ onUnmounted(() => {
             <div class="car-header">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="car-name">{{ vehicle?.brand }} {{ vehicle?.model }}</h3>
+                        <h3 class="car-name">{{ displayVehicleName }}</h3>
                         <p class="car-class">{{ vehicleSpecs.acriss || vehicle?.sipp_code_one_letter || 'Car' }}</p>
                     </div>
                 </div>

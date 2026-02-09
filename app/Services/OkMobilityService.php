@@ -140,6 +140,88 @@ class OkMobilityService
     }
 
     /**
+     * Fetches OK Mobility group descriptions (cached).
+     * Maps GroupCode -> Description.
+     */
+    public function getGroupDescriptionMap(): array
+    {
+        $soapXml = '<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:get="http://www.OKGroup.es/RentaCarWebService/getWSDL">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <get:getGroupsRequest>
+      <get:objRequest>
+        <get:customerCode>' . $this->customerCode . '</get:customerCode>
+      </get:objRequest>
+    </get:getGroupsRequest>
+  </soapenv:Body>
+</soapenv:Envelope>';
+
+        $response = $this->sendRequest('getGroups', 'getGroups', $soapXml, 30060);
+
+        if (!$response) {
+            Log::warning('OK Mobility getGroups response was empty.');
+            return [];
+        }
+
+        libxml_use_internal_errors(true);
+        $xmlObject = simplexml_load_string($response);
+
+        if ($xmlObject === false) {
+            Log::warning('OK Mobility getGroups XML parse failed.', [
+                'errors' => libxml_get_errors(),
+            ]);
+            libxml_clear_errors();
+            return [];
+        }
+
+        $xmlObject->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
+        $xmlObject->registerXPathNamespace('get', 'http://www.OKGroup.es/RentaCarWebService/getWSDL');
+
+        $errorCode = (string) ($xmlObject->xpath('//errorCode')[0] ?? $xmlObject->xpath('//get:errorCode')[0] ?? null);
+        if ($errorCode && $errorCode !== 'SUCCESS') {
+            Log::warning('OK Mobility getGroups returned an error.', [
+                'error_code' => $errorCode,
+            ]);
+        }
+
+        $groups = $xmlObject->xpath('//Group') ?:
+            $xmlObject->xpath('//get:Group') ?:
+            $xmlObject->xpath('//getGroupsResult//Group');
+
+        if (empty($groups)) {
+            Log::warning('OK Mobility getGroups returned no groups.');
+            return [];
+        }
+
+        $map = [];
+        foreach ($groups as $group) {
+            $groupData = json_decode(json_encode($group), true);
+            $code = $groupData['GroupCode'] ?? $groupData['groupCode'] ?? null;
+            $description = $groupData['Description'] ?? $groupData['description'] ?? null;
+
+            if (!$code || !$description) {
+                continue;
+            }
+
+            $codeKey = strtoupper(trim($code));
+            $desc = trim($description);
+
+            if ($desc === '' || $desc === '-') {
+                continue;
+            }
+
+            $map[$codeKey] = $desc;
+        }
+
+        if (empty($map)) {
+            Log::warning('OK Mobility getGroups returned no usable descriptions.');
+        }
+
+        return $map;
+    }
+
+    /**
      * Fetches available vehicles based on search criteria.
      * Corresponds to the getMultiplePrices operation.
      */
@@ -160,6 +242,7 @@ class OkMobilityService
         <PickUpStation>' . $pickupStationId . '</PickUpStation>
         <DropOffDate>' . $dropoffDateTime . '</DropOffDate>
         <DropOffStation>' . $dropoffStationId . '</DropOffStation>
+        <extendedModel>true</extendedModel>
       </Value>
     </getMultiplePrices>
   </soap:Body>
@@ -170,23 +253,24 @@ class OkMobilityService
    <soapenv:Header/>
    <soapenv:Body>
        <get:getMultiplePricesRequest>
-          <objRequest>
-             <customerCode>' . $this->customerCode . '</customerCode>
-             <companyCode>' . $this->companyCode . '</companyCode>
-             <PickUp>
-                <Date>' . $pickupDateTime . '</Date>
-                <rentalStation>' . $pickupStationId . '</rentalStation>
-             </PickUp>
-             <DropOff>
-                <Date>' . $dropoffDateTime . '</Date>
-                <rentalStation>' . $dropoffStationId . '</rentalStation>
-             </DropOff>';
+          <get:objRequest>
+             <get:customerCode>' . $this->customerCode . '</get:customerCode>
+             <get:companyCode>' . $this->companyCode . '</get:companyCode>
+             <get:pickUp>
+                <get:Date>' . $pickupDateTime . '</get:Date>
+                <get:rentalStation>' . $pickupStationId . '</get:rentalStation>
+             </get:pickUp>
+              <get:dropOff>
+                 <get:Date>' . $dropoffDateTime . '</get:Date>
+                 <get:rentalStation>' . $dropoffStationId . '</get:rentalStation>
+              </get:dropOff>';
 
         if ($groupId) {
-            $soap11Xml .= '<groupID>' . $groupId . '</groupID>';
+            $soap11Xml .= '<get:groupID>' . $groupId . '</get:groupID>';
         }
 
-        $soap11Xml .= '         </objRequest>
+        $soap11Xml .= '          <get:extendedModel>true</get:extendedModel>
+           </get:objRequest>
       </get:getMultiplePricesRequest>
    </soapenv:Body>
 </soapenv:Envelope>';
@@ -200,10 +284,14 @@ class OkMobilityService
         $soap12Response = $this->sendSoap12Request($soap12Url, self::SOAP12_ACTION_GET_MULTIPLE_PRICES, $soap12Xml);
 
         if ($soap12Response) {
-            return $soap12Response;
+            if (str_contains($soap12Response, '<VehicleModel>') || str_contains($soap12Response, '<vehicleModel>')) {
+                return $soap12Response;
+            }
         }
 
-        return $this->sendRequest('getMultiplePrices', 'getMultiplePrices', $soap11Xml);
+        $soap11Response = $this->sendRequest('getMultiplePrices', 'getMultiplePrices', $soap11Xml);
+
+        return $soap11Response ?: $soap12Response;
     }
 
     /**
