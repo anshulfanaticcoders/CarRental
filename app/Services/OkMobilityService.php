@@ -198,6 +198,7 @@ class OkMobilityService
         foreach ($groups as $group) {
             $groupData = json_decode(json_encode($group), true);
             $code = $groupData['GroupCode'] ?? $groupData['groupCode'] ?? null;
+            $sipp = $groupData['sipp'] ?? $groupData['Sipp'] ?? $groupData['SIPP'] ?? null;
             $description = $groupData['Description'] ?? $groupData['description'] ?? null;
 
             if (!$code || !$description) {
@@ -205,13 +206,28 @@ class OkMobilityService
             }
 
             $codeKey = strtoupper(trim($code));
+            $sippKey = $sipp ? strtoupper(trim($sipp)) : null;
             $desc = trim($description);
 
             if ($desc === '' || $desc === '-') {
                 continue;
             }
 
+            $desc = preg_replace('/^' . preg_quote($codeKey, '/') . '\s*[-:]\s*/i', '', $desc);
+            if ($sippKey) {
+                $desc = preg_replace('/^' . preg_quote($sippKey, '/') . '\s*[-:]\s*/i', '', $desc);
+            }
+            $desc = ltrim($desc, "- ");
+            $desc = trim($desc);
+
+            if ($desc === '' || $desc === '-') {
+                continue;
+            }
+
             $map[$codeKey] = $desc;
+            if ($sippKey && !isset($map[$sippKey])) {
+                $map[$sippKey] = $desc;
+            }
         }
 
         if (empty($map)) {

@@ -878,30 +878,18 @@ const okMobilityBaseTotal = computed(() => {
     return daily > 0 ? daily * props.numberOfDays : 0;
 });
 
-const okMobilityPackages = computed(() => {
-    if (!isOkMobility.value) return [];
-    const benefits = ['Base rental rate'];
-    if (props.vehicle?.mileage) {
-        benefits.push(`Mileage: ${props.vehicle.mileage}`);
-    }
-    if (props.vehicle?.fuel_policy) {
-        benefits.push(props.vehicle.fuel_policy);
-    }
-    return [
-        {
-            type: 'BAS',
-            name: 'Basic Rental',
-            subtitle: 'Standard Package',
-            total: okMobilityBaseTotal.value,
-            deposit: 0,
-            benefits,
-            isBestValue: true,
-            isAddOn: false
-        }
-    ];
-});
+const OK_MOBILITY_COVER_CODES = ['OPC', 'OPCO'];
 
-const okMobilityOptionalExtras = computed(() => {
+const getOkMobilityExtraTotal = (extra) => {
+    if (!extra) return 0;
+    if (extra.is_one_time) return parseFloat(extra.price || 0);
+    const dailyRate = extra.daily_rate !== undefined
+        ? parseFloat(extra.daily_rate)
+        : (parseFloat(extra.price || 0) / props.numberOfDays);
+    return dailyRate * props.numberOfDays;
+};
+
+const okMobilityNormalizedExtras = computed(() => {
     if (!isOkMobility.value) return [];
     const requiredCodes = new Set(okMobilityExtrasRequired.value);
     const includedCodes = new Set(okMobilityExtrasIncluded.value);
@@ -924,7 +912,6 @@ const okMobilityOptionalExtras = computed(() => {
 
         const isRequired = extra.required || extra.extra_Required === 'true' || (code && requiredCodes.has(code));
         const isIncluded = extra.included || extra.extra_Included === 'true' || (code && includedCodes.has(code));
-        const isAvailable = !hasAvailableFilter || (code && availableCodes.has(code));
 
         return {
             id: `okmobility_extra_${id}`,
@@ -946,6 +933,61 @@ const okMobilityOptionalExtras = computed(() => {
         }
         return extra.price > 0;
     });
+});
+
+const okMobilityCoverExtras = computed(() => {
+    const coverCodes = new Set(OK_MOBILITY_COVER_CODES);
+    return okMobilityNormalizedExtras.value.filter(extra => coverCodes.has(normalizeExtraCode(extra.code)));
+});
+
+const okMobilityPackages = computed(() => {
+    if (!isOkMobility.value) return [];
+    const benefits = ['Base rental rate'];
+    if (props.vehicle?.mileage) {
+        benefits.push(`Mileage: ${props.vehicle.mileage}`);
+    }
+    if (props.vehicle?.fuel_policy) {
+        benefits.push(props.vehicle.fuel_policy);
+    }
+    const packages = [
+        {
+            type: 'BAS',
+            name: 'Basic Rental',
+            subtitle: 'Standard Package',
+            total: okMobilityBaseTotal.value,
+            deposit: 0,
+            benefits,
+            isBestValue: okMobilityCoverExtras.value.length === 0,
+            isAddOn: false
+        }
+    ];
+
+    okMobilityCoverExtras.value.forEach((extra) => {
+        const extraTotal = getOkMobilityExtraTotal(extra);
+        const coverBenefits = [
+            ...benefits,
+            extra.description || extra.name || 'Premium cover protection'
+        ];
+        packages.push({
+            type: normalizeExtraCode(extra.code) || extra.code,
+            name: extra.name,
+            subtitle: 'Premium Cover',
+            total: okMobilityBaseTotal.value + extraTotal,
+            deposit: 0,
+            benefits: coverBenefits,
+            isBestValue: normalizeExtraCode(extra.code) === 'OPC',
+            isAddOn: false,
+            extraId: extra.id
+        });
+    });
+
+    return packages;
+});
+
+const okMobilityOptionalExtras = computed(() => {
+    if (!isOkMobility.value) return [];
+    const coverCodes = new Set(OK_MOBILITY_COVER_CODES);
+    return okMobilityNormalizedExtras.value.filter(extra => !coverCodes.has(normalizeExtraCode(extra.code)));
 });
 
 const normalizeFavricaExtra = (extra) => {
@@ -1153,7 +1195,7 @@ watchEffect(() => {
 
 watchEffect(() => {
     if (!isOkMobility.value) return;
-    okMobilityOptionalExtras.value.forEach((extra) => {
+    okMobilityNormalizedExtras.value.forEach((extra) => {
         if (extra.required) {
             setExtraQuantity(extra, Math.max(selectedExtras.value[extra.id] || 0, 1));
         }
@@ -1344,7 +1386,7 @@ const extrasTotal = computed(() => {
         } else if (isRenteon.value) {
             extra = renteonOptionalExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
-            extra = okMobilityOptionalExtras.value.find(e => e.id === id);
+            extra = okMobilityNormalizedExtras.value.find(e => e.id === id);
         } else if (isFavrica.value || isXDrive.value) {
             extra = providerAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
@@ -1408,6 +1450,26 @@ const pendingAmount = computed(() => {
 });
 
 const selectPackage = (pkgType) => {
+    if (isOkMobility.value) {
+        const coverExtra = okMobilityCoverExtras.value.find(extra => normalizeExtraCode(extra.code) === pkgType);
+        if (coverExtra) {
+            okMobilityCoverExtras.value.forEach((extra) => {
+                if (extra.id !== coverExtra.id) {
+                    delete selectedExtras.value[extra.id];
+                }
+            });
+            setExtraQuantity(coverExtra, 1);
+            currentPackage.value = pkgType;
+            return;
+        }
+
+        okMobilityCoverExtras.value.forEach((extra) => {
+            delete selectedExtras.value[extra.id];
+        });
+        currentPackage.value = pkgType;
+        return;
+    }
+
     currentPackage.value = pkgType;
     // Package change updates totals automatically
 };
@@ -1436,6 +1498,7 @@ const getSelectedAdobeProtectionCodes = () => {
 
 const getSelectedExtrasDetails = computed(() => {
     const details = [];
+    const coverCodes = new Set(OK_MOBILITY_COVER_CODES);
     for (const [id, qty] of Object.entries(selectedExtras.value)) {
         // Find extra from the correct source
         let extra = null;
@@ -1448,7 +1511,7 @@ const getSelectedExtrasDetails = computed(() => {
         } else if (isRenteon.value) {
             extra = renteonOptionalExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
-            extra = okMobilityOptionalExtras.value.find(e => e.id === id);
+            extra = okMobilityNormalizedExtras.value.find(e => e.id === id);
         } else if (isFavrica.value || isXDrive.value) {
             extra = providerAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
@@ -1458,6 +1521,9 @@ const getSelectedExtrasDetails = computed(() => {
         }
 
         if (extra) {
+            if (isOkMobility.value && coverCodes.has(normalizeExtraCode(extra.code))) {
+                continue;
+            }
             const total = extra.total_for_booking !== undefined && extra.total_for_booking !== null
                 ? parseFloat(extra.total_for_booking) * qty
                 : (parseFloat(extra.daily_rate !== undefined ? extra.daily_rate : (extra.price / props.numberOfDays))
@@ -1583,6 +1649,16 @@ const getPackageSubtitle = (type) => {
     };
     return subtitles[type] || '';
 };
+
+const currentPackageLabel = computed(() => {
+    if (isOkMobility.value) {
+        const pkg = okMobilityPackages.value.find(item => item.type === currentPackage.value);
+        if (pkg?.name) return pkg.name;
+    }
+
+    const display = getPackageDisplayName(currentPackage.value);
+    return display || currentPackage.value;
+});
 
 // Get icon background class based on extra name
 const getIconBackgroundClass = (name) => {
@@ -2525,8 +2601,8 @@ const formatPaymentMethod = (method) => {
                 <!-- Price Breakdown -->
                 <div class="space-y-3 text-sm text-gray-700 mb-6 pb-6 border-b border-gray-100">
                     <div class="flex justify-between">
-                        <span>Car Package ({{ currentPackage }})</span>
-                        <span class="font-medium" v-if="ratesReady">{{ formatRentalPrice(isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || 0))) }}</span>
+                        <span>Car Package ({{ currentPackageLabel }})</span>
+                        <span class="font-medium" v-if="ratesReady">{{ formatRentalPrice(isLocautoRent ? locautoBaseTotal : (isOkMobility ? (currentProduct?.total || okMobilityBaseTotal) : (currentProduct?.total || 0))) }}</span>
                         <span class="price-skeleton price-skeleton-sm" v-else></span>
                     </div>
                     <div v-if="isAdobeCars && adobeMandatoryProtection > 0" class="flex justify-between text-amber-600">
@@ -2647,14 +2723,14 @@ const formatPaymentMethod = (method) => {
                         <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-5">
                             <p class="text-sm text-gray-500 mb-2">Vehicle</p>
                             <p class="font-bold text-gray-900 text-lg">{{ displayVehicleName }}</p>
-                            <p class="text-sm text-gray-500 mt-1">{{ currentPackage }} Package</p>
+                            <p class="text-sm text-gray-500 mt-1">{{ currentPackageLabel }}</p>
                         </div>
 
                         <!-- Line Items -->
                         <div class="space-y-4">
                             <div class="flex justify-between text-sm">
-                                <span class="text-gray-600">Car Package ({{ currentPackage }})</span>
-                                <span class="font-semibold text-gray-900">{{ formatRentalPrice(isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || 0))
+                                <span class="text-gray-600">Car Package ({{ currentPackageLabel }})</span>
+                                <span class="font-semibold text-gray-900">{{ formatRentalPrice(isOkMobility ? (currentProduct?.total || okMobilityBaseTotal) : (currentProduct?.total || 0))
                                 }}</span>
                             </div>
                             <div v-if="isAdobeCars && adobeMandatoryProtection > 0"

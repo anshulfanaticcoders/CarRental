@@ -1075,7 +1075,10 @@ class SearchController extends Controller
                                     if ($groupFullName === '') {
                                         $groupFullName = 'Unknown Vehicle';
                                     }
-                                    $groupId = $vehicleData['GroupID'] ?? 'unknown';
+                                    $groupId = $vehicleData['GroupID']
+                                        ?? $vehicleData['GroupCode']
+                                        ?? $vehicleData['groupCode']
+                                        ?? 'unknown';
 
                                     // Use the Group_Name as the vehicle name (what OK Mobility provides)
                                     $vehicleName = $groupFullName;
@@ -1092,7 +1095,7 @@ class SearchController extends Controller
                                     }
 
                                     // Parse SIPP code for vehicle details
-                                    $sippCode = $vehicleData['SIPP'] ?? null;
+                                    $sippCode = $vehicleData['SIPP'] ?? $vehicleData['sipp'] ?? null;
                                     $parsedSipp = $this->parseSippCode($sippCode, 'okmobility');
 
                                     $groupKey = $groupId ? strtoupper(trim((string) $groupId)) : null;
@@ -1243,7 +1246,17 @@ class SearchController extends Controller
 
                                     // Extract brand and model (prefer OK Mobility group description)
                                     $brandName = 'OK Mobility';
-                                    $displayName = $groupDescription ?: $groupFullName;
+                                    $isLikelyCode = static function ($value): bool {
+                                        $text = strtoupper(trim((string) $value));
+                                        return $text !== '' && preg_match('/^[A-Z0-9]{3,5}$/', $text) === 1;
+                                    };
+
+                                    $displayName = null;
+                                    if ($groupDescription && !$isLikelyCode($groupDescription)) {
+                                        $displayName = $groupDescription;
+                                    } elseif ($groupFullName && !$isLikelyCode($groupFullName) && $groupFullName !== 'Unknown Vehicle') {
+                                        $displayName = $groupFullName;
+                                    }
 
                                     if (!$displayName || $displayName === 'Unknown Vehicle') {
                                         $displayName = $parsedSipp['dynamic_name'] ?? null;
