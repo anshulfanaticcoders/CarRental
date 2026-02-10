@@ -631,6 +631,13 @@ class SearchController extends Controller
                 $startTimeForProvider = $clampTimeToBusinessHours($startTimeForProvider, $providerDefaultTime($providerToFetch), $providerToFetch);
                 $endTimeForProvider = $clampTimeToBusinessHours($endTimeForProvider, $providerDefaultTime($providerToFetch), $providerToFetch);
 
+                // In mixed mode, provider dropoff IDs are not compatible across providers.
+                // Always default to the current provider's pickup ID to avoid empty results.
+                $dropoffIdForProvider = $validated['dropoff_location_id'] ?? $currentProviderLocationId;
+                if ($providerName === 'mixed') {
+                    $dropoffIdForProvider = $currentProviderLocationId;
+                }
+
                 if ($providerToFetch === 'greenmotion' || $providerToFetch === 'usave') {
                     try {
                         $this->greenMotionService->setProvider($providerToFetch);
@@ -643,7 +650,7 @@ class SearchController extends Controller
                             'username' => $validated['username'] ?? null,
                             'full_credit' => $validated['full_credit'] ?? null,
                             'promocode' => $validated['promocode'] ?? null,
-                            'dropoff_location_id' => $validated['dropoff_location_id'] ?? null,
+                            'dropoff_location_id' => $dropoffIdForProvider,
                         ];
 
                         $gmResponse = $this->greenMotionService->getVehicles(
@@ -1362,7 +1369,7 @@ class SearchController extends Controller
                 } elseif ($providerToFetch === 'favrica') {
                     try {
                         Log::info('Attempting to fetch Favrica vehicles for location ID: ' . $currentProviderLocationId);
-                        $dropoffId = $validated['dropoff_location_id'] ?? $currentProviderLocationId;
+                        $dropoffId = $dropoffIdForProvider;
                         $requestCurrency = $this->toFavricaRequestCurrency($validated['currency'] ?? 'EUR');
 
                         $favricaLocationMap = [];
@@ -1579,7 +1586,7 @@ class SearchController extends Controller
                 } elseif ($providerToFetch === 'xdrive') {
                     try {
                         Log::info('Attempting to fetch XDrive vehicles for location ID: ' . $currentProviderLocationId);
-                        $dropoffId = $validated['dropoff_location_id'] ?? $currentProviderLocationId;
+                        $dropoffId = $dropoffIdForProvider;
                         $requestCurrency = $this->toXDriveRequestCurrency($validated['currency'] ?? 'EUR');
 
                         $xdriveLocationMap = [];

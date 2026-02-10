@@ -175,10 +175,10 @@ return [
     | helps validate user input and limit the scope of conversions.
     |
     */
-    'supported_currencies' => explode(',', env(
+    'supported_currencies' => array_values(array_filter(array_map('trim', explode(',', env(
         'CURRENCY_SUPPORTED',
-        'USD,EUR,GBP,JPY,AUD,CAD,CHF,CNH,HKD,SGD,SEK,KRW,NOK,NZD,INR,MXN,BRL,RUB,ZAR,AED'
-    )),
+        'USD,EUR,GBP,JPY,AUD,CAD,CHF,CNY,CNH,HKD,SGD,SEK,KRW,NOK,NZD,INR,MXN,BRL,RUB,ZAR,AED,MAD,TRY,JOD,ISK,AZN,MYR,OMR,UGX,NIO,CRC,PAB,GTQ,HNL,SVC,BZD,JMD,BBD,TTD,DOP,HTG,XCD,PLN,CZK,HUF,RON,BGN,IDR,THB,PHP,VND,TWD,BDT,PKR,LKR,MMK,KHR,LAK,NPR,BTN,FJD,PGK,SBD,VUV,WST,TOP,KID,SAR,ILS,QAR,KWD,BHD,LBP,SYP,IQD,IRR,AFN,EGP,LYD,TND,DZD,SDG,YER,NGN,GHS,TZS,ZMW,ZWL,MWK,MZN,AOA,BWP,NAD,SZL,LSL,LRD,SLL,GNF,XOF,XAF,CDF,RWF,BIF,DJF,ERN,ETB,SOS,GMD,CVE,STN,SHP,SCR,MUR,MGA,KMF,ARS,CLP,COP,PEN,VES,UYU,PYG,BOB,GYD,SRD,UAH,BYN,MDL,GEL,AMD,KZT,KGS,UZS,TJS,TMT,CUP,ANG,AWG,CWG,BMD,KYD,MVR,XPF'
+    ))))),
 
     /*
     |--------------------------------------------------------------------------
