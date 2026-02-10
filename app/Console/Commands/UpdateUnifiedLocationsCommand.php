@@ -2,9 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ProviderLocation;
-use App\Models\UnifiedLocation;
-use App\Models\UnifiedLocationMapping;
 use Illuminate\Console\Command;
 
 class UpdateUnifiedLocationsCommand extends Command
@@ -21,7 +18,7 @@ class UpdateUnifiedLocationsCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Updates the unified_locations.json file with fuzzy matching to merge similar locations across providers.';
+    protected $description = 'Updates unified_locations.json by grouping locations by city and location type.';
 
     protected $greenMotionService;
     protected $okMobilityService;
@@ -327,346 +324,261 @@ class UpdateUnifiedLocationsCommand extends Command
             return [];
         }
 
-        $this->persistProviderLocations($allLocations);
+        $groups = [];
+        foreach ($allLocations as $location) {
+            $normalized = $this->normalizeLocationForGrouping($location);
+            $key = $normalized['key'];
+            if ($key === '|') {
+                continue;
+            }
 
-        [$autoLocations, $manualClusters, $blockedClusters] = $this->splitLocationsForOverrides($allLocations);
+            if (!isset($groups[$key])) {
+                $groups[$key] = [
+                    'city' => $normalized['city'],
+                    'type' => $normalized['type'],
+                    'locations' => [],
+                ];
+            }
 
-        $this->info('Auto-clustering ' . count($autoLocations) . ' locations (manual overrides excluded).');
+            $groups[$key]['locations'][] = $normalized['location'];
+        }
 
-        $this->info('Starting fuzzy matching with ' . count($allLocations) . ' total locations...');
-        $this->info('Using similarity threshold: ' . ($this->locationMatchingService->getSimilarityThreshold() * 100) . '%');
-
-        // Use fuzzy matching to cluster similar locations
-        $clusters = $this->locationMatchingService->clusterLocations($autoLocations);
-
-        $this->info('Created ' . count($clusters) . ' location clusters.');
-        $this->info('Merged ' . (count($autoLocations) - count($clusters)) . ' duplicate locations.');
-
-        // Build unified locations from clusters
         $unifiedLocations = [];
-        foreach ($clusters as $cluster) {
-            $unified = $this->locationMatchingService->buildUnifiedLocation($cluster);
-            if (empty($unified['name'])) {
-                continue;
-            }
+        foreach ($groups as $group) {
+            $unified = $this->buildUnifiedLocationFromGroup(
+                $group['locations'],
+                $group['city'],
+                $group['type']
+            );
 
-            $unifiedLocation = $this->upsertAutoUnifiedLocation($unified);
-            $unified['unified_location_id'] = $unifiedLocation->id;
-
-            foreach ($cluster as $location) {
-                $this->upsertMapping($location, $unifiedLocation->id, 'auto_cluster');
+            if (!empty($unified)) {
+                $unifiedLocations[] = $unified;
             }
-
-            $unifiedLocations[] = $unified;
-
-            if (count($cluster) > 1) {
-                $providerNames = collect($unified['providers'])->pluck('provider')->unique()->join(', ');
-                $this->comment(sprintf(
-                    '  Merged %d locations into: "%s" [%s]%s',
-                    count($cluster),
-                    $unified['name'],
-                    $providerNames ?: 'internal',
-                    $unified['our_location_id'] ? ' (+ internal)' : ''
-                ));
-            }
-        }
-
-        foreach ($manualClusters as $manualCluster) {
-            $cluster = $manualCluster['locations'];
-            $manualLocation = $manualCluster['unified_location'];
-            $unified = $this->locationMatchingService->buildUnifiedLocation($cluster);
-            if (empty($unified['name'])) {
-                continue;
-            }
-            $unified = $this->applyManualUnifiedLocation($unified, $manualLocation);
-            $unifiedLocations[] = $unified;
-        }
-
-        foreach ($blockedClusters as $cluster) {
-            $unified = $this->locationMatchingService->buildUnifiedLocation($cluster);
-            if (empty($unified['name'])) {
-                continue;
-            }
-            $unifiedLocation = $this->upsertAutoUnifiedLocation($unified);
-            $unified['unified_location_id'] = $unifiedLocation->id;
-            foreach ($cluster as $location) {
-                $this->upsertMapping($location, $unifiedLocation->id, 'blocked', true);
-            }
-            $unifiedLocations[] = $unified;
         }
 
         return $unifiedLocations;
     }
 
-    private function persistProviderLocations(array $locations): void
+    private function normalizeLocationForGrouping(array $location): array
     {
-        $records = [];
-        $now = now();
+        $label = trim((string) ($location['label'] ?? $location['name'] ?? ''));
+        $city = trim((string) ($location['city'] ?? ''));
+        $type = strtolower(trim((string) ($location['location_type'] ?? '')));
+
+        if ($type === '' || $type === 'unknown') {
+            $type = $this->locationMatchingService->detectLocationType($location);
+        }
+        if ($type === 'unknown') {
+            $type = '';
+        }
+
+        if ($city === '') {
+            $city = $this->extractCityFromLabel($label, $type);
+        }
+
+        $cityDisplay = $this->normalizeTitleCase($city);
+        if ($cityDisplay === '') {
+            $cityDisplay = $this->normalizeTitleCase($label);
+        }
+
+        $typeDisplay = $type !== '' ? strtolower($type) : '';
+        $key = $this->locationSearchService->normalizeString($cityDisplay) . '|' . $this->locationSearchService->normalizeString($typeDisplay);
+
+        if ($cityDisplay !== '') {
+            $location['city'] = $cityDisplay;
+        }
+        $location['label'] = $label;
+        $location['location_type'] = $typeDisplay !== '' ? $typeDisplay : 'unknown';
+
+        return [
+            'key' => $key,
+            'city' => $cityDisplay,
+            'type' => $typeDisplay,
+            'location' => $location,
+        ];
+    }
+
+    private function buildUnifiedLocationFromGroup(array $locations, string $city, string $type): array
+    {
+        if (empty($locations) || $city === '') {
+            return [];
+        }
+
+        $typeLabel = $type !== '' ? $this->normalizeTitleCase($type) : '';
+        $name = trim($city . ($typeLabel !== '' ? ' ' . $typeLabel : ''));
+
+        $aliases = [];
+        $providers = [];
+        $ourLocationId = null;
+        $iataCodes = [];
+        $country = null;
+        $latSum = 0.0;
+        $lonSum = 0.0;
+        $coordCount = 0;
 
         foreach ($locations as $location) {
-            $provider = $location['source'] ?? null;
-            $providerLocationId = $this->resolveProviderLocationId($location);
-
-            if (!$provider || !$providerLocationId) {
-                continue;
+            $label = trim((string) ($location['label'] ?? $location['name'] ?? ''));
+            if ($label !== '' && $label !== $name) {
+                $aliases[] = $label;
             }
 
-            $rawName = $location['label'] ?? $location['name'] ?? null;
-            $rawAddress = $location['below_label'] ?? null;
-            $rawCity = $location['city'] ?? null;
-            $rawState = $location['state'] ?? null;
-            $rawCountry = $location['country'] ?? null;
-            $rawLatitude = is_numeric($location['latitude'] ?? null) ? (float) $location['latitude'] : null;
-            $rawLongitude = is_numeric($location['longitude'] ?? null) ? (float) $location['longitude'] : null;
-            $rawIata = trim((string) ($location['iata'] ?? '')) ?: null;
-            $rawType = $location['location_type'] ?? null;
-
-            $typeNorm = strtolower(trim((string) $rawType));
-            if ($typeNorm === '' || $typeNorm === 'unknown') {
-                $typeNorm = $this->locationMatchingService->detectLocationType($location);
+            $iata = $this->extractIataCode($location);
+            if ($iata !== '') {
+                $iataCodes[] = $iata;
             }
 
-            $iataNorm = $rawIata ? strtoupper($rawIata) : null;
-            if ($iataNorm !== null && !preg_match('/^[A-Z]{3}$/', $iataNorm)) {
-                $iataNorm = null;
+            if (($location['source'] ?? '') === 'internal') {
+                $ourLocationId = $location['id'] ?? null;
+            } elseif (!empty($location['provider_location_id'])) {
+                $providerData = [
+                    'provider' => $location['source'] ?? 'unknown',
+                    'pickup_id' => $location['provider_location_id'],
+                    'original_name' => $label,
+                    'dropoffs' => [],
+                ];
+
+                $exists = false;
+                foreach ($providers as $existing) {
+                    if (
+                        $existing['provider'] === $providerData['provider'] &&
+                        $existing['pickup_id'] === $providerData['pickup_id']
+                    ) {
+                        $exists = true;
+                        break;
+                    }
+                }
+
+                if (!$exists) {
+                    $providers[] = $providerData;
+                }
             }
 
-            $records[] = [
-                'provider' => $provider,
-                'provider_location_id' => (string) $providerLocationId,
-                'raw_name' => $rawName,
-                'raw_address' => $rawAddress,
-                'raw_city' => $rawCity,
-                'raw_state' => $rawState,
-                'raw_country' => $rawCountry,
-                'raw_latitude' => $rawLatitude,
-                'raw_longitude' => $rawLongitude,
-                'raw_iata' => $rawIata,
-                'raw_type' => $rawType,
-                'name_norm' => $this->locationSearchService->normalizeString((string) $rawName),
-                'city_norm' => $this->locationSearchService->normalizeString((string) $rawCity),
-                'country_norm' => $this->locationSearchService->normalizeString((string) $rawCountry),
-                'type_norm' => $typeNorm,
-                'iata_norm' => $iataNorm,
-                'geohash' => null,
-                'last_seen_at' => $now,
-                'created_at' => $now,
-                'updated_at' => $now,
+            if ($country === null && !empty($location['country'])) {
+                $country = $location['country'];
+            }
+
+            if ($this->hasValidCoordinates($location)) {
+                $latSum += (float) $location['latitude'];
+                $lonSum += (float) $location['longitude'];
+                $coordCount++;
+            }
+        }
+
+        $aliases = array_values(array_unique($aliases));
+        $iataCodes = array_values(array_unique($iataCodes));
+        $resolvedIata = count($iataCodes) === 1 ? $iataCodes[0] : null;
+
+        $avgLat = $coordCount > 0 ? $latSum / $coordCount : 0;
+        $avgLon = $coordCount > 0 ? $lonSum / $coordCount : 0;
+
+        return [
+            'unified_location_id' => crc32(strtolower($name)),
+            'name' => $name,
+            'aliases' => $aliases,
+            'city' => $city,
+            'country' => $country,
+            'latitude' => round($avgLat, 6),
+            'longitude' => round($avgLon, 6),
+            'location_type' => $type !== '' ? $type : 'unknown',
+            'iata' => $resolvedIata,
+            'providers' => $providers,
+            'our_location_id' => $ourLocationId,
+        ];
+    }
+
+    private function extractCityFromLabel(string $label, string $type): string
+    {
+        $label = trim($label);
+        if ($label === '') {
+            return '';
+        }
+
+        $cleanLabel = preg_replace('/\s*[\(\[]\s*[A-Za-z]{3}\s*[\)\]]\s*/', ' ', $label);
+        $cleanLabel = trim(preg_replace('/\s+/', ' ', (string) $cleanLabel));
+        $lowerLabel = strtolower($cleanLabel);
+
+        $suffixes = [];
+        if ($type === 'airport') {
+            $suffixes = ['international airport', 'intl airport', 'intl. airport', 'airport'];
+        } elseif ($type === 'downtown') {
+            $suffixes = ['downtown', 'city center', 'centre ville', 'zentrum', 'central'];
+        } elseif ($type === 'port') {
+            $suffixes = ['port', 'harbour', 'harbor', 'ferry'];
+        } elseif ($type === 'train') {
+            $suffixes = ['train station', 'railway station', 'station', 'gare', 'bahnhof'];
+        } else {
+            $suffixes = [
+                'international airport',
+                'intl airport',
+                'intl. airport',
+                'airport',
+                'downtown',
+                'city center',
+                'centre ville',
+                'zentrum',
+                'central',
+                'port',
+                'harbour',
+                'harbor',
+                'ferry',
+                'train station',
+                'railway station',
+                'station',
+                'gare',
+                'bahnhof',
             ];
         }
 
-        if (empty($records)) {
-            return;
+        foreach ($suffixes as $suffix) {
+            if (str_ends_with($lowerLabel, $suffix)) {
+                $city = trim(substr($cleanLabel, 0, -strlen($suffix)));
+                if ($city !== '') {
+                    return $city;
+                }
+            }
         }
 
-        $updateColumns = [
-            'raw_name',
-            'raw_address',
-            'raw_city',
-            'raw_state',
-            'raw_country',
-            'raw_latitude',
-            'raw_longitude',
-            'raw_iata',
-            'raw_type',
-            'name_norm',
-            'city_norm',
-            'country_norm',
-            'type_norm',
-            'iata_norm',
-            'geohash',
-            'last_seen_at',
-            'updated_at',
-        ];
-
-        foreach (array_chunk($records, 500) as $chunk) {
-            ProviderLocation::upsert($chunk, ['provider', 'provider_location_id'], $updateColumns);
-        }
+        return $cleanLabel;
     }
 
-    private function splitLocationsForOverrides(array $locations): array
+    private function extractIataCode(array $location): string
     {
-        $locationByKey = [];
-        foreach ($locations as $location) {
-            $provider = $location['source'] ?? null;
-            $providerLocationId = $this->resolveProviderLocationId($location);
-            if (!$provider || !$providerLocationId) {
-                continue;
-            }
-            $locationByKey[$provider . '|' . $providerLocationId] = $location;
+        $iata = trim((string) ($location['iata'] ?? ''));
+        if ($iata !== '' && preg_match('/^[A-Za-z]{3}$/', $iata)) {
+            return strtoupper($iata);
         }
 
-        $manualMappings = UnifiedLocationMapping::where('status', 'manual')->get();
-        $blockedMappings = UnifiedLocationMapping::where('status', 'blocked')->get();
-
-        $manualLocationIds = $manualMappings->pluck('unified_location_id')->unique()->values()->all();
-        $manualLocations = UnifiedLocation::whereIn('id', $manualLocationIds)->get()->keyBy('id');
-
-        $manualClusters = [];
-        $blockedClusters = [];
-        $excludedKeys = [];
-
-        foreach ($manualMappings as $mapping) {
-            $key = $mapping->provider . '|' . $mapping->provider_location_id;
-            if (!isset($locationByKey[$key])) {
-                continue;
-            }
-
-            $manualLocation = $manualLocations->get($mapping->unified_location_id);
-            if (!$manualLocation) {
-                continue;
-            }
-
-            if (!isset($manualClusters[$mapping->unified_location_id])) {
-                $manualClusters[$mapping->unified_location_id] = [
-                    'unified_location' => $manualLocation,
-                    'locations' => [],
-                ];
-            }
-
-            $manualClusters[$mapping->unified_location_id]['locations'][] = $locationByKey[$key];
-            $excludedKeys[$key] = true;
+        $label = (string) ($location['label'] ?? $location['name'] ?? '');
+        if (preg_match('/[\(\[]\s*([A-Za-z]{3})\s*[\)\]]/', $label, $m)) {
+            return strtoupper($m[1]);
         }
 
-        foreach ($blockedMappings as $mapping) {
-            $key = $mapping->provider . '|' . $mapping->provider_location_id;
-            if (!isset($locationByKey[$key])) {
-                continue;
-            }
-
-            $blockedClusters[] = [$locationByKey[$key]];
-            $excludedKeys[$key] = true;
-        }
-
-        $autoLocations = [];
-        foreach ($locations as $location) {
-            $provider = $location['source'] ?? null;
-            $providerLocationId = $this->resolveProviderLocationId($location);
-            if (!$provider || !$providerLocationId) {
-                $autoLocations[] = $location;
-                continue;
-            }
-            $key = $provider . '|' . $providerLocationId;
-            if (!isset($excludedKeys[$key])) {
-                $autoLocations[] = $location;
-            }
-        }
-
-        return [$autoLocations, array_values($manualClusters), $blockedClusters];
+        return '';
     }
 
-    private function upsertAutoUnifiedLocation(array $unified): UnifiedLocation
+    private function hasValidCoordinates(array $location): bool
     {
-        $matchKey = $this->buildMatchKey($unified);
+        $lat = $location['latitude'] ?? null;
+        $lon = $location['longitude'] ?? null;
 
-        $payload = [
-            'match_key' => $matchKey,
-            'name' => $unified['name'],
-            'aliases' => $unified['aliases'] ?? [],
-            'city' => $unified['city'] ?? null,
-            'country' => $unified['country'] ?? null,
-            'latitude' => $unified['latitude'] ?? null,
-            'longitude' => $unified['longitude'] ?? null,
-            'location_type' => $unified['location_type'] ?? 'unknown',
-            'iata' => $unified['iata'] ?? null,
-            'confidence' => 0,
-            'is_manual' => 0,
-            'is_active' => 1,
-        ];
-
-        $existing = UnifiedLocation::where('match_key', $matchKey)
-            ->where('is_manual', 0)
-            ->first();
-
-        if ($existing) {
-            $existing->fill($payload);
-            $existing->save();
-            return $existing;
+        if (!is_numeric($lat) || !is_numeric($lon)) {
+            return false;
         }
 
-        return UnifiedLocation::create($payload);
-    }
+        $lat = (float) $lat;
+        $lon = (float) $lon;
 
-    private function buildMatchKey(array $unified): string
-    {
-        $nameKey = $this->locationSearchService->normalizeString((string) ($unified['name'] ?? ''));
-        $cityKey = $this->locationSearchService->normalizeString((string) ($unified['city'] ?? ''));
-        $countryKey = $this->locationSearchService->normalizeString((string) ($unified['country'] ?? ''));
-        $iataKey = strtoupper(trim((string) ($unified['iata'] ?? '')));
-
-        return implode('|', [$nameKey, $cityKey, $countryKey, $iataKey]);
-    }
-
-    private function upsertMapping(array $location, int $unifiedLocationId, string $reason, bool $allowBlockedUpdate = false): void
-    {
-        $provider = $location['source'] ?? null;
-        $providerLocationId = $this->resolveProviderLocationId($location);
-
-        if (!$provider || !$providerLocationId) {
-            return;
+        if ($lat == 0.0 && $lon == 0.0) {
+            return false;
         }
 
-        $mapping = UnifiedLocationMapping::where('provider', $provider)
-            ->where('provider_location_id', $providerLocationId)
-            ->first();
-
-        if ($mapping) {
-            if ($mapping->status === 'manual') {
-                return;
-            }
-            if ($mapping->status === 'blocked' && !$allowBlockedUpdate) {
-                return;
-            }
-            $mapping->unified_location_id = $unifiedLocationId;
-            if ($mapping->status !== 'blocked') {
-                $mapping->status = 'auto';
-            }
-            $mapping->match_reason = $reason;
-            $mapping->last_matched_at = now();
-            $mapping->save();
-            return;
-        }
-
-        UnifiedLocationMapping::create([
-            'unified_location_id' => $unifiedLocationId,
-            'provider' => $provider,
-            'provider_location_id' => $providerLocationId,
-            'status' => $allowBlockedUpdate ? 'blocked' : 'auto',
-            'match_reason' => $reason,
-            'last_matched_at' => now(),
-        ]);
+        return !($lat < -90 || $lat > 90 || $lon < -180 || $lon > 180);
     }
-
-    private function applyManualUnifiedLocation(array $unified, UnifiedLocation $manualLocation): array
-    {
-        $unified['unified_location_id'] = $manualLocation->id;
-        $unified['name'] = $manualLocation->name;
-        $unified['aliases'] = $manualLocation->aliases ?? [];
-        $unified['city'] = $manualLocation->city;
-        $unified['country'] = $manualLocation->country;
-        $unified['latitude'] = $manualLocation->latitude;
-        $unified['longitude'] = $manualLocation->longitude;
-        $unified['location_type'] = $manualLocation->location_type ?? $unified['location_type'] ?? 'unknown';
-        $unified['iata'] = $manualLocation->iata;
-
-        return $unified;
-    }
-
-    private function resolveProviderLocationId(array $location): ?string
-    {
-        $id = $location['provider_location_id'] ?? $location['id'] ?? null;
-        if ($id === null || $id === '') {
-            return null;
-        }
-        return (string) $id;
-    }
-
 
     private function saveUnifiedLocations(array $locations)
     {
         $filePath = public_path('unified_locations.json');
         $tmpPath = $filePath . '.tmp';
-        $backupPath = $filePath . '.bak';
 
         $payload = json_encode($locations, JSON_PRETTY_PRINT);
         if ($payload === false) {
@@ -685,7 +597,6 @@ class UpdateUnifiedLocationsCommand extends Command
             }
 
             if (\Illuminate\Support\Facades\File::exists($filePath)) {
-                \Illuminate\Support\Facades\File::copy($filePath, $backupPath);
                 \Illuminate\Support\Facades\File::delete($filePath);
             }
 
