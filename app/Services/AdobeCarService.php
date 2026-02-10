@@ -119,7 +119,7 @@ class AdobeCarService
             'returnOffice' => $params['returnOffice'] ?? $params['returnoffice'] ?? $params['pickupOffice'] ?? $params['pickupoffice'] ?? '',
             'startDate' => $params['startDate'] ?? $params['startdate'] ?? '',
             'endDate' => $params['endDate'] ?? $params['enddate'] ?? '',
-            'customerCode' => 'Z11338' // Valid Adobe customer code
+            'customerCode' => $this->customerCode
         ];
 
         // Add promotion code if provided
@@ -129,7 +129,9 @@ class AdobeCarService
 
         logger()->info('Adobe API: Query parameters', ['queryParams' => $queryParams]);
 
-        $response = Http::withToken($token)->get(rtrim($this->baseUrl, '/') . '/Client/GetAvailabilityWithPrice', $queryParams);
+        $response = Http::withOptions(['verify' => false])
+            ->withToken($token)
+            ->get(rtrim($this->baseUrl, '/') . '/Client/GetAvailabilityWithPrice', $queryParams);
 
         logger()->info('Adobe API: Response received', [
             'status' => $response->status(),
