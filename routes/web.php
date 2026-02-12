@@ -384,6 +384,7 @@ Route::group([
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
         Route::get('/user', [ProfileController::class, 'show'])->name('user.profile');
         Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
+        Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
 
         // Message routes
         Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');
@@ -415,9 +416,7 @@ Route::group([
         Route::get('/profile/completion', [ProfileController::class, 'getProfileCompletion'])->name('profile.completion');
     });
 
-    // Open routes for non-logged-in users
-    Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
-    Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
+
     Route::get('/s', [SearchController::class, 'search'])->name('search');
     Route::post('/store-search', [SearchController::class, 'storeSearchData'])->name('search.store');
     Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
