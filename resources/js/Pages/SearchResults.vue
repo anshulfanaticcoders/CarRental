@@ -159,9 +159,31 @@ const props = defineProps({
     locale: String, // Added locale prop
     okMobilityVehicles: Object, // New: OK Mobility vehicles data
     renteonVehicles: Object, // New: Renteon vehicles data
+    providerStatus: Array,
+    searchError: String,
     optionalExtras: Array, // GreenMotion optional extras
     locationName: String, // Location Name
 });
+
+const formatProviderLabel = (value) => {
+    const text = `${value || ''}`.trim();
+    if (!text) return 'Provider';
+    return text
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const providerStatus = computed(() => props.providerStatus || []);
+const providerStatusErrors = computed(() =>
+    providerStatus.value.filter((item) => item && item.status === 'error')
+);
+const providerStatusErrorLabels = computed(() => {
+    const labels = providerStatusErrors.value.map((item) => formatProviderLabel(item.provider));
+    return Array.from(new Set(labels)).filter(Boolean);
+});
+const hasProviderErrors = computed(() => providerStatusErrorLabels.value.length > 0);
+const searchErrorMessage = computed(() => `${props.searchError || ''}`.trim());
+const hasSearchError = computed(() => searchErrorMessage.value.length > 0);
 
 // SPA Booking State
 const bookingStep = ref('results'); // 'results' | 'extras' | 'checkout'
@@ -2214,7 +2236,7 @@ watch(
                                                 @change="form.transmission = form.transmission === item.value ? '' : item.value"
                                                 class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
                                             <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
                                             item.count }}</span>
@@ -2235,7 +2257,7 @@ watch(
                                                 @change="form.fuel = form.fuel === item.value ? '' : item.value"
                                                 class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
                                             <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
                                             item.count }}</span>
@@ -2292,7 +2314,7 @@ watch(
                     <div class="search-location-text">
                         <h1>Car Rental in {{ form.where || 'Selected Location' }}</h1>
                         <p>{{ form.country || 'Morocco' }} • {{ vehicles?.total || clientFilteredVehicles?.length || 0
-                            }} cars available</p>
+                        }} cars available</p>
                     </div>
                 </div>
                 <div class="search-dates-badge">
@@ -2328,6 +2350,34 @@ watch(
             </div>
         </div>
     </section>
+
+    <div v-if="bookingStep === 'results' && (hasSearchError || hasProviderErrors)"
+        class="main-container mx-auto px-4 pb-2">
+        <div v-if="hasSearchError"
+            class="rounded-xl border border-rose-200 bg-rose-50 text-rose-900 px-4 py-3 text-sm flex items-start gap-3 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v4m0 4h.01M10.29 3.86l-7.09 12.27A2 2 0 0 0 4.91 19h14.18a2 2 0 0 0 1.72-2.87L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            </svg>
+            <div>
+                <div class="font-semibold">Search is unavailable right now.</div>
+                <div class="text-rose-800">{{ searchErrorMessage }}</div>
+            </div>
+        </div>
+        <div v-if="hasProviderErrors"
+            class="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 text-sm flex items-start gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v4m0 4h.01M10.29 3.86l-7.09 12.27A2 2 0 0 0 4.91 19h14.18a2 2 0 0 0 1.72-2.87L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            </svg>
+            <div>
+                <div class="font-semibold">Some providers did not return results.</div>
+                <div class="text-amber-800">Unavailable: {{ providerStatusErrorLabels.join(', ') }}.</div>
+            </div>
+        </div>
+    </div>
 
 
 
@@ -2580,18 +2630,18 @@ watch(
                 :class="[viewMode === 'list' ? 'list-view' : 'grid-view']">
                 <CarListingCard v-for="vehicle in paginatedVehicles" :key="vehicle.id" :vehicle="vehicle" :form="form"
                     :view-mode="viewMode" :favoriteStatus="favoriteStatus[vehicle.id] || false"
-                    :favoriteLoading="favoriteLoading[vehicle.id] || false"
-                    :popEffect="popEffect[vehicle.id] || false" @toggleFavourite="toggleFavourite"
-                    @saveSearchUrl="saveSearchUrl" @select-package="handlePackageSelection">
-                <template #dailyPrice>
-                    <div class="flex items-baseline gap-1">
-                        <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
-                            {{ getCurrencySymbol(selectedCurrency) }}{{
-                                getVehiclePriceConverted(vehicle)?.toFixed(2)
-                            }}
-                        </span>
-                    </div>
-                </template>
+                    :favoriteLoading="favoriteLoading[vehicle.id] || false" :popEffect="popEffect[vehicle.id] || false"
+                    @toggleFavourite="toggleFavourite" @saveSearchUrl="saveSearchUrl"
+                    @select-package="handlePackageSelection">
+                    <template #dailyPrice>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
+                                {{ getCurrencySymbol(selectedCurrency) }}{{
+                                    getVehiclePriceConverted(vehicle)?.toFixed(2)
+                                }}
+                            </span>
+                        </div>
+                    </template>
                 </CarListingCard>
             </div>
 
@@ -2636,8 +2686,7 @@ watch(
             :pickup-date="form.date_from" :pickup-time="form.start_time" :dropoff-date="form.date_to"
             :dropoff-time="form.end_time" :number-of-days="numberOfRentalDays"
             :location-instructions="locationInstructions" :location-details="locationDetails"
-            :driver-requirements="driverRequirements" :terms="termsData"
-            :payment-percentage="paymentPercentage"
+            :driver-requirements="driverRequirements" :terms="termsData" :payment-percentage="paymentPercentage"
             @back="handleBackToResults" @proceed-to-checkout="handleProceedToCheckout" />
 
         <BookingCheckoutStep v-else-if="bookingStep === 'checkout' && selectedVehicle" class="w-full"
@@ -2649,10 +2698,9 @@ watch(
             :dropoff-time="form.end_time" :pickup-location="form.where"
             :dropoff-location="form.dropoff_where || form.where" :number-of-days="numberOfRentalDays"
             :currency-symbol="getCurrencySymbol(selectedCurrency)" :selected-currency-code="selectedCurrency"
-            :payment-percentage="paymentPercentage"
-            :totals="selectedCheckoutData.totals" :vehicle-total="selectedCheckoutData.vehicle_total"
-            :location-details="locationDetails" :location-instructions="locationInstructions"
-            :driver-requirements="driverRequirements" :terms="termsData"
+            :payment-percentage="paymentPercentage" :totals="selectedCheckoutData.totals"
+            :vehicle-total="selectedCheckoutData.vehicle_total" :location-details="locationDetails"
+            :location-instructions="locationInstructions" :driver-requirements="driverRequirements" :terms="termsData"
             @back="handleBackToExtras" />
     </div>
 

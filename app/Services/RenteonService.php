@@ -99,7 +99,7 @@ class RenteonService
 
     /**
      * Search for available vehicles from Renteon API
-     * Uses /api/bookings/search (per Renteon docs)
+     * Uses /api/bookings/availability (per Renteon docs)
      *
      * @param string $pickupCode Pickup location code
      * @param string $dropoffCode Dropoff location code
@@ -123,23 +123,72 @@ class RenteonService
             return [];
         }
 
+        $pickupDateTime = $this->formatLocalDateTime($startDate, $startTime);
+        $dropoffDateTime = $this->formatLocalDateTime($endDate, $endTime);
+
+        if (!$pickupDateTime || !$dropoffDateTime) {
+            Log::warning('Renteon availability missing dates', [
+                'pickup_date' => $startDate,
+                'pickup_time' => $startTime,
+                'dropoff_date' => $endDate,
+                'dropoff_time' => $endTime,
+            ]);
+            return [];
+        }
+
+        $prepaid = array_key_exists('prepaid', $options) ? (bool) $options['prepaid'] : false;
+        $includeOnRequest = array_key_exists('include_on_request', $options)
+            ? (bool) $options['include_on_request']
+            : true;
+
         $data = [
-            'Provider' => $provider,
-            'PickupLocationCode' => $pickupCode,
-            'DropoffLocationCode' => $dropoffCode ?? $pickupCode,
-            'PickupDate' => $startDate,
-            'DropoffDate' => $endDate,
+            'Prepaid' => $prepaid,
+            'IncludeOnRequest' => $includeOnRequest,
+            'PickupLocation' => $pickupCode,
+            'DropOffLocation' => $dropoffCode ?? $pickupCode,
+            'PickupDate' => $pickupDateTime,
+            'DropOffDate' => $dropoffDateTime,
+            'Currency' => $options['currency'] ?? 'EUR',
+            'Providers' => [
+                array_filter([
+                    'Code' => $provider,
+                    'PricelistCodes' => $options['pricelist_codes'] ?? null,
+                    'PickupOfficeIds' => $options['pickup_office_ids'] ?? null,
+                    'DropOffOfficeIds' => $options['dropoff_office_ids'] ?? null,
+                    'PromoCode' => $options['promo_code'] ?? null,
+                ], static fn($value) => $value !== null),
+            ],
         ];
+
+        if (!empty($options['car_categories']) && is_array($options['car_categories'])) {
+            $data['CarCategories'] = $options['car_categories'];
+        }
+
+        if (!empty($options['driver_age'])) {
+            $data['Drivers'] = [[
+                'DriverAge' => (int) $options['driver_age'],
+            ]];
+        }
+
+        if (array_key_exists('has_delivery', $options)) {
+            $data['HasDelivery'] = (bool) $options['has_delivery'];
+        }
+
+        if (array_key_exists('has_collection', $options)) {
+            $data['HasCollection'] = (bool) $options['has_collection'];
+        }
 
         Log::info('Renteon search API call', [
             'provider' => $provider,
             'pickup_code' => $pickupCode,
             'dropoff_code' => $dropoffCode ?? $pickupCode,
-            'pickup_date' => $startDate,
-            'dropoff_date' => $endDate,
+            'pickup_date' => $pickupDateTime,
+            'dropoff_date' => $dropoffDateTime,
+            'prepaid' => $prepaid,
+            'include_on_request' => $includeOnRequest,
         ]);
 
-        $response = $this->makeRequest('POST', 'api/bookings/search', $data);
+        $response = $this->makeRequest('POST', 'api/bookings/availability', $data);
 
         if (is_array($response) && !empty($response)) {
             $vehicles = $response;
@@ -195,13 +244,8 @@ class RenteonService
                     'providers' => $providerCodes,
                 ]);
             } else {
-                // Get all available providers from Renteon
-                $providers = $this->getProviders();
-                if (!$providers) {
-                    Log::warning('Failed to get providers list from Renteon API');
-                    return [];
-                }
-                $providerCodes = array_column($providers, 'Code');
+                Log::info('Renteon: Multi-provider search skipped (no allowlist configured).');
+                return [];
             }
         } else {
             $providerCodes = $this->filterAllowedProviderCodes($providerCodes);
@@ -298,13 +342,9 @@ class RenteonService
 
     /**
      * Create booking
-     * This will need to be implemented based on the actual booking endpoint
      */
     public function createBooking($vehicleData, $customerData, $bookingData)
     {
-        // This is a placeholder - we'll need to check the actual booking endpoint
-        // from the Swagger documentation to implement this correctly
-
         $drivers = [];
         if (!empty($customerData['driver_age'])) {
             $drivers[] = [
@@ -333,8 +373,8 @@ class RenteonService
             'CarCategory' => $vehicleData['sipp_code'] ?? null,
             'PickupOfficeId' => $vehicleData['pickup_office_id'] ?? null,
             'DropOffOfficeId' => $vehicleData['dropoff_office_id'] ?? null,
-            'PickupDate' => $vehicleData['pickup_date'] ?? null,
-            'DropOffDate' => $vehicleData['dropoff_date'] ?? null,
+            'PickupDate' => $this->formatLocalDateTime($vehicleData['pickup_date'] ?? '', $vehicleData['pickup_time'] ?? ''),
+            'DropOffDate' => $this->formatLocalDateTime($vehicleData['dropoff_date'] ?? '', $vehicleData['dropoff_time'] ?? ''),
             'PricelistId' => $vehicleData['pricelist_id'] ?? null,
             'Currency' => $bookingData['currency'] ?? 'EUR',
             'Prepaid' => (bool) ($bookingData['prepaid'] ?? true),
@@ -374,7 +414,24 @@ class RenteonService
             'services_count' => count($services),
         ]);
 
-        return $this->makeRequest('POST', 'api/bookings/save', $payload);
+        $createResponse = $this->makeRequest('POST', 'api/bookings/create', $payload);
+        if (!$createResponse || !is_array($createResponse)) {
+            Log::error('Renteon booking create failed', [
+                'connector_id' => $payload['ConnectorId'],
+                'pickup_office_id' => $payload['PickupOfficeId'],
+            ]);
+            return null;
+        }
+
+        $savePayload = $createResponse;
+        if (!isset($savePayload['Services']) && !empty($services)) {
+            $savePayload['Services'] = $services;
+        }
+        if (!isset($savePayload['Drivers']) && !empty($drivers)) {
+            $savePayload['Drivers'] = $drivers;
+        }
+
+        return $this->makeRequest('POST', 'api/bookings/save', $savePayload);
     }
 
     /**
@@ -535,6 +592,8 @@ class RenteonService
 
         $vehicleId = $vehicle['id'] ?? md5($providerCode . '_' . $pickupCode . '_' . ($sippCode ?? 'unknown') . '_' . ($pickupOfficeId ?? ''));
 
+        $prepaid = $vehicle['Prepaid'] ?? false;
+
         return [
             'id' => 'renteon_' . $providerCode . '_' . $vehicleId,
             'source' => 'renteon',
@@ -567,7 +626,7 @@ class RenteonService
             'pricelist_id' => $vehicle['PricelistId'] ?? null,
             'pricelist_code' => $vehicle['PricelistCode'] ?? null,
             'is_on_request' => $vehicle['IsOnRequest'] ?? false,
-            'prepaid' => $vehicle['Prepaid'] ?? true,
+            'prepaid' => filter_var($prepaid, FILTER_VALIDATE_BOOLEAN),
             'extras' => $this->mapAvailableServices($vehicle['AvailableServices'] ?? [], $rentalDays),
             'features' => $vehicle['features'] ?? [],
             'airConditioning' => $parsedSipp['air_conditioning'] ?? false,
@@ -725,6 +784,9 @@ class RenteonService
     {
         $date = trim((string) $date);
         $time = trim((string) $time);
+        if ($date === '') {
+            return null;
+        }
         $time = $time !== '' ? $time : '09:00';
 
         if (strlen($time) === 5) {

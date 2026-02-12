@@ -19,6 +19,7 @@ use App\Services\LocautoRentService; // Import LocautoRentService
 use App\Services\RenteonService; // Import RenteonService
 use App\Services\FavricaService;
 use App\Services\XDriveService;
+use App\Services\Search\SearchOrchestratorService;
 use Illuminate\Support\Facades\Log; // Import Log facade
 
 class SearchController extends Controller
@@ -32,6 +33,7 @@ class SearchController extends Controller
     protected $renteonService;
     protected $favricaService;
     protected $xdriveService;
+    protected $searchOrchestratorService;
 
     public function __construct(
         GreenMotionService $greenMotionService,
@@ -42,7 +44,8 @@ class SearchController extends Controller
         LocautoRentService $locautoRentService,
         RenteonService $renteonService,
         FavricaService $favricaService,
-        XDriveService $xdriveService
+        XDriveService $xdriveService,
+        SearchOrchestratorService $searchOrchestratorService
     ) {
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
@@ -53,6 +56,7 @@ class SearchController extends Controller
         $this->renteonService = $renteonService;
         $this->favricaService = $favricaService;
         $this->xdriveService = $xdriveService;
+        $this->searchOrchestratorService = $searchOrchestratorService;
     }
 
     public function search(Request $request)
@@ -149,7 +153,7 @@ class SearchController extends Controller
             'matched_field' => 'nullable|string|in:location,city,state,country',
             'provider' => 'nullable|string', // Replaces 'source'
             'provider_pickup_id' => 'nullable|string', // Replaces 'greenmotion_location_id'
-            'unified_location_id' => 'nullable|integer', // Unified location ID for multi-provider search
+            'unified_location_id' => 'required|integer', // Unified location ID for multi-provider search
         ]);
 
         // Normalize incoming times early (handles empty string case).
@@ -172,8 +176,7 @@ class SearchController extends Controller
                        !empty($validated['provider_pickup_id']) ||
                        !empty($validated['unified_location_id']);
 
-        if (!$hasLocation) {
-            Log::info('No location provided - returning empty vehicle results');
+        $emptyResultsResponse = function (?string $searchError = null) use ($request, $validated) {
             $emptyVehicles = new \Illuminate\Pagination\LengthAwarePaginator(
                 collect(),
                 0,
@@ -186,6 +189,8 @@ class SearchController extends Controller
                 'vehicles' => $emptyVehicles,
                 'okMobilityVehicles' => $emptyVehicles,
                 'renteonVehicles' => $emptyVehicles,
+                'providerStatus' => [],
+                'searchError' => $searchError,
                 'filters' => $validated,
                 'pagination_links' => '',
                 'brands' => [],
@@ -201,6 +206,11 @@ class SearchController extends Controller
                 'optionalExtras' => [],
                 'locationName' => null,
             ]);
+        };
+
+        if (!$hasLocation) {
+            Log::info('No location provided - returning empty vehicle results');
+            return $emptyResultsResponse();
         }
 
         $internalVehiclesQuery = Vehicle::query()->whereIn('status', ['available', 'rented'])
@@ -478,149 +488,66 @@ class SearchController extends Controller
         // --- Provider Vehicle Fetching Logic ---
         $providerVehicles = collect();
         $okMobilityVehicles = collect(); // Separate collection for OK Mobility vehicles
-        $providerName = $validated['provider'] ?? null;
-        $currentProviderLocationId = $validated['provider_pickup_id'] ?? null;
-        $locationLat = $validated['latitude'] ?? null;
-        $locationLng = $validated['longitude'] ?? null;
-        $locationAddress = $validated['where'] ?? null;
+        $orchestratorResult = $this->searchOrchestratorService->resolveProviderEntries($validated);
+        $providerName = $orchestratorResult['providerName'] ?? 'mixed';
+        $matchedLocation = $orchestratorResult['matchedLocation'] ?? null;
+        $allProviderEntries = $orchestratorResult['providerEntries'] ?? [];
+        $locationLat = $orchestratorResult['locationLat'] ?? ($validated['latitude'] ?? null);
+        $locationLng = $orchestratorResult['locationLng'] ?? ($validated['longitude'] ?? null);
+        $locationAddress = $orchestratorResult['locationAddress'] ?? ($validated['where'] ?? null);
+        $orchestratorErrors = $orchestratorResult['errors'] ?? [];
 
-        // Fallback: If no provider ID, try to resolve by provider + location name
-        if (!$currentProviderLocationId && $providerName === 'renteon' && !empty($validated['where'])) {
-            $allLocations = json_decode(file_get_contents(public_path('unified_locations.json')), true);
-            $searchParam = trim((string) $validated['where']);
-            $matchedLocation = collect($allLocations)->first(function ($loc) use ($searchParam) {
-                $name = strtolower((string) ($loc['name'] ?? ''));
-                $city = strtolower((string) ($loc['city'] ?? ''));
-                $country = strtolower((string) ($loc['country'] ?? ''));
-                $needle = strtolower($searchParam);
-                return $needle !== '' && ($name === $needle || str_contains($name, $needle) || str_contains($city, $needle) || str_contains($country, $needle));
-            });
-
-            if ($matchedLocation && !empty($matchedLocation['providers'])) {
-                $renteonEntry = collect($matchedLocation['providers'])->first(function ($provider) {
-                    return ($provider['provider'] ?? null) === 'renteon';
-                });
-
-                if ($renteonEntry) {
-                    $currentProviderLocationId = $renteonEntry['pickup_id'] ?? null;
-                    $locationLat = $matchedLocation['latitude'] ?? $locationLat;
-                    $locationLng = $matchedLocation['longitude'] ?? $locationLng;
-                    $locationAddress = $matchedLocation['name'] ?? $locationAddress;
-                }
-            }
+        if (!empty($orchestratorErrors)) {
+            Log::warning('Search orchestrator reported errors.', [
+                'errors' => $orchestratorErrors,
+            ]);
+            return $emptyResultsResponse('Search locations are temporarily unavailable.');
         }
 
-        // Fallback: If no provider ID, try to find one from the 'where' text
-        if (!$currentProviderLocationId && !empty($validated['where'])) {
-            $searchParam = $validated['where'];
-            $unifiedLocations = $this->locationSearchService->searchLocations($searchParam);
-
-            $matchedLocation = collect($unifiedLocations)->first(function ($loc) {
-                return isset($loc['providers']) && count($loc['providers']) > 0;
-            });
-
-            if ($matchedLocation && isset($matchedLocation['providers'][0])) {
-                $providerName = $matchedLocation['providers'][0]['provider'];
-                $currentProviderLocationId = $matchedLocation['providers'][0]['pickup_id'];
-                $locationLat = $matchedLocation['latitude'];
-                $locationLng = $matchedLocation['longitude'];
-                $locationAddress = $matchedLocation['name'];
-            }
+        if (!empty($validated['unified_location_id']) && !$matchedLocation) {
+            return $emptyResultsResponse('Selected location is not available.');
         }
 
-        if ($providerName && $providerName !== 'internal' && $currentProviderLocationId && !empty($validated['date_from']) && !empty($validated['date_to'])) {
-            // allProviderEntries will store all provider locations to fetch from
-            $allProviderEntries = [];
-
-            // Load unified locations
-            $allLocations = json_decode(file_get_contents(public_path('unified_locations.json')), true);
-
-            // Find the unified location - prefer by unified_location_id, fallback to pickup_id
-            $matchedLocation = null;
-            $unifiedLocationId = $validated['unified_location_id'] ?? null;
-
-            if ($unifiedLocationId) {
-                // Find by unified_location_id (most reliable)
-                $matchedLocation = collect($allLocations)->first(function ($location) use ($unifiedLocationId) {
-                    return ($location['unified_location_id'] ?? null) == $unifiedLocationId;
-                });
+        if ($matchedLocation) {
+            if (empty($validated['latitude']) && $locationLat !== null) {
+                $validated['latitude'] = $locationLat;
             }
-
-            if (!$matchedLocation) {
-                // Fallback: Find by any provider's pickup_id
-                $matchedLocation = collect($allLocations)->first(function ($location) use ($currentProviderLocationId) {
-                    if (isset($location['providers'])) {
-                        foreach ($location['providers'] as $provider) {
-                            if ($provider['pickup_id'] == $currentProviderLocationId) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
-                });
+            if (empty($validated['longitude']) && $locationLng !== null) {
+                $validated['longitude'] = $locationLng;
             }
-
-            if ($matchedLocation && !empty($matchedLocation['providers'])) {
-                // Fetch from ALL providers only when explicitly mixed.
-                // Otherwise, restrict to the requested provider.
-                $providerEntriesSource = $matchedLocation['providers'];
-
-                if ($providerName !== 'mixed') {
-                    $providerEntriesSource = array_values(array_filter($providerEntriesSource, function ($provider) use ($providerName) {
-                        return ($provider['provider'] ?? null) === $providerName;
-                    }));
-
-                    if (empty($providerEntriesSource)) {
-                        $providerEntriesSource = [[
-                            'provider' => $providerName,
-                            'pickup_id' => $currentProviderLocationId,
-                            'original_name' => $locationAddress,
-                        ]];
-                    }
-                }
-
-                $allProviderEntries = []; // Store all entries, not just one per provider
-
-                foreach ($providerEntriesSource as $provider) {
-                    $allProviderEntries[] = [
-                        'provider' => $provider['provider'],
-                        'pickup_id' => $provider['pickup_id'],
-                        'original_name' => $provider['original_name'] ?? $matchedLocation['name'] ?? $locationAddress,
-                    ];
-                }
-
-                // Update location info from unified location
-                $locationLat = $matchedLocation['latitude'] ?? $locationLat;
-                $locationLng = $matchedLocation['longitude'] ?? $locationLng;
-                $locationAddress = $matchedLocation['name'] ?? $locationAddress;
-
-                Log::info('Unified location matched', [
-                    'unified_id' => $matchedLocation['unified_location_id'] ?? 'N/A',
-                    'name' => $matchedLocation['name'] ?? 'Unknown',
-                    'total_provider_entries' => count($allProviderEntries),
-                ]);
-            } elseif ($providerName !== 'mixed') {
-                // Single provider fallback
-                $allProviderEntries = [
-                    [
-                        'provider' => $providerName,
-                        'pickup_id' => $currentProviderLocationId,
-                        'original_name' => $locationAddress,
-                    ]
-                ];
-            } else {
-                $allProviderEntries = [];
+            if (empty($validated['city']) && !empty($matchedLocation['city'])) {
+                $validated['city'] = $matchedLocation['city'];
             }
+            if (empty($validated['country']) && !empty($matchedLocation['country'])) {
+                $validated['country'] = $matchedLocation['country'];
+            }
+            $validated['location_name'] = $matchedLocation['name'] ?? $locationAddress;
 
+            Log::info('Unified location matched', [
+                'unified_id' => $matchedLocation['unified_location_id'] ?? 'N/A',
+                'name' => $matchedLocation['name'] ?? 'Unknown',
+                'total_provider_entries' => count($allProviderEntries),
+            ]);
+        }
+
+        $providerErrors = [];
+        $providerTimings = [];
+
+        if ($providerName && $providerName !== 'internal' && !empty($validated['date_from']) && !empty($validated['date_to'])) {
+            
             Log::info('Provider entries to fetch: ' . count($allProviderEntries));
 
             $searchOptionalExtras = []; // Initialize logic for extras
+            $recordProviderError = function (string $provider, string $message) use (&$providerErrors): void {
+                $providerErrors[$provider][] = $message;
+            };
 
             foreach ($allProviderEntries as $providerEntry) {
                 // Get the provider name, location ID and original name for this entry
                 $providerToFetch = $providerEntry['provider'];
                 $currentProviderLocationId = $providerEntry['pickup_id'];
                 $currentProviderLocationName = $providerEntry['original_name'];
+                $providerStart = microtime(true);
 
                 // Provider-safe times: avoid random empty/invalid times causing 0 results.
                 $startTimeForProvider = $normalizeTime($validated['start_time'] ?? '', $providerDefaultTime($providerToFetch));
@@ -631,9 +558,15 @@ class SearchController extends Controller
                 $startTimeForProvider = $clampTimeToBusinessHours($startTimeForProvider, $providerDefaultTime($providerToFetch), $providerToFetch);
                 $endTimeForProvider = $clampTimeToBusinessHours($endTimeForProvider, $providerDefaultTime($providerToFetch), $providerToFetch);
 
+                // Enforce provider dropoff compatibility.
+                $providersWithDropoffList = ['greenmotion', 'usave', 'adobe', 'locauto_rent', 'renteon', 'favrica', 'xdrive'];
+                $supportsDropoff = in_array($providerToFetch, $providersWithDropoffList, true);
+
+                $dropoffIdForProvider = $supportsDropoff
+                    ? ($validated['dropoff_location_id'] ?? $currentProviderLocationId)
+                    : $currentProviderLocationId;
+
                 // In mixed mode, provider dropoff IDs are not compatible across providers.
-                // Always default to the current provider's pickup ID to avoid empty results.
-                $dropoffIdForProvider = $validated['dropoff_location_id'] ?? $currentProviderLocationId;
                 if ($providerName === 'mixed') {
                     $dropoffIdForProvider = $currentProviderLocationId;
                 }
@@ -861,6 +794,7 @@ class SearchController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
+                        $recordProviderError($providerToFetch, $e->getMessage());
                         Log::error("Error fetching {$providerToFetch} vehicles: " . $e->getMessage());
                     }
                 } elseif ($providerToFetch === 'adobe') {
@@ -1012,6 +946,7 @@ class SearchController extends Controller
                         Log::info('Adobe vehicles added to collection: ' . $adobeVehicles->count());
 
                     } catch (\Exception $e) {
+                        $recordProviderError($providerToFetch, $e->getMessage());
                         Log::error("Error fetching Adobe vehicles: " . $e->getMessage(), [
                             'provider_location_id' => $currentProviderLocationId,
                             'trace' => $e->getTraceAsString()
@@ -1361,6 +1296,7 @@ class SearchController extends Controller
 
                         Log::info('OK Mobility vehicles added to collection: ' . $okMobilityVehicles->count());
                     } catch (\Exception $e) {
+                        $recordProviderError($providerToFetch, $e->getMessage());
                         Log::error("Error fetching OK Mobility vehicles: " . $e->getMessage(), [
                             'provider_location_id' => $currentProviderLocationId,
                             'trace' => $e->getTraceAsString()
@@ -1578,6 +1514,7 @@ class SearchController extends Controller
                             ]);
                         }
                     } catch (\Exception $e) {
+                        $recordProviderError($providerToFetch, $e->getMessage());
                         Log::error('Error fetching Favrica vehicles: ' . $e->getMessage(), [
                             'provider_location_id' => $currentProviderLocationId,
                             'trace' => $e->getTraceAsString(),
@@ -1812,6 +1749,7 @@ class SearchController extends Controller
                             ]);
                         }
                     } catch (\Exception $e) {
+                        $recordProviderError($providerToFetch, $e->getMessage());
                         Log::error('Error fetching XDrive vehicles: ' . $e->getMessage(), [
                             'provider_location_id' => $currentProviderLocationId,
                             'trace' => $e->getTraceAsString(),
@@ -1898,6 +1836,7 @@ class SearchController extends Controller
                     } catch (\Exception $e) {
                         // Handle the new robust error scenarios from WheelsysService
                         $errorMessage = $e->getMessage();
+                        $recordProviderError($providerToFetch, $errorMessage);
 
                         if (str_contains($errorMessage, 'temporarily unavailable due to repeated failures')) {
                             Log::warning('Wheelsys API circuit breaker is open - API temporarily unavailable', [
@@ -2036,6 +1975,7 @@ class SearchController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
+                        $recordProviderError($providerToFetch, $e->getMessage());
                         Log::error("Error fetching LocautoRent vehicles: " . $e->getMessage(), [
                             'provider_location_id' => $currentProviderLocationId,
                             'trace' => $e->getTraceAsString()
@@ -2062,44 +2002,49 @@ class SearchController extends Controller
                             $endTimeForProvider,
                             [
                                 'driver_age' => $validated['age'] ?? 35,
-                                'currency' => $validated['currency'] ?? 'EUR',
-                                'prepaid' => true,
+                                'currency' => 'EUR',
+                                'prepaid' => false,
+                                'include_on_request' => true,
                             ],
                             $locationLat,
-                            $locationLng,
-                            $currentProviderLocationName,
-                            $rentalDays
-                        );
-
-                        Log::info('Renteon vehicles processed from default provider: ' . count($renteonVehicles));
-
-                        if (empty($renteonVehicles)) {
-                            Log::info('Renteon: No vehicles from default provider, trying all providers', [
-                                'pickup_id' => $currentProviderLocationId,
-                                'date_from' => $validated['date_from'],
-                                'date_to' => $validated['date_to'],
-                            ]);
-
-                            $renteonVehicles = $this->renteonService->getTransformedVehiclesFromAllProviders(
-                                $currentProviderLocationId,
-                                $currentProviderLocationId,
-                                $validated['date_from'],
-                                $startTimeForProvider,
-                                $validated['date_to'],
-                                $endTimeForProvider,
-                                [
-                                    'driver_age' => $validated['age'] ?? 35,
-                                    'currency' => $validated['currency'] ?? 'EUR',
-                                    'prepaid' => true,
-                                ],
-                                [],
-                                $locationLat,
                                 $locationLng,
                                 $currentProviderLocationName,
                                 $rentalDays
                             );
 
-                            Log::info('Renteon vehicles processed from all providers: ' . count($renteonVehicles));
+                        Log::info('Renteon vehicles processed from default provider: ' . count($renteonVehicles));
+
+                        if (empty($renteonVehicles)) {
+                            $allowedProviders = config('services.renteon.allowed_providers');
+                            if (!empty($allowedProviders)) {
+                                Log::info('Renteon: No vehicles from default provider, trying allowlisted providers', [
+                                    'pickup_id' => $currentProviderLocationId,
+                                    'date_from' => $validated['date_from'],
+                                    'date_to' => $validated['date_to'],
+                                ]);
+
+                                $renteonVehicles = $this->renteonService->getTransformedVehiclesFromAllProviders(
+                                    $currentProviderLocationId,
+                                    $currentProviderLocationId,
+                                    $validated['date_from'],
+                                    $startTimeForProvider,
+                                    $validated['date_to'],
+                                    $endTimeForProvider,
+                                    [
+                                        'driver_age' => $validated['age'] ?? 35,
+                                        'currency' => 'EUR',
+                                        'prepaid' => false,
+                                        'include_on_request' => true,
+                                    ],
+                                    [],
+                                    $locationLat,
+                                    $locationLng,
+                                    $currentProviderLocationName,
+                                    $rentalDays
+                                );
+
+                                Log::info('Renteon vehicles processed from allowlisted providers: ' . count($renteonVehicles));
+                            }
                         }
 
                         foreach ($renteonVehicles as $renteonVehicle) {
@@ -2109,12 +2054,15 @@ class SearchController extends Controller
                         Log::info('Renteon vehicles added to collection: ' . count($renteonVehicles));
 
                     } catch (\Exception $e) {
+                        $recordProviderError($providerToFetch, $e->getMessage());
                         Log::error("Error fetching Renteon vehicles: " . $e->getMessage(), [
                             'provider_location_id' => $currentProviderLocationId,
                             'trace' => $e->getTraceAsString()
                         ]);
                     }
                 } // Close Renteon elseif
+
+                $providerTimings[$providerToFetch][] = (int) round((microtime(true) - $providerStart) * 1000);
             } // Close foreach $allProviderEntries
         }
 
@@ -2263,10 +2211,34 @@ class SearchController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
+        $providerNames = collect($allProviderEntries ?? [])->pluck('provider')->filter()->unique()->values();
+        $providerStatus = $providerNames->map(function ($provider) use ($providerVehicles, $okMobilityVehicles, $providerErrors, $providerTimings) {
+            $providerKey = (string) $provider;
+            $count = $providerKey === 'okmobility'
+                ? $okMobilityVehicles->count()
+                : $providerVehicles->filter(function ($vehicle) use ($providerKey) {
+                    $source = is_array($vehicle) ? ($vehicle['source'] ?? null) : ($vehicle->source ?? null);
+                    return $source === $providerKey;
+                })->count();
+
+            $errors = $providerErrors[$providerKey] ?? [];
+            $timings = $providerTimings[$providerKey] ?? [];
+
+            return [
+                'provider' => $providerKey,
+                'status' => empty($errors) ? 'ok' : 'error',
+                'vehicles' => $count,
+                'ms' => empty($timings) ? null : (int) round(array_sum($timings) / count($timings)),
+                'errors' => array_values($errors),
+            ];
+        })->values()->all();
+
         return Inertia::render('SearchResults', [
             'vehicles' => $vehicles,
             'okMobilityVehicles' => $okMobilityVehiclesPaginated,
             'renteonVehicles' => $renteonVehiclesPaginated,
+            'providerStatus' => $providerStatus,
+            'searchError' => null,
             'filters' => $validated,
             'pagination_links' => $vehicles->links('pagination::tailwind')->toHtml(),
             'brands' => $combinedBrands,

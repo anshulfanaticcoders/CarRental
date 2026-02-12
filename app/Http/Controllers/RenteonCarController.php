@@ -74,39 +74,44 @@ class RenteonCarController extends Controller
                     $timeTo,
                     [
                         'driver_age' => (int) $request->get('age', 35),
-                        'currency' => $request->get('currency', 'EUR'),
-                        'prepaid' => true,
+                        'currency' => 'EUR',
+                        'prepaid' => false,
+                        'include_on_request' => true,
                     ],
                     (float) $request->get('lat', 0),
                     (float) $request->get('lng', 0),
-                    $request->get('full_vehicle_address', 'Renteon Location'),
-                    $rentalDays
+                        $request->get('full_vehicle_address', 'Renteon Location'),
+                        $rentalDays
                 );
 
                 if (empty($renteonVehicles)) {
-                    Log::info('RenteonCarController: No vehicles from default provider, trying allowlisted providers', [
-                        'pickupCode' => $pickupCode,
-                        'pickupLocationId' => $pickupLocationId,
-                    ]);
+                    $allowedProviders = config('services.renteon.allowed_providers');
+                    if (!empty($allowedProviders)) {
+                        Log::info('RenteonCarController: No vehicles from default provider, trying allowlisted providers', [
+                            'pickupCode' => $pickupCode,
+                            'pickupLocationId' => $pickupLocationId,
+                        ]);
 
-                    $renteonVehicles = $this->renteonService->getTransformedVehiclesFromAllProviders(
-                        $pickupLocationId ?? $pickupCode,
-                        $dropoffLocationId ?? $pickupLocationId ?? $pickupCode,
-                        $dateFrom,
-                        $timeFrom,
-                        $dateTo,
-                        $timeTo,
-                        [
-                            'driver_age' => (int) $request->get('age', 35),
-                            'currency' => $request->get('currency', 'EUR'),
-                            'prepaid' => true,
-                        ],
-                        [],
-                        (float) $request->get('lat', 0),
-                        (float) $request->get('lng', 0),
-                        $request->get('full_vehicle_address', 'Renteon Location'),
-                        $rentalDays
-                    );
+                        $renteonVehicles = $this->renteonService->getTransformedVehiclesFromAllProviders(
+                            $pickupLocationId ?? $pickupCode,
+                            $dropoffLocationId ?? $pickupLocationId ?? $pickupCode,
+                            $dateFrom,
+                            $timeFrom,
+                            $dateTo,
+                            $timeTo,
+                            [
+                                'driver_age' => (int) $request->get('age', 35),
+                                'currency' => 'EUR',
+                                'prepaid' => false,
+                                'include_on_request' => true,
+                            ],
+                            [],
+                            (float) $request->get('lat', 0),
+                            (float) $request->get('lng', 0),
+                            $request->get('full_vehicle_address', 'Renteon Location'),
+                            $rentalDays
+                        );
+                    }
                 }
 
                 if (empty($renteonVehicles)) {

@@ -55,6 +55,8 @@ const providerGrossMultiplier = computed(() => {
     return PROVIDER_NET_SHARE > 0 ? (1 / PROVIDER_NET_SHARE) : 1;
 });
 
+const COMMISSION_RATE = 0.15;
+
 // Check if vehicle is Renteon
 const isRenteon = computed(() => {
     return props.vehicle?.source === 'renteon';
@@ -1440,12 +1442,23 @@ const grandTotal = computed(() => {
     return (parseFloat(netGrandTotal.value || 0) * providerGrossMultiplier.value).toFixed(2);
 });
 
+const effectivePaymentPercentage = computed(() => {
+    if (isRenteon.value) return COMMISSION_RATE * 100;
+    return props.paymentPercentage || 0;
+});
+
 const payableAmount = computed(() => {
+    if (isRenteon.value) {
+        return (parseFloat(grandTotal.value) - parseFloat(netGrandTotal.value)).toFixed(2);
+    }
     if (!props.paymentPercentage || props.paymentPercentage <= 0) return 0;
     return (parseFloat(grandTotal.value) * (props.paymentPercentage / 100)).toFixed(2);
 });
 
 const pendingAmount = computed(() => {
+    if (isRenteon.value) {
+        return parseFloat(netGrandTotal.value || 0).toFixed(2);
+    }
     return (parseFloat(grandTotal.value) - parseFloat(payableAmount.value)).toFixed(2);
 });
 
@@ -2632,24 +2645,32 @@ const formatPaymentMethod = (method) => {
                 </div>
 
                 <!-- Payable Amount -->
-                <div v-if="paymentPercentage > 0"
+                <div v-if="effectivePaymentPercentage > 0"
                     class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-4 mb-3">
                     <div class="flex justify-between items-center">
-                        <span class="font-bold text-green-800">Pay Now ({{ paymentPercentage }}%)</span>
+                        <span class="font-bold text-green-800">
+                            {{ isRenteon ? 'Commission' : 'Pay Now' }} ({{ effectivePaymentPercentage }}%)
+                        </span>
                         <span class="text-2xl font-bold text-green-700" v-if="ratesReady">{{ formatPrice(payableAmount) }}</span>
                         <span class="price-skeleton price-skeleton-md" v-else></span>
                     </div>
                 </div>
 
                 <!-- Running Text -->
-                <div v-if="paymentPercentage > 0" class="overflow-hidden rounded-xl mb-6"
+                <div v-if="effectivePaymentPercentage > 0" class="overflow-hidden rounded-xl mb-6"
                     style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8f 100%);">
                     <p class="py-3 whitespace-nowrap marquee-text text-sm font-medium text-white">
-                        💳 Pay {{ paymentPercentage }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{
-                            paymentPercentage
-                        }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{ paymentPercentage }}% now and rest pay
-                        on
-                        arrival &nbsp;•&nbsp;
+                        <template v-if="isRenteon">
+                            💳 Pay commission now and rest pay at desk &nbsp;•&nbsp; 💳 Pay commission now and rest pay at desk
+                            &nbsp;•&nbsp; 💳 Pay commission now and rest pay at desk &nbsp;•&nbsp;
+                        </template>
+                        <template v-else>
+                            💳 Pay {{ effectivePaymentPercentage }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{
+                                effectivePaymentPercentage
+                            }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{ effectivePaymentPercentage }}% now and rest pay
+                            on
+                            arrival &nbsp;•&nbsp;
+                        </template>
                     </p>
                 </div>
 
@@ -2759,11 +2780,13 @@ const formatPaymentMethod = (method) => {
                                 <span class="font-bold text-[#1e3a5f]">{{ formatPrice(grandTotal) }}</span>
                             </div>
                             <div class="flex justify-between text-sm bg-green-50 p-4 rounded-xl">
-                                <span class="font-semibold text-green-700">Pay Now ({{ paymentPercentage }}%)</span>
+                                <span class="font-semibold text-green-700">
+                                    {{ isRenteon ? 'Commission' : 'Pay Now' }} ({{ effectivePaymentPercentage }}%)
+                                </span>
                                 <span class="font-bold text-green-700">{{ formatPrice(payableAmount) }}</span>
                             </div>
                             <div class="flex justify-between text-sm bg-amber-50 p-4 rounded-xl">
-                                <span class="font-semibold text-amber-700">Pay on Arrival</span>
+                                <span class="font-semibold text-amber-700">{{ isRenteon ? 'Pay at desk' : 'Pay on Arrival' }}</span>
                                 <span class="font-bold text-amber-700">{{ formatPrice(pendingAmount) }}</span>
                             </div>
                         </div>
@@ -2791,8 +2814,8 @@ const formatPaymentMethod = (method) => {
                     <div class="flex items-baseline gap-1.5">
                         <span class="text-xl font-bold text-gray-900">{{ formatPrice(grandTotal) }}</span>
                     </div>
-                    <span v-if="paymentPercentage > 0" class="text-[10px] text-emerald-600 font-bold">
-                        Pay {{ formatPrice(payableAmount) }} Now ({{ paymentPercentage }}%)
+                    <span v-if="effectivePaymentPercentage > 0" class="text-[10px] text-emerald-600 font-bold">
+                        {{ isRenteon ? 'Commission' : 'Pay Now' }} {{ formatPrice(payableAmount) }} ({{ effectivePaymentPercentage }}%)
                     </span>
                 </div>
                 <button @click="scrollToSummary"

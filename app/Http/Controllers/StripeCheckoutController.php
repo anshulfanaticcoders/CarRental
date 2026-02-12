@@ -259,7 +259,8 @@ class StripeCheckoutController extends Controller
                 'renteon_dropoff_office_id' => $validated['vehicle']['provider_dropoff_office_id'] ?? null,
                 'renteon_pricelist_id' => $validated['vehicle']['pricelist_id'] ?? null,
                 'renteon_price_date' => $validated['vehicle']['price_date'] ?? null,
-                'renteon_prepaid' => $validated['vehicle']['prepaid'] ?? true,
+                'renteon_prepaid' => $validated['vehicle']['prepaid']
+                    ?? (($validated['vehicle']['source'] ?? '') === 'renteon' ? false : true),
                 'ok_mobility_token' => $validated['vehicle']['ok_mobility_token'] ?? null,
                 'ok_mobility_group_id' => $validated['vehicle']['ok_mobility_group_id'] ?? null,
                 'ok_mobility_rate_code' => $validated['vehicle']['ok_mobility_rate_code'] ?? null,
@@ -488,6 +489,14 @@ class StripeCheckoutController extends Controller
         $days = max(1, (int) ($validated['number_of_days'] ?? 1));
         $package = $validated['package'] ?? null;
         $vehicleSource = strtolower((string) ($vehicle['source'] ?? ''));
+        $prepaidFlag = $vehicle['prepaid'] ?? null;
+        if ($vehicleSource === 'renteon') {
+            $isPrepaid = filter_var($prepaidFlag ?? false, FILTER_VALIDATE_BOOLEAN);
+        } else {
+            $isPrepaid = filter_var($prepaidFlag ?? true, FILTER_VALIDATE_BOOLEAN);
+        }
+        $commissionRate = $this->isExternalProviderSource($vehicleSource) ? self::PROVIDER_COMMISSION_RATE : 0.0;
+        $useCommissionOnly = $vehicleSource === 'renteon' && $isPrepaid === false;
 
         if (in_array($vehicleSource, ['greenmotion', 'usave'], true)) {
             return $this->computeGreenMotionTotals($validated, $bookingCurrency, $providerCurrency, $paymentPercentage, $days);
@@ -569,7 +578,11 @@ class StripeCheckoutController extends Controller
         $bookingTotal = $this->grossUpProviderAmount($bookingTotalNet, $vehicleSource);
 
         // Deposit/pending are based on the gross booking total (customer-facing).
-        $depositBooking = round($bookingTotal * ($paymentPercentage / 100), 2);
+        if ($useCommissionOnly && $commissionRate > 0) {
+            $depositBooking = round($bookingTotal * $commissionRate, 2);
+        } else {
+            $depositBooking = round($bookingTotal * ($paymentPercentage / 100), 2);
+        }
         $bookingPending = round($bookingTotal - $depositBooking, 2);
 
         $clientTotal = isset($validated['total_amount']) ? (float) $validated['total_amount'] : null;
@@ -601,7 +614,7 @@ class StripeCheckoutController extends Controller
             'provider_options_total' => $providerOptionsTotal,
             'provider_grand_total' => round($baseTotal + $providerOptionsTotal, 2),
             'provider_protection_total' => $providerProtectionTotal,
-            'provider_commission_rate' => $this->isExternalProviderSource($vehicleSource) ? self::PROVIDER_COMMISSION_RATE : 0,
+            'provider_commission_rate' => $commissionRate,
         ];
     }
 

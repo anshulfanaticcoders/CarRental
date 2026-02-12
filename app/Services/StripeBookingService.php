@@ -1356,12 +1356,12 @@ class StripeBookingService
             // Prepare Booking Data
             $bookingData = [
                 'price' => $metadata->payable_amount, // or total_amount depending on payment model
-                'currency' => $metadata->currency,
+                'currency' => $metadata->provider_currency ?? $metadata->currency,
                 'notes' => $metadata->notes ?? '',
-                'payment_method' => 'prepaid', // Assuming stripe prepaid
+                'payment_method' => 'pay_at_desk',
                 'reference' => 'WEB-' . $booking->booking_number,
                 'voucher_number' => 'WEB-' . $booking->booking_number,
-                'prepaid' => $metadata->renteon_prepaid ?? true,
+                'prepaid' => $metadata->renteon_prepaid ?? false,
             ];
 
             // Extras

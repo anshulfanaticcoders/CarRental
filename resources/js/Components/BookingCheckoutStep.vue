@@ -154,6 +154,16 @@ const isGreenMotion = computed(() => {
     return source === 'greenmotion' || source === 'usave';
 });
 
+const isRenteon = computed(() => {
+    return props.vehicle?.source === 'renteon';
+});
+
+const COMMISSION_RATE = 0.15;
+const effectivePaymentPercentage = computed(() => {
+    if (isRenteon.value) return COMMISSION_RATE * 100;
+    return props.paymentPercentage || 0;
+});
+
 const isInternal = computed(() => {
     return props.vehicle?.source === 'internal';
 });
@@ -536,8 +546,12 @@ const formatPrice = (val) => {
                         <div class="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-xl">
                             <div class="flex justify-between items-center">
                                 <div>
-                                    <div class="text-sm font-semibold text-emerald-800">Pay Now</div>
-                                    <div class="text-xs text-emerald-600">{{ paymentPercentage }}% deposit</div>
+                                    <div class="text-sm font-semibold text-emerald-800">
+                                        {{ isRenteon ? 'Commission' : 'Pay Now' }}
+                                    </div>
+                                    <div class="text-xs text-emerald-600">
+                                        {{ isRenteon ? 'Commission' : 'Deposit' }} ({{ effectivePaymentPercentage }}%)
+                                    </div>
                                 </div>
                                 <span class="text-2xl font-bold text-emerald-700">{{ formatPrice(totals.payableAmount)
                                 }}</span>
@@ -545,7 +559,7 @@ const formatPrice = (val) => {
                         </div>
 
                         <div class="flex justify-between text-sm text-gray-500 px-1">
-                            <span>Pay on Arrival</span>
+                            <span>{{ isRenteon ? 'Pay at desk' : 'Pay on Arrival' }}</span>
                             <span class="font-semibold text-gray-700">{{ formatPrice(totals.pendingAmount) }}</span>
                         </div>
                     </div>
@@ -554,7 +568,7 @@ const formatPrice = (val) => {
                     <div class="space-y-3">
                         <div v-if="form.name && form.email && form.phone && form.driver_age">
                             <StripeCheckoutButton v-if="!Object.keys(errors).length" :booking-data="bookingData"
-                                :label="`Pay ${formatPrice(totals.payableAmount)}`" />
+                                :label="`${isRenteon ? 'Pay Commission' : 'Pay'} ${formatPrice(totals.payableAmount)}`" />
                             <button v-else @click="validate()"
                                 class="w-full bg-gray-200 text-gray-500 py-4 rounded-xl font-bold cursor-pointer">
                                 Please Fix Errors

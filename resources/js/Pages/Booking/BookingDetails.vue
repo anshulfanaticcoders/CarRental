@@ -34,8 +34,20 @@ const isGreenMotionBooking = computed(() => {
   const source = `${props.booking?.provider_source || ''}`.toLowerCase();
   return source === 'greenmotion' || source === 'usave';
 });
-const amountPaidLabel = computed(() => (isGreenMotionBooking.value ? 'Deposit paid' : _t('customerprofile', 'amount_paid')));
-const pendingAmountLabel = computed(() => (isGreenMotionBooking.value ? 'Pay at pickup' : _t('customerprofile', 'pending_amount')));
+const isRenteonBooking = computed(() => {
+  const source = `${props.booking?.provider_source || ''}`.toLowerCase();
+  return source === 'renteon';
+});
+const amountPaidLabel = computed(() => {
+  if (isGreenMotionBooking.value) return 'Deposit paid';
+  if (isRenteonBooking.value) return 'Commission paid';
+  return _t('customerprofile', 'amount_paid');
+});
+const pendingAmountLabel = computed(() => {
+  if (isGreenMotionBooking.value) return 'Pay at pickup';
+  if (isRenteonBooking.value) return 'Pay at desk';
+  return _t('customerprofile', 'pending_amount');
+});
 
 const formatLocationLines = (details) => {
   if (!details) return [];
