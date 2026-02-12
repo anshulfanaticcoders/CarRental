@@ -49,6 +49,96 @@ class StripeCheckoutController extends Controller
         return round($netAmount / $netShare, 2);
     }
 
+    private function compactStripeMetadata(array $metadata): array
+    {
+        $filtered = array_filter(
+            $metadata,
+            static function ($value): bool {
+                if ($value === null) {
+                    return false;
+                }
+                if (is_string($value)) {
+                    return $value !== '';
+                }
+                if (is_array($value)) {
+                    return !empty($value);
+                }
+                return true;
+            }
+        );
+
+        if (count($filtered) <= 50) {
+            return $filtered;
+        }
+
+        $dropPriority = [
+            'notes',
+            'driver_license_number',
+            'customer_address',
+            'customer_city',
+            'customer_postal_code',
+            'customer_country',
+            'favrica_rez_id',
+            'favrica_cars_park_id',
+            'favrica_group_id',
+            'favrica_car_web_id',
+            'favrica_reservation_source_id',
+            'favrica_drop_fee',
+            'xdrive_rez_id',
+            'xdrive_cars_park_id',
+            'xdrive_group_id',
+            'xdrive_car_web_id',
+            'xdrive_reservation_source_id',
+            'xdrive_reservation_source',
+            'xdrive_drop_fee',
+            'ok_mobility_token',
+            'ok_mobility_group_id',
+            'ok_mobility_rate_code',
+        ];
+
+        foreach ($dropPriority as $key) {
+            if (isset($filtered[$key])) {
+                unset($filtered[$key]);
+                if (count($filtered) <= 50) {
+                    break;
+                }
+            }
+        }
+
+        if (count($filtered) > 50) {
+            Log::warning('Stripe metadata still exceeds limit after compaction', [
+                'metadata_count' => count($filtered),
+                'metadata_keys' => array_keys($filtered),
+            ]);
+        }
+
+        return $filtered;
+    }
+
+    private function stripOversizedMetadata(array $metadata): array
+    {
+        $maxLength = 500;
+        $oversizedKeys = [];
+
+        foreach (['location_details', 'dropoff_location_details', 'location_instructions', 'driver_requirements', 'terms'] as $key) {
+            if (!isset($metadata[$key])) {
+                continue;
+            }
+            if (is_string($metadata[$key]) && strlen($metadata[$key]) > $maxLength) {
+                unset($metadata[$key]);
+                $oversizedKeys[] = $key;
+            }
+        }
+
+        if (!empty($oversizedKeys)) {
+            Log::info('Stripe metadata oversized values moved to payload', [
+                'keys' => $oversizedKeys,
+            ]);
+        }
+
+        return $metadata;
+    }
+
     /**
      * Create a Stripe Checkout Session
      */
@@ -83,7 +173,19 @@ class StripeCheckoutController extends Controller
                 'terms' => 'nullable|array',
             ]);
 
-            $providerSource = strtolower((string) ($validated['vehicle']['source'] ?? ''));
+            $vehicle = $validated['vehicle'] ?? [];
+            $providerSource = strtolower((string) ($vehicle['source'] ?? ''));
+            $pickupLocationDetails = $validated['location_details'] ?? null;
+            $dropoffLocationDetails = $validated['dropoff_location_details'] ?? null;
+
+            if ($providerSource === 'renteon') {
+                if (empty($pickupLocationDetails) && !empty($vehicle['pickup_office']) && is_array($vehicle['pickup_office'])) {
+                    $pickupLocationDetails = $vehicle['pickup_office'];
+                }
+                if (empty($dropoffLocationDetails) && !empty($vehicle['dropoff_office']) && is_array($vehicle['dropoff_office'])) {
+                    $dropoffLocationDetails = $vehicle['dropoff_office'];
+                }
+            }
             if (in_array($providerSource, ['greenmotion', 'usave'], true)) {
                 $missing = [];
                 $customer = $validated['customer'] ?? [];
@@ -158,9 +260,22 @@ class StripeCheckoutController extends Controller
                 'vehicle_id' => $validated['vehicle']['id'] ?? null,
                 'provider_currency' => $providerCurrency,
                 'booking_currency' => $currencyCode,
+                'location_details' => $pickupLocationDetails,
+                'dropoff_location_details' => $dropoffLocationDetails,
+                'location_instructions' => $validated['location_instructions'] ?? null,
+                'driver_requirements' => $validated['driver_requirements'] ?? null,
+                'terms' => $validated['terms'] ?? null,
             ];
 
-            if (!empty($extrasPayload['detailed_extras']) || !empty($extrasPayload['extras'])) {
+            $payloadHasContent = !empty($extrasPayload['detailed_extras'])
+                || !empty($extrasPayload['extras'])
+                || !empty($extrasPayload['location_details'])
+                || !empty($extrasPayload['dropoff_location_details'])
+                || !empty($extrasPayload['location_instructions'])
+                || !empty($extrasPayload['driver_requirements'])
+                || !empty($extrasPayload['terms']);
+
+            if ($payloadHasContent) {
                 $payloadRecord = StripeCheckoutPayload::create([
                     'payload' => $extrasPayload,
                 ]);
@@ -296,9 +411,11 @@ class StripeCheckoutController extends Controller
                 $metadata = array_merge($metadata, $customerMetadata);
             }
 
-            if (!empty($validated['location_details'])) {
-                $metadata['location_details'] = json_encode($validated['location_details']);
-                if (!empty($metadata['pickup_location_code'])
+            if (!empty($pickupLocationDetails)) {
+                $metadata['location_details'] = json_encode($pickupLocationDetails);
+                if (!empty($dropoffLocationDetails)) {
+                    $metadata['dropoff_location_details'] = json_encode($dropoffLocationDetails);
+                } elseif (!empty($metadata['pickup_location_code'])
                     && !empty($metadata['return_location_code'])
                     && $metadata['pickup_location_code'] === $metadata['return_location_code']) {
                     $metadata['dropoff_location_details'] = $metadata['location_details'];
@@ -313,6 +430,9 @@ class StripeCheckoutController extends Controller
             if (!empty($validated['terms'])) {
                 $metadata['terms'] = json_encode($validated['terms']);
             }
+
+            $metadata = $this->stripOversizedMetadata($metadata);
+            $metadata = $this->compactStripeMetadata($metadata);
 
 
             // Create Stripe Checkout Session

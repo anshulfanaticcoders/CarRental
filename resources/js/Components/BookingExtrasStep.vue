@@ -834,20 +834,66 @@ const renteonIncludedServices = computed(() => {
     return extras.filter(extra => extra.included || extra.free_of_charge || extra.included_in_price || extra.included_in_price_limited);
 });
 
+const isRenteonProtectionExtra = (extra) => {
+    if (!extra) return false;
+    const code = `${extra.code || ''}`.toUpperCase();
+    const group = `${extra.service_group || extra.service_type || ''}`.toLowerCase();
+    const name = `${extra.name || extra.description || ''}`.toLowerCase();
+    if (code.startsWith('INS-')) return true;
+    if (group.includes('insurance')) return true;
+    return name.includes('insurance') || name.includes('cdw') || name.includes('scdw') || name.includes('pai');
+};
+
+const getRenteonExtraKey = (extra) => {
+    if (!extra) return '';
+    const code = `${extra.code || ''}`.trim();
+    if (code) return code.toUpperCase();
+    const name = `${extra.name || extra.description || ''}`.trim();
+    if (name) return name.toUpperCase();
+    return `${extra.service_id || extra.id || ''}`.trim();
+};
+
+const renteonProtectionPlans = computed(() => {
+    if (!isRenteon.value) return [];
+    const extras = props.vehicle?.extras || [];
+    const byId = new Map();
+    extras.filter(isRenteonProtectionExtra).forEach(extra => {
+        const key = getRenteonExtraKey(extra);
+        const id = `renteon_extra_${key || (extra.service_id || extra.id || extra.code)}`;
+        if (!id || byId.has(id)) return;
+        byId.set(id, {
+            id,
+            code: extra.code || extra.id,
+            name: extra.name || extra.description || 'Protection',
+            description: extra.description || extra.name || 'Protection Plan',
+            price: parseFloat(extra.price || extra.amount || 0) * props.numberOfDays,
+            daily_rate: parseFloat(extra.daily_rate || extra.price || extra.amount || 0),
+            amount: extra.price || extra.amount,
+            maxQuantity: extra.max_quantity || 1,
+            numberAllowed: extra.max_quantity || 1,
+            service_id: extra.service_id || extra.id,
+            service_group: extra.service_group,
+            service_type: extra.service_type,
+            required: extra.required || false,
+        });
+    });
+    return Array.from(byId.values());
+});
+
 const renteonDriverPolicy = computed(() => {
     if (!isRenteon.value) return null;
-        const benefits = props.vehicle?.benefits || {};
-        if (!benefits.young_driver_age_from && !benefits.senior_driver_age_from && !benefits.minimum_driver_age) {
-            return null;
-        }
-        return {
-            youngFrom: benefits.young_driver_age_from,
-            youngTo: benefits.young_driver_age_to,
-            seniorFrom: benefits.senior_driver_age_from,
-            seniorTo: benefits.senior_driver_age_to,
-            minAge: benefits.minimum_driver_age,
-            maxAge: benefits.maximum_driver_age,
-        };
+    const benefits = props.vehicle?.benefits || {};
+    if (!benefits.young_driver_age_from && !benefits.senior_driver_age_from && !benefits.minimum_driver_age) {
+        return null;
+    }
+    return {
+        youngFrom: benefits.young_driver_age_from,
+        youngTo: benefits.young_driver_age_to,
+        seniorFrom: benefits.senior_driver_age_from,
+        seniorTo: benefits.senior_driver_age_to,
+        minAge: benefits.minimum_driver_age,
+        maxAge: benefits.maximum_driver_age,
+    };
 
 });
 
@@ -856,20 +902,93 @@ const renteonOptionalExtras = computed(() => {
     // If Renteon provides extras in standard format, map them here
     // Assuming standard 'extras' array
     const extras = props.vehicle?.extras || [];
-        return extras.filter(extra => !extra.included && !extra.included_in_price && !extra.included_in_price_limited && !extra.is_one_time).map(extra => ({
-            id: `renteon_extra_${extra.code || extra.id}`,
-            code: extra.code || extra.id,
-            name: extra.name || extra.description || 'Extra',
-            description: extra.description || extra.name || 'Optional Extra',
-            price: parseFloat(extra.price || extra.amount || 0) * props.numberOfDays,
-            daily_rate: parseFloat(extra.daily_rate || extra.price || extra.amount || 0),
-            amount: extra.price || extra.amount,
-            maxQuantity: extra.max_quantity || 1,
-            service_id: extra.service_id || extra.id,
-            service_group: extra.service_group,
-            service_type: extra.service_type
-        }));
+    const byId = new Map();
+    extras
+        .filter(extra => !extra.included && !extra.included_in_price && !extra.included_in_price_limited && !extra.is_one_time)
+        .filter(extra => !isRenteonProtectionExtra(extra))
+        .forEach(extra => {
+            const key = getRenteonExtraKey(extra);
+            const id = `renteon_extra_${key || (extra.service_id || extra.id || extra.code)}`;
+            if (!id || byId.has(id)) return;
+            byId.set(id, {
+                id,
+                code: extra.code || extra.id,
+                name: extra.name || extra.description || 'Extra',
+                description: extra.description || extra.name || 'Optional Extra',
+                price: parseFloat(extra.price || extra.amount || 0) * props.numberOfDays,
+                daily_rate: parseFloat(extra.daily_rate || extra.price || extra.amount || 0),
+                amount: extra.price || extra.amount,
+                maxQuantity: extra.max_quantity || 1,
+                numberAllowed: extra.max_quantity || 1,
+                service_id: extra.service_id || extra.id,
+                service_group: extra.service_group,
+                service_type: extra.service_type
+            });
+        });
+    return Array.from(byId.values());
 
+});
+
+const renteonAllExtras = computed(() => {
+    if (!isRenteon.value) return [];
+    const byId = new Map();
+    [...renteonProtectionPlans.value, ...renteonOptionalExtras.value].forEach(extra => {
+        if (extra && !byId.has(extra.id)) {
+            byId.set(extra.id, extra);
+        }
+    });
+    return Array.from(byId.values());
+});
+
+const renteonPickupOffice = computed(() => props.vehicle?.pickup_office || null);
+const renteonDropoffOffice = computed(() => props.vehicle?.dropoff_office || null);
+const renteonSameOffice = computed(() => {
+    const pickupId = renteonPickupOffice.value?.office_id || renteonPickupOffice.value?.office_code;
+    const dropoffId = renteonDropoffOffice.value?.office_id || renteonDropoffOffice.value?.office_code;
+    if (pickupId && dropoffId) return pickupId === dropoffId;
+    return !renteonDropoffOffice.value;
+});
+
+const formatOfficeLines = (office) => {
+    if (!office) return [];
+    const lines = [office.address, office.town, office.postal_code]
+        .map(line => `${line || ''}`.trim())
+        .filter(Boolean);
+    return lines;
+};
+
+const renteonPickupLines = computed(() => formatOfficeLines(renteonPickupOffice.value));
+const renteonDropoffLines = computed(() => formatOfficeLines(renteonDropoffOffice.value));
+
+const renteonPickupInstructions = computed(() => renteonPickupOffice.value?.pickup_instructions || null);
+const renteonDropoffInstructions = computed(() => renteonDropoffOffice.value?.dropoff_instructions || null);
+
+const renteonHasOfficeDetails = computed(() => {
+    return Boolean(
+        renteonPickupLines.value.length
+        || renteonDropoffLines.value.length
+        || renteonPickupOffice.value?.phone
+        || renteonPickupOffice.value?.email
+        || renteonDropoffOffice.value?.phone
+        || renteonDropoffOffice.value?.email
+    );
+});
+
+const renteonTaxBreakdown = computed(() => {
+    if (!isRenteon.value) return null;
+    const gross = parseFloat(props.vehicle?.provider_gross_amount ?? NaN);
+    const net = parseFloat(props.vehicle?.provider_net_amount ?? NaN);
+    const vat = parseFloat(props.vehicle?.provider_vat_amount ?? NaN);
+    return {
+        gross: Number.isFinite(gross) ? gross : null,
+        net: Number.isFinite(net) ? net : null,
+        vat: Number.isFinite(vat) ? vat : null,
+    };
+});
+
+const hasRenteonTaxBreakdown = computed(() => {
+    const breakdown = renteonTaxBreakdown.value;
+    return Boolean(breakdown?.gross || breakdown?.net || breakdown?.vat);
 });
 
 const okMobilityBaseTotal = computed(() => {
@@ -1386,7 +1505,7 @@ const extrasTotal = computed(() => {
         } else if (isInternal.value) {
             extra = internalOptionalExtras.value.find(e => e.id === id);
         } else if (isRenteon.value) {
-            extra = renteonOptionalExtras.value.find(e => e.id === id);
+            extra = renteonAllExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
             extra = okMobilityNormalizedExtras.value.find(e => e.id === id);
         } else if (isFavrica.value || isXDrive.value) {
@@ -1426,8 +1545,9 @@ const netGrandTotal = computed(() => {
 
     // For Renteon, if simplistic logic:
     if (isRenteon.value) {
-        // Base price (from package) + extras
-        return pkgPrice + extrasTotal.value;
+        const providerTotal = parseFloat(props.vehicle?.provider_gross_amount ?? NaN);
+        const baseTotal = Number.isFinite(providerTotal) ? providerTotal : pkgPrice;
+        return baseTotal + extrasTotal.value;
     }
 
     if (isOkMobility.value) {
@@ -1522,7 +1642,7 @@ const getSelectedExtrasDetails = computed(() => {
         } else if (isInternal.value) {
             extra = internalOptionalExtras.value.find(e => e.id === id);
         } else if (isRenteon.value) {
-            extra = renteonOptionalExtras.value.find(e => e.id === id);
+            extra = renteonAllExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
             extra = okMobilityNormalizedExtras.value.find(e => e.id === id);
         } else if (isFavrica.value || isXDrive.value) {
@@ -1775,1069 +1895,1320 @@ const formatPaymentMethod = (method) => {
         <div class="flex flex-col lg:flex-row gap-8 px-0 md:p-6">
             <!-- Left Column: Upgrades & Extras -->
             <div class="flex-1 space-y-8">
-            <!-- Location Instructions -->
-            <div v-if="locationInstructions"
-                class="info-card rounded-2xl p-6 flex items-start gap-4 shadow-lg relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f]"></div>
-                <div class="absolute inset-0 opacity-10">
-                    <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-32 translate-x-32">
-                    </div>
-                </div>
-                <div
-                    class="relative z-10 w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <div class="relative z-10 flex-1">
-                    <h4 class="font-display text-xl font-bold mb-2 text-white">Pickup Instructions</h4>
-                    <p class="text-sm text-white/90 leading-relaxed">{{ locationInstructions }}</p>
-                </div>
-            </div>
-
-            <!-- Vehicle Location -->
-            <div v-if="vehicleLocationText || hasVehicleCoords" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-                <div class="flex items-center gap-2 mb-4">
-                    <MapPin class="w-5 h-5 text-[#1e3a5f]" />
-                    <h4 class="font-display text-xl font-bold text-gray-900">{{ vehicleLocationTitle }}</h4>
-                </div>
-                <p class="text-sm text-gray-600 mb-4">
-                    {{ vehicleLocationText || 'Location details unavailable.' }}
-                </p>
-                <div v-if="locationDetailLines.length" class="text-sm text-gray-600 space-y-1 mb-4">
-                    <p v-for="(line, index) in locationDetailLines" :key="`location-line-${index}`">
-                        {{ line }}
-                    </p>
-                </div>
-                <div v-if="!isOkMobility && (locationContact.phone || locationContact.email || locationContact.iata || locationContact.whatsapp)" class="text-sm text-gray-600 mb-4 space-y-1">
-                    <p v-if="locationContact.phone"><span class="font-semibold text-gray-800">Phone:</span> {{ locationContact.phone }}</p>
-                    <p v-if="locationContact.email"><span class="font-semibold text-gray-800">Email:</span> {{ locationContact.email }}</p>
-                    <p v-if="locationContact.whatsapp"><span class="font-semibold text-gray-800">WhatsApp:</span> {{ locationContact.whatsapp }}</p>
-                    <p v-if="locationContact.iata"><span class="font-semibold text-gray-800">Airport Code:</span> {{ locationContact.iata }}</p>
-                </div>
-                <div v-if="hasLocationHours" class="mt-4">
-                    <button
-                        @click="showLocationHoursModal = true"
-                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-[#1e3a5f] hover:bg-gray-50"
-                    >
-                        View hours & policies
-                    </button>
-                </div>
-                <div v-if="hasVehicleCoords" ref="vehicleMapRef"
-                    class="h-56 rounded-xl overflow-hidden border border-gray-200"></div>
-                <p v-else class="text-xs text-gray-500">Map not available for this vehicle.</p>
-            </div>
-
-            <div v-if="okMobilityInfoAvailable" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-                <div class="flex items-center gap-2 mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h4 class="font-display text-xl font-bold text-gray-900">Vehicle Details</h4>
-                </div>
-
-                <div class="space-y-5 text-sm text-gray-600">
-                    <div v-if="okMobilityPickupStation || okMobilityPickupAddress || okMobilityDropoffStation || okMobilityDropoffAddress">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Pickup & Dropoff</p>
-                        <div v-if="okMobilitySameLocation" class="space-y-1">
-                            <p v-if="okMobilityPickupStation" class="font-semibold text-gray-900">{{ okMobilityPickupStation }}</p>
-                            <p v-if="okMobilityPickupAddress">{{ okMobilityPickupAddress }}</p>
-                        </div>
-                        <div v-else class="space-y-4">
-                            <div v-if="okMobilityPickupStation || okMobilityPickupAddress">
-                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Pickup</p>
-                                <p v-if="okMobilityPickupStation" class="font-semibold text-gray-900">{{ okMobilityPickupStation }}</p>
-                                <p v-if="okMobilityPickupAddress">{{ okMobilityPickupAddress }}</p>
-                            </div>
-                            <div v-if="okMobilityDropoffStation || okMobilityDropoffAddress">
-                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Dropoff</p>
-                                <p v-if="okMobilityDropoffStation" class="font-semibold text-gray-900">{{ okMobilityDropoffStation }}</p>
-                                <p v-if="okMobilityDropoffAddress">{{ okMobilityDropoffAddress }}</p>
-                            </div>
+                <!-- Location Instructions -->
+                <div v-if="locationInstructions"
+                    class="info-card rounded-2xl p-6 flex items-start gap-4 shadow-lg relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f]"></div>
+                    <div class="absolute inset-0 opacity-10">
+                        <div
+                            class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-32 translate-x-32">
                         </div>
                     </div>
-
-                    <div v-if="okMobilityTaxBreakdown.total || okMobilityTaxBreakdown.base || okMobilityTaxBreakdown.tax">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Taxes & Fees</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div v-if="okMobilityTaxBreakdown.base">
-                                <p class="text-xs text-gray-500">Before tax</p>
-                                <p class="font-semibold text-gray-900">{{ formatRentalPrice(okMobilityTaxBreakdown.base) }}</p>
-                            </div>
-                            <div v-if="okMobilityTaxBreakdown.tax">
-                                <p class="text-xs text-gray-500">Tax{{ okMobilityTaxBreakdown.rate ? ` (${okMobilityTaxBreakdown.rate}%)` : '' }}</p>
-                                <p class="font-semibold text-gray-900">{{ formatRentalPrice(okMobilityTaxBreakdown.tax) }}</p>
-                            </div>
-                            <div v-if="okMobilityTaxBreakdown.total">
-                                <p class="text-xs text-gray-500">Total (incl. tax)</p>
-                                <p class="font-semibold text-gray-900">{{ formatRentalPrice(okMobilityTaxBreakdown.total) }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div v-if="okMobilityFuelPolicy">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Fuel Policy</p>
-                        <p class="text-sm text-gray-600">{{ okMobilityFuelPolicy }}</p>
-                    </div>
-
-                    <div v-if="okMobilityCancellationSummary">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Cancellation</p>
-                        <div v-if="!okMobilityCancellationSummary.available" class="text-sm text-gray-600">
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">Not available</span>
-                        </div>
-                        <div v-else class="text-sm text-gray-600 space-y-2">
-                            <p class="text-base font-semibold text-gray-900">
-                                {{ okMobilityCancellationSummary.amount && okMobilityCancellationSummary.amount > 0
-                                    ? `Cancellation fee ${formatRentalPrice(okMobilityCancellationSummary.amount)}`
-                                    : 'Free cancellation' }}
-                            </p>
-                            <p v-if="okMobilityCancellationSummary.deadline" class="text-sm text-gray-600">
-                                Cancel by <span class="font-semibold text-gray-900">{{ okMobilityCancellationSummary.deadline }}</span>
-                            </p>
-                            <p v-if="okMobilityCancellationSummary.penalty" class="text-sm text-amber-700">
-                                Penalty applies after the deadline.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div v-if="driverRequirementItems.length || mileageTypeLabel" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-                <div class="flex items-center gap-2 mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 4.354a4 4 0 110 5.292M15 10a4 4 0 11-6 0m1 10h4m-4 0a2 2 0 01-2-2v-1a4 4 0 014-4h2a4 4 0 014 4v1a2 2 0 01-2 2m-6 0h6" />
-                    </svg>
-                    <h4 class="font-display text-xl font-bold text-gray-900">Driver Requirements</h4>
-                </div>
-                <p v-if="mileageTypeLabel" class="text-sm text-gray-600 mb-3">
-                    <span class="font-semibold text-gray-800">Mileage type:</span> {{ mileageTypeLabel }}
-                </p>
-                <ul v-if="driverRequirementItems.length" class="text-sm text-gray-600 space-y-2">
-                    <li v-for="item in driverRequirementItems" :key="item" class="flex items-start gap-2">
-                        <span class="mt-0.5 w-2 h-2 rounded-full bg-[#1e3a5f]"></span>
-                        <span>{{ item }}</span>
-                    </li>
-                </ul>
-                <p v-else class="text-sm text-gray-500">Requirement details unavailable for this location.</p>
-            </div>
-
-            <div v-if="terms && terms.length" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-                <div class="flex items-center gap-2 mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <h4 class="font-display text-xl font-bold text-gray-900">Terms & Conditions</h4>
-                </div>
-                <div v-for="(category, index) in terms" :key="`term-${index}`" class="mb-4">
-                    <p class="font-semibold text-gray-800 mb-2">{{ category.name }}</p>
-                    <ul class="text-sm text-gray-600 space-y-1">
-                        <li v-for="(condition, conditionIndex) in category.conditions" :key="`term-${index}-${conditionIndex}`">
-                            {{ condition }}
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Vendor Info & Guidelines (Internal Only) -->
-            <section v-if="isInternal" class="mb-8 space-y-6">
-                <!-- 1. Vendor Information Card -->
-                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm"
-                    v-if="vehicle.vendor?.profile || vehicle.vendorProfile || vehicle.vendor_profile">
-                    <h3 class="font-display text-xl font-bold text-gray-900 border-b border-gray-100 pb-4 mb-6">
-                        Rental Information
-                    </h3>
-                    <div class="flex items-start gap-4">
-                        <img :src="(vehicle.vendor?.profile?.avatar || vehicle.vendorProfile?.avatar || vehicle.vendor_profile?.avatar) ? (vehicle.vendor?.profile?.avatar || vehicle.vendorProfile?.avatar || vehicle.vendor_profile?.avatar) : '/images/default-avatar.png'"
-                            alt="Vendor"
-                            class="w-16 h-16 rounded-full object-cover border border-gray-200 shadow-sm flex-shrink-0"
-                            @error="$event.target.src = '/images/default-avatar.png'" />
-                        <div>
-                            <h4 class="font-bold text-gray-900 text-xl leading-tight">
-                                {{ vehicle.vendorProfileData?.company_name || vehicle.vendor_profile_data?.company_name
-                                    || vehicle.vendor?.profile?.company_name || vehicle.vendorProfile?.company_name ||
-                                    vehicle.vendor_profile?.company_name || 'Vendor' }}
-                            </h4>
-                            <p class="text-base text-gray-500 mt-1"
-                                v-if="vehicle?.vendor?.profile?.about || vehicle?.vendorProfile?.about || vehicle?.vendor_profile?.about">
-                                {{ vehicle?.vendor?.profile?.about || vehicle?.vendorProfile?.about ||
-                                    vehicle?.vendor_profile?.about }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2. Guidelines Card -->
-                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm" v-if="vehicle?.guidelines">
-                    <h5 class="text-base font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#1e3a5f]" fill="none"
+                    <div
+                        class="relative z-10 w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Guidelines
-                    </h5>
-                    <p
-                        class="text-base text-gray-600 leading-relaxed bg-gray-50 p-5 rounded-lg border border-gray-100 whitespace-pre-line">
-                        {{ vehicle?.guidelines }}
-                    </p>
+                    </div>
+                    <div class="relative z-10 flex-1">
+                        <h4 class="font-display text-xl font-bold mb-2 text-white">Pickup Instructions</h4>
+                        <p class="text-sm text-white/90 leading-relaxed">{{ locationInstructions }}</p>
+                    </div>
                 </div>
 
-                <!-- 3. Benefits & Policy Card -->
-                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm"
-                    v-if="(vehicle && vehicle.benefits) || (vehicle && vehicle.security_deposit > 0)">
-                    <h5 class="text-base font-bold text-gray-900 uppercase tracking-wider mb-6 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#1e3a5f]" fill="none"
+                <!-- Vehicle Location -->
+                <div v-if="vehicleLocationText || hasVehicleCoords"
+                    class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <div class="flex items-center gap-2 mb-4">
+                        <MapPin class="w-5 h-5 text-[#1e3a5f]" />
+                        <h4 class="font-display text-xl font-bold text-gray-900">{{ vehicleLocationTitle }}</h4>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">
+                        {{ vehicleLocationText || 'Location details unavailable.' }}
+                    </p>
+                    <div v-if="locationDetailLines.length" class="text-sm text-gray-600 space-y-1 mb-4">
+                        <p v-for="(line, index) in locationDetailLines" :key="`location-line-${index}`">
+                            {{ line }}
+                        </p>
+                    </div>
+                    <div v-if="!isOkMobility && (locationContact.phone || locationContact.email || locationContact.iata || locationContact.whatsapp)"
+                        class="text-sm text-gray-600 mb-4 space-y-1">
+                        <p v-if="locationContact.phone"><span class="font-semibold text-gray-800">Phone:</span> {{
+                            locationContact.phone }}</p>
+                        <p v-if="locationContact.email"><span class="font-semibold text-gray-800">Email:</span> {{
+                            locationContact.email }}</p>
+                        <p v-if="locationContact.whatsapp"><span class="font-semibold text-gray-800">WhatsApp:</span> {{
+                            locationContact.whatsapp }}</p>
+                        <p v-if="locationContact.iata"><span class="font-semibold text-gray-800">Airport Code:</span> {{
+                            locationContact.iata }}</p>
+                    </div>
+                    <div v-if="hasLocationHours" class="mt-4">
+                        <button @click="showLocationHoursModal = true"
+                            class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-[#1e3a5f] hover:bg-gray-50">
+                            View hours & policies
+                        </button>
+                    </div>
+                    <div v-if="hasVehicleCoords" ref="vehicleMapRef"
+                        class="h-56 rounded-xl overflow-hidden border border-gray-200"></div>
+                    <p v-else class="text-xs text-gray-500">Map not available for this vehicle.</p>
+                </div>
+
+                <div v-if="okMobilityInfoAvailable" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h4 class="font-display text-xl font-bold text-gray-900">Vehicle Details</h4>
+                    </div>
+
+                    <div class="space-y-5 text-sm text-gray-600">
+                        <div
+                            v-if="okMobilityPickupStation || okMobilityPickupAddress || okMobilityDropoffStation || okMobilityDropoffAddress">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Pickup &
+                                Dropoff</p>
+                            <div v-if="okMobilitySameLocation" class="space-y-1">
+                                <p v-if="okMobilityPickupStation" class="font-semibold text-gray-900">{{
+                                    okMobilityPickupStation }}</p>
+                                <p v-if="okMobilityPickupAddress">{{ okMobilityPickupAddress }}</p>
+                            </div>
+                            <div v-else class="space-y-4">
+                                <div v-if="okMobilityPickupStation || okMobilityPickupAddress">
+                                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Pickup
+                                    </p>
+                                    <p v-if="okMobilityPickupStation" class="font-semibold text-gray-900">{{
+                                        okMobilityPickupStation }}</p>
+                                    <p v-if="okMobilityPickupAddress">{{ okMobilityPickupAddress }}</p>
+                                </div>
+                                <div v-if="okMobilityDropoffStation || okMobilityDropoffAddress">
+                                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Dropoff
+                                    </p>
+                                    <p v-if="okMobilityDropoffStation" class="font-semibold text-gray-900">{{
+                                        okMobilityDropoffStation }}</p>
+                                    <p v-if="okMobilityDropoffAddress">{{ okMobilityDropoffAddress }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            v-if="okMobilityTaxBreakdown.total || okMobilityTaxBreakdown.base || okMobilityTaxBreakdown.tax">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Taxes & Fees
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div v-if="okMobilityTaxBreakdown.base">
+                                    <p class="text-xs text-gray-500">Before tax</p>
+                                    <p class="font-semibold text-gray-900">{{
+                                        formatRentalPrice(okMobilityTaxBreakdown.base) }}</p>
+                                </div>
+                                <div v-if="okMobilityTaxBreakdown.tax">
+                                    <p class="text-xs text-gray-500">Tax{{ okMobilityTaxBreakdown.rate ? `
+                                        (${okMobilityTaxBreakdown.rate}%)` : '' }}</p>
+                                    <p class="font-semibold text-gray-900">{{
+                                        formatRentalPrice(okMobilityTaxBreakdown.tax) }}</p>
+                                </div>
+                                <div v-if="okMobilityTaxBreakdown.total">
+                                    <p class="text-xs text-gray-500">Total (incl. tax)</p>
+                                    <p class="font-semibold text-gray-900">{{
+                                        formatRentalPrice(okMobilityTaxBreakdown.total) }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="okMobilityFuelPolicy">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Fuel Policy</p>
+                            <p class="text-sm text-gray-600">{{ okMobilityFuelPolicy }}</p>
+                        </div>
+
+                        <div v-if="okMobilityCancellationSummary">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Cancellation
+                            </p>
+                            <div v-if="!okMobilityCancellationSummary.available" class="text-sm text-gray-600">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">Not
+                                    available</span>
+                            </div>
+                            <div v-else class="text-sm text-gray-600 space-y-2">
+                                <p class="text-base font-semibold text-gray-900">
+                                    {{ okMobilityCancellationSummary.amount && okMobilityCancellationSummary.amount > 0
+                                        ? `Cancellation fee ${formatRentalPrice(okMobilityCancellationSummary.amount)}`
+                                        : 'Free cancellation' }}
+                                </p>
+                                <p v-if="okMobilityCancellationSummary.deadline" class="text-sm text-gray-600">
+                                    Cancel by <span class="font-semibold text-gray-900">{{
+                                        okMobilityCancellationSummary.deadline }}</span>
+                                </p>
+                                <p v-if="okMobilityCancellationSummary.penalty" class="text-sm text-amber-700">
+                                    Penalty applies after the deadline.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="isRenteon && renteonHasOfficeDetails"
+                    class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h4 class="font-display text-xl font-bold text-gray-900">Pickup & Dropoff Details</h4>
+                    </div>
+
+                    <div class="space-y-5 text-sm text-gray-600">
+                        <div v-if="renteonSameOffice">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Pickup &
+                                Dropoff</p>
+                            <p v-if="renteonPickupOffice?.name" class="font-semibold text-gray-900">{{
+                                renteonPickupOffice.name }}</p>
+                            <p v-for="(line, index) in renteonPickupLines" :key="`renteon-pickup-line-${index}`">{{ line
+                                }}</p>
+                            <p v-if="renteonPickupOffice?.phone"><span class="font-semibold text-gray-800">Phone:</span>
+                                {{ renteonPickupOffice.phone }}</p>
+                            <p v-if="renteonPickupOffice?.email"><span class="font-semibold text-gray-800">Email:</span>
+                                {{ renteonPickupOffice.email }}</p>
+                            <p v-if="renteonPickupInstructions" class="text-xs text-gray-500 mt-2">{{
+                                renteonPickupInstructions }}</p>
+                        </div>
+                        <div v-else class="space-y-4">
+                            <div>
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Pickup</p>
+                                <p v-if="renteonPickupOffice?.name" class="font-semibold text-gray-900">{{
+                                    renteonPickupOffice.name }}</p>
+                                <p v-for="(line, index) in renteonPickupLines" :key="`renteon-pickup-line-${index}`">{{
+                                    line }}</p>
+                                <p v-if="renteonPickupOffice?.phone"><span
+                                        class="font-semibold text-gray-800">Phone:</span> {{ renteonPickupOffice.phone
+                                        }}</p>
+                                <p v-if="renteonPickupOffice?.email"><span
+                                        class="font-semibold text-gray-800">Email:</span> {{ renteonPickupOffice.email
+                                        }}</p>
+                                <p v-if="renteonPickupInstructions" class="text-xs text-gray-500 mt-2">{{
+                                    renteonPickupInstructions }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Dropoff</p>
+                                <p v-if="renteonDropoffOffice?.name" class="font-semibold text-gray-900">{{
+                                    renteonDropoffOffice.name }}</p>
+                                <p v-for="(line, index) in renteonDropoffLines" :key="`renteon-dropoff-line-${index}`">
+                                    {{ line }}</p>
+                                <p v-if="renteonDropoffOffice?.phone"><span
+                                        class="font-semibold text-gray-800">Phone:</span> {{ renteonDropoffOffice.phone
+                                        }}</p>
+                                <p v-if="renteonDropoffOffice?.email"><span
+                                        class="font-semibold text-gray-800">Email:</span> {{ renteonDropoffOffice.email
+                                        }}</p>
+                                <p v-if="renteonDropoffInstructions" class="text-xs text-gray-500 mt-2">{{
+                                    renteonDropoffInstructions }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="isRenteon && hasRenteonTaxBreakdown"
+                    class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Benefits & Policy
-                    </h5>
-
-                    <!-- Deposit Section -->
-                    <div class="grid grid-cols-2 gap-6 mb-8 border-b border-gray-100 pb-6">
-                        <div v-if="vehicle?.security_deposit > 0">
-                            <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Security Deposit
-                            </h5>
-                            <p class="text-xl font-bold text-gray-900">
-                                {{ formatPrice(vehicle?.security_deposit) }}
-                            </p>
-                        </div>
-                        <div v-if="vehicle?.payment_method">
-                            <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Deposit Method
-                            </h5>
-                            <span
-                                class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                                {{ formatPaymentMethod(vehicle?.payment_method) }}
-                            </span>
-                        </div>
-                        <div v-if="vehicle?.benefits?.deposit_amount">
-                            <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Deposit Amount</h5>
-                            <p class="text-xl font-bold text-gray-900">
-                                {{ formatPrice(vehicle?.benefits?.deposit_amount) }}
-                            </p>
-                            <p v-if="vehicle?.benefits?.deposit_currency" class="text-xs text-gray-500">Currency: {{ vehicle?.benefits?.deposit_currency }}</p>
-                        </div>
-                        <div v-if="vehicle?.benefits?.excess_amount">
-                            <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Excess Amount</h5>
-                            <p class="text-xl font-bold text-gray-900">
-                                {{ formatPrice(vehicle?.benefits?.excess_amount) }}
-                            </p>
-                        </div>
+                        <h4 class="font-display text-xl font-bold text-gray-900">Taxes & Fees</h4>
                     </div>
 
-                    <!-- Benefits Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
-                        <div v-if="vehicle?.benefits?.excess_theft_amount" class="flex items-start gap-3">
-                            <div class="mt-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-500" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 11c0 2.761-2.239 5-5 5-2.761 0-5-2.239-5-5 0-2.761 2.239-5 5-5 2.761 0 5 2.239 5 5zm0 0c0 2.761 2.239 5 5 5 2.761 0 5-2.239 5-5 0-2.761-2.239-5-5-5-2.761 0-5 2.239-5 5zm0 0v12" />
-                                </svg>
-                            </div>
-                            <div>
-                                <span class="block text-base font-bold text-gray-900">Excess Theft</span>
-                                <span class="text-sm text-gray-500 block mt-0.5">{{ formatPrice(vehicle?.benefits?.excess_theft_amount) }}</span>
-                            </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-600">
+                        <div v-if="renteonTaxBreakdown.net !== null">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider">Base (Net)</p>
+                            <p class="font-semibold text-gray-900">{{ formatPrice(renteonTaxBreakdown.net) }}</p>
                         </div>
-
-                        <div v-if="vehicle?.benefits?.maximum_driver_age" class="flex items-start gap-3">
-                            <div class="mt-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 14c3.866 0 7 1.343 7 3v3H5v-3c0-1.657 3.134-3 7-3zm0-2a4 4 0 100-8 4 4 0 000 8z" />
-                                </svg>
-                            </div>
-                            <span class="text-base font-medium text-gray-900 mt-1">Max. Driver Age: {{ vehicle?.benefits?.maximum_driver_age }}</span>
+                        <div v-if="renteonTaxBreakdown.vat !== null">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider">VAT</p>
+                            <p class="font-semibold text-gray-900">{{ formatPrice(renteonTaxBreakdown.vat) }}</p>
                         </div>
-
-                        <!-- Cancellation -->
-                        <div class="flex items-start gap-3">
-                            <div class="mt-1">
-                                <svg v-if="vehicle?.benefits?.cancellation_available_per_day == 1"
-                                    xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500"
-                                    viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <template v-if="vehicle?.benefits?.cancellation_available_per_day == 1">
-                                    <span class="block text-base font-bold text-gray-900">Free Cancellation</span>
-                                    <span v-if="cancellationDeadline" class="text-sm text-gray-500 block mt-0.5">Until
-                                        {{ cancellationDeadline }}</span>
-                                </template>
-                                <template v-else>
-                                    <span class="block text-base font-medium text-gray-900">Cancellation Policy
-                                        Applies</span>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Mileage -->
-                        <div class="flex items-start gap-3">
-                            <div class="mt-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <span v-if="vehicle?.benefits?.limited_km_per_day == 1">
-                                    <span class="block text-base font-bold text-gray-900">Limited: {{
-                                        vehicle?.benefits?.limited_km_per_day_range
-                                        }} km/day</span>
-                                    <span v-if="vehicle?.benefits?.price_per_km_per_day"
-                                        class="text-base font-semibold text-gray-700 block mt-0.5">
-                                        +{{ formatPrice(vehicle?.benefits?.price_per_km_per_day) }}/km
-                                    </span>
-                                </span>
-                                <span v-else class="block text-base font-bold text-gray-900">Unlimited Mileage</span>
-                            </div>
-                        </div>
-
-                        <!-- Min Age -->
-                        <div v-if="vehicle?.benefits?.minimum_driver_age" class="flex items-start gap-3">
-                            <div class="mt-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-500" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                            </div>
-                            <span class="text-base font-medium text-gray-900 mt-1">Min. Driver Age: {{
-                                vehicle?.benefits?.minimum_driver_age
-                                }}</span>
+                        <div v-if="renteonTaxBreakdown.gross !== null">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider">Total (Incl. Tax)</p>
+                            <p class="font-semibold text-gray-900">{{ formatPrice(renteonTaxBreakdown.gross) }}</p>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <!-- 1. Package Upgrade Section -->
-            <section v-if="!isLocautoRent" id="extras-package-section">
-                <!-- GreenMotion/USave: Package Selection -->
-                <div class="mb-6">
-                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Choose Your Package</h2>
-                    <p class="text-gray-600">Select the perfect package for your journey</p>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div v-for="pkg in availablePackages" :key="pkg.type"
-                        @click="isAdobeCars && pkg.isAddOn ? toggleAdobeProtection(pkg) : selectPackage(pkg.type)"
-                        class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all relative"
-                        :class="(isAdobeCars && pkg.isAddOn ? isAdobeProtectionSelected(pkg) : currentPackage === pkg.type) ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
-                        <!-- Popular Badge -->
-                        <div v-if="pkg.type === 'PMP' || pkg.isBestValue"
-                            class="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-yellow-500 text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl text-white uppercase tracking-wide">
-                            {{ pkg.isBestValue ? 'Recommended' : 'Popular' }}
-                        </div>
-
-                        <!-- Header -->
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <span class="text-sm font-bold text-gray-900 block tracking-wide">{{
-                                    pkg.name || getPackageDisplayName(pkg.type) }}</span>
-                                <span class="text-xs text-gray-400 uppercase tracking-wider">{{
-                                    pkg.subtitle || getPackageSubtitle(pkg.type) }}</span>
-                            </div>
-                            <div v-if="isAdobeCars && pkg.isAddOn" class="checkbox-custom"
-                                :class="{ selected: isAdobeProtectionSelected(pkg) }"></div>
-                            <div v-else class="radio-custom" :class="{ selected: currentPackage === pkg.type }">
-                            </div>
-                        </div>
-
-                        <!-- Price -->
-                        <div class="mb-4 pb-4 border-b border-gray-100">
-                            <div class="flex items-baseline gap-1 mb-2">
-                                <span class="text-3xl font-bold"
-                                    :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatRentalPrice(pkg.total / numberOfDays) }}
-                                </span>
-                                <span class="text-sm text-gray-500">/day</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600">Total:</span>
-                                <span class="text-lg font-bold"
-                                    :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatRentalPrice(pkg.total) }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Benefits List -->
-                        <ul class="space-y-2.5">
-                            <li v-for="(benefit, idx) in getBenefits(pkg)" :key="idx"
-                                class="benefit-item flex items-start gap-2.5 text-sm"
-                                :style="{ animationDelay: `${idx * 0.05}s` }">
-                                <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
-                                <span class="leading-snug"
-                                    :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600'">{{
-                                        benefit }}</span>
-                            </li>
-                            <li v-if="pkg.deposit" class="benefit-item text-sm flex items-start gap-2.5">
-                                <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
-                                <span
-                                    :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600'">Deposit:
-                                    {{ formatPrice(pkg.deposit) }}</span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
-
-            <section v-if="isRenteon && (renteonIncludedServices.length || renteonDriverPolicy)" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-                <h3 class="font-display text-2xl font-bold text-gray-900 mb-4">Renteon Highlights</h3>
-                <div class="space-y-4">
-                        <div v-if="renteonIncludedServices.length">
-                            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Included Services</p>
-                            <div class="flex flex-wrap gap-2">
-                                <span v-for="service in renteonIncludedServices" :key="service.id"
-                                    class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-100">
-                                    {{ service.name }}<span v-if="service.quantity_included" class="ml-1">(x{{ service.quantity_included }})</span>
-                                </span>
-                            </div>
-                        </div>
-
-                    <div v-if="renteonDriverPolicy">
-                        <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Driver Age Policy</p>
-                        <p class="text-sm text-gray-600">
-                            <span v-if="renteonDriverPolicy.minAge">Minimum age: {{ renteonDriverPolicy.minAge }}</span>
-                            <span v-if="renteonDriverPolicy.maxAge" class="ml-4">Maximum age: {{ renteonDriverPolicy.maxAge }}</span>
-                            <span v-if="renteonDriverPolicy.youngFrom" class="ml-4">Young driver: {{ renteonDriverPolicy.youngFrom }}-{{ renteonDriverPolicy.youngTo || 'N/A' }}</span>
-                            <span v-if="renteonDriverPolicy.seniorFrom" class="ml-4">Senior driver: {{ renteonDriverPolicy.seniorFrom }}-{{ renteonDriverPolicy.seniorTo || 'N/A' }}</span>
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- LocautoRent: Protection Plans Section -->
-            <section v-if="isLocautoRent && locautoProtectionPlans.length > 0" id="extras-package-section">
-                <div class="mb-6">
-                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Choose Your Protection Plan</h2>
-                    <p class="text-gray-600">Select the coverage that suits your needs</p>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <!-- Basic Plan -->
-                    <div @click="selectedLocautoProtection = null"
-                        class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all"
-                        :class="!selectedLocautoProtection ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <span class="text-sm font-bold text-gray-900 block tracking-wide">Basic</span>
-                                <span class="text-xs text-gray-400 uppercase tracking-wider">Standard</span>
-                            </div>
-                            <div class="radio-custom" :class="{ selected: !selectedLocautoProtection }"></div>
-                        </div>
-
-                        <div class="mb-4 pb-4 border-b border-gray-100">
-                            <div class="flex items-baseline gap-1 mb-2">
-                                <span class="text-3xl font-bold"
-                                    :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatRentalPrice(locautoBaseDaily) }}
-                                </span>
-                                <span class="text-sm text-gray-500">/day</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600">Total:</span>
-                                <span class="text-lg font-bold"
-                                    :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatRentalPrice(locautoBaseTotal) }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <ul class="space-y-2.5">
-                            <li class="benefit-item flex items-start gap-2.5 text-sm">
-                                <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
-                                <span class="leading-snug text-gray-600">Standard protection included</span>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <!-- Protection Plans -->
-                    <div v-for="protection in locautoProtectionPlans" :key="protection.code"
-                        @click="selectedLocautoProtection = protection.code"
-                        class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all"
-                        :class="selectedLocautoProtection === protection.code ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <span class="text-sm font-bold text-gray-900 block tracking-wide">{{
-                                    getShortProtectionName(protection.description) }}</span>
-                                <span class="text-xs text-gray-400 uppercase tracking-wider">Protection</span>
-                            </div>
-                            <div class="radio-custom"
-                                :class="{ selected: selectedLocautoProtection === protection.code }"></div>
-                        </div>
-
-                        <div class="mb-4 pb-4 border-b border-gray-100">
-                            <div class="flex items-baseline gap-1 mb-2">
-                                <span class="text-3xl font-bold"
-                                    :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatRentalPrice(locautoBaseDaily + protection.amount) }}
-                                </span>
-                                <span class="text-sm text-gray-500">/day</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600">Total:</span>
-                                <span class="text-lg font-bold"
-                                    :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
-                                    {{ formatRentalPrice(locautoBaseTotal + (protection.amount * numberOfDays)) }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <ul class="space-y-2.5">
-                            <li class="benefit-item flex items-start gap-2.5 text-sm">
-                                <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
-                                <span class="leading-snug text-gray-600">{{ protection.description }}</span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
-
-            <section v-if="(isFavrica || isXDrive) && providerInsuranceOptions.length > 0" id="extras-insurance-section">
-                <div class="mb-6">
-                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Insurance Packages</h2>
-                    <p class="text-gray-600">Select the coverage that suits your needs</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <template v-for="extra in providerInsuranceOptions" :key="extra.id">
-                        <div @click="toggleExtra(extra)"
-                            class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
-                            :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id], 'opacity-80 cursor-not-allowed': extra.required }">
-                            <div class="flex flex-col gap-3">
-                                <div class="flex items-center gap-3">
-                                    <div class="checkbox-custom flex-shrink-0"
-                                        :class="{ selected: !!selectedExtras[extra.id] }"></div>
-                                    <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                                        :class="getIconBackgroundClass(extra.name)">
-                                        <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
-                                            :class="getIconColorClass(extra.name)" />
-                                    </div>
-                                    <div class="flex items-center justify-between w-full">
-                                        <h4 class="font-bold text-gray-900 text-[1rem]">{{ extra.name }}</h4>
-                                        <span v-if="extra.required"
-                                            class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
-                                    </div>
-                                </div>
-
-                                <div class="flex items-center justify-between pl-8 mt-auto">
-                                    <div v-if="extra.numberAllowed && extra.numberAllowed > 1" class="flex items-center gap-2">
-                                        <button type="button"
-                                            class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
-                                            @click.stop="updateExtraQuantity(extra, -1)"
-                                            :disabled="selectedExtras[extra.id] <= (extra.required ? 1 : 0)">
-                                            -
-                                        </button>
-                                        <span class="text-sm font-semibold text-gray-700">{{ selectedExtras[extra.id] || (extra.required ? 1 : 0) }}</span>
-                                        <button type="button"
-                                            class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
-                                            @click.stop="updateExtraQuantity(extra, 1)"
-                                            :disabled="selectedExtras[extra.id] >= extra.numberAllowed">
-                                            +
-                                        </button>
-                                    </div>
-                                    <div class="text-right ml-auto">
-                                        <span class="text-base font-bold text-gray-900">
-                                            {{ formatRentalPrice(extra.total_for_booking !== undefined && extra.total_for_booking !== null
-                                                ? extra.total_for_booking
-                                                : (extra.daily_rate !== undefined ? extra.daily_rate :
-                                                    (extra.price / numberOfDays))) }}
-                                        </span>
-                                        <p class="text-xs text-gray-400">{{ extra.total_for_booking !== undefined && extra.total_for_booking !== null ? 'Total' : 'Per Day' }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </section>
-
-            <!-- 2. Extras Section -->
-            <section
-                v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && !isXDrive && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || ((isFavrica || isXDrive) && providerOptionalExtras.length > 0)">
-                <div class="mb-6">
-                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">{{ (isFavrica || isXDrive) ? 'Additional Services' : 'Optional Extras' }}</h2>
-                    <p class="text-gray-600">{{ (isFavrica || isXDrive) ? 'Add helpful services to your booking' : 'Enhance your journey with these add-ons' }}</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <template
-                        v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : ((isFavrica || isXDrive) ? providerOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras)))))))"
-                        :key="extra.id">
-                        <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
-                            class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
-                            :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id], 'opacity-80 cursor-not-allowed': extra.required }">
-                            <div class="flex flex-col gap-3">
-                                <!-- Top Row: Checkbox + Icon + Title -->
-                                <div class="flex items-center gap-3">
-                                    <div class="checkbox-custom flex-shrink-0"
-                                        :class="{ selected: !!selectedExtras[extra.id] }"></div>
-                                    <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                                        :class="getIconBackgroundClass(extra.name)">
-                                        <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
-                                            :class="getIconColorClass(extra.name)" />
-                                    </div>
-                                    <div class="flex items-center justify-between w-full">
-                                        <h4 class="font-bold text-gray-900 text-[1rem]">{{ extra.name }}</h4>
-                                        <span v-if="extra.required" class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
-                                    </div>
-                                </div>
-
-                                <!-- Middle: Description (Removed as per request) -->
-                                <!-- <p class="text-xs text-gray-500 pl-8">{{ extra.description }}</p> -->
-
-                                <!-- Bottom: Price -->
-                                <div class="flex items-center justify-between pl-8 mt-auto">
-                                    <div v-if="extra.numberAllowed && extra.numberAllowed > 1" class="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
-                                            @click.stop="updateExtraQuantity(extra, -1)"
-                                            :disabled="selectedExtras[extra.id] <= (extra.required ? 1 : 0)"
-                                        >-</button>
-                                        <span class="text-sm font-semibold text-gray-700">{{ selectedExtras[extra.id] || (extra.required ? 1 : 0) }}</span>
-                                        <button
-                                            type="button"
-                                            class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
-                                            @click.stop="updateExtraQuantity(extra, 1)"
-                                            :disabled="selectedExtras[extra.id] >= extra.numberAllowed"
-                                        >+</button>
-                                    </div>
-                                    <div class="text-right ml-auto">
-                                        <span class="text-base font-bold text-gray-900">
-                                            {{ formatRentalPrice(extra.total_for_booking !== undefined && extra.total_for_booking !== null
-                                                ? extra.total_for_booking
-                                                : (extra.daily_rate !== undefined ? extra.daily_rate :
-                                                    (extra.price / numberOfDays))) }}
-                                        </span>
-                                        <span class="text-xs text-gray-500 block">
-                                            {{ (extra.total_for_booking !== undefined && extra.total_for_booking !== null) ? '/booking' : '/day' }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </section>
-        </div>
-
-        <!-- Right Column: Sticky Summary -->
-        <div class="lg:w-96 xl:w-[420px]" ref="summarySection">
-            <div class="sticky-summary bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 relative overflow-hidden">
-                <h3 class="font-display text-2xl font-bold text-gray-900 mb-6 pb-4 border-b">Booking Summary</h3>
-                <span v-if="providerBadge"
-                    class="pointer-events-none absolute top-6 right-[-72px] rotate-45 w-56 text-center py-1.5 text-[11px] font-extrabold uppercase tracking-widest shadow-lg z-10"
-                    :class="providerBadge.ribbonClassName"
-                    :title="providerBadge.label">
-                    {{ providerBadge.label }}
-                </span>
-
-                <!-- Car Details -->
-                <div class="flex flex-col gap-4 mb-6 pb-6 border-b border-gray-100">
-                    <div class="flex items-start gap-4">
-                        <div
-                            class="w-28 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl overflow-hidden flex-shrink-0">
-                            <img v-if="vehicleImage" :src="vehicleImage" alt="Car" class="w-full h-full object-cover" />
-                            <svg v-else class="w-full h-full p-3 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                                <path
-                                    d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <div class="font-display font-bold text-gray-900 text-xl">{{ displayVehicleName }}</div>
-                            <div class="text-sm text-gray-500 mb-3">{{ vehicle?.category || 'Economy' }}</div>
-                        </div>
-                    </div>
-
-                    <!-- Location Timeline -->
-                    <div class="relative pl-4">
-                        <!-- Animated Dotted Line -->
-                        <div class="absolute left-[40px] top-10 bottom-10 w-0.5 flex flex-col">
-                            <div class="flex-1 border-l-2 border-dotted border-gray-300"></div>
-                            <div class="absolute top-0 left-0 w-full h-full overflow-hidden">
-                                <div class="w-full h-2 animate-dashed-flow"></div>
-                            </div>
-                        </div>
-
-                        <!-- Pickup -->
-                        <div class="flex items-start gap-4 mb-8 relative">
-                            <div class="relative flex-shrink-0">
-                                <div class="w-12 h-12 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-full flex items-center justify-center border-2 border-emerald-200 shadow-lg shadow-emerald-100/50 relative overflow-hidden ripple-icon"
-                                    style="color: rgb(5, 150, 105);">
-                                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-teal-400/10">
-                                    </div>
-                                    <svg xmlns="http://www.w3.org/2000/svg"
-                                        class="w-6 h-6 text-emerald-600 relative z-10" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </div>
-                            </div>
-
-                            <div class="flex-1">
-                                <span
-                                    class="text-xs font-bold text-emerald-700 uppercase tracking-wider block mb-1">Pickup</span>
-                                <div class="font-bold text-gray-900 text-sm md:text-base leading-snug">
-                                    {{ pickupLocation || locationName }}
-                                </div>
-                                <div class="text-xs text-gray-500 mt-1.5 font-medium flex items-center gap-1.5">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                    {{ pickupDate }}
-                                    <span class="text-gray-300">|</span>
-                                    {{ pickupTime }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Dropoff -->
-                        <div class="flex items-start gap-4 relative">
-                            <div class="relative flex-shrink-0">
-                                <div class="w-12 h-12 bg-gradient-to-br from-rose-50 to-pink-50 rounded-full flex items-center justify-center border-2 border-rose-200 shadow-lg shadow-rose-100/50 relative overflow-hidden ripple-icon"
-                                    style="color: rgb(225, 29, 72);">
-                                    <div class="absolute inset-0 bg-gradient-to-br from-rose-400/10 to-pink-400/10">
-                                    </div>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-rose-600 relative z-10"
-                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </div>
-                            </div>
-
-                            <div class="flex-1">
-                                <span
-                                    class="text-xs font-bold text-rose-700 uppercase tracking-wider block mb-1">Dropoff</span>
-                                <div class="font-bold text-gray-900 text-sm md:text-base leading-snug">
-                                    {{ dropoffLocation || pickupLocation || locationName }}
-                                </div>
-                                <div class="text-xs text-gray-500 mt-1.5 font-medium flex items-center gap-1.5">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                    {{ dropoffDate }}
-                                    <span class="text-gray-300">|</span>
-                                    {{ dropoffTime }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Specs Icons -->
-                <div class="flex flex-wrap gap-3 mb-6 pb-6 border-b border-gray-100">
-                    <!-- Luggage -->
-                    <div v-if="vehicleSpecs.bagDisplay"
-                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                        </svg>
-                        <span>{{ vehicleSpecs.bagDisplay }}</span>
-                    </div>
-                    <!-- Passengers -->
-                    <div v-if="vehicleSpecs.passengers"
-                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
-                        <img :src="seatingIcon" class="w-4 h-4" alt="Seats" />
-                        <span>{{ vehicleSpecs.passengers }}</span>
-                    </div>
-                    <!-- Transmission -->
-                    <div v-if="vehicleSpecs.transmission"
-                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
-                        <img :src="transmissionIcon" class="w-4 h-4" alt="Trans" />
-                        <span class="whitespace-nowrap">{{ vehicleSpecs.transmission }}</span>
-                    </div>
-                    <!-- Fuel -->
-                    <div v-if="vehicleSpecs.fuel"
-                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
-                        <img :src="fuelIcon" class="w-4 h-4" alt="Fuel" />
-                        <span>{{ vehicleSpecs.fuel }}</span>
-                    </div>
-                    <!-- AC -->
-                    <div v-if="vehicleSpecs.airConditioning"
-                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
-                        <img :src="acIcon" class="w-4 h-4" alt="AC" />
-                        <span>AC</span>
-                    </div>
-                    <!-- Doors -->
-                    <div v-if="vehicleSpecs.doors"
-                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
-                        <img :src="doorIcon" class="w-4 h-4" alt="Doors" />
-                        <span>{{ vehicleSpecs.doors }}</span>
-                    </div>
-                    <!-- Mileage -->
-                    <div v-if="currentProduct?.mileage"
-                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
-                        <component :is="Gauge" class="w-4 h-4" />
-                        <span>{{ currentProduct.mileage }}</span>
-                    </div>
-                    <!-- CO2 -->
-                    <div v-if="vehicleSpecs.co2"
-                        class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-green-50 rounded-lg text-xs font-medium text-green-700 transition-all hover:gap-2">
-                        <component :is="Leaf" class="w-4 h-4 text-green-600" />
-                        <span>{{ vehicleSpecs.co2 }} g/km</span>
-                    </div>
-                </div>
-
-                <!-- Price Breakdown -->
-                <div class="space-y-3 text-sm text-gray-700 mb-6 pb-6 border-b border-gray-100">
-                    <div class="flex justify-between">
-                        <span>Car Package ({{ currentPackageLabel }})</span>
-                        <span class="font-medium" v-if="ratesReady">{{ formatRentalPrice(isLocautoRent ? locautoBaseTotal : (isOkMobility ? (currentProduct?.total || okMobilityBaseTotal) : (currentProduct?.total || 0))) }}</span>
-                        <span class="price-skeleton price-skeleton-sm" v-else></span>
-                    </div>
-                    <div v-if="isAdobeCars && adobeMandatoryProtection > 0" class="flex justify-between text-amber-600">
-                        <span>Mandatory Liability (PLI)</span>
-                        <span class="font-medium" v-if="ratesReady">+{{ formatRentalPrice(adobeMandatoryProtection) }}</span>
-                        <span class="price-skeleton price-skeleton-sm" v-else></span>
-                    </div>
-                    <!-- Selected Extras List -->
-                    <div v-for="item in getSelectedExtrasDetails" :key="item.id"
-                        class="flex justify-between text-blue-600">
-                        <span>{{ item.name }} <span v-if="item.qty > 1">x{{ item.qty }}</span></span>
-                        <span class="font-medium">
-                            <span v-if="item.isFree" class="text-green-600 font-bold">Free</span>
-                            <template v-else>
-                                <span v-if="ratesReady">+{{ formatRentalPrice(item.total) }}</span>
-                                <span class="price-skeleton price-skeleton-sm" v-else></span>
-                            </template>
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Total -->
-                <div class="flex justify-between items-center border-t pt-4 mb-3">
-                    <span class="text-lg font-bold text-gray-800">Total</span>
-                    <span class="text-3xl font-bold text-[#1e3a5f]" v-if="ratesReady">{{ formatPrice(grandTotal) }}</span>
-                    <span class="price-skeleton price-skeleton-lg" v-else></span>
-                </div>
-
-                <!-- Payable Amount -->
-                <div v-if="effectivePaymentPercentage > 0"
-                    class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-4 mb-3">
-                    <div class="flex justify-between items-center">
-                        <span class="font-bold text-green-800">
-                            {{ isRenteon ? 'Commission' : 'Pay Now' }} ({{ effectivePaymentPercentage }}%)
-                        </span>
-                        <span class="text-2xl font-bold text-green-700" v-if="ratesReady">{{ formatPrice(payableAmount) }}</span>
-                        <span class="price-skeleton price-skeleton-md" v-else></span>
-                    </div>
-                </div>
-
-                <!-- Running Text -->
-                <div v-if="effectivePaymentPercentage > 0" class="overflow-hidden rounded-xl mb-6"
-                    style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8f 100%);">
-                    <p class="py-3 whitespace-nowrap marquee-text text-sm font-medium text-white">
-                        <template v-if="isRenteon">
-                            💳 Pay commission now and rest pay at desk &nbsp;•&nbsp; 💳 Pay commission now and rest pay at desk
-                            &nbsp;•&nbsp; 💳 Pay commission now and rest pay at desk &nbsp;•&nbsp;
-                        </template>
-                        <template v-else>
-                            💳 Pay {{ effectivePaymentPercentage }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{
-                                effectivePaymentPercentage
-                            }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{ effectivePaymentPercentage }}% now and rest pay
-                            on
-                            arrival &nbsp;•&nbsp;
-                        </template>
+                    <p class="text-xs text-gray-500 mt-3">
+                        Supplier totals shown; your final price in the summary includes our booking fee.
                     </p>
                 </div>
 
-                <!-- View Booking Details Button -->
-                <button @click="showDetailsModal = true"
-                    class="w-full text-sm py-3 mb-4 rounded-xl border-2 font-semibold transition-all flex items-center justify-center gap-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/10">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    View Booking Details
-                </button>
+                <div v-if="driverRequirementItems.length || mileageTypeLabel"
+                    class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 4.354a4 4 0 110 5.292M15 10a4 4 0 11-6 0m1 10h4m-4 0a2 2 0 01-2-2v-1a4 4 0 014-4h2a4 4 0 014 4v1a2 2 0 01-2 2m-6 0h6" />
+                        </svg>
+                        <h4 class="font-display text-xl font-bold text-gray-900">Driver Requirements</h4>
+                    </div>
+                    <p v-if="mileageTypeLabel" class="text-sm text-gray-600 mb-3">
+                        <span class="font-semibold text-gray-800">Mileage type:</span> {{ mileageTypeLabel }}
+                    </p>
+                    <ul v-if="driverRequirementItems.length" class="text-sm text-gray-600 space-y-2">
+                        <li v-for="item in driverRequirementItems" :key="item" class="flex items-start gap-2">
+                            <span class="mt-0.5 w-2 h-2 rounded-full bg-[#1e3a5f]"></span>
+                            <span>{{ item }}</span>
+                        </li>
+                    </ul>
+                    <p v-else class="text-sm text-gray-500">Requirement details unavailable for this location.</p>
+                </div>
 
-                <!-- Action Buttons -->
-                <div class="space-y-3">
-                    <button @click="$emit('proceed-to-checkout', {
-                        package: isLocautoRent ? (selectedLocautoProtection ? 'POA' : 'BAS') : currentPackage,
-                        protection_code: isLocautoRent ? selectedLocautoProtection : (isAdobeCars ? getSelectedAdobeProtectionCodes() : null),
-                        protection_amount: isLocautoRent && selectedLocautoProtection
-                            ? locautoProtectionPlans.find(p => p.code === selectedLocautoProtection)?.amount || 0
-                            : 0,
-                        extras: selectedExtras,
-                        detailedExtras: getSelectedExtrasDetails,
-                        totals: {
-                            grandTotal,
-                            payableAmount,
-                            pendingAmount
-                        },
-                        vehicle_total: isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0))
-                    })" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg"
-                        :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                        Proceed to Booking
+                <div v-if="terms && terms.length" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#1e3a5f]" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <h4 class="font-display text-xl font-bold text-gray-900">Terms & Conditions</h4>
+                    </div>
+                    <div v-for="(category, index) in terms" :key="`term-${index}`" class="mb-4">
+                        <p class="font-semibold text-gray-800 mb-2">{{ category.name }}</p>
+                        <ul class="text-sm text-gray-600 space-y-1">
+                            <li v-for="(condition, conditionIndex) in category.conditions"
+                                :key="`term-${index}-${conditionIndex}`">
+                                {{ condition }}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Vendor Info & Guidelines (Internal Only) -->
+                <section v-if="isInternal" class="mb-8 space-y-6">
+                    <!-- 1. Vendor Information Card -->
+                    <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm"
+                        v-if="vehicle.vendor?.profile || vehicle.vendorProfile || vehicle.vendor_profile">
+                        <h3 class="font-display text-xl font-bold text-gray-900 border-b border-gray-100 pb-4 mb-6">
+                            Rental Information
+                        </h3>
+                        <div class="flex items-start gap-4">
+                            <img :src="(vehicle.vendor?.profile?.avatar || vehicle.vendorProfile?.avatar || vehicle.vendor_profile?.avatar) ? (vehicle.vendor?.profile?.avatar || vehicle.vendorProfile?.avatar || vehicle.vendor_profile?.avatar) : '/images/default-avatar.png'"
+                                alt="Vendor"
+                                class="w-16 h-16 rounded-full object-cover border border-gray-200 shadow-sm flex-shrink-0"
+                                @error="$event.target.src = '/images/default-avatar.png'" />
+                            <div>
+                                <h4 class="font-bold text-gray-900 text-xl leading-tight">
+                                    {{ vehicle.vendorProfileData?.company_name ||
+                                        vehicle.vendor_profile_data?.company_name
+                                        || vehicle.vendor?.profile?.company_name || vehicle.vendorProfile?.company_name ||
+                                        vehicle.vendor_profile?.company_name || 'Vendor' }}
+                                </h4>
+                                <p class="text-base text-gray-500 mt-1"
+                                    v-if="vehicle?.vendor?.profile?.about || vehicle?.vendorProfile?.about || vehicle?.vendor_profile?.about">
+                                    {{ vehicle?.vendor?.profile?.about || vehicle?.vendorProfile?.about ||
+                                        vehicle?.vendor_profile?.about }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Guidelines Card -->
+                    <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm" v-if="vehicle?.guidelines">
+                        <h5
+                            class="text-base font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#1e3a5f]" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Guidelines
+                        </h5>
+                        <p
+                            class="text-base text-gray-600 leading-relaxed bg-gray-50 p-5 rounded-lg border border-gray-100 whitespace-pre-line">
+                            {{ vehicle?.guidelines }}
+                        </p>
+                    </div>
+
+                    <!-- 3. Benefits & Policy Card -->
+                    <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm"
+                        v-if="(vehicle && vehicle.benefits) || (vehicle && vehicle.security_deposit > 0)">
+                        <h5
+                            class="text-base font-bold text-gray-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#1e3a5f]" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Benefits & Policy
+                        </h5>
+
+                        <!-- Deposit Section -->
+                        <div class="grid grid-cols-2 gap-6 mb-8 border-b border-gray-100 pb-6">
+                            <div v-if="vehicle?.security_deposit > 0">
+                                <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Security
+                                    Deposit
+                                </h5>
+                                <p class="text-xl font-bold text-gray-900">
+                                    {{ formatPrice(vehicle?.security_deposit) }}
+                                </p>
+                            </div>
+                            <div v-if="vehicle?.payment_method">
+                                <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Deposit Method
+                                </h5>
+                                <span
+                                    class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                    {{ formatPaymentMethod(vehicle?.payment_method) }}
+                                </span>
+                            </div>
+                            <div v-if="vehicle?.benefits?.deposit_amount">
+                                <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Deposit Amount
+                                </h5>
+                                <p class="text-xl font-bold text-gray-900">
+                                    {{ formatPrice(vehicle?.benefits?.deposit_amount) }}
+                                </p>
+                                <p v-if="vehicle?.benefits?.deposit_currency" class="text-xs text-gray-500">Currency: {{
+                                    vehicle?.benefits?.deposit_currency }}</p>
+                            </div>
+                            <div v-if="vehicle?.benefits?.excess_amount">
+                                <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Excess Amount
+                                </h5>
+                                <p class="text-xl font-bold text-gray-900">
+                                    {{ formatPrice(vehicle?.benefits?.excess_amount) }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Benefits Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
+                            <div v-if="vehicle?.benefits?.excess_theft_amount" class="flex items-start gap-3">
+                                <div class="mt-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-500" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 11c0 2.761-2.239 5-5 5-2.761 0-5-2.239-5-5 0-2.761 2.239-5 5-5 2.761 0 5 2.239 5 5zm0 0c0 2.761 2.239 5 5 5 2.761 0 5-2.239 5-5 0-2.761-2.239-5-5-5-2.761 0-5 2.239-5 5zm0 0v12" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <span class="block text-base font-bold text-gray-900">Excess Theft</span>
+                                    <span class="text-sm text-gray-500 block mt-0.5">{{
+                                        formatPrice(vehicle?.benefits?.excess_theft_amount) }}</span>
+                                </div>
+                            </div>
+
+                            <div v-if="vehicle?.benefits?.maximum_driver_age" class="flex items-start gap-3">
+                                <div class="mt-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 14c3.866 0 7 1.343 7 3v3H5v-3c0-1.657 3.134-3 7-3zm0-2a4 4 0 100-8 4 4 0 000 8z" />
+                                    </svg>
+                                </div>
+                                <span class="text-base font-medium text-gray-900 mt-1">Max. Driver Age: {{
+                                    vehicle?.benefits?.maximum_driver_age }}</span>
+                            </div>
+
+                            <!-- Cancellation -->
+                            <div class="flex items-start gap-3">
+                                <div class="mt-1">
+                                    <svg v-if="vehicle?.benefits?.cancellation_available_per_day == 1"
+                                        xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500"
+                                        viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <template v-if="vehicle?.benefits?.cancellation_available_per_day == 1">
+                                        <span class="block text-base font-bold text-gray-900">Free Cancellation</span>
+                                        <span v-if="cancellationDeadline"
+                                            class="text-sm text-gray-500 block mt-0.5">Until
+                                            {{ cancellationDeadline }}</span>
+                                    </template>
+                                    <template v-else>
+                                        <span class="block text-base font-medium text-gray-900">Cancellation Policy
+                                            Applies</span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Mileage -->
+                            <div class="flex items-start gap-3">
+                                <div class="mt-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <span v-if="vehicle?.benefits?.limited_km_per_day == 1">
+                                        <span class="block text-base font-bold text-gray-900">Limited: {{
+                                            vehicle?.benefits?.limited_km_per_day_range
+                                            }} km/day</span>
+                                        <span v-if="vehicle?.benefits?.price_per_km_per_day"
+                                            class="text-base font-semibold text-gray-700 block mt-0.5">
+                                            +{{ formatPrice(vehicle?.benefits?.price_per_km_per_day) }}/km
+                                        </span>
+                                    </span>
+                                    <span v-else class="block text-base font-bold text-gray-900">Unlimited
+                                        Mileage</span>
+                                </div>
+                            </div>
+
+                            <!-- Min Age -->
+                            <div v-if="vehicle?.benefits?.minimum_driver_age" class="flex items-start gap-3">
+                                <div class="mt-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-500" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                </div>
+                                <span class="text-base font-medium text-gray-900 mt-1">Min. Driver Age: {{
+                                    vehicle?.benefits?.minimum_driver_age
+                                    }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 1. Package Upgrade Section -->
+                <section v-if="!isLocautoRent" id="extras-package-section">
+                    <!-- GreenMotion/USave: Package Selection -->
+                    <div class="mb-6">
+                        <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Choose Your Package</h2>
+                        <p class="text-gray-600">Select the perfect package for your journey</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div v-for="pkg in availablePackages" :key="pkg.type"
+                            @click="isAdobeCars && pkg.isAddOn ? toggleAdobeProtection(pkg) : selectPackage(pkg.type)"
+                            class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all relative"
+                            :class="(isAdobeCars && pkg.isAddOn ? isAdobeProtectionSelected(pkg) : currentPackage === pkg.type) ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
+                            <!-- Popular Badge -->
+                            <div v-if="pkg.type === 'PMP' || pkg.isBestValue"
+                                class="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-yellow-500 text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl text-white uppercase tracking-wide">
+                                {{ pkg.isBestValue ? 'Recommended' : 'Popular' }}
+                            </div>
+
+                            <!-- Header -->
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <span class="text-sm font-bold text-gray-900 block tracking-wide">{{
+                                        pkg.name || getPackageDisplayName(pkg.type) }}</span>
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider">{{
+                                        pkg.subtitle || getPackageSubtitle(pkg.type) }}</span>
+                                </div>
+                                <div v-if="isAdobeCars && pkg.isAddOn" class="checkbox-custom"
+                                    :class="{ selected: isAdobeProtectionSelected(pkg) }"></div>
+                                <div v-else class="radio-custom" :class="{ selected: currentPackage === pkg.type }">
+                                </div>
+                            </div>
+
+                            <!-- Price -->
+                            <div class="mb-4 pb-4 border-b border-gray-100">
+                                <div class="flex items-baseline gap-1 mb-2">
+                                    <span class="text-3xl font-bold"
+                                        :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                        {{ formatRentalPrice(pkg.total / numberOfDays) }}
+                                    </span>
+                                    <span class="text-sm text-gray-500">/day</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Total:</span>
+                                    <span class="text-lg font-bold"
+                                        :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                        {{ formatRentalPrice(pkg.total) }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Benefits List -->
+                            <ul class="space-y-2.5">
+                                <li v-for="(benefit, idx) in getBenefits(pkg)" :key="idx"
+                                    class="benefit-item flex items-start gap-2.5 text-sm"
+                                    :style="{ animationDelay: `${idx * 0.05}s` }">
+                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
+                                    <span class="leading-snug"
+                                        :class="isKeyBenefit(benefit) ? 'font-bold text-gray-900' : 'text-gray-600'">{{
+                                            benefit }}</span>
+                                </li>
+                                <li v-if="pkg.deposit" class="benefit-item text-sm flex items-start gap-2.5">
+                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
+                                    <span
+                                        :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600'">Deposit:
+                                        {{ formatPrice(pkg.deposit) }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section v-if="isRenteon && (renteonIncludedServices.length || renteonDriverPolicy)"
+                    class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <h3 class="font-display text-2xl font-bold text-gray-900 mb-4">Renteon Highlights</h3>
+                    <div class="space-y-4">
+                        <div v-if="renteonIncludedServices.length">
+                            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Included
+                                Services</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="service in renteonIncludedServices" :key="service.id"
+                                    class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-100">
+                                    {{ service.name }}<span v-if="service.quantity_included" class="ml-1">(x{{
+                                        service.quantity_included
+                                        }})</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div v-if="renteonDriverPolicy">
+                            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Driver Age
+                                Policy</p>
+                            <p class="text-sm text-gray-600">
+                                <span v-if="renteonDriverPolicy.minAge">Minimum age: {{ renteonDriverPolicy.minAge
+                                    }}</span>
+                                <span v-if="renteonDriverPolicy.maxAge" class="ml-4">Maximum age: {{
+                                    renteonDriverPolicy.maxAge
+                                    }}</span>
+                                <span v-if="renteonDriverPolicy.youngFrom" class="ml-4">Young driver: {{
+                                    renteonDriverPolicy.youngFrom
+                                    }}-{{ renteonDriverPolicy.youngTo || 'N/A' }}</span>
+                                <span v-if="renteonDriverPolicy.seniorFrom" class="ml-4">Senior driver: {{
+                                    renteonDriverPolicy.seniorFrom }}-{{ renteonDriverPolicy.seniorTo || 'N/A' }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <section
+                    v-if="isRenteon && (vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount)"
+                    class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <h3 class="font-display text-2xl font-bold text-gray-900 mb-4">Deposit & Excess</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                        <div v-if="vehicle?.benefits?.deposit_amount">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider">Deposit</p>
+                            <p class="font-semibold text-gray-900">{{ formatPrice(vehicle?.benefits?.deposit_amount) }}
+                            </p>
+                            <p v-if="vehicle?.benefits?.deposit_currency" class="text-xs text-gray-500">Currency: {{
+                                vehicle?.benefits?.deposit_currency }}</p>
+                        </div>
+                        <div v-if="vehicle?.benefits?.excess_amount">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider">Excess</p>
+                            <p class="font-semibold text-gray-900">{{ formatPrice(vehicle?.benefits?.excess_amount) }}
+                            </p>
+                        </div>
+                        <div v-if="vehicle?.benefits?.excess_theft_amount">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider">Excess Theft</p>
+                            <p class="font-semibold text-gray-900">{{
+                                formatPrice(vehicle?.benefits?.excess_theft_amount) }}</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- LocautoRent: Protection Plans Section -->
+                <section v-if="isLocautoRent && locautoProtectionPlans.length > 0" id="extras-package-section">
+                    <div class="mb-6">
+                        <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Choose Your Protection Plan</h2>
+                        <p class="text-gray-600">Select the coverage that suits your needs</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <!-- Basic Plan -->
+                        <div @click="selectedLocautoProtection = null"
+                            class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all"
+                            :class="!selectedLocautoProtection ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <span class="text-sm font-bold text-gray-900 block tracking-wide">Basic</span>
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider">Standard</span>
+                                </div>
+                                <div class="radio-custom" :class="{ selected: !selectedLocautoProtection }"></div>
+                            </div>
+
+                            <div class="mb-4 pb-4 border-b border-gray-100">
+                                <div class="flex items-baseline gap-1 mb-2">
+                                    <span class="text-3xl font-bold"
+                                        :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                        {{ formatRentalPrice(locautoBaseDaily) }}
+                                    </span>
+                                    <span class="text-sm text-gray-500">/day</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Total:</span>
+                                    <span class="text-lg font-bold"
+                                        :class="!selectedLocautoProtection ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                        {{ formatRentalPrice(locautoBaseTotal) }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <ul class="space-y-2.5">
+                                <li class="benefit-item flex items-start gap-2.5 text-sm">
+                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
+                                    <span class="leading-snug text-gray-600">Standard protection included</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Protection Plans -->
+                        <div v-for="protection in locautoProtectionPlans" :key="protection.code"
+                            @click="selectedLocautoProtection = protection.code"
+                            class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all"
+                            :class="selectedLocautoProtection === protection.code ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <span class="text-sm font-bold text-gray-900 block tracking-wide">{{
+                                        getShortProtectionName(protection.description) }}</span>
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider">Protection</span>
+                                </div>
+                                <div class="radio-custom"
+                                    :class="{ selected: selectedLocautoProtection === protection.code }"></div>
+                            </div>
+
+                            <div class="mb-4 pb-4 border-b border-gray-100">
+                                <div class="flex items-baseline gap-1 mb-2">
+                                    <span class="text-3xl font-bold"
+                                        :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                        {{ formatRentalPrice(locautoBaseDaily + protection.amount) }}
+                                    </span>
+                                    <span class="text-sm text-gray-500">/day</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Total:</span>
+                                    <span class="text-lg font-bold"
+                                        :class="selectedLocautoProtection === protection.code ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                        {{ formatRentalPrice(locautoBaseTotal + (protection.amount * numberOfDays)) }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <ul class="space-y-2.5">
+                                <li class="benefit-item flex items-start gap-2.5 text-sm">
+                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
+                                    <span class="leading-snug text-gray-600">{{ protection.description }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section v-if="(isFavrica || isXDrive) && providerInsuranceOptions.length > 0"
+                    id="extras-insurance-section">
+                    <div class="mb-6">
+                        <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Insurance Packages</h2>
+                        <p class="text-gray-600">Select the coverage that suits your needs</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <template v-for="extra in providerInsuranceOptions" :key="extra.id">
+                            <div @click="toggleExtra(extra)"
+                                class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
+                                :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id], 'opacity-80 cursor-not-allowed': extra.required }">
+                                <div class="flex flex-col gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="checkbox-custom flex-shrink-0"
+                                            :class="{ selected: !!selectedExtras[extra.id] }"></div>
+                                        <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                                            :class="getIconBackgroundClass(extra.name)">
+                                            <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
+                                                :class="getIconColorClass(extra.name)" />
+                                        </div>
+                                        <div class="flex items-center justify-between w-full">
+                                            <h4 class="font-bold text-gray-900 text-[1rem]">{{ extra.name }}</h4>
+                                            <span v-if="extra.required"
+                                                class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between pl-8 mt-auto">
+                                        <div v-if="extra.numberAllowed && extra.numberAllowed > 1"
+                                            class="flex items-center gap-2">
+                                            <button type="button"
+                                                class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                                @click.stop="updateExtraQuantity(extra, -1)"
+                                                :disabled="selectedExtras[extra.id] <= (extra.required ? 1 : 0)">
+                                                -
+                                            </button>
+                                            <span class="text-sm font-semibold text-gray-700">{{
+                                                selectedExtras[extra.id] || (extra.required ? 1 : 0) }}</span>
+                                            <button type="button"
+                                                class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                                @click.stop="updateExtraQuantity(extra, 1)"
+                                                :disabled="selectedExtras[extra.id] >= extra.numberAllowed">
+                                                +
+                                            </button>
+                                        </div>
+                                        <div class="text-right ml-auto">
+                                            <span class="text-base font-bold text-gray-900">
+                                                {{ formatRentalPrice(extra.total_for_booking !== undefined &&
+                                                    extra.total_for_booking !== null
+                                                    ? extra.total_for_booking
+                                                    : (extra.daily_rate !== undefined ? extra.daily_rate :
+                                                        (extra.price / numberOfDays))) }}
+                                            </span>
+                                            <p class="text-xs text-gray-400">{{ extra.total_for_booking !== undefined &&
+                                                extra.total_for_booking !== null ? 'Total' : 'Per Day' }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+
+                <section v-if="isRenteon && renteonProtectionPlans.length > 0" id="renteon-insurance-section">
+                    <div class="mb-6">
+                        <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Protection Plans</h2>
+                        <p class="text-gray-600">Choose the protection that suits your trip</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <template v-for="extra in renteonProtectionPlans" :key="extra.id">
+                            <div @click="toggleExtra(extra)"
+                                class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
+                                :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id], 'opacity-80 cursor-not-allowed': extra.required }">
+                                <div class="flex flex-col gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="checkbox-custom flex-shrink-0"
+                                            :class="{ selected: !!selectedExtras[extra.id] }"></div>
+                                        <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                                            :class="getIconBackgroundClass(extra.name)">
+                                            <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
+                                                :class="getIconColorClass(extra.name)" />
+                                        </div>
+                                        <div class="flex items-center justify-between w-full">
+                                            <h4 class="font-bold text-gray-900 text-[1rem]">{{ extra.name }}</h4>
+                                            <span v-if="extra.required"
+                                                class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between pl-8 mt-auto">
+                                        <div v-if="extra.numberAllowed && extra.numberAllowed > 1"
+                                            class="flex items-center gap-2">
+                                            <button type="button"
+                                                class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                                @click.stop="updateExtraQuantity(extra, -1)"
+                                                :disabled="selectedExtras[extra.id] <= (extra.required ? 1 : 0)">
+                                                -
+                                            </button>
+                                            <span class="text-sm font-semibold text-gray-700">{{
+                                                selectedExtras[extra.id] || (extra.required ? 1 : 0) }}</span>
+                                            <button type="button"
+                                                class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                                @click.stop="updateExtraQuantity(extra, 1)"
+                                                :disabled="selectedExtras[extra.id] >= extra.numberAllowed">
+                                                +
+                                            </button>
+                                        </div>
+                                        <div class="text-right ml-auto">
+                                            <span class="text-base font-bold text-gray-900">
+                                                {{ formatRentalPrice(extra.total_for_booking !== undefined &&
+                                                    extra.total_for_booking !== null
+                                                    ? extra.total_for_booking
+                                                    : (extra.daily_rate !== undefined ? extra.daily_rate :
+                                                        (extra.price / numberOfDays))) }}
+                                            </span>
+                                            <p class="text-xs text-gray-400">{{ extra.total_for_booking !== undefined &&
+                                                extra.total_for_booking !== null ? 'Total' : 'Per Day' }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+                <section v-else-if="isRenteon" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <h3 class="font-display text-2xl font-bold text-gray-900 mb-2">Protection Plans</h3>
+                    <p class="text-gray-600">No protection plans were provided by the supplier for this offer.</p>
+                </section>
+
+                <!-- 2. Extras Section -->
+                <section
+                    v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && !isXDrive && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || ((isFavrica || isXDrive) && providerOptionalExtras.length > 0)">
+                    <div class="mb-6">
+                        <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">{{ (isFavrica || isXDrive)?'AdditionalServices': 'Optional Extras' }}</h2>
+                        <p class="text-gray-600">{{ (isFavrica || isXDrive) ? 'Add helpful services to your booking': 'Enhance your journey with these add - ons' }}</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <template
+                            v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : ((isFavrica || isXDrive) ? providerOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras)))))))"
+                            :key="extra.id">
+                            <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
+                                class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
+                                :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id], 'opacity-80 cursor-not-allowed': extra.required }">
+                                <div class="flex flex-col gap-3">
+                                    <!-- Top Row: Checkbox + Icon + Title -->
+                                    <div class="flex items-center gap-3">
+                                        <div class="checkbox-custom flex-shrink-0"
+                                            :class="{ selected: !!selectedExtras[extra.id] }"></div>
+                                        <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                                            :class="getIconBackgroundClass(extra.name)">
+                                            <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
+                                                :class="getIconColorClass(extra.name)" />
+                                        </div>
+                                        <div class="flex items-center justify-between w-full">
+                                            <h4 class="font-bold text-gray-900 text-[1rem]">{{ extra.name }}</h4>
+                                            <span v-if="extra.required"
+                                                class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Middle: Description (Removed as per request) -->
+                                    <!-- <p class="text-xs text-gray-500 pl-8">{{ extra.description }}</p> -->
+
+                                    <!-- Bottom: Price -->
+                                    <div class="flex items-center justify-between pl-8 mt-auto">
+                                        <div v-if="extra.numberAllowed && extra.numberAllowed > 1"
+                                            class="flex items-center gap-2">
+                                            <button type="button"
+                                                class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                                @click.stop="updateExtraQuantity(extra, -1)"
+                                                :disabled="selectedExtras[extra.id] <= (extra.required ? 1 : 0)">-</button>
+                                            <span class="text-sm font-semibold text-gray-700">{{
+                                                selectedExtras[extra.id] || (extra.required ? 1 : 0) }}</span>
+                                            <button type="button"
+                                                class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                                @click.stop="updateExtraQuantity(extra, 1)"
+                                                :disabled="selectedExtras[extra.id] >= extra.numberAllowed">+</button>
+                                        </div>
+                                        <div class="text-right ml-auto">
+                                            <span class="text-base font-bold text-gray-900">
+                                                {{ formatRentalPrice(extra.total_for_booking !== undefined &&
+                                                    extra.total_for_booking !== null
+                                                    ? extra.total_for_booking
+                                                    : (extra.daily_rate !== undefined ? extra.daily_rate :
+                                                        (extra.price / numberOfDays))) }}
+                                            </span>
+                                            <span class="text-xs text-gray-500 block">
+                                                {{ (extra.total_for_booking !== undefined && extra.total_for_booking !==
+                                                    null) ? '/booking' : '/day' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Sticky Summary -->
+            <div class="lg:w-96 xl:w-[420px]" ref="summarySection">
+                <div
+                    class="sticky-summary bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 relative overflow-hidden">
+                    <h3 class="font-display text-2xl font-bold text-gray-900 mb-6 pb-4 border-b">Booking Summary</h3>
+                    <span v-if="providerBadge"
+                        class="pointer-events-none absolute top-6 right-[-72px] rotate-45 w-56 text-center py-1.5 text-[11px] font-extrabold uppercase tracking-widest shadow-lg z-10"
+                        :class="providerBadge.ribbonClassName" :title="providerBadge.label">
+                        {{ providerBadge.label }}
+                    </span>
+
+                    <!-- Car Details -->
+                    <div class="flex flex-col gap-4 mb-6 pb-6 border-b border-gray-100">
+                        <div class="flex items-start gap-4">
+                            <div
+                                class="w-28 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl overflow-hidden flex-shrink-0">
+                                <img v-if="vehicleImage" :src="vehicleImage" alt="Car"
+                                    class="w-full h-full object-cover" />
+                                <svg v-else class="w-full h-full p-3 text-gray-400" viewBox="0 0 24 24"
+                                    fill="currentColor">
+                                    <path
+                                        d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-display font-bold text-gray-900 text-xl">{{ displayVehicleName }}</div>
+                                <div class="text-sm text-gray-500 mb-3">{{ vehicle?.category || 'Economy' }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Location Timeline -->
+                        <div class="relative pl-4">
+                            <!-- Animated Dotted Line -->
+                            <div class="absolute left-[40px] top-10 bottom-10 w-0.5 flex flex-col">
+                                <div class="flex-1 border-l-2 border-dotted border-gray-300"></div>
+                                <div class="absolute top-0 left-0 w-full h-full overflow-hidden">
+                                    <div class="w-full h-2 animate-dashed-flow"></div>
+                                </div>
+                            </div>
+
+                            <!-- Pickup -->
+                            <div class="flex items-start gap-4 mb-8 relative">
+                                <div class="relative flex-shrink-0">
+                                    <div class="w-12 h-12 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-full flex items-center justify-center border-2 border-emerald-200 shadow-lg shadow-emerald-100/50 relative overflow-hidden ripple-icon"
+                                        style="color: rgb(5, 150, 105);">
+                                        <div
+                                            class="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-teal-400/10">
+                                        </div>
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                            class="w-6 h-6 text-emerald-600 relative z-10" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                <div class="flex-1">
+                                    <span
+                                        class="text-xs font-bold text-emerald-700 uppercase tracking-wider block mb-1">Pickup</span>
+                                    <div class="font-bold text-gray-900 text-sm md:text-base leading-snug">
+                                        {{ pickupLocation || locationName }}
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1.5 font-medium flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        {{ pickupDate }}
+                                        <span class="text-gray-300">|</span>
+                                        {{ pickupTime }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Dropoff -->
+                            <div class="flex items-start gap-4 relative">
+                                <div class="relative flex-shrink-0">
+                                    <div class="w-12 h-12 bg-gradient-to-br from-rose-50 to-pink-50 rounded-full flex items-center justify-center border-2 border-rose-200 shadow-lg shadow-rose-100/50 relative overflow-hidden ripple-icon"
+                                        style="color: rgb(225, 29, 72);">
+                                        <div class="absolute inset-0 bg-gradient-to-br from-rose-400/10 to-pink-400/10">
+                                        </div>
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                            class="w-6 h-6 text-rose-600 relative z-10" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                <div class="flex-1">
+                                    <span
+                                        class="text-xs font-bold text-rose-700 uppercase tracking-wider block mb-1">Dropoff</span>
+                                    <div class="font-bold text-gray-900 text-sm md:text-base leading-snug">
+                                        {{ dropoffLocation || pickupLocation || locationName }}
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1.5 font-medium flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        {{ dropoffDate }}
+                                        <span class="text-gray-300">|</span>
+                                        {{ dropoffTime }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Specs Icons -->
+                    <div class="flex flex-wrap gap-3 mb-6 pb-6 border-b border-gray-100">
+                        <!-- Luggage -->
+                        <div v-if="vehicleSpecs.bagDisplay"
+                            class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                            <span>{{ vehicleSpecs.bagDisplay }}</span>
+                        </div>
+                        <!-- Passengers -->
+                        <div v-if="vehicleSpecs.passengers"
+                            class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                            <img :src="seatingIcon" class="w-4 h-4" alt="Seats" />
+                            <span>{{ vehicleSpecs.passengers }}</span>
+                        </div>
+                        <!-- Transmission -->
+                        <div v-if="vehicleSpecs.transmission"
+                            class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                            <img :src="transmissionIcon" class="w-4 h-4" alt="Trans" />
+                            <span class="whitespace-nowrap">{{ vehicleSpecs.transmission }}</span>
+                        </div>
+                        <!-- Fuel -->
+                        <div v-if="vehicleSpecs.fuel"
+                            class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                            <img :src="fuelIcon" class="w-4 h-4" alt="Fuel" />
+                            <span>{{ vehicleSpecs.fuel }}</span>
+                        </div>
+                        <!-- SIPP/ACRISS -->
+                        <div v-if="vehicleSpecs.acriss"
+                            class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                            <span class="uppercase tracking-wide">SIPP</span>
+                            <span class="font-semibold text-gray-900">{{ vehicleSpecs.acriss }}</span>
+                        </div>
+                        <!-- AC -->
+                        <div v-if="vehicleSpecs.airConditioning"
+                            class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                            <img :src="acIcon" class="w-4 h-4" alt="AC" />
+                            <span>AC</span>
+                        </div>
+                        <!-- Doors -->
+                        <div v-if="vehicleSpecs.doors"
+                            class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                            <img :src="doorIcon" class="w-4 h-4" alt="Doors" />
+                            <span>{{ vehicleSpecs.doors }}</span>
+                        </div>
+                        <!-- Mileage -->
+                        <div v-if="currentProduct?.mileage"
+                            class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 transition-all hover:gap-2">
+                            <component :is="Gauge" class="w-4 h-4" />
+                            <span>{{ currentProduct.mileage }}</span>
+                        </div>
+                        <!-- CO2 -->
+                        <div v-if="vehicleSpecs.co2"
+                            class="spec-icon flex items-center gap-1.5 px-3 py-2 bg-green-50 rounded-lg text-xs font-medium text-green-700 transition-all hover:gap-2">
+                            <component :is="Leaf" class="w-4 h-4 text-green-600" />
+                            <span>{{ vehicleSpecs.co2 }} g/km</span>
+                        </div>
+                    </div>
+
+                    <!-- Price Breakdown -->
+                    <div class="space-y-3 text-sm text-gray-700 mb-6 pb-6 border-b border-gray-100">
+                        <div class="flex justify-between">
+                            <span>Car Package ({{ currentPackageLabel }})</span>
+                            <span class="font-medium" v-if="ratesReady">{{ formatRentalPrice(isLocautoRent ?
+                                locautoBaseTotal :
+                                (isOkMobility ? (currentProduct?.total || okMobilityBaseTotal) : (currentProduct?.total
+                                    || 0)))
+                            }}</span>
+                            <span class="price-skeleton price-skeleton-sm" v-else></span>
+                        </div>
+                        <div v-if="isAdobeCars && adobeMandatoryProtection > 0"
+                            class="flex justify-between text-amber-600">
+                            <span>Mandatory Liability (PLI)</span>
+                            <span class="font-medium" v-if="ratesReady">+{{ formatRentalPrice(adobeMandatoryProtection)
+                                }}</span>
+                            <span class="price-skeleton price-skeleton-sm" v-else></span>
+                        </div>
+                        <!-- Selected Extras List -->
+                        <div v-for="item in getSelectedExtrasDetails" :key="item.id"
+                            class="flex justify-between text-blue-600">
+                            <span>{{ item.name }} <span v-if="item.qty > 1">x{{ item.qty }}</span></span>
+                            <span class="font-medium">
+                                <span v-if="item.isFree" class="text-green-600 font-bold">Free</span>
+                                <template v-else>
+                                    <span v-if="ratesReady">+{{ formatRentalPrice(item.total) }}</span>
+                                    <span class="price-skeleton price-skeleton-sm" v-else></span>
+                                </template>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Total -->
+                    <div class="flex justify-between items-center border-t pt-4 mb-3">
+                        <span class="text-lg font-bold text-gray-800">Total</span>
+                        <span class="text-3xl font-bold text-[#1e3a5f]" v-if="ratesReady">{{ formatPrice(grandTotal)
+                            }}</span>
+                        <span class="price-skeleton price-skeleton-lg" v-else></span>
+                    </div>
+
+                    <!-- Payable Amount -->
+                    <div v-if="effectivePaymentPercentage > 0"
+                        class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-4 mb-3">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-green-800">Pay Now ({{ effectivePaymentPercentage }}%)</span>
+                            <span class="text-2xl font-bold text-green-700" v-if="ratesReady">{{
+                                formatPrice(payableAmount)
+                                }}</span>
+                            <span class="price-skeleton price-skeleton-md" v-else></span>
+                        </div>
+                    </div>
+
+                    <!-- Running Text -->
+                    <div v-if="effectivePaymentPercentage > 0" class="overflow-hidden rounded-xl mb-6"
+                        style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8f 100%);">
+                        <p class="py-3 whitespace-nowrap marquee-text text-sm font-medium text-white">
+                            💳 Pay {{ effectivePaymentPercentage }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{
+                                effectivePaymentPercentage
+                            }}% now and rest pay on arrival &nbsp;•&nbsp; 💳 Pay {{ effectivePaymentPercentage }}% now
+                            and rest pay
+                            on
+                            arrival &nbsp;•&nbsp;
+                        </p>
+                    </div>
+
+                    <!-- View Booking Details Button -->
+                    <button @click="showDetailsModal = true"
+                        class="w-full text-sm py-3 mb-4 rounded-xl border-2 font-semibold transition-all flex items-center justify-center gap-2 border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f]/10">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        View Booking Details
                     </button>
-                    <button @click="$emit('back')"
-                        class="btn-secondary w-full py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all">
-                        Back to Results
-                    </button>
+
+                    <!-- Action Buttons -->
+                    <div class="space-y-3">
+                        <button @click="$emit('proceed-to-checkout', {
+                            package: isLocautoRent ? (selectedLocautoProtection ? 'POA' : 'BAS') : currentPackage,
+                            protection_code: isLocautoRent ? selectedLocautoProtection : (isAdobeCars ? getSelectedAdobeProtectionCodes() : null),
+                            protection_amount: isLocautoRent && selectedLocautoProtection
+                                ? locautoProtectionPlans.find(p => p.code === selectedLocautoProtection)?.amount || 0
+                                : 0,
+                            extras: selectedExtras,
+                            detailedExtras: getSelectedExtrasDetails,
+                            totals: {
+                                grandTotal,
+                                payableAmount,
+                                pendingAmount
+                            },
+                            vehicle_total: isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0))
+                        })" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg"
+                            :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
+                            Proceed to Booking
+                        </button>
+                        <button @click="$emit('back')"
+                            class="btn-secondary w-full py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all">
+                            Back to Results
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Booking Details Modal -->
-    <Teleport to="body">
-        <Transition name="modal">
-            <div v-if="showDetailsModal" class="fixed inset-0 z-[100000] flex items-center justify-center p-4"
-                @click.self="showDetailsModal = false">
-                <!-- Backdrop -->
-                <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-                <!-- Modal Content -->
-                <div
-                    class="modal-content relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                    <!-- Header -->
+        <!-- Booking Details Modal -->
+        <Teleport to="body">
+            <Transition name="modal">
+                <div v-if="showDetailsModal" class="fixed inset-0 z-[100000] flex items-center justify-center p-4"
+                    @click.self="showDetailsModal = false">
+                    <!-- Backdrop -->
+                    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+                    <!-- Modal Content -->
                     <div
-                        class="sticky top-0 bg-white border-b px-6 py-5 flex justify-between items-center rounded-t-3xl z-10">
-                        <h2 class="font-display text-2xl font-bold text-gray-900">Booking Details</h2>
-                        <button @click="showDetailsModal = false"
-                            class="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Body -->
-                    <div class="p-6 space-y-5">
-                        <!-- Vehicle Info -->
-                        <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-5">
-                            <p class="text-sm text-gray-500 mb-2">Vehicle</p>
-                            <p class="font-bold text-gray-900 text-lg">{{ displayVehicleName }}</p>
-                            <p class="text-sm text-gray-500 mt-1">{{ currentPackageLabel }}</p>
+                        class="modal-content relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                        <!-- Header -->
+                        <div
+                            class="sticky top-0 bg-white border-b px-6 py-5 flex justify-between items-center rounded-t-3xl z-10">
+                            <h2 class="font-display text-2xl font-bold text-gray-900">Booking Details</h2>
+                            <button @click="showDetailsModal = false"
+                                class="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <!-- Line Items -->
-                        <div class="space-y-4">
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-600">Car Package ({{ currentPackageLabel }})</span>
-                                <span class="font-semibold text-gray-900">{{ formatRentalPrice(isOkMobility ? (currentProduct?.total || okMobilityBaseTotal) : (currentProduct?.total || 0))
-                                }}</span>
+                        <!-- Body -->
+                        <div class="p-6 space-y-5">
+                            <!-- Vehicle Info -->
+                            <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-5">
+                                <p class="text-sm text-gray-500 mb-2">Vehicle</p>
+                                <p class="font-bold text-gray-900 text-lg">{{ displayVehicleName }}</p>
+                                <p class="text-sm text-gray-500 mt-1">{{ currentPackageLabel }}</p>
                             </div>
-                            <div v-if="isAdobeCars && adobeMandatoryProtection > 0"
-                                class="flex justify-between text-sm">
-                                <span class="text-amber-600">Mandatory Liability (PLI)</span>
-                                <span class="font-semibold text-amber-600">+{{ formatRentalPrice(adobeMandatoryProtection)
-                                }}</span>
+
+                            <!-- Line Items -->
+                            <div class="space-y-4">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-600">Car Package ({{ currentPackageLabel }})</span>
+                                    <span class="font-semibold text-gray-900">{{ formatRentalPrice(isOkMobility ?
+                                        (currentProduct?.total || okMobilityBaseTotal) : (currentProduct?.total || 0))
+                                        }}</span>
+                                </div>
+                                <div v-if="isAdobeCars && adobeMandatoryProtection > 0"
+                                    class="flex justify-between text-sm">
+                                    <span class="text-amber-600">Mandatory Liability (PLI)</span>
+                                    <span class="font-semibold text-amber-600">+{{
+                                        formatRentalPrice(adobeMandatoryProtection)
+                                        }}</span>
+                                </div>
+                                <div v-for="item in getSelectedExtrasDetails" :key="item.id"
+                                    class="flex justify-between text-sm">
+                                    <span class="text-gray-600">{{ item.name }} <span v-if="item.qty > 1"
+                                            class="text-xs text-gray-400">x{{ item.qty }}</span></span>
+                                    <span class="font-semibold"
+                                        :class="item.isFree ? 'text-green-600' : 'text-gray-800'">
+                                        {{ item.isFree ? 'FREE' : formatRentalPrice(item.total) }}
+                                    </span>
+                                </div>
                             </div>
-                            <div v-for="item in getSelectedExtrasDetails" :key="item.id"
-                                class="flex justify-between text-sm">
-                                <span class="text-gray-600">{{ item.name }} <span v-if="item.qty > 1"
-                                        class="text-xs text-gray-400">x{{ item.qty }}</span></span>
-                                <span class="font-semibold" :class="item.isFree ? 'text-green-600' : 'text-gray-800'">
-                                    {{ item.isFree ? 'FREE' : formatRentalPrice(item.total) }}
-                                </span>
+
+                            <!-- Divider -->
+                            <hr class="border-gray-200">
+
+                            <!-- Totals -->
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-lg">
+                                    <span class="font-bold text-gray-800">Grand Total</span>
+                                    <span class="font-bold text-[#1e3a5f]">{{ formatPrice(grandTotal) }}</span>
+                                </div>
+                                <div class="flex justify-between text-sm bg-green-50 p-4 rounded-xl">
+                                    <span class="font-semibold text-green-700">Pay Now ({{ effectivePaymentPercentage
+                                        }}%)</span>
+                                    <span class="font-bold text-green-700">{{ formatPrice(payableAmount) }}</span>
+                                </div>
+                                <div class="flex justify-between text-sm bg-amber-50 p-4 rounded-xl">
+                                    <span class="font-semibold text-amber-700">Pay on Arrival</span>
+                                    <span class="font-bold text-amber-700">{{ formatPrice(pendingAmount) }}</span>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Divider -->
-                        <hr class="border-gray-200">
-
-                        <!-- Totals -->
-                        <div class="space-y-3">
-                            <div class="flex justify-between text-lg">
-                                <span class="font-bold text-gray-800">Grand Total</span>
-                                <span class="font-bold text-[#1e3a5f]">{{ formatPrice(grandTotal) }}</span>
-                            </div>
-                            <div class="flex justify-between text-sm bg-green-50 p-4 rounded-xl">
-                                <span class="font-semibold text-green-700">
-                                    {{ isRenteon ? 'Commission' : 'Pay Now' }} ({{ effectivePaymentPercentage }}%)
-                                </span>
-                                <span class="font-bold text-green-700">{{ formatPrice(payableAmount) }}</span>
-                            </div>
-                            <div class="flex justify-between text-sm bg-amber-50 p-4 rounded-xl">
-                                <span class="font-semibold text-amber-700">{{ isRenteon ? 'Pay at desk' : 'Pay on Arrival' }}</span>
-                                <span class="font-bold text-amber-700">{{ formatPrice(pendingAmount) }}</span>
-                            </div>
+                        <!-- Footer -->
+                        <div class="sticky bottom-0 bg-white border-t px-6 py-5 rounded-b-3xl">
+                            <button @click="showDetailsModal = false"
+                                class="btn-primary w-full py-4 rounded-xl text-white font-bold shadow-lg">
+                                Close
+                            </button>
                         </div>
                     </div>
+                </div>
+            </Transition>
+        </Teleport>
 
-                    <!-- Footer -->
-                    <div class="sticky bottom-0 bg-white border-t px-6 py-5 rounded-b-3xl">
-                        <button @click="showDetailsModal = false"
-                            class="btn-primary w-full py-4 rounded-xl text-white font-bold shadow-lg">
-                            Close
-                        </button>
+        <!-- Mobile Sticky Price Bar -->
+        <Transition name="slide-up">
+            <div v-if="!isSummaryVisible"
+                class="fixed bottom-0 left-0 right-0 z-[100] bg-white/90 backdrop-blur-md border-t border-gray-100 p-4 lg:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.08)]">
+                <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Price</span>
+                        <div class="flex items-baseline gap-1.5">
+                            <span class="text-xl font-bold text-gray-900">{{ formatPrice(grandTotal) }}</span>
+                        </div>
+                        <span v-if="effectivePaymentPercentage > 0" class="text-[10px] text-emerald-600 font-bold">
+                            Pay {{ formatPrice(payableAmount) }} Now ({{ effectivePaymentPercentage }}%)
+                        </span>
                     </div>
+                    <button @click="scrollToSummary"
+                        class="bg-[#1e3a5f] text-white px-5 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-100/50 active:scale-95 transition-all flex items-center gap-2">
+                        View Summary
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
                 </div>
             </div>
         </Transition>
-    </Teleport>
-
-    <!-- Mobile Sticky Price Bar -->
-    <Transition name="slide-up">
-        <div v-if="!isSummaryVisible"
-            class="fixed bottom-0 left-0 right-0 z-[100] bg-white/90 backdrop-blur-md border-t border-gray-100 p-4 lg:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.08)]">
-            <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Price</span>
-                    <div class="flex items-baseline gap-1.5">
-                        <span class="text-xl font-bold text-gray-900">{{ formatPrice(grandTotal) }}</span>
-                    </div>
-                    <span v-if="effectivePaymentPercentage > 0" class="text-[10px] text-emerald-600 font-bold">
-                        {{ isRenteon ? 'Commission' : 'Pay Now' }} {{ formatPrice(payableAmount) }} ({{ effectivePaymentPercentage }}%)
-                    </span>
-                </div>
-                <button @click="scrollToSummary"
-                    class="bg-[#1e3a5f] text-white px-5 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-100/50 active:scale-95 transition-all flex items-center gap-2">
-                    View Summary
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </Transition>
     </div>
 
-    <div v-if="showLocationHoursModal" class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 px-4">
+    <div v-if="showLocationHoursModal"
+        class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 px-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full">
             <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                 <h3 class="text-lg font-bold text-[#1e3a5f]">Hours & Policies</h3>
                 <button @click="showLocationHoursModal = false" class="text-gray-500 hover:text-gray-700">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
@@ -2993,6 +3364,7 @@ const formatPaymentMethod = (method) => {
     0% {
         background-position: 200% 0;
     }
+
     100% {
         background-position: -200% 0;
     }
@@ -3025,8 +3397,8 @@ const formatPaymentMethod = (method) => {
 
 @media (max-width: 1024px) {
     .sticky-summary {
-        position: static;
-        margin-top: 2rem;
+        position: relative;
+        margin-top: 0rem;
     }
 }
 

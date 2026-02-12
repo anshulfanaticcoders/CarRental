@@ -425,6 +425,11 @@ class StripeBookingService
             'payload_id' => null,
             'detailed_extras' => [],
             'extras' => [],
+            'location_details' => null,
+            'dropoff_location_details' => null,
+            'location_instructions' => null,
+            'driver_requirements' => null,
+            'terms' => null,
         ];
 
         $payloadId = $metadata->extras_payload_id ?? null;
@@ -436,6 +441,11 @@ class StripeBookingService
                     $payload = $payloadRecord->payload ?? [];
                     $resolved['detailed_extras'] = $this->decodeJsonArray($payload['detailed_extras'] ?? []);
                     $resolved['extras'] = $this->decodeJsonArray($payload['extras'] ?? []);
+                    $resolved['location_details'] = $payload['location_details'] ?? null;
+                    $resolved['dropoff_location_details'] = $payload['dropoff_location_details'] ?? null;
+                    $resolved['location_instructions'] = $payload['location_instructions'] ?? null;
+                    $resolved['driver_requirements'] = $payload['driver_requirements'] ?? null;
+                    $resolved['terms'] = $payload['terms'] ?? null;
                 } else {
                     Log::warning('StripeBookingService: Extras payload missing', [
                         'payload_id' => $payloadId,
@@ -489,6 +499,29 @@ class StripeBookingService
 
         $pickupLocationDetails = $normalizeValue($metadata->location_details ?? null);
         $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+        if (empty($pickupLocationDetails) && !empty($extrasPayload['location_details'])) {
+            $pickupLocationDetails = $extrasPayload['location_details'];
+        }
+
+        $dropoffLocationDetails = $normalizeValue($metadata->dropoff_location_details ?? null);
+        if (empty($dropoffLocationDetails) && !empty($extrasPayload['dropoff_location_details'])) {
+            $dropoffLocationDetails = $extrasPayload['dropoff_location_details'];
+        }
+
+        $locationInstructions = $metadata->location_instructions ?? null;
+        if (empty($locationInstructions) && !empty($extrasPayload['location_instructions'])) {
+            $locationInstructions = $extrasPayload['location_instructions'];
+        }
+
+        $driverRequirements = $normalizeValue($metadata->driver_requirements ?? null);
+        if (empty($driverRequirements) && !empty($extrasPayload['driver_requirements'])) {
+            $driverRequirements = $extrasPayload['driver_requirements'];
+        }
+
+        $terms = $normalizeValue($metadata->terms ?? null);
+        if (empty($terms) && !empty($extrasPayload['terms'])) {
+            $terms = $extrasPayload['terms'];
+        }
 
         return [
             'provider' => $booking->provider_source ?? ($metadata->vehicle_source ?? null),
@@ -516,10 +549,10 @@ class StripeBookingService
             'dropoff_location_id' => $metadata->dropoff_location_code ?? $metadata->pickup_location_code ?? null,
             'location' => $pickupLocationDetails,
             'pickup_location_details' => $pickupLocationDetails,
-            'dropoff_location_details' => $normalizeValue($metadata->dropoff_location_details ?? null),
-            'location_instructions' => $metadata->location_instructions ?? null,
-            'driver_requirements' => $normalizeValue($metadata->driver_requirements ?? null),
-            'terms' => $normalizeValue($metadata->terms ?? null),
+            'dropoff_location_details' => $dropoffLocationDetails,
+            'location_instructions' => $locationInstructions,
+            'driver_requirements' => $driverRequirements,
+            'terms' => $terms,
             'extras_selected' => $extrasPayload['detailed_extras'] ?? ($extrasPayload['extras'] ?? null),
             'customer_snapshot' => [
                 'name' => $metadata->customer_name ?? null,
@@ -1354,6 +1387,12 @@ class StripeBookingService
             ];
 
             // Prepare Booking Data
+            $prepaidValue = $metadata->renteon_prepaid ?? false;
+            $prepaid = filter_var($prepaidValue, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($prepaid === null) {
+                $prepaid = (bool) $prepaidValue;
+            }
+
             $bookingData = [
                 'price' => $metadata->payable_amount, // or total_amount depending on payment model
                 'currency' => $metadata->provider_currency ?? $metadata->currency,
@@ -1361,7 +1400,7 @@ class StripeBookingService
                 'payment_method' => 'pay_at_desk',
                 'reference' => 'WEB-' . $booking->booking_number,
                 'voucher_number' => 'WEB-' . $booking->booking_number,
-                'prepaid' => $metadata->renteon_prepaid ?? false,
+                'prepaid' => $prepaid,
             ];
 
             // Extras
@@ -1401,25 +1440,48 @@ class StripeBookingService
 
             $response = $this->renteonService->createBooking($vehicleData, $customerData, $bookingData);
 
-            $confNumber = null;
-            if (is_array($response)) {
-                $confNumber = $response['Number']
-                    ?? $response['ReservationNo']
-                    ?? $response['ReservationNumber']
-                    ?? $response['ConfirmationNumber']
-                    ?? $response['BookingNumber']
-                    ?? $response['id']
-                    ?? null;
-
-                if ($confNumber === null && isset($response['Data']) && is_array($response['Data'])) {
-                    $confNumber = $response['Data']['Number']
-                        ?? $response['Data']['ReservationNo']
-                        ?? $response['Data']['ReservationNumber']
-                        ?? $response['Data']['ConfirmationNumber']
-                        ?? $response['Data']['BookingNumber']
-                        ?? $response['Data']['id']
-                        ?? null;
+            $extractConfirmation = static function ($payload) use (&$extractConfirmation) {
+                if (!is_array($payload)) {
+                    return null;
                 }
+
+                $candidates = [
+                    $payload['Number'] ?? null,
+                    $payload['ReservationNo'] ?? null,
+                    $payload['ReservationNumber'] ?? null,
+                    $payload['ReservationId'] ?? null,
+                    $payload['ReservationID'] ?? null,
+                    $payload['ConfirmationNumber'] ?? null,
+                    $payload['ConfirmationNo'] ?? null,
+                    $payload['BookingNumber'] ?? null,
+                    $payload['BookingRef'] ?? null,
+                    $payload['BookingReference'] ?? null,
+                    $payload['Reference'] ?? null,
+                    $payload['id'] ?? null,
+                ];
+
+                foreach ($candidates as $value) {
+                    if ($value !== null && $value !== '') {
+                        return $value;
+                    }
+                }
+
+                foreach (['Data', 'data', 'Result', 'result'] as $key) {
+                    if (!empty($payload[$key]) && is_array($payload[$key])) {
+                        $value = $extractConfirmation($payload[$key]);
+                        if ($value !== null) {
+                            return $value;
+                        }
+                    }
+                }
+
+                return null;
+            };
+
+            $confNumber = $extractConfirmation($response);
+            if ($confNumber === null && is_array($response)) {
+                $confNumber = $extractConfirmation($response['_renteon_create'] ?? null)
+                    ?? $extractConfirmation($response['_renteon_save'] ?? null);
             }
 
             if ($confNumber) {
@@ -1430,11 +1492,11 @@ class StripeBookingService
                     'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Conf: " . $confNumber
                 ]);
             } else {
-                  Log::error('Renteon: Reservation failed', ['response' => $response]);
-                  $booking->update([
-                      'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Reservation failed: " . json_encode($response)
-                  ]);
-              }
+                Log::error('Renteon: Reservation failed', ['response' => $response]);
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : "") . "Renteon Reservation failed: " . json_encode($response)
+                ]);
+            }
 
 
         } catch (\Exception $e) {

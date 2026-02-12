@@ -28,36 +28,36 @@ const hoursTab = ref('pickup');
 const providerMetadata = computed(() => props.booking?.provider_metadata || {});
 const pickupDetails = computed(() => providerMetadata.value?.pickup_location_details || providerMetadata.value?.location || null);
 const dropoffDetails = computed(() => providerMetadata.value?.dropoff_location_details || null);
-const pickupInstructions = computed(() => providerMetadata.value?.location_instructions || pickupDetails.value?.collection_details || null);
-const dropoffInstructions = computed(() => dropoffDetails.value?.collection_details || null);
+const pickupInstructions = computed(() => (
+  providerMetadata.value?.location_instructions
+  || pickupDetails.value?.collection_details
+  || pickupDetails.value?.pickup_instructions
+  || null
+));
+const dropoffInstructions = computed(() => (
+  dropoffDetails.value?.collection_details
+  || dropoffDetails.value?.dropoff_instructions
+  || null
+));
 const isGreenMotionBooking = computed(() => {
   const source = `${props.booking?.provider_source || ''}`.toLowerCase();
   return source === 'greenmotion' || source === 'usave';
 });
-const isRenteonBooking = computed(() => {
-  const source = `${props.booking?.provider_source || ''}`.toLowerCase();
-  return source === 'renteon';
-});
-const amountPaidLabel = computed(() => {
-  if (isGreenMotionBooking.value) return 'Deposit paid';
-  if (isRenteonBooking.value) return 'Commission paid';
-  return _t('customerprofile', 'amount_paid');
-});
-const pendingAmountLabel = computed(() => {
-  if (isGreenMotionBooking.value) return 'Pay at pickup';
-  if (isRenteonBooking.value) return 'Pay at desk';
-  return _t('customerprofile', 'pending_amount');
-});
+const amountPaidLabel = computed(() => (isGreenMotionBooking.value ? 'Deposit paid' : _t('customerprofile', 'amount_paid')));
+const pendingAmountLabel = computed(() => (isGreenMotionBooking.value ? 'Pay at pickup' : _t('customerprofile', 'pending_amount')));
 
 const formatLocationLines = (details) => {
   if (!details) return [];
+  const addressLine1 = details.address_1 || details.address || null;
+  const addressCity = details.address_city || details.town || null;
+  const addressPostcode = details.address_postcode || details.postal_code || null;
   return [
-    details.address_1,
+    addressLine1,
     details.address_2,
     details.address_3,
-    details.address_city,
+    addressCity,
     details.address_county,
-    details.address_postcode,
+    addressPostcode,
   ].filter(Boolean);
 };
 
@@ -445,7 +445,7 @@ const displayExtras = computed(() => {
                   <p v-for="(line, index) in pickupLines" :key="`pickup-line-${index}`">{{ line }}</p>
                 </div>
                 <div class="text-sm text-gray-600 mt-3 space-y-1">
-                  <p v-if="pickupDetails.telephone"><span class="font-semibold text-gray-700">Phone:</span> {{ pickupDetails.telephone }}</p>
+                  <p v-if="pickupDetails.telephone || pickupDetails.phone"><span class="font-semibold text-gray-700">Phone:</span> {{ pickupDetails.telephone || pickupDetails.phone }}</p>
                   <p v-if="pickupDetails.email"><span class="font-semibold text-gray-700">Email:</span> {{ pickupDetails.email }}</p>
                   <p v-if="pickupDetails.whatsapp"><span class="font-semibold text-gray-700">WhatsApp:</span> {{ pickupDetails.whatsapp }}</p>
                   <p v-if="pickupDetails.iata"><span class="font-semibold text-gray-700">Airport:</span> {{ pickupDetails.iata }}</p>
@@ -471,7 +471,7 @@ const displayExtras = computed(() => {
                   <p v-for="(line, index) in dropoffLines" :key="`dropoff-line-${index}`">{{ line }}</p>
                 </div>
                 <div class="text-sm text-gray-600 mt-3 space-y-1">
-                  <p v-if="dropoffDetails.telephone"><span class="font-semibold text-gray-700">Phone:</span> {{ dropoffDetails.telephone }}</p>
+                  <p v-if="dropoffDetails.telephone || dropoffDetails.phone"><span class="font-semibold text-gray-700">Phone:</span> {{ dropoffDetails.telephone || dropoffDetails.phone }}</p>
                   <p v-if="dropoffDetails.email"><span class="font-semibold text-gray-700">Email:</span> {{ dropoffDetails.email }}</p>
                   <p v-if="dropoffDetails.whatsapp"><span class="font-semibold text-gray-700">WhatsApp:</span> {{ dropoffDetails.whatsapp }}</p>
                   <p v-if="dropoffDetails.iata"><span class="font-semibold text-gray-700">Airport:</span> {{ dropoffDetails.iata }}</p>

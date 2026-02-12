@@ -12,6 +12,8 @@ class RenteonService
     private $password;
     private $providerCode;
     private $allowedProviders;
+    private array $defaultPricelistCodes = [];
+    private array $providerDetailsCache = [];
 
     public function __construct()
     {
@@ -26,6 +28,7 @@ class RenteonService
         $this->baseUrl = rtrim($config['base_url'], '/');
         $this->providerCode = $config['provider_code'] ?? 'demo';
         $this->allowedProviders = $this->parseAllowedProviders($config['allowed_providers'] ?? null);
+        $this->defaultPricelistCodes = $this->parsePricelistCodes($config['pricelist_codes'] ?? null);
     }
 
     /**
@@ -141,6 +144,23 @@ class RenteonService
             ? (bool) $options['include_on_request']
             : true;
 
+        $pricelistCodes = $options['pricelist_codes'] ?? $this->defaultPricelistCodes;
+        if (empty($pricelistCodes)) {
+            $pricelistCodes = $this->resolvePricelistCodesForProvider($provider, $prepaid);
+            if (!empty($pricelistCodes)) {
+                Log::info('Renteon: Using provider pricelist codes', [
+                    'provider' => $provider,
+                    'prepaid' => $prepaid,
+                    'pricelist_codes' => $pricelistCodes,
+                ]);
+            } else {
+                Log::info('Renteon: No provider pricelist codes available', [
+                    'provider' => $provider,
+                    'prepaid' => $prepaid,
+                ]);
+            }
+        }
+
         $data = [
             'Prepaid' => $prepaid,
             'IncludeOnRequest' => $includeOnRequest,
@@ -152,7 +172,7 @@ class RenteonService
             'Providers' => [
                 array_filter([
                     'Code' => $provider,
-                    'PricelistCodes' => $options['pricelist_codes'] ?? null,
+                    'PricelistCodes' => !empty($pricelistCodes) ? $pricelistCodes : null,
                     'PickupOfficeIds' => $options['pickup_office_ids'] ?? null,
                     'DropOffOfficeIds' => $options['dropoff_office_ids'] ?? null,
                     'PromoCode' => $options['promo_code'] ?? null,
@@ -340,6 +360,141 @@ class RenteonService
         return $this->makeRequest('GET', 'api/setup/provider/' . $providerCode);
     }
 
+    private function getProviderDetailsCached(string $providerCode): ?array
+    {
+        $key = $this->normalizeProviderCode($providerCode);
+        if (array_key_exists($key, $this->providerDetailsCache)) {
+            return $this->providerDetailsCache[$key];
+        }
+        $details = $this->getProviderDetails($providerCode);
+        $this->providerDetailsCache[$key] = is_array($details) ? $details : null;
+        return $this->providerDetailsCache[$key];
+    }
+
+    private function resolveOfficeFromProvider(string $providerCode, ?string $officeId): ?array
+    {
+        if (!$officeId) {
+            return null;
+        }
+        $details = $this->getProviderDetailsCached($providerCode);
+        if (!$details || empty($details['Offices']) || !is_array($details['Offices'])) {
+            return null;
+        }
+        foreach ($details['Offices'] as $office) {
+            if (!is_array($office)) {
+                continue;
+            }
+            if ((string) ($office['OfficeId'] ?? '') === (string) $officeId) {
+                return $office;
+            }
+        }
+        return null;
+    }
+
+    private function resolveCarCategoryDetails(string $providerCode, ?string $sippCode, array $vehicle = []): ?array
+    {
+        $candidates = [];
+        $values = [
+            $sippCode,
+            $vehicle['CarCategory'] ?? null,
+            $vehicle['CategoryCode'] ?? null,
+            $vehicle['sipp_code'] ?? null,
+            $vehicle['acriss_code'] ?? null,
+        ];
+        foreach ($values as $value) {
+            $text = strtoupper(trim((string) ($value ?? '')));
+            if ($text !== '') {
+                $candidates[] = $text;
+            }
+        }
+        $candidates = array_values(array_unique($candidates));
+        if (empty($candidates)) {
+            return null;
+        }
+        $details = $this->getProviderDetailsCached($providerCode);
+        if (!$details) {
+            return null;
+        }
+        $categoryPools = [];
+        if (!empty($details['Connectors']) && is_array($details['Connectors'])) {
+            foreach ($details['Connectors'] as $connector) {
+                if (!is_array($connector) || empty($connector['CarCategories']) || !is_array($connector['CarCategories'])) {
+                    continue;
+                }
+                $categoryPools[] = $connector['CarCategories'];
+            }
+        }
+        if (!empty($details['CarCategories']) && is_array($details['CarCategories'])) {
+            $categoryPools[] = $details['CarCategories'];
+        }
+        if (empty($categoryPools)) {
+            return null;
+        }
+        foreach ($categoryPools as $categories) {
+            foreach ($categories as $category) {
+                if (!is_array($category)) {
+                    continue;
+                }
+                $categoryCodes = [];
+                foreach (['SIPP', 'Code', 'CarCategorySIPP', 'CarCategoryGroup', 'CarCategoryId', 'Id', 'Title', 'Name'] as $key) {
+                    $value = $category[$key] ?? null;
+                    $text = strtoupper(trim((string) ($value ?? '')));
+                    if ($text !== '') {
+                        $categoryCodes[] = $text;
+                    }
+                }
+                foreach ($candidates as $needle) {
+                    if (in_array($needle, $categoryCodes, true)) {
+                        return $category;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private function resolvePricelistCodesForProvider(string $providerCode, bool $prepaid): array
+    {
+        $details = $this->getProviderDetailsCached($providerCode);
+        if (!$details) {
+            return [];
+        }
+
+        $pricelists = $details['Pricelists'] ?? $details['pricelists'] ?? null;
+        if (!is_array($pricelists)) {
+            return [];
+        }
+
+        $codes = [];
+        foreach ($pricelists as $pricelist) {
+            if (!is_array($pricelist)) {
+                continue;
+            }
+
+            $code = trim((string) ($pricelist['Code'] ?? $pricelist['code'] ?? ''));
+            if ($code === '') {
+                continue;
+            }
+
+            $isPrepaidRaw = $pricelist['IsPrepaid'] ?? $pricelist['is_prepaid'] ?? $pricelist['Prepaid'] ?? null;
+            if ($isPrepaidRaw === null) {
+                $codes[] = $code;
+                continue;
+            }
+
+            $isPrepaid = filter_var($isPrepaidRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($isPrepaid === null) {
+                $isPrepaid = (bool) $isPrepaidRaw;
+            }
+
+            if ($isPrepaid === $prepaid) {
+                $codes[] = $code;
+            }
+        }
+
+        return array_values(array_unique($codes));
+    }
+
     /**
      * Create booking
      */
@@ -368,6 +523,12 @@ class RenteonService
             }
         }
 
+        $prepaidValue = $bookingData['prepaid'] ?? true;
+        $prepaid = filter_var($prepaidValue, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        if ($prepaid === null) {
+            $prepaid = (bool) $prepaidValue;
+        }
+
         $payload = [
             'ConnectorId' => $vehicleData['connector_id'] ?? null,
             'CarCategory' => $vehicleData['sipp_code'] ?? null,
@@ -377,7 +538,7 @@ class RenteonService
             'DropOffDate' => $this->formatLocalDateTime($vehicleData['dropoff_date'] ?? '', $vehicleData['dropoff_time'] ?? ''),
             'PricelistId' => $vehicleData['pricelist_id'] ?? null,
             'Currency' => $bookingData['currency'] ?? 'EUR',
-            'Prepaid' => (bool) ($bookingData['prepaid'] ?? true),
+            'Prepaid' => $prepaid,
             'PriceDate' => $vehicleData['price_date'] ?? null,
             'PromoCode' => $vehicleData['promo_code'] ?? null,
             'ClientName' => trim(($customerData['first_name'] ?? '') . ' ' . ($customerData['last_name'] ?? '')),
@@ -387,9 +548,17 @@ class RenteonService
             'VoucherNumber' => $bookingData['voucher_number'] ?? $bookingData['reference'] ?? null,
         ];
 
+        if (empty($payload['PickupOfficeId']) && !empty($payload['DropOffOfficeId'])) {
+            $payload['PickupOfficeId'] = $payload['DropOffOfficeId'];
+        }
+        if (empty($payload['DropOffOfficeId']) && !empty($payload['PickupOfficeId'])) {
+            $payload['DropOffOfficeId'] = $payload['PickupOfficeId'];
+        }
+
         $requiredFields = ['ConnectorId', 'CarCategory', 'PickupOfficeId', 'DropOffOfficeId', 'PickupDate', 'DropOffDate', 'PricelistId', 'Currency'];
         foreach ($requiredFields as $field) {
-            if (empty($payload[$field])) {
+            $value = $payload[$field] ?? null;
+            if ($value === null || $value === '') {
                 Log::error('Renteon booking payload missing required field', [
                     'field' => $field,
                     'payload' => $payload,
@@ -424,6 +593,21 @@ class RenteonService
         }
 
         $savePayload = $createResponse;
+        $ensureFields = [
+            'ClientName' => $payload['ClientName'] ?? null,
+            'ClientEmail' => $payload['ClientEmail'] ?? null,
+            'ClientPhone' => $payload['ClientPhone'] ?? null,
+            'FlightNumber' => $payload['FlightNumber'] ?? null,
+            'VoucherNumber' => $payload['VoucherNumber'] ?? null,
+        ];
+        foreach ($ensureFields as $field => $value) {
+            $current = $savePayload[$field] ?? null;
+            if ($current === null || (is_string($current) && trim($current) === '')) {
+                if ($value !== null && (!is_string($value) || trim($value) !== '')) {
+                    $savePayload[$field] = $value;
+                }
+            }
+        }
         if (!isset($savePayload['Services']) && !empty($services)) {
             $savePayload['Services'] = $services;
         }
@@ -431,7 +615,18 @@ class RenteonService
             $savePayload['Drivers'] = $drivers;
         }
 
-        return $this->makeRequest('POST', 'api/bookings/save', $savePayload);
+        $saveResponse = $this->makeRequest('POST', 'api/bookings/save', $savePayload);
+        if (is_array($saveResponse)) {
+            $saveResponse['_renteon_create'] = $createResponse;
+            return $saveResponse;
+        }
+
+        if (is_array($createResponse)) {
+            $createResponse['_renteon_save'] = $saveResponse;
+            return $createResponse;
+        }
+
+        return $saveResponse ?? $createResponse;
     }
 
     /**
@@ -583,16 +778,50 @@ class RenteonService
             $depositCurrency = $vehicle['Deposit']['Currency'] ?? $depositCurrency;
         }
 
+        $categoryDetails = $this->resolveCarCategoryDetails($providerCode, $sippCode, $vehicle);
+        if ($depositAmount === null && is_array($categoryDetails)) {
+            $depositAmount = $categoryDetails['DepositAmount'] ?? $depositAmount;
+            $depositCurrency = $categoryDetails['DepositCurrency'] ?? $depositCurrency;
+        }
+
         $totalAmount = isset($vehicle['Amount']) ? (float) $vehicle['Amount'] : (float) ($vehicle['daily_rate'] ?? 0) * $rentalDays;
+        $netAmount = isset($vehicle['NetAmount']) ? (float) $vehicle['NetAmount'] : null;
+        $vatAmount = isset($vehicle['VatAmount']) ? (float) $vehicle['VatAmount'] : null;
         $pricePerDay = $rentalDays > 0 ? $totalAmount / $rentalDays : $totalAmount;
         $currency = $vehicle['Currency'] ?? $vehicle['currency'] ?? 'EUR';
 
-        $pickupOfficeId = $vehicle['PickupOfficeId'] ?? null;
-        $dropoffOfficeId = $vehicle['DropOffOfficeId'] ?? null;
+        $pickupOfficeId = $vehicle['PickupOfficeId']
+            ?? $vehicle['PickupOfficeID']
+            ?? $vehicle['pickup_office_id']
+            ?? $vehicle['pickupOfficeId']
+            ?? null;
+        $dropoffOfficeId = $vehicle['DropOffOfficeId']
+            ?? $vehicle['DropoffOfficeId']
+            ?? $vehicle['DropOffOfficeID']
+            ?? $vehicle['DropoffOfficeID']
+            ?? $vehicle['dropoff_office_id']
+            ?? $vehicle['dropoffOfficeId']
+            ?? null;
+        $pickupOfficeDetails = $this->normalizeOfficeDetails($vehicle['PickupOffice'] ?? null, $vehicle, 'Pickup');
+        $dropoffOfficeDetails = $this->normalizeOfficeDetails($vehicle['DropOffOffice'] ?? null, $vehicle, 'DropOff');
+        if (!$pickupOfficeDetails && $pickupOfficeId) {
+            $pickupOfficeDetails = $this->normalizeOfficeDetails(
+                $this->resolveOfficeFromProvider($providerCode, (string) $pickupOfficeId),
+                $vehicle,
+                'Pickup'
+            );
+        }
+        if (!$dropoffOfficeDetails && $dropoffOfficeId) {
+            $dropoffOfficeDetails = $this->normalizeOfficeDetails(
+                $this->resolveOfficeFromProvider($providerCode, (string) $dropoffOfficeId),
+                $vehicle,
+                'DropOff'
+            );
+        }
 
         $vehicleId = $vehicle['id'] ?? md5($providerCode . '_' . $pickupCode . '_' . ($sippCode ?? 'unknown') . '_' . ($pickupOfficeId ?? ''));
 
-        $prepaid = $vehicle['Prepaid'] ?? false;
+        $prepaid = $vehicle['Prepaid'] ?? $vehicle['IsPrepaid'] ?? $vehicle['prepaid'] ?? false;
 
         return [
             'id' => 'renteon_' . $providerCode . '_' . $vehicleId,
@@ -621,25 +850,52 @@ class RenteonService
             'provider_pickup_id' => $pickupCode,
             'provider_pickup_office_id' => $pickupOfficeId,
             'provider_dropoff_office_id' => $dropoffOfficeId,
-            'connector_id' => $vehicle['ConnectorId'] ?? null,
-            'price_date' => $vehicle['PriceDate'] ?? null,
-            'pricelist_id' => $vehicle['PricelistId'] ?? null,
-            'pricelist_code' => $vehicle['PricelistCode'] ?? null,
+            'pickup_office' => $pickupOfficeDetails,
+            'dropoff_office' => $dropoffOfficeDetails,
+            'connector_id' => $vehicle['ConnectorId']
+                ?? $vehicle['ConnectorID']
+                ?? $vehicle['connector_id']
+                ?? $vehicle['connectorId']
+                ?? null,
+            'price_date' => $vehicle['PriceDate']
+                ?? $vehicle['PriceDateTime']
+                ?? $vehicle['price_date']
+                ?? $vehicle['priceDate']
+                ?? null,
+            'pricelist_id' => $vehicle['PricelistId']
+                ?? $vehicle['PriceListId']
+                ?? $vehicle['PricelistID']
+                ?? $vehicle['PriceListID']
+                ?? $vehicle['pricelist_id']
+                ?? $vehicle['price_list_id']
+                ?? null,
+            'pricelist_code' => $vehicle['PricelistCode']
+                ?? $vehicle['PriceListCode']
+                ?? $vehicle['pricelist_code']
+                ?? null,
             'is_on_request' => $vehicle['IsOnRequest'] ?? false,
             'prepaid' => filter_var($prepaid, FILTER_VALIDATE_BOOLEAN),
+            'provider_gross_amount' => $totalAmount,
+            'provider_net_amount' => $netAmount,
+            'provider_vat_amount' => $vatAmount,
             'extras' => $this->mapAvailableServices($vehicle['AvailableServices'] ?? [], $rentalDays),
             'features' => $vehicle['features'] ?? [],
             'airConditioning' => $parsedSipp['air_conditioning'] ?? false,
             'benefits' => [
-                'minimum_driver_age' => (int) ($vehicle['MinimumDriverAge'] ?? $vehicle['YoungDriverAgeFrom'] ?? 21),
-                'maximum_driver_age' => $vehicle['MaximumDriverAge'] ?? $vehicle['SeniorDriverAgeTo'] ?? null,
+                'minimum_driver_age' => (int) ($vehicle['MinimumDriverAge']
+                    ?? ($categoryDetails['MinimumDriverAge'] ?? null)
+                    ?? ($vehicle['YoungDriverAgeFrom'] ?? 21)),
+                'maximum_driver_age' => $vehicle['MaximumDriverAge']
+                    ?? ($categoryDetails['MaximumDriverAge'] ?? null)
+                    ?? $vehicle['SeniorDriverAgeTo']
+                    ?? null,
                 'young_driver_age_from' => $vehicle['YoungDriverAgeFrom'] ?? null,
                 'young_driver_age_to' => $vehicle['YoungDriverAgeTo'] ?? null,
                 'senior_driver_age_from' => $vehicle['SeniorDriverAgeFrom'] ?? null,
                 'senior_driver_age_to' => $vehicle['SeniorDriverAgeTo'] ?? null,
                 'deposit_amount' => $depositAmount,
                 'deposit_currency' => $depositCurrency,
-                'excess_amount' => $vehicle['ExcessAmount'] ?? null,
+                'excess_amount' => $vehicle['ExcessAmount'] ?? ($categoryDetails['FranchiseAmount'] ?? null),
                 'excess_theft_amount' => $vehicle['ExcessTheftAmount'] ?? null,
                 'fuel_policy' => $vehicle['fuel_policy'] ?? 'Full to Full',
             ],
@@ -673,6 +929,25 @@ class RenteonService
         }
 
         return $providers;
+    }
+
+    private function parsePricelistCodes($pricelistCodes): array
+    {
+        if (empty($pricelistCodes)) {
+            return [];
+        }
+
+        $codes = is_array($pricelistCodes) ? $pricelistCodes : explode(',', (string) $pricelistCodes);
+        $result = [];
+        foreach ($codes as $code) {
+            $code = trim((string) $code);
+            if ($code === '') {
+                continue;
+            }
+            $result[] = $code;
+        }
+
+        return $result;
     }
 
     private function normalizeProviderCode($providerCode): string
@@ -803,11 +1078,14 @@ class RenteonService
             $isOneTime = $service['IsOneTimePayment'] ?? false;
             $dailyRate = $isOneTime ? ($rentalDays > 0 ? $amount / $rentalDays : $amount) : $amount;
 
+            $code = $service['AdditionalCode'] ?? $service['Code'] ?? null;
+            $name = $service['AdditionalName'] ?? $service['Name'] ?? 'Extra';
+
             return [
                 'id' => $service['ServiceId'] ?? null,
                 'service_id' => $service['ServiceId'] ?? null,
-                'code' => $service['Code'] ?? null,
-                'name' => $service['Name'] ?? $service['AdditionalName'] ?? 'Extra',
+                'code' => $code,
+                'name' => $name,
                 'description' => $service['DescriptionWeb'] ?? $service['Description'] ?? $service['ServiceTypeName'] ?? null,
                 'amount' => $amount,
                 'price' => $amount,
@@ -825,6 +1103,58 @@ class RenteonService
                 'service_type' => $service['ServiceTypeName'] ?? null,
             ];
         }, $services);
+    }
+
+    private function normalizeOfficeDetails($office, array $vehicle, string $prefix): ?array
+    {
+        if (is_array($office)) {
+            return [
+                'office_id' => $office['OfficeId'] ?? null,
+                'office_code' => $office['OfficeCode'] ?? null,
+                'location_code' => $office['LocationCode'] ?? null,
+                'name' => $office['Name'] ?? $office['LocationName'] ?? null,
+                'address' => $office['Address'] ?? $office['AddressLine'] ?? null,
+                'town' => $office['Town'] ?? null,
+                'postal_code' => $office['PostalCode'] ?? null,
+                'latitude' => $office['Latitude'] ?? null,
+                'longitude' => $office['Longitude'] ?? null,
+                'email' => $office['Email'] ?? null,
+                'phone' => $office['Tel'] ?? $office['Phone'] ?? null,
+                'pickup_instructions' => $office['OfficePickupInstructions'] ?? null,
+                'dropoff_instructions' => $office['OfficeDropOffInstructions'] ?? null,
+                'location_type' => $office['LocationType'] ?? null,
+            ];
+        }
+
+        $address = $vehicle[$prefix . 'OfficeAddress'] ?? $vehicle[$prefix . 'Address'] ?? null;
+        $town = $vehicle[$prefix . 'OfficeTown'] ?? $vehicle[$prefix . 'Town'] ?? null;
+        $postalCode = $vehicle[$prefix . 'OfficePostalCode'] ?? $vehicle[$prefix . 'PostalCode'] ?? null;
+        $phone = $vehicle[$prefix . 'OfficePhone'] ?? $vehicle[$prefix . 'Phone'] ?? null;
+        $email = $vehicle[$prefix . 'OfficeEmail'] ?? $vehicle[$prefix . 'Email'] ?? null;
+        $name = $vehicle[$prefix . 'OfficeName'] ?? null;
+        $pickupInstructions = $vehicle[$prefix . 'OfficePickupInstructions'] ?? null;
+        $dropoffInstructions = $vehicle[$prefix . 'OfficeDropOffInstructions'] ?? null;
+
+        if (!$address && !$town && !$postalCode && !$phone && !$email && !$name) {
+            return null;
+        }
+
+        return [
+            'office_id' => $vehicle[$prefix . 'OfficeId'] ?? null,
+            'office_code' => $vehicle[$prefix . 'OfficeCode'] ?? null,
+            'location_code' => $vehicle[$prefix . 'LocationCode'] ?? null,
+            'name' => $name,
+            'address' => $address,
+            'town' => $town,
+            'postal_code' => $postalCode,
+            'latitude' => $vehicle[$prefix . 'Latitude'] ?? null,
+            'longitude' => $vehicle[$prefix . 'Longitude'] ?? null,
+            'email' => $email,
+            'phone' => $phone,
+            'pickup_instructions' => $pickupInstructions,
+            'dropoff_instructions' => $dropoffInstructions,
+            'location_type' => $vehicle[$prefix . 'LocationType'] ?? null,
+        ];
     }
 
     /**
