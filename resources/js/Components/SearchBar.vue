@@ -839,6 +839,7 @@ onMounted(async () => {
     form.value.country = props.prefill.country || null;
     form.value.provider = props.prefill.provider || null;
     form.value.provider_pickup_id = props.prefill.provider_pickup_id || null;
+    form.value.unified_location_id = props.prefill.unified_location_id || null;
 
     if (props.prefill.start_time) {
       selectedStartTime.value = props.prefill.start_time;
@@ -877,7 +878,7 @@ onMounted(async () => {
   }
 
   // Ensure prefilled location is considered selected
-  if (form.value.where) {
+  if (form.value.where && form.value.unified_location_id) {
     hasSelectedPickupLocation.value = true;
   }
 
