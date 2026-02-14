@@ -78,7 +78,7 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
     <Sidebar variant="inset" collapsible="icon" class="bg-white border-r border-slate-200/70">
       <SiderBar />
     </Sidebar>
-    <SidebarInset class="bg-slate-50">
+    <SidebarInset class="bg-slate-50 min-w-0">
       <div class="profile-topbar">
         <div class="flex items-center gap-3 min-w-0">
           <SidebarTrigger class="!text-slate-700" />
@@ -194,11 +194,11 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
   box-shadow: 0 28px 60px rgba(15, 23, 42, 0.25);
 }
 
-.bg-sidebar {
+.profile-shell .bg-sidebar {
   background-color: #ffffff !important;
 }
 
-.text-sidebar-foreground {
+.profile-shell .text-sidebar-foreground {
   color: #0f172a !important;
 }
 
