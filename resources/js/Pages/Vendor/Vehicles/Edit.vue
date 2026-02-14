@@ -225,7 +225,7 @@
                                         <div class="mt-4">
                                             <InputLabel for="location_type">{{ _t('vendorprofilepages',
                                                 'label_location_type') }}</InputLabel>
-                                            <Select v-model="form.location_type">
+                                            <Select v-model="form.location_type" required>
                                                 <SelectTrigger id="location_type">
                                                     <SelectValue
                                                         :placeholder="_t('vendorprofilepages', 'placeholder_enter_location_type')" />
@@ -1045,12 +1045,12 @@ const deleteImage = async (vehicleId, imageId) => {
 
 // Handle location selection from LocationPicker
 const handleLocationSelect = (locationData) => {
-    form.location = locationData.address || '';
+    form.location = locationData.address || locationData.formattedAddress || '';
     form.city = locationData.city || '';
-    form.state = locationData.state; // Correctly assign null if locationData.state is null
+    form.state = locationData.state || '';
     form.country = locationData.country || '';
-    form.latitude = parseFloat(locationData.latitude) || 0;
-    form.longitude = parseFloat(locationData.longitude) || 0;
+    form.latitude = Number.isFinite(locationData.latitude) ? locationData.latitude : 0;
+    form.longitude = Number.isFinite(locationData.longitude) ? locationData.longitude : 0;
 
     showLocationPicker.value = false; // Hide the picker component instance
     allowFormSubmit.value = true;    // Re-allow form submission

@@ -135,6 +135,8 @@ return [
     'status_available' => 'Disponible',
     'status_rented' => 'Alquilado',
     'label_location' => 'Ubicación:',
+    'label_location_type' => 'Location Type:',
+    'placeholder_enter_location_type' => 'Select location type',
     'current_location_label' => 'Ubicación Actual:',
     'label_city' => 'Ciudad:',
     'label_state' => 'Estado:',

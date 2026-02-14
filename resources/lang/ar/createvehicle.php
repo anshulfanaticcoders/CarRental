@@ -104,6 +104,9 @@ return [
     'step3_parking_address_description' => 'هذا يسمح للمستأجرين بالبحث حسب الموقع',
     'step3_search_address_label' => 'ابحث عن عنوانك',
     'step3_search_address_tooltip' => "إذا لم تتمكن من العثور على عنوانك، يرجى الإشارة إلى أقرب عنوان يمكن تحديد موقعه جغرافيًا.",
+    'step3_location_type_label' => 'Location Type:',
+    'step3_location_type_placeholder' => 'Select location type',
+    'step3_location_type_required' => 'Please select a location type',
     'step3_data_protection_address_sharing' => 'لن يتم مشاركة عنوانك الدقيق على موقعنا أبدًا. سيتم إرساله مباشرة إلى المستأجر بعد تأكيد الحجز.',
 
     // Step 4: Hire Cost

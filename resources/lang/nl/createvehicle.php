@@ -104,6 +104,9 @@ return [
     'step3_parking_address_description' => 'Hiermee kunnen huurders zoeken op locatie.',
     'step3_search_address_label' => 'Zoek uw adres',
     'step3_search_address_tooltip' => 'Als u uw adres niet kunt vinden, geef dan het dichtstbijzijnde adres op dat kan worden gelokaliseerd.',
+    'step3_location_type_label' => 'Location Type:',
+    'step3_location_type_placeholder' => 'Select location type',
+    'step3_location_type_required' => 'Please select a location type',
     'step3_data_protection_address_sharing' => 'Uw exacte adres wordt nooit gedeeld op onze site. Het wordt rechtstreeks naar de huurder gestuurd na bevestiging van een boeking.',
 
     // Step 4: Hire Cost

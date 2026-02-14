@@ -135,6 +135,8 @@ return [
     'status_available' => 'متاح',
     'status_rented' => 'مؤجر',
     'label_location' => 'الموقع:',
+    'label_location_type' => 'Location Type:',
+    'placeholder_enter_location_type' => 'Select location type',
     'current_location_label' => 'الموقع الحالي:',
     'label_city' => 'المدينة:',
     'label_state' => 'الولاية:',

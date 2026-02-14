@@ -141,6 +141,8 @@ return [
     'status_rented' => 'Rented',
     // 'status_maintenance' => 'Maintenance', // Reusing maintenance_vehicles_card_title
     'label_location' => 'Location:',
+    'label_location_type' => 'Location Type:',
+    'placeholder_enter_location_type' => 'Select location type',
     'current_location_label' => 'Current Location:',
     'label_city' => 'City:',
     'label_state' => 'State:',

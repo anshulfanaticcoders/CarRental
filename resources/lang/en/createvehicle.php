@@ -104,6 +104,9 @@ return [
     'step3_parking_address_description' => 'This allows renters to search by location',
     'step3_search_address_label' => 'Search your address',
     'step3_search_address_tooltip' => "If you can't find your address, please indicate the closest address that can be geolocated.",
+    'step3_location_type_label' => 'Location Type:',
+    'step3_location_type_placeholder' => 'Select location type',
+    'step3_location_type_required' => 'Please select a location type',
     'step3_data_protection_address_sharing' => 'Your exact address will never be shared on our site. It will be sent directly to the renter after confirmation of a booking.',
 
     // Step 4: Hire Cost

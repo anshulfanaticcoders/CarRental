@@ -639,7 +639,7 @@
                     <div class="mt-4">
                         <InputLabel class="text-black font-medium" for="location_type">{{
                             _t('createvehicle', 'step3_location_type_label') }}</InputLabel>
-                        <Select v-model="form.location_type">
+                        <Select v-model="form.location_type" required>
                             <SelectTrigger class="w-full p-3 border-customLightGrayColor rounded-[12px]">
                                 <SelectValue :placeholder="_t('createvehicle', 'step3_location_type_placeholder')" />
                             </SelectTrigger>
@@ -1683,8 +1683,8 @@ const form = useForm({
     co2: "",
     location: "",
     location_type: "",
-    latitude: 'null',
-    longitude: 'null',
+    latitude: null,
+    longitude: null,
     city: "",
     state: "",
     country: "",
@@ -2325,9 +2325,15 @@ const nextStep = () => {
             break;
 
         case 3: // Location
-            if (!form.location || !form.latitude || !form.longitude) {
+            if (!form.location || form.latitude === null || form.longitude === null) {
                 isValid = false;
-                errors.location = 'Please select a valid location';
+                errors.location = 'Please select a valid location from Google';
+            }
+            if (!form.location_type) {
+                isValid = false;
+                errors.location_type = typeof _t === 'function'
+                    ? _t('createvehicle', 'step3_location_type_required')
+                    : 'Please select a location type';
             }
             break;
 
@@ -2475,12 +2481,12 @@ const handleSearchInput = async () => {
 };
 
 const selectLocation = (location) => {
-    form.location = location.address;
-    form.latitude = location.latitude;
-    form.longitude = location.longitude;
-    form.city = location.city;
-    form.state = location.state;
-    form.country = location.country;
+    form.location = location.address || location.formattedAddress || '';
+    form.latitude = Number.isFinite(location.latitude) ? location.latitude : null;
+    form.longitude = Number.isFinite(location.longitude) ? location.longitude : null;
+    form.city = location.city || '';
+    form.state = location.state || '';
+    form.country = location.country || '';
 };
 
 const initializeMap = () => {

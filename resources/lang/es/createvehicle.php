@@ -104,6 +104,9 @@ return [
     'step3_parking_address_description' => 'Esto permite a los arrendatarios buscar por ubicación',
     'step3_search_address_label' => 'Busca tu dirección',
     'step3_search_address_tooltip' => "Si no puedes encontrar tu dirección, por favor indica la dirección más cercana que pueda ser geolocalizada.",
+    'step3_location_type_label' => 'Location Type:',
+    'step3_location_type_placeholder' => 'Select location type',
+    'step3_location_type_required' => 'Please select a location type',
     'step3_data_protection_address_sharing' => 'Tu dirección exacta nunca se compartirá en nuestro sitio. Se enviará directamente al arrendatario después de la confirmación de una reserva.',
 
     // Step 4: Hire Cost

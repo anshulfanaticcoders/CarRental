@@ -135,6 +135,8 @@ return [
         'status_available' => 'Beschikbaar',
         'status_rented' => 'Verhuurd',
         'label_location' => 'Locatie:',
+        'label_location_type' => 'Location Type:',
+        'placeholder_enter_location_type' => 'Select location type',
         'current_location_label' => 'Huidige locatie:',
         'label_city' => 'Stad:',
         'label_state' => 'Provincie:',

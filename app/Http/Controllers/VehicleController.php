@@ -70,7 +70,7 @@ class VehicleController extends Controller
             'horsepower' => 'required|decimal:0,2',
             'co2' => 'required|string',
             'location' => 'required|string',
-            'location_type' => 'nullable|string|max:255',
+            'location_type' => 'required|string|max:255',
             'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
@@ -100,6 +100,8 @@ class VehicleController extends Controller
             // 'vehicle_height' => 'required|integer|min:0',
             // 'dealer_cost' => 'required|decimal:0,2|min:0',
             'phone_number' => 'required|string|max:15',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
 
             // New Vehicle Benefit fields
             'limited_km_per_day' => 'boolean',

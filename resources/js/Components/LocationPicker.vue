@@ -14,10 +14,10 @@ const markerRef = ref(null);
 // const searchResults = ref([]); // No longer needed with gmp-place-autocomplete-element
 // const searchQuery = ref(''); // No longer needed
 const isLocating = ref(false);
-const isUnknownLocation = ref(false);
-const showManualAddressDialog = ref(false);
 const addressError = ref('');
 const fullAddress = ref('');
+const formattedAddress = ref('');
+const placeId = ref('');
 
 
 // Location detail fields
@@ -33,9 +33,6 @@ const tempAddress = ref('');
 const tempCity = ref('');
 const tempState = ref('');
 const tempCountry = ref('');
-
-// Checkbox state
-const isStateSameAsCity = ref(false); // Default to UNCHECKED
 
 // API Keys - User needs to ensure VITE_GOOGLE_MAPS_API_KEY is in .env
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -54,6 +51,11 @@ const isStep1FormValid = computed(() => {
          tempState.value.trim() !== '' &&
          tempCountry.value.trim() !== '';
 });
+
+const isCityMissing = computed(() => tempCity.value.trim() === '');
+const isStateMissing = computed(() => tempState.value.trim() === '');
+const isCountryMissing = computed(() => tempCountry.value.trim() === '');
+const shouldShowManualFields = computed(() => isCityMissing.value || isStateMissing.value || isCountryMissing.value);
 
 const initializeMap = () => {
   if (mapRef.value && !mapInstance.value) {
@@ -125,25 +127,25 @@ onMounted(async () => {
             if (component.types.includes('street_number')) streetNumber = component.long_name;
             if (component.types.includes('route')) route = component.long_name;
             if (component.types.includes('locality')) locality = component.long_name;
+            if (component.types.includes('postal_town') && !locality) locality = component.long_name;
             if (component.types.includes('administrative_area_level_1')) administrative_area_level_1 = component.long_name;
             if (component.types.includes('country')) countryName = component.long_name;
             if (component.types.includes('postal_code')) postal_code = component.long_name;
           });
         }
-        
-        tempAddress.value = `${streetNumber} ${route}`.trim() || place.name || '';
-        tempCity.value = locality;
-        // tempState.value = administrative_area_level_1; // Do not prefill state from suggestion
-        tempState.value = ''; // Initialize state as empty
-        isStateSameAsCity.value = false; // Default to different state
-        tempCountry.value = countryName;
-        
+
+        tempAddress.value = `${streetNumber} ${route}`.trim() || place.formatted_address || place.name || '';
+        tempCity.value = locality || '';
+        tempState.value = administrative_area_level_1 || '';
+        tempCountry.value = countryName || '';
+
         address.value = tempAddress.value;
         city.value = tempCity.value;
-        // state.value = tempState.value; // State will be set on save based on logic
-        state.value = ''; // Initialize main state as empty
+        state.value = tempState.value;
         country.value = tempCountry.value;
-        fullAddress.value = place.formatted_address || `${tempAddress.value}, ${tempCity.value}, ${tempState.value}, ${tempCountry.value}`;
+        formattedAddress.value = place.formatted_address || '';
+        placeId.value = place.place_id || '';
+        fullAddress.value = formattedAddress.value || `${tempAddress.value}, ${tempCity.value}, ${tempState.value}, ${tempCountry.value}`;
 
         currentPopupStep.value = 1;
         showLocationPickerPopup.value = true;
@@ -206,63 +208,76 @@ onUnmounted(() => {
   }
 });
 
+const extractAddressParts = (components = []) => {
+  const getPart = (type) => components.find(component => component.types.includes(type))?.long_name || '';
+  const streetNumber = getPart('street_number');
+  const route = getPart('route');
+  const city = getPart('locality') || getPart('postal_town') || getPart('administrative_area_level_2');
+  const state = getPart('administrative_area_level_1');
+  const countryName = getPart('country');
+
+  return {
+    streetNumber,
+    route,
+    city,
+    state,
+    countryName,
+  };
+};
+
 // handleBlur, handleSearch, and handleGoogleLocationSelect are no longer needed
 // as gmp-place-autocomplete-element handles its own input and selection.
 
 // Renamed original reverseGeocode to avoid confusion, now specifically for map clicks / geolocate
 const reverseGeocodeAndPrefill = async (lat, lng) => {
   isLoadingDetails.value = true;
-  latitude.value = parseFloat(lat.toFixed(6)); // Set main lat/lng and truncate
-  longitude.value = parseFloat(lng.toFixed(6)); // Set main lat/lng and truncate
+  latitude.value = parseFloat(lat.toFixed(6));
+  longitude.value = parseFloat(lng.toFixed(6));
 
   try {
-    // Using existing local API for reverse geocoding for map clicks
-    const response = await fetch(`/api/geocoding/reverse?lat=${latitude.value}&lon=${longitude.value}`);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
-    const feature = data.features && data.features[0];
-    const props = feature ? feature.properties : {};
-
-    // Preserve user-entered parking address if it exists
-    if (!tempAddress.value.trim()) {
-        tempAddress.value = props.name || props.housenumber && props.street ? `${props.housenumber || ''} ${props.street || ''}`.trim() : '';
+    if (typeof google === 'undefined' || !google.maps || !google.maps.Geocoder) {
+      throw new Error('Google Maps Geocoder is not available');
     }
-    tempCity.value = props.locality || props.county || '';
-    // tempState.value = props.region || ''; // Do not prefill state from reverse geocode
-    tempState.value = ''; // Initialize state as empty
-    isStateSameAsCity.value = false; // Default to different state
-    tempCountry.value = props.country || '';
-    
-    // Update main fields for display (address.value will be updated from tempAddress on final save)
+
+    const geocoder = new google.maps.Geocoder();
+    const result = await geocoder.geocode({
+      location: { lat: latitude.value, lng: longitude.value },
+    });
+
+    const geocodeResult = result?.results?.[0];
+    if (!geocodeResult) {
+      throw new Error('No reverse geocoding results');
+    }
+
+    const parts = extractAddressParts(geocodeResult.address_components || []);
+    const fallbackAddress = geocodeResult.formatted_address || '';
+    tempAddress.value = `${parts.streetNumber} ${parts.route}`.trim() || fallbackAddress;
+    tempCity.value = parts.city || '';
+    tempState.value = parts.state || '';
+    tempCountry.value = parts.countryName || '';
+
+    address.value = tempAddress.value;
     city.value = tempCity.value;
-    // state.value = tempState.value; // State will be set on save based on logic
-    state.value = ''; // Initialize main state as empty
+    state.value = tempState.value;
     country.value = tempCountry.value;
-    fullAddress.value = feature?.properties?.label || `${tempAddress.value}, ${tempCity.value}, ${tempState.value}, ${tempCountry.value}`;
+    formattedAddress.value = geocodeResult.formatted_address || '';
+    placeId.value = geocodeResult.place_id || '';
+    fullAddress.value = formattedAddress.value || `${tempAddress.value}, ${tempCity.value}, ${tempState.value}, ${tempCountry.value}`;
 
-
-    isLoadingDetails.value = false;
-    // If called from map click within step 2, fields are already bound.
-    // If called to open popup (e.g. locateMe), then open it.
     if (!showLocationPickerPopup.value) {
-        currentPopupStep.value = 1;
-        showLocationPickerPopup.value = true;
+      currentPopupStep.value = 1;
+      showLocationPickerPopup.value = true;
     }
     updateMapMarker(lat, lng);
-
   } catch (error) {
     console.error('Reverse geocoding error:', error);
-    isLoadingDetails.value = false;
-    // Fallback: open popup with just lat/lng for manual entry
-    tempAddress.value = '';
-    tempCity.value = '';
-    tempState.value = '';
-    tempCountry.value = '';
     if (!showLocationPickerPopup.value) {
-        currentPopupStep.value = 1;
-        showLocationPickerPopup.value = true;
+      currentPopupStep.value = 1;
+      showLocationPickerPopup.value = true;
     }
     updateMapMarker(lat, lng);
+  } finally {
+    isLoadingDetails.value = false;
   }
 };
 
@@ -276,7 +291,6 @@ const openLocationDetailsPopupWithCoords = (lat, lng, initialSearchText = '') =>
   tempCity.value = '';
   tempState.value = '';
   tempCountry.value = '';
-  isStateSameAsCity.value = false; // Reset checkbox
   
   currentPopupStep.value = 1;
   showLocationPickerPopup.value = true;
@@ -355,23 +369,17 @@ const finalSaveLocation = () => {
   // Final values are taken from temp fields, potentially updated by map interaction
   address.value = tempAddress.value;
   city.value = tempCity.value;
-  // Determine the state value to save/emit
-  let stateToSave = tempState.value;
-  if (isStateSameAsCity.value) {
-    stateToSave = null; // If state is same as city, send null for state
-  }
-  state.value = stateToSave; // Update the main state ref for display if needed, though it might be null
-
+  state.value = tempState.value;
   country.value = tempCountry.value;
   // latitude and longitude are already updated by map interactions or initial selection
 
-  // Adjust fullAddress computation to handle null state gracefully
+  // Adjust fullAddress computation to handle optional state gracefully
   const addressParts = [tempAddress.value, tempCity.value];
-  if (stateToSave) { // Only add state to fullAddress if it's not null (i.e., different from city)
-      addressParts.push(stateToSave);
+  if (tempState.value) {
+      addressParts.push(tempState.value);
   }
   addressParts.push(tempCountry.value);
-  fullAddress.value = addressParts.filter(Boolean).join(', ').replace(/, ,/g, ',').replace(/^,|,$/g, '');
+  fullAddress.value = formattedAddress.value || addressParts.filter(Boolean).join(', ').replace(/, ,/g, ',').replace(/^,|,$/g, '');
   
   showLocationPickerPopup.value = false; // Close the popup
   currentPopupStep.value = 1; // Reset step for next time
@@ -380,11 +388,13 @@ const finalSaveLocation = () => {
     props.onLocationSelect({ 
       address: address.value,
       city: city.value,
-      state: stateToSave, // Emit null if state is same as city
+      state: state.value,
       country: country.value,
       latitude: parseFloat(latitude.value),
       longitude: parseFloat(longitude.value),
-      fullAddress: fullAddress.value
+      fullAddress: fullAddress.value,
+      formattedAddress: formattedAddress.value,
+      placeId: placeId.value,
     });
   }
   // searchQuery.value = fullAddress.value; // searchQuery no longer exists
@@ -421,37 +431,24 @@ const locateMe = () => {
 // It can be removed or repurposed if there's a direct update path from main form.
 // const handleManualAddressUpdate = () => { ... };
 
-// Function to open the main location picker dialog (e.g. from an external button)
 const openLocationDialog = () => {
-    // Reset fields before opening
     tempAddress.value = '';
     tempCity.value = '';
     tempState.value = '';
     tempCountry.value = '';
-    isStateSameAsCity.value = false; // Reset checkbox
     latitude.value = '';
     longitude.value = '';
-    // searchQuery.value = ''; // searchQuery no longer exists
+    formattedAddress.value = '';
+    placeId.value = '';
+    fullAddress.value = '';
+    address.value = '';
+    city.value = '';
+    state.value = '';
+    country.value = '';
     currentPopupStep.value = 1;
     showLocationPickerPopup.value = true;
 };
 
-watch(isStateSameAsCity, (newValue) => {
-  if (newValue) { // State is SAME as City
-    tempState.value = tempCity.value; // Set data value, field will be hidden
-  } else { // State is DIFFERENT from City
-    tempState.value = ''; // Clear for manual input, field will be shown
-  }
-});
-
-watch(tempCity, (newCityValue) => {
-  if (isStateSameAsCity.value) { // If checkbox is checked (state is same as city)
-    tempState.value = newCityValue; // Update state to match new city value
-  }
-  // If checkbox is not checked, tempState is independent for manual input.
-});
-
-// Expose method to parent if needed via defineExpose
 defineExpose({ openLocationDialog });
 
 </script>
@@ -471,19 +468,6 @@ defineExpose({ openLocationDialog });
       <p v-if="isLoadingDetails" class="text-sm text-gray-500 mt-1">Loading location details...</p>
     </div>
     
-    <!-- Button to trigger the new popup flow -->
-    <!-- This replaces the direct map display and old manual address trigger -->
-    <button 
-        @click="openLocationDialog"
-        class="w-full mb-4 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 manual_button"
-    >
-      Set Vehicle Location Manually
-    </button>
-    
-    <!-- REMOVE OLD MAP DISPLAY AND LOCATE ME BUTTON FROM MAIN TEMPLATE -->
-    <!-- The map and locate me will be part of the new popup -->
-
-
     <!-- New Location Picker Popup -->
     <div v-if="showLocationPickerPopup" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[1000]">
       <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl">
@@ -501,32 +485,76 @@ defineExpose({ openLocationDialog });
           <div class="space-y-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Parking Address / Street</label>
-              <input type="text" v-model="tempAddress" class="w-full p-2 border rounded-lg" placeholder="E.g., 123 Main St"/>
+              <input
+                v-if="!tempAddress.trim()"
+                type="text"
+                v-model="tempAddress"
+                class="w-full p-2 border rounded-lg"
+                placeholder="E.g., 123 Main St"
+              />
+              <input
+                v-else
+                type="text"
+                :value="tempAddress"
+                class="w-full p-2 border rounded-lg bg-gray-50"
+                readonly
+              />
               <p v-if="addressError" class="text-red-500 text-xs mt-1">{{ addressError }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">City</label>
-              <input type="text" v-model="tempCity" class="w-full p-2 border rounded-lg" placeholder="City"/>
+              <input
+                v-if="isCityMissing"
+                type="text"
+                v-model="tempCity"
+                class="w-full p-2 border rounded-lg"
+                placeholder="City"
+              />
+              <input
+                v-else
+                type="text"
+                :value="tempCity"
+                class="w-full p-2 border rounded-lg bg-gray-50"
+                readonly
+              />
             </div>
-            <div class="mt-3">
-              <label class="flex items-center">
-                <input type="checkbox" v-model="isStateSameAsCity" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"/>
-                <span class="ml-2 text-sm text-gray-700">State is the same as City</span>
-              </label>
-            </div>
-            <div v-if="!isStateSameAsCity">
-              <label class="block text-sm font-medium text-gray-700 mb-1">State / Province (if different from city)</label>
-              <input 
-                type="text" 
-                v-model="tempState" 
-                class="w-full p-2 border rounded-lg" 
-                placeholder="Enter state manually"
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">State / Province</label>
+              <input
+                v-if="isStateMissing"
+                type="text"
+                v-model="tempState"
+                class="w-full p-2 border rounded-lg"
+                placeholder="State / Province"
+              />
+              <input
+                v-else
+                type="text"
+                :value="tempState"
+                class="w-full p-2 border rounded-lg bg-gray-50"
+                readonly
               />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
-              <input type="text" v-model="tempCountry" class="w-full p-2 border rounded-lg" placeholder="Country"/>
+              <input
+                v-if="isCountryMissing"
+                type="text"
+                v-model="tempCountry"
+                class="w-full p-2 border rounded-lg"
+                placeholder="Country"
+              />
+              <input
+                v-else
+                type="text"
+                :value="tempCountry"
+                class="w-full p-2 border rounded-lg bg-gray-50"
+                readonly
+              />
             </div>
+            <p v-if="shouldShowManualFields" class="text-xs text-gray-500">
+              Some details were missing from Google. Please fill the empty fields above.
+            </p>
           </div>
           <div class="mt-6 flex justify-end space-x-3">
             <button @click="showLocationPickerPopup = false" class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100">Cancel</button>
@@ -577,19 +605,19 @@ defineExpose({ openLocationDialog });
       </div>
       <div class="form-group">
         <label class="block text-xs font-medium text-gray-600 mb-1">Parking Address</label>
-        <input type="text" :value="address" class="w-full p-2 border rounded-lg bg-gray-50 text-sm" />
+        <input type="text" :value="address" class="w-full p-2 border rounded-lg bg-gray-50 text-sm" readonly />
       </div>
       <div class="form-group">
         <label class="block text-xs font-medium text-gray-600 mb-1">City</label>
-        <input type="text" :value="city" class="w-full p-2 border rounded-lg bg-gray-50 text-sm" />
+        <input type="text" :value="city" class="w-full p-2 border rounded-lg bg-gray-50 text-sm" readonly />
       </div>
       <div class="form-group">
         <label class="block text-xs font-medium text-gray-600 mb-1">State/Province</label>
-        <input type="text" :value="state" class="w-full p-2 border rounded-lg bg-gray-50 text-sm" />
+        <input type="text" :value="state" class="w-full p-2 border rounded-lg bg-gray-50 text-sm" readonly />
       </div>
       <div class="form-group">
         <label class="block text-xs font-medium text-gray-600 mb-1">Country</label>
-        <input type="text" :value="country" class="w-full p-2 border rounded-lg bg-gray-50 text-sm" />
+        <input type="text" :value="country" class="w-full p-2 border rounded-lg bg-gray-50 text-sm" readonly />
       </div>
       <div class="form-group">
         <label class="block text-xs font-medium text-gray-600 mb-1">Latitude</label>
