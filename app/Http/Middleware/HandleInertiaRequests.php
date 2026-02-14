@@ -82,6 +82,14 @@ class HandleInertiaRequests extends Middleware
 
         $sharedData['currency'] = session('currency', 'USD');
 
+        $rawMarkup = env('PROVIDER_MARKUP_PERCENT');
+        $markupPercent = is_numeric($rawMarkup) ? (float) $rawMarkup : 15.0;
+        if ($markupPercent < 0) {
+            $markupPercent = 0.0;
+        }
+        $sharedData['provider_markup_percent'] = $markupPercent;
+        $sharedData['provider_markup_rate'] = $markupPercent / 100;
+
         $sharedData['flash'] = function () use ($request) {
             return [
                 'success' => $request->session()->get('success'),

@@ -54,6 +54,15 @@ import {
 
 const { selectedCurrency, supportedCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
 const { convertPrice, fetchExchangeRates } = useCurrencyConversion();
+const page = usePage();
+
+const providerMarkupRate = computed(() => {
+    const rawRate = parseFloat(page.props.provider_markup_rate ?? '');
+    if (Number.isFinite(rawRate) && rawRate >= 0) return rawRate;
+    const rawPercent = parseFloat(page.props.provider_markup_percent ?? '');
+    if (Number.isFinite(rawPercent) && rawPercent >= 0) return rawPercent / 100;
+    return 0.15;
+});
 
 // Currency names mapping for better display
 const currencyNames = {
@@ -388,8 +397,6 @@ const debounce = (fn, delay) => {
         timeoutId = setTimeout(() => fn(...args), delay);
     };
 };
-const page = usePage();
-
 const isCustomer = computed(() => {
     return page.props.auth?.user?.role === 'customer';
 });
@@ -751,12 +758,13 @@ const allVehiclesForMap = computed(() => {
 });
 
 // Helper to get vehicle price in selected currency
-const PROVIDER_NET_SHARE = 0.85;
 const grossUpProviderPrice = (value, vehicle) => {
     const numeric = parseFloat(value);
     if (!Number.isFinite(numeric)) return null;
     if (!vehicle || vehicle.source === 'internal') return numeric;
-    return PROVIDER_NET_SHARE > 0 ? (numeric / PROVIDER_NET_SHARE) : numeric;
+    const rate = providerMarkupRate.value;
+    if (!Number.isFinite(rate) || rate <= 0) return numeric;
+    return numeric * (1 + rate);
 };
 
 const getVehiclePriceConverted = (vehicle) => {

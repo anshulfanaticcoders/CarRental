@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted, nextTick } from "vue";
+import { usePage } from "@inertiajs/vue3";
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 import check from "../../assets/Check.svg";
 import L from "leaflet";
@@ -44,18 +45,26 @@ const isLocautoRent = computed(() => {
     return props.vehicle?.source === 'locauto_rent';
 });
 
+const page = usePage();
+
+const providerMarkupRate = computed(() => {
+    const rawRate = parseFloat(page.props.provider_markup_rate ?? '');
+    if (Number.isFinite(rawRate) && rawRate >= 0) return rawRate;
+    const rawPercent = parseFloat(page.props.provider_markup_percent ?? '');
+    if (Number.isFinite(rawPercent) && rawPercent >= 0) return rawPercent / 100;
+    return 0.15;
+});
+
 // Check if vehicle is Internal
 const isInternal = computed(() => {
     return props.vehicle?.source === 'internal';
 });
 
-const PROVIDER_NET_SHARE = 0.85; // provider API net share (85%)
 const providerGrossMultiplier = computed(() => {
     if (isInternal.value) return 1;
-    return PROVIDER_NET_SHARE > 0 ? (1 / PROVIDER_NET_SHARE) : 1;
+    const rate = providerMarkupRate.value;
+    return Number.isFinite(rate) ? (1 + rate) : 1;
 });
-
-const COMMISSION_RATE = 0.15;
 
 // Check if vehicle is Renteon
 const isRenteon = computed(() => {
@@ -1563,7 +1572,7 @@ const grandTotal = computed(() => {
 });
 
 const effectivePaymentPercentage = computed(() => {
-    if (isRenteon.value) return COMMISSION_RATE * 100;
+    if (isRenteon.value) return providerMarkupRate.value * 100;
     return props.paymentPercentage || 0;
 });
 

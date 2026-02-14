@@ -94,6 +94,14 @@ const emit = defineEmits(['toggleFavourite', 'saveSearchUrl', 'select-package'])
 const { selectedCurrency, convertPrice, getSelectedCurrencySymbol, getCurrencySymbol, fetchExchangeRates, exchangeRates, loading } = useCurrencyConversion();
 const page = usePage();
 
+const providerMarkupRate = computed(() => {
+    const rawRate = parseFloat(page.props.provider_markup_rate ?? '');
+    if (Number.isFinite(rawRate) && rawRate >= 0) return rawRate;
+    const rawPercent = parseFloat(page.props.provider_markup_percent ?? '');
+    if (Number.isFinite(rawPercent) && rawPercent >= 0) return rawPercent / 100;
+    return 0.15;
+});
+
 // Fetch exchange rates on mount
 onMounted(() => {
     fetchExchangeRates();
@@ -105,9 +113,10 @@ const showAllPlans = ref(false);
 
 const ratesReady = computed(() => !!exchangeRates.value && !loading.value);
 
-const PROVIDER_NET_SHARE = 0.85; // provider API net share (85%)
 const providerGrossMultiplier = computed(() => {
-    return props.vehicle?.source === 'internal' ? 1 : (PROVIDER_NET_SHARE > 0 ? (1 / PROVIDER_NET_SHARE) : 1);
+    if (props.vehicle?.source === 'internal') return 1;
+    const rate = providerMarkupRate.value;
+    return Number.isFinite(rate) ? (1 + rate) : 1;
 });
 
 // Convert to selected currency and gross-up for provider vehicles (except internal).

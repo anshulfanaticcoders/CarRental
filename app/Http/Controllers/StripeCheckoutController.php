@@ -19,10 +19,10 @@ use Stripe\Checkout\Session as StripeSession;
 class StripeCheckoutController extends Controller
 {
     /**
-     * Provider APIs return net pricing (customer price minus commission).
-     * We display/charge the grossed-up price to customers but still send net totals to providers.
+     * Provider APIs return net pricing (base totals).
+     * We apply a markup for customer-facing totals but still send net totals to providers.
      */
-    private const PROVIDER_COMMISSION_RATE = 0.15; // 15%
+    private const DEFAULT_PROVIDER_MARKUP_PERCENT = 15.0;
 
     public function __construct(private StripeBookingService $bookingService)
     {
@@ -35,18 +35,34 @@ class StripeCheckoutController extends Controller
         return $normalized !== '' && $normalized !== 'internal';
     }
 
+    private function resolveProviderMarkupPercent(): float
+    {
+        $raw = env('PROVIDER_MARKUP_PERCENT');
+        $percent = is_numeric($raw) ? (float) $raw : self::DEFAULT_PROVIDER_MARKUP_PERCENT;
+        if ($percent < 0) {
+            $percent = 0.0;
+        }
+
+        return $percent;
+    }
+
+    private function resolveProviderMarkupRate(): float
+    {
+        return $this->resolveProviderMarkupPercent() / 100;
+    }
+
     private function grossUpProviderAmount(float $netAmount, ?string $vehicleSource): float
     {
         if (!$this->isExternalProviderSource($vehicleSource)) {
             return round($netAmount, 2);
         }
 
-        $netShare = 1 - self::PROVIDER_COMMISSION_RATE;
-        if ($netShare <= 0) {
+        $markupRate = $this->resolveProviderMarkupRate();
+        if ($markupRate <= 0) {
             return round($netAmount, 2);
         }
 
-        return round($netAmount / $netShare, 2);
+        return round($netAmount * (1 + $markupRate), 2);
     }
 
     private function compactStripeMetadata(array $metadata): array
@@ -249,8 +265,18 @@ class StripeCheckoutController extends Controller
             $pendingAmount = $computedTotals['booking_pending'];
 
             $isProviderVehicle = $this->isExternalProviderSource($providerSource);
-            $commissionRate = $isProviderVehicle ? self::PROVIDER_COMMISSION_RATE : 0.0;
-            $commissionAmount = $isProviderVehicle ? round(((float) $totalAmount) * $commissionRate, 2) : 0.0;
+            $commissionRate = $isProviderVehicle
+                ? ($computedTotals['provider_commission_rate'] ?? $this->resolveProviderMarkupRate())
+                : 0.0;
+            $bookingTotalNet = $computedTotals['booking_total_net'] ?? null;
+            $commissionAmount = 0.0;
+            if ($isProviderVehicle) {
+                if ($bookingTotalNet !== null) {
+                    $commissionAmount = round(((float) $totalAmount) - (float) $bookingTotalNet, 2);
+                } else {
+                    $commissionAmount = round(((float) $totalAmount) * $commissionRate, 2);
+                }
+            }
 
             $extrasPayloadId = null;
             $extrasPayload = [
@@ -615,7 +641,8 @@ class StripeCheckoutController extends Controller
         } else {
             $isPrepaid = filter_var($prepaidFlag ?? true, FILTER_VALIDATE_BOOLEAN);
         }
-        $commissionRate = $this->isExternalProviderSource($vehicleSource) ? self::PROVIDER_COMMISSION_RATE : 0.0;
+        $markupRate = $this->resolveProviderMarkupRate();
+        $commissionRate = $this->isExternalProviderSource($vehicleSource) ? $markupRate : 0.0;
         $useCommissionOnly = $vehicleSource === 'renteon' && $isPrepaid === false;
 
         if (in_array($vehicleSource, ['greenmotion', 'usave'], true)) {
@@ -688,7 +715,7 @@ class StripeCheckoutController extends Controller
             }
         }
 
-        // Booking totals (customer-facing) are grossed-up for external providers.
+        // Booking totals (customer-facing) are marked up for external providers.
         $bookingVehicleTotalNet = round($baseTotalConverted, 2);
         $bookingOptionsTotalNet = round($extrasTotalConverted + $protectionTotalConverted, 2);
         $bookingTotalNet = round($bookingVehicleTotalNet + $bookingOptionsTotalNet, 2);
@@ -699,7 +726,7 @@ class StripeCheckoutController extends Controller
 
         // Deposit/pending are based on the gross booking total (customer-facing).
         if ($useCommissionOnly && $commissionRate > 0) {
-            $depositBooking = round($bookingTotal * $commissionRate, 2);
+            $depositBooking = round(max($bookingTotal - $bookingTotalNet, 0), 2);
         } else {
             $depositBooking = round($bookingTotal * ($paymentPercentage / 100), 2);
         }
@@ -728,6 +755,7 @@ class StripeCheckoutController extends Controller
             'booking_vehicle_total' => $bookingVehicleTotal,
             'booking_options_total' => $bookingOptionsTotal,
             'booking_total' => $bookingTotal,
+            'booking_total_net' => $bookingTotalNet,
             'booking_deposit' => $depositBooking,
             'booking_pending' => $bookingPending,
             'provider_vehicle_total' => $baseTotal,
@@ -874,17 +902,21 @@ class StripeCheckoutController extends Controller
         $bookingDeposit = round($bookingTotal * ($paymentPercentage / 100), 2);
         $bookingPending = round($bookingTotal - $bookingDeposit, 2);
 
+        $markupRate = $this->resolveProviderMarkupRate();
+        $commissionRate = $this->isExternalProviderSource($vehicle['source'] ?? null) ? $markupRate : 0.0;
+
         return [
             'success' => true,
             'booking_vehicle_total' => $bookingVehicleTotalGross,
             'booking_options_total' => $bookingOptionsTotalGross,
             'booking_total' => $bookingTotal,
+            'booking_total_net' => $bookingTotalNet,
             'booking_deposit' => round($bookingDeposit, 2),
             'booking_pending' => $bookingPending,
             'provider_vehicle_total' => round($providerVehicleTotal, 2),
             'provider_options_total' => round($providerOptionsTotal, 2),
             'provider_grand_total' => round($providerGrandTotal, 2),
-            'provider_commission_rate' => self::PROVIDER_COMMISSION_RATE,
+            'provider_commission_rate' => $commissionRate,
         ];
     }
 

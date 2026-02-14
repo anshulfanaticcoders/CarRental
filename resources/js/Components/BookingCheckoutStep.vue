@@ -42,9 +42,10 @@ const props = defineProps({
 const emit = defineEmits(['back']);
 
 const { convertPrice, getSelectedCurrencySymbol, fetchExchangeRates, selectedCurrency } = useCurrencyConversion();
+const page = usePage();
 
 // Pre-fill from auth user if available
-const user = usePage().props.auth?.user || {};
+const user = page.props.auth?.user || {};
 const profile = user.profile || {};
 
 const form = ref({
@@ -158,9 +159,16 @@ const isRenteon = computed(() => {
     return props.vehicle?.source === 'renteon';
 });
 
-const COMMISSION_RATE = 0.15;
+const providerMarkupRate = computed(() => {
+    const rawRate = parseFloat(page.props.provider_markup_rate ?? '');
+    if (Number.isFinite(rawRate) && rawRate >= 0) return rawRate;
+    const rawPercent = parseFloat(page.props.provider_markup_percent ?? '');
+    if (Number.isFinite(rawPercent) && rawPercent >= 0) return rawPercent / 100;
+    return 0.15;
+});
+
 const effectivePaymentPercentage = computed(() => {
-    if (isRenteon.value) return COMMISSION_RATE * 100;
+    if (isRenteon.value) return providerMarkupRate.value * 100;
     return props.paymentPercentage || 0;
 });
 
