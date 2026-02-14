@@ -228,7 +228,7 @@ const unreadMessageCount = ref(0);
 
 const fetchUnreadMessageCount = async () => {
   try {
-  const response = await axios.get(route('messages.unreadCount', { locale: page.props.locale }));
+    const response = await axios.get(route('messages.unreadCount', { locale: page.props.locale }));
     if (response.data && typeof response.data.unread_count === 'number') {
       unreadMessageCount.value = response.data.unread_count;
     }
@@ -351,22 +351,12 @@ const leave = (el) => {
         <SidebarGroupLabel>{{ menu.title }}</SidebarGroupLabel>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              :is-active="activeMenu === menu.key"
-              :tooltip="menu.title"
-              size="lg"
-              :class="['profile-nav-button', isCollapsed ? 'justify-center' : '']"
-              @click="toggleMenu(menu.key)"
-            >
+            <SidebarMenuButton :is-active="activeMenu === menu.key" :tooltip="menu.title" size="lg"
+              :class="['profile-nav-button', isCollapsed ? 'justify-center' : '']" @click="toggleMenu(menu.key)">
               <img :src="menu.icon" alt="" class="h-5 w-5 nav-icon" />
               <span v-if="!isCollapsed" class="nav-label">{{ menu.title }}</span>
-              <img
-                v-if="!isCollapsed"
-                :src="chevronIcon"
-                alt=""
-                class="ml-auto h-3 w-3 transition-transform"
-                :class="{ 'rotate-180': activeMenu === menu.key }"
-              />
+              <img v-if="!isCollapsed" :src="chevronIcon" alt="" class="ml-auto h-3 w-3 transition-transform"
+                :class="{ 'rotate-180': activeMenu === menu.key }" />
             </SidebarMenuButton>
             <Transition name="accordion" @before-enter="beforeEnter" @enter="enter" @after-enter="afterEnter"
               @before-leave="beforeLeave" @leave="leave">
@@ -390,22 +380,14 @@ const leave = (el) => {
         <SidebarGroupLabel>{{ _t('customerprofile', 'quick_links') || 'Quick Links' }}</SidebarGroupLabel>
         <SidebarMenu>
           <SidebarMenuItem v-for="link in activeOtherLinks" :key="link.name">
-            <SidebarMenuButton
-              :is-active="activeLink === link.name"
-              :tooltip="link.name"
-              size="lg"
-              as-child
-              :class="['profile-nav-button', isCollapsed ? 'justify-center' : '']"
-            >
+            <SidebarMenuButton :is-active="activeLink === link.name" :tooltip="link.name" size="lg" as-child
+              :class="['profile-nav-button', isCollapsed ? 'justify-center' : '']">
               <Link :href="link.path" class="items-center" @click="handleLinkClick(link.name)">
                 <img :src="link.icon" alt="" class="h-5 w-5 nav-icon" />
                 <span v-if="!isCollapsed" class="nav-label">{{ link.name }}</span>
               </Link>
             </SidebarMenuButton>
-            <SidebarMenuBadge
-              v-if="link.isInbox && unreadMessageCount > 0"
-              class="bg-rose-500 text-white"
-            >
+            <SidebarMenuBadge v-if="link.isInbox && unreadMessageCount > 0" class="bg-rose-500 text-white">
               {{ unreadMessageCount }}
             </SidebarMenuBadge>
           </SidebarMenuItem>
@@ -416,12 +398,9 @@ const leave = (el) => {
     <SidebarFooter>
       <AlertDialog>
         <AlertDialogTrigger as-child>
-          <SidebarMenuButton
-            variant="outline"
-            size="lg"
+          <SidebarMenuButton variant="outline" size="lg"
             class="profile-nav-button bg-rose-600 text-white hover:text-white hover:bg-rose-700 border-rose-600"
-            :tooltip="_t('customerprofile', 'log_out')"
-          >
+            :tooltip="_t('customerprofile', 'log_out')">
             <img :src="logoutIcon" alt="" class="h-5 w-5 nav-icon nav-icon--white" />
             <span v-if="!isCollapsed" class="nav-label text-white">{{ _t('customerprofile', 'log_out') }}</span>
           </SidebarMenuButton>
@@ -453,6 +432,7 @@ const leave = (el) => {
   flex-direction: column;
   height: 100%;
   width: 100%;
+  background-color: #ffffff;
 }
 
 .profile-card {

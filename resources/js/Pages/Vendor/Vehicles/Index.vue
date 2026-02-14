@@ -1,6 +1,6 @@
 <template>
     <MyProfileLayout>
-        <div class="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <div class="w-full mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6">
             <!-- Flash Message -->
             <div v-if="$page.props.flash.success"
                 class="rounded-lg border border-green-200 bg-green-50 p-3 sm:p-4 text-green-800 text-sm sm:text-base">
@@ -29,7 +29,7 @@
                         <Button size="sm" class="flex items-center justify-center gap-2 w-full sm:w-auto">
                             <Plus class="w-3 h-3 sm:w-4 sm:h-4" />
                             <span class="hidden sm:inline">{{ _t('vendorprofilepages', 'add_new_vehicle_button')
-                            }}</span>
+                                }}</span>
                             <span class="sm:hidden">Add Vehicle</span>
                         </Button>
                     </Link>
@@ -40,7 +40,7 @@
             <div class="space-y-4 sm:space-y-6 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-6">
                 <!-- Total Vehicles Card (always first) -->
                 <div
-                    class="relative rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] border unified-category-card total-vehicles-card">
+                    class="mt-6 relative rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] border unified-category-card total-vehicles-card">
                     <div class="category-card-header">
                         <div class="category-icon total-icon">
                             <Car class="w-5 h-5 sm:w-6 sm:h-6" />
@@ -100,7 +100,7 @@
                             class="flex items-center justify-center gap-2 w-full sm:w-auto bulk-action-btn">
                             <Trash2 class="w-4 h-4" />
                             <span class="hidden sm:inline">{{ _t('vendorprofilepages', 'delete_selected_button')
-                            }}</span>
+                                }}</span>
                             <span class="sm:hidden">Delete</span>
                         </Button>
                     </div>
@@ -238,7 +238,7 @@
                                     </Badge>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 text-sm">{{ formatDate(vehicle.created_at)
-                                }}</TableCell>
+                                    }}</TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 action-cell">
                                     <div class="flex justify-end gap-2 min-w-[120px] action-buttons-fixed">
                                         <Link
@@ -326,7 +326,7 @@
                                 <MapPin class="w-3 h-3 text-muted-foreground flex-shrink-0" />
                                 <span class="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{{
                                     vehicle.full_vehicle_address
-                                }}</span>
+                                    }}</span>
                             </div>
                         </div>
 
@@ -368,7 +368,7 @@
                                 </div>
                                 <span v-else class="text-xs text-muted-foreground">{{ _t('vendorprofilepages',
                                     'not_available_text')
-                                }}</span>
+                                    }}</span>
                             </div>
                         </div>
 
@@ -399,7 +399,7 @@
                         <!-- Created Date -->
                         <div class="mt-3 pt-3 border-t">
                             <span class="text-xs text-muted-foreground">Created: {{ formatDate(vehicle.created_at)
-                            }}</span>
+                                }}</span>
                         </div>
                     </div>
                 </div>
@@ -1174,6 +1174,8 @@ const formatDate = (dateStr) => {
 .total-vehicles-card .category-icon {
     background-color: rgba(255, 255, 255, 0.2);
     color: white;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
 }
 
 .total-vehicles-card .category-card-header {

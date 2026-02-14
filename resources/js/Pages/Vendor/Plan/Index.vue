@@ -1,6 +1,6 @@
 <template>
     <MyProfileLayout>
-        <div class="container mx-auto p-6 space-y-6">
+        <div class="w-full mx-auto space-y-6">
             <!-- Flash Message -->
             <div v-if="$page.props.flash.success"
                 class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
