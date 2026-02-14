@@ -162,10 +162,10 @@ return [
 
     // Step 5: Protection Plan
     'step5_protection_plan_title' => 'Choose Your Protection Plan',
-    'step5_protection_plan_description' => 'You can',
-    'step5_protection_plan_description2' => 'select Exclsive plan or can proceed with Free plan by default.',
-    'step5_protection_plan_description3' => 'These plans will be visible to the customers and customers can select one of these methods during the booking process. Click below Plan card to select or edit the Plan price',
-    'step5_protection_plan_description4' => 'Click below Plan card to select or edit the Plan price',
+    'step5_protection_plan_description' => 'Basic plan is selected by default and uses your daily rate.',
+    'step5_protection_plan_description2' => 'Select Essential or Premium to set a price and add coverage (up to 5).',
+    'step5_protection_plan_description3' => 'These plans will be visible to customers during booking.',
+    'step5_protection_plan_description4' => 'Click a plan card to select or deselect it.',
     'step5_edit_plan_dialog_title' => 'Edit Protection Plan',
     'step5_edit_plan_dialog_description' => 'Make changes to the plan details below.',
     'step5_plan_type_label' => 'Plan Type',

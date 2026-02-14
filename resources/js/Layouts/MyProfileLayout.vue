@@ -236,7 +236,7 @@ const pageSection = computed(() => (componentName.value.startsWith('Vendor') ? '
 .profile-content textarea {
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 0.55rem 0.8rem;
+  /* padding: 0.55rem 0.8rem; */
   font-size: 0.95rem;
   background: #ffffff;
   transition: border-color 160ms ease, box-shadow 160ms ease;

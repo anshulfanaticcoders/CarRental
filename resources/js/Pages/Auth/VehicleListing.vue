@@ -1228,142 +1228,65 @@
                         </p>
                     </div>
 
-                    <!-- Protection Plan -->
-                    <div class="protection_plan flex gap-10 mt-4 max-[768px]:flex-col max-[768px]:px-[1.5rem]">
-                        <div v-for="plan in plans" :key="plan.id" class="cursor-pointer col w-[45%] rounded-[20px] border-[1px] border-[#153B4F] p-5 flex flex-col gap-5 
-        hover:bg-[#153B4F0D] transition-transform duration-300 ease-in-out max-[768px]:w-full max-[768px]:gap-2"
-                            :class="{
-                                'hover:scale-105 scale-105': selectedPlans.some(p => p.id === plan.id),
-                                'border-[#153B4F] bg-[#153B4F0D]': selectedPlans.some(p => p.id === plan.id),
-                            }">
-
-                            <!-- Edit button at top right -->
-                            <div class="flex justify-end">
-                                <button class="p-2 rounded-full hover:bg-gray-200" @click.stop="openEditDialog(plan)">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round" class="lucide lucide-pencil">
-                                        <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
-                                        <path d="m15 5 4 4"></path>
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <span class="text-[1.5rem] text-center max-[768px]:text-[1.2rem]" :class="{
-                                'text-[#016501]': selectedPlans.some(p => p.id === plan.id),
-                            }">
-                                {{ plan.plan_type }}
-                            </span>
-
-                            <strong class="text-[3rem] font-medium text-center max-[768px]:text-[1.2rem]">
-                                {{ plan.plan_value }}
-                            </strong>
-
-                            <p class="text-[1.25rem] text-[#2B2B2B] text-center max-[768px]:text-[0.95rem]">
-                                {{ plan.plan_description }}
-                            </p>
-
-                            <button class="button-primary px-5 py-2 max-[768px]:text-[0.875rem]"
-                                @click.stop="togglePlanSelection(plan)" :class="{
-                                    'bg-[#016501]': selectedPlans.some(p => p.id === plan.id),
+                    <div class="protection_plan mt-6 max-[768px]:px-[1.5rem]">
+                        <div class="grid grid-cols-2 gap-6 max-[768px]:grid-cols-1">
+                            <div v-for="plan in protectionPlans" :key="plan.key"
+                                class="rounded-[20px] border border-[#153B4F] bg-white p-5 flex flex-col gap-5"
+                                :class="{
+                                    'border-dashed bg-gray-50': !plan.selected && plan.key !== 'basic',
+                                    'ring-2 ring-green-500': plan.selected && plan.key !== 'basic'
                                 }">
-                                {{selectedPlans.some(p => p.id === plan.id) ?
-                                    _t('createvehicle', 'step5_plan_selected_button') :
-                                    _t('createvehicle', 'step5_plan_select_button')}}
-                            </button>
+                                <div class="flex items-start justify-between gap-4">
+                                    <div>
+                                        <span class="text-[1.25rem] font-semibold text-gray-800">{{ plan.plan_type }}</span>
+                                        <p v-if="plan.key === 'basic'" class="text-xs text-gray-500 mt-1">
+                                            Price matches your daily rate
+                                        </p>
+                                    </div>
+                                    <div class="flex flex-col items-end gap-2">
+                                        <label class="text-xs text-gray-500">Price per day</label>
+                                        <input v-if="plan.key !== 'basic'" type="number" step="0.01"
+                                            v-model.number="plan.price" :min="pricePerDay"
+                                            :disabled="!plan.selected"
+                                            class="w-28 px-2 py-1 border rounded-md text-right"
+                                            :class="!plan.selected ? 'bg-gray-100' : ''" />
+                                        <input v-else type="number" step="0.01" :value="pricePerDay" disabled
+                                            class="w-28 px-2 py-1 border rounded-md text-right bg-gray-100" />
+                                    </div>
+                                </div>
 
-                            <div class="checklist features">
-                                <ul
-                                    class="check-list text-center mt-[1rem] inline-flex flex-col items-center w-full gap-3 max-[768px]:text-[0.95rem]">
-                                    <li v-for="(feature, index) in plan.features" :key="index"
-                                        class="checklist-item list-disc">
-                                        {{ feature }}
-                                    </li>
-                                </ul>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm text-gray-600">Coverage options</label>
+                                        <span class="text-xs text-gray-400">Max 5</span>
+                                    </div>
+                                    <div v-for="(feature, index) in plan.features" :key="index">
+                                        <input v-model="plan.features[index]" type="text"
+                                            :disabled="!plan.selected && plan.key !== 'basic'"
+                                            class="w-full p-2 border rounded-md"
+                                            :class="!plan.selected && plan.key !== 'basic' ? 'bg-gray-100' : ''"
+                                            :placeholder="`Coverage option ${index + 1}`" />
+                                    </div>
+                                </div>
+
+                                <p v-if="planErrors[plan.key]" class="text-red-500 text-sm">
+                                    {{ planErrors[plan.key] }}
+                                </p>
+
+                                <button v-if="plan.key !== 'basic'" type="button"
+                                    @click="togglePlanSelection(plan)"
+                                    class="w-full py-2 rounded-lg font-semibold text-sm transition"
+                                    :class="plan.selected
+                                        ? 'bg-green-600 text-white hover:bg-green-700'
+                                        : 'bg-[#153B4F] text-white hover:bg-[#102c3b]'">
+                                    {{ plan.selected ? 'Selected' : 'Select Plan' }}
+                                </button>
+                                <div v-else class="w-full py-2 rounded-lg font-semibold text-sm text-center bg-green-100 text-green-700">
+                                    Selected (Basic)
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Edit Plan Dialog -->
-                    <Dialog :open="isEditDialogOpen" @update:open="isEditDialogOpen = $event">
-                        <DialogContent class="max-h-[90vh] overflow-y-auto p-4">
-                            <DialogHeader>
-                                <DialogTitle>{{ _t('createvehicle', 'step5_edit_plan_dialog_title') }}</DialogTitle>
-                                <DialogDescription>
-                                    {{ _t('createvehicle', 'step5_edit_plan_dialog_description') }}
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <div class="grid gap-4 py-4">
-                                <div class="space-y-2">
-                                    <label for="plan-type" class="text-sm font-medium">{{
-                                        _t('createvehicle', 'step5_plan_type_label') }}</label>
-                                    <input id="plan-type" v-model="editPlanData.plan_type"
-                                        class="w-full p-2 border rounded-md"
-                                        :placeholder="_t('createvehicle', 'step5_plan_type_placeholder')" />
-                                </div>
-
-                                <div class="space-y-2">
-                                    <label for="plan-value" class="text-sm font-medium">{{
-                                        _t('createvehicle', 'step5_plan_value_label') }}</label>
-                                    <input id="plan-value" v-model="editPlanData.plan_value" type="number"
-                                        class="w-full p-2 border rounded-md"
-                                        :placeholder="_t('createvehicle', 'step5_plan_value_placeholder')" />
-                                </div>
-
-                                <div class="space-y-2">
-                                    <label for="plan-description" class="text-sm font-medium">{{
-                                        _t('createvehicle', 'step5_plan_description_label') }}</label>
-                                    <textarea id="plan-description" v-model="editPlanData.plan_description"
-                                        class="w-full p-2 border rounded-md"
-                                        :placeholder="_t('createvehicle', 'step5_plan_description_placeholder')"
-                                        rows="3"></textarea>
-                                </div>
-
-                                <div class="space-y-2">
-                                    <div class="flex items-center justify-between">
-                                        <label class="text-sm font-medium">{{
-                                            _t('createvehicle', 'step5_plan_features_label') }}</label>
-                                        <button @click="addFeature"
-                                            class="text-sm px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
-                                            {{ _t('createvehicle', 'step5_add_feature_button') }}
-                                        </button>
-                                    </div>
-
-                                    <div v-for="(feature, index) in editPlanData.features" :key="index"
-                                        class="flex gap-2">
-                                        <input v-model="editPlanData.features[index]"
-                                            class="w-full p-2 border rounded-md"
-                                            :placeholder="_t('createvehicle', 'step5_feature_placeholder')" />
-                                        <button @click="removeFeature(index)"
-                                            class="p-2 text-red-500 hover:bg-red-50 rounded-md">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="lucide lucide-trash-2">
-                                                <path d="M3 6h18"></path>
-                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                                <line x1="10" x2="10" y1="11" y2="17"></line>
-                                                <line x1="14" x2="14" y1="11" y2="17"></line>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <DialogFooter>
-                                <button @click="isEditDialogOpen = false"
-                                    class="px-4 py-2 border rounded-md hover:bg-gray-100">
-                                    {{ _t('createvehicle', 'cancel_button') }}
-                                </button>
-                                <button @click="saveEditedPlan"
-                                    class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 ml-2">
-                                    {{ _t('createvehicle', 'save_changes_button') }}
-                                </button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
                     <div
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
@@ -1652,16 +1575,6 @@ import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import vehicleColorsFromJson from '../../data/colors.json';
 
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/Components/ui/dialog'
-
 const toast = useToast(); // Initialize toast
 const addons = ref([]);
 const selectedAddons = ref([]);
@@ -1762,102 +1675,98 @@ const selectedTypes = reactive({
 });
 
 
-// This is for protection Plans
-const plans = ref([]);
-const selectedPlans = ref([]);
-const isEditDialogOpen = ref(false);
-const currentEditingPlan = ref(null);
 const vehicleColors = ref(vehicleColorsFromJson);
 
+const createCoverageFields = () => Array.from({ length: 5 }, () => '');
 
-// Temporary plan data for editing
-const editPlanData = ref({
-    plan_type: '',
-    plan_value: 0,
-    plan_description: '',
-    features: []
+const protectionPlans = reactive([
+    { key: 'basic', plan_type: 'Basic', price: null, features: createCoverageFields(), selected: true },
+    { key: 'essential', plan_type: 'Essential', price: null, features: createCoverageFields(), selected: false },
+    { key: 'premium', plan_type: 'Premium', price: null, features: createCoverageFields(), selected: false }
+]);
+
+const planErrors = reactive({
+    basic: '',
+    essential: '',
+    premium: ''
 });
 
-const fetchPlans = async () => {
-    try {
-        const response = await axios.get('/api/plans');
-        plans.value = response.data;
+const pricePerDay = computed(() => {
+    const value = Number(form.price_per_day);
+    return Number.isFinite(value) ? value : 0;
+});
 
-    } catch (error) {
-        console.error('Error fetching plans:', error);
-    }
+const normalizeFeatures = (features) => features
+    .map(feature => feature.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+
+const isPlanActive = (plan) => plan.key === 'basic' || plan.selected;
+
+const validateProtectionPlans = () => {
+    planErrors.basic = '';
+    planErrors.essential = '';
+    planErrors.premium = '';
+
+    const minPrice = pricePerDay.value;
+    let isValid = true;
+
+    protectionPlans.forEach(plan => {
+        if (plan.key === 'basic') {
+            return;
+        }
+
+        if (!isPlanActive(plan)) {
+            return;
+        }
+
+        const priceValue = Number(plan.price);
+        if (!Number.isFinite(priceValue) || priceValue <= 0) {
+            planErrors[plan.key] = 'Price is required.';
+            isValid = false;
+            return;
+        }
+
+        if (priceValue < minPrice) {
+            planErrors[plan.key] = `Price must be at least ${minPrice}.`;
+            isValid = false;
+        }
+    });
+
+    return isValid;
 };
 
 const togglePlanSelection = (plan) => {
-    const index = selectedPlans.value.findIndex((p) => p.id === plan.id);
+    if (plan.key === 'basic') {
+        return;
+    }
 
-    if (index > -1) {
-        // If the plan is already selected, allow deselection
-        selectedPlans.value.splice(index, 1);
-    } else {
-        // Add plan to selected list
-        selectedPlans.value.push({ ...plan });
+    plan.selected = !plan.selected;
+
+    if (!plan.selected) {
+        plan.price = null;
+        plan.features = createCoverageFields();
+        planErrors[plan.key] = '';
     }
 };
 
+const buildSelectedPlans = () => {
+    let planId = 1;
+    return protectionPlans.reduce((plans, plan) => {
+        if (!isPlanActive(plan)) {
+            return plans;
+        }
 
-const openEditDialog = (plan) => {
-    currentEditingPlan.value = plan;
-    // Clone the plan data to avoid direct mutation
-    editPlanData.value = {
-        plan_type: plan.plan_type,
-        plan_value: plan.plan_value,
-        plan_description: plan.plan_description,
-        features: [...plan.features]
-    };
-    isEditDialogOpen.value = true;
-};
-
-const saveEditedPlan = () => {
-    if (!currentEditingPlan.value) return;
-
-    // Update the plan in the plans array
-    const planIndex = plans.value.findIndex(p => p.id === currentEditingPlan.value.id);
-    if (planIndex > -1) {
-        plans.value[planIndex] = {
-            ...plans.value[planIndex],
-            plan_type: editPlanData.value.plan_type,
-            plan_value: editPlanData.value.plan_value,
-            plan_description: editPlanData.value.plan_description,
-            features: editPlanData.value.features
-        };
-    }
-
-    // Also update the plan if it's in the selectedPlans array
-    const selectedPlanIndex = selectedPlans.value.findIndex(p => p.id === currentEditingPlan.value.id);
-    if (selectedPlanIndex > -1) {
-        selectedPlans.value[selectedPlanIndex] = {
-            ...selectedPlans.value[selectedPlanIndex],
-            plan_type: editPlanData.value.plan_type,
-            plan_value: editPlanData.value.plan_value,
-            plan_description: editPlanData.value.plan_description,
-            features: editPlanData.value.features
-        };
-    }
-
-    isEditDialogOpen.value = false;
-    currentEditingPlan.value = null;
-
-    toast.success('Plan details updated successfully!', {
-        position: 'top-right',
-        timeout: 3000,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-    });
-};
-
-const addFeature = () => {
-    editPlanData.value.features.push('');
-};
-
-const removeFeature = (index) => {
-    editPlanData.value.features.splice(index, 1);
+        plans.push({
+            plan_id: planId,
+            plan_type: plan.plan_type,
+            plan_value: plan.key === 'basic' ? pricePerDay.value : Number(plan.price),
+            plan_description: null,
+            features: normalizeFeatures(plan.features)
+        });
+        planId += 1;
+        return plans;
+    }, []);
 };
 
 
@@ -1937,12 +1846,6 @@ const formatDate = (value) => {
     form.registration_date = date.toISOString().split('T')[0] // Sets to 'YYYY-MM-DD'
 }
 
-onMounted(() => {
-    fetchPlans();
-});
-
-
-
 // Add addonQuantities ref
 
 const fetchAddons = async () => {
@@ -2014,8 +1917,24 @@ watch(isLoading, (newValue) => {
 // Submit form data
 const submit = () => {
     isLoading.value = true;
-    if (form.images.length < 5) return;
-    form.selected_plans = selectedPlans.value;
+    if (form.images.length < 5) {
+        isLoading.value = false;
+        return;
+    }
+
+    if (!validateProtectionPlans()) {
+        toast.error('Please review your protection plan prices.', {
+            position: 'top-right',
+            timeout: 3000,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+        });
+        isLoading.value = false;
+        return;
+    }
+
+    form.selected_plans = buildSelectedPlans();
     form.selected_addons = selectedAddons.value;
     form.addon_prices = addonPrices.value;
     form.addon_quantities = addonQuantities.value;
@@ -2232,7 +2151,7 @@ const closeErrorDialog = () => {
 
 let map = null;
 let marker = null // Marker instance
-const currentStep = ref(0);
+const currentStep = ref(5);
 
 const errors = reactive({
     category_id: '',
@@ -2408,8 +2327,8 @@ const nextStep = () => {
 
 
         case 5: // Plan Selection
-            if (selectedPlans.value.length === 0) {
-                isValid = true;
+            if (!validateProtectionPlans()) {
+                isValid = false;
             }
             break;
 

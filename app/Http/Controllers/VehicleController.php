@@ -126,7 +126,32 @@ class VehicleController extends Controller
             'primary_image_index' => 'required|numeric|min:0',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:10240',
 
+            'selected_plans' => 'nullable|array|max:3',
+            'selected_plans.*.plan_type' => 'required|string|in:Basic,Essential,Premium',
+            'selected_plans.*.plan_value' => 'required|numeric|min:0',
+            'selected_plans.*.features' => 'nullable|array|max:5',
+            'selected_plans.*.features.*' => 'string|max:255',
+            'selected_plans.*.plan_description' => 'nullable|string|max:2000',
+
         ]);
+
+        $selectedPlans = $request->input('selected_plans', []);
+        if (!empty($selectedPlans)) {
+            $pricePerDay = $request->price_per_day ?? 0;
+            foreach ($selectedPlans as $selectedPlan) {
+                $planType = $selectedPlan['plan_type'] ?? '';
+                if ($planType === 'Basic') {
+                    continue;
+                }
+
+                $planValue = $selectedPlan['plan_value'] ?? null;
+                if (!is_numeric($planValue) || $planValue < $pricePerDay) {
+                    return back()->withErrors([
+                        'selected_plans' => 'Protection plan price must be at least the daily price.'
+                    ])->withInput();
+                }
+            }
+        }
 
         if ($request->hasFile('images') && $request->primary_image_index >= count($request->file('images'))) {
             return back()->withErrors(['primary_image_index' => 'Primary image index is out of bounds.'])->withInput();
@@ -211,19 +236,30 @@ class VehicleController extends Controller
 
 
         // Save the selected plan details
-        if ($request->has('selected_plans')) {
-            $selectedPlans = $request->input('selected_plans');
+        if (!empty($selectedPlans)) {
+            $planId = 1;
 
             foreach ($selectedPlans as $selectedPlan) {
+                $features = isset($selectedPlan['features']) && is_array($selectedPlan['features'])
+                    ? array_values(array_filter($selectedPlan['features'], fn($feature) => trim($feature) !== ''))
+                    : null;
+
+                $planType = $selectedPlan['plan_type'] ?? 'Basic';
+                $planValue = $planType === 'Basic'
+                    ? ($request->price_per_day ?? 0)
+                    : ($selectedPlan['plan_value'] ?? 0);
+
                 VendorVehiclePlan::create([
                     'vendor_id' => $request->user()->id,
                     'vehicle_id' => $vehicle->id,
-                    'plan_id' => $selectedPlan['id'],
-                    'plan_type' => $selectedPlan['plan_type'],
-                    'price' => $selectedPlan['plan_value'],
-                    'features' => isset($selectedPlan['features']) ? json_encode($selectedPlan['features']) : null,
-                    'plan_description' => isset($selectedPlan['plan_description']) ? $selectedPlan['plan_description'] : null,
+                    'plan_id' => $planId,
+                    'plan_type' => $planType,
+                    'price' => $planValue,
+                    'features' => $features ? json_encode(array_slice($features, 0, 5)) : null,
+                    'plan_description' => $selectedPlan['plan_description'] ?? null,
                 ]);
+
+                $planId++;
             }
         }
 
