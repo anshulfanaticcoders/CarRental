@@ -19,6 +19,7 @@ use App\Services\LocautoRentService; // Import LocautoRentService
 use App\Services\RenteonService; // Import RenteonService
 use App\Services\FavricaService;
 use App\Services\XDriveService;
+use App\Services\SicilyByCarService;
 use App\Services\Search\SearchOrchestratorService;
 use Illuminate\Support\Facades\Log; // Import Log facade
 
@@ -33,6 +34,7 @@ class SearchController extends Controller
     protected $renteonService;
     protected $favricaService;
     protected $xdriveService;
+    protected $sicilyByCarService;
     protected $searchOrchestratorService;
 
     public function __construct(
@@ -45,6 +47,7 @@ class SearchController extends Controller
         RenteonService $renteonService,
         FavricaService $favricaService,
         XDriveService $xdriveService,
+        SicilyByCarService $sicilyByCarService,
         SearchOrchestratorService $searchOrchestratorService
     ) {
         $this->greenMotionService = $greenMotionService;
@@ -56,6 +59,7 @@ class SearchController extends Controller
         $this->renteonService = $renteonService;
         $this->favricaService = $favricaService;
         $this->xdriveService = $xdriveService;
+        $this->sicilyByCarService = $sicilyByCarService;
         $this->searchOrchestratorService = $searchOrchestratorService;
     }
 
@@ -106,7 +110,7 @@ class SearchController extends Controller
             $max = 20 * 60;
 
             // Providers known to be strict about office hours.
-            $strictProviders = ['okmobility', 'greenmotion', 'usave', 'locauto_rent', 'wheelsys', 'adobe', 'favrica', 'xdrive'];
+            $strictProviders = ['okmobility', 'greenmotion', 'usave', 'locauto_rent', 'wheelsys', 'adobe', 'favrica', 'xdrive', 'sicily_by_car'];
             if (!in_array($provider, $strictProviders, true)) {
                 return $time;
             }
@@ -542,6 +546,9 @@ class SearchController extends Controller
                 $providerErrors[$provider][] = $message;
             };
 
+            $sicilyByCarLocationMap = null;
+            $sicilyByCarLocationFetchFailed = false;
+
             foreach ($allProviderEntries as $providerEntry) {
                 // Get the provider name, location ID and original name for this entry
                 $providerToFetch = $providerEntry['provider'];
@@ -559,7 +566,7 @@ class SearchController extends Controller
                 $endTimeForProvider = $clampTimeToBusinessHours($endTimeForProvider, $providerDefaultTime($providerToFetch), $providerToFetch);
 
                 // Enforce provider dropoff compatibility.
-                $providersWithDropoffList = ['greenmotion', 'usave', 'adobe', 'locauto_rent', 'renteon', 'favrica', 'xdrive'];
+                $providersWithDropoffList = ['greenmotion', 'usave', 'adobe', 'locauto_rent', 'renteon', 'favrica', 'xdrive', 'sicily_by_car'];
                 $supportsDropoff = in_array($providerToFetch, $providersWithDropoffList, true);
 
                 $dropoffIdForProvider = $supportsDropoff
@@ -1755,6 +1762,158 @@ class SearchController extends Controller
                             'trace' => $e->getTraceAsString(),
                         ]);
                     }
+                } elseif ($providerToFetch === 'sicily_by_car') {
+                    try {
+                        if ($sicilyByCarLocationMap === null && !$sicilyByCarLocationFetchFailed) {
+                            try {
+                                $sbcLocations = $this->sicilyByCarService->listLocations();
+                                $sicilyByCarLocationMap = $this->buildSicilyByCarLocationMap($sbcLocations);
+                            } catch (\Exception $e) {
+                                $sicilyByCarLocationFetchFailed = true;
+                                $sicilyByCarLocationMap = [];
+                                Log::warning('Sicily By Car location lookup failed', [
+                                    'error' => $e->getMessage(),
+                                ]);
+                            }
+                        }
+
+                        $pickupLocationDetails = $sicilyByCarLocationMap[(string) $currentProviderLocationId] ?? null;
+                        if ($pickupLocationDetails) {
+                            if (empty($pickupLocationDetails['latitude']) && $locationLat !== null) {
+                                $pickupLocationDetails['latitude'] = (string) $locationLat;
+                            }
+                            if (empty($pickupLocationDetails['longitude']) && $locationLng !== null) {
+                                $pickupLocationDetails['longitude'] = (string) $locationLng;
+                            }
+                            if (empty($pickupLocationDetails['name']) && $currentProviderLocationName) {
+                                $pickupLocationDetails['name'] = $currentProviderLocationName;
+                            }
+                        }
+
+                        $dropoffLocationDetails = null;
+                        if ($dropoffIdForProvider) {
+                            $dropoffLocationDetails = $sicilyByCarLocationMap[(string) $dropoffIdForProvider] ?? null;
+                        }
+
+                        $pickupDateTime = $validated['date_from'] . 'T' . $startTimeForProvider;
+                        $dropoffDateTime = $validated['date_to'] . 'T' . $endTimeForProvider;
+
+                        $dropoffDifferent = $dropoffIdForProvider && $dropoffIdForProvider !== $currentProviderLocationId;
+
+                        $posCountry = null;
+                        if (!empty($validated['country']) && is_string($validated['country'])) {
+                            $countryValue = strtoupper(trim($validated['country']));
+                            if (strlen($countryValue) === 2) {
+                                $posCountry = $countryValue;
+                            }
+                        }
+
+                        $availabilityPayload = [
+                            'pickupLocation' => $currentProviderLocationId,
+                            'pickupDateTime' => $pickupDateTime,
+                            'dropoffAtDifferentLocation' => (bool) $dropoffDifferent,
+                            'dropoffLocation' => $dropoffIdForProvider,
+                            'dropoffDateTime' => $dropoffDateTime,
+                            'posCountry' => $posCountry,
+                            'driverAge' => (int) ($validated['age'] ?? 35),
+                        ];
+
+                        $availabilityPayload = array_filter(
+                            $availabilityPayload,
+                            static fn($value) => $value !== null && $value !== ''
+                        );
+
+                        $sbcResponse = $this->sicilyByCarService->offersAvailability($availabilityPayload);
+                        if (!($sbcResponse['ok'] ?? false)) {
+                            $recordProviderError($providerToFetch, 'Availability request failed');
+                            Log::warning('Sicily By Car availability error', [
+                                'location_id' => $currentProviderLocationId,
+                                'errors' => $sbcResponse['errors'] ?? null,
+                            ]);
+                        } else {
+                            $payload = $sbcResponse['data'] ?? [];
+                            $offers = $payload['offers'] ?? [];
+                            $availabilityId = $payload['availabilityId'] ?? null;
+                            $availabilityExpiration = $payload['availabilityExpiration'] ?? null;
+
+                            foreach ($offers as $offer) {
+                                if (!is_array($offer)) {
+                                    continue;
+                                }
+
+                                $vehicleInfo = $offer['vehicle'] ?? [];
+                                $rateInfo = $offer['rate'] ?? [];
+                                $totalPrices = $offer['totalPrices'] ?? [];
+
+                                $vehicleId = (string) ($vehicleInfo['id'] ?? '');
+                                $rateId = (string) ($rateInfo['id'] ?? '');
+                                if ($vehicleId === '' || $rateId === '') {
+                                    continue;
+                                }
+
+                                $sippCode = (string) ($vehicleInfo['sipp'] ?? '');
+                                $parsedSipp = $sippCode !== '' ? $this->parseSippCode($sippCode) : [];
+
+                                $seatingCapacity = $vehicleInfo['numberOfPassengers'] ?? ($parsedSipp['seating_capacity'] ?? null);
+                                $doors = $vehicleInfo['numberOfDoors'] ?? ($parsedSipp['doors'] ?? null);
+
+                                $totalAmount = (float) ($totalPrices['total'] ?? 0);
+                                $currency = (string) ($offer['currency'] ?? 'EUR');
+                                $pricePerDay = $rentalDays > 0 ? $totalAmount / $rentalDays : $totalAmount;
+
+                                $distanceInfo = $rateInfo['distance'] ?? [];
+                                $isUnlimited = is_array($distanceInfo) && !empty($distanceInfo['unlimited']);
+
+                                $providerVehicles->push((object) [
+                                    'id' => 'sicily_by_car_' . $currentProviderLocationId . '_' . $vehicleId . '_' . $rateId,
+                                    'source' => 'sicily_by_car',
+                                    'brand' => null,
+                                    'model' => $vehicleInfo['description'] ?? 'Vehicle',
+                                    'image' => $vehicleInfo['imageUrl'] ?? '/images/default-car.jpg',
+                                    'price_per_day' => (float) $pricePerDay,
+                                    'total_price' => (float) $totalAmount,
+                                    'price_per_week' => null,
+                                    'price_per_month' => null,
+                                    'currency' => $currency,
+                                    'transmission' => $parsedSipp['transmission'] ?? 'manual',
+                                    'fuel' => $parsedSipp['fuel'] ?? 'petrol',
+                                    'category' => $parsedSipp['category'] ?? 'Unknown',
+                                    'seating_capacity' => $seatingCapacity,
+                                    'doors' => $doors,
+                                    'bags' => $vehicleInfo['numberOfLargeBags'] ?? null,
+                                    'suitcases' => $vehicleInfo['numberOfSmallBags'] ?? null,
+                                    'mileage' => $isUnlimited ? 'Unlimited' : null,
+                                    'latitude' => (float) $locationLat,
+                                    'longitude' => (float) $locationLng,
+                                    'full_vehicle_address' => $currentProviderLocationName,
+                                    'location_details' => $pickupLocationDetails,
+                                    'dropoff_location_details' => $dropoffLocationDetails,
+                                    'location_instructions' => $pickupLocationDetails['collection_details'] ?? null,
+                                    'provider_pickup_id' => $currentProviderLocationId,
+                                    'provider_dropoff_id' => $dropoffIdForProvider,
+                                    'sipp_code' => $sippCode,
+                                    'availability' => $offer['availability'] ?? null,
+                                    'rate_id' => $rateId,
+                                    'rate_name' => $rateInfo['description'] ?? null,
+                                    'payment_type' => $rateInfo['payment'] ?? null,
+                                    'deposit' => $offer['deposit'] ?? null,
+                                    'availability_id' => $availabilityId,
+                                    'availability_expiration' => $availabilityExpiration,
+                                    'extras' => $offer['services'] ?? [],
+                                    'benefits' => [
+                                        'pay_on_arrival' => ($rateInfo['payment'] ?? '') === 'PayOnArrival',
+                                        'limited_km_per_day' => $isUnlimited ? false : null,
+                                    ],
+                                ]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        $recordProviderError($providerToFetch, $e->getMessage());
+                        Log::error('Error fetching Sicily By Car vehicles: ' . $e->getMessage(), [
+                            'provider_location_id' => $currentProviderLocationId,
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                    }
                 } elseif ($providerToFetch === 'wheelsys') {
                     Log::info('Attempting to fetch Wheelsys vehicles for location ID: ' . $currentProviderLocationId);
                         Log::info('Search params: ', [
@@ -2444,6 +2603,53 @@ class SearchController extends Controller
         }
 
         return $map;
+    }
+
+    private function buildSicilyByCarLocationMap($locations): array
+    {
+        if (!is_array($locations)) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($locations as $location) {
+            if (!is_array($location)) {
+                continue;
+            }
+
+            $locationId = (string) ($location['id'] ?? '');
+            if ($locationId === '') {
+                continue;
+            }
+
+            $map[$locationId] = $this->formatSicilyByCarLocationDetails($location);
+        }
+
+        return $map;
+    }
+
+    private function formatSicilyByCarLocationDetails(array $location): array
+    {
+        $address = $location['address'] ?? [];
+        $coords = $location['coordinates'] ?? [];
+
+        return [
+            'id' => (string) ($location['id'] ?? ''),
+            'name' => (string) ($location['name'] ?? ''),
+            'address_1' => is_array($address) ? ($address['addressLineOne'] ?? null) : null,
+            'address_2' => is_array($address) ? ($address['addressLineTwo'] ?? null) : null,
+            'address_3' => null,
+            'address_city' => is_array($address) ? ($address['city'] ?? null) : null,
+            'address_county' => is_array($address) ? ($address['province'] ?? $address['region'] ?? null) : null,
+            'address_postcode' => is_array($address) ? ($address['postalCode'] ?? null) : null,
+            'address_country' => is_array($address) ? ($address['country'] ?? null) : null,
+            'telephone' => $location['phone'] ?? $location['mobile'] ?? null,
+            'email' => $location['email'] ?? null,
+            'iata' => $location['airportCode'] ?? null,
+            'latitude' => is_array($coords) ? (string) ($coords['latitude'] ?? '') : null,
+            'longitude' => is_array($coords) ? (string) ($coords['longitude'] ?? '') : null,
+            'collection_details' => null,
+        ];
     }
 
     private function formatFavricaLocationDetails(array $location): array

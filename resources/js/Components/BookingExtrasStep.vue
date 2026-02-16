@@ -76,6 +76,10 @@ const isOkMobility = computed(() => {
     return props.vehicle?.source === 'okmobility';
 });
 
+const isSicilyByCar = computed(() => {
+    return props.vehicle?.source === 'sicily_by_car';
+});
+
 const normalizeExtraCode = (value) => {
     const text = `${value || ''}`.trim();
     return text ? text.toUpperCase() : '';
@@ -178,6 +182,78 @@ const okMobilitySameLocation = computed(() => {
 const okMobilityFuelPolicy = computed(() => props.vehicle?.fuel_policy || null);
 
 const okMobilityCancellation = computed(() => props.vehicle?.cancellation || null);
+
+const SBC_PROTECTION_CODES = ['CDW', 'TLW', 'CPP', 'GLD', 'PAI', 'RAP'];
+
+const getSbcExcessValue = (service) => {
+    if (!service) return null;
+    let raw = service.excess ?? service.excessAmount ?? service.excessValue ?? service.excess_amount ?? null;
+    if (raw && typeof raw === 'object') {
+        raw = raw.amount ?? raw.value ?? raw.total ?? null;
+    }
+    const parsed = parseFloat(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const sicilyByCarServices = computed(() => {
+    return Array.isArray(props.vehicle?.extras) ? props.vehicle.extras : [];
+});
+
+const sicilyByCarIncludedServices = computed(() => {
+    if (!isSicilyByCar.value) return [];
+    return sicilyByCarServices.value.filter(service => service?.isMandatory);
+});
+
+const sicilyByCarProtectionPlans = computed(() => {
+    if (!isSicilyByCar.value) return [];
+    return sicilyByCarServices.value
+        .filter(service => !service?.isMandatory && SBC_PROTECTION_CODES.includes(`${service?.id || ''}`.toUpperCase()))
+        .map((service, index) => {
+            const code = `${service?.id || ''}`.toUpperCase() || `PROT_${index}`;
+            const total = parseFloat(service?.total || 0);
+            const excess = getSbcExcessValue(service);
+            return {
+                id: `sbc_protection_${code}_${index}`,
+                code,
+                name: service?.description || code,
+                description: service?.description || code,
+                price: total,
+                daily_rate: props.numberOfDays ? total / props.numberOfDays : total,
+                total_for_booking: total,
+                amount: total,
+                excess,
+                required: false,
+                payment: service?.payment || null,
+            };
+        });
+});
+
+const sicilyByCarOptionalExtras = computed(() => {
+    if (!isSicilyByCar.value) return [];
+    return sicilyByCarServices.value
+        .filter(service => !service?.isMandatory && !SBC_PROTECTION_CODES.includes(`${service?.id || ''}`.toUpperCase()))
+        .map((service, index) => {
+            const code = `${service?.id || ''}`.toUpperCase() || `EXTRA_${index}`;
+            const total = parseFloat(service?.total || 0);
+            return {
+                id: `sbc_extra_${code}_${index}`,
+                code,
+                name: service?.description || code,
+                description: service?.description || code,
+                price: total,
+                daily_rate: props.numberOfDays ? total / props.numberOfDays : total,
+                total_for_booking: total,
+                amount: total,
+                required: false,
+                payment: service?.payment || null,
+            };
+        });
+});
+
+const sicilyByCarAllExtras = computed(() => {
+    if (!isSicilyByCar.value) return [];
+    return [...sicilyByCarProtectionPlans.value, ...sicilyByCarOptionalExtras.value];
+});
 
 const okMobilityCancellationSummary = computed(() => {
     const cancellation = okMobilityCancellation.value;
@@ -1121,6 +1197,42 @@ const okMobilityPackages = computed(() => {
     return packages;
 });
 
+const sicilyByCarBaseTotal = computed(() => {
+    if (!isSicilyByCar.value) return 0;
+    const total = parseFloat(props.vehicle?.total_price || 0);
+    if (total > 0) return total;
+    const daily = parseFloat(props.vehicle?.price_per_day || 0);
+    return daily > 0 ? daily * props.numberOfDays : 0;
+});
+
+const sicilyByCarPackages = computed(() => {
+    if (!isSicilyByCar.value) return [];
+    const benefits = [];
+    if (props.vehicle?.rate_name) {
+        benefits.push(props.vehicle.rate_name);
+    }
+    if (props.vehicle?.payment_type) {
+        benefits.push(props.vehicle.payment_type === 'Prepaid' ? 'Prepaid' : 'Pay on arrival');
+    }
+    if (props.vehicle?.mileage) {
+        benefits.push(`Mileage: ${props.vehicle.mileage}`);
+    }
+    const deposit = parseFloat(props.vehicle?.deposit ?? 0);
+
+    return [
+        {
+            type: 'BAS',
+            name: 'Basic Rental',
+            subtitle: props.vehicle?.payment_type === 'Prepaid' ? 'Prepaid' : 'Pay on arrival',
+            total: sicilyByCarBaseTotal.value,
+            deposit: Number.isFinite(deposit) ? deposit : 0,
+            benefits: benefits.filter(Boolean),
+            isBestValue: true,
+            isAddOn: false,
+        }
+    ];
+});
+
 const okMobilityOptionalExtras = computed(() => {
     if (!isOkMobility.value) return [];
     const coverCodes = new Set(OK_MOBILITY_COVER_CODES);
@@ -1357,6 +1469,9 @@ const availablePackages = computed(() => {
     if (isOkMobility.value) {
         return okMobilityPackages.value;
     }
+    if (isSicilyByCar.value) {
+        return sicilyByCarPackages.value;
+    }
     if (!props.vehicle || !props.vehicle.products) return [];
     return packageOrder
         .map(type => props.vehicle.products.find(p => p.type === type))
@@ -1421,6 +1536,26 @@ const formatPrice = (val) => {
 const formatRentalPrice = (val) => {
     const numeric = parseFloat(val ?? 0);
     return formatPrice(numeric * providerGrossMultiplier.value);
+};
+
+const getExtraTotal = (extra) => {
+    if (!extra) return 0;
+    if (extra.total_for_booking !== undefined && extra.total_for_booking !== null) {
+        return parseFloat(extra.total_for_booking) || 0;
+    }
+    const dailyRate = extra.daily_rate !== undefined
+        ? parseFloat(extra.daily_rate)
+        : (parseFloat(extra.price || 0) / props.numberOfDays);
+    return dailyRate * props.numberOfDays;
+};
+
+const getExtraPerDay = (extra) => {
+    if (!extra) return 0;
+    if (extra.daily_rate !== undefined && extra.daily_rate !== null) {
+        return parseFloat(extra.daily_rate) || 0;
+    }
+    const total = getExtraTotal(extra);
+    return props.numberOfDays ? total / props.numberOfDays : total;
 };
 
 const getBenefits = (product) => {
@@ -1535,6 +1670,8 @@ const extrasTotal = computed(() => {
             extra = renteonAllExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
             extra = okMobilityNormalizedExtras.value.find(e => e.id === id);
+        } else if (isSicilyByCar.value) {
+            extra = sicilyByCarAllExtras.value.find(e => e.id === id);
         } else if (isFavrica.value || isXDrive.value) {
             extra = providerAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
@@ -1672,6 +1809,8 @@ const getSelectedExtrasDetails = computed(() => {
             extra = renteonAllExtras.value.find(e => e.id === id);
         } else if (isOkMobility.value) {
             extra = okMobilityNormalizedExtras.value.find(e => e.id === id);
+        } else if (isSicilyByCar.value) {
+            extra = sicilyByCarAllExtras.value.find(e => e.id === id);
         } else if (isFavrica.value || isXDrive.value) {
             extra = providerAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
@@ -1698,6 +1837,7 @@ const getSelectedExtrasDetails = computed(() => {
                 total_for_booking: extra.total_for_booking ?? null,
                 daily_rate: extra.daily_rate ?? null,
                 price: extra.price ?? null,
+                excess: extra.excess ?? null,
                 currency: extra.currency ?? null,
                 required: extra.required || false,
                 numberAllowed: extra.numberAllowed ?? null,
@@ -2651,6 +2791,18 @@ const formatPaymentMethod = (method) => {
                                         </div>
                                     </div>
 
+                                    <p v-if="extra.description" class="text-xs text-gray-500 pl-8">
+                                        {{ extra.description }}
+                                    </p>
+                                    <p v-if="extra.excess !== null && extra.excess !== undefined"
+                                        class="text-xs text-gray-500 pl-8">
+                                        Excess: <span class="font-semibold text-gray-700">{{ formatPrice(extra.excess) }}</span>
+                                    </p>
+
+                                    <p v-if="extra.description" class="text-xs text-gray-500 pl-8">
+                                        {{ extra.description }}
+                                    </p>
+
                                     <div class="flex items-center justify-between pl-8 mt-auto">
                                         <div v-if="extra.numberAllowed && extra.numberAllowed > 1"
                                             class="flex items-center gap-2">
@@ -2670,15 +2822,86 @@ const formatPaymentMethod = (method) => {
                                             </button>
                                         </div>
                                         <div class="text-right ml-auto">
+                                            <template v-if="isSicilyByCar">
+                                                <span class="text-base font-bold text-gray-900">{{ formatRentalPrice(getExtraPerDay(extra)) }}</span>
+                                                <p class="text-xs text-gray-400">Per Day</p>
+                                                <div class="text-xs text-gray-500 mt-1">
+                                                    Total: <span class="font-semibold text-gray-800">{{ formatRentalPrice(getExtraTotal(extra)) }}</span>
+                                                </div>
+                                            </template>
+                                            <template v-else>
+                                                <span class="text-base font-bold text-gray-900">
+                                                    {{ formatRentalPrice(extra.total_for_booking !== undefined &&
+                                                        extra.total_for_booking !== null
+                                                        ? extra.total_for_booking
+                                                        : (extra.daily_rate !== undefined ? extra.daily_rate :
+                                                            (extra.price / numberOfDays))) }}
+                                                </span>
+                                                <p class="text-xs text-gray-400">{{ extra.total_for_booking !== undefined &&
+                                                    extra.total_for_booking !== null ? 'Total' : 'Per Day' }}</p>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+
+                <section v-if="isSicilyByCar && sicilyByCarIncludedServices.length > 0"
+                    class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <h3 class="font-display text-2xl font-bold text-gray-900 mb-2">Included Services</h3>
+                    <p class="text-gray-600 mb-4">These items are included in your base rate.</p>
+                    <ul class="space-y-2">
+                        <li v-for="service in sicilyByCarIncludedServices" :key="service.id"
+                            class="flex items-start gap-2 text-sm text-gray-700">
+                            <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
+                            <div>
+                                <span>{{ service.description || service.id }}</span>
+                                <div v-if="service.excess !== undefined && service.excess !== null" class="text-xs text-gray-500 mt-1">
+                                    Excess: <span class="font-semibold text-gray-700">{{ formatPrice(service.excess) }}</span>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </section>
+
+                <section v-if="isSicilyByCar && sicilyByCarProtectionPlans.length > 0" id="sbc-insurance-section">
+                    <div class="mb-6">
+                        <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Protection Plans</h2>
+                        <p class="text-gray-600">Choose the protection that suits your trip</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <template v-for="extra in sicilyByCarProtectionPlans" :key="extra.id">
+                            <div @click="toggleExtra(extra)"
+                                class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
+                                :class="{ 'selected border-[#1e3a5f] bg-gradient-to-br from-blue-50 to-blue-100': selectedExtras[extra.id], 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg': !selectedExtras[extra.id], 'opacity-80 cursor-not-allowed': extra.required }">
+                                <div class="flex flex-col gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="checkbox-custom flex-shrink-0"
+                                            :class="{ selected: !!selectedExtras[extra.id] }"></div>
+                                        <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                                            :class="getIconBackgroundClass(getProviderExtraLabel(extra))">
+                                            <component :is="getExtraIcon(getProviderExtraLabel(extra))" class="w-5 h-5"
+                                                :class="getIconColorClass(getProviderExtraLabel(extra))" />
+                                        </div>
+                                        <div class="flex items-center justify-between w-full">
+                                            <h4 class="font-bold text-gray-900 text-[1rem]">{{ getProviderExtraLabel(extra) }}</h4>
+                                            <span v-if="extra.required"
+                                                class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between pl-8 mt-auto">
+                                        <div class="text-right ml-auto">
                                             <span class="text-base font-bold text-gray-900">
-                                                {{ formatRentalPrice(extra.total_for_booking !== undefined &&
-                                                    extra.total_for_booking !== null
-                                                    ? extra.total_for_booking
-                                                    : (extra.daily_rate !== undefined ? extra.daily_rate :
-                                                        (extra.price / numberOfDays))) }}
+                                                {{ formatRentalPrice(getExtraPerDay(extra)) }}
                                             </span>
-                                            <p class="text-xs text-gray-400">{{ extra.total_for_booking !== undefined &&
-                                                extra.total_for_booking !== null ? 'Total' : 'Per Day' }}</p>
+                                            <p class="text-xs text-gray-400">Per Day</p>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                Total: <span class="font-semibold text-gray-800">{{ formatRentalPrice(getExtraTotal(extra)) }}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -2756,7 +2979,7 @@ const formatPaymentMethod = (method) => {
 
                 <!-- 2. Extras Section -->
                 <section
-                    v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && !isXDrive && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || ((isFavrica || isXDrive) && providerOptionalExtras.length > 0)">
+                    v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && !isXDrive && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || (isSicilyByCar && sicilyByCarOptionalExtras.length > 0) || ((isFavrica || isXDrive) && providerOptionalExtras.length > 0)">
                     <div class="mb-6">
                         <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">{{ (isFavrica || isXDrive)?'AdditionalServices': 'Optional Extras' }}</h2>
                         <p class="text-gray-600">{{ (isFavrica || isXDrive) ? 'Add helpful services to your booking': 'Enhance your journey with these add - ons' }}</p>
@@ -2764,7 +2987,7 @@ const formatPaymentMethod = (method) => {
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <template
-                            v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : ((isFavrica || isXDrive) ? providerOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras)))))))"
+                            v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : (isSicilyByCar ? sicilyByCarOptionalExtras : ((isFavrica || isXDrive) ? providerOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras))))))))"
                             :key="extra.id">
                             <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
                                 class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
@@ -2786,8 +3009,9 @@ const formatPaymentMethod = (method) => {
                                         </div>
                                     </div>
 
-                                    <!-- Middle: Description (Removed as per request) -->
-                                    <!-- <p class="text-xs text-gray-500 pl-8">{{ extra.description }}</p> -->
+                                    <p v-if="isSicilyByCar && extra.description" class="text-xs text-gray-500 pl-8">
+                                        {{ extra.description }}
+                                    </p>
 
                                     <!-- Bottom: Price -->
                                     <div class="flex items-center justify-between pl-8 mt-auto">
@@ -2805,17 +3029,26 @@ const formatPaymentMethod = (method) => {
                                                 :disabled="selectedExtras[extra.id] >= extra.numberAllowed">+</button>
                                         </div>
                                         <div class="text-right ml-auto">
-                                            <span class="text-base font-bold text-gray-900">
-                                                {{ formatRentalPrice(extra.total_for_booking !== undefined &&
-                                                    extra.total_for_booking !== null
-                                                    ? extra.total_for_booking
-                                                    : (extra.daily_rate !== undefined ? extra.daily_rate :
-                                                        (extra.price / numberOfDays))) }}
-                                            </span>
-                                            <span class="text-xs text-gray-500 block">
-                                                {{ (extra.total_for_booking !== undefined && extra.total_for_booking !==
-                                                    null) ? '/booking' : '/day' }}
-                                            </span>
+                                            <template v-if="isSicilyByCar">
+                                                <span class="text-base font-bold text-gray-900">{{ formatRentalPrice(getExtraPerDay(extra)) }}</span>
+                                                <span class="text-xs text-gray-500 block">Per Day</span>
+                                                <div class="text-xs text-gray-500 mt-1">
+                                                    Total: <span class="font-semibold text-gray-800">{{ formatRentalPrice(getExtraTotal(extra)) }}</span>
+                                                </div>
+                                            </template>
+                                            <template v-else>
+                                                <span class="text-base font-bold text-gray-900">
+                                                    {{ formatRentalPrice(extra.total_for_booking !== undefined &&
+                                                        extra.total_for_booking !== null
+                                                        ? extra.total_for_booking
+                                                        : (extra.daily_rate !== undefined ? extra.daily_rate :
+                                                            (extra.price / numberOfDays))) }}
+                                                </span>
+                                                <span class="text-xs text-gray-500 block">
+                                                    {{ (extra.total_for_booking !== undefined && extra.total_for_booking !==
+                                                        null) ? '/booking' : '/day' }}
+                                                </span>
+                                            </template>
                                         </div>
                                     </div>
                                 </div>
@@ -3024,7 +3257,12 @@ const formatPaymentMethod = (method) => {
                         <!-- Selected Extras List -->
                         <div v-for="item in getSelectedExtrasDetails" :key="item.id"
                             class="flex justify-between text-blue-600">
-                            <span>{{ item.name }} <span v-if="item.qty > 1">x{{ item.qty }}</span></span>
+                            <div>
+                                <span>{{ item.name }} <span v-if="item.qty > 1">x{{ item.qty }}</span></span>
+                                <div v-if="item.excess !== null && item.excess !== undefined" class="text-xs text-gray-500">
+                                    Excess: <span class="font-semibold text-gray-700">{{ formatPrice(item.excess) }}</span>
+                                </div>
+                            </div>
                             <span class="font-medium">
                                 <span v-if="item.isFree" class="text-green-600 font-bold">Free</span>
                                 <template v-else>
