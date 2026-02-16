@@ -258,6 +258,13 @@ const toTitleCase = (value) => {
         .replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
+const getProviderExtraLabel = (extra) => {
+    if (!isXDrive.value && !isFavrica.value) return extra?.name || '';
+    const code = `${extra?.code || ''}`.trim();
+    if (code) return toTitleCase(code);
+    return extra?.name || '';
+};
+
 const providerBadge = computed(() => {
     const source = (props.vehicle?.source || '').toString().toLowerCase();
     if (!source) return null;
@@ -1121,6 +1128,7 @@ const okMobilityOptionalExtras = computed(() => {
 });
 
 const normalizeFavricaExtra = (extra) => {
+    if (!extra) return null;
     const price = parseFloat(extra.total_for_booking ?? extra.price ?? extra.amount ?? 0);
     const dailyRate = parseFloat(extra.daily_rate ?? 0);
     const id = extra.id || `favrica_extra_${extra.code || extra.service_id || ''}`;
@@ -1189,6 +1197,7 @@ const favricaInsuranceOptions = computed(() => {
     return favricaServicePool.value
         .filter(isFavricaInsuranceService)
         .map(normalizeFavricaExtra)
+        .filter(Boolean)
         .filter(extra => extra.price > 0);
 });
 
@@ -1197,6 +1206,7 @@ const xdriveInsuranceOptions = computed(() => {
     return xdriveServicePool.value
         .filter(isFavricaInsuranceService)
         .map(normalizeFavricaExtra)
+        .filter(Boolean)
         .filter(extra => extra.price > 0);
 });
 
@@ -1205,6 +1215,7 @@ const favricaOptionalExtras = computed(() => {
     return favricaServicePool.value
         .filter(extra => !isFavricaInsuranceService(extra))
         .map(normalizeFavricaExtra)
+        .filter(Boolean)
         .filter(extra => extra.price > 0);
 });
 
@@ -1213,6 +1224,7 @@ const xdriveOptionalExtras = computed(() => {
     return xdriveServicePool.value
         .filter(extra => !isFavricaInsuranceService(extra))
         .map(normalizeFavricaExtra)
+        .filter(Boolean)
         .filter(extra => extra.price > 0);
 });
 
@@ -1674,7 +1686,7 @@ const getSelectedExtrasDetails = computed(() => {
             details.push({
                 id: extra.id, // Good for key
                 option_id: extra.option_id ?? extra.id,
-                name: extra.name,
+                name: getProviderExtraLabel(extra),
                 qty,
                 total,
                 total_for_booking: extra.total_for_booking ?? null,
@@ -2622,12 +2634,12 @@ const formatPaymentMethod = (method) => {
                                         <div class="checkbox-custom flex-shrink-0"
                                             :class="{ selected: !!selectedExtras[extra.id] }"></div>
                                         <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                                            :class="getIconBackgroundClass(extra.name)">
-                                            <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
-                                                :class="getIconColorClass(extra.name)" />
+                                            :class="getIconBackgroundClass(getProviderExtraLabel(extra))">
+                                            <component :is="getExtraIcon(getProviderExtraLabel(extra))" class="w-5 h-5"
+                                                :class="getIconColorClass(getProviderExtraLabel(extra))" />
                                         </div>
                                         <div class="flex items-center justify-between w-full">
-                                            <h4 class="font-bold text-gray-900 text-[1rem]">{{ extra.name }}</h4>
+                                            <h4 class="font-bold text-gray-900 text-[1rem]">{{ getProviderExtraLabel(extra) }}</h4>
                                             <span v-if="extra.required"
                                                 class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
                                         </div>
@@ -2685,12 +2697,12 @@ const formatPaymentMethod = (method) => {
                                         <div class="checkbox-custom flex-shrink-0"
                                             :class="{ selected: !!selectedExtras[extra.id] }"></div>
                                         <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                                            :class="getIconBackgroundClass(extra.name)">
-                                            <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
-                                                :class="getIconColorClass(extra.name)" />
+                                            :class="getIconBackgroundClass(getProviderExtraLabel(extra))">
+                                            <component :is="getExtraIcon(getProviderExtraLabel(extra))" class="w-5 h-5"
+                                                :class="getIconColorClass(getProviderExtraLabel(extra))" />
                                         </div>
                                         <div class="flex items-center justify-between w-full">
-                                            <h4 class="font-bold text-gray-900 text-[1rem]">{{ extra.name }}</h4>
+                                            <h4 class="font-bold text-gray-900 text-[1rem]">{{ getProviderExtraLabel(extra) }}</h4>
                                             <span v-if="extra.required"
                                                 class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
                                         </div>
@@ -2757,12 +2769,12 @@ const formatPaymentMethod = (method) => {
                                         <div class="checkbox-custom flex-shrink-0"
                                             :class="{ selected: !!selectedExtras[extra.id] }"></div>
                                         <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                                            :class="getIconBackgroundClass(extra.name)">
-                                            <component :is="getExtraIcon(extra.name)" class="w-5 h-5"
-                                                :class="getIconColorClass(extra.name)" />
+                                            :class="getIconBackgroundClass(getProviderExtraLabel(extra))">
+                                            <component :is="getExtraIcon(getProviderExtraLabel(extra))" class="w-5 h-5"
+                                                :class="getIconColorClass(getProviderExtraLabel(extra))" />
                                         </div>
                                         <div class="flex items-center justify-between w-full">
-                                            <h4 class="font-bold text-gray-900 text-[1rem]">{{ extra.name }}</h4>
+                                            <h4 class="font-bold text-gray-900 text-[1rem]">{{ getProviderExtraLabel(extra) }}</h4>
                                             <span v-if="extra.required"
                                                 class="text-[0.65rem] uppercase tracking-wide font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Required</span>
                                         </div>
