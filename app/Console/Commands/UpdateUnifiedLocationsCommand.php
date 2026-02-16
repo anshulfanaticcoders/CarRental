@@ -99,6 +99,9 @@ class UpdateUnifiedLocationsCommand extends Command
         $sicilyByCarLocations = $this->fetchSicilyByCarLocations();
         $this->info('Fetched ' . count($sicilyByCarLocations) . ' Sicily By Car locations.');
 
+        $recordGoLocations = $this->fetchRecordGoLocations();
+        $this->info('Fetched ' . count($recordGoLocations) . ' Record Go locations.');
+
         $unifiedLocations = $this->mergeAndNormalizeLocations(
             $internalLocations,
             $greenMotionLocations,
@@ -110,7 +113,8 @@ class UpdateUnifiedLocationsCommand extends Command
             $renteonLocations,
             $favricaLocations,
             $xdriveLocations,
-            $sicilyByCarLocations
+            $sicilyByCarLocations,
+            $recordGoLocations
         );
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
@@ -1125,6 +1129,65 @@ class UpdateUnifiedLocationsCommand extends Command
             'railway' => 'train',
             default => 'unknown',
         };
+    }
+
+    private function fetchRecordGoLocations(): array
+    {
+        $this->info('Loading Record Go branch list...');
+
+        $branches = [
+            'IC' => [
+                34901 => 'Tenerife South',
+                34902 => 'Las Palmas',
+                34903 => 'Lanzarote',
+                34904 => 'Chafiras',
+            ],
+            'IT' => [
+                39001 => 'Palermo',
+                39002 => 'Catania',
+                39003 => 'Olbia',
+                39004 => 'Cagliari',
+                39005 => 'Rome',
+                39006 => 'Milan Bergamo',
+            ],
+            'PT' => [
+                35001 => 'Lisbon',
+                35002 => 'Faro',
+                35003 => 'Porto',
+            ],
+            'GR' => [
+                30001 => 'Athens',
+                30002 => 'Thessaloniki',
+                30003 => 'Zakynthos',
+                30004 => 'Rhodes',
+            ],
+        ];
+
+        $locations = [];
+        foreach ($branches as $country => $list) {
+            foreach ($list as $branchId => $name) {
+                $label = trim((string) $name);
+                $countryCode = strtoupper((string) $country);
+                $locations[] = [
+                    'id' => 'recordgo_' . $branchId,
+                    'label' => $label,
+                    'below_label' => trim($label . ', ' . $countryCode),
+                    'location' => $label,
+                    'city' => $this->normalizeTitleCase($label),
+                    'state' => null,
+                    'country' => $countryCode,
+                    'latitude' => null,
+                    'longitude' => null,
+                    'source' => 'recordgo',
+                    'matched_field' => 'location',
+                    'provider_location_id' => (string) $branchId,
+                    'location_type' => 'unknown',
+                    'iata' => null,
+                ];
+            }
+        }
+
+        return $locations;
     }
 
     private function parseFavricaMapsPoint(?string $mapsPoint): array

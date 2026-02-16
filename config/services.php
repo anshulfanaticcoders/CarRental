@@ -104,6 +104,20 @@ return [
         'timeout' => env('SBC_TIMEOUT', 20),
     ],
 
+    'recordgo' => [
+        'base_url' => env('RECORDRENTACAR_BASE_URL', 'https://api.recordgo.cloud'),
+        'subscription_key' => env('RECORDRENTACAR_SUBSCRIPTION_KEY'),
+        'partner_user' => env('RECORDRENTACAR_PARTNER_USER'),
+        'sellcodes' => [
+            'IC' => env('RECORDRENTACAR_SELLCODE_CANARY'),
+            'IT' => env('RECORDRENTACAR_SELLCODE_ITALY'),
+            'PT' => env('RECORDRENTACAR_SELLCODE_PORTUGAL'),
+            'GR' => env('RECORDRENTACAR_SELLCODE_GREECE'),
+            'default' => env('RECORDRENTACAR_SELLCODE_ITALY'),
+        ],
+        'timeout' => env('RECORDRENTACAR_TIMEOUT', 20),
+    ],
+
     'esim_access' => [
         'api_key' => env('ESIM_ACCESS_API_KEY'),
         'base_url' => env('ESIM_ACCESS_API_URL'),

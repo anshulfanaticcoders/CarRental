@@ -80,6 +80,10 @@ const isSicilyByCar = computed(() => {
     return props.vehicle?.source === 'sicily_by_car';
 });
 
+const isRecordGo = computed(() => {
+    return props.vehicle?.source === 'recordgo';
+});
+
 const normalizeExtraCode = (value) => {
     const text = `${value || ''}`.trim();
     return text ? text.toUpperCase() : '';
@@ -1233,6 +1237,94 @@ const sicilyByCarPackages = computed(() => {
     ];
 });
 
+const recordGoBaseTotal = computed(() => {
+    if (!isRecordGo.value) return 0;
+    const total = parseFloat(props.vehicle?.total_price || 0);
+    if (total > 0) return total;
+    const daily = parseFloat(props.vehicle?.price_per_day || 0);
+    return daily > 0 ? daily * props.numberOfDays : 0;
+});
+
+const recordGoPackages = computed(() => {
+    if (!isRecordGo.value) return [];
+    const products = props.vehicle?.recordgo_products || [];
+    if (!Array.isArray(products) || products.length === 0) {
+        return [
+            {
+                type: 'BAS',
+                name: 'Basic Rental',
+                subtitle: 'Record Go',
+                total: recordGoBaseTotal.value,
+                benefits: [],
+                isBestValue: true,
+                isAddOn: false,
+            }
+        ];
+    }
+
+    return products.map((product, index) => {
+        const benefits = [];
+        if (product?.description) benefits.push(stripHtml(product.description));
+        const refuel = product?.refuel_policy?.refuelPolicyTransName || product?.refuel_policy?.refuelPolicyName;
+        if (refuel) benefits.push(refuel);
+        const kmPolicy = product?.km_policy?.kmPolicyTransName || product?.km_policy?.kmPolicyName;
+        if (kmPolicy) benefits.push(kmPolicy);
+
+        return {
+            type: product.type || `RG_${index}`,
+            name: product.name || 'Record Go',
+            subtitle: product.subtitle ? stripHtml(product.subtitle) : 'Record Go',
+            total: product.total || 0,
+            deposit: product.deposit || 0,
+            excess: product.excess || 0,
+            excessLow: product.excess_low || 0,
+            benefits: benefits.filter(Boolean),
+            isBestValue: index === 0,
+            isAddOn: false,
+            recordgo: product,
+        };
+    });
+});
+
+const recordGoSelectedProduct = computed(() => {
+    if (!isRecordGo.value) return null;
+    return currentProduct.value?.recordgo || null;
+});
+
+const recordGoIncludedComplements = computed(() => {
+    return recordGoSelectedProduct.value?.complements_included || [];
+});
+
+const recordGoAutomaticComplements = computed(() => {
+    return recordGoSelectedProduct.value?.complements_automatic
+        || recordGoSelectedProduct.value?.complements_autom
+        || [];
+});
+
+const recordGoAssociatedComplements = computed(() => {
+    return recordGoSelectedProduct.value?.complements_associated || [];
+});
+
+const recordGoOptionalExtras = computed(() => {
+    if (!isRecordGo.value) return [];
+    return recordGoAssociatedComplements.value.map((extra, index) => {
+        const id = `recordgo_extra_${extra.complementId ?? index}`;
+        return {
+            id,
+            code: extra.complementId,
+        name: extra.complementName ? stripHtml(extra.complementName) : 'Extra',
+        description: extra.complementDescription ? stripHtml(extra.complementDescription)
+            : (extra.complementSubtitle ? stripHtml(extra.complementSubtitle) : null),
+            required: false,
+            numberAllowed: extra.maxUnits || extra.complementUnits || null,
+            daily_rate: extra.priceTaxIncDayDiscount ?? extra.priceTaxIncDay ?? null,
+            total_for_booking: extra.priceTaxIncComplementDiscount ?? extra.priceTaxIncComplement ?? null,
+            price: extra.priceTaxIncComplementDiscount ?? extra.priceTaxIncComplement ?? null,
+            type: 'optional',
+        };
+    });
+});
+
 const okMobilityOptionalExtras = computed(() => {
     if (!isOkMobility.value) return [];
     const coverCodes = new Set(OK_MOBILITY_COVER_CODES);
@@ -1472,17 +1564,38 @@ const availablePackages = computed(() => {
     if (isSicilyByCar.value) {
         return sicilyByCarPackages.value;
     }
+    if (isRecordGo.value) {
+        return recordGoPackages.value;
+    }
     if (!props.vehicle || !props.vehicle.products) return [];
     return packageOrder
         .map(type => props.vehicle.products.find(p => p.type === type))
         .filter(Boolean);
 });
 
+const selectedPackageType = computed(() => {
+    const packages = availablePackages.value;
+    if (!packages.length) return 'BAS';
+    const current = currentPackage.value;
+    if (packages.some(pkg => pkg.type === current)) {
+        return current;
+    }
+    return packages[0].type;
+});
+
+watch(availablePackages, (packages) => {
+    if (!packages.length) return;
+    const current = currentPackage.value;
+    if (!packages.some(pkg => pkg.type === current)) {
+        currentPackage.value = packages[0].type;
+    }
+}, { immediate: true });
+
 const currentProduct = computed(() => {
     if (isAdobeCars.value) {
-        return adobePackages.value.find(p => p.type === currentPackage.value);
+        return adobePackages.value.find(p => p.type === selectedPackageType.value);
     }
-    return availablePackages.value.find(p => p.type === currentPackage.value);
+    return availablePackages.value.find(p => p.type === selectedPackageType.value);
 });
 
 const locautoBaseTotal = computed(() => {
@@ -1525,6 +1638,11 @@ const normalizeCurrencyCode = (currency) => {
     const trimmed = `${currency}`.trim();
     return (currencyMap[trimmed] || trimmed).toUpperCase();
 };
+
+function stripHtml(value) {
+    if (!value || typeof value !== 'string') return value || '';
+    return value.replace(/<[^>]*>/g, '').trim();
+}
 
 const formatPrice = (val) => {
     const currencyCode = resolveVehicleCurrency();
@@ -1672,6 +1790,8 @@ const extrasTotal = computed(() => {
             extra = okMobilityNormalizedExtras.value.find(e => e.id === id);
         } else if (isSicilyByCar.value) {
             extra = sicilyByCarAllExtras.value.find(e => e.id === id);
+        } else if (isRecordGo.value) {
+            extra = recordGoOptionalExtras.value.find(e => e.id === id);
         } else if (isFavrica.value || isXDrive.value) {
             extra = providerAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
@@ -1811,6 +1931,8 @@ const getSelectedExtrasDetails = computed(() => {
             extra = okMobilityNormalizedExtras.value.find(e => e.id === id);
         } else if (isSicilyByCar.value) {
             extra = sicilyByCarAllExtras.value.find(e => e.id === id);
+        } else if (isRecordGo.value) {
+            extra = recordGoOptionalExtras.value.find(e => e.id === id);
         } else if (isFavrica.value || isXDrive.value) {
             extra = providerAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
@@ -2555,7 +2677,7 @@ const formatPaymentMethod = (method) => {
                         <div v-for="pkg in availablePackages" :key="pkg.type"
                             @click="isAdobeCars && pkg.isAddOn ? toggleAdobeProtection(pkg) : selectPackage(pkg.type)"
                             class="package-card bg-white rounded-2xl p-6 border-2 cursor-pointer transition-all relative"
-                            :class="(isAdobeCars && pkg.isAddOn ? isAdobeProtectionSelected(pkg) : currentPackage === pkg.type) ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
+                            :class="(isAdobeCars && pkg.isAddOn ? isAdobeProtectionSelected(pkg) : selectedPackageType === pkg.type) ? 'selected border-[#1e3a5f] shadow-xl' : 'border-gray-200 hover:border-[#1e3a5f]/50 hover:shadow-lg'">
                             <!-- Popular Badge -->
                             <div v-if="pkg.type === 'PMP' || pkg.isBestValue"
                                 class="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-yellow-500 text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl text-white uppercase tracking-wide">
@@ -2572,7 +2694,7 @@ const formatPaymentMethod = (method) => {
                                 </div>
                                 <div v-if="isAdobeCars && pkg.isAddOn" class="checkbox-custom"
                                     :class="{ selected: isAdobeProtectionSelected(pkg) }"></div>
-                                <div v-else class="radio-custom" :class="{ selected: currentPackage === pkg.type }">
+                                <div v-else class="radio-custom" :class="{ selected: selectedPackageType === pkg.type }">
                                 </div>
                             </div>
 
@@ -2580,7 +2702,7 @@ const formatPaymentMethod = (method) => {
                             <div class="mb-4 pb-4 border-b border-gray-100">
                                 <div class="flex items-baseline gap-1 mb-2">
                                     <span class="text-3xl font-bold"
-                                        :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                        :class="selectedPackageType === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
                                         {{ formatRentalPrice(pkg.total / numberOfDays) }}
                                     </span>
                                     <span class="text-sm text-gray-500">/day</span>
@@ -2588,7 +2710,7 @@ const formatPaymentMethod = (method) => {
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Total:</span>
                                     <span class="text-lg font-bold"
-                                        :class="currentPackage === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
+                                        :class="selectedPackageType === pkg.type ? 'text-[#1e3a5f]' : 'text-gray-900'">
                                         {{ formatRentalPrice(pkg.total) }}
                                     </span>
                                 </div>
@@ -2609,6 +2731,12 @@ const formatPaymentMethod = (method) => {
                                     <span
                                         :class="isKeyBenefit('Deposit') ? 'font-bold text-gray-900' : 'text-gray-600'">Deposit:
                                         {{ formatPrice(pkg.deposit) }}</span>
+                                </li>
+                                <li v-if="pkg.excess" class="benefit-item text-sm flex items-start gap-2.5">
+                                    <img :src="check" class="w-4 h-4 mt-0.5 flex-shrink-0" alt="✓" />
+                                    <span
+                                        :class="isKeyBenefit('Excess') ? 'font-bold text-gray-900' : 'text-gray-600'">Excess:
+                                        {{ formatPrice(pkg.excess) }}</span>
                                 </li>
                             </ul>
                         </div>
@@ -2866,6 +2994,47 @@ const formatPaymentMethod = (method) => {
                     </ul>
                 </section>
 
+                <section v-if="isRecordGo && recordGoIncludedComplements.length > 0"
+                    class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <h3 class="font-display text-2xl font-bold text-gray-900 mb-2">Included Coverage</h3>
+                    <p class="text-gray-600 mb-4">Coverage and services included in the selected plan.</p>
+                    <ul class="space-y-3">
+                        <li v-for="service in recordGoIncludedComplements" :key="service.complementId"
+                            class="text-sm text-gray-700">
+                            <div class="font-semibold text-gray-900">{{ stripHtml(service.complementName) }}</div>
+                            <p v-if="service.complementDescription" class="text-sm text-gray-600">{{ stripHtml(service.complementDescription) }}</p>
+                            <div v-if="service['preauth&Excess'] && service['preauth&Excess'].length" class="text-sm text-gray-600 mt-1">
+                                <span v-for="(item, idx) in service['preauth&Excess']" :key="idx" class="mr-3">
+                                    {{ item.type }}: <span class="font-semibold text-gray-700">{{ formatPrice(item.value) }}</span>
+                                </span>
+                            </div>
+                        </li>
+                    </ul>
+                </section>
+
+                <section v-if="isRecordGo && recordGoAutomaticComplements.length > 0"
+                    class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <h3 class="font-display text-2xl font-bold text-gray-900 mb-2">Automatic Supplements</h3>
+                    <p class="text-gray-600 mb-4">These charges apply automatically based on booking conditions.</p>
+                    <ul class="space-y-3">
+                        <li v-for="service in recordGoAutomaticComplements" :key="service.complementId"
+                            class="text-sm text-gray-700">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold text-gray-900">{{ stripHtml(service.complementName) }}</div>
+                                    <p v-if="service.complementDescription" class="text-sm text-gray-600">{{ stripHtml(service.complementDescription) }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-semibold text-gray-900">
+                                        {{ formatRentalPrice(service.priceTaxIncDayDiscount ?? service.priceTaxIncDay ?? service.priceTaxIncComplement ?? 0) }}
+                                    </div>
+                                    <div class="text-sm text-gray-600">Per Day</div>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </section>
+
                 <section v-if="isSicilyByCar && sicilyByCarProtectionPlans.length > 0" id="sbc-insurance-section">
                     <div class="mb-6">
                         <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Protection Plans</h2>
@@ -2979,7 +3148,7 @@ const formatPaymentMethod = (method) => {
 
                 <!-- 2. Extras Section -->
                 <section
-                    v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && !isXDrive && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || (isSicilyByCar && sicilyByCarOptionalExtras.length > 0) || ((isFavrica || isXDrive) && providerOptionalExtras.length > 0)">
+                    v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && !isXDrive && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || (isSicilyByCar && sicilyByCarOptionalExtras.length > 0) || (isRecordGo && recordGoOptionalExtras.length > 0) || ((isFavrica || isXDrive) && providerOptionalExtras.length > 0)">
                     <div class="mb-6">
                         <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">{{ (isFavrica || isXDrive)?'AdditionalServices': 'Optional Extras' }}</h2>
                         <p class="text-gray-600">{{ (isFavrica || isXDrive) ? 'Add helpful services to your booking': 'Enhance your journey with these add - ons' }}</p>
@@ -2987,7 +3156,7 @@ const formatPaymentMethod = (method) => {
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <template
-                            v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : (isSicilyByCar ? sicilyByCarOptionalExtras : ((isFavrica || isXDrive) ? providerOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras))))))))"
+                            v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : (isSicilyByCar ? sicilyByCarOptionalExtras : (isRecordGo ? recordGoOptionalExtras : ((isFavrica || isXDrive) ? providerOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras)))))))))"
                             :key="extra.id">
                             <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
                                 class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
@@ -3009,7 +3178,7 @@ const formatPaymentMethod = (method) => {
                                         </div>
                                     </div>
 
-                                    <p v-if="isSicilyByCar && extra.description" class="text-xs text-gray-500 pl-8">
+                                    <p v-if="(isSicilyByCar || isRecordGo) && extra.description" class="text-sm text-gray-600 pl-8">
                                         {{ extra.description }}
                                     </p>
 

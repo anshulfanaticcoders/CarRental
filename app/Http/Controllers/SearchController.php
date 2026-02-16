@@ -20,6 +20,7 @@ use App\Services\RenteonService; // Import RenteonService
 use App\Services\FavricaService;
 use App\Services\XDriveService;
 use App\Services\SicilyByCarService;
+use App\Services\RecordGoService;
 use App\Services\Search\SearchOrchestratorService;
 use Illuminate\Support\Facades\Log; // Import Log facade
 
@@ -35,6 +36,7 @@ class SearchController extends Controller
     protected $favricaService;
     protected $xdriveService;
     protected $sicilyByCarService;
+    protected $recordGoService;
     protected $searchOrchestratorService;
 
     public function __construct(
@@ -48,6 +50,7 @@ class SearchController extends Controller
         FavricaService $favricaService,
         XDriveService $xdriveService,
         SicilyByCarService $sicilyByCarService,
+        RecordGoService $recordGoService,
         SearchOrchestratorService $searchOrchestratorService
     ) {
         $this->greenMotionService = $greenMotionService;
@@ -60,6 +63,7 @@ class SearchController extends Controller
         $this->favricaService = $favricaService;
         $this->xdriveService = $xdriveService;
         $this->sicilyByCarService = $sicilyByCarService;
+        $this->recordGoService = $recordGoService;
         $this->searchOrchestratorService = $searchOrchestratorService;
     }
 
@@ -110,7 +114,7 @@ class SearchController extends Controller
             $max = 20 * 60;
 
             // Providers known to be strict about office hours.
-            $strictProviders = ['okmobility', 'greenmotion', 'usave', 'locauto_rent', 'wheelsys', 'adobe', 'favrica', 'xdrive', 'sicily_by_car'];
+            $strictProviders = ['okmobility', 'greenmotion', 'usave', 'locauto_rent', 'wheelsys', 'adobe', 'favrica', 'xdrive', 'sicily_by_car', 'recordgo'];
             if (!in_array($provider, $strictProviders, true)) {
                 return $time;
             }
@@ -548,6 +552,8 @@ class SearchController extends Controller
 
             $sicilyByCarLocationMap = null;
             $sicilyByCarLocationFetchFailed = false;
+            $recordGoProcessedPickups = [];
+            $recordGoComplementsCache = [];
 
             foreach ($allProviderEntries as $providerEntry) {
                 // Get the provider name, location ID and original name for this entry
@@ -566,7 +572,7 @@ class SearchController extends Controller
                 $endTimeForProvider = $clampTimeToBusinessHours($endTimeForProvider, $providerDefaultTime($providerToFetch), $providerToFetch);
 
                 // Enforce provider dropoff compatibility.
-                $providersWithDropoffList = ['greenmotion', 'usave', 'adobe', 'locauto_rent', 'renteon', 'favrica', 'xdrive', 'sicily_by_car'];
+                $providersWithDropoffList = ['greenmotion', 'usave', 'adobe', 'locauto_rent', 'renteon', 'favrica', 'xdrive', 'sicily_by_car', 'recordgo'];
                 $supportsDropoff = in_array($providerToFetch, $providersWithDropoffList, true);
 
                 $dropoffIdForProvider = $supportsDropoff
@@ -1912,6 +1918,315 @@ class SearchController extends Controller
                     } catch (\Exception $e) {
                         $recordProviderError($providerToFetch, $e->getMessage());
                         Log::error('Error fetching Sicily By Car vehicles: ' . $e->getMessage(), [
+                            'provider_location_id' => $currentProviderLocationId,
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                    }
+                } elseif ($providerToFetch === 'recordgo') {
+                    try {
+                        if (isset($recordGoProcessedPickups[$currentProviderLocationId])) {
+                            continue;
+                        }
+                        $recordGoProcessedPickups[$currentProviderLocationId] = true;
+
+                        $countryCode = strtoupper((string) ($validated['country'] ?? ''));
+                        if ($countryCode === '') {
+                            $countryCode = 'IT';
+                        }
+
+                        $sellCode = $this->recordGoService->resolveSellCode($countryCode);
+                        if (!$sellCode) {
+                            $recordProviderError($providerToFetch, 'Missing sellCode for Record Go');
+                            Log::warning('Record Go sellCode missing', ['country' => $countryCode]);
+                            continue;
+                        }
+
+                        $formatDateTime = static function (string $date, string $time): string {
+                            $time = trim($time);
+                            if ($time === '') {
+                                $time = '09:00';
+                            }
+                            if (strlen($time) === 5) {
+                                $time .= ':00';
+                            }
+                            return $date . 'T' . $time;
+                        };
+
+                        $pickupDateTime = $formatDateTime($validated['date_from'], $startTimeForProvider);
+                        $dropoffDateTime = $formatDateTime($validated['date_to'], $endTimeForProvider);
+
+                        $language = strtoupper((string) ($validated['language'] ?? 'EN'));
+                        if (strlen($language) !== 2) {
+                            $language = 'EN';
+                        }
+
+                        $availabilityPayload = [
+                            'partnerUser' => $this->recordGoService->getPartnerUser(),
+                            'country' => $countryCode,
+                            'sellCode' => $sellCode,
+                            'pickupBranch' => (int) $currentProviderLocationId,
+                            'dropoffBranch' => (int) $dropoffIdForProvider,
+                            'pickupDateTime' => $pickupDateTime,
+                            'dropoffDateTime' => $dropoffDateTime,
+                            'driverAge' => isset($validated['age']) ? (int) $validated['age'] : null,
+                            'language' => $language,
+                        ];
+
+                        $availabilityPayload = array_filter(
+                            $availabilityPayload,
+                            static fn($value) => $value !== null && $value !== ''
+                        );
+
+                        $recordGoResponse = $this->recordGoService->getAvailability($availabilityPayload);
+                        if (!($recordGoResponse['ok'] ?? false)) {
+                            $recordProviderError($providerToFetch, 'Availability request failed');
+                            Log::warning('Record Go availability error', [
+                                'location_id' => $currentProviderLocationId,
+                                'errors' => $recordGoResponse['errors'] ?? null,
+                            ]);
+                        } else {
+                            $payload = $recordGoResponse['data'] ?? [];
+                            $sellCodeVer = $payload['sellCodeVer'] ?? null;
+                            $acrissList = $payload['acriss'] ?? [];
+
+                            $currency = in_array($countryCode, ['IC', 'IT', 'PT', 'GR'], true) ? 'EUR' : 'EUR';
+
+                            foreach ($acrissList as $acriss) {
+                                if (!is_array($acriss)) {
+                                    continue;
+                                }
+                                if (isset($acriss['available']) && !$acriss['available']) {
+                                    continue;
+                                }
+
+                                $acrissCode = (string) ($acriss['acrissCode'] ?? '');
+                                $acrissId = $acriss['acrissId'] ?? null;
+                                $images = $acriss['imagesArray'] ?? [];
+                                $defaultImage = null;
+                                $displayName = null;
+                                if (is_array($images)) {
+                                    foreach ($images as $img) {
+                                        if (!is_array($img)) {
+                                            continue;
+                                        }
+                                        if (!empty($img['isDefault'])) {
+                                            $defaultImage = $img['acrissImgUrl'] ?? null;
+                                            $displayName = $img['acrissDisplayName'] ?? null;
+                                            break;
+                                        }
+                                    }
+                                    if (!$defaultImage && isset($images[0]['acrissImgUrl'])) {
+                                        $defaultImage = $images[0]['acrissImgUrl'];
+                                        $displayName = $images[0]['acrissDisplayName'] ?? null;
+                                    }
+                                }
+
+                                $products = $acriss['products'] ?? [];
+                                if (!is_array($products) || empty($products)) {
+                                    continue;
+                                }
+
+                                $recordGoProducts = [];
+                                $minTotal = null;
+                                $minDaily = null;
+                                $primaryMileage = null;
+
+                                $extractPreauthExcess = static function (array $included) {
+                                    $deposit = null;
+                                    $excess = null;
+                                    $excessLow = null;
+                                    foreach ($included as $comp) {
+                                        if (!is_array($comp)) {
+                                            continue;
+                                        }
+                                        $entries = $comp['preauth&Excess'] ?? $comp['preauthExcess'] ?? [];
+                                        if (!is_array($entries)) {
+                                            continue;
+                                        }
+                                        foreach ($entries as $entry) {
+                                            if (!is_array($entry)) {
+                                                continue;
+                                            }
+                                            $type = strtolower((string) ($entry['type'] ?? ''));
+                                            $value = isset($entry['value']) ? (float) $entry['value'] : null;
+                                            if ($value === null) {
+                                                continue;
+                                            }
+                                            if (str_contains($type, 'preauth')) {
+                                                $deposit = $deposit === null ? $value : max($deposit, $value);
+                                            } elseif (str_contains($type, 'excesslow')) {
+                                                $excessLow = $excessLow === null ? $value : max($excessLow, $value);
+                                            } elseif (str_contains($type, 'excess')) {
+                                                $excess = $excess === null ? $value : max($excess, $value);
+                                            }
+                                        }
+                                    }
+                                    return [
+                                        'deposit' => $deposit,
+                                        'excess' => $excess,
+                                        'excess_low' => $excessLow,
+                                    ];
+                                };
+
+                                foreach ($products as $productData) {
+                                    if (!is_array($productData)) {
+                                        continue;
+                                    }
+                                    $product = $productData['product'] ?? [];
+                                    $productId = $product['productId'] ?? null;
+                                    $productVer = $product['productVer'] ?? null;
+                                    $rateProdVer = $productData['rateProdVer'] ?? null;
+
+                                    $pricePerDay = $productData['priceTaxIncDayDiscount']
+                                        ?? $productData['priceTaxIncDay']
+                                        ?? null;
+                                    $totalPrice = $productData['priceTaxIncBookingDiscount']
+                                        ?? $productData['priceTaxIncBooking']
+                                        ?? null;
+
+                                    if ($totalPrice === null && $pricePerDay !== null) {
+                                        $totalPrice = $rentalDays > 0 ? ((float) $pricePerDay * $rentalDays) : (float) $pricePerDay;
+                                    }
+
+                                    $productMileage = $product['kmPolicyCommercial']['kmPolicyTransName'] ?? null;
+                                    if (!$primaryMileage && $productMileage) {
+                                        $primaryMileage = $productMileage;
+                                    }
+
+                                    $includedComplements = $product['productComplementsIncluded'] ?? [];
+                                    $automaticComplements = $product['productComplementsAutom'] ?? [];
+                                    $preauthExcess = $extractPreauthExcess(is_array($includedComplements) ? $includedComplements : []);
+
+                                    $cacheKey = implode('|', [
+                                        $productId,
+                                        $acrissCode,
+                                        $currentProviderLocationId,
+                                        $dropoffIdForProvider,
+                                        $pickupDateTime,
+                                        $dropoffDateTime,
+                                        $language,
+                                    ]);
+
+                                    if (!isset($recordGoComplementsCache[$cacheKey])) {
+                                        $associatedPayload = [
+                                            'partnerUser' => $this->recordGoService->getPartnerUser(),
+                                            'country' => $countryCode,
+                                            'sellCode' => $sellCode,
+                                            'pickupBranch' => (int) $currentProviderLocationId,
+                                            'dropoffBranch' => (int) $dropoffIdForProvider,
+                                            'pickupDateTime' => $pickupDateTime,
+                                            'dropoffDateTime' => $dropoffDateTime,
+                                            'driverAge' => isset($validated['age']) ? (int) $validated['age'] : null,
+                                            'productId' => $productId,
+                                            'acrissCode' => $acrissCode,
+                                            'language' => $language,
+                                        ];
+                                        $associatedPayload = array_filter(
+                                            $associatedPayload,
+                                            static fn($value) => $value !== null && $value !== ''
+                                        );
+
+                                        $assocResponse = $this->recordGoService->getAssociatedComplements($associatedPayload);
+                                        if (!($assocResponse['ok'] ?? false)) {
+                                            Log::warning('Record Go complements error', [
+                                                'product_id' => $productId,
+                                                'acriss' => $acrissCode,
+                                                'errors' => $assocResponse['errors'] ?? null,
+                                            ]);
+                                            $recordGoComplementsCache[$cacheKey] = [
+                                                'associated' => [],
+                                                'automatic' => [],
+                                            ];
+                                        } else {
+                                            $assocData = $assocResponse['data'] ?? [];
+                                            $recordGoComplementsCache[$cacheKey] = [
+                                                'associated' => $assocData['productAssociatedComplements'] ?? [],
+                                                'automatic' => $assocData['productAutomaticComplements'] ?? [],
+                                            ];
+                                        }
+                                    }
+
+                                    $cachedComplements = $recordGoComplementsCache[$cacheKey] ?? ['associated' => [], 'automatic' => []];
+
+                                    $recordGoProducts[] = [
+                                        'type' => 'RG_' . ($productId ?? 'prod') . '_' . ($rateProdVer ?? 'rate'),
+                                        'name' => $product['productName'] ?? 'Record Go',
+                                        'subtitle' => $product['productSubtitle'] ?? null,
+                                        'description' => $product['productDescription'] ?? null,
+                                        'total' => $totalPrice !== null ? (float) $totalPrice : null,
+                                        'price_per_day' => $pricePerDay !== null ? (float) $pricePerDay : null,
+                                        'product_id' => $productId,
+                                        'product_ver' => $productVer,
+                                        'rate_prod_ver' => $rateProdVer,
+                                        'deposit' => $preauthExcess['deposit'] ?? null,
+                                        'excess' => $preauthExcess['excess'] ?? null,
+                                        'excess_low' => $preauthExcess['excess_low'] ?? null,
+                                        'complements_autom' => $automaticComplements,
+                                        'complements_included' => $includedComplements,
+                                        'complements_associated' => $cachedComplements['associated'] ?? [],
+                                        'complements_automatic' => $cachedComplements['automatic'] ?? [],
+                                        'refuel_policy' => $product['refuelPolicyCommercial'] ?? null,
+                                        'km_policy' => $product['kmPolicyCommercial'] ?? null,
+                                    ];
+
+                                    if ($totalPrice !== null) {
+                                        $minTotal = $minTotal === null ? (float) $totalPrice : min($minTotal, (float) $totalPrice);
+                                    }
+                                    if ($pricePerDay !== null) {
+                                        $minDaily = $minDaily === null ? (float) $pricePerDay : min($minDaily, (float) $pricePerDay);
+                                    }
+                                }
+
+                                if (empty($recordGoProducts)) {
+                                    continue;
+                                }
+
+                                $vehicleId = 'recordgo_' . $currentProviderLocationId . '_' . ($acrissCode ?: 'acriss');
+
+                                $providerVehicles->push((object) [
+                                    'id' => $vehicleId,
+                                    'source' => 'recordgo',
+                                    'brand' => null,
+                                    'model' => $displayName ?: ($acrissCode ?: 'Record Go Vehicle'),
+                                    'image' => $defaultImage ?: '/images/default-car.jpg',
+                                    'price_per_day' => $minDaily,
+                                    'total_price' => $minTotal,
+                                    'price_per_week' => null,
+                                    'price_per_month' => null,
+                                    'currency' => $currency,
+                                    'transmission' => strtolower((string) ($acriss['gearboxType'] ?? 'manual')),
+                                    'fuel' => null,
+                                    'category' => $acrissCode ?: 'Unknown',
+                                    'seating_capacity' => $acriss['acrissSeats'] ?? null,
+                                    'doors' => $acriss['acrissDoors'] ?? null,
+                                    'bags' => $acriss['acrissSuitcase'] ?? null,
+                                    'suitcases' => $acriss['acrissSuitcase'] ?? null,
+                                    'mileage' => $primaryMileage,
+                                    'latitude' => (float) $locationLat,
+                                    'longitude' => (float) $locationLng,
+                                    'full_vehicle_address' => $currentProviderLocationName,
+                                    'location_details' => [
+                                        'name' => $currentProviderLocationName,
+                                        'address_city' => $validated['city'] ?? null,
+                                        'address_country' => $countryCode,
+                                        'telephone' => null,
+                                        'email' => null,
+                                    ],
+                                    'provider_pickup_id' => $currentProviderLocationId,
+                                    'provider_dropoff_id' => $dropoffIdForProvider,
+                                    'provider_return_id' => $dropoffIdForProvider,
+                                    'sipp_code' => $acrissCode,
+                                    'recordgo_acriss_id' => $acrissId,
+                                    'recordgo_sellcode_ver' => $sellCodeVer,
+                                    'recordgo_country' => $countryCode,
+                                    'recordgo_partner_user' => $this->recordGoService->getPartnerUser(),
+                                    'recordgo_products' => $recordGoProducts,
+                                ]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        $recordProviderError($providerToFetch, $e->getMessage());
+                        Log::error('Error fetching Record Go vehicles: ' . $e->getMessage(), [
                             'provider_location_id' => $currentProviderLocationId,
                             'trace' => $e->getTraceAsString(),
                         ]);

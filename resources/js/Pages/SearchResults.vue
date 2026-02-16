@@ -778,7 +778,7 @@ const getVehiclePriceConverted = (vehicle) => {
         // For Adobe, use tdr / rental days (or use price_per_day if already calculated)
         originalPrice = vehicle.price_per_day || (vehicle.tdr / (numberOfRentalDays.value || 1));
         originalCurrency = 'USD';
-    } else if (vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent' || vehicle.source === 'sicily_by_car') {
+    } else if (vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent' || vehicle.source === 'sicily_by_car' || vehicle.source === 'recordgo') {
         originalPrice = vehicle.price_per_day;
         originalCurrency = vehicle.currency || 'USD';
     } else if (vehicle.source === 'greenmotion' || vehicle.source === 'usave') {
@@ -1253,7 +1253,7 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
         if (vehicle.source === 'adobe') {
             const total = parseFloat(vehicle.tdr || 0);
             priceValue = convertCurrency(total, 'USD');
-        } else if ((vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent' || vehicle.source === 'renteon' || vehicle.source === 'favrica' || vehicle.source === 'sicily_by_car') && vehicle.price_per_day) {
+        } else if ((vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent' || vehicle.source === 'renteon' || vehicle.source === 'favrica' || vehicle.source === 'sicily_by_car' || vehicle.source === 'recordgo') && vehicle.price_per_day) {
             priceValue = convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD');
         } else {
             // For GreenMotion/USave, show total rental price
