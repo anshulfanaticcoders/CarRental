@@ -1867,6 +1867,7 @@ class SearchController extends Controller
                                 $providerVehicles->push((object) [
                                     'id' => 'sicily_by_car_' . $currentProviderLocationId . '_' . $vehicleId . '_' . $rateId,
                                     'source' => 'sicily_by_car',
+                                    'provider_vehicle_id' => $vehicleId,
                                     'brand' => null,
                                     'model' => $vehicleInfo['description'] ?? 'Vehicle',
                                     'image' => $vehicleInfo['imageUrl'] ?? '/images/default-car.jpg',
@@ -1891,6 +1892,7 @@ class SearchController extends Controller
                                     'location_instructions' => $pickupLocationDetails['collection_details'] ?? null,
                                     'provider_pickup_id' => $currentProviderLocationId,
                                     'provider_dropoff_id' => $dropoffIdForProvider,
+                                    'provider_return_id' => $dropoffIdForProvider,
                                     'sipp_code' => $sippCode,
                                     'availability' => $offer['availability'] ?? null,
                                     'rate_id' => $rateId,

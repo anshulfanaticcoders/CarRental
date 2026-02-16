@@ -194,6 +194,39 @@ class StripeCheckoutController extends Controller
             $pickupLocationDetails = $validated['location_details'] ?? null;
             $dropoffLocationDetails = $validated['dropoff_location_details'] ?? null;
 
+            if ($providerSource === 'sicily_by_car') {
+                $vehicleId = $vehicle['provider_vehicle_id'] ?? null;
+                $rateId = $vehicle['rate_id'] ?? null;
+                $pickupId = $vehicle['provider_pickup_id'] ?? null;
+
+                if ((!$vehicleId || !$rateId || !$pickupId) && !empty($vehicle['id'])) {
+                    $rawId = (string) $vehicle['id'];
+                    $prefix = 'sicily_by_car_';
+                    if (str_starts_with($rawId, $prefix)) {
+                        $rest = substr($rawId, strlen($prefix));
+                        $parts = explode('_', $rest, 3);
+                        if (count($parts) === 3) {
+                            [$pickupIdParsed, $vehicleIdParsed, $rateIdParsed] = $parts;
+                            $pickupId = $pickupId ?: $pickupIdParsed;
+                            $vehicleId = $vehicleId ?: $vehicleIdParsed;
+                            $rateId = $rateId ?: $rateIdParsed;
+                        }
+                    }
+                }
+
+                if ($pickupId) {
+                    $vehicle['provider_pickup_id'] = $pickupId;
+                }
+                if ($vehicleId) {
+                    $vehicle['provider_vehicle_id'] = $vehicleId;
+                }
+                if ($rateId) {
+                    $vehicle['rate_id'] = $rateId;
+                }
+
+                $validated['vehicle'] = $vehicle;
+            }
+
             if ($providerSource === 'renteon') {
                 if (empty($pickupLocationDetails) && !empty($vehicle['pickup_office']) && is_array($vehicle['pickup_office'])) {
                     $pickupLocationDetails = $vehicle['pickup_office'];
@@ -239,6 +272,40 @@ class StripeCheckoutController extends Controller
                 if (empty($validated['package'])) {
                     return response()->json([
                         'error' => 'Please select a package before checkout.',
+                    ], 422);
+                }
+            }
+
+            if ($providerSource === 'sicily_by_car') {
+                $missing = [];
+                $customer = $validated['customer'] ?? [];
+
+                if (empty($customer['name'])) {
+                    $missing[] = 'customer.name';
+                }
+                if (empty($customer['email'])) {
+                    $missing[] = 'customer.email';
+                }
+                if (empty($customer['phone'])) {
+                    $missing[] = 'customer.phone';
+                }
+                if (empty($customer['driver_age'])) {
+                    $missing[] = 'customer.driver_age';
+                }
+
+                if (empty($vehicle['provider_pickup_id'])) {
+                    $missing[] = 'vehicle.provider_pickup_id';
+                }
+                if (empty($vehicle['provider_vehicle_id'])) {
+                    $missing[] = 'vehicle.provider_vehicle_id';
+                }
+                if (empty($vehicle['rate_id'])) {
+                    $missing[] = 'vehicle.rate_id';
+                }
+                if (!empty($missing)) {
+                    return response()->json([
+                        'error' => 'Missing required Sicily By Car booking details. Please refresh and try again.',
+                        'missing_fields' => $missing,
                     ], 422);
                 }
             }
@@ -402,6 +469,11 @@ class StripeCheckoutController extends Controller
                 'renteon_price_date' => $validated['vehicle']['price_date'] ?? null,
                 'renteon_prepaid' => $validated['vehicle']['prepaid']
                     ?? (($validated['vehicle']['source'] ?? '') === 'renteon' ? false : true),
+                'sbc_vehicle_id' => $validated['vehicle']['provider_vehicle_id'] ?? null,
+                'sbc_rate_id' => $validated['vehicle']['rate_id'] ?? null,
+                'sbc_availability_id' => $validated['vehicle']['availability_id'] ?? null,
+                'sbc_payment_type' => $validated['vehicle']['payment_type'] ?? null,
+                'sbc_currency' => $validated['vehicle']['currency'] ?? null,
                 'ok_mobility_token' => $validated['vehicle']['ok_mobility_token'] ?? null,
                 'ok_mobility_group_id' => $validated['vehicle']['ok_mobility_group_id'] ?? null,
                 'ok_mobility_rate_code' => $validated['vehicle']['ok_mobility_rate_code'] ?? null,

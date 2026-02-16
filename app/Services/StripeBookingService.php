@@ -18,6 +18,7 @@ use App\Models\VendorProfile;
 use App\Services\AdobeCarService;
 use App\Services\BookingAmountService;
 use App\Services\CurrencyConversionService;
+use App\Services\SicilyByCarService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -46,11 +47,13 @@ class StripeBookingService
     }
     protected $adobeCarService;
     protected $renteonService;
+    protected $sicilyByCarService;
 
-    public function __construct(AdobeCarService $adobeCarService, RenteonService $renteonService)
+    public function __construct(AdobeCarService $adobeCarService, RenteonService $renteonService, SicilyByCarService $sicilyByCarService)
     {
         $this->adobeCarService = $adobeCarService;
         $this->renteonService = $renteonService;
+        $this->sicilyByCarService = $sicilyByCarService;
     }
 
     /**
@@ -280,6 +283,8 @@ class StripeBookingService
                 $this->triggerFavricaReservation($booking, $metadata);
             } elseif ($booking->provider_source === 'xdrive' && $shouldTriggerProvider) {
                 $this->triggerXDriveReservation($booking, $metadata);
+            } elseif ($booking->provider_source === 'sicily_by_car' && $shouldTriggerProvider) {
+                $this->triggerSicilyByCarReservation($booking, $metadata);
             }
 
             return $booking;
@@ -554,6 +559,15 @@ class StripeBookingService
             'driver_requirements' => $driverRequirements,
             'terms' => $terms,
             'extras_selected' => $extrasPayload['detailed_extras'] ?? ($extrasPayload['extras'] ?? null),
+            'sbc' => [
+                'availability_id' => $metadata->sbc_availability_id ?? null,
+                'rate_id' => $metadata->sbc_rate_id ?? null,
+                'vehicle_id' => $metadata->sbc_vehicle_id ?? null,
+                'payment_type' => $metadata->sbc_payment_type ?? null,
+                'currency' => $metadata->sbc_currency ?? null,
+                'deposit' => $metadata->deposit ?? null,
+                'excess' => $this->extractSicilyByCarExcessSummary($metadata),
+            ],
             'customer_snapshot' => [
                 'name' => $metadata->customer_name ?? null,
                 'email' => $metadata->customer_email ?? null,
@@ -1139,6 +1153,256 @@ class StripeBookingService
                 return 'Customer details are incomplete. Please update and try again.';
             default:
                 return $message ?: 'Reservation failed. Please contact support.';
+        }
+    }
+
+    private function extractSicilyByCarExcessSummary($metadata): array
+    {
+        $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+        $selectedExtras = $extrasPayload['detailed_extras'] ?? [];
+
+        $summary = [];
+        foreach ($selectedExtras as $extra) {
+            if (!is_array($extra)) {
+                continue;
+            }
+
+            $excess = $extra['excess'] ?? null;
+            if ($excess === null || $excess === '') {
+                continue;
+            }
+
+            $code = $extra['code']
+                ?? $extra['service_id']
+                ?? $extra['option_id']
+                ?? $extra['id']
+                ?? null;
+
+            $summary[] = [
+                'code' => $code,
+                'name' => $extra['name'] ?? $extra['label'] ?? $extra['description'] ?? null,
+                'excess' => $excess,
+            ];
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Trigger reservation on Sicily By Car API
+     */
+    protected function triggerSicilyByCarReservation($booking, $metadata)
+    {
+        Log::info('SicilyByCar: Triggering reservation for booking', ['booking_id' => $booking->id]);
+
+        try {
+            $customerName = trim((string) ($metadata->customer_name ?? 'Guest'));
+            $nameParts = preg_split('/\s+/', $customerName, 2);
+            $firstName = $nameParts[0] ?? 'Guest';
+            $lastName = $nameParts[1] ?? 'Guest';
+
+            $pickupDateTime = ($metadata->pickup_date ?? '') && ($metadata->pickup_time ?? '')
+                ? $metadata->pickup_date . 'T' . $metadata->pickup_time
+                : null;
+            $dropoffDateTime = ($metadata->dropoff_date ?? '') && ($metadata->dropoff_time ?? '')
+                ? $metadata->dropoff_date . 'T' . $metadata->dropoff_time
+                : null;
+
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+            $rawExtras = $extrasPayload['detailed_extras'] ?? [];
+            $include = [];
+            foreach ($rawExtras as $extra) {
+                if (!is_array($extra)) {
+                    continue;
+                }
+                $qty = (int) ($extra['qty'] ?? $extra['quantity'] ?? 1);
+                if ($qty <= 0) {
+                    continue;
+                }
+                $code = $extra['code']
+                    ?? $extra['service_id']
+                    ?? $extra['option_id']
+                    ?? $extra['id']
+                    ?? null;
+                if ($code !== null && $code !== '') {
+                    $include[] = (string) $code;
+                }
+            }
+            $include = array_values(array_unique($include));
+
+            $posCountry = null;
+            $customerCountry = $metadata->customer_country ?? null;
+            if ($customerCountry && is_string($customerCountry)) {
+                $candidate = strtoupper(trim($customerCountry));
+                if (strlen($candidate) === 2) {
+                    $posCountry = $candidate;
+                }
+            }
+
+            $voucherNumber = $booking->booking_number ?: ('VROOEM-' . $booking->id);
+            $voucherAmount = null;
+            if (isset($metadata->provider_grand_total)) {
+                $voucherAmount = (float) $metadata->provider_grand_total;
+            }
+
+            $missing = [];
+            if (!$pickupDateTime) {
+                $missing[] = 'pickupDateTime';
+            }
+            if (!$dropoffDateTime) {
+                $missing[] = 'dropoffDateTime';
+            }
+            if (empty($metadata->pickup_location_code)) {
+                $missing[] = 'pickupLocationId';
+            }
+            if (empty($metadata->sbc_vehicle_id)) {
+                $missing[] = 'vehicleId';
+            }
+            if (empty($metadata->sbc_rate_id)) {
+                $missing[] = 'rateId';
+            }
+
+            if (!empty($missing)) {
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '')
+                        . 'SicilyByCar Reservation failed: missing fields (' . implode(', ', $missing) . ').',
+                ]);
+                Log::error('SicilyByCar: Missing required fields for reservation', [
+                    'booking_id' => $booking->id,
+                    'missing' => $missing,
+                ]);
+                return;
+            }
+
+            $payload = [
+                'availabilityId' => $metadata->sbc_availability_id ?? null,
+                'pickupLocationId' => $metadata->pickup_location_code ?? null,
+                'pickupDateTime' => $pickupDateTime,
+                'dropoffLocationId' => $metadata->return_location_code ?? $metadata->pickup_location_code ?? null,
+                'dropoffDateTime' => $dropoffDateTime,
+                'posCountry' => $posCountry,
+                'vehicleId' => $metadata->sbc_vehicle_id ?? null,
+                'rateId' => $metadata->sbc_rate_id ?? null,
+                'include' => !empty($include) ? $include : null,
+                'voucher' => [
+                    'number' => $voucherNumber,
+                    'amount' => $voucherAmount,
+                ],
+                'driver' => [
+                    'firstName' => $firstName,
+                    'lastName' => $lastName,
+                    'age' => isset($metadata->customer_driver_age) ? (int) $metadata->customer_driver_age : null,
+                    'email' => $metadata->customer_email ?? null,
+                    'phone' => $metadata->customer_phone ?? null,
+                ],
+                'flights' => !empty($metadata->flight_number)
+                    ? ['pickupFlightNumber' => (string) $metadata->flight_number]
+                    : null,
+                'notes' => $metadata->notes ?? null,
+            ];
+
+            $payload = array_filter($payload, static function ($value) {
+                if ($value === null) {
+                    return false;
+                }
+                if (is_string($value)) {
+                    return trim($value) !== '';
+                }
+                if (is_array($value)) {
+                    return !empty($value);
+                }
+                return true;
+            });
+
+            Log::info('SicilyByCar: Sending create reservation', [
+                'booking_id' => $booking->id,
+                'pickup_location' => $payload['pickupLocationId'] ?? null,
+                'dropoff_location' => $payload['dropoffLocationId'] ?? null,
+                'vehicle_id' => $payload['vehicleId'] ?? null,
+                'rate_id' => $payload['rateId'] ?? null,
+            ]);
+
+            $createResponse = $this->sicilyByCarService->createReservation($payload);
+            if (!($createResponse['ok'] ?? false)) {
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '') . 'SicilyByCar Reservation failed: ' . json_encode($createResponse['errors'] ?? []),
+                ]);
+                Log::error('SicilyByCar: create reservation failed', [
+                    'booking_id' => $booking->id,
+                    'errors' => $createResponse['errors'] ?? null,
+                ]);
+                return;
+            }
+
+            $data = $createResponse['data'] ?? [];
+            $reservation = $data['reservation'] ?? $data;
+            $reservationId = $reservation['id'] ?? $data['reservationId'] ?? null;
+            $status = $reservation['status'] ?? null;
+            $confirmation = $reservation['confirmationNumber'] ?? null;
+
+            if (!$reservationId) {
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '') . 'SicilyByCar Reservation failed: missing reservation id.',
+                ]);
+                Log::error('SicilyByCar: reservation id missing', [
+                    'booking_id' => $booking->id,
+                    'data' => $data,
+                ]);
+                return;
+            }
+
+            $booking->update([
+                'provider_booking_ref' => $confirmation ?: $reservationId,
+                'notes' => ($booking->notes ? $booking->notes . "\n" : '')
+                    . 'SicilyByCar Reservation: ' . ($confirmation ?: $reservationId)
+                    . ($status ? ' (' . $status . ')' : ''),
+            ]);
+
+            $commitResponse = $this->sicilyByCarService->commitReservation($reservationId);
+            if (!($commitResponse['ok'] ?? false)) {
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '') . 'SicilyByCar Commit failed: ' . json_encode($commitResponse['errors'] ?? []),
+                ]);
+                Log::error('SicilyByCar: commit failed', [
+                    'booking_id' => $booking->id,
+                    'errors' => $commitResponse['errors'] ?? null,
+                ]);
+                return;
+            }
+
+            $commitData = $commitResponse['data'] ?? [];
+            $commitReservation = $commitData['reservation'] ?? $commitData;
+            $commitStatus = $commitReservation['status'] ?? null;
+            $commitConfirmation = $commitReservation['confirmationNumber'] ?? $confirmation;
+
+            if ($commitConfirmation && $commitConfirmation !== $booking->provider_booking_ref) {
+                $booking->update([
+                    'provider_booking_ref' => $commitConfirmation,
+                ]);
+            }
+
+            if ($commitStatus && $commitStatus !== $status) {
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '')
+                        . 'SicilyByCar Commit status: ' . $commitStatus,
+                ]);
+            }
+
+            Log::info('SicilyByCar: Reservation committed', [
+                'booking_id' => $booking->id,
+                'reservation_id' => $reservationId,
+                'confirmation' => $commitConfirmation,
+                'status' => $commitStatus,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('SicilyByCar: Exception during reservation trigger', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : '') . 'SicilyByCar Reservation Error: ' . $e->getMessage(),
+            ]);
         }
     }
 
