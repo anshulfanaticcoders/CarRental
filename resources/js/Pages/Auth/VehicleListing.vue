@@ -1353,37 +1353,54 @@
                             _t('createvehicle', 'step6_addons_description') }}</span>
                     </div>
                     <div v-for="addon in addons" :key="addon.id"
-                        class="flex justify-between gap-10 items-center border rounded-lg p-4 max-[768px]:mx-[1.5rem] max-[768px]:flex-col">
-                        <!-- Left Section: Checkbox & Text -->
-                        <div class="flex items-start gap-3 w-[55%] max-[768px]:w-full">
-                            <input type="checkbox" :value="addon.id" v-model="selectedAddons" class="w-5 h-5 mt-1">
-                            <div>
-                                <h3 class="font-semibold text-lg max-[768px]:text-[1rem]">{{ addon.extra_name }}</h3>
-                                <p class="text-gray-500 text-sm max-[768px]:text-[0.75rem]">{{ addon.description }}</p>
+                        class="border rounded-lg p-4 max-[768px]:mx-[1.5rem] flex flex-col gap-4"
+                        :class="{
+                            'border-dashed bg-gray-50': !isAddonSelected(addon.id),
+                            'ring-2 ring-green-500': isAddonSelected(addon.id)
+                        }">
+                        <div class="flex justify-between gap-10 items-center max-[768px]:flex-col">
+                            <div class="flex items-start gap-3 w-[55%] max-[768px]:w-full">
+                                <div>
+                                    <h3 class="font-semibold text-lg max-[768px]:text-[1rem]">{{ addon.extra_name }}</h3>
+                                    <p class="text-gray-500 text-sm max-[768px]:text-[0.75rem]">{{ addon.description }}</p>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Right Section: Price & Quantity -->
-                        <div class="flex  gap-4 items-end">
-                            <div class="flex flex-col items-start">
-                                <label for="price" class="text-sm text-gray-500">{{
-                                    _t('createvehicle', 'step6_price_per_day_label') }}</label>
-                                <input type="number" v-model="addonPrices[addon.id]"
-                                    class="w-24 px-2 py-1 border rounded max-[768px]:!py-2" />
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500 mb-2">{{ _t('createvehicle', 'step6_quantity_label') }}
-                                </p>
-                                <div class="flex items-center gap-2">
-                                    <button @click="decrementQuantity(addon.id)"
-                                        class="px-2 py-1 border rounded">-</button>
-                                    <span class="px-3 py-1 bg-gray-100 rounded">{{ addonQuantities[addon.id] || '00'
-                                        }}</span>
-                                    <button @click="incrementQuantity(addon.id)"
-                                        class="px-2 py-1 border rounded">+</button>
+                            <div class="flex gap-4 items-end">
+                                <div class="flex flex-col items-start">
+                                    <label for="price" class="text-sm text-gray-500">{{
+                                        _t('createvehicle', 'step6_price_per_day_label') }}</label>
+                                    <input type="number" v-model="addonPrices[addon.id]"
+                                        :disabled="!isAddonSelected(addon.id)"
+                                        class="w-24 px-2 py-1 border rounded max-[768px]:!py-2"
+                                        :class="!isAddonSelected(addon.id) ? 'bg-gray-100' : ''" />
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-2">{{ _t('createvehicle', 'step6_quantity_label') }}
+                                    </p>
+                                    <div class="flex items-center gap-2">
+                                        <button @click="decrementQuantity(addon.id)" type="button"
+                                            :disabled="!isAddonSelected(addon.id)"
+                                            class="px-2 py-1 border rounded"
+                                            :class="!isAddonSelected(addon.id) ? 'opacity-50 cursor-not-allowed' : ''">-</button>
+                                        <span class="px-3 py-1 bg-gray-100 rounded">{{ addonQuantities[addon.id] || '00'
+                                            }}</span>
+                                        <button @click="incrementQuantity(addon.id)" type="button"
+                                            :disabled="!isAddonSelected(addon.id)"
+                                            class="px-2 py-1 border rounded"
+                                            :class="!isAddonSelected(addon.id) ? 'opacity-50 cursor-not-allowed' : ''">+</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+
+                        <button type="button" @click="toggleAddonSelection(addon.id)"
+                            class="w-full py-2 rounded-lg font-semibold text-sm transition"
+                            :class="isAddonSelected(addon.id)
+                                ? 'bg-green-600 text-white hover:bg-green-700'
+                                : 'bg-[#153B4F] text-white hover:bg-[#102c3b]'">
+                            {{ isAddonSelected(addon.id) ? 'Selected' : 'Select Addon' }}
+                        </button>
                     </div>
 
 
@@ -1863,7 +1880,22 @@ const fetchAddons = async () => {
     }
 };
 
+const isAddonSelected = (addonId) => selectedAddons.value.includes(addonId);
+
+const toggleAddonSelection = (addonId) => {
+    const index = selectedAddons.value.indexOf(addonId);
+    if (index > -1) {
+        selectedAddons.value.splice(index, 1);
+        return;
+    }
+
+    selectedAddons.value.push(addonId);
+};
+
 const incrementQuantity = (addonId) => {
+    if (!isAddonSelected(addonId)) {
+        return;
+    }
     if (!addonQuantities.value[addonId]) {
         addonQuantities.value[addonId] = 1;
     }
@@ -1871,6 +1903,9 @@ const incrementQuantity = (addonId) => {
 };
 
 const decrementQuantity = (addonId) => {
+    if (!isAddonSelected(addonId)) {
+        return;
+    }
     if (addonQuantities.value[addonId] > 1) {
         addonQuantities.value[addonId]--;
     }
