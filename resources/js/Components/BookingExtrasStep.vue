@@ -1454,7 +1454,13 @@ const getBenefits = (product) => {
     if (product.costperextradistance !== undefined && parseFloat(product.costperextradistance) === 0) {
         benefits.push('Unlimited mileage');
     } else if (product.mileage && product.mileage !== 'Unlimited' && product.mileage !== 'unlimited') {
-        benefits.push(`Mileage: ${product.mileage}`);
+        const mileageText = `${product.mileage}`.trim();
+        const mileageValue = parseFloat(mileageText);
+        if (Number.isFinite(mileageValue) && mileageText === `${mileageValue}`) {
+            benefits.push(`KM Limit: ${mileageText}`);
+        } else {
+            benefits.push(`Mileage: ${product.mileage}`);
+        }
     } else if (product.mileage === 'Unlimited' || product.mileage === 'unlimited') {
         // Fallback if costperextradistance logic doesn't catch it but string says separate
         benefits.push('Unlimited mileage');
