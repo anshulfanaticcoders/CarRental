@@ -19,6 +19,7 @@ use App\Services\AdobeCarService;
 use App\Services\BookingAmountService;
 use App\Services\CurrencyConversionService;
 use App\Services\SicilyByCarService;
+use App\Services\RecordGoService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -48,12 +49,14 @@ class StripeBookingService
     protected $adobeCarService;
     protected $renteonService;
     protected $sicilyByCarService;
+    protected $recordGoService;
 
-    public function __construct(AdobeCarService $adobeCarService, RenteonService $renteonService, SicilyByCarService $sicilyByCarService)
+    public function __construct(AdobeCarService $adobeCarService, RenteonService $renteonService, SicilyByCarService $sicilyByCarService, RecordGoService $recordGoService)
     {
         $this->adobeCarService = $adobeCarService;
         $this->renteonService = $renteonService;
         $this->sicilyByCarService = $sicilyByCarService;
+        $this->recordGoService = $recordGoService;
     }
 
     /**
@@ -285,6 +288,8 @@ class StripeBookingService
                 $this->triggerXDriveReservation($booking, $metadata);
             } elseif ($booking->provider_source === 'sicily_by_car' && $shouldTriggerProvider) {
                 $this->triggerSicilyByCarReservation($booking, $metadata);
+            } elseif ($booking->provider_source === 'recordgo' && $shouldTriggerProvider) {
+                $this->triggerRecordGoReservation($booking, $metadata);
             }
 
             return $booking;
@@ -567,6 +572,17 @@ class StripeBookingService
                 'currency' => $metadata->sbc_currency ?? null,
                 'deposit' => $metadata->deposit ?? null,
                 'excess' => $this->extractSicilyByCarExcessSummary($metadata),
+            ],
+            'recordgo' => [
+                'country' => $metadata->recordgo_country ?? null,
+                'sell_code' => $metadata->recordgo_sell_code ?? null,
+                'sellcode_ver' => $metadata->recordgo_sellcode_ver ?? null,
+                'acriss_code' => $metadata->recordgo_acriss_code ?? null,
+                'product_id' => $metadata->recordgo_product_id ?? null,
+                'product_ver' => $metadata->recordgo_product_ver ?? null,
+                'rate_prod_ver' => $metadata->recordgo_rate_prod_ver ?? null,
+                'booking_total' => $metadata->recordgo_booking_total ?? null,
+                'automatic_complements' => $metadata->recordgo_automatic_complements ?? null,
             ],
             'customer_snapshot' => [
                 'name' => $metadata->customer_name ?? null,
@@ -1402,6 +1418,203 @@ class StripeBookingService
             ]);
             $booking->update([
                 'notes' => ($booking->notes ? $booking->notes . "\n" : '') . 'SicilyByCar Reservation Error: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    protected function triggerRecordGoReservation($booking, $metadata)
+    {
+        Log::info('RecordGo: Triggering booking_store for booking', ['booking_id' => $booking->id]);
+
+        try {
+            $country = strtoupper((string) ($metadata->recordgo_country ?? $metadata->customer_country ?? ''));
+            if ($country === '') {
+                $country = 'IT';
+            }
+
+            $sellCode = $metadata->recordgo_sell_code ?? $this->recordGoService->resolveSellCode($country);
+            $sellCodeVer = $metadata->recordgo_sellcode_ver ?? null;
+
+            $pickupBranch = $metadata->pickup_location_code ?? null;
+            $dropoffBranch = $metadata->return_location_code ?? $pickupBranch;
+
+            $pickupDateTime = ($metadata->pickup_date ?? '') && ($metadata->pickup_time ?? '')
+                ? $metadata->pickup_date . 'T' . $metadata->pickup_time . ':00'
+                : null;
+            $dropoffDateTime = ($metadata->dropoff_date ?? '') && ($metadata->dropoff_time ?? '')
+                ? $metadata->dropoff_date . 'T' . $metadata->dropoff_time . ':00'
+                : null;
+
+            $productId = $metadata->recordgo_product_id ?? null;
+            $productVer = $metadata->recordgo_product_ver ?? null;
+            $rateProdVer = $metadata->recordgo_rate_prod_ver ?? null;
+            $acrissCode = $metadata->recordgo_acriss_code ?? $metadata->sipp_code ?? null;
+
+            $bookingTotalAmount = $metadata->recordgo_booking_total
+                ?? $metadata->provider_vehicle_total
+                ?? null;
+            $finalCustomerTotalAmount = $metadata->total_amount ?? $bookingTotalAmount;
+
+            $missing = [];
+            foreach ([
+                'sellCode' => $sellCode,
+                'sellCodeVer' => $sellCodeVer,
+                'pickupBranch' => $pickupBranch,
+                'dropoffBranch' => $dropoffBranch,
+                'pickupDateTime' => $pickupDateTime,
+                'dropoffDateTime' => $dropoffDateTime,
+                'productId' => $productId,
+                'productVer' => $productVer,
+                'rateProdVer' => $rateProdVer,
+                'acrissCode' => $acrissCode,
+                'bookingTotalAmount' => $bookingTotalAmount,
+                'finalCustomerTotalAmount' => $finalCustomerTotalAmount,
+            ] as $field => $value) {
+                if ($value === null || $value === '') {
+                    $missing[] = $field;
+                }
+            }
+
+            if (!empty($missing)) {
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '')
+                        . 'RecordGo booking_store missing fields: ' . implode(', ', $missing),
+                ]);
+                Log::error('RecordGo booking_store missing fields', [
+                    'booking_id' => $booking->id,
+                    'missing' => $missing,
+                ]);
+                return;
+            }
+
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+            $rawExtras = $extrasPayload['detailed_extras'] ?? [];
+
+            $mapComplement = static function (array $raw) {
+                $complementId = $raw['complementId'] ?? $raw['complement_id'] ?? $raw['id'] ?? null;
+                $complementVer = $raw['complementVer'] ?? $raw['complementView'] ?? $raw['complement_ver'] ?? null;
+                $rateComplVer = $raw['rateComplVer'] ?? $raw['rate_compl_ver'] ?? null;
+                $taxApplied = $raw['taxApplied'] ?? $raw['tax_applied'] ?? 0;
+                $units = $raw['complementUnits'] ?? $raw['units'] ?? $raw['complement_units'] ?? 1;
+                $priceTotal = $raw['priceTaxIncComplementDiscount']
+                    ?? $raw['priceTaxIncComplement']
+                    ?? $raw['finalPriceTaxIncComplement']
+                    ?? $raw['finalPriceTaxIncComplementDiscount']
+                    ?? 0;
+
+                return [
+                    'complementId' => $complementId,
+                    'complementView' => $complementVer,
+                    'rateComplVer' => $rateComplVer,
+                    'taxApplied' => $taxApplied,
+                    'complementUnits' => $units,
+                    'priceTaxIncComplement' => $priceTotal,
+                    'finalPriceTaxIncComplement' => $priceTotal,
+                    'priceTaxIncComplementDiscount' => $priceTotal,
+                    'finalPriceTaxIncComplementDiscount' => $priceTotal,
+                    'billToCustomer' => 1,
+                ];
+            };
+
+            $associatedComplements = [];
+            foreach ($rawExtras as $extra) {
+                if (!is_array($extra)) {
+                    continue;
+                }
+                $payload = $extra['recordgo_payload'] ?? null;
+                if (!is_array($payload)) {
+                    continue;
+                }
+                $associatedComplements[] = $mapComplement($payload);
+            }
+
+            $automaticComplements = [];
+            $autoRaw = $metadata->recordgo_automatic_complements ?? [];
+            if (is_array($autoRaw)) {
+                foreach ($autoRaw as $raw) {
+                    if (!is_array($raw)) {
+                        continue;
+                    }
+                    $automaticComplements[] = $mapComplement($raw);
+                }
+            }
+
+            $payload = [
+                'partnerUser' => $this->recordGoService->getPartnerUser(),
+                'country' => $country,
+                'sellCode' => $sellCode,
+                'sellCodeVer' => $sellCodeVer,
+                'partnerBookingCode' => $booking->booking_number,
+                'bookingDate' => now()->format('Y-m-d\TH:i:s'),
+                'pickupBranch' => (int) $pickupBranch,
+                'dropoffBranch' => (int) $dropoffBranch,
+                'pickupDateTime' => $pickupDateTime,
+                'dropoffDateTime' => $dropoffDateTime,
+                'driverAge' => $metadata->customer_driver_age ? (int) $metadata->customer_driver_age : null,
+                'travelInfoCode' => $metadata->flight_number ?? null,
+                'customer' => [
+                    'name' => $metadata->customer_name ?? 'Customer',
+                    'email' => $metadata->customer_email ?? null,
+                    'phone' => $metadata->customer_phone ?? null,
+                ],
+                'productId' => $productId,
+                'productVer' => $productVer,
+                'rateProdVer' => $rateProdVer,
+                'acrissCode' => $acrissCode,
+                'productAutomaticComplements' => $automaticComplements,
+                'productAssociatedComplements' => $associatedComplements,
+                'bookingTotalAmount' => (float) $bookingTotalAmount,
+                'finalCustomerTotalAmount' => (float) $finalCustomerTotalAmount,
+            ];
+
+            $payload = array_filter($payload, static function ($value) {
+                if ($value === null) {
+                    return false;
+                }
+                if (is_string($value)) {
+                    return trim($value) !== '';
+                }
+                if (is_array($value)) {
+                    return !empty($value);
+                }
+                return true;
+            });
+
+            $response = $this->recordGoService->bookingStore($payload);
+            if (!($response['ok'] ?? false)) {
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '')
+                        . 'RecordGo booking_store failed: ' . json_encode($response['errors'] ?? []),
+                ]);
+                Log::error('RecordGo booking_store failed', [
+                    'booking_id' => $booking->id,
+                    'errors' => $response['errors'] ?? null,
+                ]);
+                return;
+            }
+
+            $data = $response['data'] ?? [];
+            $voucher = $data['numVoucher'] ?? $data['voucherNumber'] ?? null;
+            if ($voucher) {
+                $booking->update([
+                    'provider_booking_ref' => $voucher,
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '')
+                        . 'RecordGo Voucher: ' . $voucher,
+                ]);
+            }
+
+            Log::info('RecordGo booking_store success', [
+                'booking_id' => $booking->id,
+                'voucher' => $voucher,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('RecordGo booking_store exception', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : '') . 'RecordGo booking_store error: ' . $e->getMessage(),
             ]);
         }
     }

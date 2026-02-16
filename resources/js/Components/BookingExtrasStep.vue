@@ -1312,15 +1312,16 @@ const recordGoOptionalExtras = computed(() => {
         return {
             id,
             code: extra.complementId,
-        name: extra.complementName ? stripHtml(extra.complementName) : 'Extra',
-        description: extra.complementDescription ? stripHtml(extra.complementDescription)
-            : (extra.complementSubtitle ? stripHtml(extra.complementSubtitle) : null),
+            name: extra.complementName ? stripHtml(extra.complementName) : 'Extra',
+            description: extra.complementDescription ? stripHtml(extra.complementDescription)
+                : (extra.complementSubtitle ? stripHtml(extra.complementSubtitle) : null),
             required: false,
             numberAllowed: extra.maxUnits || extra.complementUnits || null,
             daily_rate: extra.priceTaxIncDayDiscount ?? extra.priceTaxIncDay ?? null,
             total_for_booking: extra.priceTaxIncComplementDiscount ?? extra.priceTaxIncComplement ?? null,
             price: extra.priceTaxIncComplementDiscount ?? extra.priceTaxIncComplement ?? null,
             type: 'optional',
+            recordgo_payload: extra,
         };
     });
 });
@@ -1960,6 +1961,7 @@ const getSelectedExtrasDetails = computed(() => {
                 daily_rate: extra.daily_rate ?? null,
                 price: extra.price ?? null,
                 excess: extra.excess ?? null,
+                recordgo_payload: extra.recordgo_payload ?? null,
                 currency: extra.currency ?? null,
                 required: extra.required || false,
                 numberAllowed: extra.numberAllowed ?? null,
@@ -3489,7 +3491,7 @@ const formatPaymentMethod = (method) => {
                     <!-- Action Buttons -->
                     <div class="space-y-3">
                         <button @click="$emit('proceed-to-checkout', {
-                            package: isLocautoRent ? (selectedLocautoProtection ? 'POA' : 'BAS') : currentPackage,
+                            package: isLocautoRent ? (selectedLocautoProtection ? 'POA' : 'BAS') : selectedPackageType,
                             protection_code: isLocautoRent ? selectedLocautoProtection : (isAdobeCars ? getSelectedAdobeProtectionCodes() : null),
                             protection_amount: isLocautoRent && selectedLocautoProtection
                                 ? locautoProtectionPlans.find(p => p.code === selectedLocautoProtection)?.amount || 0

@@ -33,6 +33,57 @@ class RecordGoService
         return $this->post('booking_getAssociatedComplements', $payload);
     }
 
+    public function bookingStore(array $payload): array
+    {
+        return $this->post('booking_store', $payload);
+    }
+
+    public function bookingUpdate(array $payload): array
+    {
+        return $this->post('booking_update', $payload);
+    }
+
+    public function bookingGetBy(array $query): array
+    {
+        if ($this->subscriptionKey === '') {
+            Log::warning('RecordGo API misconfigured: missing subscription key');
+            return [
+                'ok' => false,
+                'status' => null,
+                'data' => null,
+                'errors' => [['code' => 'MISCONFIGURED', 'description' => 'Missing RecordGo subscription key']],
+            ];
+        }
+
+        $base = $this->baseUrl;
+        $suffix = str_ends_with($base, '/brokers') ? '' : '/brokers';
+        $url = $base . $suffix . '/booking_getBy/';
+
+        try {
+            $response = Http::timeout($this->timeout)
+                ->acceptJson()
+                ->withHeaders([
+                    'Ocp-Apim-Subscription-Key' => $this->subscriptionKey,
+                ])
+                ->get($url, $query);
+
+            return $this->normalizeResponse('booking_getBy', $url, $response);
+        } catch (\Exception $e) {
+            Log::error('RecordGo request failed', [
+                'endpoint' => 'booking_getBy',
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'ok' => false,
+                'status' => null,
+                'data' => null,
+                'errors' => [['code' => 'REQUEST_FAILED', 'description' => $e->getMessage()]],
+            ];
+        }
+    }
+
     public function resolveSellCode(?string $country): ?string
     {
         $country = strtoupper(trim((string) $country));

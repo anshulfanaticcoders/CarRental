@@ -227,6 +227,56 @@ class StripeCheckoutController extends Controller
                 $validated['vehicle'] = $vehicle;
             }
 
+            if ($providerSource === 'recordgo') {
+                $missing = [];
+                $vehicle = $validated['vehicle'] ?? [];
+                $countryCode = strtoupper((string) ($validated['country'] ?? ''));
+                if ($countryCode === '') {
+                    $countryCode = 'IT';
+                }
+
+                $recordgoProducts = $vehicle['recordgo_products'] ?? [];
+                $selectedRecordGo = null;
+                if (is_array($recordgoProducts)) {
+                    foreach ($recordgoProducts as $product) {
+                        if (($product['type'] ?? null) === ($validated['package'] ?? null)) {
+                            $selectedRecordGo = $product;
+                            break;
+                        }
+                    }
+                    if (!$selectedRecordGo && !empty($recordgoProducts)) {
+                        $selectedRecordGo = $recordgoProducts[0];
+                    }
+                }
+
+                $vehicle['recordgo_selected_product'] = $selectedRecordGo;
+                $validated['vehicle'] = $vehicle;
+
+                if (empty($vehicle['provider_pickup_id'])) {
+                    $missing[] = 'vehicle.provider_pickup_id';
+                }
+                if (empty($vehicle['provider_dropoff_id'])) {
+                    $missing[] = 'vehicle.provider_dropoff_id';
+                }
+                if (empty($vehicle['sipp_code'])) {
+                    $missing[] = 'vehicle.sipp_code';
+                }
+
+                if (!$selectedRecordGo || empty($selectedRecordGo['product_id']) || empty($selectedRecordGo['product_ver']) || empty($selectedRecordGo['rate_prod_ver'])) {
+                    $missing[] = 'recordgo.product_id/product_ver/rate_prod_ver';
+                }
+                if (empty($vehicle['recordgo_sellcode_ver'])) {
+                    $missing[] = 'vehicle.recordgo_sellcode_ver';
+                }
+
+                if (!empty($missing)) {
+                    return response()->json([
+                        'error' => 'Missing required Record Go booking details. Please refresh and try again.',
+                        'missing_fields' => $missing,
+                    ], 422);
+                }
+            }
+
             if ($providerSource === 'renteon') {
                 if (empty($pickupLocationDetails) && !empty($vehicle['pickup_office']) && is_array($vehicle['pickup_office'])) {
                     $pickupLocationDetails = $vehicle['pickup_office'];
@@ -474,6 +524,20 @@ class StripeCheckoutController extends Controller
                 'sbc_availability_id' => $validated['vehicle']['availability_id'] ?? null,
                 'sbc_payment_type' => $validated['vehicle']['payment_type'] ?? null,
                 'sbc_currency' => $validated['vehicle']['currency'] ?? null,
+                'recordgo_country' => $validated['vehicle']['recordgo_country'] ?? ($validated['country'] ?? null),
+                'recordgo_sell_code' => app(\App\Services\RecordGoService::class)->resolveSellCode($validated['country'] ?? null),
+                'recordgo_sellcode_ver' => $validated['vehicle']['recordgo_sellcode_ver'] ?? null,
+                'recordgo_acriss_code' => $validated['vehicle']['sipp_code'] ?? null,
+                'recordgo_product_id' => $validated['vehicle']['recordgo_selected_product']['product_id'] ?? null,
+                'recordgo_product_ver' => $validated['vehicle']['recordgo_selected_product']['product_ver'] ?? null,
+                'recordgo_rate_prod_ver' => $validated['vehicle']['recordgo_selected_product']['rate_prod_ver'] ?? null,
+                'recordgo_product_name' => $validated['vehicle']['recordgo_selected_product']['name'] ?? null,
+                'recordgo_product_description' => $validated['vehicle']['recordgo_selected_product']['description'] ?? null,
+                'recordgo_product_subtitle' => $validated['vehicle']['recordgo_selected_product']['subtitle'] ?? null,
+                'recordgo_booking_total' => $validated['vehicle']['recordgo_selected_product']['total'] ?? null,
+                'recordgo_automatic_complements' => $validated['vehicle']['recordgo_selected_product']['complements_automatic']
+                    ?? $validated['vehicle']['recordgo_selected_product']['complements_autom']
+                    ?? null,
                 'ok_mobility_token' => $validated['vehicle']['ok_mobility_token'] ?? null,
                 'ok_mobility_group_id' => $validated['vehicle']['ok_mobility_group_id'] ?? null,
                 'ok_mobility_rate_code' => $validated['vehicle']['ok_mobility_rate_code'] ?? null,
