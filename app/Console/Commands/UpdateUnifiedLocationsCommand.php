@@ -659,6 +659,10 @@ class UpdateUnifiedLocationsCommand extends Command
                 $stationName = is_array($stationData['Station']) ? ($stationData['Station'][0] ?? '') : ($stationData['Station'] ?? '');
                 $city = is_array($stationData['City']) ? ($stationData['City'][0] ?? '') : ($stationData['City'] ?? '');
                 $countryId = is_array($stationData['CountryID']) ? ($stationData['CountryID'][0] ?? '') : ($stationData['CountryID'] ?? '');
+                $address = '';
+                if (isset($stationData['Address'])) {
+                    $address = is_array($stationData['Address']) ? ($stationData['Address'][0] ?? '') : ($stationData['Address'] ?? '');
+                }
                 $locationType = '';
                 if (isset($stationData['LocationType'])) {
                     $locationType = is_array($stationData['LocationType']) ? ($stationData['LocationType'][0] ?? '') : ($stationData['LocationType'] ?? '');
@@ -682,6 +686,14 @@ class UpdateUnifiedLocationsCommand extends Command
                 $normalizedType = $this->normalizeTitleCase($locationType);
                 $hasKnownType = !empty($normalizedType) && strtolower($normalizedType) !== 'unknown';
                 $displayName = $hasKnownType ? trim($normalizedCity . ' ' . $normalizedType) : $normalizedCity;
+                $detectedType = $this->inferOkMobilityLocationTypeFromAddress($address);
+                $finalType = strtolower(trim($locationType));
+                if ($finalType === '' || $finalType === 'unknown') {
+                    $finalType = $detectedType;
+                }
+                if ($finalType === '') {
+                    $finalType = 'unknown';
+                }
 
                 $locations[] = [
                     'id' => 'okmobility_' . $stationId,
@@ -696,7 +708,7 @@ class UpdateUnifiedLocationsCommand extends Command
                     'source' => 'okmobility',
                     'matched_field' => 'location',
                     'provider_location_id' => $stationId,
-                    'location_type' => $hasKnownType ? $normalizedType : 'unknown',
+                    'location_type' => $finalType,
                 ];
             }
         } else {
@@ -754,6 +766,34 @@ class UpdateUnifiedLocationsCommand extends Command
         $value = preg_replace('/\s+/', ' ', $value);
 
         return ucwords(strtolower($value));
+    }
+
+    private function inferOkMobilityLocationTypeFromAddress(string $address): string
+    {
+        $address = strtolower(trim($address));
+        if ($address === '') {
+            return 'unknown';
+        }
+
+        $airportPattern = '/\b(aeropuerto|airport|aerodromo|terminal)\b/';
+        $portPattern = '/\b(puerto|port|harbor|harbour|ferry|marina)\b/';
+        $trainPattern = '/\b(train|railway|rail|station|estacion|gare|bahnhof)\b/';
+        $downtownPattern = '/\b(downtown|city center|city centre|center|centre|centro|central)\b/';
+
+        if (preg_match($airportPattern, $address)) {
+            return 'airport';
+        }
+        if (preg_match($portPattern, $address)) {
+            return 'port';
+        }
+        if (preg_match($trainPattern, $address)) {
+            return 'train';
+        }
+        if (preg_match($downtownPattern, $address)) {
+            return 'downtown';
+        }
+
+        return 'unknown';
     }
 
     private function fetchLocautoLocations(): array
