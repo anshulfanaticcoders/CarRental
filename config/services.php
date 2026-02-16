@@ -97,6 +97,13 @@ return [
         'connect_timeout' => env('XDRIVE_CONNECT_TIMEOUT', 10),
     ],
 
+    'sicily_by_car' => [
+        'base_url' => env('SBC_BASE_URL', 'https://booking.sbc.it/dev'),
+        'account_code' => env('SBC_ACCOUNT_CODE', 'demo'),
+        'api_key' => env('SBC_API_KEY'),
+        'timeout' => env('SBC_TIMEOUT', 20),
+    ],
+
     'esim_access' => [
         'api_key' => env('ESIM_ACCESS_API_KEY'),
         'base_url' => env('ESIM_ACCESS_API_URL'),

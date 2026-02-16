@@ -30,6 +30,7 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $renteonService;
     protected $favricaService;
     protected $xdriveService;
+    protected $sicilyByCarService;
 
     public function __construct(
         \App\Services\GreenMotionService $greenMotionService,
@@ -41,7 +42,8 @@ class UpdateUnifiedLocationsCommand extends Command
         \App\Services\WheelsysService $wheelsysService,
         \App\Services\RenteonService $renteonService,
         \App\Services\FavricaService $favricaService,
-        \App\Services\XDriveService $xdriveService
+        \App\Services\XDriveService $xdriveService,
+        \App\Services\SicilyByCarService $sicilyByCarService
     ) {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
@@ -54,6 +56,7 @@ class UpdateUnifiedLocationsCommand extends Command
         $this->renteonService = $renteonService;
         $this->favricaService = $favricaService;
         $this->xdriveService = $xdriveService;
+        $this->sicilyByCarService = $sicilyByCarService;
     }
 
     /**
@@ -93,6 +96,9 @@ class UpdateUnifiedLocationsCommand extends Command
         $xdriveLocations = $this->fetchXDriveLocations();
         $this->info('Fetched ' . count($xdriveLocations) . ' XDrive locations.');
 
+        $sicilyByCarLocations = $this->fetchSicilyByCarLocations();
+        $this->info('Fetched ' . count($sicilyByCarLocations) . ' Sicily By Car locations.');
+
         $unifiedLocations = $this->mergeAndNormalizeLocations(
             $internalLocations,
             $greenMotionLocations,
@@ -103,7 +109,8 @@ class UpdateUnifiedLocationsCommand extends Command
             $wheelsysLocations,
             $renteonLocations,
             $favricaLocations,
-            $xdriveLocations
+            $xdriveLocations,
+            $sicilyByCarLocations
         );
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
@@ -1036,6 +1043,88 @@ class UpdateUnifiedLocationsCommand extends Command
             \Illuminate\Support\Facades\Log::error('XDrive location fetch error: ' . $e->getMessage(), ['exception' => $e]);
             return [];
         }
+    }
+
+    private function fetchSicilyByCarLocations(): array
+    {
+        $this->info('Fetching Sicily By Car locations...');
+
+        try {
+            $rawLocations = $this->sicilyByCarService->listLocations();
+            if (empty($rawLocations)) {
+                $this->warn('No locations returned from Sicily By Car (or credentials missing).');
+                return [];
+            }
+
+            $mapped = [];
+            foreach ($rawLocations as $location) {
+                if (!is_array($location)) {
+                    continue;
+                }
+
+                $id = (string) ($location['id'] ?? '');
+                $name = trim((string) ($location['name'] ?? ''));
+                if ($id === '' || $name === '') {
+                    continue;
+                }
+
+                $type = (string) ($location['type'] ?? '');
+                $locationType = $this->mapSbcLocationType($type);
+
+                $airportCode = trim((string) ($location['airportCode'] ?? ''));
+                $address = $location['address'] ?? [];
+                $city = is_array($address) ? (string) ($address['city'] ?? '') : '';
+                $country = is_array($address) ? (string) ($address['country'] ?? '') : '';
+
+                $belowParts = [];
+                if (is_array($address)) {
+                    $belowParts[] = trim((string) ($address['addressLineOne'] ?? ''));
+                    $belowParts[] = trim((string) ($address['addressLineTwo'] ?? ''));
+                    $belowParts[] = trim((string) ($address['city'] ?? ''));
+                    $belowParts[] = trim((string) ($address['province'] ?? ''));
+                    $belowParts[] = trim((string) ($address['country'] ?? ''));
+                }
+
+                $coords = $location['coordinates'] ?? [];
+                $lat = is_array($coords) ? (float) ($coords['latitude'] ?? 0) : 0.0;
+                $lng = is_array($coords) ? (float) ($coords['longitude'] ?? 0) : 0.0;
+
+                $mapped[] = [
+                    'id' => 'sicily_by_car_' . $id,
+                    'label' => $name,
+                    'below_label' => implode(', ', array_filter(array_map('trim', $belowParts), static fn($v) => $v !== '')),
+                    'location' => $name,
+                    'city' => $city !== '' ? $this->normalizeTitleCase($city) : null,
+                    'state' => null,
+                    'country' => $country !== '' ? strtoupper(trim($country)) : null,
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'source' => 'sicily_by_car',
+                    'matched_field' => 'location',
+                    'provider_location_id' => $id,
+                    'location_type' => $locationType,
+                    'iata' => $airportCode !== '' ? strtoupper($airportCode) : null,
+                ];
+            }
+
+            return $mapped;
+        } catch (\Exception $e) {
+            $this->error('Error fetching Sicily By Car locations: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Sicily By Car location fetch error: ' . $e->getMessage(), ['exception' => $e]);
+            return [];
+        }
+    }
+
+    private function mapSbcLocationType(string $type): string
+    {
+        $type = strtolower(trim($type));
+        return match ($type) {
+            'airport' => 'airport',
+            'downtown' => 'downtown',
+            'port' => 'port',
+            'railway' => 'train',
+            default => 'unknown',
+        };
     }
 
     private function parseFavricaMapsPoint(?string $mapsPoint): array

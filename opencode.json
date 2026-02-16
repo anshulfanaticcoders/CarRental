@@ -75,5 +75,19 @@
       "url": "https://mcp.serenajs.com/mcp",
       "enabled": true
     }
+    ,
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp",
+      "enabled": true
+    },
+    "Ref": {
+      "type": "remote",
+      "url": "https://api.ref.tools/mcp",
+      "enabled": true,
+      "headers": {
+        "x-ref-api-key": "ref-e073988e7c23f9a980d0"
+      }
+    }
   }
 }
