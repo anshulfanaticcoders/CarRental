@@ -1237,9 +1237,47 @@ class UpdateUnifiedLocationsCommand extends Command
             return [0.0, 0.0];
         }
 
+        // DMS format (e.g. "25°15'16\"N 55°21'23\"E")
+        $dmsPattern = '/(\d+(?:\.\d+)?)\s*[°º]\s*(\d+(?:\.\d+)?)\s*[\'’]\s*(\d+(?:\.\d+)?)\s*(?:\"|″)?\s*([NSEW])/iu';
+        if (preg_match_all($dmsPattern, $mapsPoint, $dmsMatches, PREG_SET_ORDER) && count($dmsMatches) >= 2) {
+            $coords = [];
+            foreach ($dmsMatches as $m) {
+                $deg = (float) $m[1];
+                $min = (float) $m[2];
+                $sec = (float) $m[3];
+                $hem = strtoupper((string) $m[4]);
+                $decimal = $deg + ($min / 60.0) + ($sec / 3600.0);
+                if ($hem === 'S' || $hem === 'W') {
+                    $decimal *= -1;
+                }
+                $coords[$hem] = $decimal;
+            }
+
+            $lat = $coords['N'] ?? $coords['S'] ?? null;
+            $lng = $coords['E'] ?? $coords['W'] ?? null;
+            if ($lat !== null && $lng !== null) {
+                return [$lat, $lng];
+            }
+        }
+
+        // Decimal / WKT / SRID formats
         preg_match_all('/-?\d+(?:\.\d+)?/', $mapsPoint, $matches);
-        if (!empty($matches[0]) && count($matches[0]) >= 2) {
-            return [(float) $matches[0][0], (float) $matches[0][1]];
+        $numbers = $matches[0] ?? [];
+        if (count($numbers) >= 2) {
+            $a = (float) $numbers[count($numbers) - 2];
+            $b = (float) $numbers[count($numbers) - 1];
+
+            // WKT POINT is typically "lng lat"
+            if (stripos($mapsPoint, 'point') !== false) {
+                return [$b, $a];
+            }
+
+            // Heuristic: if first looks like longitude and second like latitude
+            if (abs($a) > 90 && abs($b) <= 90) {
+                return [$b, $a];
+            }
+
+            return [$a, $b];
         }
 
         return [0.0, 0.0];
