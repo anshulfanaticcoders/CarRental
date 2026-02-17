@@ -787,6 +787,8 @@ Route::group([
 
         // Vendor Vehicles
         Route::resource('current-vendor-vehicles', VendorVehicleController::class);
+        Route::patch('current-vendor-vehicles/{vehicle}/parking-address', [VendorVehicleController::class, 'updateParkingAddress'])
+            ->name('current-vendor-vehicles.update-parking-address');
         Route::post('current-vendor-vehicles/bulk-destroy', [VendorVehicleController::class, 'bulkDestroy'])->name('current-vendor-vehicles.bulk-destroy');
         Route::delete('/current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])->name('current-vendor-vehicles.deleteImage');
 

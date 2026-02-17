@@ -18,8 +18,8 @@
     </div>
 
     <MyProfileLayout>
-        <div class="container mx-auto p-6 space-y-6">
-            <div class="py-12">
+        <div class="container mx-auto p-4 space-y-6 sm:p-6">
+            <div class="py-6 sm:py-12">
                 <div class="mx-auto">
                     <div v-if="Object.keys(formErrors).length"
                         class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -32,20 +32,27 @@
                     </div>
                     <form @submit.prevent="updateVehicle">
                         <Tabs defaultValue="basic" class="w-full">
-                            <TabsList class="grid w-full grid-cols-5">
-                                <TabsTrigger value="basic">{{ _t('vendorprofilepages', 'tab_basic_information') }}
+                            <TabsList class="grid w-full grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                                <TabsTrigger value="basic" class="whitespace-normal text-xs leading-tight sm:text-sm">
+                                    {{ _t('vendorprofilepages', 'tab_basic_information') }}
                                 </TabsTrigger>
-                                <TabsTrigger value="specifications">{{ _t('vendorprofilepages', 'tab_specifications') }}
+                                <TabsTrigger value="specifications"
+                                    class="whitespace-normal text-xs leading-tight sm:text-sm">
+                                    {{ _t('vendorprofilepages', 'tab_specifications') }}
                                 </TabsTrigger>
-                                <TabsTrigger value="pricing">{{ _t('vendorprofilepages', 'tab_pricing_features') }}
+                                <TabsTrigger value="pricing" class="whitespace-normal text-xs leading-tight sm:text-sm">
+                                    {{ _t('vendorprofilepages', 'tab_pricing_features') }}
                                 </TabsTrigger>
-                                <TabsTrigger value="guidelines">{{ _t('vendorprofilepages', 'tab_guidelines_timings') }}
+                                <TabsTrigger value="guidelines" class="whitespace-normal text-xs leading-tight sm:text-sm">
+                                    {{ _t('vendorprofilepages', 'tab_guidelines_timings') }}
                                 </TabsTrigger>
-                                <TabsTrigger value="images">{{ _t('vendorprofilepages', 'tab_images') }}</TabsTrigger>
+                                <TabsTrigger value="images" class="whitespace-normal text-xs leading-tight sm:text-sm">
+                                    {{ _t('vendorprofilepages', 'tab_images') }}
+                                </TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="basic">
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
                                     <div>
                                         <InputLabel for="category_id">{{ _t('vendorprofilepages',
                                             'label_vehicle_category') }}</InputLabel>
@@ -184,8 +191,8 @@
                                                     <span class="font-medium text-gray-900">{{ _t('vendorprofilepages',
                                                         'current_location_label') }}</span>
                                                 </div>
-                                                <div class="text-gray-700 font-medium">{{ displayedFullAddress }}</div>
-                                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                                <div class="text-gray-700 font-medium break-words">{{ displayedFullAddress }}</div>
+                                                <div class="grid gap-4 text-sm [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
                                                     <div class="flex items-center gap-2">
                                                         <span class="text-gray-500">{{ _t('vendorprofilepages',
                                                             'label_city') }}:</span>
@@ -255,7 +262,7 @@
                             </TabsContent>
 
                             <TabsContent value="specifications">
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
                                     <div>
                                         <InputLabel for="seating_capacity">{{ _t('vendorprofilepages',
                                             'label_seating_capacity') }}</InputLabel>
@@ -387,8 +394,8 @@
                                                         class="inline-currency">{{ currencyCode }}</span></p>
                                             </div>
                                         </div>
-                                        <div class="mt-4 grid grid-cols-2 gap-4">
-                                            <div class="col-span-2">
+                                        <div class="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+                                            <div class="col-span-full">
                                                 <InputLabel for="price_per_day">{{ _t('vendorprofilepages',
                                                     'label_price_per_day') }}</InputLabel>
                                                 <div class="input-with-suffix">
@@ -398,7 +405,7 @@
                                                     <span class="input-suffix">{{ currencyCode }}</span>
                                                 </div>
                                             </div>
-                                            <div class="col-span-2 flex flex-wrap gap-6">
+                                            <div class="col-span-full flex flex-wrap gap-4 sm:gap-6">
                                                 <label class="flex items-center gap-2">
                                                     <input type="checkbox" v-model="selectedTypes.week" class="w-auto" />
                                                     {{ _t('vendorprofilepages', 'label_price_per_week') }}
@@ -452,7 +459,7 @@
                                                     </div>
                                                 </div>
                                             </template>
-                                            <div v-if="selectedTypes.week || selectedTypes.month" class="col-span-2">
+                                            <div v-if="selectedTypes.week || selectedTypes.month" class="col-span-full">
                                                 <InputLabel class="text-black mb-2">Preferred price type</InputLabel>
                                                 <div class="flex flex-wrap gap-2 rounded-lg bg-gray-50 p-2">
                                                     <label
@@ -489,7 +496,7 @@
 
                                     <div class="rounded-xl border border-gray-200 bg-white p-5">
                                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Deposits & Costs</h3>
-                                        <div class="grid grid-cols-2 gap-4">
+                                        <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
                                             <div>
                                                 <InputLabel for="security_deposit">{{ _t('vendorprofilepages',
                                                     'label_security_deposit') }}</InputLabel>
@@ -517,25 +524,24 @@
                                             <h3 class="text-lg font-semibold text-gray-900">Protection Plans</h3>
                                             <span class="text-xs text-gray-500">Optional</span>
                                         </div>
-                                        <div
-                                            class="grid grid-cols-3 gap-4 max-[1024px]:grid-cols-2 max-[640px]:grid-cols-1">
+                                        <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(420px,1fr))]">
                                             <div v-for="plan in protectionPlans" :key="plan.key"
                                                 class="rounded-[20px] border border-[#153B4F] bg-white p-5 flex flex-col gap-5"
                                                 :class="{
                                                     'border-dashed bg-gray-50': !plan.selected,
                                                     'ring-2 ring-green-500': plan.selected
                                                 }">
-                                                <div class="flex items-start justify-between gap-4">
+                                                <div class="flex flex-col items-start justify-between gap-4 sm:flex-row">
                                                     <div>
                                                         <span class="text-[1.1rem] font-semibold text-gray-800">{{
                                                             plan.plan_type }}</span>
                                                     </div>
-                                                    <div class="flex flex-col items-end gap-2">
+                                                    <div class="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
                                                         <label class="text-xs text-gray-500">Price per day</label>
-                                                        <div class="input-with-suffix">
+                                                        <div class="input-with-suffix w-full sm:w-auto">
                                                             <Input type="number" step="0.01" v-model.number="plan.price"
                                                                 :min="pricePerDay" :disabled="!plan.selected"
-                                                                class="w-28 px-2 py-1 border rounded-md text-right"
+                                                                class="w-full px-2 py-1 border rounded-md text-right sm:w-28"
                                                                 :class="!plan.selected ? 'bg-gray-100' : ''" />
                                                             <span class="input-suffix">{{ currencyCode }}</span>
                                                         </div>
@@ -582,21 +588,21 @@
                                                     'border-dashed bg-gray-50': !isAddonSelected(addon.id),
                                                     'ring-2 ring-green-500': isAddonSelected(addon.id)
                                                 }">
-                                                <div class="flex justify-between gap-10 items-center max-[768px]:flex-col">
-                                                    <div class="flex items-start gap-3 w-[55%] max-[768px]:w-full">
+                                                <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                                                    <div class="min-w-0 flex items-start gap-3">
                                                         <div>
                                                             <h3 class="font-semibold text-lg">{{ addon.extra_name }}</h3>
-                                                            <p class="text-gray-500 text-sm">{{ addon.description }}</p>
+                                                            <p class="text-gray-500 text-sm break-words">{{ addon.description }}</p>
                                                         </div>
                                                     </div>
-                                                    <div class="flex gap-4 items-end">
+                                                    <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
                                                         <div class="flex flex-col items-start">
                                                             <label for="price" class="text-sm text-gray-500">{{
                                                                 _t('createvehicle', 'step6_price_per_day_label') }}</label>
                                                             <div class="input-with-suffix">
                                                                 <input type="number" v-model="addonPrices[addon.id]"
                                                                     :disabled="!isAddonSelected(addon.id)"
-                                                                    class="w-24 px-2 py-1 border rounded"
+                                                                    class="w-full px-2 py-1 border rounded sm:w-24"
                                                                     :class="!isAddonSelected(addon.id) ? 'bg-gray-100' : ''" />
                                                                 <span class="input-suffix">{{ currencyCode }}</span>
                                                             </div>
@@ -640,43 +646,42 @@
                                             <div v-if="customAddons.length" class="space-y-4">
                                                 <div v-for="addon in customAddons" :key="addon.id"
                                                     class="rounded-lg border border-gray-200 p-4">
-                                                    <div
-                                                        class="grid grid-cols-6 gap-3 max-[1024px]:grid-cols-3 max-[768px]:grid-cols-1">
-                                                        <div class="col-span-2 max-[1024px]:col-span-3">
-                                                            <InputLabel>Addon name</InputLabel>
-                                                            <Input v-model="addon.extra_name" class="input-field"
-                                                                placeholder="e.g. Baby seat" />
+                                                <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                                                    <div>
+                                                        <InputLabel>Addon name</InputLabel>
+                                                        <Input v-model="addon.extra_name" class="input-field"
+                                                            placeholder="e.g. Baby seat" />
+                                                    </div>
+                                                    <div>
+                                                        <InputLabel>Type</InputLabel>
+                                                        <Input v-model="addon.extra_type" class="input-field"
+                                                            placeholder="e.g. equipment" />
+                                                    </div>
+                                                    <div>
+                                                        <InputLabel>Price</InputLabel>
+                                                        <div class="input-with-suffix">
+                                                            <Input type="number" v-model.number="addon.price"
+                                                                min="0" step="0.01" class="input-field" />
+                                                            <span class="input-suffix">{{ currencyCode }}</span>
                                                         </div>
-                                                        <div class="col-span-1 max-[1024px]:col-span-3">
-                                                            <InputLabel>Type</InputLabel>
-                                                            <Input v-model="addon.extra_type" class="input-field"
-                                                                placeholder="e.g. equipment" />
-                                                        </div>
-                                                        <div class="col-span-1 max-[1024px]:col-span-2">
-                                                            <InputLabel>Price</InputLabel>
-                                                            <div class="input-with-suffix">
-                                                                <Input type="number" v-model.number="addon.price"
-                                                                    min="0" step="0.01" class="input-field" />
-                                                                <span class="input-suffix">{{ currencyCode }}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-span-1 max-[1024px]:col-span-1">
-                                                            <InputLabel>Qty</InputLabel>
-                                                            <Input type="number" v-model.number="addon.quantity" min="1"
-                                                                class="input-field" />
-                                                        </div>
-                                                        <div class="col-span-5 max-[1024px]:col-span-3">
-                                                            <InputLabel>Description</InputLabel>
-                                                            <Input v-model="addon.description" class="input-field"
-                                                                placeholder="Short description" />
-                                                        </div>
-                                                        <div class="col-span-1 flex items-end justify-end">
-                                                            <button type="button" @click="removeCustomAddon(addon.id)"
-                                                                class="text-sm text-red-600 hover:underline">Remove</button>
-                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <InputLabel>Qty</InputLabel>
+                                                        <Input type="number" v-model.number="addon.quantity" min="1"
+                                                            class="input-field" />
+                                                    </div>
+                                                    <div class="[grid-column:1/-1]">
+                                                        <InputLabel>Description</InputLabel>
+                                                        <Input v-model="addon.description" class="input-field"
+                                                            placeholder="Short description" />
+                                                    </div>
+                                                    <div class="flex items-end justify-start sm:justify-end">
+                                                        <button type="button" @click="removeCustomAddon(addon.id)"
+                                                            class="text-sm text-red-600 hover:underline">Remove</button>
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
                                             <p v-else class="text-sm text-gray-500">No custom addons added.</p>
                                         </div>
                                     </div>
@@ -687,15 +692,13 @@
                                                 'section_rental_conditions_benefits') }}</span>
                                             <span class="text-xs text-gray-500">Set per period</span>
                                         </div>
-                                        <div
-                                            class="mt-4 grid grid-cols-3 gap-4 max-[1024px]:grid-cols-2 max-[768px]:grid-cols-1">
+                                        <div class="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(460px,1fr))]">
                                             <div class="rounded-lg border border-gray-200 p-4">
                                                 <div class="flex items-center justify-between mb-3">
                                                     <h4 class="text-sm font-semibold text-gray-800">Per day</h4>
                                                     <span class="text-xs text-gray-400">Day</span>
                                                 </div>
-                                                <div
-                                                    class="grid grid-cols-3 gap-3 max-[1024px]:grid-cols-2 max-[768px]:grid-cols-1">
+                                                <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
                                                     <div class="flex flex-col gap-2">
                                                         <div class="flex items-center gap-2">
                                                             <input type="checkbox"
@@ -751,8 +754,7 @@
                                                     <h4 class="text-sm font-semibold text-gray-800">Per week</h4>
                                                     <span class="text-xs text-gray-400">Week</span>
                                                 </div>
-                                                <div
-                                                    class="grid grid-cols-3 gap-3 max-[1024px]:grid-cols-2 max-[768px]:grid-cols-1">
+                                                <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
                                                     <div class="flex flex-col gap-2">
                                                         <div class="flex items-center gap-2">
                                                             <input type="checkbox"
@@ -808,8 +810,7 @@
                                                     <h4 class="text-sm font-semibold text-gray-800">Per month</h4>
                                                     <span class="text-xs text-gray-400">Month</span>
                                                 </div>
-                                                <div
-                                                    class="grid grid-cols-3 gap-3 max-[1024px]:grid-cols-2 max-[768px]:grid-cols-1">
+                                                <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
                                                     <div class="flex flex-col gap-2">
                                                         <div class="flex items-center gap-2">
                                                             <input type="checkbox"
@@ -861,7 +862,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="mt-4 grid grid-cols-2 gap-4 max-[768px]:grid-cols-1">
+                                        <div class="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
                                             <div>
                                                 <InputLabel for="minimum_driver_age">{{ _t('vendorprofilepages',
                                                     'label_minimum_driver_age') }}</InputLabel>
@@ -874,28 +875,28 @@
                                     <div class="rounded-xl border border-gray-200 bg-white p-5">
                                         <InputLabel for="payment_method">{{ _t('vendorprofilepages',
                                             'label_payment_methods') }}</InputLabel>
-                                        <div class="flex items-center gap-10 flex-wrap mt-3">
-                                            <label class="flex gap-2 items-center text-nowrap">
+                                        <div class="flex flex-wrap items-center gap-4 mt-3 sm:gap-6">
+                                            <label class="flex gap-2 items-center">
                                                 <input type="checkbox" v-model="form.payment_method" value="credit_card"
                                                     class="w-auto" />
                                                 {{ _t('vendorprofilepages', 'payment_method_credit_card') }}
                                             </label>
-                                            <label class="flex gap-1 items-center text-nowrap">
+                                            <label class="flex gap-1 items-center">
                                                 <input type="checkbox" v-model="form.payment_method" value="cheque"
                                                     class="w-auto" />
                                                 {{ _t('vendorprofilepages', 'payment_method_cheque') }}
                                             </label>
-                                            <label class="flex gap-1 items-center text-nowrap">
+                                            <label class="flex gap-1 items-center">
                                                 <input type="checkbox" v-model="form.payment_method" value="bank_wire"
                                                     class="w-auto" />
                                                 {{ _t('vendorprofilepages', 'payment_method_bank_wire') }}
                                             </label>
-                                            <label class="flex gap-1 items-center text-nowrap">
+                                            <label class="flex gap-1 items-center">
                                                 <input type="checkbox" v-model="form.payment_method"
                                                     value="cryptocurrency" class="w-auto" />
                                                 {{ _t('vendorprofilepages', 'payment_method_cryptocurrency') }}
                                             </label>
-                                            <label class="flex gap-1 items-center text-nowrap">
+                                            <label class="flex gap-1 items-center">
                                                 <input type="checkbox" v-model="form.payment_method" value="cash"
                                                     class="w-auto" />
                                                 {{ _t('vendorprofilepages', 'payment_method_cash') }}
@@ -906,9 +907,9 @@
                                     <div class="rounded-xl border border-gray-200 bg-white p-5">
                                         <InputLabel for="features">{{ _t('vendorprofilepages', 'label_features') }}
                                         </InputLabel>
-                                        <div class="flex gap-10 flex-wrap mt-3">
+                                        <div class="flex flex-wrap gap-4 mt-3 sm:gap-6">
                                             <label v-for="feature in availableFeatures" :key="feature.id"
-                                                class="flex items-center text-nowrap gap-2">
+                                                class="flex items-center gap-2">
                                                 <input type="checkbox" v-model="form.features" :value="feature.name"
                                                     class="w-auto" />
                                                 <img v-if="feature.icon_url" :src="feature.icon_url" :alt="feature.name"
@@ -937,7 +938,7 @@
                                 </div>
                                 <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
                                     <p>{{ _t('vendorprofilepages', 'text_choose_pickup_return_time') }}</p>
-                                    <div class="grid grid-cols-2 gap-10">
+                                    <div class="grid gap-10 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
                                         <div>
                                             <!-- Pickup Times Section -->
                                             <label class="block text-lg font-semibold text-gray-800 mb-2">{{
@@ -2186,7 +2187,6 @@ input[type="checkbox"] {
 }
 
 .input-with-suffix input {
-    width: auto;
     flex: 1 1 auto;
     min-width: 0;
 }

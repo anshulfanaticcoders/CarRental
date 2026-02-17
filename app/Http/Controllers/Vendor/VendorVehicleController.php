@@ -521,6 +521,54 @@ class VendorVehicleController extends Controller
         return back()->with('success', 'Vehicle updated successfully');
     }
 
+    public function updateParkingAddress(Request $request, $locale, $id)
+    {
+        $vehicle = Vehicle::findOrFail($id);
+
+        if ($vehicle->vendor_id !== auth()->id()) {
+            return response()->json([
+                'message' => 'You do not have permission to update this vehicle',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'location' => 'required|string|max:255',
+            'location_type' => 'required|string|max:255',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
+            'full_vehicle_address' => 'nullable|string|max:255',
+        ]);
+
+        if (!isset($validated['full_vehicle_address']) || $validated['full_vehicle_address'] === '') {
+            $addressParts = array_filter([
+                $validated['location'] ?? null,
+                $validated['city'] ?? null,
+                $validated['state'] ?? null,
+                $validated['country'] ?? null,
+            ]);
+            $validated['full_vehicle_address'] = implode(', ', $addressParts);
+        }
+
+        $vehicle->update($validated);
+
+        return response()->json([
+            'message' => 'Parking address updated successfully.',
+            'vehicle' => $vehicle->only([
+                'location',
+                'location_type',
+                'latitude',
+                'longitude',
+                'city',
+                'state',
+                'country',
+                'full_vehicle_address',
+            ]),
+        ]);
+    }
+
     public function destroy($locale, $id)
     {
         $vendorId = auth()->id();

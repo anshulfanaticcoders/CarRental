@@ -133,6 +133,13 @@ class VehicleController extends Controller
             'selected_plans.*.features.*' => 'string|max:255',
             'selected_plans.*.plan_description' => 'nullable|string|max:2000',
 
+            'custom_addons' => 'nullable|array',
+            'custom_addons.*.extra_name' => 'required|string|max:255',
+            'custom_addons.*.extra_type' => 'nullable|string|max:255',
+            'custom_addons.*.description' => 'nullable|string|max:2000',
+            'custom_addons.*.price' => 'required|numeric|min:0',
+            'custom_addons.*.quantity' => 'required|integer|min:1',
+
         ]);
 
         $selectedPlans = $request->input('selected_plans', []);
@@ -281,6 +288,44 @@ class VehicleController extends Controller
                     'price' => $addonPrices[$addonId],
                     'quantity' => $addonQuantities[$addonId],
                     'description' => $addon->description, // Add description
+                ]);
+            }
+        }
+
+        $customAddons = $request->input('custom_addons', []);
+        if (!empty($customAddons)) {
+            foreach ($customAddons as $customAddon) {
+                $extraName = trim($customAddon['extra_name'] ?? '');
+                if ($extraName === '') {
+                    continue;
+                }
+                $extraType = trim($customAddon['extra_type'] ?? '') ?: 'custom';
+                $description = trim($customAddon['description'] ?? '');
+                $price = $customAddon['price'] ?? 0;
+                $quantity = $customAddon['quantity'] ?? 1;
+
+                $addon = BookingAddon::updateOrCreate(
+                    [
+                        'vendor_id' => $request->user()->id,
+                        'extra_name' => $extraName,
+                        'extra_type' => $extraType,
+                    ],
+                    [
+                        'description' => $description,
+                        'price' => $price,
+                        'quantity' => $quantity,
+                    ]
+                );
+
+                VendorVehicleAddon::create([
+                    'vendor_id' => $request->user()->id,
+                    'vehicle_id' => $vehicle->id,
+                    'addon_id' => $addon->id,
+                    'extra_type' => $addon->extra_type,
+                    'extra_name' => $addon->extra_name,
+                    'price' => $price,
+                    'quantity' => $quantity,
+                    'description' => $addon->description,
                 ]);
             }
         }

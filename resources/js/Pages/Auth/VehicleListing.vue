@@ -11,7 +11,8 @@
         <meta name="robots" content="noindex, nofollow">
         <title>Vehicle Listing</title>
     </Head>
-    <div v-if="currentStep === 0" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+    <div v-if="currentStep === 0 && !isAddressOnlyEdit"
+        class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div
             class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto max-[768px]:gap-10">
             <div class="column h-full w-[50%] flex items-center justify-center max-[768px]:w-full  max-[768px]:h-auto">
@@ -62,7 +63,8 @@
     </div>
 
     <!-- Step-1 -->
-    <div v-if="currentStep === 1" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+    <div v-if="currentStep === 1 && !isAddressOnlyEdit"
+        class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
             <div
                 class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[5rem] max-[768px]:pb-0 max-[768px]:w-full bg-white">
@@ -426,7 +428,8 @@
     </div>
 
     <!-- Step-2 -->
-    <div v-if="currentStep === 2" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+    <div v-if="currentStep === 2 && !isAddressOnlyEdit"
+        class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
             <div
                 class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
@@ -660,7 +663,14 @@
                         <span v-if="errors.location_type" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                             errors.location_type }}</span>
                     </div>
-                    <div
+                    <div v-if="isAddressOnlyEdit"
+                        class="buttons flex justify-end gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
+                        <PrimaryButton class="w-[15rem] max-[768px]:w-[10rem]" type="button"
+                            @click="updateParkingAddress">
+                            Update Parking Address
+                        </PrimaryButton>
+                    </div>
+                    <div v-else
                         class="buttons flex justify-between gap-[1.5rem] mt-[2rem] pb-[4rem] max-[768px]:pb-0 max-[768px]:px-[1.5rem]">
                         <button class="button-secondary w-[15rem] max-[768px]:w-[10rem]" @click="prevStep">
                             {{ _t('createvehicle', 'back_button') }}
@@ -699,7 +709,8 @@
     </div>
 
     <!-- Step-4 -->
-    <div v-if="currentStep === 4" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+    <div v-if="currentStep === 4 && !isAddressOnlyEdit"
+        class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
             <div
                 class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
@@ -1248,7 +1259,8 @@
 
 
     <!-- Step-5 -->
-    <div v-if="currentStep === 5" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+    <div v-if="currentStep === 5 && !isAddressOnlyEdit"
+        class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
             <div
                 class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
@@ -1370,7 +1382,8 @@
 
 
     <!-- Step-6: Addon Selection -->
-    <div v-if="currentStep === 6" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+    <div v-if="currentStep === 6 && !isAddressOnlyEdit"
+        class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
             <div
                 class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
@@ -1386,58 +1399,65 @@
                         <span class="text-[0.75rem] text-customLightGrayColor font-medium">{{
                             _t('createvehicle', 'step6_addons_description') }}</span>
                     </div>
-                    <div v-for="addon in addons" :key="addon.id"
-                        class="border rounded-lg p-4 max-[768px]:mx-[1.5rem] flex flex-col gap-4"
-                        :class="{
-                            'border-dashed bg-gray-50': !isAddonSelected(addon.id),
-                            'ring-2 ring-green-500': isAddonSelected(addon.id)
-                        }">
-                        <div class="flex justify-between gap-10 items-center max-[768px]:flex-col">
-                            <div class="flex items-start gap-3 w-[55%] max-[768px]:w-full">
-                                <div>
-                                    <h3 class="font-semibold text-lg max-[768px]:text-[1rem]">{{ addon.extra_name }}</h3>
-                                    <p class="text-gray-500 text-sm max-[768px]:text-[0.75rem]">{{ addon.description }}</p>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-4 items-end">
-                                <div class="flex flex-col items-start">
-                                    <label for="price" class="text-sm text-gray-500">{{
-                                        _t('createvehicle', 'step6_price_per_day_label') }}</label>
-                                    <div class="input-with-suffix">
-                                        <input type="number" v-model="addonPrices[addon.id]"
-                                            :disabled="!isAddonSelected(addon.id)"
-                                            class="w-24 px-2 py-1 border rounded max-[768px]:!py-2"
-                                            :class="!isAddonSelected(addon.id) ? 'bg-gray-100' : ''" />
-                                        <span class="input-suffix">{{ currencyCode }}</span>
+                    <div class="max-[768px]:mx-[1.5rem]">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-semibold text-gray-800">Custom add-ons</h4>
+                        </div>
+                        <p v-if="errors.custom_addons" class="text-red-500 text-sm mb-3">{{ errors.custom_addons }}</p>
+                        <div v-if="customAddons.length" class="space-y-3">
+                            <div v-for="(addon, index) in customAddons" :key="addon.id"
+                                class="rounded-lg border border-gray-200 p-4">
+                                <div class="grid grid-cols-12 gap-3">
+                                    <div class="col-span-12 md:col-span-5">
+                                        <InputLabel>Addon name</InputLabel>
+                                        <input v-model="addon.extra_name"
+                                            class="w-full rounded-lg border border-gray-200 px-3 py-2"
+                                            placeholder="e.g. Baby seat" />
                                     </div>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-500 mb-2">{{ _t('createvehicle', 'step6_quantity_label') }}
-                                    </p>
-                                    <div class="flex items-center gap-2">
-                                        <button @click="decrementQuantity(addon.id)" type="button"
-                                            :disabled="!isAddonSelected(addon.id)"
-                                            class="px-2 py-1 border rounded"
-                                            :class="!isAddonSelected(addon.id) ? 'opacity-50 cursor-not-allowed' : ''">-</button>
-                                        <span class="px-3 py-1 bg-gray-100 rounded">{{ addonQuantities[addon.id] || '00'
-                                            }}</span>
-                                        <button @click="incrementQuantity(addon.id)" type="button"
-                                            :disabled="!isAddonSelected(addon.id)"
-                                            class="px-2 py-1 border rounded"
-                                            :class="!isAddonSelected(addon.id) ? 'opacity-50 cursor-not-allowed' : ''">+</button>
+                                    <div class="col-span-12 md:col-span-3">
+                                        <InputLabel>Type</InputLabel>
+                                        <input v-model="addon.extra_type"
+                                            class="w-full rounded-lg border border-gray-200 px-3 py-2"
+                                            placeholder="e.g. equipment" />
+                                    </div>
+                                    <div class="col-span-6 md:col-span-2">
+                                        <InputLabel>Price</InputLabel>
+                                        <div class="input-with-suffix">
+                                            <input type="number" v-model.number="addon.price" min="0" step="0.01"
+                                                class="w-full rounded-lg border border-gray-200 px-3 py-2" />
+                                            <span class="input-suffix">{{ currencyCode }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-span-6 md:col-span-2">
+                                        <InputLabel>Qty</InputLabel>
+                                        <input type="number" v-model.number="addon.quantity" min="1"
+                                            class="w-full rounded-lg border border-gray-200 px-3 py-2" />
+                                    </div>
+                                    <div class="col-span-12">
+                                        <InputLabel>Description</InputLabel>
+                                        <input v-model="addon.description"
+                                            class="w-full rounded-lg border border-gray-200 px-3 py-2"
+                                            placeholder="Short description" />
+                                    </div>
+                                    <div class="col-span-12 flex items-center justify-between">
+                                        <button type="button" @click="removeCustomAddon(addon.id)"
+                                            class="text-sm text-red-600 hover:underline">Remove</button>
+                                        <button v-if="index === customAddons.length - 1" type="button"
+                                            @click="addCustomAddon"
+                                            class="text-sm font-semibold text-[#153B4F] hover:underline">
+                                            Add another addon
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <button type="button" @click="toggleAddonSelection(addon.id)"
-                            class="w-full py-2 rounded-lg font-semibold text-sm transition"
-                            :class="isAddonSelected(addon.id)
-                                ? 'bg-green-600 text-white hover:bg-green-700'
-                                : 'bg-[#153B4F] text-white hover:bg-[#102c3b]'">
-                            {{ isAddonSelected(addon.id) ? 'Selected' : 'Select Addon' }}
-                        </button>
+                        <div v-else class="flex items-center justify-between rounded-lg border border-dashed border-gray-200 p-4">
+                            <p class="text-sm text-gray-500">No custom addons added.</p>
+                            <button type="button" @click="addCustomAddon"
+                                class="text-sm font-semibold text-[#153B4F] hover:underline">
+                                Add custom addon
+                            </button>
+                        </div>
                     </div>
 
 
@@ -1488,7 +1508,8 @@
     </div>
 
     <!-- Step-7 -->
-    <div v-if="currentStep === 7" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative ">
+    <div v-if="currentStep === 7 && !isAddressOnlyEdit"
+        class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative ">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
             <div
                 class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
@@ -1630,10 +1651,7 @@ import vehicleColorsFromJson from '../../data/colors.json';
 const page = usePage();
 const currencyCode = computed(() => page.props.auth?.user?.profile?.currency || page.props.currency || 'USD');
 const toast = useToast(); // Initialize toast
-const addons = ref([]);
-const selectedAddons = ref([]);
-const addonPrices = ref({});
-const addonQuantities = ref({});
+const customAddons = ref([]);
 // Form data
 const form = useForm({
     category_id: null,
@@ -1709,9 +1727,7 @@ const form = useForm({
 
     selected_plans: [],
 
-    selected_addons: selectedAddons.value,
-    addon_prices: addonPrices.value,
-    addon_quantities: addonQuantities.value,
+    custom_addons: customAddons.value,
     full_vehicle_address: null,
 
 });
@@ -1722,6 +1738,7 @@ const props = defineProps({
         default: null // Provide a default value
     },
 });
+const isAddressOnlyEdit = computed(() => Boolean(props.vehicle?.id));
 const selectedTypes = reactive({
     day: true, // Daily is selected by default
     week: false,
@@ -1949,57 +1966,34 @@ const formatDate = (value) => {
     form.registration_date = date.toISOString().split('T')[0] // Sets to 'YYYY-MM-DD'
 }
 
-// Add addonQuantities ref
-
-const fetchAddons = async () => {
-    try {
-        const response = await axios.get('/api/booking-addons');
-        addons.value = response.data;
-
-        // Prefill addon prices and quantities
-        addons.value.forEach(addon => {
-            addonPrices.value[addon.id] = addon.price || 0;
-            addonQuantities.value[addon.id] = 1;
-        });
-    } catch (error) {
-        console.error('Error fetching addons:', error);
-    }
+const addCustomAddon = () => {
+    customAddons.value.push({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        extra_name: '',
+        extra_type: '',
+        description: '',
+        price: null,
+        quantity: 1,
+    });
 };
 
-const isAddonSelected = (addonId) => selectedAddons.value.includes(addonId);
-
-const toggleAddonSelection = (addonId) => {
-    const index = selectedAddons.value.indexOf(addonId);
-    if (index > -1) {
-        selectedAddons.value.splice(index, 1);
-        return;
-    }
-
-    selectedAddons.value.push(addonId);
+const removeCustomAddon = (id) => {
+    customAddons.value = customAddons.value.filter(addon => addon.id !== id);
 };
 
-const incrementQuantity = (addonId) => {
-    if (!isAddonSelected(addonId)) {
-        return;
-    }
-    if (!addonQuantities.value[addonId]) {
-        addonQuantities.value[addonId] = 1;
-    }
-    addonQuantities.value[addonId]++;
+const normalizeCustomAddons = () => {
+    return customAddons.value
+        .map((addon) => ({
+            extra_name: (addon.extra_name || '').trim(),
+            extra_type: (addon.extra_type || '').trim(),
+            description: (addon.description || '').trim(),
+            price: addon.price,
+            quantity: addon.quantity,
+        }))
+        .filter((addon) =>
+            addon.extra_name || addon.extra_type || addon.description || addon.price !== null || addon.quantity
+        );
 };
-
-const decrementQuantity = (addonId) => {
-    if (!isAddonSelected(addonId)) {
-        return;
-    }
-    if (addonQuantities.value[addonId] > 1) {
-        addonQuantities.value[addonId]--;
-    }
-};
-
-onMounted(() => {
-    fetchAddons();
-});
 
 
 // fetching the vehicle categories from the database thorough api
@@ -2060,9 +2054,23 @@ const submit = () => {
     }
 
     form.selected_plans = buildSelectedPlans();
-    form.selected_addons = selectedAddons.value;
-    form.addon_prices = addonPrices.value;
-    form.addon_quantities = addonQuantities.value;
+
+    const normalizedCustomAddons = normalizeCustomAddons();
+    const invalidCustomAddon = normalizedCustomAddons.find((addon) =>
+        !addon.extra_name || addon.price === null || addon.price === '' || !addon.quantity
+    );
+    if (invalidCustomAddon) {
+        toast.error('Please complete all custom addon fields before submitting.', {
+            position: 'top-right',
+            timeout: 3000,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+        });
+        isLoading.value = false;
+        return;
+    }
+    form.custom_addons = normalizedCustomAddons;
 
     // Construct full_vehicle_address
     const addressParts = [form.location, form.city, form.state, form.country];
@@ -2277,7 +2285,24 @@ const closeErrorDialog = () => {
 
 let map = null;
 let marker = null // Marker instance
-const currentStep = ref(0);
+const currentStep = ref(isAddressOnlyEdit.value ? 3 : 0);
+
+onMounted(() => {
+    if (isAddressOnlyEdit.value) {
+        currentStep.value = 3;
+        form.location = props.vehicle?.location || '';
+        form.location_type = props.vehicle?.location_type || '';
+        const initialLatitude = Number(props.vehicle?.latitude);
+        const initialLongitude = Number(props.vehicle?.longitude);
+        form.latitude = Number.isFinite(initialLatitude) ? initialLatitude : null;
+        form.longitude = Number.isFinite(initialLongitude) ? initialLongitude : null;
+        form.city = props.vehicle?.city || '';
+        form.state = props.vehicle?.state || '';
+        form.country = props.vehicle?.country || '';
+        const addressParts = [form.location, form.city, form.state, form.country];
+        form.full_vehicle_address = addressParts.filter(Boolean).join(', ');
+    }
+});
 
 const errors = reactive({
     category_id: '',
@@ -2301,13 +2326,16 @@ const errors = reactive({
     price_per_day: '',
     price_per_week: '',
     price_per_month: '',
-    addon_prices: '',
+    custom_addons: '',
     images: '',
     pickup_times: '',
     return_times: '',
 });
 
 const nextStep = () => {
+    if (isAddressOnlyEdit.value) {
+        return;
+    }
     let isValid = true;
 
     // Clear previous errors
@@ -2458,11 +2486,17 @@ const nextStep = () => {
             }
             break;
 
-        case 6: // Addon Selection
-            if (selectedAddons.value.length === 0) {
-                isValid = true;
+        case 6: { // Addon Selection
+            const normalizedCustomAddons = normalizeCustomAddons();
+            const invalidCustomAddon = normalizedCustomAddons.find((addon) =>
+                !addon.extra_name || addon.price === null || addon.price === '' || !addon.quantity
+            );
+            if (invalidCustomAddon) {
+                isValid = false;
+                errors.custom_addons = 'Please complete all custom addon fields.';
             }
             break;
+        }
 
         case 7: // Image Upload
             if (form.images.length < 5) {
@@ -2493,8 +2527,73 @@ const nextStep = () => {
     }
 };
 const prevStep = () => {
+    if (isAddressOnlyEdit.value) {
+        return;
+    }
     if (currentStep.value > 0) {
         currentStep.value--;
+    }
+};
+
+const updateParkingAddress = async () => {
+    Object.keys(errors).forEach(key => errors[key] = '');
+
+    if (!form.location || form.latitude === null || form.longitude === null) {
+        errors.location = 'Please select a valid location from Google';
+        return;
+    }
+    if (!form.location_type) {
+        errors.location_type = typeof _t === 'function'
+            ? _t('createvehicle', 'step3_location_type_required')
+            : 'Please select a location type';
+        return;
+    }
+
+    const addressParts = [form.location, form.city, form.state, form.country];
+    const payload = {
+        location: form.location,
+        location_type: form.location_type,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        city: form.city,
+        state: form.state,
+        country: form.country,
+        full_vehicle_address: addressParts.filter(Boolean).join(', '),
+    };
+
+    isLoading.value = true;
+    try {
+        await axios.patch(
+            route('current-vendor-vehicles.update-parking-address', {
+                locale: page.props.locale,
+                vehicle: props.vehicle.id,
+            }),
+            payload
+        );
+        toast.success('Parking address updated successfully.', {
+            position: 'top-right',
+            timeout: 3000,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+        });
+    } catch (error) {
+        const responseErrors = error?.response?.data?.errors || {};
+        if (responseErrors.location) {
+            errors.location = responseErrors.location[0];
+        }
+        if (responseErrors.location_type) {
+            errors.location_type = responseErrors.location_type[0];
+        }
+        toast.error('Unable to update parking address. Please review the fields.', {
+            position: 'top-right',
+            timeout: 3000,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+        });
+    } finally {
+        isLoading.value = false;
     }
 };
 
@@ -2648,6 +2747,12 @@ Object.keys(form).forEach(key => {
         }
     });
 });
+
+watch(customAddons, () => {
+    if (errors.custom_addons) {
+        errors.custom_addons = '';
+    }
+}, { deep: true });
 
 </script>
 
