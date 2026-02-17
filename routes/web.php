@@ -53,10 +53,8 @@ use App\Http\Controllers\VehicleCsvImportController;
 use App\Http\Controllers\VehicleImportController;
 use App\Http\Controllers\Vendor\BlockingDateController;
 use App\Http\Controllers\Vendor\DamageProtectionController;
-use App\Http\Controllers\Vendor\PlanController;
 use App\Http\Controllers\Vendor\VendorBookingController;
 use App\Http\Controllers\Vendor\VendorOverviewController;
-use App\Http\Controllers\Vendor\VendorVehicleAddonController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
 use App\Http\Controllers\Vendor\VendorVehiclePlanController;
 use App\Http\Controllers\VendorBulkImageController;
@@ -814,16 +812,6 @@ Route::group([
         Route::post('/vehicle-plans', [VendorVehiclePlanController::class, 'store']);
         Route::get('/vehicle-plans/{vehicleId}', [VendorVehiclePlanController::class, 'getVehiclePlans']);
         Route::delete('/vehicle-plans/{id}', [VendorVehiclePlanController::class, 'destroy']);
-
-        // Vendor Plans
-        Route::get('/plans', [PlanController::class, 'index'])->name('VendorPlanIndex');
-        Route::get('vendor/plans/{id}/edit', [PlanController::class, 'edit'])->name('VendorPlanEdit');
-        Route::put('vendor/plans/{id}', [PlanController::class, 'update'])->name('VendorPlanUpdate');
-        Route::post('/vendor/plan', [PlanController::class, 'store'])->name('VendorPlanStore');
-        Route::delete('vendor/plans/{id}', [PlanController::class, 'destroy'])->name('VendorPlanDestroy');
-
-        // Vehicle Addons
-        Route::resource('vendor-vehicle-addons', VendorVehicleAddonController::class);
 
         Route::get('/vendor-status', [VendorController::class, 'status'])->name('vendor.status');
 
