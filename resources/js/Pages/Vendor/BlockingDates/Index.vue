@@ -410,7 +410,7 @@ import {
     TableBody,
     TableCell
 } from "@/Components/ui/table";
-import Pagination from '@/Pages/Vendor/Plan/Pagination.vue';
+import Pagination from '@/Pages/Vendor/BlockingDates/Pagination.vue';
 import {
     CalendarX,
     Search,
