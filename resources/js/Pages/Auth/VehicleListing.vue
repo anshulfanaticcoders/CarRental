@@ -1,6 +1,10 @@
 <template>
-    <div v-if="isLoading" class="loader-overlay">
-        <Vue3Lottie :animation-data="universalLoader" :height="200" :width="200" />
+    <div v-if="isLoading" class="currency-overlay">
+        <div class="currency-loader">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </div>
     </div>
 
     <Head>
@@ -718,86 +722,112 @@
                     <div class="">
                         <div class="border-[1px] p-8 flex flex-col gap-8 max-[768px]:p-0">
                             <div class="price-section">
-                                <h3 class="text-lg font-semibold mb-4">{{
-                                    _t('createvehicle', 'step4_pricing_options_title') }}</h3>
-
-                                <!-- Price Type Selection -->
-                                <div class="mb-8 max-[768px]:mb-3">
-                                    <InputLabel class="text-black mb-2">{{
-                                        _t('createvehicle', 'step4_preferred_price_types_label') }}</InputLabel>
-                                    <div class="flex gap-4">
-                                        <label class="flex items-center">
-                                            <input type="checkbox" v-model="selectedTypes.day" class="mr-2" />
-                                            {{ _t('createvehicle', 'step4_price_type_daily') }}
-                                        </label>
-                                        <label class="flex items-center">
-                                            <input type="checkbox" v-model="selectedTypes.week" class="mr-2" />
-                                            {{ _t('createvehicle', 'step4_price_type_weekly') }}
-                                        </label>
-                                        <label class="flex items-center">
-                                            <input type="checkbox" v-model="selectedTypes.month" class="mr-2" />
-                                            {{ _t('createvehicle', 'step4_price_type_monthly') }}
-                                        </label>
+                                <div class="flex items-start justify-between gap-4">
+                                    <h3 class="text-lg font-semibold">{{
+                                        _t('createvehicle', 'step4_pricing_options_title') }}</h3>
+                                    <div class="text-xs font-medium text-customLightGrayColor">
+                                        All prices in <span class="inline-currency">{{ currencyCode }}</span>
                                     </div>
                                 </div>
 
-                                <div class="grid grid-cols-2 gap-10 max-[768px]:grid-cols-1 max-[768px]:gap-2">
-                                    <!-- Daily Price Slider -->
-                                    <div v-if="selectedTypes.day" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
-                                        <label for="price_per_day" class="font-medium">{{
-                                            _t('createvehicle', 'step4_daily_rate_label') }}</label>
-                                        <div class="slider-container">
+                                <div class="mt-6 grid grid-cols-1 gap-4">
+                                    <div class="rounded-lg border bg-gray-50 p-5">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div>
+                                                <label for="price_per_day" class="font-medium">{{
+                                                    _t('createvehicle', 'step4_daily_rate_label') }}</label>
+                                                <p class="text-xs text-gray-500">Required base rate.</p>
+                                            </div>
+                                            <span
+                                                class="text-xs font-semibold text-green-700 bg-green-100 px-2 py-1 rounded-full">Required</span>
+                                        </div>
+                                        <div class="input-with-suffix mt-2">
                                             <input type="number" v-model="form.price_per_day" id="price_per_day"
-                                                class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
-                                        </div>
-                                        <div class="mt-2 flex flex-col items-end gap-1">
-                                            <span class="text-sm text-gray-600">{{
-                                                _t('createvehicle', 'step4_daily_rate_recommended') }}</span>
+                                                class="flex-1 min-w-0" />
+                                            <span class="input-suffix">{{ currencyCode }}</span>
                                         </div>
                                     </div>
 
-                                    <!-- Weekly Price Slider -->
-                                    <div v-if="selectedTypes.week" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
-                                        <label for="price_per_week" class="font-medium">{{
-                                            _t('createvehicle', 'step4_weekly_rate_label') }}</label>
-                                        <div class="slider-container">
-                                            <input type="number" v-model="form.price_per_week" id="price_per_week"
-                                                class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
+                                    <div class="rounded-lg border border-dashed p-5">
+                                        <label class="flex items-center font-medium">
+                                            <input type="checkbox" v-model="selectedTypes.week" class="mr-2" />
+                                            {{ _t('createvehicle', 'step4_weekly_rate_label') }}
+                                        </label>
+                                        <p class="text-xs text-gray-500 mt-1">Optional weekly pricing.</p>
+                                        <div v-if="selectedTypes.week"
+                                            class="mt-3 grid grid-cols-2 gap-4 max-[768px]:grid-cols-1">
+                                            <div>
+                                                <label for="price_per_week" class="text-sm font-medium">{{
+                                                    _t('createvehicle', 'step4_weekly_rate_label') }}</label>
+                                                <div class="input-with-suffix mt-1">
+                                                    <input type="number" v-model="form.price_per_week" id="price_per_week"
+                                                        class="flex-1 min-w-0" />
+                                                    <span class="input-suffix">{{ currencyCode }}</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label for="weekly_discount" class="text-sm font-medium mb-0">{{
+                                                    _t('createvehicle', 'step4_weekly_discount_label') }}
+                                                </label>
+                                                <div class="input-with-suffix mt-1">
+                                                    <input type="number" v-model="form.weekly_discount" id="weekly_discount"
+                                                        class="flex-1 min-w-0" />
+                                                    <span class="input-suffix">%</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="mt-2 flex flex-col items-end gap-1">
-                                            <span class="text-sm text-gray-600">{{
-                                                _t('createvehicle', 'step4_weekly_rate_recommended') }}</span>
-                                        </div>
-                                        <div class="mt-2 flex flex-col">
-                                            <label for="weekly_discount" class="text-sm font-medium mb-0">{{
-                                                _t('createvehicle', 'step4_weekly_discount_label') }}
-                                            </label>
-                                            <input type="number" v-model="form.weekly_discount" id="weekly_discount"
-                                                class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
-                                        </div>
-
                                     </div>
 
-                                    <!-- Monthly Price Slider -->
-                                    <div v-if="selectedTypes.month" class="price-slider  bg-gray-50 p-5 rounded-[12px]">
-                                        <label for="price_per_month" class="font-medium">{{
-                                            _t('createvehicle', 'step4_monthly_rate_label') }}</label>
-                                        <div class="slider-container">
-                                            <input type="number" v-model="form.price_per_month" id="price_per_month"
-                                                class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
+                                    <div class="rounded-lg border border-dashed p-5">
+                                        <label class="flex items-center font-medium">
+                                            <input type="checkbox" v-model="selectedTypes.month" class="mr-2" />
+                                            {{ _t('createvehicle', 'step4_monthly_rate_label') }}
+                                        </label>
+                                        <p class="text-xs text-gray-500 mt-1">Optional monthly pricing.</p>
+                                        <div v-if="selectedTypes.month"
+                                            class="mt-3 grid grid-cols-2 gap-4 max-[768px]:grid-cols-1">
+                                            <div>
+                                                <label for="price_per_month" class="text-sm font-medium">{{
+                                                    _t('createvehicle', 'step4_monthly_rate_label') }}</label>
+                                                <div class="input-with-suffix mt-1">
+                                                    <input type="number" v-model="form.price_per_month" id="price_per_month"
+                                                        class="flex-1 min-w-0" />
+                                                    <span class="input-suffix">{{ currencyCode }}</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label for="monthly_discount" class="text-sm font-medium mb-0">{{
+                                                    _t('createvehicle', 'step4_monthly_discount_label') }}
+                                                </label>
+                                                <div class="input-with-suffix mt-1">
+                                                    <input type="number" v-model="form.monthly_discount" id="monthly_discount"
+                                                        class="flex-1 min-w-0" />
+                                                    <span class="input-suffix">%</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="mt-2 flex flex-col items-end gap-1">
-                                            <span class="text-sm text-gray-600">{{
-                                                _t('createvehicle', 'step4_monthly_rate_recommended') }}</span>
-                                        </div>
-                                        <div class="mt-2 flex flex-col">
-                                            <label for="monthly_discount" class="text-sm font-medium mb-0">{{
-                                                _t('createvehicle', 'step4_monthly_discount_label') }}
-                                            </label>
-                                            <input type="number" v-model="form.monthly_discount" id="monthly_discount"
-                                                class="mt-1 block w-32 rounded-md border-gray-300 shadow-sm px-2" />
-                                        </div>
+                                    </div>
+                                </div>
 
+                                <div v-if="selectedTypes.week || selectedTypes.month" class="mt-4">
+                                    <InputLabel class="text-black mb-2">{{
+                                        _t('createvehicle', 'step4_preferred_price_types_label') }}</InputLabel>
+                                    <div class="flex gap-4 flex-wrap">
+                                        <label class="flex items-center">
+                                            <input type="radio" value="day" v-model="form.preferred_price_type"
+                                                class="mr-2" />
+                                            {{ _t('createvehicle', 'step4_price_type_daily') }}
+                                        </label>
+                                        <label v-if="selectedTypes.week" class="flex items-center">
+                                            <input type="radio" value="week" v-model="form.preferred_price_type"
+                                                class="mr-2" />
+                                            {{ _t('createvehicle', 'step4_price_type_weekly') }}
+                                        </label>
+                                        <label v-if="selectedTypes.month" class="flex items-center">
+                                            <input type="radio" value="month" v-model="form.preferred_price_type"
+                                                class="mr-2" />
+                                            {{ _t('createvehicle', 'step4_price_type_monthly') }}
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -811,8 +841,11 @@
                                 _t('createvehicle', 'step4_security_deposit_label') }}</InputLabel>
                             <span class="text-[0.75rem] font-medium mb-[1rem] inline-block text-customLightGrayColor">{{
                                 _t('createvehicle', 'step4_security_deposit_tooltip') }}</span>
-                            <input type="number" v-model="form.security_deposit" id="security_deposit" required min="0"
-                                step="0.01" />
+                            <div class="input-with-suffix">
+                                <input type="number" v-model="form.security_deposit" id="security_deposit" required
+                                    min="0" step="0.01" class="flex-1 min-w-0" />
+                                <span class="input-suffix">{{ currencyCode }}</span>
+                            </div>
                         </div>
                         <span v-if="errors.security_deposit" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">{{
                             errors.security_deposit
@@ -984,8 +1017,11 @@
                                         <div>
                                             <InputLabel for="price_per_km_per_day">{{
                                                 _t('createvehicle', 'step4_price_per_extra_km_label') }}</InputLabel>
-                                            <input type="number" v-model="form.price_per_km_per_day"
-                                                id="price_per_km_per_day" class="w-full" />
+                                            <div class="input-with-suffix">
+                                                <input type="number" v-model="form.price_per_km_per_day"
+                                                    id="price_per_km_per_day" class="flex-1 min-w-0" />
+                                                <span class="input-suffix">{{ currencyCode }}</span>
+                                            </div>
                                             <span v-if="errors.price_per_km_per_day" class="text-red-500 text-sm">
                                                 {{ errors.price_per_km_per_day }}
                                             </span>
@@ -1017,8 +1053,11 @@
                                         <div>
                                             <InputLabel for="price_per_km_per_week">{{
                                                 _t('createvehicle', 'step4_price_per_extra_km_label') }}</InputLabel>
-                                            <input type="number" v-model="form.price_per_km_per_week"
-                                                id="price_per_km_per_week" class="w-full" />
+                                            <div class="input-with-suffix">
+                                                <input type="number" v-model="form.price_per_km_per_week"
+                                                    id="price_per_km_per_week" class="flex-1 min-w-0" />
+                                                <span class="input-suffix">{{ currencyCode }}</span>
+                                            </div>
                                             <span v-if="errors.price_per_km_per_week" class="text-red-500 text-sm">
                                                 {{ errors.price_per_km_per_week }}
                                             </span>
@@ -1050,8 +1089,11 @@
                                         <div>
                                             <InputLabel for="price_per_km_per_month">{{
                                                 _t('createvehicle', 'step4_price_per_extra_km_label') }}</InputLabel>
-                                            <input type="number" v-model="form.price_per_km_per_month"
-                                                id="price_per_km_per_month" class="w-full" />
+                                            <div class="input-with-suffix">
+                                                <input type="number" v-model="form.price_per_km_per_month"
+                                                    id="price_per_km_per_month" class="flex-1 min-w-0" />
+                                                <span class="input-suffix">{{ currencyCode }}</span>
+                                            </div>
                                             <span v-if="errors.price_per_km_per_month" class="text-red-500 text-sm">
                                                 {{ errors.price_per_km_per_month }}
                                             </span>
@@ -1233,25 +1275,22 @@
                             <div v-for="plan in protectionPlans" :key="plan.key"
                                 class="rounded-[20px] border border-[#153B4F] bg-white p-5 flex flex-col gap-5"
                                 :class="{
-                                    'border-dashed bg-gray-50': !plan.selected && plan.key !== 'basic',
-                                    'ring-2 ring-green-500': plan.selected && plan.key !== 'basic'
+                                    'border-dashed bg-gray-50': !plan.selected,
+                                    'ring-2 ring-green-500': plan.selected
                                 }">
                                 <div class="flex items-start justify-between gap-4">
                                     <div>
                                         <span class="text-[1.25rem] font-semibold text-gray-800">{{ plan.plan_type }}</span>
-                                        <p v-if="plan.key === 'basic'" class="text-xs text-gray-500 mt-1">
-                                            Price matches your daily rate
-                                        </p>
                                     </div>
                                     <div class="flex flex-col items-end gap-2">
                                         <label class="text-xs text-gray-500">Price per day</label>
-                                        <input v-if="plan.key !== 'basic'" type="number" step="0.01"
-                                            v-model.number="plan.price" :min="pricePerDay"
-                                            :disabled="!plan.selected"
-                                            class="w-28 px-2 py-1 border rounded-md text-right"
-                                            :class="!plan.selected ? 'bg-gray-100' : ''" />
-                                        <input v-else type="number" step="0.01" :value="pricePerDay" disabled
-                                            class="w-28 px-2 py-1 border rounded-md text-right bg-gray-100" />
+                                        <div class="input-with-suffix">
+                                            <input type="number" step="0.01" v-model.number="plan.price"
+                                                :min="pricePerDay" :disabled="!plan.selected"
+                                                class="w-28 px-2 py-1 border rounded-md text-right"
+                                                :class="!plan.selected ? 'bg-gray-100' : ''" />
+                                            <span class="input-suffix">{{ currencyCode }}</span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1262,9 +1301,8 @@
                                     </div>
                                     <div v-for="(feature, index) in plan.features" :key="index">
                                         <input v-model="plan.features[index]" type="text"
-                                            :disabled="!plan.selected && plan.key !== 'basic'"
-                                            class="w-full p-2 border rounded-md"
-                                            :class="!plan.selected && plan.key !== 'basic' ? 'bg-gray-100' : ''"
+                                            :disabled="!plan.selected" class="w-full p-2 border rounded-md"
+                                            :class="!plan.selected ? 'bg-gray-100' : ''"
                                             :placeholder="`Coverage option ${index + 1}`" />
                                     </div>
                                 </div>
@@ -1273,17 +1311,13 @@
                                     {{ planErrors[plan.key] }}
                                 </p>
 
-                                <button v-if="plan.key !== 'basic'" type="button"
-                                    @click="togglePlanSelection(plan)"
+                                <button type="button" @click="togglePlanSelection(plan)"
                                     class="w-full py-2 rounded-lg font-semibold text-sm transition"
                                     :class="plan.selected
                                         ? 'bg-green-600 text-white hover:bg-green-700'
                                         : 'bg-[#153B4F] text-white hover:bg-[#102c3b]'">
                                     {{ plan.selected ? 'Selected' : 'Select Plan' }}
                                 </button>
-                                <div v-else class="w-full py-2 rounded-lg font-semibold text-sm text-center bg-green-100 text-green-700">
-                                    Selected (Basic)
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -1370,10 +1404,13 @@
                                 <div class="flex flex-col items-start">
                                     <label for="price" class="text-sm text-gray-500">{{
                                         _t('createvehicle', 'step6_price_per_day_label') }}</label>
-                                    <input type="number" v-model="addonPrices[addon.id]"
-                                        :disabled="!isAddonSelected(addon.id)"
-                                        class="w-24 px-2 py-1 border rounded max-[768px]:!py-2"
-                                        :class="!isAddonSelected(addon.id) ? 'bg-gray-100' : ''" />
+                                    <div class="input-with-suffix">
+                                        <input type="number" v-model="addonPrices[addon.id]"
+                                            :disabled="!isAddonSelected(addon.id)"
+                                            class="w-24 px-2 py-1 border rounded max-[768px]:!py-2"
+                                            :class="!isAddonSelected(addon.id) ? 'bg-gray-100' : ''" />
+                                        <span class="input-suffix">{{ currencyCode }}</span>
+                                    </div>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-500 mb-2">{{ _t('createvehicle', 'step6_quantity_label') }}
@@ -1571,7 +1608,7 @@ import vendorBgimage from "../../../assets/vendorRegisterbgImage.png";
 import warningSign from "../../../assets/WhiteWarningCircle.svg";
 import circleImg from "../../../assets/circle.png";
 import uploadIcon from "../../../assets/uploadIcon.svg";
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import LocationPicker from "@/Components/LocationPicker.vue";
 import axios from "axios";
@@ -1584,14 +1621,14 @@ import { useToast } from 'vue-toastification'; // Add this import
 import Select from "@/Components/ui/select/Select.vue";
 import SelectItem from "@/Components/ui/select/SelectItem.vue";
 import { SelectContent, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "@/Components/ui/select";
-import { Vue3Lottie } from 'vue3-lottie';
-import universalLoader from '../../../../public/animations/universal-loader.json';
 import { usePage } from '@inertiajs/vue3';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import vehicleColorsFromJson from '../../data/colors.json';
 
+const page = usePage();
+const currencyCode = computed(() => page.props.auth?.user?.profile?.currency || page.props.currency || 'USD');
 const toast = useToast(); // Initialize toast
 const addons = ref([]);
 const selectedAddons = ref([]);
@@ -1691,22 +1728,67 @@ const selectedTypes = reactive({
     month: false
 });
 
+const toPrice = (value) => {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+        return null;
+    }
+    return Math.round(number * 100) / 100;
+};
+
+const ensurePreferredPriceType = () => {
+    const allowedTypes = ['day'];
+    if (selectedTypes.week) {
+        allowedTypes.push('week');
+    }
+    if (selectedTypes.month) {
+        allowedTypes.push('month');
+    }
+    if (!allowedTypes.includes(form.preferred_price_type)) {
+        form.preferred_price_type = allowedTypes[0];
+    }
+};
+
+watch(() => selectedTypes.week, (isEnabled) => {
+    if (isEnabled) {
+        if ((form.price_per_week === null || form.price_per_week === '') && form.price_per_day) {
+            form.price_per_week = toPrice(Number(form.price_per_day) * 7);
+        }
+    } else {
+        form.price_per_week = null;
+        form.weekly_discount = null;
+    }
+    ensurePreferredPriceType();
+});
+
+watch(() => selectedTypes.month, (isEnabled) => {
+    if (isEnabled) {
+        if ((form.price_per_month === null || form.price_per_month === '') && form.price_per_day) {
+            form.price_per_month = toPrice(Number(form.price_per_day) * 30);
+        }
+    } else {
+        form.price_per_month = null;
+        form.monthly_discount = null;
+    }
+    ensurePreferredPriceType();
+});
+
 
 const vehicleColors = ref(vehicleColorsFromJson);
 
 const createCoverageFields = () => Array.from({ length: 5 }, () => '');
 
-const protectionPlans = reactive([
-    { key: 'basic', plan_type: 'Basic', price: null, features: createCoverageFields(), selected: true },
-    { key: 'essential', plan_type: 'Essential', price: null, features: createCoverageFields(), selected: false },
-    { key: 'premium', plan_type: 'Premium', price: null, features: createCoverageFields(), selected: false }
-]);
+    const protectionPlans = reactive([
+        { key: 'essential', plan_type: 'Essential', price: null, features: createCoverageFields(), selected: false },
+        { key: 'premium', plan_type: 'Premium', price: null, features: createCoverageFields(), selected: false },
+        { key: 'premium_plus', plan_type: 'Premium Plus', price: null, features: createCoverageFields(), selected: false }
+    ]);
 
-const planErrors = reactive({
-    basic: '',
-    essential: '',
-    premium: ''
-});
+    const planErrors = reactive({
+        essential: '',
+        premium: '',
+        premium_plus: ''
+    });
 
 const pricePerDay = computed(() => {
     const value = Number(form.price_per_day);
@@ -1718,21 +1800,17 @@ const normalizeFeatures = (features) => features
     .filter(Boolean)
     .slice(0, 5);
 
-const isPlanActive = (plan) => plan.key === 'basic' || plan.selected;
+    const isPlanActive = (plan) => plan.selected;
 
 const validateProtectionPlans = () => {
-    planErrors.basic = '';
     planErrors.essential = '';
     planErrors.premium = '';
+    planErrors.premium_plus = '';
 
     const minPrice = pricePerDay.value;
     let isValid = true;
 
     protectionPlans.forEach(plan => {
-        if (plan.key === 'basic') {
-            return;
-        }
-
         if (!isPlanActive(plan)) {
             return;
         }
@@ -1745,7 +1823,7 @@ const validateProtectionPlans = () => {
         }
 
         if (priceValue < minPrice) {
-            planErrors[plan.key] = `Price must be at least ${minPrice}.`;
+            planErrors[plan.key] = `Price must be at least ${minPrice} ${currencyCode.value}.`;
             isValid = false;
         }
     });
@@ -1753,12 +1831,8 @@ const validateProtectionPlans = () => {
     return isValid;
 };
 
-const togglePlanSelection = (plan) => {
-    if (plan.key === 'basic') {
-        return;
-    }
-
-    plan.selected = !plan.selected;
+    const togglePlanSelection = (plan) => {
+        plan.selected = !plan.selected;
 
     if (!plan.selected) {
         plan.price = null;
@@ -1767,20 +1841,20 @@ const togglePlanSelection = (plan) => {
     }
 };
 
-const buildSelectedPlans = () => {
-    let planId = 1;
-    return protectionPlans.reduce((plans, plan) => {
-        if (!isPlanActive(plan)) {
-            return plans;
-        }
+    const buildSelectedPlans = () => {
+        let planId = 1;
+        return protectionPlans.reduce((plans, plan) => {
+            if (!isPlanActive(plan)) {
+                return plans;
+            }
 
-        plans.push({
-            plan_id: planId,
-            plan_type: plan.plan_type,
-            plan_value: plan.key === 'basic' ? pricePerDay.value : Number(plan.price),
-            plan_description: null,
-            features: normalizeFeatures(plan.features)
-        });
+            plans.push({
+                plan_id: planId,
+                plan_type: plan.plan_type,
+                plan_value: Number(plan.price),
+                plan_description: null,
+                features: normalizeFeatures(plan.features)
+            });
         planId += 1;
         return plans;
     }, []);
@@ -1825,6 +1899,18 @@ watch(() => form.co2, (newVal) => {
 watch(() => form.gross_vehicle_mass, (newVal) => {
     if (newVal > 20000) {
         form.gross_vehicle_mass = 20000;
+    }
+});
+
+watch(() => form.price_per_day, (newVal) => {
+    if (!newVal) {
+        return;
+    }
+    if (selectedTypes.week && (form.price_per_week === null || form.price_per_week === '')) {
+        form.price_per_week = toPrice(Number(newVal) * 7);
+    }
+    if (selectedTypes.month && (form.price_per_month === null || form.price_per_month === '')) {
+        form.price_per_month = toPrice(Number(newVal) * 30);
     }
 });
 
@@ -1949,6 +2035,10 @@ watch(isLoading, (newValue) => {
         document.body.style.overflow = '';
     }
 });
+
+onUnmounted(() => {
+    document.body.style.overflow = '';
+});
 // Submit form data
 const submit = () => {
     isLoading.value = true;
@@ -1977,7 +2067,7 @@ const submit = () => {
     // Construct full_vehicle_address
     const addressParts = [form.location, form.city, form.state, form.country];
     form.full_vehicle_address = addressParts.filter(Boolean).join(', ');
-    form.post(route("vehicles.store", { locale: usePage().props.locale }), {
+    form.post(route("vehicles.store", { locale: page.props.locale }), {
         onSuccess: () => {
             toast.success('Vehicle Added Successfully', {
                 position: 'top-right',
@@ -1986,8 +2076,6 @@ const submit = () => {
                 pauseOnHover: true,
                 draggable: true,
             });
-
-            isLoading.value = false;
         },
         onError: (errors) => {
             toast.error('Something went wrong. Please check your inputs.', {
@@ -1998,6 +2086,9 @@ const submit = () => {
                 draggable: true,
             });
             console.error(errors);
+        },
+        onFinish: () => {
+            isLoading.value = false;
         },
     });
 };
@@ -2065,7 +2156,7 @@ const fetchFeaturesForCategory = async (categoryId) => {
     try {
         // Ensure the route name 'api.categories.features' is correct and returns expected data
         // The controller returns [{id, feature_name, icon_url}, ...]
-        const response = await axios.get(route('api.categories.features', { locale: usePage().props.locale, category: categoryId }));
+        const response = await axios.get(route('api.categories.features', { locale: page.props.locale, category: categoryId }));
         availableFeatures.value = response.data.map(feature => ({
             id: feature.id, // Keep id if needed for keys or future use
             name: feature.feature_name, // Use 'name' to match existing template iteration (feature.name)
@@ -2186,7 +2277,7 @@ const closeErrorDialog = () => {
 
 let map = null;
 let marker = null // Marker instance
-const currentStep = ref(5);
+const currentStep = ref(0);
 
 const errors = reactive({
     category_id: '',
@@ -2304,9 +2395,9 @@ const nextStep = () => {
                 isValid = false;
                 errors.minimum_driver_age = 'Please enter the minimum driver age';
             }
-            if (!form.price_per_day && !form.price_per_week && !form.price_per_month) {
+            if (!form.price_per_day) {
                 isValid = false;
-                errors.price_per_day = 'Please enter at least one pricing option';
+                errors.price_per_day = 'Please enter the daily price';
             }
 
             // Kilometer Limit Validation
@@ -2827,17 +2918,88 @@ select {
     border-radius: 0.5rem;
 }
 
-.loader-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+.input-with-suffix {
     display: flex;
-    justify-content: center;
     align-items: center;
+    gap: 0.5rem;
+}
+
+.input-suffix {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    color: #475569;
+    font-weight: 600;
+    background: #ffffff;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.inline-currency {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.5rem;
+    margin-left: 0.25rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    color: #475569;
+    font-weight: 600;
+    background: #ffffff;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.currency-overlay {
+    position: fixed;
+    inset: 0;
     z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.32);
+    backdrop-filter: blur(6px);
+}
+
+.currency-loader {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 22px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+}
+
+.currency-loader .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #f8fafc;
+    animation: currencyDots 1.1s ease-in-out infinite;
+}
+
+.currency-loader .dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.currency-loader .dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes currencyDots {
+    0%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: translateY(-6px);
+        opacity: 1;
+    }
 }
 
 ::-webkit-scrollbar {

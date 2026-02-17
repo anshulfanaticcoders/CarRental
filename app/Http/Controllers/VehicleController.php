@@ -127,7 +127,7 @@ class VehicleController extends Controller
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:10240',
 
             'selected_plans' => 'nullable|array|max:3',
-            'selected_plans.*.plan_type' => 'required|string|in:Basic,Essential,Premium',
+            'selected_plans.*.plan_type' => 'required|string|in:Basic,Essential,Premium,Premium Plus',
             'selected_plans.*.plan_value' => 'required|numeric|min:0',
             'selected_plans.*.features' => 'nullable|array|max:5',
             'selected_plans.*.features.*' => 'string|max:255',

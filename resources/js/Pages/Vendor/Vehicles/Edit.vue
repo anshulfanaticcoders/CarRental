@@ -21,6 +21,15 @@
         <div class="container mx-auto p-6 space-y-6">
             <div class="py-12">
                 <div class="mx-auto">
+                    <div v-if="Object.keys(formErrors).length"
+                        class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        <p class="font-semibold">Please fix the errors below:</p>
+                        <ul class="mt-2 list-disc pl-5">
+                            <li v-for="(messages, field) in formErrors" :key="field">
+                                {{ Array.isArray(messages) ? messages[0] : messages }}
+                            </li>
+                        </ul>
+                    </div>
                     <form @submit.prevent="updateVehicle">
                         <Tabs defaultValue="basic" class="w-full">
                             <TabsList class="grid w-full grid-cols-5">
@@ -369,193 +378,503 @@
                             </TabsContent>
 
                             <TabsContent value="pricing">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <InputLabel for="security_deposit">{{ _t('vendorprofilepages',
-                                            'label_security_deposit') }}</InputLabel>
-                                        <Input type="number" v-model.number="form.security_deposit"
-                                            id="security_deposit" required min="0" step="0.01" />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="dealer_cost">{{ _t('vendorprofilepages', 'label_dealer_cost')
-                                        }}</InputLabel>
-                                        <Input type="number" v-model.number="form.dealer_cost" id="dealer_cost"
-                                            step="0.01" />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="price_per_day">{{ _t('vendorprofilepages',
-                                            'label_price_per_day') }}</InputLabel>
-                                        <Input type="number" v-model.number="form.price_per_day" id="price_per_day"
-                                            min="0" step="0.01" />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="price_per_week">{{ _t('vendorprofilepages',
-                                            'label_price_per_week') }}</InputLabel>
-                                        <Input type="number" v-model.number="form.price_per_week" id="price_per_week"
-                                            min="0" step="0.01" />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="price_per_month">{{ _t('vendorprofilepages',
-                                            'label_price_per_month') }}</InputLabel>
-                                        <Input type="number" v-model.number="form.price_per_month" id="price_per_month"
-                                            min="0" step="0.01" />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="weekly_discount">{{ _t('vendorprofilepages',
-                                            'label_weekly_discount') }}</InputLabel>
-                                        <Input type="number" v-model.number="form.weekly_discount" id="weekly_discount"
-                                            min="0" max="1000.00" step="0.01" />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="monthly_discount">{{ _t('vendorprofilepages',
-                                            'label_monthly_discount') }}</InputLabel>
-                                        <Input type="number" v-model.number="form.monthly_discount"
-                                            id="monthly_discount" min="0" max="10000.00" step="0.01" />
-                                    </div>
-
-                                    <!-- New fields -->
-                                    <div class="flex gap-3 flex-col col-span-2">
-                                        <span class="text-[1.2rem] font-medium">{{ _t('vendorprofilepages',
-                                            'section_rental_conditions_benefits') }}</span>
-
-                                        <!-- Limited KM Per Day -->
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" v-model="form.benefits.limited_km_per_day"
-                                                id="limited_km_per_day" class="w-auto" />
-                                            <InputLabel for="limited_km_per_day" class="mb-0">{{
-                                                _t('vendorprofilepages', 'label_limited_km_per_day') }}
-                                            </InputLabel>
+                                <div class="space-y-6">
+                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div>
+                                                <h3 class="text-lg font-semibold text-gray-900">Pricing</h3>
+                                                <p class="text-sm text-gray-500">All prices in <span
+                                                        class="inline-currency">{{ currencyCode }}</span></p>
+                                            </div>
                                         </div>
-                                        <div v-if="form.benefits.limited_km_per_day" class="w-[50%]">
-                                            <InputLabel for="limited_km_per_day_range">{{ _t('vendorprofilepages',
-                                                'label_km_limit_per_day') }}</InputLabel>
-                                            <Input type="number" v-model.number="form.benefits.limited_km_per_day_range"
-                                                id="limited_km_per_day_range" />
+                                        <div class="mt-4 grid grid-cols-2 gap-4">
+                                            <div class="col-span-2">
+                                                <InputLabel for="price_per_day">{{ _t('vendorprofilepages',
+                                                    'label_price_per_day') }}</InputLabel>
+                                                <div class="input-with-suffix">
+                                                    <Input type="number" v-model.number="form.price_per_day"
+                                                        id="price_per_day" min="0" step="0.01"
+                                                        class="input-field" />
+                                                    <span class="input-suffix">{{ currencyCode }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-span-2 flex flex-wrap gap-6">
+                                                <label class="flex items-center gap-2">
+                                                    <input type="checkbox" v-model="selectedTypes.week" class="w-auto" />
+                                                    {{ _t('vendorprofilepages', 'label_price_per_week') }}
+                                                </label>
+                                                <label class="flex items-center gap-2">
+                                                    <input type="checkbox" v-model="selectedTypes.month" class="w-auto" />
+                                                    {{ _t('vendorprofilepages', 'label_price_per_month') }}
+                                                </label>
+                                            </div>
+                                            <template v-if="selectedTypes.week">
+                                                <div>
+                                                    <InputLabel for="price_per_week">{{ _t('vendorprofilepages',
+                                                        'label_price_per_week') }}</InputLabel>
+                                                    <div class="input-with-suffix">
+                                                        <Input type="number" v-model.number="form.price_per_week"
+                                                            id="price_per_week" min="0" step="0.01"
+                                                            class="input-field" />
+                                                        <span class="input-suffix">{{ currencyCode }}</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <InputLabel for="weekly_discount">{{ _t('vendorprofilepages',
+                                                        'label_weekly_discount') }}</InputLabel>
+                                                    <div class="input-with-suffix">
+                                                        <Input type="number" v-model.number="form.weekly_discount"
+                                                            id="weekly_discount" min="0" max="1000.00" step="0.01"
+                                                            class="input-field" />
+                                                        <span class="input-suffix">%</span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <template v-if="selectedTypes.month">
+                                                <div>
+                                                    <InputLabel for="price_per_month">{{ _t('vendorprofilepages',
+                                                        'label_price_per_month') }}</InputLabel>
+                                                    <div class="input-with-suffix">
+                                                        <Input type="number" v-model.number="form.price_per_month"
+                                                            id="price_per_month" min="0" step="0.01"
+                                                            class="input-field" />
+                                                        <span class="input-suffix">{{ currencyCode }}</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <InputLabel for="monthly_discount">{{ _t('vendorprofilepages',
+                                                        'label_monthly_discount') }}</InputLabel>
+                                                    <div class="input-with-suffix">
+                                                        <Input type="number" v-model.number="form.monthly_discount"
+                                                            id="monthly_discount" min="0" max="10000.00" step="0.01"
+                                                            class="input-field" />
+                                                        <span class="input-suffix">%</span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <div v-if="selectedTypes.week || selectedTypes.month" class="col-span-2">
+                                                <InputLabel class="text-black mb-2">Preferred price type</InputLabel>
+                                                <div class="flex flex-wrap gap-2 rounded-lg bg-gray-50 p-2">
+                                                    <label
+                                                        class="flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition"
+                                                        :class="form.preferred_price_type === 'day'
+                                                            ? 'bg-[#153B4F] text-white border-[#153B4F]'
+                                                            : 'bg-white text-gray-700 border-gray-200'">
+                                                        <input type="radio" value="day"
+                                                            v-model="form.preferred_price_type" class="hidden" />
+                                                        {{ _t('vendorprofilepages', 'label_price_per_day') }}
+                                                    </label>
+                                                    <label v-if="selectedTypes.week"
+                                                        class="flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition"
+                                                        :class="form.preferred_price_type === 'week'
+                                                            ? 'bg-[#153B4F] text-white border-[#153B4F]'
+                                                            : 'bg-white text-gray-700 border-gray-200'">
+                                                        <input type="radio" value="week"
+                                                            v-model="form.preferred_price_type" class="hidden" />
+                                                        {{ _t('vendorprofilepages', 'label_price_per_week') }}
+                                                    </label>
+                                                    <label v-if="selectedTypes.month"
+                                                        class="flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition"
+                                                        :class="form.preferred_price_type === 'month'
+                                                            ? 'bg-[#153B4F] text-white border-[#153B4F]'
+                                                            : 'bg-white text-gray-700 border-gray-200'">
+                                                        <input type="radio" value="month"
+                                                            v-model="form.preferred_price_type" class="hidden" />
+                                                        {{ _t('vendorprofilepages', 'label_price_per_month') }}
+                                                    </label>
+                                                </div>
+                                            </div>
                                         </div>
-
-                                        <!-- Limited KM Per Week -->
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" v-model="form.benefits.limited_km_per_week"
-                                                id="limited_km_per_week" class="w-auto" />
-                                            <InputLabel for="limited_km_per_week" class="mb-0">{{
-                                                _t('vendorprofilepages', 'label_limited_km_per_week') }}
-                                            </InputLabel>
-                                        </div>
-                                        <div v-if="form.benefits.limited_km_per_week" class="w-[50%]">
-                                            <InputLabel for="limited_km_per_week_range">{{ _t('vendorprofilepages',
-                                                'label_km_limit_per_week') }}</InputLabel>
-                                            <Input type="number"
-                                                v-model.number="form.benefits.limited_km_per_week_range"
-                                                id="limited_km_per_week_range" />
-                                        </div>
-
-                                        <!-- Limited KM Per Month -->
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" v-model="form.benefits.limited_km_per_month"
-                                                id="limited_km_per_month" class="w-auto" />
-                                            <InputLabel for="limited_km_per_month" class="mb-0">{{
-                                                _t('vendorprofilepages', 'label_limited_km_per_month') }}
-                                            </InputLabel>
-                                        </div>
-                                        <div v-if="form.benefits.limited_km_per_month" class="w-[50%]">
-                                            <InputLabel for="limited_km_per_month_range">{{ _t('vendorprofilepages',
-                                                'label_km_limit_per_month') }}</InputLabel>
-                                            <Input type="number"
-                                                v-model.number="form.benefits.limited_km_per_month_range"
-                                                id="limited_km_per_month_range" />
-                                        </div>
-
-                                        <!-- Cancellation Available Per Day -->
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox"
-                                                v-model="form.benefits.cancellation_available_per_day"
-                                                id="cancellation_available_per_day" class="w-auto" />
-                                            <InputLabel for="cancellation_available_per_day" class="mb-0">{{
-                                                _t('vendorprofilepages', 'label_cancellation_available_per_day') }}
-                                            </InputLabel>
-                                        </div>
-                                        <div v-if="form.benefits.cancellation_available_per_day" class="w-[50%]">
-                                            <InputLabel for="cancellation_available_per_day_date">{{
-                                                _t('vendorprofilepages', 'label_cancellation_allowed_until_days') }}
-                                            </InputLabel>
-                                            <Input type="number"
-                                                v-model.number="form.benefits.cancellation_available_per_day_date"
-                                                id="cancellation_available_per_day_date" min="0" />
-                                        </div>
-
-                                        <!-- Cancellation Available Per Week -->
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox"
-                                                v-model="form.benefits.cancellation_available_per_week"
-                                                id="cancellation_available_per_week" class="w-auto" />
-                                            <InputLabel for="cancellation_available_per_week" class="mb-0">{{
-                                                _t('vendorprofilepages', 'label_cancellation_available_per_week') }}
-                                            </InputLabel>
-                                        </div>
-                                        <div v-if="form.benefits.cancellation_available_per_week" class="w-[50%]">
-                                            <InputLabel for="cancellation_available_per_week_date">{{
-                                                _t('vendorprofilepages', 'label_cancellation_allowed_until_weeks') }}
-                                            </InputLabel>
-                                            <Input type="number"
-                                                v-model.number="form.benefits.cancellation_available_per_week_date"
-                                                id="cancellation_available_per_week_date" min="0" />
-                                        </div>
-
-                                        <!-- Cancellation Available Per Month -->
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox"
-                                                v-model="form.benefits.cancellation_available_per_month"
-                                                id="cancellation_available_per_month" class="w-auto" />
-                                            <InputLabel for="cancellation_available_per_month" class="mb-0">{{
-                                                _t('vendorprofilepages', 'label_cancellation_available_per_month') }}
-                                            </InputLabel>
-                                        </div>
-                                        <div v-if="form.benefits.cancellation_available_per_month" class="w-[50%]">
-                                            <InputLabel for="cancellation_available_per_month_date">{{
-                                                _t('vendorprofilepages', 'label_cancellation_allowed_until_months') }}
-                                            </InputLabel>
-                                            <Input type="number"
-                                                v-model.number="form.benefits.cancellation_available_per_month_date"
-                                                id="cancellation_available_per_month_date" min="0" />
-                                        </div>
-
-                                        <!-- Price Per KM -->
-                                        <div class="w-[50%]">
-                                            <InputLabel for="price_per_km_per_day">{{ _t('vendorprofilepages',
-                                                'label_price_per_km_per_day') }}</InputLabel>
-                                            <Input type="number" v-model.number="form.benefits.price_per_km_per_day"
-                                                id="price_per_km_per_day" min="0" step="0.01" />
-                                        </div>
-
-                                        <div class="w-[50%]">
-                                            <InputLabel for="price_per_km_per_week">{{ _t('vendorprofilepages',
-                                                'label_price_per_km_per_week') }}</InputLabel>
-                                            <Input type="number" v-model.number="form.benefits.price_per_km_per_week"
-                                                id="price_per_km_per_week" min="0" step="0.01" />
-                                        </div>
-
-                                        <div class="w-[50%]">
-                                            <InputLabel for="price_per_km_per_month">{{ _t('vendorprofilepages',
-                                                'label_price_per_km_per_month') }}</InputLabel>
-                                            <Input type="number" v-model.number="form.benefits.price_per_km_per_month"
-                                                id="price_per_km_per_month" min="0" step="0.01" />
-                                        </div>
-
-                                        <!-- Minimum Driver Age -->
-                                        <div class="w-[50%]">
-                                            <InputLabel for="minimum_driver_age">{{ _t('vendorprofilepages',
-                                                'label_minimum_driver_age') }}</InputLabel>
-                                            <Input type="number" v-model.number="form.benefits.minimum_driver_age"
-                                                id="minimum_driver_age" min="18" required />
-                                        </div>
-
                                     </div>
 
+                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
+                                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Deposits & Costs</h3>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <InputLabel for="security_deposit">{{ _t('vendorprofilepages',
+                                                    'label_security_deposit') }}</InputLabel>
+                                                <div class="input-with-suffix">
+                                                    <Input type="number" v-model.number="form.security_deposit"
+                                                        id="security_deposit" required min="0" step="0.01"
+                                                        class="input-field" />
+                                                    <span class="input-suffix">{{ currencyCode }}</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <InputLabel for="dealer_cost">{{ _t('vendorprofilepages',
+                                                    'label_dealer_cost') }}</InputLabel>
+                                                <div class="input-with-suffix">
+                                                    <Input type="number" v-model.number="form.dealer_cost"
+                                                        id="dealer_cost" step="0.01" class="input-field" />
+                                                    <span class="input-suffix">{{ currencyCode }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <div class="col-span-2">
+                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <h3 class="text-lg font-semibold text-gray-900">Protection Plans</h3>
+                                            <span class="text-xs text-gray-500">Optional</span>
+                                        </div>
+                                        <div
+                                            class="grid grid-cols-3 gap-4 max-[1024px]:grid-cols-2 max-[640px]:grid-cols-1">
+                                            <div v-for="plan in protectionPlans" :key="plan.key"
+                                                class="rounded-[20px] border border-[#153B4F] bg-white p-5 flex flex-col gap-5"
+                                                :class="{
+                                                    'border-dashed bg-gray-50': !plan.selected,
+                                                    'ring-2 ring-green-500': plan.selected
+                                                }">
+                                                <div class="flex items-start justify-between gap-4">
+                                                    <div>
+                                                        <span class="text-[1.1rem] font-semibold text-gray-800">{{
+                                                            plan.plan_type }}</span>
+                                                    </div>
+                                                    <div class="flex flex-col items-end gap-2">
+                                                        <label class="text-xs text-gray-500">Price per day</label>
+                                                        <div class="input-with-suffix">
+                                                            <Input type="number" step="0.01" v-model.number="plan.price"
+                                                                :min="pricePerDay" :disabled="!plan.selected"
+                                                                class="w-28 px-2 py-1 border rounded-md text-right"
+                                                                :class="!plan.selected ? 'bg-gray-100' : ''" />
+                                                            <span class="input-suffix">{{ currencyCode }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label class="text-xs text-gray-500">Coverage</label>
+                                                    <div class="mt-2 space-y-2">
+                                                        <input v-for="(feature, index) in plan.features"
+                                                            :key="`${plan.key}-feature-${index}`"
+                                                            v-model="plan.features[index]" type="text"
+                                                            :disabled="!plan.selected"
+                                                            class="w-full p-2 border rounded-md"
+                                                            :class="!plan.selected ? 'bg-gray-100' : ''"
+                                                            :placeholder="`Coverage option ${index + 1}`" />
+                                                    </div>
+                                                    <p v-if="planErrors[plan.key]" class="text-sm text-red-500 mt-2">
+                                                        {{ planErrors[plan.key] }}
+                                                    </p>
+                                                </div>
+                                                <button type="button" @click="togglePlanSelection(plan)"
+                                                    class="w-full py-2 rounded-lg font-semibold text-sm transition"
+                                                    :class="plan.selected
+                                                        ? 'bg-green-600 text-white hover:bg-green-700'
+                                                        : 'bg-[#153B4F] text-white hover:bg-[#102c3b]'">
+                                                    {{ plan.selected ? 'Selected' : 'Select Plan' }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <h3 class="text-lg font-semibold text-gray-900">Add-ons</h3>
+                                            <span class="text-xs text-gray-500">Optional</span>
+                                        </div>
+                                        <p v-if="!addons.length" class="text-sm text-gray-500 mb-4">
+                                            No predefined addons yet. Add a custom addon below.
+                                        </p>
+                                        <div v-if="addons.length" class="space-y-4">
+                                            <div v-for="addon in addons" :key="addon.id"
+                                                class="border rounded-lg p-4 flex flex-col gap-4"
+                                                :class="{
+                                                    'border-dashed bg-gray-50': !isAddonSelected(addon.id),
+                                                    'ring-2 ring-green-500': isAddonSelected(addon.id)
+                                                }">
+                                                <div class="flex justify-between gap-10 items-center max-[768px]:flex-col">
+                                                    <div class="flex items-start gap-3 w-[55%] max-[768px]:w-full">
+                                                        <div>
+                                                            <h3 class="font-semibold text-lg">{{ addon.extra_name }}</h3>
+                                                            <p class="text-gray-500 text-sm">{{ addon.description }}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex gap-4 items-end">
+                                                        <div class="flex flex-col items-start">
+                                                            <label for="price" class="text-sm text-gray-500">{{
+                                                                _t('createvehicle', 'step6_price_per_day_label') }}</label>
+                                                            <div class="input-with-suffix">
+                                                                <input type="number" v-model="addonPrices[addon.id]"
+                                                                    :disabled="!isAddonSelected(addon.id)"
+                                                                    class="w-24 px-2 py-1 border rounded"
+                                                                    :class="!isAddonSelected(addon.id) ? 'bg-gray-100' : ''" />
+                                                                <span class="input-suffix">{{ currencyCode }}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <p class="text-sm text-gray-500 mb-2">{{ _t('createvehicle',
+                                                                'step6_quantity_label') }}</p>
+                                                            <div class="flex items-center gap-2">
+                                                                <button @click="decrementQuantity(addon.id)" type="button"
+                                                                    :disabled="!isAddonSelected(addon.id)"
+                                                                    class="px-2 py-1 border rounded"
+                                                                    :class="!isAddonSelected(addon.id) ? 'opacity-50 cursor-not-allowed' : ''">-</button>
+                                                                <span class="px-3 py-1 bg-gray-100 rounded">{{
+                                                                    addonQuantities[addon.id] || '00'
+                                                                }}</span>
+                                                                <button @click="incrementQuantity(addon.id)" type="button"
+                                                                    :disabled="!isAddonSelected(addon.id)"
+                                                                    class="px-2 py-1 border rounded"
+                                                                    :class="!isAddonSelected(addon.id) ? 'opacity-50 cursor-not-allowed' : ''">+</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button type="button" @click="toggleAddonSelection(addon.id)"
+                                                    class="w-full py-2 rounded-lg font-semibold text-sm transition"
+                                                    :class="isAddonSelected(addon.id)
+                                                        ? 'bg-green-600 text-white hover:bg-green-700'
+                                                        : 'bg-[#153B4F] text-white hover:bg-[#102c3b]'">
+                                                    {{ isAddonSelected(addon.id) ? 'Selected' : 'Select Addon' }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="mt-6 border-t border-gray-200 pt-4">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <h4 class="text-sm font-semibold text-gray-800">Custom add-ons</h4>
+                                                <button type="button" @click="addCustomAddon"
+                                                    class="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                    Add custom addon
+                                                </button>
+                                            </div>
+                                            <div v-if="customAddons.length" class="space-y-4">
+                                                <div v-for="addon in customAddons" :key="addon.id"
+                                                    class="rounded-lg border border-gray-200 p-4">
+                                                    <div
+                                                        class="grid grid-cols-6 gap-3 max-[1024px]:grid-cols-3 max-[768px]:grid-cols-1">
+                                                        <div class="col-span-2 max-[1024px]:col-span-3">
+                                                            <InputLabel>Addon name</InputLabel>
+                                                            <Input v-model="addon.extra_name" class="input-field"
+                                                                placeholder="e.g. Baby seat" />
+                                                        </div>
+                                                        <div class="col-span-1 max-[1024px]:col-span-3">
+                                                            <InputLabel>Type</InputLabel>
+                                                            <Input v-model="addon.extra_type" class="input-field"
+                                                                placeholder="e.g. equipment" />
+                                                        </div>
+                                                        <div class="col-span-1 max-[1024px]:col-span-2">
+                                                            <InputLabel>Price</InputLabel>
+                                                            <div class="input-with-suffix">
+                                                                <Input type="number" v-model.number="addon.price"
+                                                                    min="0" step="0.01" class="input-field" />
+                                                                <span class="input-suffix">{{ currencyCode }}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-span-1 max-[1024px]:col-span-1">
+                                                            <InputLabel>Qty</InputLabel>
+                                                            <Input type="number" v-model.number="addon.quantity" min="1"
+                                                                class="input-field" />
+                                                        </div>
+                                                        <div class="col-span-5 max-[1024px]:col-span-3">
+                                                            <InputLabel>Description</InputLabel>
+                                                            <Input v-model="addon.description" class="input-field"
+                                                                placeholder="Short description" />
+                                                        </div>
+                                                        <div class="col-span-1 flex items-end justify-end">
+                                                            <button type="button" @click="removeCustomAddon(addon.id)"
+                                                                class="text-sm text-red-600 hover:underline">Remove</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p v-else class="text-sm text-gray-500">No custom addons added.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[1.2rem] font-medium">{{ _t('vendorprofilepages',
+                                                'section_rental_conditions_benefits') }}</span>
+                                            <span class="text-xs text-gray-500">Set per period</span>
+                                        </div>
+                                        <div
+                                            class="mt-4 grid grid-cols-3 gap-4 max-[1024px]:grid-cols-2 max-[768px]:grid-cols-1">
+                                            <div class="rounded-lg border border-gray-200 p-4">
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <h4 class="text-sm font-semibold text-gray-800">Per day</h4>
+                                                    <span class="text-xs text-gray-400">Day</span>
+                                                </div>
+                                                <div
+                                                    class="grid grid-cols-3 gap-3 max-[1024px]:grid-cols-2 max-[768px]:grid-cols-1">
+                                                    <div class="flex flex-col gap-2">
+                                                        <div class="flex items-center gap-2">
+                                                            <input type="checkbox"
+                                                                v-model="form.benefits.limited_km_per_day"
+                                                                id="limited_km_per_day" class="w-auto" />
+                                                            <InputLabel for="limited_km_per_day" class="mb-0">{{
+                                                                _t('vendorprofilepages', 'label_limited_km_per_day') }}
+                                                            </InputLabel>
+                                                        </div>
+                                                        <InputLabel for="limited_km_per_day_range"
+                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
+                                                                'label_km_limit_per_day') }}</InputLabel>
+                                                        <Input type="number"
+                                                            v-model.number="form.benefits.limited_km_per_day_range"
+                                                            id="limited_km_per_day_range" class="input-field"
+                                                            :disabled="!form.benefits.limited_km_per_day"
+                                                            :class="!form.benefits.limited_km_per_day ? 'bg-gray-100' : ''" />
+                                                    </div>
+                                                    <div class="flex flex-col gap-2">
+                                                        <div class="flex items-center gap-2">
+                                                            <input type="checkbox"
+                                                                v-model="form.benefits.cancellation_available_per_day"
+                                                                id="cancellation_available_per_day" class="w-auto" />
+                                                            <InputLabel for="cancellation_available_per_day" class="mb-0">{{
+                                                                _t('vendorprofilepages', 'label_cancellation_available_per_day') }}
+                                                            </InputLabel>
+                                                        </div>
+                                                        <InputLabel for="cancellation_available_per_day_date"
+                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
+                                                                'label_cancellation_allowed_until_days') }}</InputLabel>
+                                                        <Input type="number"
+                                                            v-model.number="form.benefits.cancellation_available_per_day_date"
+                                                            id="cancellation_available_per_day_date" min="0"
+                                                            class="input-field"
+                                                            :disabled="!form.benefits.cancellation_available_per_day"
+                                                            :class="!form.benefits.cancellation_available_per_day ? 'bg-gray-100' : ''" />
+                                                    </div>
+                                                    <div class="flex flex-col gap-2">
+                                                        <InputLabel for="price_per_km_per_day" class="mb-0">{{
+                                                            _t('vendorprofilepages', 'label_price_per_km_per_day') }}</InputLabel>
+                                                        <div class="input-with-suffix">
+                                                            <Input type="number"
+                                                                v-model.number="form.benefits.price_per_km_per_day"
+                                                                id="price_per_km_per_day" min="0" step="0.01"
+                                                                class="input-field" />
+                                                            <span class="input-suffix">{{ currencyCode }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 p-4">
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <h4 class="text-sm font-semibold text-gray-800">Per week</h4>
+                                                    <span class="text-xs text-gray-400">Week</span>
+                                                </div>
+                                                <div
+                                                    class="grid grid-cols-3 gap-3 max-[1024px]:grid-cols-2 max-[768px]:grid-cols-1">
+                                                    <div class="flex flex-col gap-2">
+                                                        <div class="flex items-center gap-2">
+                                                            <input type="checkbox"
+                                                                v-model="form.benefits.limited_km_per_week"
+                                                                id="limited_km_per_week" class="w-auto" />
+                                                            <InputLabel for="limited_km_per_week" class="mb-0">{{
+                                                                _t('vendorprofilepages', 'label_limited_km_per_week') }}
+                                                            </InputLabel>
+                                                        </div>
+                                                        <InputLabel for="limited_km_per_week_range"
+                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
+                                                                'label_km_limit_per_week') }}</InputLabel>
+                                                        <Input type="number"
+                                                            v-model.number="form.benefits.limited_km_per_week_range"
+                                                            id="limited_km_per_week_range" class="input-field"
+                                                            :disabled="!form.benefits.limited_km_per_week"
+                                                            :class="!form.benefits.limited_km_per_week ? 'bg-gray-100' : ''" />
+                                                    </div>
+                                                    <div class="flex flex-col gap-2">
+                                                        <div class="flex items-center gap-2">
+                                                            <input type="checkbox"
+                                                                v-model="form.benefits.cancellation_available_per_week"
+                                                                id="cancellation_available_per_week" class="w-auto" />
+                                                            <InputLabel for="cancellation_available_per_week" class="mb-0">{{
+                                                                _t('vendorprofilepages', 'label_cancellation_available_per_week') }}
+                                                            </InputLabel>
+                                                        </div>
+                                                        <InputLabel for="cancellation_available_per_week_date"
+                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
+                                                                'label_cancellation_allowed_until_weeks') }}</InputLabel>
+                                                        <Input type="number"
+                                                            v-model.number="form.benefits.cancellation_available_per_week_date"
+                                                            id="cancellation_available_per_week_date" min="0"
+                                                            class="input-field"
+                                                            :disabled="!form.benefits.cancellation_available_per_week"
+                                                            :class="!form.benefits.cancellation_available_per_week ? 'bg-gray-100' : ''" />
+                                                    </div>
+                                                    <div class="flex flex-col gap-2">
+                                                        <InputLabel for="price_per_km_per_week" class="mb-0">{{
+                                                            _t('vendorprofilepages', 'label_price_per_km_per_week') }}</InputLabel>
+                                                        <div class="input-with-suffix">
+                                                            <Input type="number"
+                                                                v-model.number="form.benefits.price_per_km_per_week"
+                                                                id="price_per_km_per_week" min="0" step="0.01"
+                                                                class="input-field" />
+                                                            <span class="input-suffix">{{ currencyCode }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 p-4">
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <h4 class="text-sm font-semibold text-gray-800">Per month</h4>
+                                                    <span class="text-xs text-gray-400">Month</span>
+                                                </div>
+                                                <div
+                                                    class="grid grid-cols-3 gap-3 max-[1024px]:grid-cols-2 max-[768px]:grid-cols-1">
+                                                    <div class="flex flex-col gap-2">
+                                                        <div class="flex items-center gap-2">
+                                                            <input type="checkbox"
+                                                                v-model="form.benefits.limited_km_per_month"
+                                                                id="limited_km_per_month" class="w-auto" />
+                                                            <InputLabel for="limited_km_per_month" class="mb-0">{{
+                                                                _t('vendorprofilepages', 'label_limited_km_per_month') }}
+                                                            </InputLabel>
+                                                        </div>
+                                                        <InputLabel for="limited_km_per_month_range"
+                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
+                                                                'label_km_limit_per_month') }}</InputLabel>
+                                                        <Input type="number"
+                                                            v-model.number="form.benefits.limited_km_per_month_range"
+                                                            id="limited_km_per_month_range" class="input-field"
+                                                            :disabled="!form.benefits.limited_km_per_month"
+                                                            :class="!form.benefits.limited_km_per_month ? 'bg-gray-100' : ''" />
+                                                    </div>
+                                                    <div class="flex flex-col gap-2">
+                                                        <div class="flex items-center gap-2">
+                                                            <input type="checkbox"
+                                                                v-model="form.benefits.cancellation_available_per_month"
+                                                                id="cancellation_available_per_month" class="w-auto" />
+                                                            <InputLabel for="cancellation_available_per_month" class="mb-0">{{
+                                                                _t('vendorprofilepages', 'label_cancellation_available_per_month') }}
+                                                            </InputLabel>
+                                                        </div>
+                                                        <InputLabel for="cancellation_available_per_month_date"
+                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
+                                                                'label_cancellation_allowed_until_months') }}</InputLabel>
+                                                        <Input type="number"
+                                                            v-model.number="form.benefits.cancellation_available_per_month_date"
+                                                            id="cancellation_available_per_month_date" min="0"
+                                                            class="input-field"
+                                                            :disabled="!form.benefits.cancellation_available_per_month"
+                                                            :class="!form.benefits.cancellation_available_per_month ? 'bg-gray-100' : ''" />
+                                                    </div>
+                                                    <div class="flex flex-col gap-2">
+                                                        <InputLabel for="price_per_km_per_month" class="mb-0">{{
+                                                            _t('vendorprofilepages', 'label_price_per_km_per_month') }}</InputLabel>
+                                                        <div class="input-with-suffix">
+                                                            <Input type="number"
+                                                                v-model.number="form.benefits.price_per_km_per_month"
+                                                                id="price_per_km_per_month" min="0" step="0.01"
+                                                                class="input-field" />
+                                                            <span class="input-suffix">{{ currencyCode }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 grid grid-cols-2 gap-4 max-[768px]:grid-cols-1">
+                                            <div>
+                                                <InputLabel for="minimum_driver_age">{{ _t('vendorprofilepages',
+                                                    'label_minimum_driver_age') }}</InputLabel>
+                                                <Input type="number" v-model.number="form.benefits.minimum_driver_age"
+                                                    id="minimum_driver_age" min="18" required class="input-field" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
                                         <InputLabel for="payment_method">{{ _t('vendorprofilepages',
                                             'label_payment_methods') }}</InputLabel>
-                                        <div class="flex items-center gap-10 flex-wrap">
+                                        <div class="flex items-center gap-10 flex-wrap mt-3">
                                             <label class="flex gap-2 items-center text-nowrap">
                                                 <input type="checkbox" v-model="form.payment_method" value="credit_card"
                                                     class="w-auto" />
@@ -584,10 +903,10 @@
                                         </div>
                                     </div>
 
-                                    <div class="col-span-2">
+                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
                                         <InputLabel for="features">{{ _t('vendorprofilepages', 'label_features') }}
                                         </InputLabel>
-                                        <div class="flex gap-10 flex-wrap">
+                                        <div class="flex gap-10 flex-wrap mt-3">
                                             <label v-for="feature in availableFeatures" :key="feature.id"
                                                 class="flex items-center text-nowrap gap-2">
                                                 <input type="checkbox" v-model="form.features" :value="feature.name"
@@ -795,7 +1114,7 @@
 
 
 <script setup>
-import { ref, onMounted, computed, watch, nextTick, getCurrentInstance } from 'vue';
+import { ref, onMounted, computed, watch, nextTick, getCurrentInstance, reactive } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import { usePage } from '@inertiajs/vue3';
@@ -845,6 +1164,35 @@ const maxImages = 20;
 const isLoading = ref(false);
 const allowFormSubmit = ref(true); // Flag to control form submission
 const colors = ref(predefinedColors);
+const formErrors = ref({});
+const currencyCode = computed(() => props.auth?.user?.profile?.currency || props.currency || 'USD');
+
+const selectedTypes = reactive({
+    day: true,
+    week: false,
+    month: false
+});
+
+const createCoverageFields = () => Array.from({ length: 5 }, () => '');
+
+const protectionPlans = reactive([
+    { key: 'essential', plan_type: 'Essential', price: null, features: createCoverageFields(), selected: false },
+    { key: 'premium', plan_type: 'Premium', price: null, features: createCoverageFields(), selected: false },
+    { key: 'premium_plus', plan_type: 'Premium Plus', price: null, features: createCoverageFields(), selected: false }
+]);
+
+const planErrors = reactive({
+    essential: '',
+    premium: '',
+    premium_plus: ''
+});
+
+const addons = ref([]);
+const selectedAddons = ref([]);
+const addonPrices = ref({});
+const addonQuantities = ref({});
+const existingAddonSelections = ref({});
+const customAddons = ref([]);
 
 const formatDate = (value) => {
     if (!value) {
@@ -881,8 +1229,8 @@ const form = useForm({
     city: '',
     state: '',
     country: '',
-    latitude: 0,
-    longitude: 0,
+    latitude: null,
+    longitude: null,
     status: 'available',
     features: [],
     featured: false,
@@ -923,6 +1271,11 @@ const form = useForm({
         price_per_km_per_month: 0.00,
         minimum_driver_age: 18
     },
+    selected_plans: [],
+    selected_addons: [],
+    addon_prices: {},
+    addon_quantities: {},
+    custom_addons: [],
     primary_image_index: null, // For new uploads
     existing_primary_image_id: null, // For existing images
     full_vehicle_address: '', // Initialize new field
@@ -932,6 +1285,177 @@ const remainingImageSlots = computed(() => {
     if (!props.vehicle || !props.vehicle.images) return maxImages
     return Math.max(0, maxImages - props.vehicle.images.length)
 })
+
+const pricePerDay = computed(() => {
+    const value = Number(form.price_per_day);
+    return Number.isFinite(value) ? value : 0;
+});
+
+const toPrice = (value) => {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+        return null;
+    }
+    return Math.round(number * 100) / 100;
+};
+
+const normalizeFeatures = (features) => features
+    .map(feature => `${feature}`.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+
+const isPlanActive = (plan) => plan.selected;
+
+const validateProtectionPlans = () => {
+    planErrors.essential = '';
+    planErrors.premium = '';
+    planErrors.premium_plus = '';
+
+    const minPrice = pricePerDay.value;
+    let isValid = true;
+
+    protectionPlans.forEach(plan => {
+        if (!isPlanActive(plan)) {
+            return;
+        }
+
+        const priceValue = Number(plan.price);
+        if (!Number.isFinite(priceValue) || priceValue <= 0) {
+            planErrors[plan.key] = 'Price is required.';
+            isValid = false;
+            return;
+        }
+
+        if (priceValue < minPrice) {
+            planErrors[plan.key] = `Price must be at least ${minPrice} ${currencyCode.value}.`;
+            isValid = false;
+        }
+    });
+
+    return isValid;
+};
+
+const togglePlanSelection = (plan) => {
+    plan.selected = !plan.selected;
+
+    if (!plan.selected) {
+        plan.price = null;
+        plan.features = createCoverageFields();
+        planErrors[plan.key] = '';
+    }
+};
+
+const buildSelectedPlans = () => {
+    let planId = 1;
+    return protectionPlans.reduce((plans, plan) => {
+        if (!isPlanActive(plan)) {
+            return plans;
+        }
+
+        plans.push({
+            plan_id: planId,
+            plan_type: plan.plan_type,
+            plan_value: Number(plan.price),
+            plan_description: null,
+            features: normalizeFeatures(plan.features)
+        });
+        planId += 1;
+        return plans;
+    }, []);
+};
+
+const isAddonSelected = (addonId) => selectedAddons.value.includes(addonId);
+
+const toggleAddonSelection = (addonId) => {
+    const index = selectedAddons.value.indexOf(addonId);
+    if (index >= 0) {
+        selectedAddons.value.splice(index, 1);
+    } else {
+        selectedAddons.value.push(addonId);
+        if (!addonQuantities.value[addonId]) {
+            addonQuantities.value[addonId] = 1;
+        }
+    }
+};
+
+const incrementQuantity = (addonId) => {
+    if (!isAddonSelected(addonId)) {
+        return;
+    }
+    if (!addonQuantities.value[addonId]) {
+        addonQuantities.value[addonId] = 1;
+    }
+    addonQuantities.value[addonId]++;
+};
+
+const decrementQuantity = (addonId) => {
+    if (!isAddonSelected(addonId)) {
+        return;
+    }
+    if (addonQuantities.value[addonId] > 1) {
+        addonQuantities.value[addonId]--;
+    }
+};
+
+const fetchAddons = async () => {
+    try {
+        const response = await axios.get('/api/booking-addons');
+        addons.value = response.data;
+        addons.value.forEach(addon => {
+            const existing = existingAddonSelections.value[addon.id];
+            addonPrices.value[addon.id] = existing?.price ?? addon.price ?? 0;
+            addonQuantities.value[addon.id] = existing?.quantity ?? 1;
+        });
+        selectedAddons.value = Object.keys(existingAddonSelections.value).map(id => Number(id));
+    } catch (error) {
+        console.error('Error fetching addons:', error);
+    }
+};
+
+const addCustomAddon = () => {
+    customAddons.value.push({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        extra_name: '',
+        extra_type: '',
+        description: '',
+        price: 0,
+        quantity: 1
+    });
+};
+
+const removeCustomAddon = (addonId) => {
+    customAddons.value = customAddons.value.filter(addon => addon.id !== addonId);
+};
+
+const buildCustomAddons = () => {
+    return customAddons.value
+        .map(addon => ({
+            extra_name: `${addon.extra_name || ''}`.trim(),
+            extra_type: `${addon.extra_type || ''}`.trim() || 'custom',
+            description: `${addon.description || ''}`.trim(),
+            price: addon.price,
+            quantity: addon.quantity || 1
+        }))
+        .filter(addon => addon.extra_name || addon.description || Number(addon.price) > 0);
+};
+
+const validateCustomAddons = (payload) => {
+    const errors = [];
+    payload.forEach((addon, index) => {
+        if (!addon.extra_name) {
+            errors.push(`Custom addon ${index + 1}: name is required.`);
+        }
+        const priceValue = Number(addon.price);
+        if (!Number.isFinite(priceValue) || priceValue < 0) {
+            errors.push(`Custom addon ${index + 1}: price must be 0 or more.`);
+        }
+        const quantityValue = Number(addon.quantity);
+        if (!Number.isFinite(quantityValue) || quantityValue < 1) {
+            errors.push(`Custom addon ${index + 1}: quantity must be at least 1.`);
+        }
+    });
+    return errors;
+};
 
 const categories = ref([]);
 const availableFeatures = ref([]); // Will hold category-specific features
@@ -1049,12 +1573,67 @@ const handleLocationSelect = (locationData) => {
     form.city = locationData.city || '';
     form.state = locationData.state || '';
     form.country = locationData.country || '';
-    form.latitude = Number.isFinite(locationData.latitude) ? locationData.latitude : 0;
-    form.longitude = Number.isFinite(locationData.longitude) ? locationData.longitude : 0;
+    const parsedLatitude = Number(locationData.latitude);
+    const parsedLongitude = Number(locationData.longitude);
+    if (Number.isFinite(parsedLatitude)) {
+        form.latitude = parsedLatitude;
+    }
+    if (Number.isFinite(parsedLongitude)) {
+        form.longitude = parsedLongitude;
+    }
 
     showLocationPicker.value = false; // Hide the picker component instance
     allowFormSubmit.value = true;    // Re-allow form submission
 };
+
+const ensurePreferredPriceType = () => {
+    const allowedTypes = ['day'];
+    if (selectedTypes.week) {
+        allowedTypes.push('week');
+    }
+    if (selectedTypes.month) {
+        allowedTypes.push('month');
+    }
+    if (!allowedTypes.includes(form.preferred_price_type)) {
+        form.preferred_price_type = allowedTypes[0];
+    }
+};
+
+watch(() => selectedTypes.week, (isEnabled) => {
+    if (isEnabled) {
+        if ((form.price_per_week === null || form.price_per_week === '') && form.price_per_day) {
+            form.price_per_week = toPrice(Number(form.price_per_day) * 7);
+        }
+    } else {
+        form.price_per_week = null;
+        form.weekly_discount = null;
+    }
+    ensurePreferredPriceType();
+});
+
+watch(() => selectedTypes.month, (isEnabled) => {
+    if (isEnabled) {
+        if ((form.price_per_month === null || form.price_per_month === '') && form.price_per_day) {
+            form.price_per_month = toPrice(Number(form.price_per_day) * 30);
+        }
+    } else {
+        form.price_per_month = null;
+        form.monthly_discount = null;
+    }
+    ensurePreferredPriceType();
+});
+
+watch(() => form.price_per_day, (newVal) => {
+    if (!newVal) {
+        return;
+    }
+    if (selectedTypes.week && (form.price_per_week === null || form.price_per_week === '')) {
+        form.price_per_week = toPrice(Number(newVal) * 7);
+    }
+    if (selectedTypes.month && (form.price_per_month === null || form.price_per_month === '')) {
+        form.price_per_month = toPrice(Number(newVal) * 30);
+    }
+});
 
 
 // Watch checkbox changes to nullify associated values when unchecked
@@ -1101,8 +1680,10 @@ onMounted(() => {
         form.city = props.vehicle.city || '';
         form.state = props.vehicle.state; // Correctly assign null if props.vehicle.state is null
         form.country = props.vehicle.country || '';
-        form.latitude = props.vehicle.latitude ? parseFloat(props.vehicle.latitude) : 0;
-        form.longitude = props.vehicle.longitude ? parseFloat(props.vehicle.longitude) : 0;
+        const initialLatitude = Number(props.vehicle.latitude);
+        const initialLongitude = Number(props.vehicle.longitude);
+        form.latitude = Number.isFinite(initialLatitude) ? initialLatitude : null;
+        form.longitude = Number.isFinite(initialLongitude) ? initialLongitude : null;
         form.full_vehicle_address = props.vehicle.full_vehicle_address || ''; // Populate from props
         form.status = props.vehicle.status;
         try {
@@ -1119,12 +1700,30 @@ onMounted(() => {
         } catch (e) {
             form.payment_method = []
         }
-        form.price_per_day = parseFloat(props.vehicle.price_per_day) || 0.00
-        form.price_per_week = parseFloat(props.vehicle.price_per_week) || 0.00
-        form.price_per_month = parseFloat(props.vehicle.price_per_month) || 0.00
-        form.weekly_discount = parseFloat(props.vehicle.weekly_discount) || 0.00
-        form.monthly_discount = parseFloat(props.vehicle.monthly_discount) || 0.00
+        const rawDaily = parseFloat(props.vehicle.price_per_day);
+        const rawWeekly = parseFloat(props.vehicle.price_per_week);
+        const rawMonthly = parseFloat(props.vehicle.price_per_month);
+        const rawWeeklyDiscount = parseFloat(props.vehicle.weekly_discount);
+        const rawMonthlyDiscount = parseFloat(props.vehicle.monthly_discount);
+
+        form.price_per_day = Number.isFinite(rawDaily) ? rawDaily : 0.00
+        form.price_per_week = Number.isFinite(rawWeekly) ? rawWeekly : null
+        form.price_per_month = Number.isFinite(rawMonthly) ? rawMonthly : null
+        form.weekly_discount = Number.isFinite(rawWeeklyDiscount) ? rawWeeklyDiscount : null
+        form.monthly_discount = Number.isFinite(rawMonthlyDiscount) ? rawMonthlyDiscount : null
         form.preferred_price_type = props.vehicle.preferred_price_type
+
+        selectedTypes.week = Number.isFinite(rawWeekly) && rawWeekly > 0;
+        selectedTypes.month = Number.isFinite(rawMonthly) && rawMonthly > 0;
+        if (!selectedTypes.week) {
+            form.price_per_week = null;
+            form.weekly_discount = null;
+        }
+        if (!selectedTypes.month) {
+            form.price_per_month = null;
+            form.monthly_discount = null;
+        }
+        ensurePreferredPriceType();
         form.guidelines = props.vehicle.guidelines;
 
         // Set existing primary image ID if one exists
@@ -1176,6 +1775,42 @@ onMounted(() => {
             form.dealer_cost = parseFloat(props.vehicle.specifications.dealer_cost) || 0.00
             form.phone_number = props.vehicle.specifications.phone_number
         }
+
+        const existingPlans = props.vehicle.vendorPlans || props.vehicle.vendor_plans || [];
+        existingPlans.forEach((plan) => {
+            const planType = `${plan.plan_type || ''}`.toLowerCase();
+            const match = protectionPlans.find(entry => entry.plan_type.toLowerCase() === planType);
+            if (!match) {
+                return;
+            }
+            match.selected = true;
+            match.price = parseFloat(plan.price) || 0;
+            let planFeatures = [];
+            if (Array.isArray(plan.features)) {
+                planFeatures = plan.features;
+            } else if (typeof plan.features === 'string') {
+                try {
+                    planFeatures = JSON.parse(plan.features || '[]');
+                } catch (error) {
+                    planFeatures = [];
+                }
+            }
+            match.features = Array.isArray(planFeatures) && planFeatures.length
+                ? [...planFeatures, ...createCoverageFields()].slice(0, 5)
+                : createCoverageFields();
+        });
+
+        const existingAddons = props.vehicle.addons || [];
+        existingAddons.forEach((addon) => {
+            const addonId = addon.addon_id ?? addon.addon?.id ?? addon.id;
+            if (!addonId) {
+                return;
+            }
+            existingAddonSelections.value[addonId] = {
+                price: parseFloat(addon.price) || 0,
+                quantity: parseInt(addon.quantity, 10) || 1
+            };
+        });
         if (props.vehicle.pickup_times && typeof props.vehicle.pickup_times === 'string') {
             form.pickup_times = props.vehicle.pickup_times.split(',').filter(Boolean);
         } else if (Array.isArray(props.vehicle.pickup_times)) {
@@ -1193,6 +1828,8 @@ onMounted(() => {
             form.return_times = ["17:00"]; // Default time
         }
     }
+
+    fetchAddons();
 
     // Log the form data to the console
     console.log('Form Data:', form);
@@ -1218,10 +1855,32 @@ const updateVehicle = () => {
         return;
     }
     isLoading.value = true;
+    formErrors.value = {};
 
     // Construct full_vehicle_address before getting form.data()
     const addressParts = [form.location, form.city, form.state, form.country];
     form.full_vehicle_address = addressParts.filter(Boolean).join(', ');
+
+    if (!validateProtectionPlans()) {
+        isLoading.value = false;
+        toast.error('Please complete the selected protection plans.', { position: 'top-right', timeout: 3000 });
+        return;
+    }
+
+    const customAddonsPayload = buildCustomAddons();
+    const customAddonErrors = validateCustomAddons(customAddonsPayload);
+    if (customAddonErrors.length) {
+        isLoading.value = false;
+        formErrors.value = { custom_addons: customAddonErrors };
+        toast.error(customAddonErrors[0], { position: 'top-right', timeout: 4000 });
+        return;
+    }
+
+    form.selected_plans = buildSelectedPlans();
+    form.selected_addons = selectedAddons.value;
+    form.addon_prices = addonPrices.value;
+    form.addon_quantities = addonQuantities.value;
+    form.custom_addons = customAddonsPayload;
 
     // Get a plain JS object of the form data to modify for submission
     let submitData = form.data();
@@ -1309,16 +1968,63 @@ const updateVehicle = () => {
 
     // Append other form data
     for (const key in submitData) {
-        // Ensure we only append actual data properties, not 'benefits' (handled above) or 'images' (handled below)
-        if (key !== 'benefits' && key !== 'images' && submitData.hasOwnProperty(key)) {
-            const value = submitData[key];
-            if (Array.isArray(value)) {
-                value.forEach(item => formData.append(`${key}[]`, item !== null ? item : ''));
-            } else {
-                // Send empty string for null, otherwise send the value
-                formData.append(key, value !== null ? value : '');
-            }
+        // Ensure we only append actual data properties, not nested/grouped fields handled separately
+        if (!submitData.hasOwnProperty(key)) {
+            continue;
         }
+        if (['benefits', 'images', 'selected_plans', 'selected_addons', 'addon_prices', 'addon_quantities', 'custom_addons'].includes(key)) {
+            continue;
+        }
+        const value = submitData[key];
+        if (Array.isArray(value)) {
+            value.forEach(item => formData.append(`${key}[]`, item !== null ? item : ''));
+        } else {
+            // Send empty string for null, otherwise send the value
+            formData.append(key, value !== null ? value : '');
+        }
+    }
+
+    if (Array.isArray(submitData.selected_plans)) {
+        submitData.selected_plans.forEach((plan, index) => {
+            formData.append(`selected_plans[${index}][plan_type]`, plan.plan_type ?? '');
+            formData.append(`selected_plans[${index}][plan_value]`, plan.plan_value ?? '');
+            if (plan.plan_description) {
+                formData.append(`selected_plans[${index}][plan_description]`, plan.plan_description);
+            }
+            if (Array.isArray(plan.features)) {
+                plan.features.forEach((feature, featureIndex) => {
+                    formData.append(`selected_plans[${index}][features][${featureIndex}]`, feature);
+                });
+            }
+        });
+    }
+
+    if (Array.isArray(submitData.selected_addons)) {
+        submitData.selected_addons.forEach(addonId => {
+            formData.append('selected_addons[]', addonId);
+        });
+    }
+
+    if (submitData.addon_prices && typeof submitData.addon_prices === 'object') {
+        Object.entries(submitData.addon_prices).forEach(([addonId, price]) => {
+            formData.append(`addon_prices[${addonId}]`, price ?? '');
+        });
+    }
+
+    if (submitData.addon_quantities && typeof submitData.addon_quantities === 'object') {
+        Object.entries(submitData.addon_quantities).forEach(([addonId, quantity]) => {
+            formData.append(`addon_quantities[${addonId}]`, quantity ?? '');
+        });
+    }
+
+    if (Array.isArray(submitData.custom_addons)) {
+        submitData.custom_addons.forEach((addon, index) => {
+            formData.append(`custom_addons[${index}][extra_name]`, addon.extra_name ?? '');
+            formData.append(`custom_addons[${index}][extra_type]`, addon.extra_type ?? 'custom');
+            formData.append(`custom_addons[${index}][description]`, addon.description ?? '');
+            formData.append(`custom_addons[${index}][price]`, addon.price ?? '');
+            formData.append(`custom_addons[${index}][quantity]`, addon.quantity ?? 1);
+        });
     }
 
     // Append new image files
@@ -1330,18 +2036,48 @@ const updateVehicle = () => {
     formData.append('_method', 'PUT');
 
     axios.post(route('current-vendor-vehicles.update', props.vehicle.id), formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 'Content-Type': 'multipart/form-data', 'Accept': 'application/json' },
     })
-        .then(() => {
+        .then((response) => {
             isLoading.value = false;
             selectedFiles.value = []; // Reset selected files after successful upload
+            const updatedVehicle = response?.data?.vehicle;
+            if (updatedVehicle && props.vehicle) {
+                Object.assign(props.vehicle, updatedVehicle);
+                props.vehicle.images = updatedVehicle.images || props.vehicle.images || [];
+                props.vehicle.benefits = updatedVehicle.benefits || props.vehicle.benefits || null;
+                props.vehicle.specifications = updatedVehicle.specifications || props.vehicle.specifications || null;
+                props.vehicle.vendorPlans = updatedVehicle.vendorPlans || updatedVehicle.vendor_plans || [];
+                props.vehicle.addons = updatedVehicle.addons || [];
+                existingAddonSelections.value = {};
+                (props.vehicle.addons || []).forEach((addon) => {
+                    const addonId = addon.addon_id ?? addon.addon?.id ?? addon.id;
+                    if (!addonId) {
+                        return;
+                    }
+                    existingAddonSelections.value[addonId] = {
+                        price: parseFloat(addon.price) || 0,
+                        quantity: parseInt(addon.quantity, 10) || 1
+                    };
+                });
+                customAddons.value = [];
+                fetchAddons();
+            }
             toast.success('Vehicle updated successfully!', { position: 'top-right', timeout: 1000 });
-            setTimeout(() => {
-                window.location.href = route('current-vendor-vehicles.index');
-            }, 1500);
         })
         .catch(error => {
             isLoading.value = false;
+            const responseErrors = error?.response?.data?.errors;
+            if (responseErrors) {
+                formErrors.value = responseErrors;
+                const firstError = Object.values(responseErrors)[0];
+                const message = Array.isArray(firstError) ? firstError[0] : firstError;
+                toast.error(message || 'Please review the highlighted fields.', {
+                    position: 'top-right',
+                    timeout: 4000
+                });
+                return;
+            }
             toast.error('Something went wrong.', { position: 'top-right', timeout: 3000 });
             // console.error('Error updating vehicle:', error.response ? error.response.data : error);
         });
@@ -1437,6 +2173,49 @@ input {
 input[type="checkbox"] {
     width: auto;
     padding: 0;
+}
+
+.input-field {
+    padding: 0.6rem 0.75rem;
+}
+
+.input-with-suffix {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.input-with-suffix input {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.input-suffix {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    color: #475569;
+    font-weight: 600;
+    background: #ffffff;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.inline-currency {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.5rem;
+    margin-left: 0.25rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    color: #475569;
+    font-weight: 600;
+    background: #ffffff;
+    font-size: 0.7rem;
+    white-space: nowrap;
 }
 
 select {

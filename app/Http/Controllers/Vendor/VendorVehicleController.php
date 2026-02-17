@@ -7,12 +7,16 @@ use App\Models\Vehicle;
 use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
+use App\Models\BookingAddon;
+use App\Models\VendorVehicleAddon;
+use App\Models\VendorVehiclePlan;
 use App\Helpers\ImageCompressionHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log; // Add this line
 use Inertia\Inertia;
+use Illuminate\Validation\ValidationException;
 
 class VendorVehicleController extends Controller
 {
@@ -69,7 +73,7 @@ class VendorVehicleController extends Controller
 
     public function edit($locale, $id)
     {
-        $vehicle = Vehicle::with(['specifications', 'images', 'benefits'])->findOrFail($id);
+        $vehicle = Vehicle::with(['specifications', 'images', 'benefits', 'vendorPlans', 'addons'])->findOrFail($id);
         // print_r($vehicle->all());
         // die();
 
@@ -171,52 +175,76 @@ class VendorVehicleController extends Controller
             'guidelines' => 'nullable|string|max:50000',
             'pickup_times' => 'required|array',
             'return_times' => 'required|array',
+
+            'selected_plans' => 'nullable|array|max:3',
+            'selected_plans.*.plan_type' => 'required|string|in:Basic,Essential,Premium,Premium Plus',
+            'selected_plans.*.plan_value' => 'required|numeric|min:0',
+            'selected_plans.*.features' => 'nullable|array|max:5',
+            'selected_plans.*.features.*' => 'string|max:255',
+            'selected_plans.*.plan_description' => 'nullable|string|max:2000',
+
+            'selected_addons' => 'nullable|array',
+            'selected_addons.*' => 'integer|exists:booking_addons,id',
+            'addon_prices' => 'nullable|array',
+            'addon_prices.*' => 'nullable|numeric|min:0',
+            'addon_quantities' => 'nullable|array',
+            'addon_quantities.*' => 'nullable|integer|min:1',
+
+            'custom_addons' => 'nullable|array',
+            'custom_addons.*.extra_name' => 'required|string|max:255',
+            'custom_addons.*.extra_type' => 'nullable|string|max:255',
+            'custom_addons.*.description' => 'nullable|string|max:2000',
+            'custom_addons.*.price' => 'required|numeric|min:0',
+            'custom_addons.*.quantity' => 'required|integer|min:1',
         ]);
 
         // Set default values for nullable fields
-        $latitude = $request->latitude ?? 0;
-        $longitude = $request->longitude ?? 0;
+        $latitude = ($request->has('latitude') && $request->input('latitude') !== '')
+            ? $request->input('latitude')
+            : $vehicle->latitude;
+        $longitude = ($request->has('longitude') && $request->input('longitude') !== '')
+            ? $request->input('longitude')
+            : $vehicle->longitude;
         $features = $request->features ?? [];
 
-        // Update vehicle
-        $vehicle->update([
-            'category_id' => $request->category_id,
-            'brand' => $request->brand,
-            'model' => $request->model,
-            'color' => $request->color,
-            'mileage' => $request->mileage,
-            'transmission' => $request->transmission,
-            'fuel' => $request->fuel,
-            'seating_capacity' => $request->seating_capacity,
-            'number_of_doors' => $request->number_of_doors,
-            'luggage_capacity' => $request->luggage_capacity,
-            'horsepower' => $request->horsepower,
-            'co2' => $request->co2,
-            'location' => $request->location ?? '',
-            'location_type' => $request->location_type,
-            'city' => $request->city ?? '',
-            'state' => $request->state ?? '',
-            'country' => $request->country ?? '',
-            'full_vehicle_address' => $request->full_vehicle_address,
-            'latitude' => $latitude,
-            'longitude' => $longitude,
-            'status' => $request->status,
-            'features' => json_encode($features),
-            'featured' => (bool) $request->featured,
-            'security_deposit' => $request->security_deposit,
-            'payment_method' => json_encode($request->payment_method),
-            'price_per_day' => $request->price_per_day,
-            'price_per_week' => $request->price_per_week == 0 ? null : $request->price_per_week,
-            'weekly_discount' => $request->weekly_discount == 0 ? null : $request->weekly_discount,
-            'price_per_month' => $request->price_per_month == 0 ? null : $request->price_per_month,
-            'monthly_discount' => $request->monthly_discount == 0 ? null : $request->monthly_discount,
-            'preferred_price_type' => $request->preferred_price_type,
-            'guidelines' => $request->guidelines,
-            'pickup_times' => $request->pickup_times,
-            'return_times' => $request->return_times,
-        ]);
+        $selectedPlans = $request->input('selected_plans', []);
+        if (!empty($selectedPlans)) {
+            $pricePerDay = $request->price_per_day ?? 0;
+            foreach ($selectedPlans as $selectedPlan) {
+                $planType = $selectedPlan['plan_type'] ?? '';
+                if ($planType === 'Basic') {
+                    continue;
+                }
 
+                $planValue = $selectedPlan['plan_value'] ?? null;
+                if (!is_numeric($planValue) || $planValue < $pricePerDay) {
+                    throw ValidationException::withMessages([
+                        'selected_plans' => ['Protection plan price must be at least the daily price.']
+                    ]);
+                }
+            }
+        }
 
+        $selectedAddons = $request->input('selected_addons', []);
+        $addonPrices = $request->input('addon_prices', []);
+        $addonQuantities = $request->input('addon_quantities', []);
+        $customAddons = $request->input('custom_addons', []);
+        if (!empty($selectedAddons)) {
+            foreach ($selectedAddons as $addonId) {
+                $price = $addonPrices[$addonId] ?? null;
+                $quantity = $addonQuantities[$addonId] ?? null;
+                if (!is_numeric($price) || $price < 0) {
+                    throw ValidationException::withMessages([
+                        'addon_prices' => ['Please provide a valid price for each selected addon.']
+                    ]);
+                }
+                if (!is_numeric($quantity) || $quantity < 1) {
+                    throw ValidationException::withMessages([
+                        'addon_quantities' => ['Please provide a valid quantity for each selected addon.']
+                    ]);
+                }
+            }
+        }
 
         // Update or create vehicle benefits
         $benefitsData = [
@@ -238,34 +266,176 @@ class VendorVehicleController extends Controller
             'minimum_driver_age' => $request->input('benefits.minimum_driver_age'),
         ];
 
-        if ($vehicle->benefits) {
-            $vehicle->benefits()->update($benefitsData);
-        } else {
-            $vehicle->benefits()->create($benefitsData);
-        }
+        try {
+            DB::transaction(function () use ($vehicle, $request, $latitude, $longitude, $features, $benefitsData, $selectedPlans, $selectedAddons, $addonPrices, $addonQuantities, $customAddons) {
+                // Update vehicle
+                $vehicle->update([
+                    'category_id' => $request->category_id,
+                    'brand' => $request->brand,
+                    'model' => $request->model,
+                    'color' => $request->color,
+                    'mileage' => $request->mileage,
+                    'transmission' => $request->transmission,
+                    'fuel' => $request->fuel,
+                    'seating_capacity' => $request->seating_capacity,
+                    'number_of_doors' => $request->number_of_doors,
+                    'luggage_capacity' => $request->luggage_capacity,
+                    'horsepower' => $request->horsepower,
+                    'co2' => $request->co2,
+                    'location' => $request->location ?? '',
+                    'location_type' => $request->location_type,
+                    'city' => $request->city ?? '',
+                    'state' => $request->state ?? '',
+                    'country' => $request->country ?? '',
+                    'full_vehicle_address' => $request->full_vehicle_address,
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
+                    'status' => $request->status,
+                    'features' => json_encode($features),
+                    'featured' => (bool) $request->featured,
+                    'security_deposit' => $request->security_deposit,
+                    'payment_method' => json_encode($request->payment_method),
+                    'price_per_day' => $request->price_per_day,
+                    'price_per_week' => $request->price_per_week == 0 ? null : $request->price_per_week,
+                    'weekly_discount' => $request->weekly_discount == 0 ? null : $request->weekly_discount,
+                    'price_per_month' => $request->price_per_month == 0 ? null : $request->price_per_month,
+                    'monthly_discount' => $request->monthly_discount == 0 ? null : $request->monthly_discount,
+                    'preferred_price_type' => $request->preferred_price_type,
+                    'guidelines' => $request->guidelines,
+                    'pickup_times' => $request->pickup_times,
+                    'return_times' => $request->return_times,
+                ]);
+
+
+
+                if ($vehicle->benefits) {
+                    $vehicle->benefits()->update($benefitsData);
+                } else {
+                    $vehicle->benefits()->create($benefitsData);
+                }
 
         // Update or create specifications
-        if ($vehicle->specifications) {
-            $vehicle->specifications()->update([
-                'registration_number' => $request->registration_number,
-                'registration_country' => $request->registration_country,
-                'registration_date' => $request->registration_date,
-                'gross_vehicle_mass' => $request->gross_vehicle_mass,
-                'vehicle_height' => $request->vehicle_height,
-                'dealer_cost' => $request->dealer_cost,
-                'phone_number' => $request->phone_number,
-            ]);
-        } else {
-            VehicleSpecification::create([
+                if ($vehicle->specifications) {
+                    $vehicle->specifications()->update([
+                        'registration_number' => $request->registration_number,
+                        'registration_country' => $request->registration_country,
+                        'registration_date' => $request->registration_date,
+                        'gross_vehicle_mass' => $request->gross_vehicle_mass,
+                        'vehicle_height' => $request->vehicle_height,
+                        'dealer_cost' => $request->dealer_cost,
+                        'phone_number' => $request->phone_number,
+                    ]);
+                } else {
+                    VehicleSpecification::create([
+                        'vehicle_id' => $vehicle->id,
+                        'registration_number' => $request->registration_number,
+                        'registration_country' => $request->registration_country,
+                        'registration_date' => $request->registration_date,
+                        'gross_vehicle_mass' => $request->gross_vehicle_mass,
+                        'vehicle_height' => $request->vehicle_height,
+                        'dealer_cost' => $request->dealer_cost,
+                        'phone_number' => $request->phone_number,
+                    ]);
+                }
+
+                VendorVehiclePlan::where('vehicle_id', $vehicle->id)->delete();
+                if (!empty($selectedPlans)) {
+                    $planId = 1;
+                    foreach ($selectedPlans as $selectedPlan) {
+                        $planType = $selectedPlan['plan_type'] ?? 'Basic';
+                        if ($planType === 'Basic') {
+                            continue;
+                        }
+
+                        $features = isset($selectedPlan['features']) && is_array($selectedPlan['features'])
+                            ? array_values(array_filter($selectedPlan['features'], fn($feature) => trim($feature) !== ''))
+                            : null;
+
+                        VendorVehiclePlan::create([
+                            'vendor_id' => $request->user()->id,
+                            'vehicle_id' => $vehicle->id,
+                            'plan_id' => $planId,
+                            'plan_type' => $planType,
+                            'price' => $selectedPlan['plan_value'] ?? 0,
+                            'features' => $features ? json_encode(array_slice($features, 0, 5)) : null,
+                            'plan_description' => $selectedPlan['plan_description'] ?? null,
+                        ]);
+
+                        $planId++;
+                    }
+                }
+
+                VendorVehicleAddon::where('vehicle_id', $vehicle->id)->delete();
+                if (!empty($selectedAddons)) {
+                    foreach ($selectedAddons as $addonId) {
+                        $addon = BookingAddon::find($addonId);
+                        if (!$addon) {
+                            continue;
+                        }
+
+                        VendorVehicleAddon::create([
+                            'vendor_id' => $request->user()->id,
+                            'vehicle_id' => $vehicle->id,
+                            'addon_id' => $addonId,
+                            'extra_type' => $addon->extra_type,
+                            'extra_name' => $addon->extra_name,
+                            'price' => $addonPrices[$addonId] ?? $addon->price ?? 0,
+                            'quantity' => $addonQuantities[$addonId] ?? 1,
+                            'description' => $addon->description,
+                        ]);
+                    }
+                }
+
+                if (!empty($customAddons)) {
+                    foreach ($customAddons as $customAddon) {
+                        $extraName = trim($customAddon['extra_name'] ?? '');
+                        if ($extraName === '') {
+                            continue;
+                        }
+                        $extraType = trim($customAddon['extra_type'] ?? '') ?: 'custom';
+                        $description = trim($customAddon['description'] ?? '');
+                        $price = $customAddon['price'] ?? 0;
+                        $quantity = $customAddon['quantity'] ?? 1;
+
+                        $addon = BookingAddon::updateOrCreate(
+                            [
+                                'vendor_id' => $request->user()->id,
+                                'extra_name' => $extraName,
+                                'extra_type' => $extraType,
+                            ],
+                            [
+                                'description' => $description,
+                                'price' => $price,
+                                'quantity' => $quantity,
+                            ]
+                        );
+
+                        VendorVehicleAddon::create([
+                            'vendor_id' => $request->user()->id,
+                            'vehicle_id' => $vehicle->id,
+                            'addon_id' => $addon->id,
+                            'extra_type' => $addon->extra_type,
+                            'extra_name' => $addon->extra_name,
+                            'price' => $price,
+                            'quantity' => $quantity,
+                            'description' => $addon->description,
+                        ]);
+                    }
+                }
+            });
+        } catch (\Throwable $error) {
+            Log::error('Vehicle update failed', [
                 'vehicle_id' => $vehicle->id,
-                'registration_number' => $request->registration_number,
-                'registration_country' => $request->registration_country,
-                'registration_date' => $request->registration_date,
-                'gross_vehicle_mass' => $request->gross_vehicle_mass,
-                'vehicle_height' => $request->vehicle_height,
-                'dealer_cost' => $request->dealer_cost,
-                'phone_number' => $request->phone_number,
+                'vendor_id' => $request->user()->id,
+                'message' => $error->getMessage(),
             ]);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'We could not update this vehicle. Please review the form and try again.'
+                ], 500);
+            }
+            return back()->with('error', 'We could not update this vehicle. Please review the form and try again.')
+                ->withInput();
         }
 
         // Handle vehicle images if included in the request
@@ -341,8 +511,14 @@ class VendorVehicleController extends Controller
         }
 
 
-        return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
-            ->with('success', 'Vehicle updated successfully');
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => 'Vehicle updated successfully',
+                'vehicle' => $vehicle->fresh(['specifications', 'images', 'benefits', 'vendorPlans', 'addons']),
+            ]);
+        }
+
+        return back()->with('success', 'Vehicle updated successfully');
     }
 
     public function destroy($locale, $id)
