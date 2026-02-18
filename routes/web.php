@@ -352,24 +352,6 @@ Route::group([
         ->middleware(['signed:relative', 'throttle:6,1'])
         ->name('newsletter.confirm');
 
-    // Sitemap Routes
-    Route::get('/sitemap_en_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsEn']);
-    Route::get('/sitemap_fr_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsFr']);
-    Route::get('/sitemap_nl_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsNl']);
-    Route::get('/sitemap_es_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsEs']);
-    Route::get('/sitemap_ar_blogs.xml', [App\Http\Controllers\SiteMapController::class, 'blogsAr']);
-
-    // Sitemap Routes for Vehicles
-    Route::get('/sitemap_en_vehicles.xml', [App\Http\Controllers\SiteMapController::class, 'vehiclesEn']);
-    Route::get('/sitemap_fr_vehicles.xml', [App\Http\Controllers\SiteMapController::class, 'vehiclesFr']);
-    Route::get('/sitemap_nl_vehicles.xml', [App\Http\Controllers\SiteMapController::class, 'vehiclesNl']);
-
-
-    // Sitemap Routes for Popular Places
-    Route::get('/sitemap_en_places.xml', [App\Http\Controllers\SiteMapController::class, 'placesEn']);
-    Route::get('/sitemap_fr_places.xml', [App\Http\Controllers\SiteMapController::class, 'placesFr']);
-    Route::get('/sitemap_nl_places.xml', [App\Http\Controllers\SiteMapController::class, 'placesNl']);
-
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->middleware(['auth', 'verified'])->name('dashboard');
@@ -1037,61 +1019,6 @@ Route::get('/fetch-ok-mobility-stations', function () {
     $stationsXml = $okMobilityService->getStations();
     return response($stationsXml, 200, ['Content-Type' => 'application/xml']);
 });
-
-// Global Sitemap Routes (outside locale prefix)
-Route::get('/sitemap.xml', function () {
-    $content = '<?xml version="1.0" encoding="UTF-8"?>';
-    $content .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
-
-    // Blog sitemaps for all locales
-    $locales = ['en', 'fr', 'nl', 'es', 'ar'];
-    foreach ($locales as $locale) {
-        $content .= '<sitemap>';
-        $content .= '<loc>' . url("/sitemap_{$locale}_blogs.xml") . '</loc>';
-        $content .= '<lastmod>' . now()->toAtomString() . '</lastmod>';
-        $content .= '</sitemap>';
-    }
-
-    // Add blog listings sitemap
-    $content .= '<sitemap>';
-    $content .= '<loc>' . url("/sitemap-blog-listings.xml") . '</loc>';
-    $content .= '<lastmod>' . now()->toAtomString() . '</lastmod>';
-    $content .= '</sitemap>';
-
-    // Get unique countries from blogs for country-specific sitemaps
-    $countries = \App\Models\Blog::where('is_published', true)
-        ->whereNotNull('countries')
-        ->pluck('countries')
-        ->flatten()
-        ->unique()
-        ->toArray();
-
-    if (empty($countries)) {
-        $countries = ['us'];
-    }
-
-    // Add country-specific sitemaps
-    foreach ($countries as $country) {
-        $country = strtolower($country);
-        $content .= '<sitemap>';
-        $content .= '<loc>' . url("/sitemap-blogs-{$country}.xml") . '</loc>';
-        $content .= '<lastmod>' . now()->toAtomString() . '</lastmod>';
-        $content .= '</sitemap>';
-    }
-
-    $content .= '</sitemapindex>';
-
-    return Response::make($content, 200, [
-        'Content-Type' => 'application/xml'
-    ]);
-});
-
-// Country-specific blog sitemap routes
-Route::get('/sitemap-blogs-{country}.xml', [App\Http\Controllers\SiteMapController::class, 'blogsByCountry'])
-    ->where('country', '[a-zA-Z]{2}');
-
-// Blog listings sitemap
-Route::get('/sitemap-blog-listings.xml', [App\Http\Controllers\SiteMapController::class, 'blogListings']);
 
 // Simple test route to verify routes are working
 Route::get('/test-business-debug/{token}', function ($token) {

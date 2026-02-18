@@ -693,19 +693,47 @@ watch(
 );
 
 
-const submitFilters = debounce(() => {
-    const dataToSend = { ...form.data() };
-    if (dataToSend.matched_field && (dataToSend.city || dataToSend.state || dataToSend.country)) {
-        delete dataToSend.radius;
+const serverParams = computed(() => {
+    const params = {
+        date_from: form.date_from,
+        date_to: form.date_to,
+        where: form.where,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        radius: form.radius,
+        package_type: form.package_type,
+        city: form.city,
+        state: form.state,
+        country: form.country,
+        matched_field: form.matched_field,
+        location: form.location,
+        provider: form.provider,
+        provider_pickup_id: form.provider_pickup_id,
+        unified_location_id: form.unified_location_id,
+        start_time: form.start_time,
+        end_time: form.end_time,
+        age: form.age,
+        rentalCode: form.rentalCode,
+        userid: form.userid,
+        username: form.username,
+        language: form.language,
+        full_credit: form.full_credit,
+        promocode: form.promocode,
+        dropoff_location_id: form.dropoff_location_id,
+        dropoff_where: form.dropoff_where,
+    };
+
+    if (params.matched_field && (params.city || params.state || params.country)) {
+        delete params.radius;
     }
 
+    return params;
+});
 
-    form.get(`/${page.props.locale}/s`, {
+const submitFilters = debounce(() => {
+    router.get(`/${page.props.locale}/s`, serverParams.value, {
         preserveState: true,
         preserveScroll: true,
-        onSuccess: (response) => {
-            // console.log('Filter response:', response.props.vehicles);
-        },
         onError: (errors) => {
             console.error('Filter errors:', errors);
         },
@@ -717,23 +745,7 @@ const submitFilters = debounce(() => {
 }, 300);
 
 watch(
-    () => {
-        const data = form.data();
-        // Exclude client-side filters from triggering server search
-        const {
-            brand,
-            category_id,
-            transmission,
-            fuel,
-            seating_capacity,
-            price_range,
-            color,
-            // Currency conversion is client-side; don't refetch provider availability.
-            currency,
-            ...serverParams
-        } = data;
-        return serverParams;
-    },
+    () => serverParams.value,
     () => {
         submitFilters();
     },
@@ -2354,7 +2366,7 @@ watch(
             </div>
 
             <div class="search-form-card">
-                <SearchBar class="searchbar-in-header" :prefill="searchQuery" :simple="true"
+                <SearchBar class="searchbar-in-header !w-full" :prefill="searchQuery" :simple="true"
                     @update-search-params="handleSearchUpdate" />
                 <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
             </div>
