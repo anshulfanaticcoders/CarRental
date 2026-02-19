@@ -31,6 +31,11 @@ class Blog extends Model
         return $this->hasMany(BlogTranslation::class);
     }
 
+    public function tags()
+    {
+        return $this->belongsToMany(BlogTag::class);
+    }
+
     public function getTranslation(string $locale = null)
     {
         $locale = $locale ?? app()->getLocale();

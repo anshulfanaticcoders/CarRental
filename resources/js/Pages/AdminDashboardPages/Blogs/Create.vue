@@ -27,6 +27,10 @@ const props = defineProps({
     available_locales: Array,
     current_locale: String,
     errors: Object,
+    allTags: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const primaryLocale = 'en'
@@ -35,7 +39,7 @@ const activeLocale = ref(props.current_locale || props.available_locales[0]);
 
 const initialTranslations = {};
 props.available_locales.forEach(locale => {
-    initialTranslations[locale] = { title: '', slug: '', content: '' };
+    initialTranslations[locale] = { title: '', slug: '', content: '', excerpt: '' };
 });
 
 const initialSeoTranslations = {};
@@ -51,6 +55,7 @@ const form = useForm({
     translations: JSON.parse(JSON.stringify(initialTranslations)),
     image: null,
     is_published: true,
+    tags: [],
     countries: ['us'], // Default to US
     canonical_country: 'us',
     seo_title: '',
@@ -58,6 +63,15 @@ const form = useForm({
     keywords: '',
     seo_translations: JSON.parse(JSON.stringify(initialSeoTranslations)),
 });
+
+const newTag = ref('');
+const addTag = () => {
+    const tag = newTag.value.trim();
+    if (tag && !form.tags.includes(tag)) {
+        form.tags.push(tag);
+    }
+    newTag.value = '';
+};
 
 const localeIsComplete = (locale) => {
     const t = form.translations?.[locale] || {}
@@ -88,6 +102,7 @@ const copyFromPrimary = (locale) => {
     if (locale === primaryLocale) return
     form.translations[locale].title = form.translations[primaryLocale]?.title || ''
     form.translations[locale].content = form.translations[primaryLocale]?.content || ''
+    form.translations[locale].excerpt = form.translations[primaryLocale]?.excerpt || ''
     regenerateSlug(locale)
 }
 
@@ -186,7 +201,7 @@ const submitForm = () => {
             form.reset();
             const newInitialTranslations = {};
             props.available_locales.forEach(locale => {
-                newInitialTranslations[locale] = { title: '', slug: '', content: '' };
+                newInitialTranslations[locale] = { title: '', slug: '', content: '', excerpt: '' };
             });
             form.translations = JSON.parse(JSON.stringify(newInitialTranslations));
             props.available_locales.forEach((locale) => {
@@ -431,6 +446,16 @@ const removeImage = () => {
                     </p>
                   </div>
 
+                  <!-- Excerpt Field -->
+                  <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Excerpt ({{ activeLocale.toUpperCase() }})
+                    </label>
+                    <textarea v-model="form.translations[activeLocale].excerpt" rows="3"
+                              class="w-full border-gray-300 rounded-md shadow-sm text-sm"
+                              placeholder="Brief summary of this post (shown in blog listings and article header)"></textarea>
+                  </div>
+
                   <!-- Image Upload -->
                   <div>
                     <label class="text-sm font-medium text-gray-700 mb-2 block">Blog Image</label>
@@ -480,6 +505,31 @@ const removeImage = () => {
                                 <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
                             </div>
                         </div>
+                    </div>
+                  </div>
+
+                  <!-- Tags -->
+                  <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+                    <div class="flex flex-wrap gap-2 mb-2">
+                      <span v-for="(tag, i) in form.tags" :key="i"
+                            class="inline-flex items-center gap-1 bg-customPrimaryColor text-white text-sm px-3 py-1 rounded-full">
+                        {{ tag }}
+                        <button type="button" @click="form.tags.splice(i, 1)" class="ml-1 hover:text-red-200">&times;</button>
+                      </span>
+                    </div>
+                    <div class="flex gap-2">
+                      <input v-model="newTag" type="text" placeholder="Add a tag..."
+                             class="flex-1 border-gray-300 rounded-md shadow-sm text-sm"
+                             @keydown.enter.prevent="addTag"
+                             list="existingTags" />
+                      <datalist id="existingTags">
+                        <option v-for="t in allTags" :key="t" :value="t" />
+                      </datalist>
+                      <button type="button" @click="addTag"
+                              class="px-4 py-2 bg-customPrimaryColor text-white text-sm rounded-md hover:bg-opacity-90">
+                        Add
+                      </button>
                     </div>
                   </div>
 

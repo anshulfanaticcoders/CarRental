@@ -57,6 +57,7 @@ class BlogController extends Controller
         return Inertia::render('AdminDashboardPages/Blogs/Create', [
             'available_locales' => config('app.available_locales', ['en']),
             'current_locale' => App::getLocale(),
+            'allTags' => \App\Models\BlogTag::orderBy('name')->pluck('name')->toArray(),
         ]);
     }
 
@@ -205,6 +206,7 @@ class BlogController extends Controller
                     'title' => $title,
                     'slug' => Str::slug($slugValue),
                     'content' => $content,
+                    'excerpt' => $data['excerpt'] ?? null,
                 ]);
             }
         }
@@ -262,11 +264,27 @@ class BlogController extends Controller
             );
         }
 
+        // Handle tags
+        $tagNames = $request->input('tags', []);
+        if (!empty($tagNames)) {
+            $tagIds = [];
+            foreach ($tagNames as $tagName) {
+                $tagName = trim($tagName);
+                if ($tagName) {
+                    $tag = \App\Models\BlogTag::firstOrCreate(
+                        ['slug' => Str::slug($tagName)],
+                        ['name' => $tagName]
+                    );
+                    $tagIds[] = $tag->id;
+                }
+            }
+            $blog->tags()->sync($tagIds);
+        }
+
         // Make changes visible immediately on the frontend.
         foreach ($available_locales as $locale) {
             Cache::forget('seo:model:' . get_class($blog) . ':' . $blog->getKey() . ':' . $locale);
         }
-
 
         return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog created successfully.');
     }
@@ -320,7 +338,9 @@ class BlogController extends Controller
             'available_locales' => $allLocales,
             'current_locale' => App::getLocale(),
             'seoMeta' => $seoMeta,
-            'seoTranslations' => $seoTranslations, // Pass SEO translations to the component
+            'seoTranslations' => $seoTranslations,
+            'tags' => $blog->tags->pluck('name')->toArray(),
+            'allTags' => \App\Models\BlogTag::orderBy('name')->pluck('name')->toArray(),
         ]);
     }
 
@@ -485,9 +505,25 @@ class BlogController extends Controller
                     'title' => $title,
                     'slug' => Str::slug($slugValue),
                     'content' => $content,
+                    'excerpt' => $data['excerpt'] ?? null,
                 ]
             );
         }
+
+        // Handle tags
+        $tagNames = $request->input('tags', []);
+        $tagIds = [];
+        foreach ($tagNames as $tagName) {
+            $tagName = trim($tagName);
+            if ($tagName) {
+                $tag = \App\Models\BlogTag::firstOrCreate(
+                    ['slug' => Str::slug($tagName)],
+                    ['name' => $tagName]
+                );
+                $tagIds[] = $tag->id;
+            }
+        }
+        $blog->tags()->sync($tagIds);
 
         // SEO meta bound to this blog (not slug-based).
         $primaryTitleForSeo = (string) (($translationsData['en']['title'] ?? null) ?: ($translationsData[$primaryLocale]['title'] ?? null) ?: '');
@@ -844,13 +880,22 @@ class BlogController extends Controller
 
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
+        // Compute reading time and get related blogs
+        $readingTime = $this->calculateReadingTime($translation->content ?? '');
+        $relatedBlogs = $this->getRelatedBlogs($blog, $locale, $country);
+
         return Inertia::render('SingleBlog', [
-            'blog' => $blog,
+            'blog' => array_merge($blog->toArray(), [
+                'excerpt' => $translation->excerpt ?? null,
+            ]),
             'schema' => $blogSchema,
             'seo' => $seo,
             'locale' => $locale,
             'country' => $country,
             'pages' => $pages,
+            'tags' => $blog->tags->map(fn($t) => ['name' => $t->name, 'slug' => $t->slug]),
+            'relatedBlogs' => $relatedBlogs,
+            'readingTime' => $readingTime,
         ]);
     }
 
@@ -887,5 +932,52 @@ class BlogController extends Controller
         \Log::info('getRecentBlogs: Found ' . $recentBlogs->count() . ' recent blogs for country ' . $country);
 
         return response()->json($recentBlogs);
+    }
+
+    private function calculateReadingTime(string $content): int
+    {
+        $text = strip_tags($content);
+        $wordCount = str_word_count($text);
+        return max(1, (int) ceil($wordCount / 200));
+    }
+
+    private function getRelatedBlogs(Blog $blog, string $locale, string $country): array
+    {
+        $tagIds = $blog->tags->pluck('id')->toArray();
+
+        $query = Blog::where('id', '!=', $blog->id)
+            ->where('is_published', true)
+            ->with(['translations' => function ($q) use ($locale) {
+                $q->where('locale', $locale);
+            }]);
+
+        if (!empty($tagIds)) {
+            $query->whereHas('tags', function ($q) use ($tagIds) {
+                $q->whereIn('blog_tags.id', $tagIds);
+            });
+        }
+
+        $related = $query->latest()->limit(3)->get();
+
+        if ($related->count() < 3) {
+            $existingIds = $related->pluck('id')->merge([$blog->id])->toArray();
+            $more = Blog::whereNotIn('id', $existingIds)
+                ->where('is_published', true)
+                ->with(['translations' => fn($q) => $q->where('locale', $locale)])
+                ->latest()
+                ->limit(3 - $related->count())
+                ->get();
+            $related = $related->merge($more);
+        }
+
+        return $related->map(function ($b) use ($locale) {
+            $t = $b->translations->first();
+            return [
+                'title' => $t?->title ?? '',
+                'slug' => $t?->slug ?? $b->slug,
+                'image' => $b->image,
+                'date' => $b->created_at?->format('M j, Y') ?? '',
+            ];
+        })->toArray();
     }
 }

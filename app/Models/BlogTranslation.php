@@ -15,6 +15,7 @@ class BlogTranslation extends Model
         'title',
         'slug',
         'content',
+        'excerpt',
     ];
 
     public function blog()

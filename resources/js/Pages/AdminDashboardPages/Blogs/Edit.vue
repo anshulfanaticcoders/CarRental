@@ -36,6 +36,14 @@ const props = defineProps({
         type: Object,
         default: () => ({ en: {}, fr: {}, nl: {}, es: {}, ar: {} }),
     },
+    tags: {
+        type: Array,
+        default: () => [],
+    },
+    allTags: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const primaryLocale = 'en'
@@ -50,6 +58,7 @@ props.available_locales.forEach(locale => {
         title: existing.title || '',
         slug: existing.slug || '',
         content: existing.content || '',
+        excerpt: existing.excerpt || '',
     };
 });
 
@@ -69,6 +78,7 @@ const form = useForm({
     translations: JSON.parse(JSON.stringify(initialFormTranslations)),
     image: null,
     is_published: props.blog.is_published,
+    tags: props.tags ? props.tags.map(t => typeof t === 'string' ? t : t.name) : [],
     countries: props.blog.countries || [],
     canonical_country: props.blog.canonical_country || (props.blog.countries?.[0] || 'us'),
     seo_title: props.seoMeta?.seo_title || (initialFormTranslations.en?.title || ''),
@@ -76,6 +86,15 @@ const form = useForm({
     keywords: props.seoMeta?.keywords || '',
     seo_translations: JSON.parse(JSON.stringify(initialSeoTranslations)),
 });
+
+const newTag = ref('');
+const addTag = () => {
+    const tag = newTag.value.trim();
+    if (tag && !form.tags.includes(tag)) {
+        form.tags.push(tag);
+    }
+    newTag.value = '';
+};
 
 const localeIsComplete = (locale) => {
     const t = form.translations?.[locale] || {}
@@ -108,6 +127,7 @@ const copyFromPrimary = (locale) => {
     if (locale === primaryLocale) return
     form.translations[locale].title = form.translations[primaryLocale]?.title || ''
     form.translations[locale].content = form.translations[primaryLocale]?.content || ''
+    form.translations[locale].excerpt = form.translations[primaryLocale]?.excerpt || ''
     regenerateSlug(locale)
 }
 
@@ -450,6 +470,16 @@ const removeImage = () => {
                     </p>
                   </div>
 
+                  <!-- Excerpt Field -->
+                  <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Excerpt ({{ activeLocale.toUpperCase() }})
+                    </label>
+                    <textarea v-model="form.translations[activeLocale].excerpt" rows="3"
+                              class="w-full border-gray-300 rounded-md shadow-sm text-sm"
+                              placeholder="Brief summary of this post (shown in blog listings and article header)"></textarea>
+                  </div>
+
                   <!-- Image Upload -->
                   <div>
                     <label class="text-sm font-medium text-gray-700 mb-2 block">Blog Image</label>
@@ -510,6 +540,31 @@ const removeImage = () => {
                                 <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
                             </div>
                         </div>
+                    </div>
+                  </div>
+
+                  <!-- Tags -->
+                  <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+                    <div class="flex flex-wrap gap-2 mb-2">
+                      <span v-for="(tag, i) in form.tags" :key="i"
+                            class="inline-flex items-center gap-1 bg-customPrimaryColor text-white text-sm px-3 py-1 rounded-full">
+                        {{ tag }}
+                        <button type="button" @click="form.tags.splice(i, 1)" class="ml-1 hover:text-red-200">&times;</button>
+                      </span>
+                    </div>
+                    <div class="flex gap-2">
+                      <input v-model="newTag" type="text" placeholder="Add a tag..."
+                             class="flex-1 border-gray-300 rounded-md shadow-sm text-sm"
+                             @keydown.enter.prevent="addTag"
+                             list="existingTagsEdit" />
+                      <datalist id="existingTagsEdit">
+                        <option v-for="t in allTags" :key="t" :value="t" />
+                      </datalist>
+                      <button type="button" @click="addTag"
+                              class="px-4 py-2 bg-customPrimaryColor text-white text-sm rounded-md hover:bg-opacity-90">
+                        Add
+                      </button>
                     </div>
                   </div>
 
