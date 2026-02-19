@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Blog;
+use App\Models\BlogTag;
 use App\Models\Testimonial;
 use App\Models\VehicleCategory;
 use App\Models\PopularPlace;
@@ -799,14 +800,30 @@ class BlogController extends Controller
         session(['country' => $country]);
         \Log::info('showBlogPage: Country stored in session - ' . $country);
 
-        $blogs = Blog::with('translations')
+        $blogsQuery = Blog::with(['translations', 'tags:id,name,slug'])
             ->where('is_published', true)
             ->where(function ($q) use ($country) {
                 $q->whereJsonContains('countries', $country)
                     ->orWhereNull('countries');
-            })
-            ->latest()
-            ->paginate(9);
+            });
+
+        // Filter by tag if provided
+        if ($request->filled('tag')) {
+            $blogsQuery->whereHas('tags', function ($q) use ($request) {
+                $q->where('slug', $request->input('tag'));
+            });
+        }
+
+        $blogs = $blogsQuery->latest()->paginate(9)->withQueryString();
+
+        // Get all tags that have at least one published blog
+        $tags = BlogTag::whereHas('blogs', function ($q) use ($country) {
+            $q->where('is_published', true)
+                ->where(function ($sq) use ($country) {
+                    $sq->whereJsonContains('countries', $country)
+                        ->orWhereNull('countries');
+                });
+        })->orderBy('name')->get(['id', 'name', 'slug']);
 
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
@@ -823,6 +840,8 @@ class BlogController extends Controller
             'locale' => App::getLocale(),
             'country' => $country,
             'seo' => $seo,
+            'tags' => $tags,
+            'activeTag' => $request->input('tag', ''),
         ]);
     }
 

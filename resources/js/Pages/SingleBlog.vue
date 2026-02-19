@@ -40,7 +40,7 @@
             <div class="flex gap-10 lg:gap-12 justify-between">
 
                 <!-- Main Article Column -->
-                <div class="w-full md:w-[85%] lg:w-[70%] mx-auto">
+                <div class="w-full md:w-[85%] lg:w-[70%]">
 
                     <!-- Article Header -->
                     <header class="mb-8">

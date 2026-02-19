@@ -18,7 +18,7 @@ class Blog extends Model
         'is_published'
     ];
 
-    protected $appends = ['title', 'content', 'translated_slug']; // Force append accessors
+    protected $appends = ['title', 'content', 'translated_slug', 'excerpt']; // Force append accessors
 
     // Removed automatic slug generation from here, will be handled in controller
     // protected static function boot()
@@ -55,6 +55,11 @@ class Blog extends Model
     public function getTranslatedSlugAttribute()
     {
         return $this->getTranslation(app()->getLocale())?->slug;
+    }
+
+    public function getExcerptAttribute()
+    {
+        return $this->getTranslation(app()->getLocale())?->excerpt;
     }
 
 
