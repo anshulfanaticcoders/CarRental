@@ -99,12 +99,12 @@ class PageController extends Controller
         ]);
 
         foreach ($translationsData as $locale => $data) {
-            if (in_array($locale, $available_locales) && !empty($data['title']) && !empty($data['content'])) {
+            if (in_array($locale, $available_locales) && !empty($data['title'])) {
                  $page->translations()->create([
                     'locale' => $locale,
                     'title' => $data['title'],
                     'slug' => Str::slug($data['slug']),
-                    'content' => $data['content'],
+                    'content' => $data['content'] ?? '',
                 ]);
             }
         }
@@ -351,7 +351,7 @@ class PageController extends Controller
                     [
                         'title' => $data['title'],
                         'slug' => Str::slug($data['slug']),
-                        'content' => $data['content'],
+                        'content' => $data['content'] ?? '',
                     ]
                 );
             }
