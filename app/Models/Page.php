@@ -12,11 +12,51 @@ class Page extends Model
 
     protected $fillable = [
         'slug',
+        'template',
+        'custom_slug',
+        'status',
+        'sort_order',
     ];
 
     public function translations(): HasMany
     {
         return $this->hasMany(PageTranslation::class);
+    }
+
+    public function meta(): HasMany
+    {
+        return $this->hasMany(PageMeta::class);
+    }
+
+    public function sections(): HasMany
+    {
+        return $this->hasMany(PageSection::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Get all meta as key=>value for a locale, falling back to 'en' for missing keys.
+     */
+    public function getMetaForLocale(string $locale): array
+    {
+        $metaItems = $this->meta()->get();
+
+        // Group by meta_key
+        $grouped = $metaItems->groupBy('meta_key');
+
+        $result = [];
+        foreach ($grouped as $key => $items) {
+            $localeItem = $items->firstWhere('locale', $locale);
+            if ($localeItem) {
+                $result[$key] = $localeItem->meta_value;
+            } else {
+                $fallback = $items->firstWhere('locale', 'en');
+                if ($fallback) {
+                    $result[$key] = $fallback->meta_value;
+                }
+            }
+        }
+
+        return $result;
     }
 
     public function getTitleAttribute()
