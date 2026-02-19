@@ -86,7 +86,7 @@ watch(() => form.template, (newTemplate) => {
         sort_order: i,
         is_visible: true,
         translations: locales.reduce((acc, locale) => {
-            acc[locale] = { title: '', content: '', settings: null };
+            acc[locale] = { title: '', content: '', settings: {} };
             return acc;
         }, {}),
     }));

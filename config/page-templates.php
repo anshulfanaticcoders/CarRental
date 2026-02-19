@@ -91,10 +91,58 @@ return [
         'sections' => [
             ['type' => 'hero', 'label' => 'Hero Section', 'required' => true],
             ['type' => 'content', 'label' => 'Our Story', 'required' => true],
-            ['type' => 'features', 'label' => 'Why Choose Us (Features Grid)', 'required' => false],
-            ['type' => 'stats', 'label' => 'Stats Section', 'required' => false],
-            ['type' => 'split', 'label' => 'Split Content + Image', 'required' => false],
-            ['type' => 'cta', 'label' => 'Call to Action', 'required' => false],
+            [
+                'type' => 'features',
+                'label' => 'Why Choose Us (Features Grid)',
+                'required' => false,
+                'fields' => [
+                    [
+                        'key' => 'items',
+                        'label' => 'Feature Cards',
+                        'type' => 'repeater',
+                        'fields' => [
+                            ['key' => 'emoji', 'label' => 'Emoji Icon', 'type' => 'text'],
+                            ['key' => 'title', 'label' => 'Title', 'type' => 'text'],
+                            ['key' => 'description', 'label' => 'Description', 'type' => 'textarea'],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'stats',
+                'label' => 'Stats Section',
+                'required' => false,
+                'fields' => [
+                    ['key' => 'subtitle', 'label' => 'Subtitle', 'type' => 'text'],
+                    [
+                        'key' => 'items',
+                        'label' => 'Stat Items',
+                        'type' => 'repeater',
+                        'fields' => [
+                            ['key' => 'number', 'label' => 'Number (e.g. 50,000+)', 'type' => 'text'],
+                            ['key' => 'label', 'label' => 'Label', 'type' => 'text'],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'split',
+                'label' => 'Split Content + Image',
+                'required' => false,
+                'fields' => [
+                    ['key' => 'subtitle', 'label' => 'Subtitle', 'type' => 'text'],
+                    ['key' => 'image_url', 'label' => 'Image URL', 'type' => 'image'],
+                ],
+            ],
+            [
+                'type' => 'cta',
+                'label' => 'Call to Action',
+                'required' => false,
+                'fields' => [
+                    ['key' => 'button_text', 'label' => 'Button Text', 'type' => 'text'],
+                    ['key' => 'button_url', 'label' => 'Button URL', 'type' => 'url'],
+                ],
+            ],
         ],
     ],
 

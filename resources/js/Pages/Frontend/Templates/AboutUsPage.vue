@@ -23,6 +23,25 @@ const statsSection = computed(() => getSection('stats'));
 const splitSection = computed(() => getSection('split'));
 const ctaSection = computed(() => getSection('cta'));
 
+// Structured data from settings
+const featuresItems = computed(() => {
+    const items = featuresSection.value?.settings?.items;
+    return Array.isArray(items) ? items : [];
+});
+
+const statsItems = computed(() => {
+    const items = statsSection.value?.settings?.items;
+    return Array.isArray(items) ? items : [];
+});
+
+const statsSubtitle = computed(() => statsSection.value?.settings?.subtitle || '');
+
+const splitSubtitle = computed(() => splitSection.value?.settings?.subtitle || '');
+const splitImageUrl = computed(() => splitSection.value?.settings?.image_url || '');
+
+const ctaButtonText = computed(() => ctaSection.value?.settings?.button_text || 'Book Your Ride Today');
+const ctaButtonUrl = computed(() => ctaSection.value?.settings?.button_url || '');
+
 // --- Scroll-reveal + counter animation ---
 let revealObserver = null;
 let statsObserver = null;
@@ -191,47 +210,82 @@ onUnmounted(() => {
         </section>
 
         <!-- Features Grid -->
-        <section v-if="featuresSection?.content" class="py-16 md:py-20 bg-white">
+        <section v-if="featuresItems.length > 0" class="py-16 md:py-20 bg-white">
             <div class="container mx-auto px-6">
-                <h2 v-if="featuresSection.title"
+                <h2 v-if="featuresSection?.title"
                     class="text-3xl md:text-4xl font-extrabold text-customPrimaryColor text-center mb-12 tracking-tight reveal">
                     {{ featuresSection.title }}
                     <span class="block w-14 h-[3px] bg-gradient-to-r from-cyan-500 to-customPrimaryColor rounded mx-auto mt-3"></span>
                 </h2>
-                <div class="features-content reveal" v-html="featuresSection.content"></div>
+                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-7">
+                    <div
+                        v-for="(feature, fi) in featuresItems"
+                        :key="fi"
+                        class="feature-card bg-white border border-slate-200 rounded-[20px] p-9 max-md:p-7 text-center shadow-sm transition-all duration-400 relative overflow-hidden hover:-translate-y-2 hover:shadow-xl reveal"
+                        :class="`reveal-delay-${fi % 6 + 1}`"
+                    >
+                        <div class="before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-customPrimaryColor before:to-cyan-500 before:scale-x-0 before:origin-left before:transition-transform before:duration-400 hover:before:scale-x-100"></div>
+                        <div class="w-[72px] h-[72px] bg-customLightPrimaryColor rounded-[18px] mx-auto mb-5 flex items-center justify-center text-3xl transition-all duration-400 feature-icon-wrap">
+                            {{ feature.emoji || '✨' }}
+                        </div>
+                        <h3 class="text-[17px] font-bold text-customPrimaryColor mb-2">{{ feature.title }}</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed">{{ feature.description }}</p>
+                    </div>
+                </div>
             </div>
         </section>
 
         <!-- Stats Section -->
-        <section v-if="statsSection?.content" class="px-6 pb-16 md:pb-20">
+        <section v-if="statsItems.length > 0" class="px-6 pb-16 md:pb-20">
             <div class="stats-section max-w-[1200px] mx-auto bg-gradient-to-br from-customPrimaryColor to-[#1a5570] text-white py-[72px] px-10 max-md:py-12 max-md:px-6 rounded-[20px] text-center relative overflow-hidden">
-                <!-- Decorative glow -->
                 <div class="absolute -top-[40%] -right-[10%] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(6,182,212,0.18)_0%,transparent_70%)]"></div>
-
-                <div class="relative z-10" v-html="statsSection.content"></div>
+                <div class="relative z-10">
+                    <h2 v-if="statsSection?.title" class="text-3xl md:text-4xl font-extrabold mb-2">{{ statsSection.title }}</h2>
+                    <p v-if="statsSubtitle" class="text-[17px] opacity-75 mb-10">{{ statsSubtitle }}</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                        <div v-for="(stat, si) in statsItems" :key="si" class="p-4">
+                            <span class="stat-number block text-4xl md:text-5xl font-extrabold mb-1">{{ stat.number }}</span>
+                            <span class="text-sm opacity-75 font-medium">{{ stat.label }}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
         <!-- Split Layout Section -->
-        <section v-if="splitSection?.content" class="py-16 md:py-20 bg-white">
+        <section v-if="splitSection" class="py-16 md:py-20 bg-white">
             <div class="container mx-auto px-6">
-                <div class="split-content reveal" v-html="splitSection.content"></div>
+                <div class="grid md:grid-cols-2 gap-14 items-center reveal">
+                    <div>
+                        <h2 v-if="splitSection.title" class="text-[30px] max-md:text-2xl font-extrabold text-customPrimaryColor mb-5">{{ splitSection.title }}</h2>
+                        <h3 v-if="splitSubtitle" class="text-[22px] max-md:text-lg font-bold text-slate-800 mb-4">{{ splitSubtitle }}</h3>
+                        <div v-if="splitSection.content" class="text-[15px] text-slate-500 leading-[1.85] space-y-3" v-html="splitSection.content"></div>
+                    </div>
+                    <div v-if="splitImageUrl" class="rounded-[20px] overflow-hidden shadow-lg bg-slate-50 border border-slate-200">
+                        <img :src="splitImageUrl" :alt="splitSection.title || ''" class="w-full h-auto object-cover" />
+                    </div>
+                    <div v-else class="rounded-[20px] bg-slate-50 border border-slate-200 p-10 flex items-center justify-center min-h-[240px]">
+                        <div class="text-center text-slate-300">
+                            <svg class="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="0.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            <p class="text-sm">Image placeholder</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
         <!-- CTA Section -->
-        <section v-if="ctaSection?.content" class="cta-section relative overflow-hidden text-white py-20 md:py-[88px]">
+        <section v-if="ctaSection" class="cta-section relative overflow-hidden text-white py-20 md:py-[88px]">
             <div class="absolute inset-0 bg-gradient-to-br from-[#0a1d28] to-customPrimaryColor"></div>
-
-            <!-- Decorative glow -->
             <div class="absolute -bottom-[30%] left-[20%] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(6,182,212,0.12)_0%,transparent_70%)]"></div>
 
             <div class="container mx-auto px-6 relative z-10 text-center max-w-[600px] reveal">
-                <div v-html="ctaSection.content"></div>
-                <a v-if="ctaSection.settings?.button_url"
-                   :href="ctaSection.settings.button_url"
-                   class="inline-block mt-8 bg-cyan-500 text-white py-4 px-11 rounded-full font-bold text-base transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_10px_32px_rgba(6,182,212,0.4)]">
-                    {{ ctaSection.settings?.button_text || 'Book Your Ride Today' }}
+                <h2 v-if="ctaSection.title" class="text-3xl md:text-[42px] font-extrabold mb-4 tracking-tight">{{ ctaSection.title }}</h2>
+                <div v-if="ctaSection.content" class="text-[17px] opacity-80 mb-8 leading-relaxed" v-html="ctaSection.content"></div>
+                <a v-if="ctaButtonUrl"
+                   :href="ctaButtonUrl"
+                   class="inline-block bg-cyan-500 text-white py-4 px-11 rounded-full font-bold text-base transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_10px_32px_rgba(6,182,212,0.4)]">
+                    {{ ctaButtonText }}
                 </a>
             </div>
         </section>
