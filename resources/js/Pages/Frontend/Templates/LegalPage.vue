@@ -102,7 +102,7 @@ const mobileTocOpen = ref(false);
         <!-- Hero (compact) -->
         <section class="hero-section relative overflow-hidden text-white">
             <div class="absolute inset-0 bg-gradient-to-br from-[#0a1d28] via-customPrimaryColor to-[#1a4d66]"></div>
-            <div class="absolute inset-0 opacity-[0.03] pointer-events-none bg-repeat" style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)"></div>
+            <div class="hero-grain absolute inset-0 opacity-[0.03] pointer-events-none bg-repeat"></div>
             <div class="absolute top-[-40%] right-[-15%] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(6,182,212,0.1)_0%,transparent_70%)]"></div>
 
             <div class="container mx-auto px-6 py-[60px] max-md:py-12 relative z-10 text-center max-w-[640px]">
@@ -199,6 +199,10 @@ const mobileTocOpen = ref(false);
 
 <style scoped>
 /* ── Hero ── */
+.hero-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 @keyframes heroFadeUp {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
