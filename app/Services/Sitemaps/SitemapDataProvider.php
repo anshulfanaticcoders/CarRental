@@ -25,6 +25,7 @@ interface SitemapDataProvider
      *     id: int,
      *     image: string|null,
      *     countries: array|null,
+     *     canonical_country: string|null,
      *     updated_at: mixed,
      *     translations: array<int, array{
      *         locale: string,

@@ -337,14 +337,7 @@ Route::group([
     'where' => ['locale' => '(en|fr|nl|es|ar)'],
     'middleware' => ['set_locale', 'share.country']
 ], function () {
-    Route::get('/', function () {
-        return Inertia::render('Welcome', [
-            'canLogin' => Route::has('login'),
-            'canRegister' => Route::has('register'),
-            'laravelVersion' => Application::VERSION,
-            'phpVersion' => PHP_VERSION,
-        ]);
-    })->name('welcome');
+    // Homepage is served by BlogController::homeBlogs (see later in this group).
 
     require __DIR__ . '/auth.php';
 

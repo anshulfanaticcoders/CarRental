@@ -6,6 +6,7 @@ use App\Console\Commands\SendChatMessageReminders;
 use App\Console\Commands\SendPendingBookingReminders;
 use App\Console\Commands\GreenMotionLocationsUpdateCommand; // Import the new command
 use App\Console\Commands\GeneratePublicSitemaps;
+use App\Console\Commands\MigrateSeoTargets;
 use App\Console\Commands\UpdateUnifiedLocationsCommand;
 use App\Console\Commands\RefreshCurrencyRates;
 use Illuminate\Console\Scheduling\Schedule;

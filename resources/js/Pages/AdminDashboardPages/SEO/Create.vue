@@ -1,8 +1,13 @@
 <template>
-  <SeoForm />
+  <SeoForm :routeTargets="routeTargets" :available_locales="available_locales" />
 </template>
 
 <script setup>
 import SeoForm from './Form.vue';
-// No props needed for create, SeoForm handles default null for seoMeta
+import { defineProps } from 'vue';
+
+defineProps({
+  routeTargets: Array,
+  available_locales: Array,
+});
 </script>

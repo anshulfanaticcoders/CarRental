@@ -1,19 +1,5 @@
 <template>
-    <Head>
-        <meta name="robots" content="index, follow" />
-        <title>{{ seoTitle }}</title>
-        <meta name="description" :content="seoDescription" />
-        <meta name="keywords" :content="seoKeywords" />
-        <link rel="canonical" :href="canonicalUrl" />
-        <meta property="og:title" :content="seoTitle" />
-        <meta property="og:description" :content="seoDescription" />
-        <meta property="og:image" :content="seoImageUrl" />
-        <meta property="og:url" :content="currentUrl" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" :content="seoTitle" />
-        <meta name="twitter:description" :content="seoDescription" />
-        <meta name="twitter:image" :content="seoImageUrl" />
-    </Head>
+    <SeoHead :seo="seo" />
 
     <AuthenticatedHeaderLayout />
 
@@ -40,7 +26,7 @@
             </div>
             <div v-else-if="blogs.data.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div v-for="blog in blogs.data" :key="blog.id" class="rounded-lg overflow-hidden shadow-md hover:scale-[1.03] transition-transform duration-300 ease-in-out">
-                    <Link :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blog.translated_slug })">
+                    <Link :href="route('blog.show', { locale: page.props.locale, country: blog.canonical_country || (page.props.country || 'us'), blog: blog.translated_slug })">
                         <img :src="blog.image" :alt="blog.title" class="w-full h-48 object-cover" loading="lazy">
                         <div class="p-6">
                             <p class="text-sm flex items-center gap-1 text-gray-500">
@@ -110,7 +96,7 @@
 </template>
 
 <script setup>
-import { Head, Link, usePage, router } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 import goIcon from "../../assets/goIcon.svg";
 import calendarIcon from '../../assets/CalendarBlank.svg';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
@@ -119,10 +105,11 @@ import { ref, onMounted, nextTick, computed } from 'vue';
 import Footer from '@/Components/Footer.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { Skeleton } from '@/Components/ui/skeleton';
+import SeoHead from '@/Components/SeoHead.vue';
 
 const props = defineProps({
     blogs: Object,
-    seoMeta: Object,
+    seo: Object,
     locale: String,
     country: String, // Backend se aa rahi prop
 });
@@ -132,17 +119,6 @@ const recentBlogs = ref([]);
 const isLoading = ref(true);
 const isRecentLoading = ref(true);
 const currentUrl = computed(() => window.location.href);
-
-const seoTranslation = computed(() => {
-    if (!props.seoMeta || !props.seoMeta.translations) return {};
-    return props.seoMeta.translations.find(t => t.locale === props.locale) || {};
-});
-
-const seoTitle = computed(() => seoTranslation.value.seo_title || props.seoMeta?.seo_title || 'Blog');
-const seoDescription = computed(() => seoTranslation.value.meta_description || props.seoMeta?.meta_description || '');
-const seoKeywords = computed(() => seoTranslation.value.keywords || props.seoMeta?.keywords || '');
-const canonicalUrl = computed(() => props.seoMeta?.canonical_url || window.location.href);
-const seoImageUrl = computed(() => props.seoMeta?.seo_image_url || '');
 
 onMounted(async () => {
     // Simulate loading for the main blog list (as it's passed via props)

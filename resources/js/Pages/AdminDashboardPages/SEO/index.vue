@@ -24,7 +24,7 @@
                 <thead class="bg-gray-50">
                   <tr>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      URL Slug
+                      Target
                     </th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       SEO Title
@@ -45,7 +45,8 @@
                   </tr>
                   <tr v-for="meta in seoMetas.data" :key="meta.id">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {{ meta.url_slug || '-' }}
+                      <span class="font-semibold">{{ meta.route_name || '-' }}</span>
+                      <span v-if="meta.route_params && meta.route_params.country" class="text-gray-500"> ({{ meta.route_params.country.toUpperCase() }})</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {{ meta.seo_title }}

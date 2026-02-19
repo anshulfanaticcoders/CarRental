@@ -3,19 +3,17 @@ import Faq from '@/Components/Faq.vue';
 import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
-import { Head } from '@inertiajs/vue3';
+import SeoHead from '@/Components/SeoHead.vue';
 
 defineProps({
-    schema: Object // Add schema prop
+    schema: Object, // Add schema prop
+    seo: Object,
 });
 
 </script>
 
 <template>
-    <Head>
-        <meta name="robots" content="index, follow" />
-        <title>FAQ</title>
-    </Head>
+    <SeoHead :seo="seo" />
     <SchemaInjector v-if="schema" :schema="schema" />
     <AuthenticatedHeaderLayout />
 

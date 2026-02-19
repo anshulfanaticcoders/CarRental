@@ -1,6 +1,7 @@
 <script setup>
-import { Head, Link } from "@inertiajs/vue3";
+import { Link } from "@inertiajs/vue3";
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
+import SeoHead from '@/Components/SeoHead.vue';
 import heroImg from "../../assets/heroImage.jpg";
 import FloatingBubbles from '@/Components/FloatingBubbles.vue';
 import Footer from '@/Components/Footer.vue'
@@ -39,7 +40,7 @@ const props = defineProps({
     popularPlaces: Array,
     faqs: Array, // Added faqs prop
     schema: Array,
-    seoMeta: Object,
+    seo: Object,
     pages: Object,
     heroImage: String, // Dynamic hero image from backend
 });
@@ -198,36 +199,6 @@ const heroImageSource = computed(() => {
 });
 
 const page = usePage();
-
-const currentLocale = computed(() => page.props.locale || 'en');
-const currentUrl = computed(() => window.location.href);
-
-const seoTranslation = computed(() => {
-    if (!props.seoMeta || !props.seoMeta.translations) {
-        return {};
-    }
-    return props.seoMeta.translations.find(t => t.locale === currentLocale.value) || {};
-});
-
-const seoTitle = computed(() => {
-    return seoTranslation.value.seo_title || props.seoMeta?.seo_title || 'Welcome';
-});
-
-const seoDescription = computed(() => {
-    return seoTranslation.value.meta_description || props.seoMeta?.meta_description || '';
-});
-
-const seoKeywords = computed(() => {
-    return seoTranslation.value.keywords || props.seoMeta?.keywords || '';
-});
-
-const canonicalUrl = computed(() => {
-    return props.seoMeta?.canonical_url || window.location.href;
-});
-
-const seoImageUrl = computed(() => {
-    return props.seoMeta?.seo_image_url || '';
-});
 
 const unifiedLocations = ref([]);
 
@@ -401,21 +372,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 
 <template>
 
-    <Head>
-        <title>{{ seoTitle }}</title>
-        <meta name="robots" content="index, follow" />
-        <meta name="description" :content="seoDescription" />
-        <meta name="keywords" :content="seoKeywords" />
-        <link rel="canonical" :href="canonicalUrl" />
-        <meta property="og:title" :content="seoTitle" />
-        <meta property="og:description" :content="seoDescription" />
-        <meta property="og:image" :content="seoImageUrl" />
-        <meta property="og:url" :content="currentUrl" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" :content="seoTitle" />
-        <meta name="twitter:description" :content="seoDescription" />
-        <meta name="twitter:image" :content="seoImageUrl" />
-    </Head>
+    <SeoHead :seo="seo" />
     <!-- Inject all schemas passed in the 'schema' array prop -->
     <template v-if="schema && schema.length">
         <SchemaInjector v-for="(individualSchema, index) in schema" :key="`schema-${index}`"
@@ -732,7 +689,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
             <div class="flex gap-6 w-full full-w-container max-[768px]:flex-col blog-main-container">
                 <!-- First Blog (Large Left) -->
                 <Link
-                    :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[0].translated_slug })"
+                    :href="route('blog.show', { locale: page.props.locale, country: blogs[0].canonical_country || (page.props.country || 'us'), blog: blogs[0].translated_slug })"
                     v-if="!isLoading && blogs.length > 0"
                     class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container blog-main-image max-[768px]:w-full max-[768px]:h-[380px]">
                     <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
@@ -743,7 +700,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                         </p>
                         <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
                         <Link
-                            :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[0].translated_slug })"
+                            :href="route('blog.show', { locale: page.props.locale, country: blogs[0].canonical_country || (page.props.country || 'us'), blog: blogs[0].translated_slug })"
                             class="inline-flex items-center mt-2 text-blue-400">
                             <img :src=whiteGoIcon alt="">
                         </Link>
@@ -762,7 +719,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                         <div v-if="!isLoading && blogs.length > index"
                             class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
                             <Link
-                                :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[index].translated_slug })">
+                                :href="route('blog.show', { locale: page.props.locale, country: blogs[index].canonical_country || (page.props.country || 'us'), blog: blogs[index].translated_slug })">
                                 <img :src="blogs[index].image" :alt="blogs[index].title"
                                     class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105">
                             </Link>
@@ -780,7 +737,7 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
                                 class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[768px]:text-[1rem]">{{
                                     blogs[index].title }}</h4>
                             <Link v-if="!isLoading && blogs.length > index"
-                                :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[index].translated_slug })"
+                                :href="route('blog.show', { locale: page.props.locale, country: blogs[index].canonical_country || (page.props.country || 'us'), blog: blogs[index].translated_slug })"
                                 class="inline-flex items-center mt-2 text-customPrimaryColor read-story">
                                 Read Story
                                 <img :src=goIcon alt="" class="w-[1.5rem]">

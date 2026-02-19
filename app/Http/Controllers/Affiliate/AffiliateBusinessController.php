@@ -14,6 +14,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use App\Services\Seo\SeoMetaResolver;
+use Illuminate\Support\Facades\App;
 
 class AffiliateBusinessController extends Controller
 {
@@ -22,7 +24,17 @@ class AffiliateBusinessController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Affiliate/Business/Register');
+        $seo = app(SeoMetaResolver::class)->resolveForRoute(
+            'affiliate.business.register',
+            [],
+            App::getLocale(),
+            route('affiliate.business.register', ['locale' => App::getLocale()])
+        )->toArray();
+
+        return Inertia::render('Affiliate/Business/Register', [
+            'seo' => $seo,
+            'locale' => App::getLocale(),
+        ]);
     }
 
     /**

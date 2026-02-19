@@ -78,6 +78,7 @@ class FakeSitemapDataProvider implements SitemapDataProvider
                 'id' => 1,
                 'image' => 'https://example.com/images/blog1.jpg',
                 'countries' => null,
+                'canonical_country' => 'us',
                 'updated_at' => Carbon::parse('2025-01-05'),
                 'translations' => [
                     [
@@ -98,6 +99,7 @@ class FakeSitemapDataProvider implements SitemapDataProvider
                 'id' => 2,
                 'image' => null,
                 'countries' => ['us', 'be'],
+                'canonical_country' => 'be',
                 'updated_at' => Carbon::parse('2025-01-08'),
                 'translations' => [
                     [

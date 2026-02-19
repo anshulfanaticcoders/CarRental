@@ -1,9 +1,10 @@
 <script setup>
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
 import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import axios from 'axios';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import SeoHead from '@/Components/SeoHead.vue';
 import {
     Select,
     SelectContent,
@@ -15,6 +16,10 @@ import {
 } from '@/Components/ui/select';
 
 const props = defineProps({
+    seo: {
+        type: Object,
+        required: true,
+    },
     locale: {
         type: String,
         required: true,
@@ -493,7 +498,7 @@ const formProgress = computed(() => {
 </script>
 
 <template>
-    <Head title="Business Registration - Vrooem Affiliate Program" />
+    <SeoHead :seo="seo" />
 
     <AuthenticatedHeaderLayout/>
 

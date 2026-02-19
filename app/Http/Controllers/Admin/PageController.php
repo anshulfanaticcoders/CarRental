@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Models\SeoMeta; // Added for SEO Meta
+use App\Services\Seo\SeoMetaResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\App; // Added for locale access
+use Illuminate\Support\Facades\Cache;
 
 class PageController extends Controller
 {
@@ -96,43 +98,59 @@ class PageController extends Controller
             }
         }
 
-        // Create or Update SEO Meta with prefixed url_slug
-        $seoData = $request->only(['seo_title', 'meta_description', 'keywords', 'canonical_url', 'seo_image_url']);
-        $seoUrlSlug = 'page/' . $page->slug; // SEO url_slug IS prefixed
+        // Create SEO meta bound to the page entity (not slug-based).
+        $primaryTitleForSeo = $translationsData['en']['title'] ?? $translationsData[array_key_first($translationsData)]['title'];
+        $seoData = [
+            'seo_title' => $request->input('seo_title') ?: Str::limit($primaryTitleForSeo, 60),
+            'meta_description' => $request->input('meta_description'),
+            'keywords' => $request->input('keywords'),
+            'canonical_url' => $request->input('canonical_url'),
+            'seo_image_url' => $request->input('seo_image_url'),
+        ];
 
-        if (array_filter($seoData) || !empty($request->input('seo_title'))) { // Save if any SEO data or at least a title
-            if (empty($seoData['seo_title']) && !empty($title)) { // Default seo_title from page title
-                $seoData['seo_title'] = Str::limit($title, 60);
-            }
-            $seoMeta = SeoMeta::updateOrCreate(
-                ['url_slug' => $seoUrlSlug], 
-                array_filter($seoData, fn($value) => !is_null($value))
-            );
+        $seoMeta = SeoMeta::query()
+            ->with('translations')
+            ->where(function ($q) use ($page) {
+                $q->where('seoable_type', $page->getMorphClass())
+                    ->where('seoable_id', $page->getKey());
+            })
+            ->orWhere('url_slug', 'page/' . $page->slug)
+            ->first();
 
-        // Handle SEO translations
+        if (! $seoMeta) {
+            $seoMeta = new SeoMeta();
+        }
+
+        $seoMeta->forceFill(array_filter($seoData, fn ($v) => !is_null($v) && $v !== ''));
+        $seoMeta->seoable_type = $page->getMorphClass();
+        $seoMeta->seoable_id = $page->getKey();
+        $seoMeta->save();
+
         $seoTranslationsData = $request->input('seo_translations', []);
-        $available_locales = ['en', 'fr', 'nl', 'es', 'ar']; // Or from config
         foreach ($available_locales as $l) {
-            if (isset($seoTranslationsData[$l])) {
-                $translationInput = $seoTranslationsData[$l];
-                    $request->validate([
-                        "seo_translations.{$l}.seo_title" => 'nullable|string|max:60',
-                        "seo_translations.{$l}.meta_description" => 'nullable|string|max:160',
-                        "seo_translations.{$l}.keywords" => 'nullable|string|max:255',
-                    ]);
-
-                    $pageTranslation = $page->translations->where('locale', $l)->first();
-                    $seoMeta->translations()->updateOrCreate(
-                        ['locale' => $l],
-                        [
-                            'url_slug'         => $pageTranslation ? $pageTranslation->slug : null,
-                            'seo_title'        => $translationInput['seo_title'] ?? null,
-                            'meta_description' => $translationInput['meta_description'] ?? null,
-                            'keywords'         => $translationInput['keywords'] ?? null,
-                        ]
-                    );
-                }
+            if (! isset($seoTranslationsData[$l])) {
+                continue;
             }
+            $translationInput = $seoTranslationsData[$l];
+            $request->validate([
+                "seo_translations.{$l}.seo_title" => 'nullable|string|max:60',
+                "seo_translations.{$l}.meta_description" => 'nullable|string|max:160',
+                "seo_translations.{$l}.keywords" => 'nullable|string|max:255',
+            ]);
+
+            $seoMeta->translations()->updateOrCreate(
+                ['locale' => $l],
+                [
+                    'url_slug' => null,
+                    'seo_title' => $translationInput['seo_title'] ?? null,
+                    'meta_description' => $translationInput['meta_description'] ?? null,
+                    'keywords' => $translationInput['keywords'] ?? null,
+                ]
+            );
+        }
+
+        foreach ($available_locales as $locale) {
+            Cache::forget('seo:model:' . get_class($page) . ':' . $page->getKey() . ':' . $locale);
         }
 
 
@@ -158,13 +176,14 @@ class PageController extends Controller
         $translations = $page->translations->keyBy('locale');
         $locale = app()->getLocale();
         $allLocales = ['en', 'fr', 'nl', 'es', 'ar']; // Or from config
-        $seoUrlSlug = 'page/' . $page->slug; // SEO url_slug IS prefixed
-        
-        $seoMeta = SeoMeta::with('translations') // Eager load translations
-                            ->where('url_slug', $seoUrlSlug)
-                            ->orWhere('url_slug', $page->slug) // Check for old non-prefixed too
-                            ->orderByRaw("CASE WHEN url_slug = ? THEN 0 ELSE 1 END", [$seoUrlSlug]) // Prioritize prefixed
-                            ->first();
+
+        $seoMeta = SeoMeta::with('translations')
+            ->where(function ($q) use ($page) {
+                $q->where('seoable_type', $page->getMorphClass())
+                    ->where('seoable_id', $page->getKey());
+            })
+            ->orWhere('url_slug', 'page/' . $page->slug)
+            ->first();
 
         $seoTranslations = [];
         if ($seoMeta) {
@@ -230,48 +249,59 @@ class PageController extends Controller
         // Page model is saved if translations are updated.
         // No direct save of $page needed here unless other $page attributes were changed.
 
-        // Update or Create SEO Meta
-        $seoData = $request->only(['seo_title', 'meta_description', 'keywords', 'canonical_url', 'seo_image_url']);
-        $seoUrlSlug = 'page/' . $page->slug; // SEO url_slug IS prefixed
+        // SEO meta bound to the page entity (not slug-based).
+        $primaryTitleForSeo = $request->input("translations.en.title", $page->translations()->where('locale', 'en')->first()?->title);
+        $seoData = [
+            'seo_title' => $request->input('seo_title') ?: (is_string($primaryTitleForSeo) ? Str::limit($primaryTitleForSeo, 60) : null),
+            'meta_description' => $request->input('meta_description'),
+            'keywords' => $request->input('keywords'),
+            'canonical_url' => $request->input('canonical_url'),
+            'seo_image_url' => $request->input('seo_image_url'),
+        ];
 
-        // Delete any old SeoMeta that might exist with the non-prefixed slug
-        SeoMeta::where('url_slug', $page->slug)->where('url_slug', '!=', $seoUrlSlug)->delete();
-        
-        if (array_filter($seoData) || !empty($request->input('seo_title')) || SeoMeta::where('url_slug', $seoUrlSlug)->exists()) {
-            $primaryTitleForSeo = $request->input("translations.en.title", $page->translations()->where('locale', 'en')->first()?->title);
-            if (empty($seoData['seo_title']) && !empty($primaryTitleForSeo)) {
-                $seoData['seo_title'] = Str::limit($primaryTitleForSeo, 60);
+        $seoMeta = SeoMeta::query()
+            ->with('translations')
+            ->where(function ($q) use ($page) {
+                $q->where('seoable_type', $page->getMorphClass())
+                    ->where('seoable_id', $page->getKey());
+            })
+            ->orWhere('url_slug', 'page/' . $page->slug)
+            ->first();
+
+        if (! $seoMeta) {
+            $seoMeta = new SeoMeta();
+        }
+
+        $seoMeta->forceFill(array_filter($seoData, fn ($v) => !is_null($v) && $v !== ''));
+        $seoMeta->seoable_type = $page->getMorphClass();
+        $seoMeta->seoable_id = $page->getKey();
+        $seoMeta->save();
+
+        $seoTranslationsData = $request->input('seo_translations', []);
+        foreach ($available_locales as $l) {
+            if (! isset($seoTranslationsData[$l])) {
+                continue;
             }
-            
-            $seoMeta = SeoMeta::updateOrCreate(
-                ['url_slug' => $seoUrlSlug], // Use the prefixed slug for SEO
-                array_filter($seoData, fn($value) => !is_null($value)) 
+            $translationInput = $seoTranslationsData[$l];
+            $request->validate([
+                "seo_translations.{$l}.seo_title" => 'nullable|string|max:60',
+                "seo_translations.{$l}.meta_description" => 'nullable|string|max:160',
+                "seo_translations.{$l}.keywords" => 'nullable|string|max:255',
+            ]);
+
+            $seoMeta->translations()->updateOrCreate(
+                ['locale' => $l],
+                [
+                    'url_slug' => null,
+                    'seo_title' => $translationInput['seo_title'] ?? null,
+                    'meta_description' => $translationInput['meta_description'] ?? null,
+                    'keywords' => $translationInput['keywords'] ?? null,
+                ]
             );
+        }
 
-            // Handle SEO translations
-            $seoTranslationsData = $request->input('seo_translations', []);
-            $available_locales = ['en', 'fr', 'nl', 'es', 'ar']; // Or from config
-            foreach ($available_locales as $l) {
-                if (isset($seoTranslationsData[$l])) {
-                    $translationInput = $seoTranslationsData[$l];
-                    $request->validate([
-                        "seo_translations.{$l}.seo_title" => 'nullable|string|max:60',
-                        "seo_translations.{$l}.meta_description" => 'nullable|string|max:160',
-                        "seo_translations.{$l}.keywords" => 'nullable|string|max:255',
-                    ]);
-
-                    $pageTranslation = $page->translations->where('locale', $l)->first();
-                    $seoMeta->translations()->updateOrCreate(
-                        ['locale' => $l],
-                        [
-                            'url_slug'         => $pageTranslation ? $pageTranslation->slug : null,
-                            'seo_title'        => $translationInput['seo_title'] ?? null,
-                            'meta_description' => $translationInput['meta_description'] ?? null,
-                            'keywords'         => $translationInput['keywords'] ?? null,
-                        ]
-                    );
-                }
-            }
+        foreach ($available_locales as $locale) {
+            Cache::forget('seo:model:' . get_class($page) . ':' . $page->getKey() . ':' . $locale);
         }
 
 
@@ -284,13 +314,21 @@ class PageController extends Controller
      */
     public function destroy(Page $page)
     {
-        // Delete associated SEO Meta first (using prefixed slug)
-        $seoUrlSlug = 'page/' . $page->slug;
-        SeoMeta::where('url_slug', $seoUrlSlug)->delete();
-        // Also delete any potential old non-prefixed one, just in case
-        SeoMeta::where('url_slug', $page->slug)->delete(); 
+        $available_locales = ['en', 'fr', 'nl', 'es', 'ar'];
+
+        SeoMeta::where('seoable_type', $page->getMorphClass())
+            ->where('seoable_id', $page->getKey())
+            ->delete();
+
+        // Backward compatibility: clean up old slug-keyed records
+        SeoMeta::where('url_slug', 'page/' . $page->slug)->delete();
+        SeoMeta::where('url_slug', $page->slug)->delete();
         
         $page->delete();
+
+        foreach ($available_locales as $locale) {
+            Cache::forget('seo:model:' . get_class($page) . ':' . $page->getKey() . ':' . $locale);
+        }
 
         return redirect()->route('admin.pages.index')
             ->with('success', 'Page and associated SEO Meta deleted successfully.');
@@ -317,12 +355,11 @@ class PageController extends Controller
             'slug' => $page->slug,
         ];
 
-        $seoMeta = null;
-        $seoMetaTranslation = \App\Models\SeoMetaTranslation::where('url_slug', $slug)->where('locale', $locale)->first();
-
-        if ($seoMetaTranslation) {
-            $seoMeta = \App\Models\SeoMeta::with('translations')->find($seoMetaTranslation->seo_meta_id);
-        }
+        $seo = app(SeoMetaResolver::class)->resolveForModel(
+            $page,
+            $locale,
+            url("/{$locale}/page/{$slug}")
+        )->toArray();
 
         $pages = Page::with('translations')->get()->keyBy('slug');
 
@@ -340,7 +377,7 @@ class PageController extends Controller
 
         return Inertia::render('Frontend/Page', [
             'page' => $pageData,
-            'seoMeta' => $seoMeta,
+            'seo' => $seo,
             'locale' => $locale,
             'pages' => $pages,
             'aboutUsTranslatedSlug' => $aboutUsTranslatedSlug, // Pass the dynamic slug

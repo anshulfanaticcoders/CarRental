@@ -14,6 +14,7 @@ class Blog extends Model
         'slug',
         'image',
         'countries',
+        'canonical_country',
         'is_published'
     ];
 

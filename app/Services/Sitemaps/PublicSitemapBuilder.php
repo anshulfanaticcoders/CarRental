@@ -76,9 +76,9 @@ class PublicSitemapBuilder
         }
 
         foreach ($countries as $country) {
-            $visibleBlogs = $countryBlogData[$country] ?? [];
+            $canonicalBlogs = $this->filterBlogsByCanonicalCountry($blogs, $country);
             foreach ($locales as $locale) {
-                $blogFiles = $this->buildBlogPostsSitemaps((string) $locale, $country, $visibleBlogs, $locales);
+                $blogFiles = $this->buildBlogPostsSitemaps((string) $locale, $country, $canonicalBlogs, $locales);
                 foreach ($blogFiles as $blogFile) {
                     $files[] = $blogFile;
                 }
@@ -297,6 +297,14 @@ class PublicSitemapBuilder
                     }
                 }
             }
+
+            $canonical = $blog['canonical_country'] ?? null;
+            if (is_string($canonical)) {
+                $canonical = strtolower(trim($canonical));
+                if ($canonical !== '' && preg_match('/^[a-z]{2}$/', $canonical)) {
+                    $countries[] = $canonical;
+                }
+            }
         }
 
         $countries = array_values(array_unique($countries));
@@ -306,6 +314,31 @@ class PublicSitemapBuilder
         }
 
         return $countries;
+    }
+
+    private function filterBlogsByCanonicalCountry(array $blogs, string $country): array
+    {
+        $country = strtolower($country);
+        $filtered = [];
+
+        foreach ($blogs as $blog) {
+            $canonical = $blog['canonical_country'] ?? null;
+            if (!is_string($canonical) || trim($canonical) === '') {
+                $blogCountries = $blog['countries'] ?? null;
+                if (is_array($blogCountries) && !empty($blogCountries)) {
+                    $canonical = (string) $blogCountries[0];
+                } else {
+                    $canonical = 'us';
+                }
+            }
+
+            $canonical = strtolower(trim((string) $canonical));
+            if ($canonical === $country) {
+                $filtered[] = $blog;
+            }
+        }
+
+        return $filtered;
     }
 
     private function filterBlogsByCountry(array $blogs, string $country): array

@@ -1,9 +1,10 @@
 <script setup>
-import { Link, useForm, usePage, router, Head } from "@inertiajs/vue3";
+ import { Link, useForm, usePage, router } from "@inertiajs/vue3";
 import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import axios from 'axios';
 import { toast as sonnerToast } from "vue-sonner";
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
+import SeoHead from '@/Components/SeoHead.vue';
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
@@ -164,7 +165,7 @@ const props = defineProps({
     fuels: Array,
     mileages: Array,
     schema: Object, // Add schema prop
-    seoMeta: Object, // Added seoMeta prop
+    seo: Object,
     locale: String, // Added locale prop
     okMobilityVehicles: Object, // New: OK Mobility vehicles data
     renteonVehicles: Object, // New: Renteon vehicles data
@@ -399,44 +400,6 @@ const debounce = (fn, delay) => {
 };
 const isCustomer = computed(() => {
     return page.props.auth?.user?.role === 'customer';
-});
-
-const seoTranslation = computed(() => {
-    if (!props.seoMeta || !props.seoMeta.translations) {
-        return {};
-    }
-    return props.seoMeta.translations.find(t => t.locale === props.locale) || {};
-});
-
-const constructedLocalizedUrlSlug = computed(() => {
-    // Prioritize translated url_slug, fallback to main seoMeta url_slug, then 's'
-    return seoTranslation.value.url_slug || props.seoMeta?.url_slug || 's';
-});
-
-const currentUrl = computed(() => {
-    // Construct the full localized URL for Open Graph and Canonical
-    return `${window.location.origin}/${props.locale}/${constructedLocalizedUrlSlug.value}`;
-});
-
-const canonicalUrl = computed(() => {
-    // Canonical URL should also reflect the localized slug
-    return props.seoMeta?.canonical_url || currentUrl.value;
-});
-
-const seoTitle = computed(() => {
-    return seoTranslation.value.seo_title || props.seoMeta?.seo_title || 'Search Results'; // Fallback to 'Search Results'
-});
-
-const seoDescription = computed(() => {
-    return seoTranslation.value.meta_description || props.seoMeta?.meta_description || '';
-});
-
-const seoKeywords = computed(() => {
-    return seoTranslation.value.keywords || props.seoMeta?.keywords || '';
-});
-
-const seoImageUrl = computed(() => {
-    return props.seoMeta?.seo_image_url || '';
 });
 
 const form = useForm({
@@ -2149,21 +2112,7 @@ watch(
 
 <template>
 
-    <Head>
-        <meta name="robots" content="index, follow" />
-        <title>{{ seoTitle }}</title>
-        <meta name="description" :content="seoDescription" />
-        <meta name="keywords" :content="seoKeywords" />
-        <link rel="canonical" :href="canonicalUrl" />
-        <meta property="og:title" :content="seoTitle" />
-        <meta property="og:description" :content="seoDescription" />
-        <meta property="og:image" :content="seoImageUrl" />
-        <meta property="og:url" :content="currentUrl" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" :content="seoTitle" />
-        <meta name="twitter:description" :content="seoDescription" />
-        <meta name="twitter:image" :content="seoImageUrl" />
-    </Head>
+    <SeoHead :seo="seo" />
     <AuthenticatedHeaderLayout />
     <Toaster class="pointer-events-auto" />
 

@@ -29,6 +29,8 @@ const props = defineProps({
     errors: Object,
 });
 
+const primaryLocale = 'en'
+
 const activeLocale = ref(props.current_locale || props.available_locales[0]);
 
 const initialTranslations = {};
@@ -50,11 +52,59 @@ const form = useForm({
     image: null,
     is_published: true,
     countries: ['us'], // Default to US
+    canonical_country: 'us',
     seo_title: '',
-    canonical_url: '',
-    seo_image_url: '',
+    meta_description: '',
+    keywords: '',
     seo_translations: JSON.parse(JSON.stringify(initialSeoTranslations)),
 });
+
+const localeIsComplete = (locale) => {
+    const t = form.translations?.[locale] || {}
+    return `${t.title || ''}`.trim() !== '' && `${t.content || ''}`.trim() !== ''
+}
+
+const localeBadge = (locale) => {
+    if (locale === primaryLocale) return localeIsComplete(locale) ? 'Required - done' : 'Required'
+    return localeIsComplete(locale) ? 'Done' : 'Optional'
+}
+
+const slugAuto = ref({})
+props.available_locales.forEach((locale) => {
+    slugAuto.value[locale] = true
+})
+
+const markSlugManual = (locale) => {
+    slugAuto.value[locale] = false
+}
+
+const regenerateSlug = (locale) => {
+    slugAuto.value[locale] = true
+    const title = `${form.translations?.[locale]?.title || ''}`.trim()
+    form.translations[locale].slug = title ? slugify(title, locale) : ''
+}
+
+const copyFromPrimary = (locale) => {
+    if (locale === primaryLocale) return
+    form.translations[locale].title = form.translations[primaryLocale]?.title || ''
+    form.translations[locale].content = form.translations[primaryLocale]?.content || ''
+    regenerateSlug(locale)
+}
+
+watch(
+    () => form.countries,
+    (countries) => {
+        const list = Array.isArray(countries) ? countries : []
+        if (list.length === 0) {
+            form.canonical_country = 'us'
+            return
+        }
+        if (!list.includes(form.canonical_country)) {
+            form.canonical_country = list[0]
+        }
+    },
+    { deep: true }
+)
 
 const isDragging = ref(false);
 const imagePreview = ref(null);
@@ -106,14 +156,21 @@ const slugify = (text, locale) => {
         .replace(/--+/g, '-');
 };
 
-// Watch for changes in the active locale's title and update the slug
-watch(() => form.translations[activeLocale.value]?.title, (newTitle) => {
-    if (newTitle) {
-        form.translations[activeLocale.value].slug = slugify(newTitle, activeLocale.value);
-    } else {
-        form.translations[activeLocale.value].slug = '';
-    }
-}, { deep: true });
+// Auto-generate slugs per locale until manually edited.
+props.available_locales.forEach((locale) => {
+    watch(
+        () => form.translations[locale]?.title,
+        (newTitle) => {
+            if (!slugAuto.value[locale]) return
+            const title = `${newTitle || ''}`.trim()
+            form.translations[locale].slug = title ? slugify(title, locale) : ''
+        }
+    )
+})
+
+const showLocalizedSeo = ref(false)
+
+const charCount = (value) => `${value || ''}`.length
 
 const submitForm = () => {
     form.post(route('admin.blogs.store'), {
@@ -132,6 +189,9 @@ const submitForm = () => {
                 newInitialTranslations[locale] = { title: '', slug: '', content: '' };
             });
             form.translations = JSON.parse(JSON.stringify(newInitialTranslations));
+            props.available_locales.forEach((locale) => {
+                slugAuto.value[locale] = true
+            })
             setActiveLocale(props.current_locale || props.available_locales[0]);
         },
         onError: (formErrors) => {
@@ -260,7 +320,19 @@ const removeImage = () => {
                         'focus:outline-none focus:ring-2 focus:ring-customPrimaryColor'
                       ]"
                     >
-                      {{ lang.toUpperCase() }}
+                      <span class="inline-flex items-center gap-2">
+                        {{ lang.toUpperCase() }}
+                        <span
+                          class="text-[11px] px-2 py-0.5 rounded-full border"
+                          :class="[
+                            localeBadge(lang).includes('Required')
+                              ? (localeBadge(lang).includes('done') ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200')
+                              : (localeBadge(lang) === 'Done' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200')
+                          ]"
+                        >
+                          {{ localeBadge(lang) }}
+                        </span>
+                      </span>
                     </button>
                   </div>
                   <div class="flex items-center space-x-2">
@@ -275,16 +347,26 @@ const removeImage = () => {
                 </div>
 
                 <div class="space-y-6">
+                  <div v-if="activeLocale !== primaryLocale" class="flex items-center justify-between p-4 rounded-lg border border-slate-200 bg-slate-50">
+                    <div class="text-sm text-slate-700">
+                      Translations are optional. If you start a translation, add both title and content.
+                    </div>
+                    <Button type="button" variant="outline" @click="copyFromPrimary(activeLocale)">
+                      Copy from EN
+                    </Button>
+                  </div>
+
                   <!-- Title Field -->
                   <div>
                     <label :for="'title-' + activeLocale" class="block text-sm font-medium text-gray-700 mb-2">
-                      Title ({{ activeLocale.toUpperCase() }}) <span class="text-red-500">*</span>
+                      Title ({{ activeLocale.toUpperCase() }})
+                      <span v-if="activeLocale === primaryLocale" class="text-red-500">*</span>
                     </label>
                     <Input
                       :id="'title-' + activeLocale"
                       v-model="form.translations[activeLocale].title"
                       type="text"
-                      required
+                      :required="activeLocale === primaryLocale"
                       aria-required="true"
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
                     />
@@ -296,13 +378,26 @@ const removeImage = () => {
                   <!-- Slug Field -->
                   <div>
                     <label :for="'slug-' + activeLocale" class="block text-sm font-medium text-gray-700 mb-2">
-                      Slug ({{ activeLocale.toUpperCase() }}) <span class="text-red-500">*</span>
+                      URL Slug ({{ activeLocale.toUpperCase() }})
                     </label>
+                    <div class="flex items-center justify-between mb-2">
+                      <div class="text-xs text-slate-600">
+                        <span v-if="slugAuto[activeLocale]" class="inline-flex items-center gap-1">
+                          <span class="w-2 h-2 rounded-full bg-green-500"></span> Auto-generated
+                        </span>
+                        <span v-else class="inline-flex items-center gap-1">
+                          <span class="w-2 h-2 rounded-full bg-slate-400"></span> Manual
+                        </span>
+                      </div>
+                      <button type="button" class="text-xs text-customPrimaryColor hover:underline" @click="regenerateSlug(activeLocale)">
+                        Regenerate
+                      </button>
+                    </div>
                     <Input
                       :id="'slug-' + activeLocale"
                       v-model="form.translations[activeLocale].slug"
                       type="text"
-                      required
+                      @input="markSlugManual(activeLocale)"
                       aria-required="true"
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
                     />
@@ -315,6 +410,7 @@ const removeImage = () => {
                   <div>
                     <label :for="'content-' + activeLocale" class="block text-sm font-medium text-gray-700 mb-2">
                       Content ({{ activeLocale.toUpperCase() }})
+                      <span v-if="activeLocale === primaryLocale" class="text-red-500">*</span>
                     </label>
                     <Editor
                       :id="'content-' + activeLocale"
@@ -395,6 +491,25 @@ const removeImage = () => {
                     />
                     <p v-if="form.errors.countries" class="mt-2 text-sm text-red-600">{{ form.errors.countries }}</p>
                   </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-2">Canonical Country (Indexed)</label>
+                      <select
+                        v-model="form.canonical_country"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor"
+                        :disabled="!form.countries || form.countries.length === 0"
+                      >
+                        <option v-for="c in (form.countries || [])" :key="c" :value="c">
+                          {{ `${c}`.toUpperCase() }}
+                        </option>
+                      </select>
+                      <p class="mt-2 text-xs text-gray-500">
+                        Search engines index one country variant per blog. Other country URLs redirect to this one.
+                      </p>
+                      <p v-if="form.errors.canonical_country" class="mt-2 text-sm text-red-600">{{ form.errors.canonical_country }}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -417,86 +532,103 @@ const removeImage = () => {
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
                     />
                     <p v-if="form.errors.seo_title" class="mt-2 text-sm text-red-600">{{ form.errors.seo_title }}</p>
-                    <p class="mt-2 text-sm text-gray-500">Defaults to the 'EN' blog title if left empty.</p>
+                    <div class="mt-2 flex items-center justify-between text-sm text-gray-500">
+                      <span>Defaults to the 'EN' blog title if left empty.</span>
+                      <span>{{ charCount(form.seo_title) }}/60</span>
+                    </div>
                   </div>
                   <div>
-                    <label for="canonical_url" class="block text-sm font-medium text-gray-700 mb-2">
-                      Canonical URL
+                    <label for="meta_description" class="block text-sm font-medium text-gray-700 mb-2">
+                      Default Meta Description (Fallback)
                     </label>
-                    <Input
-                      id="canonical_url"
-                      v-model="form.canonical_url"
-                      type="url"
+                    <textarea
+                      id="meta_description"
+                      v-model="form.meta_description"
+                      maxlength="160"
+                      rows="3"
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="https://yourdomain.com/preferred-url"
-                    />
-                    <p v-if="form.errors.canonical_url" class="mt-2 text-sm text-red-600">{{ form.errors.canonical_url }}</p>
+                    ></textarea>
+                    <p v-if="form.errors.meta_description" class="mt-2 text-sm text-red-600">{{ form.errors.meta_description }}</p>
+                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
+                      <span>{{ charCount(form.meta_description) }}/160</span>
+                    </div>
                   </div>
                   <div>
-                    <label for="seo_image_url" class="block text-sm font-medium text-gray-700 mb-2">
-                      SEO Image URL (Open Graph Image)
+                    <label for="keywords" class="block text-sm font-medium text-gray-700 mb-2">
+                      Default Keywords (Fallback)
                     </label>
                     <Input
-                      id="seo_image_url"
-                      v-model="form.seo_image_url"
-                      type="url"
+                      id="keywords"
+                      v-model="form.keywords"
+                      type="text"
+                      maxlength="255"
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="https://yourdomain.com/path/to/image.jpg"
+                      placeholder="keyword1, keyword2..."
                     />
-                    <p v-if="form.errors.seo_image_url" class="mt-2 text-sm text-red-600">{{ form.errors.seo_image_url }}</p>
+                    <p v-if="form.errors.keywords" class="mt-2 text-sm text-red-600">{{ form.errors.keywords }}</p>
+                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
+                      <span>{{ charCount(form.keywords) }}/255</span>
+                    </div>
                   </div>
                 </div>
 
                 <!-- Translatable SEO Fields -->
-                <template v-for="locale in available_locales" :key="`seo-fields-${locale}`">
-                  <div v-if="activeLocale === locale" class="grid grid-cols-1 gap-6 mt-4 pt-4 border-t">
-                    <h4 class="text-md font-semibold text-gray-800">Localized SEO Fields ({{ locale.toUpperCase() }})</h4>
-                    <div>
-                      <label :for="`seo_title_${locale}`" class="block text-sm font-medium text-gray-700 mb-2">
-                        SEO Title
-                      </label>
-                      <Input
-                        :id="`seo_title_${locale}`"
-                        v-model="form.seo_translations[locale].seo_title"
-                        type="text"
-                        maxlength="60"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                      />
-                      <p v-if="form.errors[`seo_translations.${locale}.seo_title`]" class="mt-2 text-sm text-red-600">
-                        {{ form.errors[`seo_translations.${locale}.seo_title`] }}
-                      </p>
+                <div class="flex items-center justify-between border-t pt-4">
+                  <div class="text-sm text-gray-700">Localized SEO is optional.</div>
+                  <button type="button" class="text-sm text-customPrimaryColor hover:underline" @click="showLocalizedSeo = !showLocalizedSeo">
+                    {{ showLocalizedSeo ? 'Hide localized SEO' : 'Edit localized SEO' }}
+                  </button>
+                </div>
+
+                <template v-if="showLocalizedSeo">
+                  <template v-for="locale in available_locales" :key="`seo-fields-${locale}`">
+                    <div v-if="activeLocale === locale" class="grid grid-cols-1 gap-6 mt-4 pt-4 border-t">
+                      <h4 class="text-md font-semibold text-gray-800">Localized SEO Fields ({{ locale.toUpperCase() }})</h4>
+                      <div>
+                        <label :for="`seo_title_${locale}`" class="block text-sm font-medium text-gray-700 mb-2">SEO Title</label>
+                        <Input
+                          :id="`seo_title_${locale}`"
+                          v-model="form.seo_translations[locale].seo_title"
+                          type="text"
+                          maxlength="60"
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
+                        />
+                        <p v-if="form.errors[`seo_translations.${locale}.seo_title`]" class="mt-2 text-sm text-red-600">{{ form.errors[`seo_translations.${locale}.seo_title`] }}</p>
+                        <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
+                          <span>{{ charCount(form.seo_translations[locale].seo_title) }}/60</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label :for="`meta_description_${locale}`" class="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
+                        <textarea
+                          :id="`meta_description_${locale}`"
+                          v-model="form.seo_translations[locale].meta_description"
+                          maxlength="160"
+                          rows="3"
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
+                        ></textarea>
+                        <p v-if="form.errors[`seo_translations.${locale}.meta_description`]" class="mt-2 text-sm text-red-600">{{ form.errors[`seo_translations.${locale}.meta_description`] }}</p>
+                        <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
+                          <span>{{ charCount(form.seo_translations[locale].meta_description) }}/160</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label :for="`keywords_${locale}`" class="block text-sm font-medium text-gray-700 mb-2">Keywords</label>
+                        <Input
+                          :id="`keywords_${locale}`"
+                          v-model="form.seo_translations[locale].keywords"
+                          type="text"
+                          maxlength="255"
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
+                          placeholder="keyword1, keyword2..."
+                        />
+                        <p v-if="form.errors[`seo_translations.${locale}.keywords`]" class="mt-2 text-sm text-red-600">{{ form.errors[`seo_translations.${locale}.keywords`] }}</p>
+                        <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
+                          <span>{{ charCount(form.seo_translations[locale].keywords) }}/255</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label :for="`meta_description_${locale}`" class="block text-sm font-medium text-gray-700 mb-2">
-                        Meta Description
-                      </label>
-                      <textarea
-                        :id="`meta_description_${locale}`"
-                        v-model="form.seo_translations[locale].meta_description"
-                        maxlength="160"
-                        rows="3"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                      ></textarea>
-                      <p v-if="form.errors[`seo_translations.${locale}.meta_description`]" class="mt-2 text-sm text-red-600">
-                        {{ form.errors[`seo_translations.${locale}.meta_description`] }}
-                      </p>
-                    </div>
-                    <div>
-                      <label :for="`keywords_${locale}`" class="block text-sm font-medium text-gray-700 mb-2">
-                        Keywords
-                      </label>
-                      <Input
-                        :id="`keywords_${locale}`"
-                        v-model="form.seo_translations[locale].keywords"
-                        type="text"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                        placeholder="keyword1, keyword2..."
-                      />
-                      <p v-if="form.errors[`seo_translations.${locale}.keywords`]" class="mt-2 text-sm text-red-600">
-                        {{ form.errors[`seo_translations.${locale}.keywords`] }}
-                      </p>
-                    </div>
-                  </div>
+                  </template>
                 </template>
               </div>
 

@@ -40,7 +40,7 @@ class EloquentSitemapDataProvider implements SitemapDataProvider
     public function getPublishedBlogs(): array
     {
         return Blog::query()
-            ->select(['id', 'image', 'countries', 'updated_at'])
+            ->select(['id', 'image', 'countries', 'canonical_country', 'updated_at'])
             ->with(['translations:id,blog_id,locale,slug,title,updated_at'])
             ->where('is_published', true)
             ->get()
@@ -49,6 +49,7 @@ class EloquentSitemapDataProvider implements SitemapDataProvider
                     'id' => (int) $blog->id,
                     'image' => $blog->image,
                     'countries' => $blog->countries,
+                    'canonical_country' => $blog->canonical_country,
                     'updated_at' => $blog->updated_at,
                     'translations' => $blog->translations->map(static function ($translation) {
                         return [

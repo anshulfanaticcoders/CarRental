@@ -1,18 +1,5 @@
 <template>
-    <Head>
-        <title>{{ seoTitle }}</title>
-        <meta name="description" :content="seoDescription" />
-        <meta name="keywords" :content="seoKeywords" />
-        <link rel="canonical" :href="canonicalUrl" />
-        <meta property="og:title" :content="seoTitle" />
-        <meta property="og:description" :content="seoDescription" />
-        <meta property="og:image" :content="seoImageUrl" />
-        <meta property="og:url" :content="currentUrl" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" :content="seoTitle" />
-        <meta name="twitter:description" :content="seoDescription" />
-        <meta name="twitter:image" :content="seoImageUrl" />
-    </Head>
+    <SeoHead :seo="seo" />
 
     <AuthenticatedHeaderLayout />
     <SchemaInjector v-if="props.schema" :schema="props.schema" />
@@ -73,13 +60,14 @@
 import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import SchemaInjector from '@/Components/SchemaInjector.vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import SeoHead from '@/Components/SeoHead.vue';
+import { Link, usePage } from '@inertiajs/vue3';
 import { defineProps, computed } from 'vue';
 
 const props = defineProps({
     blog: Object,
     schema: Object,
-    seoMeta: Object,
+    seo: Object,
     locale: String,
     country: String,
 });
@@ -89,17 +77,6 @@ const currentCountry = computed(() => props.country || 'us');
 console.log('Locale:', currentLocale.value, 'Country:', currentCountry.value);
 
 const currentUrl = computed(() => window.location.href);
-
-const seoTranslation = computed(() => {
-    if (!props.seoMeta || !props.seoMeta.translations) return {};
-    return props.seoMeta.translations.find(t => t.locale === currentLocale.value) || {};
-});
-
-const seoTitle = computed(() => seoTranslation.value.seo_title || props.seoMeta?.seo_title || props.blog.title);
-const seoDescription = computed(() => seoTranslation.value.meta_description || props.seoMeta?.meta_description || '');
-const seoKeywords = computed(() => seoTranslation.value.keywords || props.seoMeta?.keywords || '');
-const canonicalUrl = computed(() => props.seoMeta?.canonical_url || window.location.href);
-const seoImageUrl = computed(() => props.seoMeta?.seo_image_url || props.blog.image);
 
 const formatDate = (date) => {
     if (!date) return '';

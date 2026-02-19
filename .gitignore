@@ -25,4 +25,5 @@ yarn-error.log
 .mcp.json
 .codex
 .opencode
+.agents
 docs

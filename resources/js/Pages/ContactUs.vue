@@ -1,7 +1,8 @@
 <script setup>
 import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import SeoHead from '@/Components/SeoHead.vue';
+import { useForm, usePage } from '@inertiajs/vue3';
 import { computed, watch } from 'vue';
 
 const props = defineProps({
@@ -18,7 +19,7 @@ const props = defineProps({
       address: ''
     })
   },
-  seoMeta: Object,
+  seo: Object,
   pages: Object,
 });
 
@@ -33,34 +34,6 @@ const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success || null);
 
 const currentLocale = computed(() => page.props.locale || 'en');
-const currentUrl = computed(() => window.location.href);
-
-const seoTranslation = computed(() => {
-    if (!props.seoMeta || !props.seoMeta.translations) {
-        return {};
-    }
-    return props.seoMeta.translations.find(t => t.locale === currentLocale.value) || {};
-});
-
-const seoTitle = computed(() => {
-    return seoTranslation.value.seo_title || props.seoMeta?.seo_title || 'Contact Us';
-});
-
-const seoDescription = computed(() => {
-    return seoTranslation.value.meta_description || props.seoMeta?.meta_description || '';
-});
-
-const seoKeywords = computed(() => {
-    return seoTranslation.value.keywords || props.seoMeta?.keywords || '';
-});
-
-const canonicalUrl = computed(() => {
-    return props.seoMeta?.canonical_url || window.location.href;
-});
-
-const seoImageUrl = computed(() => {
-    return props.seoMeta?.seo_image_url || '';
-});
 
 const submitForm = () => {
   form.post(route('contact.submit'), {
@@ -99,21 +72,7 @@ const LocationIcon = `
 <template>
   <AuthenticatedHeaderLayout />
 
-    <Head>
-        <meta name="robots" content="index, follow" />
-        <title>{{ seoTitle }}</title>
-        <meta name="description" :content="seoDescription" />
-        <meta name="keywords" :content="seoKeywords" />
-        <link rel="canonical" :href="canonicalUrl" />
-        <meta property="og:title" :content="seoTitle" />
-        <meta property="og:description" :content="seoDescription" />
-        <meta property="og:image" :content="seoImageUrl" />
-        <meta property="og:url" :content="currentUrl" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" :content="seoTitle" />
-        <meta name="twitter:description" :content="seoDescription" />
-        <meta name="twitter:image" :content="seoImageUrl" />
-    </Head>
+    <SeoHead :seo="seo" />
 
   <div class="contact-us-page text-gray-800">
     <!-- Hero Section -->
