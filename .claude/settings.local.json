@@ -26,7 +26,8 @@
       "mcp__serena__read_file",
       "mcp__serena__find_file",
       "mcp__serena__find_symbol",
-      "mcp__serena__replace_content"
+      "mcp__serena__replace_content",
+      "Bash(node .claude/prompt-optimizer.cjs:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

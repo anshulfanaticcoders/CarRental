@@ -33,7 +33,7 @@ class Blog extends Model
 
     public function tags()
     {
-        return $this->belongsToMany(BlogTag::class);
+        return $this->belongsToMany(BlogTag::class, 'blog_tag_blog', 'blog_id', 'blog_tag_id');
     }
 
     public function getTranslation(string $locale = null)

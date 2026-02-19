@@ -31,14 +31,14 @@
         },
         "exa": {
             "type": "http",
-            "url": "https://mcp.exa.ai/mcp",
+            "url": "https://mcp.exa.ai/mcp?exaApiKey=cd042989-2bb4-4761-bbd1-670e768e67f5",
             "headers": {}
         },
         "Ref": {
             "command": "npx",
             "args": ["ref-tools-mcp@latest"],
             "env": {
-                "REF_API_KEY": "ref-e073988e7c23f9a980d0"
+                "REF_API_KEY": "ref-18c2ebefcaec89c0f8f4"
             }
         }
     }

@@ -13,7 +13,7 @@
 
     <article class="single-blog-page min-h-screen bg-white">
         <!-- Breadcrumb -->
-        <nav class="w-full max-w-[1200px] mx-auto px-6 pt-6 pb-2 md:px-8" aria-label="Breadcrumb">
+        <nav class="full-w-container mx-auto pt-6 pb-2 mb-4" aria-label="Breadcrumb">
             <ol class="flex items-center flex-wrap gap-1 text-sm text-gray-500">
                 <li>
                     <Link
@@ -36,11 +36,11 @@
         </nav>
 
         <!-- Two-column layout -->
-        <div class="max-w-[1200px] mx-auto px-6 md:px-8 pb-16">
-            <div class="flex gap-10 lg:gap-12">
+        <div class="full-w-container mx-auto pb-16">
+            <div class="flex gap-10 lg:gap-12 justify-between">
 
                 <!-- Main Article Column -->
-                <div class="flex-1 min-w-0 max-w-[780px]">
+                <div class="w-full md:w-[85%] lg:w-[70%] mx-auto">
 
                     <!-- Article Header -->
                     <header class="mb-8">
@@ -232,7 +232,7 @@
                 </div>
 
                 <!-- Sticky Sidebar (desktop only) -->
-                <aside class="hidden lg:block w-[280px] flex-shrink-0">
+                <aside class="hidden lg:block">
                     <div class="sticky top-8 space-y-8">
 
                         <!-- Reading Progress -->
