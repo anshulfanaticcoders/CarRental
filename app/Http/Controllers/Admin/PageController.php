@@ -71,10 +71,14 @@ class PageController extends Controller
             'seo_image_url'   => 'nullable|url|max:255',
         ];
 
+        // Content is required only for templates without sections
+        $templateKey = $request->input('template', 'default');
+        $hasSections = !empty(config("page-templates.{$templateKey}.sections"));
+
         foreach ($available_locales as $locale) {
             $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
             $validationRules["translations.{$locale}.slug"] = 'required|string|max:255';
-            $validationRules["translations.{$locale}.content"] = 'required|string';
+            $validationRules["translations.{$locale}.content"] = $hasSections ? 'nullable|string' : 'required|string';
         }
         $request->validate($validationRules);
 
@@ -329,16 +333,19 @@ class PageController extends Controller
             'canonical_url'   => 'nullable|url|max:255',
             'seo_image_url'   => 'nullable|url|max:255',
         ];
+        // Content is required only for templates without sections
+        $hasSections = !empty(config("page-templates.{$page->template}.sections"));
+
         foreach ($available_locales as $locale) {
             $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
             $validationRules["translations.{$locale}.slug"] = 'required|string|max:255';
-            $validationRules["translations.{$locale}.content"] = 'required|string';
+            $validationRules["translations.{$locale}.content"] = $hasSections ? 'nullable|string' : 'required|string';
         }
         $request->validate($validationRules);
 
         $translationsData = $request->input('translations');
         foreach ($translationsData as $locale => $data) {
-             if (in_array($locale, $available_locales) && !empty($data['title']) && !empty($data['content'])) {
+             if (in_array($locale, $available_locales) && !empty($data['title'])) {
                 $page->translations()->updateOrCreate(
                     ['locale' => $locale],
                     [

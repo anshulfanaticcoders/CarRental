@@ -284,8 +284,8 @@ const submit = () => {
                       </p>
                     </div>
 
-                    <!-- Content Field -->
-                    <div>
+                    <!-- Content Field (hidden when template uses sections) -->
+                    <div v-if="!selectedTemplate.sections || selectedTemplate.sections.length === 0">
                       <label :for="`content-${locale}`" class="block text-sm font-medium text-gray-700 mb-2">
                         Content ({{ locale.toUpperCase() }})
                       </label>
