@@ -399,7 +399,14 @@ Route::group([
     Route::get('/faq', [FaqController::class, 'showPublicFaqPage'])->name('faq.show');
     Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->name('validate-email');
     Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->name('validate-contact');
-    Route::get('/contact-us', [ContactUsPageController::class, 'show'])->name('contact-us');
+    // Migrated to unified page system with custom slugs
+    // Route::get('/contact-us', [ContactUsPageController::class, 'show'])->name('contact-us');
+
+    // Dynamic page custom slugs (managed via admin Pages > custom_slug field)
+    Route::get('/{customSlug}', [\App\Http\Controllers\Admin\PageController::class, 'showByCustomSlug'])
+        ->name('pages.custom')
+        ->where('customSlug', 'contact-us|about-us|privacy-policy|terms-and-conditions');
+
     Route::post('/contact', [ContactFormController::class, 'store'])->name('contact.submit');
     Route::get('/vendor/{vendorProfileId}/reviews', [ReviewController::class, 'vendorAllReviews'])->name('vendor.reviews.all');
 

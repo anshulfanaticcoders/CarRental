@@ -48,6 +48,7 @@ class PageController extends Controller
         return Inertia::render('AdminDashboardPages/Pages/Create', [
             'available_locales' => ['en', 'fr', 'nl', 'es', 'ar'],
             'current_locale' => App::getLocale(),
+            'templates' => config('page-templates'),
         ]);
     }
 
@@ -59,6 +60,9 @@ class PageController extends Controller
         $available_locales = ['en', 'fr', 'nl', 'es', 'ar'];
         $validationRules = [
             'translations' => 'required|array',
+            'template' => 'required|string|in:' . implode(',', array_keys(config('page-templates'))),
+            'status' => 'required|in:published,draft',
+            'custom_slug' => 'nullable|string|max:255|unique:pages,custom_slug',
             // SEO Meta Validation Rules
             'seo_title'       => 'nullable|string|max:60',
             'meta_description'=> 'nullable|string|max:160',
@@ -75,7 +79,7 @@ class PageController extends Controller
         $request->validate($validationRules);
 
         $translationsData = $request->input('translations');
-        
+
         $slugTitle = $translationsData['en']['title'] ?? $translationsData[array_key_first($translationsData)]['title'];
         $mainSlug = Str::slug($slugTitle);
         $existingPage = Page::where('slug', $mainSlug)->first();
@@ -85,6 +89,9 @@ class PageController extends Controller
 
         $page = Page::create([
             'slug' => $mainSlug,
+            'template' => $request->input('template', 'default'),
+            'custom_slug' => $request->input('custom_slug') ?: null,
+            'status' => $request->input('status', 'draft'),
         ]);
 
         foreach ($translationsData as $locale => $data) {
@@ -95,6 +102,55 @@ class PageController extends Controller
                     'slug' => Str::slug($data['slug']),
                     'content' => $data['content'],
                 ]);
+            }
+        }
+
+        // Save meta fields based on template configuration
+        $metaData = $request->input('meta', []);
+        $templateConfig = config("page-templates.{$request->input('template', 'default')}");
+        if ($templateConfig && !empty($templateConfig['meta_fields'])) {
+            foreach ($templateConfig['meta_fields'] as $fieldDef) {
+                $key = $fieldDef['key'];
+                if ($fieldDef['translatable'] ?? false) {
+                    foreach ($available_locales as $locale) {
+                        $value = $metaData[$locale][$key] ?? null;
+                        if ($value !== null) {
+                            $page->meta()->updateOrCreate(
+                                ['locale' => $locale, 'meta_key' => $key],
+                                ['meta_value' => is_array($value) ? json_encode($value) : $value]
+                            );
+                        }
+                    }
+                } else {
+                    $value = $metaData[$key] ?? null;
+                    if ($value !== null) {
+                        $page->meta()->updateOrCreate(
+                            ['locale' => 'en', 'meta_key' => $key],
+                            ['meta_value' => is_array($value) ? json_encode($value) : $value]
+                        );
+                    }
+                }
+            }
+        }
+
+        // Save sections
+        $sectionsData = $request->input('sections', []);
+        foreach ($sectionsData as $index => $sectionData) {
+            $section = $page->sections()->create([
+                'section_type' => $sectionData['type'],
+                'sort_order' => $index,
+                'is_visible' => $sectionData['is_visible'] ?? true,
+            ]);
+            foreach ($available_locales as $locale) {
+                if (isset($sectionData['translations'][$locale])) {
+                    $trans = $sectionData['translations'][$locale];
+                    $section->translations()->create([
+                        'locale' => $locale,
+                        'title' => $trans['title'] ?? null,
+                        'content' => $trans['content'] ?? null,
+                        'settings' => $trans['settings'] ?? null,
+                    ]);
+                }
             }
         }
 
@@ -197,14 +253,60 @@ class PageController extends Controller
             }
         }
 
+        // Load meta fields
+        $metaValues = [];
+        $templateConfig = config("page-templates.{$page->template}");
+        if ($templateConfig) {
+            foreach ($templateConfig['meta_fields'] as $fieldDef) {
+                $key = $fieldDef['key'];
+                if ($fieldDef['translatable'] ?? false) {
+                    foreach ($allLocales as $l) {
+                        $meta = $page->meta()->where('locale', $l)->where('meta_key', $key)->first();
+                        $value = $meta?->meta_value;
+                        if (($fieldDef['type'] === 'repeater') && $value) {
+                            $value = json_decode($value, true);
+                        }
+                        $metaValues[$l][$key] = $value;
+                    }
+                } else {
+                    $meta = $page->meta()->where('locale', 'en')->where('meta_key', $key)->first();
+                    $value = $meta?->meta_value;
+                    if (($fieldDef['type'] === 'repeater') && $value) {
+                        $value = json_decode($value, true);
+                    }
+                    $metaValues[$key] = $value;
+                }
+            }
+        }
+
+        $sections = $page->sections()->with('translations')->orderBy('sort_order')->get()->map(function ($section) {
+            return [
+                'id' => $section->id,
+                'type' => $section->section_type,
+                'sort_order' => $section->sort_order,
+                'is_visible' => $section->is_visible,
+                'translations' => $section->translations->keyBy('locale')->map(fn ($t) => [
+                    'title' => $t->title,
+                    'content' => $t->content,
+                    'settings' => $t->settings,
+                ]),
+            ];
+        });
+
         return Inertia::render('AdminDashboardPages/Pages/Edit', [
             'page' => [
                 'id' => $page->id,
                 'slug' => $page->slug,
+                'template' => $page->template,
+                'custom_slug' => $page->custom_slug,
+                'status' => $page->status,
                 'translations' => $translations,
-                'locale' => $locale, 
+                'locale' => $locale,
             ],
             'available_locales' => $allLocales,
+            'templates' => config('page-templates'),
+            'metaValues' => $metaValues,
+            'sectionsData' => $sections,
             'seoMeta' => $seoMeta,
             'seoTranslations' => $seoTranslations,
         ]);
@@ -218,6 +320,8 @@ class PageController extends Controller
         $available_locales = ['en', 'fr', 'nl', 'es', 'ar'];
         $validationRules = [
             'translations' => 'required|array',
+            'status' => 'required|in:published,draft',
+            'custom_slug' => 'nullable|string|max:255|unique:pages,custom_slug,' . $page->id,
             // SEO Meta Validation Rules
             'seo_title'       => 'nullable|string|max:60',
             'meta_description'=> 'nullable|string|max:160',
@@ -304,6 +408,61 @@ class PageController extends Controller
             Cache::forget('seo:model:' . get_class($page) . ':' . $page->getKey() . ':' . $locale);
         }
 
+        // Update page-level fields
+        $page->update([
+            'custom_slug' => $request->input('custom_slug') ?: null,
+            'status' => $request->input('status', $page->status),
+        ]);
+
+        // Save meta fields based on template configuration
+        $metaData = $request->input('meta', []);
+        $templateConfig = config("page-templates.{$page->template}");
+        if ($templateConfig && !empty($templateConfig['meta_fields'])) {
+            foreach ($templateConfig['meta_fields'] as $fieldDef) {
+                $key = $fieldDef['key'];
+                if ($fieldDef['translatable'] ?? false) {
+                    foreach ($available_locales as $locale) {
+                        $value = $metaData[$locale][$key] ?? null;
+                        if ($value !== null) {
+                            $page->meta()->updateOrCreate(
+                                ['locale' => $locale, 'meta_key' => $key],
+                                ['meta_value' => is_array($value) ? json_encode($value) : $value]
+                            );
+                        }
+                    }
+                } else {
+                    $value = $metaData[$key] ?? null;
+                    if ($value !== null) {
+                        $page->meta()->updateOrCreate(
+                            ['locale' => 'en', 'meta_key' => $key],
+                            ['meta_value' => is_array($value) ? json_encode($value) : $value]
+                        );
+                    }
+                }
+            }
+        }
+
+        // Update sections (delete old, create new)
+        $sectionsData = $request->input('sections', []);
+        $page->sections()->delete(); // Clear existing sections
+        foreach ($sectionsData as $index => $sectionData) {
+            $section = $page->sections()->create([
+                'section_type' => $sectionData['type'],
+                'sort_order' => $index,
+                'is_visible' => $sectionData['is_visible'] ?? true,
+            ]);
+            foreach ($available_locales as $locale) {
+                if (isset($sectionData['translations'][$locale])) {
+                    $trans = $sectionData['translations'][$locale];
+                    $section->translations()->create([
+                        'locale' => $locale,
+                        'title' => $trans['title'] ?? null,
+                        'content' => $trans['content'] ?? null,
+                        'settings' => $trans['settings'] ?? null,
+                    ]);
+                }
+            }
+        }
 
         return redirect()->route('admin.pages.index')
             ->with('success', 'Page updated successfully.');
@@ -344,43 +503,70 @@ class PageController extends Controller
         $translation = \App\Models\PageTranslation::where('slug', $slug)->where('locale', $locale)->firstOrFail();
         $page = $translation->page;
 
-        if (!$translation) {
-            $defaultLocale = config('app.fallback_locale', 'en');
-            $translation = $page->translations()->where('locale', $defaultLocale)->first();
-        }
-
         $pageData = [
-            'title' => $translation ? $translation->title : 'Page Title Not Found',
-            'content' => $translation ? $translation->content : '<p>Content not available in this language.</p>',
+            'title' => $translation->title,
+            'content' => $translation->content,
             'slug' => $page->slug,
+            'template' => $page->template,
         ];
 
-        $seo = app(SeoMetaResolver::class)->resolveForModel(
-            $page,
-            $locale,
-            url("/{$locale}/page/{$slug}")
-        )->toArray();
-
-        $pages = Page::with('translations')->get()->keyBy('slug');
-
-        // Find the 'About Us' page based on its English translation title
-        $aboutUsPage = Page::whereHas('translations', function ($query) {
-            $query->where('locale', 'en')->where('title', 'About Us');
-        })->first();
-
-        $aboutUsTranslatedSlug = null;
-        if ($aboutUsPage) {
-            // Get the translated slug for the current locale
-            $aboutUsTranslation = $aboutUsPage->translations->firstWhere('locale', $locale);
-            $aboutUsTranslatedSlug = $aboutUsTranslation ? $aboutUsTranslation->slug : null;
+        // Get meta for current locale
+        $meta = $page->getMetaForLocale($locale);
+        $templateConfig = config("page-templates.{$page->template}");
+        if ($templateConfig) {
+            foreach ($templateConfig['meta_fields'] as $fieldDef) {
+                if ($fieldDef['type'] === 'repeater' && isset($meta[$fieldDef['key']])) {
+                    $decoded = json_decode($meta[$fieldDef['key']], true);
+                    $meta[$fieldDef['key']] = $decoded ?: [];
+                }
+            }
         }
 
-        return Inertia::render('Frontend/Page', [
+        // Get sections
+        $sections = $page->sections()->with('translations')->where('is_visible', true)->orderBy('sort_order')->get()->map(function ($section) use ($locale) {
+            $trans = $section->getTranslation($locale);
+            return [
+                'type' => $section->section_type,
+                'title' => $trans?->title,
+                'content' => $trans?->content,
+                'settings' => $trans?->settings,
+            ];
+        });
+
+        $seo = app(SeoMetaResolver::class)->resolveForModel(
+            $page, $locale, url("/{$locale}/page/{$slug}")
+        )->toArray();
+
+        $pages = Page::with('translations')->where('status', 'published')->get()->keyBy('slug');
+
+        $vueComponent = $templateConfig['vue_component'] ?? 'Frontend/Templates/DefaultPage';
+
+        return Inertia::render($vueComponent, [
             'page' => $pageData,
+            'meta' => $meta,
+            'sections' => $sections,
             'seo' => $seo,
             'locale' => $locale,
             'pages' => $pages,
-            'aboutUsTranslatedSlug' => $aboutUsTranslatedSlug, // Pass the dynamic slug
         ]);
+    }
+
+    /**
+     * Display a page by its custom slug on the frontend.
+     */
+    public function showByCustomSlug($locale, $customSlug)
+    {
+        App::setLocale($locale);
+
+        $page = Page::where('custom_slug', $customSlug)
+            ->where('status', 'published')
+            ->firstOrFail();
+
+        $translation = $page->translations()->where('locale', $locale)->first()
+            ?? $page->translations()->where('locale', 'en')->first();
+
+        if (!$translation) abort(404);
+
+        return $this->showPublic($locale, $translation->slug);
     }
 }
