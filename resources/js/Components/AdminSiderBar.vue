@@ -253,8 +253,8 @@ const data = {
           url: '/pages',
         },
         {
-          title: 'Contact Us',
-          url: '/admin/contact-us',
+          title: 'Add New Page',
+          url: '/pages/create',
         },
       ],
     },

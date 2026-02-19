@@ -23,6 +23,8 @@
                             <TableHead>ID</TableHead>
                             <TableHead>Title</TableHead>
                             <TableHead>Slug</TableHead>
+                            <TableHead>Template</TableHead>
+                            <TableHead>Status</TableHead>
                             <TableHead>Created At</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
@@ -32,16 +34,26 @@
                             <TableCell>{{ (pages.current_page - 1) * pages.per_page + index + 1 }}</TableCell>
                             <TableCell class="capitalize">{{ getTitle(page) }}</TableCell>
                             <TableCell>{{ page.slug }}</TableCell>
+                            <TableCell>
+                                <span :class="templateBadgeClass(page.template)">
+                                    {{ page.template || 'default' }}
+                                </span>
+                            </TableCell>
+                            <TableCell>
+                                <span :class="statusBadgeClass(page.status)">
+                                    {{ page.status === 'published' ? 'Published' : 'Draft' }}
+                                </span>
+                            </TableCell>
                             <TableCell>{{ formatDate(page.created_at) }}</TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Link 
+                                    <Link
                                         :href="route('admin.pages.edit', page.id)"
                                         class="px-3 py-2 bg-[#0f172a] text-white rounded hover:bg-[#0f172ae6]"
                                     >
                                         Edit
                                     </Link>
-                                    <Button 
+                                    <Button
                                         variant="destructive"
                                         @click="deletePage(page.id)"
                                     >
@@ -112,6 +124,24 @@ const getTitle = (page) => {
 const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+};
+
+const templateBadgeClass = (template) => {
+    const base = 'inline-block px-2 py-0.5 text-xs font-medium rounded-full text-white';
+    switch (template) {
+        case 'contact-us': return `${base} bg-[#1e3a5f]`;
+        case 'about-us':   return `${base} bg-teal-600`;
+        case 'legal':      return `${base} bg-purple-600`;
+        default:           return `${base} bg-gray-500`;
+    }
+};
+
+const statusBadgeClass = (status) => {
+    const base = 'inline-block px-2 py-0.5 text-xs font-medium rounded-full';
+    if (status === 'published') {
+        return `${base} bg-green-100 text-green-800`;
+    }
+    return `${base} bg-gray-100 text-gray-800`;
 };
 </script>
 
