@@ -4,7 +4,9 @@ import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import Editor from '@tinymce/tinymce-vue';
-import { ref, watch } from 'vue';
+import PageMetaFields from '@/Components/Admin/PageMetaFields.vue';
+import PageSectionEditor from '@/Components/Admin/PageSectionEditor.vue';
+import { ref, watch, computed } from 'vue';
 import { useToast } from 'vue-toastification';
 import {
     AlertDialog,
@@ -21,8 +23,14 @@ import loaderVariant from '../../../../assets/loader-variant.svg';
 
 const toast = useToast();
 
-const locales = ['en', 'fr', 'nl', 'es', 'ar'];
-const activeLocale = ref('en');
+const props = defineProps({
+    available_locales: Array,
+    current_locale: String,
+    templates: Object,
+});
+
+const locales = props.available_locales || ['en', 'fr', 'nl', 'es', 'ar'];
+const activeLocale = ref(props.current_locale || 'en');
 
 const initialTranslations = {};
 locales.forEach(locale => {
@@ -39,12 +47,49 @@ locales.forEach(locale => {
 });
 
 const form = useForm({
+    template: 'default',
+    status: 'draft',
+    custom_slug: '',
     translations: JSON.parse(JSON.stringify(initialTranslations)),
     locale: activeLocale,
     seo_title: '',
+    meta_description: '',
+    keywords: '',
     canonical_url: '',
     seo_image_url: '',
     seo_translations: JSON.parse(JSON.stringify(initialSeoTranslations)),
+    meta: {},
+    sections: [],
+});
+
+const selectedTemplate = computed(() => {
+    if (props.templates && form.template && props.templates[form.template]) {
+        return props.templates[form.template];
+    }
+    if (props.templates && props.templates['default']) {
+        return props.templates['default'];
+    }
+    return { name: 'Default', description: '', meta_fields: [], sections: [] };
+});
+
+watch(() => form.template, (newTemplate) => {
+    if (!props.templates) return;
+    const config = props.templates[newTemplate];
+    if (!config) return;
+
+    // Reset meta
+    form.meta = {};
+
+    // Initialize sections from template config
+    form.sections = (config.sections || []).map((s, i) => ({
+        type: s.type,
+        sort_order: i,
+        is_visible: true,
+        translations: locales.reduce((acc, locale) => {
+            acc[locale] = { title: '', content: '', settings: {} };
+            return acc;
+        }, {}),
+    }));
 });
 
 // Arabic to Latin transliteration map (simplified for common characters)
@@ -93,11 +138,18 @@ watch(() => form.translations[activeLocale.value]?.title, (newTitle) => {
 
 const submit = () => {
     const dataToSubmit = {
+        template: form.template,
+        status: form.status,
+        custom_slug: form.custom_slug,
         translations: form.translations,
         seo_title: form.seo_title,
+        meta_description: form.meta_description,
+        keywords: form.keywords,
         canonical_url: form.canonical_url,
         seo_image_url: form.seo_image_url,
         seo_translations: form.seo_translations,
+        meta: form.meta,
+        sections: form.sections,
     };
 
     router.post(route('admin.pages.store'), dataToSubmit, {
@@ -147,6 +199,33 @@ const submit = () => {
             </div>
 
             <form @submit.prevent>
+              <!-- Template Selection -->
+              <div v-if="templates" class="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Page Template</label>
+                <select v-model="form.template" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor">
+                  <option v-for="(tmpl, key) in templates" :key="key" :value="key">
+                    {{ tmpl.name }} &mdash; {{ tmpl.description }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Status & Custom Slug -->
+              <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select v-model="form.status" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor">
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Custom URL Slug (optional)</label>
+                  <input v-model="form.custom_slug" type="text" placeholder="e.g. contact-us"
+                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white" />
+                  <p class="text-xs text-gray-500 mt-1">Leave empty to use /page/{slug}. Set for top-level URL like /contact-us</p>
+                </div>
+              </div>
+
               <div class="mb-8">
                 <h3 class="text-lg font-semibold text-gray-900 mb-6">Page Content</h3>
                 <div class="flex border-b border-gray-200 mb-6">
@@ -205,8 +284,8 @@ const submit = () => {
                       </p>
                     </div>
 
-                    <!-- Content Field -->
-                    <div>
+                    <!-- Content Field (hidden when template uses sections) -->
+                    <div v-if="!selectedTemplate.sections || selectedTemplate.sections.length === 0">
                       <label :for="`content-${locale}`" class="block text-sm font-medium text-gray-700 mb-2">
                         Content ({{ locale.toUpperCase() }})
                       </label>
@@ -230,6 +309,29 @@ const submit = () => {
                     </div>
                   </div>
                 </template>
+              </div>
+
+              <!-- Template Meta Fields -->
+              <div v-if="selectedTemplate.meta_fields && selectedTemplate.meta_fields.length > 0" class="mt-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Template Fields</h3>
+                <PageMetaFields
+                  :fields="selectedTemplate.meta_fields"
+                  v-model="form.meta"
+                  :locale="activeLocale"
+                  :locales="locales"
+                />
+              </div>
+
+              <!-- Content Sections -->
+              <div v-if="selectedTemplate.sections && selectedTemplate.sections.length > 0" class="mt-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Content Sections</h3>
+                <PageSectionEditor
+                  :sections="form.sections"
+                  :template-sections="selectedTemplate.sections"
+                  :locale="activeLocale"
+                  :locales="locales"
+                  @update:sections="form.sections = $event"
+                />
               </div>
 
               <!-- SEO Meta Fields -->

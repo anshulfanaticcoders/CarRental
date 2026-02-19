@@ -17,9 +17,13 @@ yarn-error.log
 /.idea
 /.vscode
 /public/unified_locations.json
+/public/sitemap.xml
+/public/sitemaps
+/public/sitemap*.xml
 .worktrees
 .claude
 .mcp.json
 .codex
 .opencode
+.agents
 docs

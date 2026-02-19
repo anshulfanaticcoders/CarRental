@@ -1,9 +1,10 @@
 <script setup>
-import { Link, useForm, usePage, router, Head } from "@inertiajs/vue3";
+ import { Link, useForm, usePage, router } from "@inertiajs/vue3";
 import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import axios from 'axios';
 import { toast as sonnerToast } from "vue-sonner";
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
+import SeoHead from '@/Components/SeoHead.vue';
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
@@ -164,7 +165,7 @@ const props = defineProps({
     fuels: Array,
     mileages: Array,
     schema: Object, // Add schema prop
-    seoMeta: Object, // Added seoMeta prop
+    seo: Object,
     locale: String, // Added locale prop
     okMobilityVehicles: Object, // New: OK Mobility vehicles data
     renteonVehicles: Object, // New: Renteon vehicles data
@@ -399,44 +400,6 @@ const debounce = (fn, delay) => {
 };
 const isCustomer = computed(() => {
     return page.props.auth?.user?.role === 'customer';
-});
-
-const seoTranslation = computed(() => {
-    if (!props.seoMeta || !props.seoMeta.translations) {
-        return {};
-    }
-    return props.seoMeta.translations.find(t => t.locale === props.locale) || {};
-});
-
-const constructedLocalizedUrlSlug = computed(() => {
-    // Prioritize translated url_slug, fallback to main seoMeta url_slug, then 's'
-    return seoTranslation.value.url_slug || props.seoMeta?.url_slug || 's';
-});
-
-const currentUrl = computed(() => {
-    // Construct the full localized URL for Open Graph and Canonical
-    return `${window.location.origin}/${props.locale}/${constructedLocalizedUrlSlug.value}`;
-});
-
-const canonicalUrl = computed(() => {
-    // Canonical URL should also reflect the localized slug
-    return props.seoMeta?.canonical_url || currentUrl.value;
-});
-
-const seoTitle = computed(() => {
-    return seoTranslation.value.seo_title || props.seoMeta?.seo_title || 'Search Results'; // Fallback to 'Search Results'
-});
-
-const seoDescription = computed(() => {
-    return seoTranslation.value.meta_description || props.seoMeta?.meta_description || '';
-});
-
-const seoKeywords = computed(() => {
-    return seoTranslation.value.keywords || props.seoMeta?.keywords || '';
-});
-
-const seoImageUrl = computed(() => {
-    return props.seoMeta?.seo_image_url || '';
 });
 
 const form = useForm({
@@ -693,19 +656,47 @@ watch(
 );
 
 
-const submitFilters = debounce(() => {
-    const dataToSend = { ...form.data() };
-    if (dataToSend.matched_field && (dataToSend.city || dataToSend.state || dataToSend.country)) {
-        delete dataToSend.radius;
+const serverParams = computed(() => {
+    const params = {
+        date_from: form.date_from,
+        date_to: form.date_to,
+        where: form.where,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        radius: form.radius,
+        package_type: form.package_type,
+        city: form.city,
+        state: form.state,
+        country: form.country,
+        matched_field: form.matched_field,
+        location: form.location,
+        provider: form.provider,
+        provider_pickup_id: form.provider_pickup_id,
+        unified_location_id: form.unified_location_id,
+        start_time: form.start_time,
+        end_time: form.end_time,
+        age: form.age,
+        rentalCode: form.rentalCode,
+        userid: form.userid,
+        username: form.username,
+        language: form.language,
+        full_credit: form.full_credit,
+        promocode: form.promocode,
+        dropoff_location_id: form.dropoff_location_id,
+        dropoff_where: form.dropoff_where,
+    };
+
+    if (params.matched_field && (params.city || params.state || params.country)) {
+        delete params.radius;
     }
 
+    return params;
+});
 
-    form.get(`/${page.props.locale}/s`, {
+const submitFilters = debounce(() => {
+    router.get(`/${page.props.locale}/s`, serverParams.value, {
         preserveState: true,
         preserveScroll: true,
-        onSuccess: (response) => {
-            // console.log('Filter response:', response.props.vehicles);
-        },
         onError: (errors) => {
             console.error('Filter errors:', errors);
         },
@@ -717,23 +708,7 @@ const submitFilters = debounce(() => {
 }, 300);
 
 watch(
-    () => {
-        const data = form.data();
-        // Exclude client-side filters from triggering server search
-        const {
-            brand,
-            category_id,
-            transmission,
-            fuel,
-            seating_capacity,
-            price_range,
-            color,
-            // Currency conversion is client-side; don't refetch provider availability.
-            currency,
-            ...serverParams
-        } = data;
-        return serverParams;
-    },
+    () => serverParams.value,
     () => {
         submitFilters();
     },
@@ -2137,21 +2112,7 @@ watch(
 
 <template>
 
-    <Head>
-        <meta name="robots" content="index, follow" />
-        <title>{{ seoTitle }}</title>
-        <meta name="description" :content="seoDescription" />
-        <meta name="keywords" :content="seoKeywords" />
-        <link rel="canonical" :href="canonicalUrl" />
-        <meta property="og:title" :content="seoTitle" />
-        <meta property="og:description" :content="seoDescription" />
-        <meta property="og:image" :content="seoImageUrl" />
-        <meta property="og:url" :content="currentUrl" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" :content="seoTitle" />
-        <meta name="twitter:description" :content="seoDescription" />
-        <meta name="twitter:image" :content="seoImageUrl" />
-    </Head>
+    <SeoHead :seo="seo" />
     <AuthenticatedHeaderLayout />
     <Toaster class="pointer-events-auto" />
 
@@ -2354,7 +2315,7 @@ watch(
             </div>
 
             <div class="search-form-card">
-                <SearchBar class="searchbar-in-header" :prefill="searchQuery" :simple="true"
+                <SearchBar class="searchbar-in-header !w-full" :prefill="searchQuery" :simple="true"
                     @update-search-params="handleSearchUpdate" />
                 <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
             </div>

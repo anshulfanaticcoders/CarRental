@@ -2,25 +2,11 @@
     <AboutUsPage
         v-if="page.slug === aboutUsTranslatedSlug"
         :page="page"
-        :seoMeta="seoMeta"
+        :seo="seo"
         :locale="locale"
     />
     <div v-else>
-        <Head>
-            <meta name="robots" content="index, follow" />
-            <title>{{ seoTitle }}</title>
-            <meta name="description" :content="seoDescription" />
-            <meta name="keywords" :content="seoKeywords" />
-            <link rel="canonical" :href="canonicalUrl" />
-            <meta property="og:title" :content="seoTitle" />
-            <meta property="og:description" :content="seoDescription" />
-            <meta property="og:image" :content="seoImageUrl" />
-            <meta property="og:url" :content="currentUrl" />
-            <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:title" :content="seoTitle" />
-            <meta name="twitter:description" :content="seoDescription" />
-            <meta name="twitter:image" :content="seoImageUrl" />
-        </Head>
+        <SeoHead :seo="seo" />
         <AuthenticatedHeaderLayout />
         <div class="hero-section relative h-[500px] max-[768px]:h-[300px] flex items-center justify-center text-white"
              :style="{ backgroundImage: `url(${pageBg})`, backgroundSize: 'cover', backgroundPosition: 'bottom' }">
@@ -37,47 +23,15 @@
 <script setup>
 import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
-import { Head, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import SeoHead from '@/Components/SeoHead.vue';
 import pageBg from '../../../assets/pageBg.jpg';
 import AboutUsPage from './AboutUsPage.vue'; // Import the new component
 
 const props = defineProps({
     page: Object,
-    seoMeta: Object,
+    seo: Object,
     locale: String,
     aboutUsTranslatedSlug: String, // New prop for dynamic About Us slug
-});
-
-const page_ = usePage();
-const currentLocale = computed(() => props.locale || 'en');
-const currentUrl = computed(() => window.location.href);
-
-const seoTranslation = computed(() => {
-    if (!props.seoMeta || !props.seoMeta.translations) {
-        return {};
-    }
-    return props.seoMeta.translations.find(t => t.locale === currentLocale.value) || {};
-});
-
-const seoTitle = computed(() => {
-    return seoTranslation.value.seo_title || props.seoMeta?.seo_title || props.page.title;
-});
-
-const seoDescription = computed(() => {
-    return seoTranslation.value.meta_description || props.seoMeta?.meta_description || '';
-});
-
-const seoKeywords = computed(() => {
-    return seoTranslation.value.keywords || props.seoMeta?.keywords || '';
-});
-
-const canonicalUrl = computed(() => {
-    return props.seoMeta?.canonical_url || window.location.href;
-});
-
-const seoImageUrl = computed(() => {
-    return props.seoMeta?.seo_image_url || '';
 });
 </script>
 <style scoped>

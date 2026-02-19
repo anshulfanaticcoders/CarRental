@@ -10,6 +10,7 @@ use Inertia\Response;
 use Illuminate\Support\Facades\App; // Added for locale access
 use App\Helpers\SchemaBuilder; // Import SchemaBuilder
 use Illuminate\Support\Facades\DB;
+use App\Services\Seo\SeoMetaResolver;
 
 class FaqController extends Controller
 {
@@ -175,8 +176,16 @@ class FaqController extends Controller
 
         $faqSchema = SchemaBuilder::faqPage($faqsForSchema);
 
+        $seo = app(SeoMetaResolver::class)->resolveForRoute(
+            'faq.show',
+            [],
+            $currentLocale,
+            route('faq.show', ['locale' => $currentLocale])
+        )->toArray();
+
         return Inertia::render('Faq', [
             'schema' => $faqSchema,
+            'seo' => $seo,
             // The Faq.vue page uses the Faq.vue component, 
             // which fetches its own data for display via the getFaqs API.
             // So, we don't need to pass 'faqs' data here for the component itself.

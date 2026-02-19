@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\NewContactUsPage as ContactUsPage; // Use the new model
 use App\Models\SeoMeta;
+use App\Services\Seo\SeoMetaResolver;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Cache;
 
 class ContactUsPageController extends Controller
 {
@@ -44,14 +46,22 @@ class ContactUsPageController extends Controller
         $locale = app()->getLocale();
         $allLocales = ['en', 'fr', 'nl', 'es', 'ar'];
 
-        $seoMeta = SeoMeta::with('translations')->where('url_slug', 'contact-us')->first();
+        $hash = app(SeoMetaResolver::class)->hashRouteParams([]);
+        $seoMeta = SeoMeta::with('translations')
+            ->where('route_name', 'contact-us')
+            ->where('route_params_hash', $hash)
+            ->first();
+
+        // Backward compatibility: fall back to old slug-keyed record if it exists.
+        if (! $seoMeta) {
+            $seoMeta = SeoMeta::with('translations')->where('url_slug', 'contact-us')->first();
+        }
 
         $seoTranslations = [];
         if ($seoMeta) {
             foreach ($allLocales as $l) {
                 $translation = $seoMeta->translations->firstWhere('locale', $l);
                 $seoTranslations[$l] = [
-                    'url_slug' => $translation->url_slug ?? 'contact-us',
                     'seo_title' => $translation->seo_title ?? null,
                     'meta_description' => $translation->meta_description ?? null,
                     'keywords' => $translation->keywords ?? null,
@@ -135,35 +145,50 @@ class ContactUsPageController extends Controller
 
         $seoData = $request->only(['seo_title', 'meta_description', 'keywords', 'canonical_url', 'seo_image_url']);
 
-        if (array_filter($seoData) || SeoMeta::where('url_slug', $fixedSlug)->exists()) {
+        $hash = app(SeoMetaResolver::class)->hashRouteParams([]);
+        if (array_filter($seoData, fn ($v) => !is_null($v) && $v !== '') || SeoMeta::where('route_name', 'contact-us')->where('route_params_hash', $hash)->exists()) {
             $seoMeta = SeoMeta::updateOrCreate(
-                ['url_slug' => $fixedSlug],
-                $seoData
+                [
+                    'route_name' => 'contact-us',
+                    'route_params_hash' => $hash,
+                ],
+                array_merge($seoData, [
+                    'url_slug' => null,
+                    'route_params' => [],
+                ])
             );
 
             $seoTranslationsData = $request->input('seo_translations', []);
             $available_locales = ['en', 'fr', 'nl', 'es', 'ar'];
             foreach ($available_locales as $locale) {
-                if (isset($seoTranslationsData[$locale])) {
-                    $translationInput = $seoTranslationsData[$locale];
-                    $request->validate([
-                        "seo_translations.{$locale}.url_slug" => 'nullable|string|max:255',
-                        "seo_translations.{$locale}.seo_title" => 'nullable|string|max:60',
-                        "seo_translations.{$locale}.meta_description" => 'nullable|string|max:160',
-                        "seo_translations.{$locale}.keywords" => 'nullable|string|max:255',
-                    ]);
-
-                    $seoMeta->translations()->updateOrCreate(
-                        ['locale' => $locale],
-                        [
-                            'url_slug' => \Illuminate\Support\Str::slug($translationInput['url_slug'] ?? 'contact-us'),
-                            'seo_title' => $translationInput['seo_title'] ?? null,
-                            'meta_description' => $translationInput['meta_description'] ?? null,
-                            'keywords' => $translationInput['keywords'] ?? null,
-                        ]
-                    );
+                if (! isset($seoTranslationsData[$locale])) {
+                    continue;
                 }
+                $translationInput = $seoTranslationsData[$locale];
+                $request->validate([
+                    "seo_translations.{$locale}.seo_title" => 'nullable|string|max:60',
+                    "seo_translations.{$locale}.meta_description" => 'nullable|string|max:160',
+                    "seo_translations.{$locale}.keywords" => 'nullable|string|max:255',
+                ]);
+
+                $seoMeta->translations()->updateOrCreate(
+                    ['locale' => $locale],
+                    [
+                        'url_slug' => null,
+                        'seo_title' => $translationInput['seo_title'] ?? null,
+                        'meta_description' => $translationInput['meta_description'] ?? null,
+                        'keywords' => $translationInput['keywords'] ?? null,
+                    ]
+                );
             }
+
+            // Cleanup legacy slug-based record if it exists.
+            SeoMeta::where('url_slug', $fixedSlug)->whereNull('route_name')->delete();
+        }
+
+        // Make changes visible immediately on the frontend.
+        foreach (config('app.available_locales', ['en']) as $locale) {
+            Cache::forget('seo:route:contact-us:' . $hash . ':' . $locale);
         }
 
         return redirect()->route('admin.contact-us.index')
@@ -181,7 +206,15 @@ class ContactUsPageController extends Controller
                 );
             }
             $contactPage->delete();
+
+            $hash = app(SeoMetaResolver::class)->hashRouteParams([]);
+            SeoMeta::where('route_name', 'contact-us')->where('route_params_hash', $hash)->delete();
+            // Backward compatibility cleanup
             SeoMeta::where('url_slug', 'contact-us')->delete();
+
+            foreach (config('app.available_locales', ['en']) as $locale) {
+                Cache::forget('seo:route:contact-us:' . $hash . ':' . $locale);
+            }
         }
 
         return redirect()->route('admin.contact-us.index')
@@ -192,7 +225,12 @@ class ContactUsPageController extends Controller
     {
         $contactPage = ContactUsPage::first();
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
-        $seoMeta = SeoMeta::with('translations')->where('url_slug', 'contact-us')->first();
+        $seo = app(SeoMetaResolver::class)->resolveForRoute(
+            'contact-us',
+            [],
+            App::getLocale(),
+            route('contact-us', ['locale' => App::getLocale()])
+        )->toArray();
 
         if (!$contactPage) {
             $pageData = [
@@ -207,7 +245,7 @@ class ContactUsPageController extends Controller
             ];
             return Inertia::render('ContactUs', [
                 'contactPage' => $pageData,
-                'seoMeta' => $seoMeta,
+                'seo' => $seo,
                 'pages' => $pages,
             ]);
         }
@@ -244,7 +282,7 @@ class ContactUsPageController extends Controller
 
         return Inertia::render('ContactUs', [
             'contactPage' => $pageData,
-            'seoMeta' => $seoMeta,
+            'seo' => $seo,
             'pages' => $pages,
         ]);
     }

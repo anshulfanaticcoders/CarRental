@@ -23,6 +23,8 @@ use App\Services\SicilyByCarService;
 use App\Services\RecordGoService;
 use App\Services\Search\SearchOrchestratorService;
 use Illuminate\Support\Facades\Log; // Import Log facade
+use App\Services\Seo\SeoMetaResolver;
+use Illuminate\Support\Facades\App;
 
 class SearchController extends Controller
 {
@@ -193,6 +195,14 @@ class SearchController extends Controller
                 ['path' => $request->url(), 'query' => $request->query()]
             );
 
+            $seo = app(SeoMetaResolver::class)->resolveForRoute(
+                'search',
+                [],
+                App::getLocale(),
+                route('search', ['locale' => App::getLocale()]),
+                'noindex,follow'
+            )->toArray();
+
             return Inertia::render('SearchResults', [
                 'vehicles' => $emptyVehicles,
                 'okMobilityVehicles' => $emptyVehicles,
@@ -209,8 +219,8 @@ class SearchController extends Controller
                 'mileages' => [],
                 'categories' => [],
                 'schema' => null,
-                'seoMeta' => \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first(),
-                'locale' => \Illuminate\Support\Facades\App::getLocale(),
+                'seo' => $seo,
+                'locale' => App::getLocale(),
                 'optionalExtras' => [],
                 'locationName' => null,
             ]);
@@ -2664,7 +2674,13 @@ class SearchController extends Controller
         // Ensure unique
         $categoriesFromOptions = collect($categoriesFromOptions)->unique('id')->values()->all();
 
-        $seoMeta = \App\Models\SeoMeta::with('translations')->where('url_slug', '/s')->first();
+        $seo = app(SeoMetaResolver::class)->resolveForRoute(
+            'search',
+            [],
+            App::getLocale(),
+            route('search', ['locale' => App::getLocale()]),
+            'noindex,follow'
+        )->toArray();
 
         // Create paginated OK Mobility vehicles for the frontend
         $okMobilityVehiclesPaginated = new \Illuminate\Pagination\LengthAwarePaginator(
@@ -2725,8 +2741,8 @@ class SearchController extends Controller
             'mileages' => $mileages,
             'categories' => $categoriesFromOptions,
             'schema' => $vehicleListSchema,
-            'seoMeta' => $seoMeta,
-            'locale' => \Illuminate\Support\Facades\App::getLocale(),
+            'seo' => $seo,
+            'locale' => App::getLocale(),
             'optionalExtras' => array_values($searchOptionalExtras ?? []), // Pass extras
             'locationName' => $validated['location_name'] ?? 'Selected Location', // Pass location name
         ]);

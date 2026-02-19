@@ -6,9 +6,18 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\SeoMeta;
+use App\Services\Seo\SeoMetaResolver;
+use Illuminate\Support\Facades\Cache;
 
 class SeoMetaController extends Controller
 {
+    private function forgetRouteSeoCache(string $routeName, string $routeParamsHash): void
+    {
+        foreach (config('app.available_locales', ['en']) as $locale) {
+            Cache::forget('seo:route:' . $routeName . ':' . $routeParamsHash . ':' . $locale);
+        }
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -16,7 +25,10 @@ class SeoMetaController extends Controller
      */
     public function index()
     {
-        $seoMetas = SeoMeta::latest()->paginate(10);
+        $seoMetas = SeoMeta::query()
+            ->whereNotNull('route_name')
+            ->latest()
+            ->paginate(10);
         return Inertia::render('AdminDashboardPages/SEO/index', [
             'seoMetas' => $seoMetas,
         ]);
@@ -29,7 +41,10 @@ class SeoMetaController extends Controller
      */
     public function create()
     {
-        return Inertia::render('AdminDashboardPages/SEO/Create'); // Or a shared Form component
+        return Inertia::render('AdminDashboardPages/SEO/Create', [
+            'routeTargets' => config('seo.route_targets', []),
+            'available_locales' => config('app.available_locales', ['en']),
+        ]);
     }
 
     /**
@@ -38,44 +53,81 @@ class SeoMetaController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(Request $request)
+    public function store(Request $request, SeoMetaResolver $resolver)
     {
+        $routeTargets = collect(config('seo.route_targets', []));
+        $targetKey = $request->input('target_key');
+        $target = $routeTargets->firstWhere('key', $targetKey);
+
+        if (! $target) {
+            return back()->withErrors(['target_key' => 'Invalid SEO target.']);
+        }
+
+        $country = $request->input('country');
+        if ($targetKey === 'blog_listing') {
+            $request->validate([
+                'country' => 'required|string|size:2',
+            ]);
+            $country = strtolower((string) $country);
+        }
+
+        $routeName = (string) $target['route_name'];
+        $routeParams = (array) ($target['params'] ?? []);
+        if (array_key_exists('country', $routeParams)) {
+            $routeParams['country'] = $country;
+        }
+        $routeParamsHash = $resolver->hashRouteParams($routeParams);
+
         $validatedData = $request->validate([
-            'url_slug' => ['nullable', 'string', 'regex:/^(\/|\/?([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)$/', 'unique:seo_metas,url_slug'],
-            'seo_title' => 'required|string',
-            'meta_description' => 'nullable|string',
-            'keywords' => 'nullable|string',
+            'seo_title' => 'required|string|max:60',
+            'meta_description' => 'nullable|string|max:160',
+            'keywords' => 'nullable|string|max:255',
             'canonical_url' => 'nullable|url|max:255',
             'seo_image_url' => 'nullable|url|max:255',
-            // Add any other fields like 'page_id' or 'entity_type' if these SEO tags are for specific items
         ]);
 
-        // Separate translations from the main data
+        $seoMeta = SeoMeta::create(array_merge($validatedData, [
+            'url_slug' => null,
+            'route_name' => $routeName,
+            'route_params' => $routeParams,
+            'route_params_hash' => $routeParamsHash,
+        ]));
+
         $translationsData = $request->input('translations', []);
-
-        $seoMeta = SeoMeta::create($validatedData);
-
-        foreach (['en', 'fr', 'nl', 'es', 'ar'] as $locale) {
-            if (isset($translationsData[$locale])) {
-                $translationInput = $translationsData[$locale];
-                // Validate translation fields
-                $request->validate([
-"translations.{$locale}.seo_title" => 'nullable|string',
-                    "translations.{$locale}.meta_description" => 'nullable|string',
-                    "translations.{$locale}.keywords" => 'nullable|string',
-                ]);
-
-                $seoMeta->translations()->updateOrCreate(
-                    ['locale' => $locale],
-                    [
-                        'seo_title' => $translationInput['seo_title'] ?? null,
-                        'meta_description' => $translationInput['meta_description'] ?? null,
-                        'keywords' => $translationInput['keywords'] ?? null,
-                        'url_slug' => $translationInput['url_slug'] ?? null,
-                    ]
-                );
+        foreach (config('app.available_locales', ['en']) as $locale) {
+            if (! isset($translationsData[$locale])) {
+                continue;
             }
+            $translationInput = $translationsData[$locale];
+
+            $request->validate([
+                "translations.{$locale}.seo_title" => 'nullable|string|max:60',
+                "translations.{$locale}.meta_description" => 'nullable|string|max:160',
+                "translations.{$locale}.keywords" => 'nullable|string|max:255',
+            ]);
+
+            $hasAnyValue = ! empty($translationInput['seo_title'])
+                || ! empty($translationInput['meta_description'])
+                || ! empty($translationInput['keywords']);
+
+            // Avoid creating empty translation rows (Laravel may convert empty strings to null).
+            if (! $hasAnyValue) {
+                continue;
+            }
+
+            $seoMeta->translations()->updateOrCreate(
+                ['locale' => $locale],
+                [
+                    'url_slug' => null,
+                    'seo_title' => $translationInput['seo_title'] ?? null,
+                    'meta_description' => $translationInput['meta_description'] ?? null,
+                    'keywords' => $translationInput['keywords'] ?? null,
+                ]
+            );
         }
+
+        // Make changes visible immediately on the frontend.
+        $this->forgetRouteSeoCache($routeName, $routeParamsHash);
 
         return redirect()->route('admin.seo-meta.index')->with('success', 'SEO Meta created successfully!');
     }
@@ -106,19 +158,30 @@ class SeoMetaController extends Controller
 
         // Prepare translations for the form
         $translations = [];
-        foreach (['en', 'fr', 'nl', 'es', 'ar'] as $locale) {
+        foreach (config('app.available_locales', ['en']) as $locale) {
             $translation = $seoMeta->translations->firstWhere('locale', $locale);
             $translations[$locale] = [
-                'seo_title' => $translation->seo_title ?? null,
-                'meta_description' => $translation->meta_description ?? null,
-                'keywords' => $translation->keywords ?? null,
-                'url_slug' => $translation->url_slug ?? null,
+                'seo_title' => $translation?->seo_title,
+                'meta_description' => $translation?->meta_description,
+                'keywords' => $translation?->keywords,
             ];
+        }
+
+        $routeTargets = collect(config('seo.route_targets', []));
+        $targetKey = $routeTargets->first(fn ($t) => ($t['route_name'] ?? null) === $seoMeta->route_name && empty($t['params']))['key'] ?? null;
+        $country = null;
+        if ($seoMeta->route_name === 'blog') {
+            $targetKey = 'blog_listing';
+            $country = $seoMeta->route_params['country'] ?? null;
         }
 
         return Inertia::render('AdminDashboardPages/SEO/Edit', [
             'seoMeta' => $seoMeta,
             'translations' => $translations, // Pass prepared translations
+            'routeTargets' => config('seo.route_targets', []),
+            'available_locales' => config('app.available_locales', ['en']),
+            'targetKey' => $targetKey,
+            'country' => $country,
         ]); // Or a shared Form component for Create/Edit
     }
 
@@ -129,48 +192,91 @@ class SeoMetaController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, SeoMetaResolver $resolver)
     {
-        // $seoMeta = SeoMeta::findOrFail($id);
+        $seoMeta = SeoMeta::findOrFail($id);
+
+        $oldRouteName = (string) ($seoMeta->route_name ?? '');
+        $oldRouteParamsHash = (string) ($seoMeta->route_params_hash ?? '');
+
+        $routeTargets = collect(config('seo.route_targets', []));
+        $targetKey = $request->input('target_key');
+        $target = $routeTargets->firstWhere('key', $targetKey);
+
+        if (! $target) {
+            return back()->withErrors(['target_key' => 'Invalid SEO target.']);
+        }
+
+        $country = $request->input('country');
+        if ($targetKey === 'blog_listing') {
+            $request->validate([
+                'country' => 'required|string|size:2',
+            ]);
+            $country = strtolower((string) $country);
+        }
+
+        $routeName = (string) $target['route_name'];
+        $routeParams = (array) ($target['params'] ?? []);
+        if (array_key_exists('country', $routeParams)) {
+            $routeParams['country'] = $country;
+        }
+        $routeParamsHash = $resolver->hashRouteParams($routeParams);
+
         $validatedData = $request->validate([
-            'url_slug' => ['nullable', 'string', 'regex:/^(\/|\/?([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*)$/', 'unique:seo_metas,url_slug,' . $id],
-'seo_title' => 'required|string',
-            'meta_description' => 'nullable|string',
-            'keywords' => 'nullable|string',
+            'seo_title' => 'required|string|max:60',
+            'meta_description' => 'nullable|string|max:160',
+            'keywords' => 'nullable|string|max:255',
             'canonical_url' => 'nullable|url|max:255',
             'seo_image_url' => 'nullable|url|max:255',
         ]);
 
-        $seoMeta = SeoMeta::findOrFail($id);
-        $seoMeta->update($validatedData);
+        $seoMeta->update(array_merge($validatedData, [
+            'url_slug' => null,
+            'route_name' => $routeName,
+            'route_params' => $routeParams,
+            'route_params_hash' => $routeParamsHash,
+        ]));
 
         // Handle translations
         $translationsData = $request->input('translations', []);
-        foreach (['en', 'fr', 'nl', 'es', 'ar'] as $locale) {
-            if (isset($translationsData[$locale])) {
-                $translationInput = $translationsData[$locale];
-                // Validate translation fields
-                $request->validate([
-"translations.{$locale}.seo_title" => 'nullable|string',
-                    "translations.{$locale}.meta_description" => 'nullable|string',
-                    "translations.{$locale}.keywords" => 'nullable|string',
-                    "translations.{$locale}.url_slug" => 'nullable|string',
-                ]);
-
-                $seoMeta->translations()->updateOrCreate(
-                    ['locale' => $locale],
-                    [
-                        'seo_title' => $translationInput['seo_title'] ?? null,
-                        'meta_description' => $translationInput['meta_description'] ?? null,
-                        'keywords' => $translationInput['keywords'] ?? null,
-                        'url_slug' => $translationInput['url_slug'] ?? null,
-                    ]
-                );
-            } else {
-                // Optionally, delete translation if all its fields are empty or if locale is not present
-                // $seoMeta->translations()->where('locale', $locale)->delete();
+        foreach (config('app.available_locales', ['en']) as $locale) {
+            if (! isset($translationsData[$locale])) {
+                continue;
             }
+
+            $translationInput = $translationsData[$locale];
+            $request->validate([
+                "translations.{$locale}.seo_title" => 'nullable|string|max:60',
+                "translations.{$locale}.meta_description" => 'nullable|string|max:160',
+                "translations.{$locale}.keywords" => 'nullable|string|max:255',
+            ]);
+
+            $hasAnyValue = ! empty($translationInput['seo_title'])
+                || ! empty($translationInput['meta_description'])
+                || ! empty($translationInput['keywords']);
+
+            if (! $hasAnyValue) {
+                // Keep table clean: if translation exists but all fields cleared, remove row.
+                $seoMeta->translations()->where('locale', $locale)->delete();
+                continue;
+            }
+
+            $seoMeta->translations()->updateOrCreate(
+                ['locale' => $locale],
+                [
+                    'seo_title' => $translationInput['seo_title'] ?? null,
+                    'meta_description' => $translationInput['meta_description'] ?? null,
+                    'keywords' => $translationInput['keywords'] ?? null,
+                    'url_slug' => null,
+                ]
+            );
         }
+
+        // Make changes visible immediately on the frontend.
+        if ($oldRouteName !== '' && $oldRouteParamsHash !== '') {
+            $this->forgetRouteSeoCache($oldRouteName, $oldRouteParamsHash);
+        }
+        $this->forgetRouteSeoCache($routeName, $routeParamsHash);
 
         return redirect()->route('admin.seo-meta.index')->with('success', 'SEO Meta updated successfully!');
     }
@@ -184,7 +290,14 @@ class SeoMetaController extends Controller
     public function destroy($id)
     {
         $seoMeta = SeoMeta::findOrFail($id);
+
+        $routeName = (string) ($seoMeta->route_name ?? '');
+        $routeParamsHash = (string) ($seoMeta->route_params_hash ?? '');
         $seoMeta->delete();
+
+        if ($routeName !== '' && $routeParamsHash !== '') {
+            $this->forgetRouteSeoCache($routeName, $routeParamsHash);
+        }
 
         return redirect()->route('admin.seo-meta.index')->with('success', 'SEO Meta deleted successfully!');
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Blog;
+use App\Models\BlogTag;
 use App\Models\Testimonial;
 use App\Models\VehicleCategory;
 use App\Models\PopularPlace;
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\Log; // Added for logging
 use Illuminate\Foundation\Application; // For Application::VERSION
 use Stevebauman\Location\Facades\Location;
 use Illuminate\Support\Facades\DB;
+use App\Services\Seo\SeoMetaResolver;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Cache;
 
 class BlogController extends Controller
 {
@@ -52,40 +56,85 @@ class BlogController extends Controller
     public function create()
     {
         return Inertia::render('AdminDashboardPages/Blogs/Create', [
-            'available_locales' => ['en', 'fr', 'nl', 'es', 'ar'], // Or from config
+            'available_locales' => config('app.available_locales', ['en']),
             'current_locale' => App::getLocale(),
+            'allTags' => \App\Models\BlogTag::orderBy('name')->pluck('name')->toArray(),
         ]);
     }
 
     public function store(Request $request)
     {
-        $available_locales = ['en', 'fr', 'nl', 'es', 'ar']; // Or from config
+        $available_locales = config('app.available_locales', ['en']);
+        $primaryLocale = 'en';
+        if (!in_array($primaryLocale, $available_locales, true)) {
+            $primaryLocale = $available_locales[0] ?? 'en';
+        }
+
         $validationRules = [
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'is_published' => 'sometimes|boolean',
             'countries' => 'array|min:0',
             'countries.*' => 'nullable|string|size:2',
+            'canonical_country' => 'nullable|string|size:2',
             'translations' => 'required|array',
             // SEO Meta Validation Rules
             'seo_title' => 'nullable|string|max:60',
             'meta_description' => 'nullable|string|max:160',
             'keywords' => 'nullable|string|max:255',
             'canonical_url' => 'nullable|url|max:255',
-            'seo_image_url' => 'nullable|url|max:255',
         ];
 
+        // Only primary locale is required; other locales are optional.
+        $validationRules["translations.{$primaryLocale}.title"] = 'required|string|max:255';
+        $validationRules["translations.{$primaryLocale}.slug"] = 'nullable|string|max:255';
+        $validationRules["translations.{$primaryLocale}.content"] = 'required|string';
+
         foreach ($available_locales as $locale) {
-            $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
-            $validationRules["translations.{$locale}.slug"] = 'required|string|max:255';
-            $validationRules["translations.{$locale}.content"] = 'required|string';
+            if ($locale === $primaryLocale) {
+                continue;
+            }
+            $validationRules["translations.{$locale}.title"] = 'nullable|string|max:255';
+            $validationRules["translations.{$locale}.slug"] = 'nullable|string|max:255';
+            $validationRules["translations.{$locale}.content"] = 'nullable|string';
         }
         $request->validate($validationRules);
 
-        $translationsData = $request->input('translations');
+        $translationsData = (array) $request->input('translations', []);
 
-        // Generate slug from the 'en' title or the first available title
-        // Generate main slug from the 'en' title or the first available title
-        $slugTitle = $translationsData['en']['title'] ?? $translationsData[array_key_first($translationsData)]['title'];
+        // Additional validation: if a non-primary locale is started, require title+content.
+        $translationErrors = [];
+        foreach ($available_locales as $locale) {
+            $t = isset($translationsData[$locale]) && is_array($translationsData[$locale]) ? $translationsData[$locale] : [];
+            $title = isset($t['title']) ? trim((string) $t['title']) : '';
+            $content = isset($t['content']) ? trim((string) $t['content']) : '';
+            $slug = isset($t['slug']) ? trim((string) $t['slug']) : '';
+
+            $hasAny = ($title !== '' || $content !== '' || $slug !== '');
+            if (!$hasAny) {
+                continue;
+            }
+
+            if ($locale !== $primaryLocale) {
+                if ($title === '') {
+                    $translationErrors["translations.{$locale}.title"] = "Title is required when adding a {$locale} translation.";
+                }
+                if ($content === '') {
+                    $translationErrors["translations.{$locale}.content"] = "Content is required when adding a {$locale} translation.";
+                }
+            }
+
+            // Generate slug if missing (admin can still override).
+            if ($slug === '' && $title !== '') {
+                $translationsData[$locale]['slug'] = Str::slug($title);
+            }
+        }
+
+        if (!empty($translationErrors)) {
+            throw ValidationException::withMessages($translationErrors);
+        }
+
+        // Generate main internal slug from primary locale title.
+        $slugTitle = (string) ($translationsData[$primaryLocale]['title'] ?? '');
         $mainSlug = Str::slug($slugTitle);
         $existingBlog = Blog::where('slug', $mainSlug)->first();
         if ($existingBlog) {
@@ -98,10 +147,23 @@ class BlogController extends Controller
             $countries = ['us'];
         }
 
+        $countries = array_values(array_filter(array_map(static fn ($c) => strtolower((string) $c), $countries)));
+        if (empty($countries)) {
+            $countries = ['us'];
+        }
+
+        $requestedCanonical = $request->input('canonical_country');
+        $requestedCanonical = is_string($requestedCanonical) ? strtolower(trim($requestedCanonical)) : null;
+        $canonicalCountry = ($requestedCanonical && in_array($requestedCanonical, $countries, true))
+            ? $requestedCanonical
+            : $countries[0];
+
         $blogData = [
             'slug' => $mainSlug,
             'is_published' => $request->input('is_published', true),
             'countries' => $countries,
+            // SEO canonicalization: index a single canonical country per blog.
+            'canonical_country' => $canonicalCountry,
         ];
 
         if ($request->hasFile('image')) {
@@ -125,60 +187,105 @@ class BlogController extends Controller
         $blog = Blog::create($blogData);
 
         foreach ($translationsData as $locale => $data) {
-            if (in_array($locale, $available_locales) && !empty($data['title']) && !empty($data['content'])) {
+            if (!in_array($locale, $available_locales, true) || !is_array($data)) {
+                continue;
+            }
+
+            $title = isset($data['title']) ? trim((string) $data['title']) : '';
+            $content = isset($data['content']) ? trim((string) $data['content']) : '';
+            if ($title !== '' && $content !== '') {
+                $slugValue = isset($data['slug']) ? trim((string) $data['slug']) : '';
+                if ($slugValue === '') {
+                    $slugValue = Str::slug($title);
+                }
+                if ($slugValue === '') {
+                    $slugValue = strtolower($locale) . '-' . uniqid();
+                }
+
                 $blog->translations()->create([
                     'locale' => $locale,
-                    'title' => $data['title'],
-                    'slug' => Str::slug($data['slug']),
-                    'content' => $data['content'],
+                    'title' => $title,
+                    'slug' => Str::slug($slugValue),
+                    'content' => $content,
+                    'excerpt' => $data['excerpt'] ?? null,
                 ]);
             }
         }
 
-        // Create or Update SEO Meta
-        $seoTitleInput = $request->input('seo_title');
-        $primaryTitleForSeo = $translationsData['en']['title'] ?? $translationsData[array_key_first($translationsData)]['title'];
-
+        // Create or update SEO meta bound to this blog (not slug-based).
+        $primaryTitleForSeo = (string) (($translationsData['en']['title'] ?? null) ?: ($translationsData[$primaryLocale]['title'] ?? null) ?: $slugTitle);
+        $seoImageUrl = $blog->image ?: null;
         $seoMetaToSave = [
-            'seo_title' => !empty($seoTitleInput) ? $seoTitleInput : $primaryTitleForSeo, // Default to blog title if seo_title not provided
+            'seo_title' => $request->input('seo_title') ?: $primaryTitleForSeo,
             'meta_description' => $request->input('meta_description'),
             'keywords' => $request->input('keywords'),
             'canonical_url' => $request->input('canonical_url'),
-            'seo_image_url' => $request->input('seo_image_url'),
+            'seo_image_url' => $seoImageUrl,
         ];
 
-        // Only save if there's actual data, or if we want to ensure a record exists even if empty
-        // For blogs, it's good to at least have the title.
-        $seoUrlSlug = 'blog/' . $blog->slug; // SEO url_slug IS prefixed
-        $seoMeta = SeoMeta::updateOrCreate(
-            ['url_slug' => $seoUrlSlug],
-            array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '')
-        );
+        $seoMeta = SeoMeta::query()
+            ->with('translations')
+            ->where(function ($q) use ($blog) {
+                $q->where('seoable_type', $blog->getMorphClass())
+                    ->where('seoable_id', $blog->getKey());
+            })
+            ->orWhere('url_slug', 'blog/' . $blog->slug)
+            ->first();
 
-        // Handle SEO translations
-        $seoTranslationsData = $request->input('seo_translations', []);
-        foreach ($available_locales as $locale) {
-            if (isset($seoTranslationsData[$locale])) {
-                $translationInput = $seoTranslationsData[$locale];
-                // Basic validation for translation fields
-                $request->validate([
-                    "seo_translations.{$locale}.seo_title" => 'nullable|string|max:60',
-                    "seo_translations.{$locale}.meta_description" => 'nullable|string|max:160',
-                    "seo_translations.{$locale}.keywords" => 'nullable|string|max:255',
-                ]);
-
-                $seoMeta->translations()->updateOrCreate(
-                    ['locale' => $locale],
-                    [
-                        'url_slug' => Str::slug($translationsData[$locale]['slug']),
-                        'seo_title' => $translationInput['seo_title'] ?? null,
-                        'meta_description' => $translationInput['meta_description'] ?? null,
-                        'keywords' => $translationInput['keywords'] ?? null,
-                    ]
-                );
-            }
+        if (! $seoMeta) {
+            $seoMeta = new SeoMeta();
         }
 
+        $seoMeta->forceFill(array_filter($seoMetaToSave, fn ($v) => !is_null($v) && $v !== ''));
+        $seoMeta->seoable_type = $blog->getMorphClass();
+        $seoMeta->seoable_id = $blog->getKey();
+        $seoMeta->save();
+
+        $seoTranslationsData = $request->input('seo_translations', []);
+        foreach ($available_locales as $locale) {
+            if (! isset($seoTranslationsData[$locale])) {
+                continue;
+            }
+
+            $translationInput = $seoTranslationsData[$locale];
+            $request->validate([
+                "seo_translations.{$locale}.seo_title" => 'nullable|string|max:60',
+                "seo_translations.{$locale}.meta_description" => 'nullable|string|max:160',
+                "seo_translations.{$locale}.keywords" => 'nullable|string|max:255',
+            ]);
+
+            $seoMeta->translations()->updateOrCreate(
+                ['locale' => $locale],
+                [
+                    'url_slug' => null,
+                    'seo_title' => $translationInput['seo_title'] ?? null,
+                    'meta_description' => $translationInput['meta_description'] ?? null,
+                    'keywords' => $translationInput['keywords'] ?? null,
+                ]
+            );
+        }
+
+        // Handle tags
+        $tagNames = $request->input('tags', []);
+        if (!empty($tagNames)) {
+            $tagIds = [];
+            foreach ($tagNames as $tagName) {
+                $tagName = trim($tagName);
+                if ($tagName) {
+                    $tag = \App\Models\BlogTag::firstOrCreate(
+                        ['slug' => Str::slug($tagName)],
+                        ['name' => $tagName]
+                    );
+                    $tagIds[] = $tag->id;
+                }
+            }
+            $blog->tags()->sync($tagIds);
+        }
+
+        // Make changes visible immediately on the frontend.
+        foreach ($available_locales as $locale) {
+            Cache::forget('seo:model:' . get_class($blog) . ':' . $blog->getKey() . ':' . $locale);
+        }
 
         return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog created successfully.');
     }
@@ -186,7 +293,7 @@ class BlogController extends Controller
     public function edit(Blog $blog)
     {
         $translations = $blog->translations->keyBy('locale');
-        $allLocales = ['en', 'fr', 'nl', 'es', 'ar']; // Or from config
+        $allLocales = config('app.available_locales', ['en']);
 
         $blogData = [
             'id' => $blog->id,
@@ -194,6 +301,7 @@ class BlogController extends Controller
             'image' => $blog->image,
             'is_published' => $blog->is_published,
             'countries' => $blog->countries ?? ['us'], // Include countries, default to US
+            'canonical_country' => $blog->canonical_country ?? (($blog->countries[0] ?? null) ?: 'us'),
             'translations' => [],
         ];
 
@@ -206,10 +314,12 @@ class BlogController extends Controller
             ];
         }
 
-        $seoMeta = SeoMeta::with('translations') // Eager load translations
-            ->where('url_slug', 'blog/' . $blog->slug)
-            ->orWhere('url_slug', $blog->slug)
-            ->orderByRaw("CASE WHEN url_slug = ? THEN 0 ELSE 1 END", ['blog/' . $blog->slug])
+        $seoMeta = SeoMeta::with('translations')
+            ->where(function ($q) use ($blog) {
+                $q->where('seoable_type', $blog->getMorphClass())
+                    ->where('seoable_id', $blog->getKey());
+            })
+            ->orWhere('url_slug', 'blog/' . $blog->slug)
             ->first();
 
         $seoTranslations = [];
@@ -217,7 +327,6 @@ class BlogController extends Controller
             foreach ($allLocales as $locale) {
                 $translation = $seoMeta->translations->firstWhere('locale', $locale);
                 $seoTranslations[$locale] = [
-                    'url_slug' => $translation->url_slug ?? null,
                     'seo_title' => $translation->seo_title ?? null,
                     'meta_description' => $translation->meta_description ?? null,
                     'keywords' => $translation->keywords ?? null,
@@ -230,32 +339,81 @@ class BlogController extends Controller
             'available_locales' => $allLocales,
             'current_locale' => App::getLocale(),
             'seoMeta' => $seoMeta,
-            'seoTranslations' => $seoTranslations, // Pass SEO translations to the component
+            'seoTranslations' => $seoTranslations,
+            'tags' => $blog->tags->pluck('name')->toArray(),
+            'allTags' => \App\Models\BlogTag::orderBy('name')->pluck('name')->toArray(),
         ]);
     }
 
     public function update(Request $request, Blog $blog)
     {
-        $available_locales = ['en', 'fr', 'nl', 'es', 'ar']; // Or from config
+        $available_locales = config('app.available_locales', ['en']);
+        $primaryLocale = 'en';
+        if (!in_array($primaryLocale, $available_locales, true)) {
+            $primaryLocale = $available_locales[0] ?? 'en';
+        }
+
         $validationRules = [
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'is_published' => 'sometimes|boolean',
             'countries' => 'array|min:0',
             'countries.*' => 'nullable|string|size:2',
+            'canonical_country' => 'nullable|string|size:2',
             'translations' => 'required|array',
             // SEO Meta Validation Rules
             'seo_title' => 'nullable|string|max:60',
             'meta_description' => 'nullable|string|max:160',
             'keywords' => 'nullable|string|max:255',
             'canonical_url' => 'nullable|url|max:255',
-            'seo_image_url' => 'nullable|url|max:255',
         ];
+
+        // Only primary locale is required; other locales are optional.
+        $validationRules["translations.{$primaryLocale}.title"] = 'required|string|max:255';
+        $validationRules["translations.{$primaryLocale}.slug"] = 'nullable|string|max:255';
+        $validationRules["translations.{$primaryLocale}.content"] = 'required|string';
+
         foreach ($available_locales as $locale) {
-            $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
-            $validationRules["translations.{$locale}.slug"] = 'required|string|max:255';
-            $validationRules["translations.{$locale}.content"] = 'required|string';
+            if ($locale === $primaryLocale) {
+                continue;
+            }
+            $validationRules["translations.{$locale}.title"] = 'nullable|string|max:255';
+            $validationRules["translations.{$locale}.slug"] = 'nullable|string|max:255';
+            $validationRules["translations.{$locale}.content"] = 'nullable|string';
         }
         $request->validate($validationRules);
+
+        $translationsData = (array) $request->input('translations', []);
+
+        // Additional validation: if a non-primary locale is started, require title+content.
+        $translationErrors = [];
+        foreach ($available_locales as $locale) {
+            $t = isset($translationsData[$locale]) && is_array($translationsData[$locale]) ? $translationsData[$locale] : [];
+            $title = isset($t['title']) ? trim((string) $t['title']) : '';
+            $content = isset($t['content']) ? trim((string) $t['content']) : '';
+            $slug = isset($t['slug']) ? trim((string) $t['slug']) : '';
+
+            $hasAny = ($title !== '' || $content !== '' || $slug !== '');
+            if (!$hasAny) {
+                continue;
+            }
+
+            if ($locale !== $primaryLocale) {
+                if ($title === '') {
+                    $translationErrors["translations.{$locale}.title"] = "Title is required when adding a {$locale} translation.";
+                }
+                if ($content === '') {
+                    $translationErrors["translations.{$locale}.content"] = "Content is required when adding a {$locale} translation.";
+                }
+            }
+
+            if ($slug === '' && $title !== '') {
+                $translationsData[$locale]['slug'] = Str::slug($title);
+            }
+        }
+
+        if (!empty($translationErrors)) {
+            throw ValidationException::withMessages($translationErrors);
+        }
 
         $countries = $request->input('countries', []);
         // Default to US if no countries selected
@@ -263,9 +421,22 @@ class BlogController extends Controller
             $countries = ['us'];
         }
 
+        $countries = array_values(array_filter(array_map(static fn ($c) => strtolower((string) $c), $countries)));
+        if (empty($countries)) {
+            $countries = ['us'];
+        }
+
+        $requestedCanonical = $request->input('canonical_country');
+        $requestedCanonical = is_string($requestedCanonical) ? strtolower(trim($requestedCanonical)) : null;
+        $existingCanonical = is_string($blog->canonical_country) ? strtolower($blog->canonical_country) : null;
+        $canonicalCountry = $requestedCanonical && in_array($requestedCanonical, $countries, true)
+            ? $requestedCanonical
+            : (($existingCanonical && in_array($existingCanonical, $countries, true)) ? $existingCanonical : $countries[0]);
+
         $blogData = [
             'is_published' => $request->input('is_published', $blog->is_published),
             'countries' => $countries,
+            'canonical_country' => $canonicalCountry,
         ];
 
         if ($request->hasFile('image')) {
@@ -294,45 +465,11 @@ class BlogController extends Controller
             }
         }
 
-        $blog->update($blogData);
-
-        $translationsData = $request->input('translations');
-        foreach ($translationsData as $locale => $data) {
-            if (in_array($locale, $available_locales) && !empty($data['title']) && !empty($data['content'])) {
-                $blog->translations()->updateOrCreate(
-                    ['locale' => $locale],
-                    [
-                        'title' => $data['title'],
-                        'slug' => Str::slug($data['slug']),
-                        'content' => $data['content'],
-                    ]
-                );
-            }
-        }
-
-        // Update or Create SEO Meta
-        $seoTitleInput = $request->input('seo_title');
-        // Use the 'en' title from the submitted translations for default SEO title, or the first available.
-        $primaryTitleForSeo = $translationsData['en']['title'] ?? $translationsData[array_key_first($translationsData)]['title'];
-
-        $seoMetaToSave = [
-            'seo_title' => !empty($seoTitleInput) ? $seoTitleInput : $primaryTitleForSeo,
-            'meta_description' => $request->input('meta_description'),
-            'keywords' => $request->input('keywords'),
-            'canonical_url' => $request->input('canonical_url'),
-            'seo_image_url' => $request->input('seo_image_url'),
-        ];
-
-        // If the slug was changed, we might need to delete the old SEO meta record if it existed under the old slug.
-        // However, the current logic uses $blog->slug which is the *new* slug if it was updated.
-        // This means updateOrCreate will correctly target the new slug.
-        // If an old SEO record needs to be deleted, that logic would be more complex (store old slug before update).
-        // For now, this handles creating/updating SEO for the current slug.
-
-        // If the english title is updated, we update the main slug of the blog post
-        if (isset($translationsData['en']['title'])) {
-            $newMainSlug = Str::slug($translationsData['en']['title']);
-            if ($newMainSlug !== $blog->slug) {
+        // Keep internal/admin slug in sync with EN title (does not affect public blog URL).
+        $enTitleForSlug = isset($translationsData['en']['title']) ? trim((string) $translationsData['en']['title']) : '';
+        if ($enTitleForSlug !== '') {
+            $newMainSlug = Str::slug($enTitleForSlug);
+            if ($newMainSlug !== '' && $newMainSlug !== $blog->slug) {
                 $existingBlog = Blog::where('slug', $newMainSlug)->where('id', '!=', $blog->id)->first();
                 if ($existingBlog) {
                     $newMainSlug = $newMainSlug . '-' . uniqid();
@@ -343,45 +480,106 @@ class BlogController extends Controller
 
         $blog->update($blogData);
 
-        // SEO Meta URL Slug Management
-        $newSeoUrlSlug = 'blog/' . $blog->slug;
-        $oldSeoUrlSlug = 'blog/' . $blog->getOriginal('slug');
+        // Upsert translations (optional locales).
+        foreach ($translationsData as $locale => $data) {
+            if (!in_array($locale, $available_locales, true) || !is_array($data)) {
+                continue;
+            }
 
-        // If the main slug changed, we need to move the SEO meta to the new slug.
-        if ($newSeoUrlSlug !== $oldSeoUrlSlug) {
-            SeoMeta::where('url_slug', $oldSeoUrlSlug)->update(['url_slug' => $newSeoUrlSlug]);
+            $title = isset($data['title']) ? trim((string) $data['title']) : '';
+            $content = isset($data['content']) ? trim((string) $data['content']) : '';
+            if ($title === '' || $content === '') {
+                continue;
+            }
+
+            $slugValue = isset($data['slug']) ? trim((string) $data['slug']) : '';
+            if ($slugValue === '') {
+                $slugValue = Str::slug($title);
+            }
+            if ($slugValue === '') {
+                $slugValue = strtolower($locale) . '-' . uniqid();
+            }
+
+            $blog->translations()->updateOrCreate(
+                ['locale' => $locale],
+                [
+                    'title' => $title,
+                    'slug' => Str::slug($slugValue),
+                    'content' => $content,
+                    'excerpt' => $data['excerpt'] ?? null,
+                ]
+            );
         }
 
-        // Now, update or create the SEO meta with the new data for the correct slug.
-        if (array_filter($seoMetaToSave) || !empty($seoMetaToSave['seo_title']) || SeoMeta::where('url_slug', $newSeoUrlSlug)->exists()) {
-            $seoMeta = SeoMeta::updateOrCreate(
-                ['url_slug' => $newSeoUrlSlug],
-                array_filter($seoMetaToSave, fn($value) => !is_null($value) && $value !== '')
-            );
-
-            // Handle SEO translations
-            $seoTranslationsData = $request->input('seo_translations', []);
-            foreach ($available_locales as $locale) {
-                if (isset($seoTranslationsData[$locale])) {
-                    $translationInput = $seoTranslationsData[$locale];
-                    // Basic validation for translation fields
-                    $request->validate([
-                        "seo_translations.{$locale}.seo_title" => 'nullable|string|max:60',
-                        "seo_translations.{$locale}.meta_description" => 'nullable|string|max:160',
-                        "seo_translations.{$locale}.keywords" => 'nullable|string|max:255',
-                    ]);
-
-                    $seoMeta->translations()->updateOrCreate(
-                        ['locale' => $locale],
-                        [
-                            'url_slug' => Str::slug($translationsData[$locale]['slug']),
-                            'seo_title' => $translationInput['seo_title'] ?? null,
-                            'meta_description' => $translationInput['meta_description'] ?? null,
-                            'keywords' => $translationInput['keywords'] ?? null,
-                        ]
-                    );
-                }
+        // Handle tags
+        $tagNames = $request->input('tags', []);
+        $tagIds = [];
+        foreach ($tagNames as $tagName) {
+            $tagName = trim($tagName);
+            if ($tagName) {
+                $tag = \App\Models\BlogTag::firstOrCreate(
+                    ['slug' => Str::slug($tagName)],
+                    ['name' => $tagName]
+                );
+                $tagIds[] = $tag->id;
             }
+        }
+        $blog->tags()->sync($tagIds);
+
+        // SEO meta bound to this blog (not slug-based).
+        $primaryTitleForSeo = (string) (($translationsData['en']['title'] ?? null) ?: ($translationsData[$primaryLocale]['title'] ?? null) ?: '');
+        $seoImageUrl = $blog->image ?: null;
+        $seoMetaToSave = [
+            'seo_title' => $request->input('seo_title') ?: $primaryTitleForSeo,
+            'meta_description' => $request->input('meta_description'),
+            'keywords' => $request->input('keywords'),
+            'canonical_url' => $request->input('canonical_url'),
+            'seo_image_url' => $seoImageUrl,
+        ];
+
+        $seoMeta = SeoMeta::query()
+            ->with('translations')
+            ->where(function ($q) use ($blog) {
+                $q->where('seoable_type', $blog->getMorphClass())
+                    ->where('seoable_id', $blog->getKey());
+            })
+            ->orWhere('url_slug', 'blog/' . $blog->slug)
+            ->first();
+
+        if (! $seoMeta) {
+            $seoMeta = new SeoMeta();
+        }
+
+        $seoMeta->forceFill(array_filter($seoMetaToSave, fn ($v) => !is_null($v) && $v !== ''));
+        $seoMeta->seoable_type = $blog->getMorphClass();
+        $seoMeta->seoable_id = $blog->getKey();
+        $seoMeta->save();
+
+        $seoTranslationsData = $request->input('seo_translations', []);
+        foreach ($available_locales as $locale) {
+            if (! isset($seoTranslationsData[$locale])) {
+                continue;
+            }
+            $translationInput = $seoTranslationsData[$locale];
+            $request->validate([
+                "seo_translations.{$locale}.seo_title" => 'nullable|string|max:60',
+                "seo_translations.{$locale}.meta_description" => 'nullable|string|max:160',
+                "seo_translations.{$locale}.keywords" => 'nullable|string|max:255',
+            ]);
+
+            $seoMeta->translations()->updateOrCreate(
+                ['locale' => $locale],
+                [
+                    'url_slug' => null,
+                    'seo_title' => $translationInput['seo_title'] ?? null,
+                    'meta_description' => $translationInput['meta_description'] ?? null,
+                    'keywords' => $translationInput['keywords'] ?? null,
+                ]
+            );
+        }
+
+        foreach ($available_locales as $locale) {
+            Cache::forget('seo:model:' . get_class($blog) . ':' . $blog->getKey() . ':' . $locale);
         }
 
 
@@ -390,17 +588,27 @@ class BlogController extends Controller
 
     public function destroy(Blog $blog)
     {
+        $available_locales = config('app.available_locales', ['en']);
+
         if ($blog->image) {
             $oldImagePath = str_replace(Storage::disk('upcloud')->url(''), '', $blog->image);
             Storage::disk('upcloud')->delete($oldImagePath);
         }
 
-        // Delete associated SEO Meta (prefixed and non-prefixed versions)
-        $seoUrlSlug = 'blog/' . $blog->slug;
-        SeoMeta::where('url_slug', $seoUrlSlug)->delete();
-        SeoMeta::where('url_slug', $blog->slug)->delete(); // Non-prefixed, just in case
+        // Delete associated SEO Meta
+        SeoMeta::where('seoable_type', $blog->getMorphClass())
+            ->where('seoable_id', $blog->getKey())
+            ->delete();
+
+        // Backward compatibility: clean up old slug-keyed records
+        SeoMeta::where('url_slug', 'blog/' . $blog->slug)->delete();
+        SeoMeta::where('url_slug', $blog->slug)->delete();
 
         $blog->delete();
+
+        foreach ($available_locales as $locale) {
+            Cache::forget('seo:model:' . get_class($blog) . ':' . $blog->getKey() . ':' . $locale);
+        }
 
         return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog deleted successfully.');
     }
@@ -503,7 +711,12 @@ class BlogController extends Controller
             }
         }
 
-        $seoMeta = SeoMeta::with('translations')->where('url_slug', '/')->first();
+        $seo = app(SeoMetaResolver::class)->resolveForRoute(
+            'welcome',
+            [],
+            App::getLocale(),
+            route('welcome', ['locale' => App::getLocale()])
+        )->toArray();
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
         // Fetch Hero Image from Settings
@@ -520,7 +733,7 @@ class BlogController extends Controller
             'popularPlaces' => LocaleHelper::sanitizeUtf8($popularPlaces),
             'faqs' => LocaleHelper::sanitizeUtf8($faqs), // Pass FAQ data
             'schema' => LocaleHelper::sanitizeUtf8($pageSchemas),
-            'seoMeta' => LocaleHelper::sanitizeUtf8($seoMeta),
+            'seo' => LocaleHelper::sanitizeUtf8($seo),
             'pages' => LocaleHelper::sanitizeUtf8($pages),
             'country' => session('country'),
             'heroImage' => $heroImage,
@@ -587,22 +800,48 @@ class BlogController extends Controller
         session(['country' => $country]);
         \Log::info('showBlogPage: Country stored in session - ' . $country);
 
-        $blogs = Blog::with('translations')
+        $blogsQuery = Blog::with(['translations', 'tags:id,name,slug'])
             ->where('is_published', true)
             ->where(function ($q) use ($country) {
                 $q->whereJsonContains('countries', $country)
                     ->orWhereNull('countries');
-            })
-            ->latest()
-            ->paginate(9);
+            });
+
+        // Filter by tag if provided
+        if ($request->filled('tag')) {
+            $blogsQuery->whereHas('tags', function ($q) use ($request) {
+                $q->where('slug', $request->input('tag'));
+            });
+        }
+
+        $blogs = $blogsQuery->latest()->paginate(9)->withQueryString();
+
+        // Get all tags that have at least one published blog
+        $tags = BlogTag::whereHas('blogs', function ($q) use ($country) {
+            $q->where('is_published', true)
+                ->where(function ($sq) use ($country) {
+                    $sq->whereJsonContains('countries', $country)
+                        ->orWhereNull('countries');
+                });
+        })->orderBy('name')->get(['id', 'name', 'slug']);
 
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
+
+        $seo = app(SeoMetaResolver::class)->resolveForRoute(
+            'blog',
+            ['country' => $country],
+            App::getLocale(),
+            url("/{$locale}/{$country}/blog")
+        )->toArray();
 
         return Inertia::render('BlogPage', [
             'blogs' => $blogs,
             'pages' => $pages,
             'locale' => App::getLocale(),
             'country' => $country,
+            'seo' => $seo,
+            'tags' => $tags,
+            'activeTag' => $request->input('tag', ''),
         ]);
     }
 
@@ -634,28 +873,48 @@ class BlogController extends Controller
 
         $blog->load('translations');
 
+        $canonicalCountry = $blog->canonical_country;
+        if (!is_string($canonicalCountry) || trim($canonicalCountry) === '') {
+            $canonicalCountry = is_array($blog->countries) && !empty($blog->countries) ? strtolower((string) $blog->countries[0]) : 'us';
+        }
+        $canonicalCountry = strtolower((string) $canonicalCountry);
+
+        if (is_array($blog->countries) && !empty($blog->countries) && !in_array($canonicalCountry, array_map('strtolower', $blog->countries), true)) {
+            $canonicalCountry = strtolower((string) $blog->countries[0]);
+        }
+
+        // Single-canonical policy: redirect non-canonical country URLs to canonical.
+        if ($canonicalCountry !== $country) {
+            return redirect()->to("/{$locale}/{$canonicalCountry}/blog/{$slug}", 301);
+        }
+
         // Generate schema
         $blogSchema = SchemaBuilder::blog($blog);
 
-        // SEO meta
-        $seoMeta = null;
-        $seoMetaTranslation = \App\Models\SeoMetaTranslation::where('url_slug', $slug)
-            ->where('locale', $locale)
-            ->first();
-
-        if ($seoMetaTranslation) {
-            $seoMeta = SeoMeta::with('translations')->find($seoMetaTranslation->seo_meta_id);
-        }
+        $seo = app(SeoMetaResolver::class)->resolveForModel(
+            $blog,
+            $locale,
+            url("/{$locale}/{$canonicalCountry}/blog/{$slug}")
+        )->toArray();
 
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
+        // Compute reading time and get related blogs
+        $readingTime = $this->calculateReadingTime($translation->content ?? '');
+        $relatedBlogs = $this->getRelatedBlogs($blog, $locale, $country);
+
         return Inertia::render('SingleBlog', [
-            'blog' => $blog,
+            'blog' => array_merge($blog->toArray(), [
+                'excerpt' => $translation->excerpt ?? null,
+            ]),
             'schema' => $blogSchema,
-            'seoMeta' => $seoMeta,
+            'seo' => $seo,
             'locale' => $locale,
             'country' => $country,
             'pages' => $pages,
+            'tags' => $blog->tags->map(fn($t) => ['name' => $t->name, 'slug' => $t->slug]),
+            'relatedBlogs' => $relatedBlogs,
+            'readingTime' => $readingTime,
         ]);
     }
 
@@ -692,5 +951,52 @@ class BlogController extends Controller
         \Log::info('getRecentBlogs: Found ' . $recentBlogs->count() . ' recent blogs for country ' . $country);
 
         return response()->json($recentBlogs);
+    }
+
+    private function calculateReadingTime(string $content): int
+    {
+        $text = strip_tags($content);
+        $wordCount = str_word_count($text);
+        return max(1, (int) ceil($wordCount / 200));
+    }
+
+    private function getRelatedBlogs(Blog $blog, string $locale, string $country): array
+    {
+        $tagIds = $blog->tags->pluck('id')->toArray();
+
+        $query = Blog::where('id', '!=', $blog->id)
+            ->where('is_published', true)
+            ->with(['translations' => function ($q) use ($locale) {
+                $q->where('locale', $locale);
+            }]);
+
+        if (!empty($tagIds)) {
+            $query->whereHas('tags', function ($q) use ($tagIds) {
+                $q->whereIn('blog_tags.id', $tagIds);
+            });
+        }
+
+        $related = $query->latest()->limit(3)->get();
+
+        if ($related->count() < 3) {
+            $existingIds = $related->pluck('id')->merge([$blog->id])->toArray();
+            $more = Blog::whereNotIn('id', $existingIds)
+                ->where('is_published', true)
+                ->with(['translations' => fn($q) => $q->where('locale', $locale)])
+                ->latest()
+                ->limit(3 - $related->count())
+                ->get();
+            $related = $related->merge($more);
+        }
+
+        return $related->map(function ($b) use ($locale) {
+            $t = $b->translations->first();
+            return [
+                'title' => $t?->title ?? '',
+                'slug' => $t?->slug ?? $b->slug,
+                'image' => $b->image,
+                'date' => $b->created_at?->format('M j, Y') ?? '',
+            ];
+        })->toArray();
     }
 }

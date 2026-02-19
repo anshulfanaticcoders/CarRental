@@ -184,7 +184,7 @@ const goToDashboard = () => {
                 </p>
                 <div class="flex justify-center space-x-4">
                     <Link
-                        :href="route('contact-us', { locale })"
+                        :href="`/${locale}/contact-us`"
                         class="text-blue-600 hover:text-blue-800 font-medium"
                     >
                         Contact Support

@@ -252,7 +252,7 @@ onMounted(async () => {
                                     class="footer-link-underline">FAQ</Link>
                             </li>
                             <li class="relative group">
-                                <Link :href="route('contact-us', { locale: page.props.locale })"
+                                <Link :href="`/${page.props.locale}/contact-us`"
                                     class="footer-link-underline">Contact Us</Link>
                             </li>
                         </ul>

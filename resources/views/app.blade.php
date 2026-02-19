@@ -33,17 +33,21 @@
     <!-- Hreflang for SEO -->
     @php
         $currentRoute = \Illuminate\Support\Facades\Route::currentRouteName();
-        $routeParameters = request()->route()->parameters();
-        unset($routeParameters['locale']); // Remove locale from parameters
-        $alternateUrls = \App\Helpers\LocaleHelper::getAlternateUrls($currentRoute, $routeParameters);
+        $routeParameters = request()->route() ? request()->route()->parameters() : [];
+        $currentLocale = app()->getLocale();
+        unset($routeParameters['locale']);
+        $alternateUrls = $currentRoute
+            ? \App\Helpers\HreflangHelper::getAlternateUrls($currentRoute, $routeParameters, $currentLocale)
+            : [];
     @endphp
 
     @foreach($alternateUrls as $locale => $url)
         <link rel="alternate" hreflang="{{ $locale }}" href="{{ $url }}">
     @endforeach
 
-    @if(isset($alternateUrls[config('app.locale')]))
-        <link rel="alternate" hreflang="x-default" href="{{ $alternateUrls[config('app.locale')] }}">
+    @php $xDefaultLocale = config('app.fallback_locale', config('app.locale')); @endphp
+    @if(isset($alternateUrls[$xDefaultLocale]))
+        <link rel="alternate" hreflang="x-default" href="{{ $alternateUrls[$xDefaultLocale] }}">
     @endif
 
     <!-- Scripts -->

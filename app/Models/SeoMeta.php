@@ -23,6 +23,11 @@ class SeoMeta extends Model
      */
     protected $fillable = [
         'url_slug',
+        'seoable_type',
+        'seoable_id',
+        'route_name',
+        'route_params',
+        'route_params_hash',
         'seo_title',
         'meta_description',
         'keywords',
@@ -38,7 +43,13 @@ class SeoMeta extends Model
     protected $casts = [
         // Add casts if needed, e.g., for keywords if you store them as JSON
         // 'keywords' => 'array',
+        'route_params' => 'array',
     ];
+
+    public function seoable()
+    {
+        return $this->morphTo();
+    }
 
     /**
      * Get all translations for the SEO meta.

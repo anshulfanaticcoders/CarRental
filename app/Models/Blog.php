@@ -14,10 +14,11 @@ class Blog extends Model
         'slug',
         'image',
         'countries',
+        'canonical_country',
         'is_published'
     ];
 
-    protected $appends = ['title', 'content', 'translated_slug']; // Force append accessors
+    protected $appends = ['title', 'content', 'translated_slug', 'excerpt']; // Force append accessors
 
     // Removed automatic slug generation from here, will be handled in controller
     // protected static function boot()
@@ -28,6 +29,11 @@ class Blog extends Model
     public function translations()
     {
         return $this->hasMany(BlogTranslation::class);
+    }
+
+    public function tags()
+    {
+        return $this->belongsToMany(BlogTag::class, 'blog_tag_blog', 'blog_id', 'blog_tag_id');
     }
 
     public function getTranslation(string $locale = null)
@@ -49,6 +55,11 @@ class Blog extends Model
     public function getTranslatedSlugAttribute()
     {
         return $this->getTranslation(app()->getLocale())?->slug;
+    }
+
+    public function getExcerptAttribute()
+    {
+        return $this->getTranslation(app()->getLocale())?->excerpt;
     }
 
 

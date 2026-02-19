@@ -437,7 +437,7 @@ onUnmounted(() => {
                                 class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
                                 eSIM
                             </a>
-                            <Link :href="route('contact-us', { locale: page.props.locale })"
+                            <Link :href="`/${page.props.locale}/contact-us`"
                                 class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
                                 Contact Us
                             </Link>

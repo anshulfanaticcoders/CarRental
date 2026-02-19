@@ -4,6 +4,8 @@ import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import Editor from '@tinymce/tinymce-vue';
+import PageMetaFields from '@/Components/Admin/PageMetaFields.vue';
+import PageSectionEditor from '@/Components/Admin/PageSectionEditor.vue';
 import { ref, computed, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import {
@@ -25,6 +27,9 @@ const props = defineProps({
     seoTranslations: Object,
     available_locales: Array,
     errors: Object,
+    templates: Object,
+    metaValues: Object,
+    sectionsData: Object,
 });
 
 const toast = useToast();
@@ -55,17 +60,32 @@ locales.forEach(locale => {
 
 const form = useForm({
     _method: 'PUT',
+    template: props.page.template || 'default',
+    status: props.page.status || 'draft',
+    custom_slug: props.page.custom_slug || '',
     translations: JSON.parse(JSON.stringify(initialPageTranslations)),
     seo_title: props.seoMeta?.seo_title || (initialPageTranslations.en?.title || ''),
     canonical_url: props.seoMeta?.canonical_url || '',
     seo_image_url: props.seoMeta?.seo_image_url || '',
     seo_translations: JSON.parse(JSON.stringify(initialSeoTranslations)),
+    meta: props.metaValues || {},
+    sections: props.sectionsData ? [...props.sectionsData] : [],
 });
 
 const setActiveLocale = (locale, event) => {
     if (event) event.preventDefault();
     activeLocale.value = locale;
 };
+
+const selectedTemplate = computed(() => {
+    if (props.templates && form.template && props.templates[form.template]) {
+        return props.templates[form.template];
+    }
+    if (props.templates && props.templates['default']) {
+        return props.templates['default'];
+    }
+    return { name: 'Default', description: '', meta_fields: [], sections: [] };
+});
 
 // Arabic to Latin transliteration map (simplified for common characters)
 const arabicToLatinMap = {
@@ -158,6 +178,32 @@ const submit = () => {
             </div>
 
             <form @submit.prevent>
+              <!-- Template Display (read-only) -->
+              <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Page Template</label>
+                <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600">
+                  {{ selectedTemplate.name || form.template }}
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Template cannot be changed after page creation</p>
+              </div>
+
+              <!-- Status & Custom Slug -->
+              <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select v-model="form.status" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor">
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Custom URL Slug (optional)</label>
+                  <input v-model="form.custom_slug" type="text" placeholder="e.g. contact-us"
+                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white" />
+                  <p class="text-xs text-gray-500 mt-1">Leave empty to use /page/{slug}. Set for top-level URL like /contact-us</p>
+                </div>
+              </div>
+
               <div class="mb-8">
                 <h3 class="text-lg font-semibold text-gray-900 mb-6">Page Content</h3>
                 <div class="flex border-b border-gray-200 mb-6">
@@ -216,8 +262,8 @@ const submit = () => {
                       </p>
                     </div>
 
-                    <!-- Content Field -->
-                    <div>
+                    <!-- Content Field (hidden when template uses sections) -->
+                    <div v-if="!selectedTemplate.sections || selectedTemplate.sections.length === 0">
                       <label :for="`content-${locale}`" class="block text-sm font-medium text-gray-700 mb-2">
                         Content ({{ locale.toUpperCase() }})
                       </label>
@@ -241,6 +287,29 @@ const submit = () => {
                     </div>
                   </div>
                 </template>
+              </div>
+
+              <!-- Template Meta Fields -->
+              <div v-if="selectedTemplate.meta_fields && selectedTemplate.meta_fields.length > 0" class="mt-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Template Fields</h3>
+                <PageMetaFields
+                  :fields="selectedTemplate.meta_fields"
+                  v-model="form.meta"
+                  :locale="activeLocale"
+                  :locales="locales"
+                />
+              </div>
+
+              <!-- Content Sections -->
+              <div v-if="selectedTemplate.sections && selectedTemplate.sections.length > 0" class="mt-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Content Sections</h3>
+                <PageSectionEditor
+                  :sections="form.sections"
+                  :template-sections="selectedTemplate.sections"
+                  :locale="activeLocale"
+                  :locales="locales"
+                  @update:sections="form.sections = $event"
+                />
               </div>
 
               <!-- SEO Meta Fields -->
