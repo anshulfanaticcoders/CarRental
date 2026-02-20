@@ -1030,6 +1030,24 @@ Route::get('/test-business-debug/{token}', function ($token) {
     }
 });
 
+// Sitemap route (must be before fallback)
+Route::get('/sitemap.xml', function () {
+    $sitemapPath = public_path('sitemap.xml');
+    if (!file_exists($sitemapPath)) {
+        abort(404);
+    }
+    return response()->file($sitemapPath, ['Content-Type' => 'application/xml']);
+})->name('sitemap');
+
+// Serve individual sitemap files from sitemaps directory
+Route::get('/sitemaps/{filename}', function ($filename) {
+    $sitemapPath = public_path('sitemaps/' . $filename);
+    if (!file_exists($sitemapPath)) {
+        abort(404);
+    }
+    return response()->file($sitemapPath, ['Content-Type' => 'application/xml']);
+})->where('filename', '.*\.xml$')->name('sitemaps.file');
+
 Route::fallback(function () {
     return inertia('Error', ['status' => 404]);
 });
