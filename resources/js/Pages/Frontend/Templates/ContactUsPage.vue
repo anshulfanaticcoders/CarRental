@@ -109,7 +109,7 @@ const LocationIcon = `<svg class="w-[22px] h-[22px]" fill="none" stroke="current
 
             <!-- Grain texture -->
             <div class="absolute inset-0 opacity-[0.03] pointer-events-none bg-repeat"
-                 style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E&quot;)">
+                 style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%270 0 256 256%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27noise%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.9%27 numOctaves=%274%27 stitchTiles=%27stitch%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23noise)%27/%3E%3C/svg%3E')">
             </div>
 
             <div class="container mx-auto px-6 py-24 md:py-32 relative z-10 text-center max-w-[720px]">
@@ -180,7 +180,7 @@ const LocationIcon = `<svg class="w-[22px] h-[22px]" fill="none" stroke="current
                                     </div>
                                     <div>
                                         <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Address</div>
-                                        <span class="text-[15px] font-medium text-slate-800">{{ meta.address }}</span>
+                                        <span class="text-[15px] font-medium text-slate-800 whitespace-pre-line">{{ meta.address }}</span>
                                     </div>
                                 </div>
                             </div>
