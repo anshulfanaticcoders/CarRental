@@ -15,8 +15,8 @@ class DatabaseSeeder extends Seeder
             // Add other seeders here as needed
             // LocautoExtrasSeeder::class,
             // SippCodeSeeder::class,
-            ContactUsPageSeeder::class,
-            AboutUsPageSeeder::class,
+            PrivacyPolicyPageSeeder::class,
+            TermsAndConditionsPageSeeder::class,
         ]);
     }
 }
