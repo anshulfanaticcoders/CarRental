@@ -40,7 +40,14 @@ class PriceVerificationService
             ];
 
             // Cache for 2 hours (typical user session duration)
-            Cache::put($priceKey, $priceData, now()->addHours(2));
+            try {
+                Cache::put($priceKey, $priceData, now()->addHours(2));
+            } catch (\Exception $e) {
+                Log::warning('Failed to cache price data', [
+                    'key' => $priceKey,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             // Generate hash for client verification (HMAC signature)
             $priceMap[$vehicleId] = [
