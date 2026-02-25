@@ -80,10 +80,12 @@ class BulkVehicleUploadNotification extends Notification implements ShouldQueue
     public function toArray($notifiable)
     {
         return [
+            'title' => 'Bulk Upload Complete',
             'vehicles_count' => $this->vehicles->count(),
             'user_id' => $this->user->id,
             'user_name' => $this->user->name,
             'error_messages' => $this->errorMessages,
+            'role' => 'vendor',
             'message' => 'Bulk vehicle upload completed. Successfully created ' . $this->vehicles->count() . ' vehicle(s).',
         ];
     }

@@ -86,4 +86,50 @@ return [
         'download' => 'تنزيل',
         'back_to_bookings' => 'العودة إلى الحجوزات',
         'back' => 'عودة',
+
+        // Booking Details Page - Hero & Navigation
+        'home' => 'الرئيسية',
+        'booking' => 'الحجز',
+        'duration' => 'المدة',
+
+        // Booking Details Page - Payment Alert
+        'paid_online' => 'مدفوع عبر الإنترنت',
+        'paid_in_full' => 'مدفوع بالكامل',
+        'deposit_via_stripe' => 'عربون عبر Stripe',
+        'due_at_pickup' => 'مستحق عند الاستلام',
+        'pay_to_vendor' => 'ادفع للمؤجر عند الوصول',
+        'payment_progress' => 'تقدم الدفع',
+        'paid' => 'مدفوع',
+
+        // Booking Details Page - Cards
+        'vehicle_and_trip' => 'المركبة والرحلة',
+        'vehicle_rental' => 'إيجار المركبة',
+        'price_breakdown' => 'تفاصيل السعر',
+        'tax_fees' => 'الضرائب والرسوم',
+        'grand_total' => 'المجموع الكلي',
+        'includes_platform_fee' => 'شامل رسوم المنصة',
+
+        // Booking Details Page - Deposit & Insurance
+        'deposit_insurance' => 'التأمين والضمان',
+        'security_deposit' => 'مبلغ الضمان',
+        'insurance_excess' => 'التحمل التأميني',
+        'deposit_info' => 'يتم حجز المبلغ على بطاقتك عند الاستلام. يتم تحريره خلال 7-14 يومًا بعد الإرجاع، وفقًا لنتائج الفحص.',
+
+        // Booking Details Page - Rental Company & Policies
+        'rental_company' => 'شركة التأجير',
+        'booking_references' => 'مراجع الحجز',
+        'booked_on' => 'تاريخ الحجز',
+        'rental_policies' => 'سياسات التأجير',
+        'view_all' => 'عرض الكل',
+        'fuel_policy' => 'سياسة الوقود',
+        'mileage' => 'الكيلومترات',
+        'min_age' => 'الحد الأدنى للعمر',
+        'cancellation' => 'الإلغاء',
+
+        // Booking Details Page - Customer Details
+        'your_details' => 'بياناتك',
+        'full_name' => 'الاسم الكامل',
+        'driver_age' => 'عمر السائق',
+        'flight_number' => 'رقم الرحلة',
+        'notes' => 'ملاحظات',
 ];

@@ -86,4 +86,50 @@ return [
         'download' => 'Télécharger',
         'back_to_bookings' => 'Retour aux réservations',
         'back' => 'Retour',
+
+        // Booking Details Page - Hero & Navigation
+        'home' => 'Accueil',
+        'booking' => 'Réservation',
+        'duration' => 'Durée',
+
+        // Booking Details Page - Payment Alert
+        'paid_online' => 'Payé en ligne',
+        'paid_in_full' => 'Payé intégralement',
+        'deposit_via_stripe' => 'Acompte via Stripe',
+        'due_at_pickup' => 'À payer à la prise en charge',
+        'pay_to_vendor' => 'À payer au loueur à l\'arrivée',
+        'payment_progress' => 'Progression du paiement',
+        'paid' => 'payé',
+
+        // Booking Details Page - Cards
+        'vehicle_and_trip' => 'Véhicule & Trajet',
+        'vehicle_rental' => 'Location du véhicule',
+        'price_breakdown' => 'Détail du prix',
+        'tax_fees' => 'Taxes & Frais',
+        'grand_total' => 'Total général',
+        'includes_platform_fee' => 'Frais de plateforme inclus',
+
+        // Booking Details Page - Deposit & Insurance
+        'deposit_insurance' => 'Caution & Assurance',
+        'security_deposit' => 'Caution',
+        'insurance_excess' => 'Franchise d\'assurance',
+        'deposit_info' => 'Retenue sur votre carte à la prise en charge. Libérée sous 7 à 14 jours après le retour, sous réserve d\'inspection.',
+
+        // Booking Details Page - Rental Company & Policies
+        'rental_company' => 'Société de location',
+        'booking_references' => 'Références de réservation',
+        'booked_on' => 'Réservé le',
+        'rental_policies' => 'Conditions de location',
+        'view_all' => 'Tout voir',
+        'fuel_policy' => 'Politique carburant',
+        'mileage' => 'Kilométrage',
+        'min_age' => 'Âge minimum',
+        'cancellation' => 'Annulation',
+
+        // Booking Details Page - Customer Details
+        'your_details' => 'Vos informations',
+        'full_name' => 'Nom complet',
+        'driver_age' => 'Âge du conducteur',
+        'flight_number' => 'Numéro de vol',
+        'notes' => 'Notes',
 ];

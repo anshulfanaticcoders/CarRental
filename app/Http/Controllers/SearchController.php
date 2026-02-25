@@ -22,9 +22,11 @@ use App\Services\XDriveService;
 use App\Services\SicilyByCarService;
 use App\Services\RecordGoService;
 use App\Services\Search\SearchOrchestratorService;
+use App\Services\PriceVerificationService;
 use Illuminate\Support\Facades\Log; // Import Log facade
 use App\Services\Seo\SeoMetaResolver;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Str;
 
 class SearchController extends Controller
 {
@@ -40,6 +42,7 @@ class SearchController extends Controller
     protected $sicilyByCarService;
     protected $recordGoService;
     protected $searchOrchestratorService;
+    protected $priceVerificationService;
 
     public function __construct(
         GreenMotionService $greenMotionService,
@@ -53,7 +56,8 @@ class SearchController extends Controller
         XDriveService $xdriveService,
         SicilyByCarService $sicilyByCarService,
         RecordGoService $recordGoService,
-        SearchOrchestratorService $searchOrchestratorService
+        SearchOrchestratorService $searchOrchestratorService,
+        PriceVerificationService $priceVerificationService
     ) {
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
@@ -67,6 +71,7 @@ class SearchController extends Controller
         $this->sicilyByCarService = $sicilyByCarService;
         $this->recordGoService = $recordGoService;
         $this->searchOrchestratorService = $searchOrchestratorService;
+        $this->priceVerificationService = $priceVerificationService;
     }
 
     public function search(Request $request)
@@ -149,7 +154,10 @@ class SearchController extends Controller
             'full_credit' => 'nullable|string',
             'promocode' => 'nullable|string',
             'dropoff_location_id' => 'nullable|string',
+            'dropoff_unified_location_id' => 'nullable|string',
             'dropoff_where' => 'nullable|string',
+            'dropoff_latitude' => 'nullable|numeric',
+            'dropoff_longitude' => 'nullable|numeric',
             'where' => 'nullable|string',
             'location' => 'nullable|string',
             'city' => 'nullable|string',
@@ -564,12 +572,16 @@ class SearchController extends Controller
             $sicilyByCarLocationFetchFailed = false;
             $recordGoProcessedPickups = [];
             $recordGoComplementsCache = [];
+            $allLocations = null; // Lazy-loaded for mixed-mode dropoff resolution
 
             foreach ($allProviderEntries as $providerEntry) {
                 // Get the provider name, location ID and original name for this entry
                 $providerToFetch = $providerEntry['provider'];
                 $currentProviderLocationId = $providerEntry['pickup_id'];
                 $currentProviderLocationName = $providerEntry['original_name'];
+                // Per-entry coordinates override unified location's single lat/lng
+                $entryLat = $providerEntry['latitude'] ?? $locationLat;
+                $entryLng = $providerEntry['longitude'] ?? $locationLng;
                 $providerStart = microtime(true);
 
                 // Provider-safe times: avoid random empty/invalid times causing 0 results.
@@ -582,16 +594,36 @@ class SearchController extends Controller
                 $endTimeForProvider = $clampTimeToBusinessHours($endTimeForProvider, $providerDefaultTime($providerToFetch), $providerToFetch);
 
                 // Enforce provider dropoff compatibility.
-                $providersWithDropoffList = ['greenmotion', 'usave', 'adobe', 'locauto_rent', 'renteon', 'favrica', 'xdrive', 'sicily_by_car', 'recordgo'];
+                $providersWithDropoffList = ['greenmotion', 'usave', 'locauto_rent', 'renteon', 'sicily_by_car', 'recordgo'];
                 $supportsDropoff = in_array($providerToFetch, $providersWithDropoffList, true);
 
-                $dropoffIdForProvider = $supportsDropoff
-                    ? ($validated['dropoff_location_id'] ?? $currentProviderLocationId)
-                    : $currentProviderLocationId;
-
-                // In mixed mode, provider dropoff IDs are not compatible across providers.
-                if ($providerName === 'mixed') {
-                    $dropoffIdForProvider = $currentProviderLocationId;
+                $dropoffIdForProvider = $currentProviderLocationId; // default: same location
+                if ($supportsDropoff) {
+                    if ($providerName === 'mixed') {
+                        // In mixed mode, resolve each provider's dropoff ID from the dropoff unified location.
+                        $dropoffUnifiedId = $validated['dropoff_unified_location_id'] ?? null;
+                        if ($dropoffUnifiedId && $matchedLocation) {
+                            $dropoffUnifiedIdStr = (string) $dropoffUnifiedId;
+                            $pickupUnifiedIdStr = (string) ($matchedLocation['unified_location_id'] ?? '');
+                            if ($dropoffUnifiedIdStr !== $pickupUnifiedIdStr) {
+                                // Find the dropoff location in unified_locations.json and get this provider's pickup_id there
+                                $allLocations ??= json_decode(\Illuminate\Support\Facades\File::get(public_path('unified_locations.json')), true);
+                                foreach ($allLocations as $loc) {
+                                    if ((string) ($loc['unified_location_id'] ?? '') === $dropoffUnifiedIdStr) {
+                                        foreach ($loc['providers'] ?? [] as $p) {
+                                            if (($p['provider'] ?? null) === $providerToFetch) {
+                                                $dropoffIdForProvider = $p['pickup_id'];
+                                                break 2;
+                                            }
+                                        }
+                                        break; // Found the unified location but provider not present there
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        $dropoffIdForProvider = $validated['dropoff_location_id'] ?? $currentProviderLocationId;
+                    }
                 }
 
                 if ($providerToFetch === 'greenmotion' || $providerToFetch === 'usave') {
@@ -788,11 +820,11 @@ class SearchController extends Controller
                                         'seating_capacity' => (int) $vehicle->adults + (int) $vehicle->children,
                                         'mileage' => (string) $vehicle->mpg,
                                         'co2' => (string) $vehicle->co2,
-                                        'latitude' => (float) $locationLat,
-                                        'longitude' => (float) $locationLng,
+                                        'latitude' => (float) $entryLat,
+                                        'longitude' => (float) $entryLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
-                                        'provider_return_id' => $validated['dropoff_location_id'] ?? $currentProviderLocationId,
+                                        'provider_return_id' => $dropoffIdForProvider,
                                         'ok_mobility_pickup_time' => $startTimeForProvider,
                                         'ok_mobility_dropoff_time' => $endTimeForProvider,
                                         'features' => $features,
@@ -903,8 +935,8 @@ class SearchController extends Controller
                                     'fuel' => 'petrol', // Defaulting to petrol as most rental cars are, minimizing 'N/A' issues
                                     'seating_capacity' => (int) ($vehicle['passengers'] ?? 4),
                                     'mileage' => null, // Adobe doesn't provide mileage info
-                                    'latitude' => (float) $locationLat,
-                                    'longitude' => (float) $locationLng,
+                                    'latitude' => (float) $entryLat,
+                                    'longitude' => (float) $entryLng,
                                     'full_vehicle_address' => $currentProviderLocationName,
                                     'provider_pickup_id' => $currentProviderLocationId,
                                     'benefits' => (object) [
@@ -1259,8 +1291,8 @@ class SearchController extends Controller
                                         'category' => $parsedSipp['category'] ?? 'Unknown', // Use parsed SIPP category
                                         'mileage' => $mileage,
                                         'features' => $features, // Add features here
-                                        'latitude' => (float) $locationLat,
-                                        'longitude' => (float) $locationLng,
+                                        'latitude' => (float) $entryLat,
+                                        'longitude' => (float) $entryLng,
                                         'full_vehicle_address' => $pickupAddressFull ?: $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
                                         'station' => $vehicleData['Station'] ?? 'OK Mobility Station',
@@ -1344,11 +1376,11 @@ class SearchController extends Controller
 
                         $pickupLocationDetails = $favricaLocationMap[(string) $currentProviderLocationId] ?? null;
                         if ($pickupLocationDetails) {
-                            if (empty($pickupLocationDetails['latitude']) && $locationLat !== null) {
-                                $pickupLocationDetails['latitude'] = (string) $locationLat;
+                            if (empty($pickupLocationDetails['latitude']) && $entryLat !== null) {
+                                $pickupLocationDetails['latitude'] = (string) $entryLat;
                             }
-                            if (empty($pickupLocationDetails['longitude']) && $locationLng !== null) {
-                                $pickupLocationDetails['longitude'] = (string) $locationLng;
+                            if (empty($pickupLocationDetails['longitude']) && $entryLng !== null) {
+                                $pickupLocationDetails['longitude'] = (string) $entryLng;
                             }
                             if (empty($pickupLocationDetails['name']) && $currentProviderLocationName) {
                                 $pickupLocationDetails['name'] = $currentProviderLocationName;
@@ -1504,8 +1536,8 @@ class SearchController extends Controller
                                     'fuel' => $fuel,
                                     'seating_capacity' => $seatingCapacity,
                                     'mileage' => $mileage,
-                                        'latitude' => (float) $locationLat,
-                                        'longitude' => (float) $locationLng,
+                                        'latitude' => (float) $entryLat,
+                                        'longitude' => (float) $entryLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'location_details' => $pickupLocationDetails,
                                         'dropoff_location_details' => $dropoffLocationDetails,
@@ -1562,11 +1594,11 @@ class SearchController extends Controller
 
                         $pickupLocationDetails = $xdriveLocationMap[(string) $currentProviderLocationId] ?? null;
                         if ($pickupLocationDetails) {
-                            if (empty($pickupLocationDetails['latitude']) && $locationLat !== null) {
-                                $pickupLocationDetails['latitude'] = (string) $locationLat;
+                            if (empty($pickupLocationDetails['latitude']) && $entryLat !== null) {
+                                $pickupLocationDetails['latitude'] = (string) $entryLat;
                             }
-                            if (empty($pickupLocationDetails['longitude']) && $locationLng !== null) {
-                                $pickupLocationDetails['longitude'] = (string) $locationLng;
+                            if (empty($pickupLocationDetails['longitude']) && $entryLng !== null) {
+                                $pickupLocationDetails['longitude'] = (string) $entryLng;
                             }
                             if (empty($pickupLocationDetails['name']) && $currentProviderLocationName) {
                                 $pickupLocationDetails['name'] = $currentProviderLocationName;
@@ -1739,8 +1771,8 @@ class SearchController extends Controller
                                     'fuel' => $fuel,
                                     'seating_capacity' => $seatingCapacity,
                                     'mileage' => $mileage,
-                                    'latitude' => (float) $locationLat,
-                                    'longitude' => (float) $locationLng,
+                                    'latitude' => (float) $entryLat,
+                                    'longitude' => (float) $entryLng,
                                     'full_vehicle_address' => $currentProviderLocationName,
                                     'location_details' => $pickupLocationDetails,
                                     'dropoff_location_details' => $dropoffLocationDetails,
@@ -1795,11 +1827,11 @@ class SearchController extends Controller
 
                         $pickupLocationDetails = $sicilyByCarLocationMap[(string) $currentProviderLocationId] ?? null;
                         if ($pickupLocationDetails) {
-                            if (empty($pickupLocationDetails['latitude']) && $locationLat !== null) {
-                                $pickupLocationDetails['latitude'] = (string) $locationLat;
+                            if (empty($pickupLocationDetails['latitude']) && $entryLat !== null) {
+                                $pickupLocationDetails['latitude'] = (string) $entryLat;
                             }
-                            if (empty($pickupLocationDetails['longitude']) && $locationLng !== null) {
-                                $pickupLocationDetails['longitude'] = (string) $locationLng;
+                            if (empty($pickupLocationDetails['longitude']) && $entryLng !== null) {
+                                $pickupLocationDetails['longitude'] = (string) $entryLng;
                             }
                             if (empty($pickupLocationDetails['name']) && $currentProviderLocationName) {
                                 $pickupLocationDetails['name'] = $currentProviderLocationName;
@@ -1900,8 +1932,8 @@ class SearchController extends Controller
                                     'bags' => $vehicleInfo['numberOfLargeBags'] ?? null,
                                     'suitcases' => $vehicleInfo['numberOfSmallBags'] ?? null,
                                     'mileage' => $isUnlimited ? 'Unlimited' : null,
-                                    'latitude' => (float) $locationLat,
-                                    'longitude' => (float) $locationLng,
+                                    'latitude' => (float) $entryLat,
+                                    'longitude' => (float) $entryLng,
                                     'full_vehicle_address' => $currentProviderLocationName,
                                     'location_details' => $pickupLocationDetails,
                                     'dropoff_location_details' => $dropoffLocationDetails,
@@ -2212,8 +2244,8 @@ class SearchController extends Controller
                                     'bags' => $acriss['acrissSuitcase'] ?? null,
                                     'suitcases' => $acriss['acrissSuitcase'] ?? null,
                                     'mileage' => $primaryMileage,
-                                    'latitude' => (float) $locationLat,
-                                    'longitude' => (float) $locationLng,
+                                    'latitude' => (float) $entryLat,
+                                    'longitude' => (float) $entryLng,
                                     'full_vehicle_address' => $currentProviderLocationName,
                                     'location_details' => [
                                         'name' => $currentProviderLocationName,
@@ -2258,7 +2290,7 @@ class SearchController extends Controller
                     try {
                         $wheelsysResponse = $this->wheelsysService->getVehicles(
                             $currentProviderLocationId,
-                            $validated['dropoff_location_id'] ?? $currentProviderLocationId,
+                            $dropoffIdForProvider, // Wheelsys does not support one-way rentals - will always equal pickup
                             $dateFromFormatted,
                             $startTimeForProvider,
                             $dateToFormatted,
@@ -2283,8 +2315,8 @@ class SearchController extends Controller
                                 $standardVehicle = $this->wheelsysService->convertToStandardVehicle(
                                     $rate,
                                     $currentProviderLocationId,
-                                    $locationLat,
-                                    $locationLng,
+                                    $entryLat,
+                                    $entryLng,
                                     $locationAddress
                                 );
 
@@ -2365,7 +2397,7 @@ class SearchController extends Controller
                             $validated['date_to'],
                             $endTimeForProvider,
                             $validated['age'] ?? 35,
-                            []
+                            ['return_location_code' => $dropoffIdForProvider]
                         );
 
                         if ($locautoResponse) {
@@ -2427,15 +2459,16 @@ class SearchController extends Controller
                                         'seating_capacity' => isset($vehicle['seating_capacity']) ? (int) $vehicle['seating_capacity'] : null,
                                         'mileage' => $vehicle['mileage'] ?? null, // Only show if provided by API
                                         'features' => $features, // Add mapped features
-                                        'latitude' => (float) $locationLat,
-                                        'longitude' => (float) $locationLng,
+                                        'latitude' => (float) $entryLat,
+                                        'longitude' => (float) $entryLng,
                                         'full_vehicle_address' => $currentProviderLocationName,
                                         'provider_pickup_id' => $currentProviderLocationId,
+                                        'provider_return_id' => $dropoffIdForProvider,
                                         'sipp_code' => $sippCode,
                                         'benefits' => [
                                             'minimum_driver_age' => (int) ($validated['age'] ?? 21),
                                             'pay_on_arrival' => true,
-                                            'luggage' => $vehicle['luggage'] ?? 0, // Add logic to pass luggage data
+                                            'luggage' => $vehicle['luggage'] ?? 0,
                                         ],
                                         // Map luggage directly for the card
                                         'luggage' => $vehicle['luggage'] ?? 0,
@@ -2481,7 +2514,7 @@ class SearchController extends Controller
 
                         $renteonVehicles = $this->renteonService->getTransformedVehicles(
                             $currentProviderLocationId,
-                            $currentProviderLocationId,
+                            $dropoffIdForProvider,
                             $validated['date_from'],
                             $startTimeForProvider,
                             $validated['date_to'],
@@ -2492,11 +2525,11 @@ class SearchController extends Controller
                                 'prepaid' => false,
                                 'include_on_request' => true,
                             ],
-                            $locationLat,
-                                $locationLng,
-                                $currentProviderLocationName,
-                                $rentalDays
-                            );
+                            $entryLat,
+                            $entryLng,
+                            $currentProviderLocationName,
+                            $rentalDays
+                        );
 
                         Log::info('Renteon vehicles processed from default provider: ' . count($renteonVehicles));
 
@@ -2511,7 +2544,7 @@ class SearchController extends Controller
 
                                 $renteonVehicles = $this->renteonService->getTransformedVehiclesFromAllProviders(
                                     $currentProviderLocationId,
-                                    $currentProviderLocationId,
+                                    $dropoffIdForProvider,
                                     $validated['date_from'],
                                     $startTimeForProvider,
                                     $validated['date_to'],
@@ -2523,8 +2556,8 @@ class SearchController extends Controller
                                         'include_on_request' => true,
                                     ],
                                     [],
-                                    $locationLat,
-                                    $locationLng,
+                                    $entryLat,
+                                    $entryLng,
                                     $currentProviderLocationName,
                                     $rentalDays
                                 );
@@ -2704,6 +2737,61 @@ class SearchController extends Controller
         );
 
         $providerNames = collect($allProviderEntries ?? [])->pluck('provider')->filter()->unique()->values();
+
+        // SECURITY: Store original prices for verification during checkout
+        $searchSessionId = 'search_' . session()->getId() . '_' . now()->timestamp;
+        $allVehicles = [];
+
+        // Process internal vehicles
+        $vehiclesCollection = $vehicles instanceof \Illuminate\Pagination\LengthAwarePaginator
+            ? $vehicles->getCollection()
+            : collect($vehicles);
+        foreach ($vehiclesCollection as $vehicle) {
+            $vehicleArray = is_array($vehicle) ? $vehicle : $vehicle->toArray();
+            $vehicleArray['source'] = 'internal';
+            $allVehicles[] = $vehicleArray;
+        }
+
+        // Process provider vehicles
+        foreach ($providerVehicles as $vehicle) {
+            $vehicleArray = is_array($vehicle) ? $vehicle : (method_exists($vehicle, 'toArray') ? $vehicle->toArray() : (array) $vehicle);
+            $allVehicles[] = $vehicleArray;
+        }
+
+        // Process OK Mobility vehicles
+        foreach ($okMobilityVehicles as $vehicle) {
+            $vehicleArray = is_array($vehicle) ? $vehicle : (method_exists($vehicle, 'toArray') ? $vehicle->toArray() : (array) $vehicle);
+            $allVehicles[] = $vehicleArray;
+        }
+
+        // Store original prices and get price hashes
+        $priceMap = $this->priceVerificationService->storeOriginalPrices($searchSessionId, $allVehicles);
+
+        // Attach price_hash to vehicles
+        $vehicles = $vehicles instanceof \Illuminate\Pagination\LengthAwarePaginator
+            ? new \Illuminate\Pagination\LengthAwarePaginator(
+                $vehicles->getCollection()->map(function ($vehicle) use ($priceMap) {
+                    if (is_array($vehicle)) {
+                        $vid = $vehicle['id'] ?? null;
+                    } else {
+                        $vid = $vehicle->id ?? null;
+                    }
+                    if ($vid && isset($priceMap[$vid])) {
+                        if (is_array($vehicle)) {
+                            $vehicle['price_hash'] = $priceMap[$vid]['price_hash'];
+                        } else {
+                            $vehicle->price_hash = $priceMap[$vid]['price_hash'];
+                        }
+                    }
+                    return $vehicle;
+                }),
+                $vehicles->total(),
+                $vehicles->perPage(),
+                $vehicles->currentPage(),
+                ['path' => $vehicles->path()]
+            )
+            : $vehicles;
+
         $providerStatus = $providerNames->map(function ($provider) use ($providerVehicles, $okMobilityVehicles, $providerErrors, $providerTimings) {
             $providerKey = (string) $provider;
             $count = $providerKey === 'okmobility'
@@ -2745,6 +2833,8 @@ class SearchController extends Controller
             'locale' => App::getLocale(),
             'optionalExtras' => array_values($searchOptionalExtras ?? []), // Pass extras
             'locationName' => $validated['location_name'] ?? 'Selected Location', // Pass location name
+            'search_session_id' => $searchSessionId, // For price verification
+            'price_map' => $priceMap, // Price hashes for all vehicles
         ]);
     }
 

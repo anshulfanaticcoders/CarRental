@@ -36,7 +36,9 @@ const props = defineProps({
     selectedCurrencyCode: String,
     paymentPercentage: Number,
     totals: Object, // { grandTotal, payableAmount, pendingAmount }
-    vehicleTotal: [String, Number]
+    vehicleTotal: [String, Number],
+    searchSessionId: String, // For price verification
+    selectedDepositType: { type: String, default: null },
 });
 
 const emit = defineEmits(['back']);
@@ -169,7 +171,8 @@ const providerMarkupRate = computed(() => {
 
 const effectivePaymentPercentage = computed(() => {
     if (isRenteon.value) return providerMarkupRate.value * 100;
-    return props.paymentPercentage || 0;
+    // Default to 15% if not provided, to prevent "Pay 0" bug
+    return props.paymentPercentage || 15;
 });
 
 const isInternal = computed(() => {
@@ -278,7 +281,9 @@ const bookingData = computed(() => {
         quoteid: props.vehicle.quoteid || null,
         rentalCode: props.vehicle.rentalCode || null,
         vehicle_total: convertTotal(props.vehicleTotal || 0),
-        payment_method: selectedPaymentMethod.value
+        payment_method: selectedPaymentMethod.value,
+        search_session_id: props.searchSessionId, // For price verification
+        selected_deposit_type: props.selectedDepositType || null,
     };
 });
 

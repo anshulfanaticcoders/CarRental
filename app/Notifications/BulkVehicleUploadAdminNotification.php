@@ -83,10 +83,12 @@ class BulkVehicleUploadAdminNotification extends Notification implements ShouldQ
     public function toArray($notifiable)
     {
         return [
+            'title' => 'Bulk Upload by ' . $this->user->name,
             'vehicles_count' => $this->vehicles->count(),
             'user_id' => $this->user->id,
             'user_name' => $this->user->name,
             'error_messages' => $this->errorMessages,
+            'role' => 'admin',
             'message' => 'Bulk vehicle upload completed by ' . $this->user->name . '. Successfully created ' . $this->vehicles->count() . ' vehicle(s).',
         ];
     }

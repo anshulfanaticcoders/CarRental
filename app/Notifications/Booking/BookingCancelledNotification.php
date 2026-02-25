@@ -108,6 +108,7 @@ class BookingCancelledNotification extends Notification
         $returnTime = $this->booking->return_time ?? 'N/A';
 
         return [
+            'title' => 'Booking Cancelled #' . $this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $vehicleName,
@@ -122,6 +123,7 @@ class BookingCancelledNotification extends Notification
             'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
             'customer_email' => $this->customer->email,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
+            'role' => $this->recipientType,
             'message' => 'Booking #' . $this->booking->booking_number . ' has been cancelled.',
         ];
     }

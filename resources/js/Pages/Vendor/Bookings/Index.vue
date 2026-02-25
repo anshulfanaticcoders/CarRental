@@ -1,184 +1,178 @@
 <template>
     <MyProfileLayout>
         <!-- Loader Overlay -->
-        <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
+        <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm">
             <img :src="loaderVariant" alt="Loading..." class="h-20 w-20" />
         </div>
-        <Card>
-            <CardHeader>
-                <CardTitle>{{ _t('vendorprofilepages', 'booking_details_header') }}</CardTitle>
-                <CardDescription>{{ _t('vendorprofilepages', 'booking_details_subtitle') || 'Manage and update booking records.' }}</CardDescription>
-            </CardHeader>
-            <CardContent class="space-y-4">
+
+        <div class="space-y-5">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <input type="text" v-model="searchQuery"
-                        :placeholder="_t('vendorprofilepages', 'search_bookings_placeholder')"
-                        class="w-full" />
+                    <h1 class="text-xl font-bold text-[var(--gray-900)]">
+                        {{ _t('vendorprofilepages', 'booking_details_header') }}
+                    </h1>
+                    <p class="text-sm text-[var(--gray-500)] mt-0.5">
+                        {{ _t('vendorprofilepages', 'booking_details_subtitle') || 'Manage and update booking records.' }}
+                    </p>
                 </div>
-
-                <div v-if="filteredBookings.length" class="overflow-x-auto">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>{{ _t('vendorprofilepages', 'table_id_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_booking_id_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_customer_name_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_vehicle_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_booking_date_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_return_date_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_booking_location_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_total_payment_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_amount_paid_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_amount_pending_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_payment_status_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_booking_status_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'table_cancellation_reason_header') }}</th>
-                                <th>{{ _t('vendorprofilepages', 'actions_table_header') }}</th>
-                            </tr>
-                        </thead>
-                    <tbody>
-                        <tr v-for="(booking, index) in filteredBookings" :key="booking.id"
-                            class="border-b hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap">{{ (pagination.current_page - 1) *
-                                pagination.per_page + index + 1 }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ booking.booking_number }}
-                            </td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">
-                                {{ booking.customer?.first_name }} {{ booking.customer?.last_name }}
-                            </td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">
-                                {{ booking.vehicle?.brand }} <span
-                                    class="bg-customLightPrimaryColor ml-2 p-1 rounded-[12px]">{{ booking.vehicle?.model
-                                    }}</span>
-                            </td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
-                                formatDate(booking.pickup_date) }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
-                                formatDate(booking.return_date) }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
-                                booking.pickup_location }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{
-                                getCurrencySymbol(getVendorCurrency(booking)) }}{{ formatNumber(getVendorAmount(booking, 'total_amount')) }}</td>
-                            <td class="px-4 py-2 text-sm text-green-600 whitespace-nowrap font-medium">{{
-                                booking.payments[0]?.payment_status === 'pending' ? 'Nil' :
-                                    `${getCurrencySymbol(getVendorCurrency(booking))}${formatNumber(getVendorAmount(booking, 'amount_paid'))}`
-                                }}</td>
-                            <td class="px-4 py-2 text-sm text-yellow-600 whitespace-nowrap font-medium">{{
-                                booking.payments[0]?.payment_status === 'pending' ? 'Nil' :
-                                    `${getCurrencySymbol(getVendorCurrency(booking))}${formatNumber(getVendorAmount(booking, 'pending_amount'))}`
-                                }}</td>
-                            <td class="px-4 py-2 text-sm capitalize">
-                                <span :class="{
-                                    'text-green-600 font-semibold': booking.payments[0]?.payment_status === 'succeeded',
-                                    'text-yellow-500 font-semibold': booking.payments[0]?.payment_status === 'pending',
-                                    'text-red-500 font-semibold': booking.payments[0]?.payment_status === 'failed',
-                                    'text-gray-500 font-semibold': !booking.payments.length
-                                }">
-                                    {{ booking.payments[0]?.payment_status || _t('vendorprofilepages',
-                                    'text_no_payment') }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-2 text-sm whitespace-nowrap">
-                                <select v-model="booking.booking_status" @change="updateStatus(booking)"
-                                    class="w-full py-2 px-2 border rounded" :class="{
-                                        'text-green-600 font-medium': booking.booking_status === 'completed' || booking.booking_status === 'confirmed',
-                                        'text-yellow-500 font-medium': booking.booking_status === 'pending',
-                                        'text-red-500 font-medium': booking.booking_status === 'cancelled'
-                                    }">
-                                    <option value="pending" class="text-yellow-500 font-medium">{{
-                                        _t('vendorprofilepages', 'booking_status_pending') }}</option>
-                                    <option value="confirmed" class="text-green-600 font-medium">{{
-                                        _t('vendorprofilepages', 'booking_status_confirmed') }}</option>
-                                    <option value="completed" class="text-green-600 font-medium">{{
-                                        _t('vendorprofilepages', 'booking_status_completed') }}</option>
-                                    <option value="cancelled" class="text-red-500 font-medium">{{
-                                        _t('vendorprofilepages', 'booking_status_cancelled') }}</option>
-                                </select>
-                            </td>
-                            <td class="px-4 py-2 text-sm">
-                                <span v-if="booking.cancellation_reason">
-                                    {{ booking.cancellation_reason }}
-                                </span>
-                                <span v-else class="text-gray-400 italic">
-                                    {{ _t('vendorprofilepages', 'text_not_provided') }}
-                                </span>
-                            </td>
-
-                            <td class="px-4 py-2 text-sm whitespace-nowrap">
-                                <button v-if="booking.booking_status !== 'cancelled'"
-                                    class="text-red-600 font-semibold hover:underline"
-                                    @click="cancelBooking(booking.id)">
-                                    {{ _t('vendorprofilepages', 'cancel_button') }}
-                                </button>
-                                <button @click="goToDamageProtection(booking.id)"
-                                    class="text-blue-600 font-semibold hover:underline ml-4">
-                                    {{ _t('vendorprofilepages', 'button_damage_protection') }}
-                                </button>
-                                <button @click="openCustomerDocumentsDialog(booking.customer.id)"
-                                    class="text-blue-600 font-semibold hover:underline ml-4">
-                                    {{ _t('vendorprofilepages', 'button_view_documents') }}
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="relative w-full sm:w-72">
+                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--gray-400)]" />
+                    <Input
+                        v-model="searchQuery"
+                        type="text"
+                        :placeholder="_t('vendorprofilepages', 'search_bookings_placeholder')"
+                        class="pl-9 w-full h-10 text-sm"
+                    />
+                </div>
             </div>
 
-                <div v-else class="rounded-xl border border-dashed border-slate-200 px-6 py-10 text-center text-sm text-slate-500">
-                    {{ _t('vendorprofilepages', 'no_bookings_found_text') }}
-                </div>
-                <div class="flex justify-end">
-                    <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
-                        @page-change="handlePageChange" />
-                </div>
-            </CardContent>
-        </Card>
+            <!-- Table Card -->
+            <div class="rounded-xl border border-[var(--gray-200)] bg-white shadow-sm overflow-hidden">
+                <div v-if="filteredBookings.length" class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-[var(--gray-200)] bg-[var(--gray-50)]">
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider w-[44px]">#</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Booking</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Customer</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Vehicle</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Dates</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Total</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Status</th>
+                                <th class="px-4 py-3 text-center text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider w-[110px]">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[var(--gray-100)]">
+                            <tr
+                                v-for="(booking, index) in filteredBookings"
+                                :key="booking.id"
+                                class="hover:bg-[var(--primary-50)]/50 transition-colors"
+                            >
+                                <!-- # -->
+                                <td class="px-4 py-3 text-[var(--gray-400)] tabular-nums">
+                                    {{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}
+                                </td>
 
-        <!-- Customer Documents Dialog -->
-        <Dialog v-model:open="isCustomerDocumentsDialogOpen">
-            <DialogContent class="max-w-[700px]">
-                <DialogHeader>
-                    <DialogTitle>{{ _t('vendorprofilepages', 'customer_documents_dialog_title') }}</DialogTitle>
-                </DialogHeader>
-                <div v-if="customerDocument" class="grid grid-cols-2 gap-4">
-                    <div v-for="field in documentFields" :key="field.key" class="mb-4 flex flex-col gap-2 items-center">
-                        <p class="font-semibold">{{ field.label }}</p>
-                        <img v-if="customerDocument[field.key]" :src="customerDocument[field.key]" :alt="field.label"
-                            class="h-20 w-[150px] object-cover mb-2 cursor-pointer"
-                            @click="openImageModal(customerDocument[field.key])" />
-                        <span v-else class="text-gray-500">{{ _t('vendorprofilepages', 'not_uploaded_text') }}</span>
-                        <p class="text-sm capitalize" :class="{
-                            'text-yellow-600': customerDocument.verification_status === 'pending',
-                            'text-green-600': customerDocument.verification_status === 'verified',
-                            'text-red-600': customerDocument.verification_status === 'rejected',
-                        }">
-                            {{ _t('vendorprofilepages', 'status_table_header') }}: {{
-                            customerDocument.verification_status }}
-                        </p>
-                        <p class="text-sm text-gray-600">{{ _t('vendorprofilepages', 'doc_uploaded_on_prefix') }} {{
-                            formatDate(customerDocument.created_at) }}</p>
+                                <!-- Booking -->
+                                <td class="px-4 py-3">
+                                    <span class="font-mono text-xs font-semibold text-[var(--primary-700)]">{{ booking.booking_number }}</span>
+                                    <span class="block text-[11px] text-[var(--gray-400)] mt-0.5">{{ formatDateShort(booking.created_at) }}</span>
+                                </td>
+
+                                <!-- Customer -->
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[var(--primary-100)] text-[var(--primary-700)] text-[10px] font-bold shrink-0">
+                                            {{ booking.customer?.first_name?.[0] }}{{ booking.customer?.last_name?.[0] }}
+                                        </span>
+                                        <span class="font-medium text-[var(--gray-800)] truncate max-w-[130px]">
+                                            {{ booking.customer?.first_name }} {{ booking.customer?.last_name }}
+                                        </span>
+                                    </div>
+                                </td>
+
+                                <!-- Vehicle -->
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="font-medium text-[var(--gray-800)]">{{ booking.vehicle?.brand }}</span>
+                                    <span class="inline-block ml-1.5 px-2 py-0.5 rounded-full bg-[var(--primary-50)] text-[var(--primary-700)] text-[11px] font-medium">{{ booking.vehicle?.model }}</span>
+                                </td>
+
+                                <!-- Dates -->
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="text-[var(--gray-700)]">{{ formatDateCompact(booking.pickup_date) }}</span>
+                                    <span class="text-[var(--gray-300)] mx-1">&rarr;</span>
+                                    <span class="text-[var(--gray-700)]">{{ formatDateCompact(booking.return_date) }}</span>
+                                    <span class="block text-[11px] text-[var(--gray-400)] mt-0.5">{{ booking.total_days }} day{{ booking.total_days !== 1 ? 's' : '' }}</span>
+                                </td>
+
+                                <!-- Total -->
+                                <td class="px-4 py-3 text-right whitespace-nowrap">
+                                    <span class="font-semibold text-[var(--gray-900)]">
+                                        {{ getCurrencySymbol(getVendorCurrency(booking)) }}{{ formatNumber(getVendorAmount(booking, 'total_amount')) }}
+                                    </span>
+                                </td>
+
+                                <!-- Status -->
+                                <td class="px-4 py-3">
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold capitalize"
+                                        :class="statusBadgeClass(booking.booking_status)"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="statusDotClass(booking.booking_status)"></span>
+                                        {{ booking.booking_status }}
+                                    </span>
+                                </td>
+
+                                <!-- Actions -->
+                                <td class="px-4 py-3">
+                                    <TooltipProvider>
+                                        <div class="flex items-center justify-center gap-1">
+                                            <Tooltip>
+                                                <TooltipTrigger as-child>
+                                                    <button
+                                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--primary-600)] hover:bg-[var(--primary-50)] hover:text-[var(--primary-800)] transition-colors"
+                                                        @click="viewBooking(booking.id)"
+                                                    >
+                                                        <Eye class="w-4 h-4" />
+                                                    </button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top"><p>View Details</p></TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip>
+                                                <TooltipTrigger as-child>
+                                                    <button
+                                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--accent-600)] hover:bg-[var(--accent-100)] hover:text-[var(--accent-600)] transition-colors"
+                                                        @click="goToDamageProtection(booking.id)"
+                                                    >
+                                                        <ShieldCheck class="w-4 h-4" />
+                                                    </button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top"><p>Damage Protection</p></TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip v-if="booking.booking_status !== 'cancelled'">
+                                                <TooltipTrigger as-child>
+                                                    <button
+                                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                                        @click="cancelBooking(booking.id)"
+                                                    >
+                                                        <Ban class="w-4 h-4" />
+                                                    </button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top"><p>Cancel Booking</p></TooltipContent>
+                                            </Tooltip>
+                                        </div>
+                                    </TooltipProvider>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div v-else class="px-6 py-20 text-center">
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[var(--gray-100)] mb-4">
+                        <CalendarX2 class="w-6 h-6 text-[var(--gray-400)]" />
                     </div>
+                    <p class="text-sm font-medium text-[var(--gray-500)]">{{ _t('vendorprofilepages', 'no_bookings_found_text') }}</p>
+                    <p class="text-xs text-[var(--gray-400)] mt-1">Try adjusting your search or filters</p>
                 </div>
-                <div v-else class="text-center py-6">
-                    <span class="text-gray-500">{{ _t('vendorprofilepages', 'no_documents_available_text') }}</span>
-                </div>
-                <DialogFooter>
-                    <Button @click="isCustomerDocumentsDialogOpen = false">{{ _t('vendorprofilepages', 'button_close')
-                        }}</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
 
-        <!-- Image Modal -->
-        <Dialog v-model:open="isImageModalOpen">
-            <DialogContent class="sm:max-w-[425px]">
-                <img :src="selectedImage" :alt="_t('vendorprofilepages', 'document_preview_dialog_title')"
-                    class="w-full h-auto" />
-                <DialogFooter>
-                    <Button @click="isImageModalOpen = false">{{ _t('vendorprofilepages', 'button_close') }}</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                <!-- Pagination -->
+                <div v-if="filteredBookings.length" class="flex items-center justify-between px-4 py-3 border-t border-[var(--gray-200)] bg-[var(--gray-50)]/50">
+                    <span class="text-xs text-[var(--gray-500)]">
+                        Showing {{ (pagination.current_page - 1) * pagination.per_page + 1 }}&ndash;{{ Math.min(pagination.current_page * pagination.per_page, pagination.total) }} of {{ pagination.total }}
+                    </span>
+                    <Pagination
+                        :current-page="pagination.current_page"
+                        :total-pages="pagination.last_page"
+                        @page-change="handlePageChange"
+                    />
+                </div>
+            </div>
+        </div>
     </MyProfileLayout>
 </template>
 
@@ -188,114 +182,40 @@ import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Input } from '@/Components/ui/input';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/Components/ui/tooltip';
 import { useToast } from 'vue-toastification';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import loaderVariant from '../../../../assets/loader-variant.svg';
+import { Search, Eye, ShieldCheck, Ban, CalendarX2 } from 'lucide-vue-next';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
-
 const toast = useToast();
-const isCustomerDocumentsDialogOpen = ref(false);
-const isImageModalOpen = ref(false);
-const customerDocument = ref(null);
-const selectedImage = ref('');
+
+const props = defineProps({
+    bookings: { type: Array, required: true },
+    pagination: { type: Object, required: true },
+    filters: { type: Object, default: () => ({}) },
+});
+
 const searchQuery = ref('');
 const isLoading = ref(false);
 
-const documentFields = computed(() => [
-    { key: 'driving_license_front', label: _t('vendorprofilepages', 'doc_label_driving_license_front') },
-    { key: 'driving_license_back', label: _t('vendorprofilepages', 'doc_label_driving_license_back') },
-    { key: 'passport_front', label: _t('vendorprofilepages', 'passport_front_table_header') },
-    { key: 'passport_back', label: _t('vendorprofilepages', 'passport_back_table_header') },
-]);
-
-
-const goToDamageProtection = (bookingId) => {
-    router.get(route('vendor.damage-protection.index', { locale: usePage().props.locale, booking: bookingId }));
-};
-
-const openCustomerDocumentsDialog = async (customerId) => {
-    try {
-        isLoading.value = true;
-        const response = await axios.get(route('vendor.customer-documents.index', { locale: usePage().props.locale, customer: customerId }));
-        console.log(response.data); // Log the response for debugging
-        customerDocument.value = response.data.document || null;
-        isCustomerDocumentsDialogOpen.value = true;
-    } catch (error) {
-        console.error('Error fetching customer documents:', error);
-        toast.error('Failed to fetch customer documents. Please try again.');
-    } finally {
-        isLoading.value = false;
-    }
-};
-
-const openImageModal = (imageUrl) => {
-    if (imageUrl) {
-        selectedImage.value = imageUrl;
-        isImageModalOpen.value = true;
-    }
-};
-
-const props = defineProps({
-    bookings: {
-        type: Array,
-        filters: Object,
-        required: true
-    },
-    pagination: {
-        type: Object,
-        required: true
-    }
-});
-
-const handlePageChange = (page) => {
-    router.get(route('bookings.index', { locale: usePage().props.locale }), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
-};
-
-const formatDate = (dateStr) => {
-    if (!dateStr) {
-        return 'Nil';
-    }
-    const date = new Date(dateStr);
-    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-};
-
-// Get currency symbol
+// --- Currency helpers ---
 const getCurrencySymbol = (currency) => {
     const symbols = {
-        'USD': '$',
-        'EUR': '€',
-        'GBP': '£',
-        'JPY': '¥',
-        'AUD': 'A$',
-        'CAD': 'C$',
-        'CHF': 'Fr',
-        'HKD': 'HK$',
-        'SGD': 'S$',
-        'SEK': 'kr',
-        'KRW': '₩',
-        'NOK': 'kr',
-        'NZD': 'NZ$',
-        'INR': '₹',
-        'MXN': 'Mex$',
-        'ZAR': 'R',
-        'AED': 'AED'
+        'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
+        'AUD': 'A$', 'CAD': 'C$', 'CHF': 'Fr', 'HKD': 'HK$',
+        'SGD': 'S$', 'SEK': 'kr', 'KRW': '₩', 'NOK': 'kr',
+        'NZD': 'NZ$', 'INR': '₹', 'MXN': 'Mex$', 'ZAR': 'R',
+        'AED': 'AED', 'MAD': 'MAD',
     };
-    return symbols[currency] || '$';
-};
-
-const formatNumber = (number) => {
-    return new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(number);
+    return symbols[currency] || currency || '$';
 };
 
 const getVendorCurrency = (booking) => {
     return booking.amounts?.vendor_currency
-        || booking.vehicle?.vendorProfile?.currency
+        || booking.vendor_profile?.currency
         || booking.booking_currency
         || 'EUR';
 };
@@ -306,53 +226,54 @@ const getVendorAmount = (booking, field) => {
         amount_paid: 'vendor_paid_amount',
         pending_amount: 'vendor_pending_amount',
     };
-
     const mappedField = vendorFieldMap[field];
-    if (mappedField && booking.amounts?.[mappedField] !== undefined && booking.amounts?.[mappedField] !== null) {
+    if (mappedField && booking.amounts?.[mappedField] != null) {
         return parseFloat(booking.amounts[mappedField]);
     }
-
-    if (booking.amounts?.[field] !== undefined && booking.amounts?.[field] !== null) {
+    if (booking.amounts?.[field] != null) {
         return parseFloat(booking.amounts[field]);
     }
-
     return parseFloat(booking[field] || 0);
 };
 
-const updateStatus = async (booking) => {
-    isLoading.value = true;
-    try {
-        await axios.put(route('bookings.update', { locale: usePage().props.locale, booking: booking.id }), {
-            booking_status: booking.booking_status
-        });
+const formatNumber = (number) => {
+    return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number);
+};
 
-        const statusMessages = {
-            pending: _t('vendorprofilepages', 'booking_status_pending'),
-            confirmed: _t('vendorprofilepages', 'booking_status_confirmed'),
-            completed: _t('vendorprofilepages', 'booking_status_completed'),
-            cancelled: _t('vendorprofilepages', 'booking_status_cancelled')
-        };
+// --- Date helpers ---
+const formatDateCompact = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    const d = new Date(dateStr);
+    return `${String(d.getDate()).padStart(2, '0')} ${d.toLocaleString('en-GB', { month: 'short' })}`;
+};
 
-        toast.success(`${_t('vendorprofilepages', 'status_table_header')} changed to ${statusMessages[booking.booking_status]}!`, {
-            position: 'top-right',
-            timeout: 3000,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-        });
+const formatDateShort = (dateStr) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
-        if (booking.booking_status === 'confirmed') {
-            await axios.put(`/vehicles/${booking.vehicle_id}`, {
-                status: 'rented'
-            });
-        }
-        router.reload();
-    } catch (error) {
-        console.error("Error updating status:", error);
-        router.reload();
-    } finally {
-        isLoading.value = false;
-    }
+// --- Status helpers ---
+const statusBadgeClass = (status) => ({
+    confirmed: 'bg-emerald-50 text-emerald-700',
+    completed: 'bg-emerald-50 text-emerald-700',
+    pending: 'bg-amber-50 text-amber-700',
+    cancelled: 'bg-red-50 text-red-600',
+}[status] || 'bg-gray-50 text-gray-600');
+
+const statusDotClass = (status) => ({
+    confirmed: 'bg-emerald-500',
+    completed: 'bg-emerald-500',
+    pending: 'bg-amber-500',
+    cancelled: 'bg-red-500',
+}[status] || 'bg-gray-400');
+
+// --- Actions ---
+const viewBooking = (bookingId) => {
+    router.get(route('bookings.show', { locale: usePage().props.locale, booking: bookingId }));
+};
+
+const goToDamageProtection = (bookingId) => {
+    router.get(route('vendor.damage-protection.index', { locale: usePage().props.locale, booking: bookingId }));
 };
 
 const cancelBooking = async (bookingId) => {
@@ -361,39 +282,42 @@ const cancelBooking = async (bookingId) => {
             await axios.post(route('bookings.cancel', { locale: usePage().props.locale, booking: bookingId }));
             router.reload();
         } catch (err) {
-            console.error("Error canceling booking:", err);
+            console.error('Error canceling booking:', err);
             alert(_t('vendorprofilepages', 'alert_failed_to_cancel_booking'));
         }
     }
 };
 
+const handlePageChange = (page) => {
+    router.get(route('bookings.index', { locale: usePage().props.locale }), { ...props.filters, page }, { preserveState: true, preserveScroll: true });
+};
+
+// --- Search ---
 const filteredBookings = computed(() => {
     const query = searchQuery.value.toLowerCase();
-    return props.bookings.filter(booking => {
-        return (
-            booking.booking_number.toLowerCase().includes(query) ||
-            (booking.customer?.first_name.toLowerCase().includes(query) ||
-                booking.customer?.last_name.toLowerCase().includes(query)) ||
-            booking.vehicle?.brand.toLowerCase().includes(query) ||
-            booking.vehicle?.model.toLowerCase().includes(query) ||
-            booking.booking_status.toLowerCase().includes(query) ||
-            (booking.payments[0]?.payment_status.toLowerCase().includes(query) || 'No Payment'.toLowerCase().includes(query)) ||
-            formatDate(booking.pickup_date).toLowerCase().includes(query) ||
-            formatDate(booking.return_date).toLowerCase().includes(query)
-        );
-    });
+    if (!query) return props.bookings;
+    return props.bookings.filter(b =>
+        b.booking_number?.toLowerCase().includes(query) ||
+        b.customer?.first_name?.toLowerCase().includes(query) ||
+        b.customer?.last_name?.toLowerCase().includes(query) ||
+        b.vehicle?.brand?.toLowerCase().includes(query) ||
+        b.vehicle?.model?.toLowerCase().includes(query) ||
+        b.booking_status?.toLowerCase().includes(query)
+    );
 });
-
-const formatDocumentType = (documentType) => {
-    // Add your logic to format the document type here
-    return documentType.charAt(0).toUpperCase() + documentType.slice(1).toLowerCase();
-};
 
 watch(searchQuery, (newQuery) => {
     router.get(
         route('bookings.index', { locale: usePage().props.locale }),
         { search: newQuery },
-        { preserveState: true, preserveScroll: true }
+        { preserveState: true, preserveScroll: true },
     );
 });
 </script>
+
+<style scoped>
+@media screen and (max-width: 640px) {
+    th, td { font-size: 0.7rem; }
+    th { white-space: nowrap; }
+}
+</style>

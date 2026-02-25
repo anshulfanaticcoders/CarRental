@@ -86,4 +86,50 @@ return [
         'download' => 'Descargar',
         'back_to_bookings' => 'Volver a Reservas',
         'back' => 'Volver',
+
+        // Booking Details Page - Hero & Navigation
+        'home' => 'Inicio',
+        'booking' => 'Reserva',
+        'duration' => 'Duración',
+
+        // Booking Details Page - Payment Alert
+        'paid_online' => 'Pagado en línea',
+        'paid_in_full' => 'Pagado en su totalidad',
+        'deposit_via_stripe' => 'Depósito vía Stripe',
+        'due_at_pickup' => 'A pagar en la recogida',
+        'pay_to_vendor' => 'Pagar al proveedor a la llegada',
+        'payment_progress' => 'Progreso del pago',
+        'paid' => 'pagado',
+
+        // Booking Details Page - Cards
+        'vehicle_and_trip' => 'Vehículo y Viaje',
+        'vehicle_rental' => 'Alquiler del vehículo',
+        'price_breakdown' => 'Desglose del precio',
+        'tax_fees' => 'Impuestos y Tasas',
+        'grand_total' => 'Total general',
+        'includes_platform_fee' => 'Incluye tarifa de plataforma',
+
+        // Booking Details Page - Deposit & Insurance
+        'deposit_insurance' => 'Depósito y Seguro',
+        'security_deposit' => 'Depósito de seguridad',
+        'insurance_excess' => 'Franquicia del seguro',
+        'deposit_info' => 'Retenido en su tarjeta al recoger. Liberado en 7-14 días después de la devolución, sujeto a inspección.',
+
+        // Booking Details Page - Rental Company & Policies
+        'rental_company' => 'Empresa de alquiler',
+        'booking_references' => 'Referencias de reserva',
+        'booked_on' => 'Reservado el',
+        'rental_policies' => 'Políticas de alquiler',
+        'view_all' => 'Ver todo',
+        'fuel_policy' => 'Política de combustible',
+        'mileage' => 'Kilometraje',
+        'min_age' => 'Edad mínima',
+        'cancellation' => 'Cancelación',
+
+        // Booking Details Page - Customer Details
+        'your_details' => 'Tus datos',
+        'full_name' => 'Nombre completo',
+        'driver_age' => 'Edad del conductor',
+        'flight_number' => 'Número de vuelo',
+        'notes' => 'Notas',
 ];

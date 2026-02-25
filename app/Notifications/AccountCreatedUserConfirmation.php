@@ -55,9 +55,11 @@ class AccountCreatedUserConfirmation extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'Welcome!',
             'user_id' => $this->user->id,
             'name' => $this->user->first_name . ' ' . $this->user->last_name,
             'email' => $this->user->email,
+            'role' => 'customer',
             'message' => 'Your account has been created successfully.',
         ];
     }

@@ -75,6 +75,7 @@ class BookingCreatedCustomerNotification extends Notification
         // $formattedAddress = implode(', ', $addressParts);
 
         return [
+            'title' => 'Booking Confirmed #' . $this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $vehicleName,
@@ -88,6 +89,7 @@ class BookingCreatedCustomerNotification extends Notification
             'amount_paid' => $amounts['paid'],
             'pending_amount' => $amounts['pending'],
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
+            'role' => 'customer',
             'message' => 'Your booking has been submitted and is pending confirmation.',
         ];
     }

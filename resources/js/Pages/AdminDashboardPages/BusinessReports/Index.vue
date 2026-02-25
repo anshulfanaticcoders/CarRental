@@ -1,122 +1,254 @@
 <template>
     <AdminDashboardLayout>
         <div class="flex-col md:flex">
-            <div class="flex-1 space-y-4 p-8 pt-6">
-                <div class="flex items-center justify-between space-y-2">
-                    <h2 class="text-[1.5rem] font-semibold tracking-tight">Business Report</h2>
+            <div class="flex-1 space-y-4 p-4 sm:p-6 lg:p-8 pt-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-2xl font-bold tracking-tight text-gray-900">Business Reports</h2>
+                        <p class="text-sm text-muted-foreground mt-1">Revenue, bookings, and fleet metrics in {{ adminCurrency }}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <Button variant="outline" size="sm">
+                                    <Download class="w-4 h-4 mr-2" />
+                                    Export
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem @click="exportData('pdf')">PDF</DropdownMenuItem>
+                                <DropdownMenuItem @click="exportData('excel')">Excel</DropdownMenuItem>
+                                <DropdownMenuItem @click="exportData('csv')">CSV</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
-                <div class="flex items-center justify-between space-y-2">
-                    <div class="flex items-center space-x-2">
-                        <Select v-model="reportPeriod" @update:modelValue="onPeriodChange">
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Period" />
+
+                <!-- Filters row -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <Select v-model="reportPeriod" @update:modelValue="onPeriodChange">
+                        <SelectTrigger class="w-[140px]">
+                            <SelectValue placeholder="Select Period" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="week">This Week</SelectItem>
+                            <SelectItem value="month">This Month</SelectItem>
+                            <SelectItem value="year">This Year</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Popover>
+                        <PopoverTrigger as-child>
+                            <Button variant="outline" class="text-sm">
+                                <CalendarIcon class="w-4 h-4 mr-2 text-muted-foreground" />
+                                <span>{{ dateRange.start }} - {{ dateRange.end }}</span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent class="w-auto p-0" align="start">
+                            <VDatePicker v-model="reportDate" is-range />
+                        </PopoverContent>
+                    </Popover>
+                    <Button @click="applyDateRange" size="sm">Apply</Button>
+
+                    <div class="ml-auto">
+                        <Select v-model="selectedReport">
+                            <SelectTrigger class="w-[130px]">
+                                <SelectValue placeholder="Chart View" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="week">This Week</SelectItem>
-                                <SelectItem value="month">This Month</SelectItem>
-                                <SelectItem value="year">This Year</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="daily">Daily</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Popover>
-                            <PopoverTrigger as-child>
-                                <Button variant="outline">
-                                    <i class="far fa-calendar-alt mr-2"></i>
-                                    <span>{{ dateRange.start }} - {{ dateRange.end }}</span>
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent class="w-auto p-0" align="start">
-                                <VDatePicker v-model="reportDate" is-range />
-                            </PopoverContent>
-                        </Popover>
-                        <Button @click="applyDateRange">Apply</Button>
-                    </div>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger as-child>
-                            <Button variant="outline">
-                                Export
-                                <i class="fas fa-chevron-down ml-2"></i>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem @click="exportData('pdf')">PDF</DropdownMenuItem>
-                            <DropdownMenuItem @click="exportData('excel')">Excel</DropdownMenuItem>
-                            <DropdownMenuItem @click="exportData('csv')">CSV</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-2">
-                        <label for="report-type" class="text-sm font-medium">Report Type:</label>
-                        <select id="report-type" v-model="selectedReport" class="p-2 border rounded">
-                            <option value="monthly">Monthly</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="daily">Daily</option>
-                        </select>
                     </div>
                 </div>
+
+                <!-- Stat Cards -->
                 <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <Card>
+                    <Card class="border-l-4 border-l-emerald-500">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle class="text-sm font-medium">Total Revenue</CardTitle>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="h-4 w-4 text-muted-foreground"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                            <CardTitle class="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+                            <DollarSign class="h-4 w-4 text-emerald-500" />
                         </CardHeader>
                         <CardContent>
-                            <div class="text-2xl font-bold">{{ totalRevenue.toLocaleString() }}</div>
-                            <p class="text-xs text-muted-foreground">{{ revenueGrowth >= 0 ? `+${revenueGrowth}%` : `${revenueGrowth}%` }} from last period</p>
+                            <div class="text-2xl font-bold">{{ adminCurrency }} {{ formatNumber(totalRevenue) }}</div>
+                            <p class="text-xs mt-1" :class="revenueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'">
+                                {{ revenueGrowth >= 0 ? '+' : '' }}{{ revenueGrowth }}% from last period
+                            </p>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card class="border-l-4 border-l-blue-500">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle class="text-sm font-medium">Active Bookings</CardTitle>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="h-4 w-4 text-muted-foreground"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                            <CardTitle class="text-sm font-medium text-muted-foreground">Active Bookings</CardTitle>
+                            <CalendarCheck class="h-4 w-4 text-blue-500" />
                         </CardHeader>
                         <CardContent>
                             <div class="text-2xl font-bold">{{ activeBookings }}</div>
-                            <p class="text-xs text-muted-foreground">{{ bookingsGrowth >= 0 ? `+${bookingsGrowth}%` : `${bookingsGrowth}%` }} from last period</p>
+                            <p class="text-xs mt-1" :class="bookingsGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'">
+                                {{ bookingsGrowth >= 0 ? '+' : '' }}{{ bookingsGrowth }}% from last period
+                            </p>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card class="border-l-4 border-l-amber-500">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle class="text-sm font-medium">Fleet Utilization</CardTitle>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="h-4 w-4 text-muted-foreground"><path d="M19 17h2l.64-2.54c.24-.959.24-1.962 0-2.92l-1.07-4.27A3 3 0 0 0 17.66 5H4.34a3 3 0 0 0-2.91 2.27L.36 11.54a7.971 7.971 0 0 0 0 2.92L1 17h2" /><circle cx="12" cy="17" r="2" /></svg>
+                            <CardTitle class="text-sm font-medium text-muted-foreground">Fleet Utilization</CardTitle>
+                            <Car class="h-4 w-4 text-amber-500" />
                         </CardHeader>
                         <CardContent>
                             <div class="text-2xl font-bold">{{ fleetUtilization }}%</div>
-                            <p class="text-xs text-muted-foreground">{{ fleetUtilizationGrowth >= 0 ? `+${fleetUtilizationGrowth}%` : `${fleetUtilizationGrowth}%` }} from last period</p>
+                            <p class="text-xs mt-1" :class="fleetUtilizationGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'">
+                                {{ fleetUtilizationGrowth >= 0 ? '+' : '' }}{{ fleetUtilizationGrowth }}% from last period
+                            </p>
                         </CardContent>
                     </Card>
                 </div>
-                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                    <Card class="col-span-7">
+
+                <!-- Charts -->
+                <div class="grid gap-4 xl:grid-cols-2">
+                    <Card>
                         <CardHeader>
-                            <CardTitle class="text-[1.5rem] font-semibold">Business Overview</CardTitle>
+                            <CardTitle>Revenue & Bookings</CardTitle>
+                            <CardDescription>{{ selectedReport.charAt(0).toUpperCase() + selectedReport.slice(1) }} breakdown for selected period</CardDescription>
                         </CardHeader>
                         <CardContent class="pl-2">
-                            <BarChart v-if="selectedReport === 'monthly'" :data="monthlyData" :categories="['revenue', 'bookings', 'fleetUtilization']" :index="'name'" :rounded-corners="4" :colors="['#10B981', '#153B4F', '#FFC633']"/>
-                            <BarChart v-if="selectedReport === 'weekly'" :data="weeklyData" :categories="['revenue', 'bookings', 'fleetUtilization']" :index="'name'" :rounded-corners="4" :colors="['#10B981', '#153B4F', '#FFC633']"/>
-                            <BarChart v-if="selectedReport === 'daily'" :data="dailyData" :categories="['revenue', 'bookings', 'fleetUtilization']" :index="'name'" :rounded-corners="4" :colors="['#10B981', '#153B4F', '#FFC633']"/>
+                            <BarChart
+                                :data="currentChartData"
+                                :categories="['revenue', 'bookings']"
+                                index="name"
+                                :rounded-corners="4"
+                                :colors="['#10B981', '#153B4F']"
+                            />
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Fleet Utilization Trend</CardTitle>
+                            <CardDescription>Vehicle utilization rate over time</CardDescription>
+                        </CardHeader>
+                        <CardContent class="pl-2">
+                            <LineChart
+                                :data="currentChartData"
+                                index="name"
+                                :categories="['fleetUtilization']"
+                                :colors="['#F59E0B']"
+                                :show-x-axis="true"
+                                :show-y-axis="true"
+                                :show-grid-lines="true"
+                            />
                         </CardContent>
                     </Card>
                 </div>
+
+                <!-- Location breakdown -->
+                <Card v-if="locationData && locationData.length > 0">
+                    <CardHeader>
+                        <CardTitle>Revenue by Location</CardTitle>
+                        <CardDescription>Top pickup locations by revenue ({{ adminCurrency }})</CardDescription>
+                    </CardHeader>
+                    <CardContent class="pl-2">
+                        <BarChart
+                            :data="locationData"
+                            :categories="['revenue', 'bookings']"
+                            index="name"
+                            :rounded-corners="4"
+                            :colors="['#10B981', '#6366F1']"
+                        />
+                    </CardContent>
+                </Card>
+
+                <!-- Table -->
                 <Card>
                     <CardHeader>
-                        <CardTitle>Business Report</CardTitle>
-                        <CardDescription>A list of all bookings in the selected period.</CardDescription>
+                        <CardTitle>Booking Details</CardTitle>
+                        <CardDescription>All bookings in the selected period with admin-level pricing</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Table>
                             <TableHeader>
-                                <TableRow>
-                                    <TableHead v-for="column in columns" :key="column.accessorKey">{{ column.header }}</TableHead>
+                                <TableRow class="bg-muted/50">
+                                    <TableHead>Booking #</TableHead>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Vendor</TableHead>
+                                    <TableHead>Vehicle</TableHead>
+                                    <TableHead class="text-right">Amount</TableHead>
+                                    <TableHead>Payment</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Date</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                <TableRow v-for="row in businessReportTableData.data" :key="row.id">
-                                    <TableCell v-for="column in columns" :key="column.accessorKey">{{ row[column.accessorKey] }}</TableCell>
+                                <TableRow
+                                    v-for="row in businessReportTableData.data"
+                                    :key="row.id"
+                                    class="hover:bg-muted/30"
+                                >
+                                    <TableCell class="font-medium">{{ row.booking_number }}</TableCell>
+                                    <TableCell>{{ row.customer_name }}</TableCell>
+                                    <TableCell>{{ row.vendor_name }}</TableCell>
+                                    <TableCell>{{ row.vehicle }}</TableCell>
+                                    <TableCell class="text-right font-medium">{{ row.currency }} {{ formatNumber(row.total_amount) }}</TableCell>
+                                    <TableCell>
+                                        <span
+                                            class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                                            :class="paymentStatusClass(row.payment_status)"
+                                        >
+                                            {{ row.payment_status }}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span
+                                            class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                                            :class="bookingStatusClass(row.booking_status)"
+                                        >
+                                            {{ row.booking_status }}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell class="text-muted-foreground">{{ row.booking_date }}</TableCell>
+                                </TableRow>
+                                <TableRow v-if="!businessReportTableData.data?.length">
+                                    <TableCell colspan="8" class="text-center py-8 text-muted-foreground">
+                                        No bookings found for this period.
+                                    </TableCell>
                                 </TableRow>
                             </TableBody>
                         </Table>
-                        <Pagination :currentPage="businessReportTableData.current_page" :totalPages="businessReportTableData.last_page" @page-change="onPageChange" />
+                        <!-- Pagination -->
+                        <div v-if="businessReportTableData.last_page > 1" class="flex items-center justify-between pt-4">
+                            <p class="text-sm text-muted-foreground">
+                                Page {{ businessReportTableData.current_page }} of {{ businessReportTableData.last_page }}
+                                ({{ businessReportTableData.total }} total)
+                            </p>
+                            <div class="flex items-center gap-1">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    :disabled="businessReportTableData.current_page <= 1"
+                                    @click="onPageChange(businessReportTableData.current_page - 1)"
+                                >
+                                    <ChevronLeft class="h-4 w-4" />
+                                </Button>
+                                <template v-for="page in pageNumbers" :key="page">
+                                    <Button
+                                        v-if="page !== '...'"
+                                        :variant="page === businessReportTableData.current_page ? 'default' : 'outline'"
+                                        size="sm"
+                                        class="w-8"
+                                        @click="onPageChange(page)"
+                                    >
+                                        {{ page }}
+                                    </Button>
+                                    <span v-else class="px-1 text-muted-foreground">...</span>
+                                </template>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    :disabled="businessReportTableData.current_page >= businessReportTableData.last_page"
+                                    @click="onPageChange(businessReportTableData.current_page + 1)"
+                                >
+                                    <ChevronRight class="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
@@ -125,11 +257,12 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Inertia } from '@inertiajs/inertia';
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/Components/ui/card";
 import BarChart from "@/Components/ui/chart-bar/BarChart.vue";
+import LineChart from "@/Components/ui/chart-line/LineChart.vue";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Button } from '@/Components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu';
@@ -141,28 +274,76 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { utils, writeFile } from 'xlsx';
 import { unparse } from 'papaparse';
-import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import {
+    DollarSign, CalendarCheck, Car, Calendar as CalendarIcon,
+    Download, ChevronLeft, ChevronRight
+} from 'lucide-vue-next';
 
-const props = defineProps([
-    'totalRevenue',
-    'revenueGrowth',
-    'activeBookings',
-    'bookingsGrowth',
-    'fleetUtilization',
-    'fleetUtilizationGrowth',
-    'monthlyData',
-    'weeklyData',
-    'dailyData',
-    'locationData',
-    'businessReportTableData',
-    'dateRange'
-]);
+const props = defineProps({
+    totalRevenue: { type: Number, default: 0 },
+    revenueGrowth: { type: Number, default: 0 },
+    activeBookings: { type: Number, default: 0 },
+    bookingsGrowth: { type: Number, default: 0 },
+    fleetUtilization: { type: Number, default: 0 },
+    fleetUtilizationGrowth: { type: Number, default: 0 },
+    monthlyData: { type: Array, default: () => [] },
+    weeklyData: { type: Array, default: () => [] },
+    dailyData: { type: Array, default: () => [] },
+    locationData: { type: Array, default: () => [] },
+    businessReportTableData: { type: Object, default: () => ({ data: [], current_page: 1, last_page: 1, total: 0 }) },
+    dateRange: { type: Object, default: () => ({ start: '', end: '' }) },
+    adminCurrency: { type: String, default: 'EUR' },
+});
 
 const reportPeriod = ref('year');
 const selectedReport = ref('monthly');
 const reportDate = ref({
     start: new Date(props.dateRange.start),
     end: new Date(props.dateRange.end),
+});
+
+const currentChartData = computed(() => {
+    if (selectedReport.value === 'weekly') return props.weeklyData;
+    if (selectedReport.value === 'daily') return props.dailyData;
+    return props.monthlyData;
+});
+
+const formatNumber = (value) => {
+    return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0));
+};
+
+const paymentStatusClass = (status) => {
+    const map = {
+        paid: 'bg-emerald-50 text-emerald-700',
+        partial: 'bg-amber-50 text-amber-700',
+        pending: 'bg-slate-100 text-slate-600',
+        failed: 'bg-red-50 text-red-700',
+        refunded: 'bg-purple-50 text-purple-700',
+    };
+    return map[status] || 'bg-slate-100 text-slate-600';
+};
+
+const bookingStatusClass = (status) => {
+    const map = {
+        confirmed: 'bg-emerald-50 text-emerald-700',
+        pending: 'bg-amber-50 text-amber-700',
+        cancelled: 'bg-red-50 text-red-700',
+        completed: 'bg-blue-50 text-blue-700',
+    };
+    return map[status] || 'bg-slate-100 text-slate-600';
+};
+
+const pageNumbers = computed(() => {
+    const current = props.businessReportTableData.current_page;
+    const last = props.businessReportTableData.last_page;
+    if (last <= 7) return Array.from({ length: last }, (_, i) => i + 1);
+    const pages = [];
+    pages.push(1);
+    if (current > 3) pages.push('...');
+    for (let i = Math.max(2, current - 1); i <= Math.min(last - 1, current + 1); i++) pages.push(i);
+    if (current < last - 2) pages.push('...');
+    pages.push(last);
+    return pages;
 });
 
 const onPeriodChange = (value) => {
@@ -179,36 +360,37 @@ const applyDateRange = () => {
 
 const onPageChange = (page) => {
     Inertia.get(route('admin.business.reports'), {
-        page: page,
+        page,
         start_date: reportDate.value.start.toISOString().split('T')[0],
         end_date: reportDate.value.end.toISOString().split('T')[0],
         period: reportPeriod.value,
     }, { preserveState: true, replace: true });
 };
 
-const columns = [
+const exportColumns = [
     { accessorKey: 'booking_number', header: 'Booking #' },
     { accessorKey: 'customer_name', header: 'Customer' },
     { accessorKey: 'vendor_name', header: 'Vendor' },
     { accessorKey: 'vehicle', header: 'Vehicle' },
     { accessorKey: 'total_amount', header: 'Amount' },
     { accessorKey: 'payment_status', header: 'Payment Status' },
+    { accessorKey: 'booking_status', header: 'Booking Status' },
     { accessorKey: 'booking_date', header: 'Date' },
 ];
 
 const exportData = (format) => {
     const data = props.businessReportTableData.data;
-    const headers = columns.map(c => c.header);
-    const body = data.map(row => columns.map(c => row[c.accessorKey]));
+    const headers = exportColumns.map(c => c.header);
+    const body = data.map(row => exportColumns.map(c => row[c.accessorKey]));
 
     if (format === 'pdf') {
         const doc = new jsPDF();
-        doc.autoTable({ head: [headers], body: body });
+        doc.autoTable({ head: [headers], body });
         doc.save('business_report.pdf');
     } else if (format === 'excel') {
         const worksheet = utils.json_to_sheet(data.map(row => {
             let newRow = {};
-            columns.forEach(c => newRow[c.header] = row[c.accessorKey]);
+            exportColumns.forEach(c => newRow[c.header] = row[c.accessorKey]);
             return newRow;
         }));
         const workbook = utils.book_new();
@@ -226,9 +408,9 @@ const exportData = (format) => {
 };
 
 watch(() => props.dateRange, (newDateRange) => {
-  reportDate.value = {
-    start: new Date(newDateRange.start),
-    end: new Date(newDateRange.end),
-  };
+    reportDate.value = {
+        start: new Date(newDateRange.start),
+        end: new Date(newDateRange.end),
+    };
 });
 </script>

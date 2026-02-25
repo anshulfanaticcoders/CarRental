@@ -350,14 +350,15 @@ const getCurrencySymbol = (currency) => {
     'INR': '₹',
     'MXN': 'Mex$',
     'ZAR': 'R',
-    'AED': 'AED'
+    'AED': 'AED',
+    'MAD': 'MAD'
   };
-  return symbols[currency] || '$';
+  return symbols[currency] || currency || '$';
 };
 
 const getVendorCurrency = (payment) => {
   return payment.booking?.amounts?.vendor_currency
-    || payment.booking?.vehicle?.vendorProfile?.currency
+    || payment.booking?.vendor_profile?.currency
     || payment.booking?.booking_currency
     || 'EUR';
 };

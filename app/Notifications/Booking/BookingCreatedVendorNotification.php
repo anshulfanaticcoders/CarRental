@@ -75,6 +75,7 @@ class BookingCreatedVendorNotification extends Notification
         // $formattedAddress = implode(', ', $addressParts);
 
         return [
+            'title' => 'New Booking #' . $this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
@@ -89,6 +90,7 @@ class BookingCreatedVendorNotification extends Notification
             'pending_amount' => $amounts['pending'],
             'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
+            'role' => 'vendor',
             'message' => 'A new booking has been made for your vehicle.',
         ];
     }

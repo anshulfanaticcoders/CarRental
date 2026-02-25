@@ -68,6 +68,7 @@ class BookingStatusUpdatedCustomerNotification extends Notification
         // $formattedAddress = implode(', ', $addressParts);
 
         return [
+            'title' => 'Booking Status Updated #' . $this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
@@ -80,6 +81,7 @@ class BookingStatusUpdatedCustomerNotification extends Notification
             'status' => $this->booking->booking_status,
             'vendor_name' => $this->vendor->first_name . ' ' . $this->vendor->last_name,
             'vendor_email' => $this->vendor->email,
+            'role' => 'customer',
             'message' => 'Your booking status has been updated to ' . $this->booking->booking_status . '.',
         ];
     }

@@ -79,6 +79,7 @@ class BookingCreatedAdminNotification extends Notification
         // $formattedAddress = implode(', ', $addressParts);
 
         return [
+            'title' => 'New Booking #' . $this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $vehicleName,
@@ -94,6 +95,7 @@ class BookingCreatedAdminNotification extends Notification
             'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
             'customer_email' => $this->customer->email,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
+            'role' => 'admin',
             'message' => 'A new booking has been created for review.',
         ];
     }

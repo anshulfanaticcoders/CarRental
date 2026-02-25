@@ -86,4 +86,50 @@ return [
         'download' => 'Downloaden',
         'back_to_bookings' => 'Terug naar boekingen',
         'back' => 'Terug',
+
+        // Booking Details Page - Hero & Navigation
+        'home' => 'Home',
+        'booking' => 'Boeking',
+        'duration' => 'Duur',
+
+        // Booking Details Page - Payment Alert
+        'paid_online' => 'Online betaald',
+        'paid_in_full' => 'Volledig betaald',
+        'deposit_via_stripe' => 'Aanbetaling via Stripe',
+        'due_at_pickup' => 'Te betalen bij ophalen',
+        'pay_to_vendor' => 'Betaal bij aankomst aan verhuurder',
+        'payment_progress' => 'Betalingsvoortgang',
+        'paid' => 'betaald',
+
+        // Booking Details Page - Cards
+        'vehicle_and_trip' => 'Voertuig & Reis',
+        'vehicle_rental' => 'Voertuighuur',
+        'price_breakdown' => 'Prijsoverzicht',
+        'tax_fees' => 'Belasting & Kosten',
+        'grand_total' => 'Totaal',
+        'includes_platform_fee' => 'Inclusief platformkosten',
+
+        // Booking Details Page - Deposit & Insurance
+        'deposit_insurance' => 'Borg & Verzekering',
+        'security_deposit' => 'Waarborgsom',
+        'insurance_excess' => 'Eigen risico verzekering',
+        'deposit_info' => 'Gereserveerd op uw kaart bij ophalen. Vrijgegeven binnen 7-14 dagen na retour, afhankelijk van inspectie.',
+
+        // Booking Details Page - Rental Company & Policies
+        'rental_company' => 'Verhuurbedrijf',
+        'booking_references' => 'Boekingsreferenties',
+        'booked_on' => 'Geboekt op',
+        'rental_policies' => 'Huurvoorwaarden',
+        'view_all' => 'Alles bekijken',
+        'fuel_policy' => 'Brandstofbeleid',
+        'mileage' => 'Kilometers',
+        'min_age' => 'Minimumleeftijd',
+        'cancellation' => 'Annulering',
+
+        // Booking Details Page - Customer Details
+        'your_details' => 'Uw gegevens',
+        'full_name' => 'Volledige naam',
+        'driver_age' => 'Leeftijd bestuurder',
+        'flight_number' => 'Vluchtnummer',
+        'notes' => 'Opmerkingen',
 ];

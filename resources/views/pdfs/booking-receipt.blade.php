@@ -2,572 +2,986 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booking Receipt - {{ $booking->booking_number }}</title>
+    <title>Booking Confirmation - {{ $booking->booking_number }}</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        @page { margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: "Trebuchet MS", Arial, sans-serif;
-            font-size: 13px;
-            line-height: 1.55;
-            color: #1f2937;
-            background: #f3f4f6;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #1a1a2e;
+            background: #fff;
         }
-        .container {
-            max-width: 820px;
-            margin: 0 auto;
-            background: #ffffff;
-        }
+        .page { max-width: 800px; margin: 0 auto; }
+
+        /* ── Header ── */
         .header {
             background: #153B4F;
-            color: #ffffff;
-            padding: 28px 36px 26px;
+            padding: 28px 36px;
+            color: #fff;
+            position: relative;
         }
-        .logo {
-            width: 160px;
-            margin-bottom: 6px;
+        .header::after {
+            content: '';
+            position: absolute; top: 0; right: 0; bottom: 0;
+            width: 200px;
+            background: linear-gradient(135deg, transparent 0%, rgba(46,167,173,0.12) 100%);
         }
-        .logo svg {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-        .header-bar {
+        .header-inner { position: relative; z-index: 1; }
+        .header-top {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            gap: 20px;
         }
-        .brand {
-            font-size: 20px;
-            letter-spacing: 0.08em;
+        .brand-name {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
-            font-weight: 700;
         }
-        .header-title {
-            margin-top: 6px;
-            font-size: 26px;
-            font-weight: 700;
-        }
-        .header-meta {
-            font-size: 12px;
-            color: rgba(255,255,255,0.85);
-            margin-top: 6px;
-        }
-        .header-right {
-            text-align: right;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            background: rgba(255,255,255,0.18);
-            border: 1px solid rgba(255,255,255,0.4);
-            color: #ffffff;
-        }
-        .header-ref {
-            margin-top: 8px;
-            font-size: 12px;
-            color: rgba(255,255,255,0.9);
-        }
-        .content {
-            padding: 30px 36px 24px;
-        }
-        .summary-strip {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-bottom: 26px;
-        }
-        .summary-item {
-            background: #f8fafc;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 10px 12px;
-        }
-        .summary-label {
+        .doc-type {
             font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: #6b7280;
-            margin-bottom: 3px;
+            letter-spacing: 0.15em;
+            color: rgba(255,255,255,0.6);
+            margin-top: 2px;
         }
-        .summary-value {
+        .header-right { text-align: right; }
+        .booking-num {
+            font-size: 18px;
             font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+        .booking-date {
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 3px;
+        }
+        .status-pill {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 6px;
+        }
+        .status-confirmed { background: rgba(16,185,129,0.25); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
+        .status-pending { background: rgba(245,158,11,0.25); color: #fcd34d; border: 1px solid rgba(245,158,11,0.4); }
+        .status-completed { background: rgba(59,130,246,0.25); color: #93c5fd; border: 1px solid rgba(59,130,246,0.4); }
+        .status-cancelled { background: rgba(239,68,68,0.25); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); }
+
+        /* ── Quick Summary Strip ── */
+        .summary-strip {
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 14px 36px;
+        }
+        .summary-strip table { width: 100%; border-collapse: collapse; }
+        .summary-strip td { padding: 0 8px; vertical-align: top; }
+        .summary-strip td:first-child { padding-left: 0; }
+        .summary-strip td:last-child { padding-right: 0; }
+        .sum-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+        .sum-value {
             font-size: 12px;
-            color: #111827;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 1px;
         }
-        .section {
-            margin-bottom: 26px;
-        }
-        .section-title {
-            font-size: 14px;
+
+        /* ── Content Area ── */
+        .content { padding: 24px 36px; }
+
+        /* ── Section Headers ── */
+        .section { margin-bottom: 22px; }
+        .section-head {
+            font-size: 11px;
             font-weight: 700;
             color: #153B4F;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.1em;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #153B4F;
             margin-bottom: 12px;
         }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+
+        /* ── Two-column grid ── */
+        .grid-2 { width: 100%; border-collapse: collapse; }
+        .grid-2 td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0;
         }
-        .info-item {
-            padding: 10px 12px;
+        .grid-2 td:first-child { padding-right: 10px; }
+        .grid-2 td:last-child { padding-left: 10px; }
+
+        /* ── Info blocks ── */
+        .info-block {
+            padding: 8px 10px;
             background: #f8fafc;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-        }
-        .info-label {
-            font-size: 10px;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            margin-bottom: 4px;
-        }
-        .info-value {
-            font-size: 12px;
-            font-weight: 600;
-            color: #111827;
-        }
-        .vehicle-card {
-            display: flex;
-            gap: 16px;
-            padding: 14px;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            background: #f8fafc;
-        }
-        .vehicle-image {
-            width: 160px;
-            height: 110px;
-            object-fit: cover;
-            border-radius: 8px;
-            background: #e5e7eb;
-        }
-        .vehicle-info h3 {
-            font-size: 16px;
-            color: #0f172a;
-            margin-bottom: 6px;
-        }
-        .vehicle-pill {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 999px;
-            font-size: 10px;
-            font-weight: 600;
-            background: #e2e8f0;
-            color: #334155;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
             margin-bottom: 8px;
         }
-        .vehicle-specs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            font-size: 12px;
-            color: #475569;
+        .info-block-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            font-weight: 600;
+            margin-bottom: 2px;
         }
-        .table {
+        .info-block-value {
+            font-size: 11px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .info-block-full {
+            padding: 8px 10px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        /* ── Location timeline ── */
+        .loc-row { display: flex; margin-bottom: 10px; }
+        .loc-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            margin-top: 3px;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .loc-dot-pickup { background: #10b981; border: 2px solid #d1fae5; }
+        .loc-dot-return { background: #ef4444; border: 2px solid #fee2e2; }
+        .loc-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+        .loc-label-pickup { color: #059669; }
+        .loc-label-return { color: #dc2626; }
+        .loc-datetime {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 1px;
+        }
+        .loc-place {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 1px;
+        }
+
+        /* ── Pricing table ── */
+        .price-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
         }
-        .table th {
+        .price-table th {
             text-align: left;
-            font-size: 10px;
+            font-size: 8px;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: #6b7280;
-            padding: 8px 0;
-            border-bottom: 1px solid #e5e7eb;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            font-weight: 600;
+            padding: 6px 0;
+            border-bottom: 1px solid #e2e8f0;
         }
-        .table td {
-            padding: 8px 0;
+        .price-table th:last-child { text-align: right; }
+        .price-table td {
+            padding: 7px 0;
+            font-size: 11px;
+            color: #334155;
             border-bottom: 1px solid #f1f5f9;
         }
-        .table td:last-child,
-        .table th:last-child {
+        .price-table td:last-child {
             text-align: right;
+            font-weight: 600;
+            color: #0f172a;
         }
-        .table tfoot td {
-            font-weight: 700;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 10px;
+        .price-table .subtotal-row td {
+            border-top: 1px solid #e2e8f0;
+            border-bottom: none;
+            padding-top: 8px;
         }
-        .payment-notes {
+
+        /* ── Grand total bar ── */
+        .grand-total-bar {
+            background: #153B4F;
+            padding: 12px 14px;
+            border-radius: 8px;
             margin-top: 10px;
-            font-size: 11px;
-            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        .grand-total-bar table { width: 100%; border-collapse: collapse; }
+        .grand-total-bar td { padding: 0; color: #fff; vertical-align: middle; }
+        .gt-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.75);
+        }
+        .gt-amount {
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+            text-align: right;
+            letter-spacing: -0.02em;
+        }
+
+        /* ── Payment split ── */
+        .payment-split { margin-top: 10px; }
+        .payment-split table { width: 100%; border-collapse: collapse; }
+        .payment-split td { padding: 6px 10px; vertical-align: top; }
+        .pay-card {
+            border-radius: 6px;
+            padding: 8px 12px;
+        }
+        .pay-card-paid { background: #ecfdf5; border: 1px solid #a7f3d0; }
+        .pay-card-due { background: #fffbeb; border: 1px solid #fde68a; }
+        .pay-card-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+        .pay-card-label-paid { color: #059669; }
+        .pay-card-label-due { color: #d97706; }
+        .pay-card-amount {
+            font-size: 16px;
+            font-weight: 800;
+            margin-top: 2px;
+        }
+        .pay-card-amount-paid { color: #065f46; }
+        .pay-card-amount-due { color: #92400e; }
+        .pay-card-note {
+            font-size: 9px;
+            margin-top: 2px;
+        }
+        .pay-card-note-paid { color: #6ee7b7; }
+        .pay-card-note-due { color: #fbbf24; }
+
+        /* ── Extras table ── */
+        .extras-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .extras-table td {
+            padding: 5px 0;
+            font-size: 10px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .extras-table td:last-child { text-align: right; font-weight: 600; }
+
+        /* ── Contact grid ── */
+        .contact-grid { width: 100%; border-collapse: collapse; }
+        .contact-grid td { padding: 0 8px; vertical-align: top; width: 50%; }
+        .contact-grid td:first-child { padding-left: 0; }
+        .contact-grid td:last-child { padding-right: 0; }
+        .contact-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+        }
+        .contact-card-title {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .contact-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+        .contact-detail {
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+
+        /* ── Policies ── */
+        .policy-grid { width: 100%; border-collapse: collapse; }
+        .policy-grid td {
+            padding: 4px 6px;
+            vertical-align: top;
+            width: 25%;
+        }
+        .policy-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 6px 8px;
+            text-align: center;
+        }
+        .policy-label {
+            font-size: 7px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+        .policy-val {
+            font-size: 10px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 2px;
+        }
+
+        /* ── Notes ── */
+        .note-box {
+            background: #eff6ff;
+            border-left: 3px solid #3b82f6;
+            padding: 8px 12px;
+            font-size: 10px;
+            color: #1e40af;
+            border-radius: 0 4px 4px 0;
+            margin-top: 8px;
+        }
+
+        /* ── Footer ── */
         .footer {
             background: #f8fafc;
-            padding: 18px 30px;
+            padding: 14px 36px;
             text-align: center;
-            font-size: 11px;
-            color: #64748b;
-            border-top: 1px solid #e5e7eb;
+            font-size: 9px;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
         }
+        .footer strong { color: #64748b; }
+
+        /* ── Print ── */
         @media print {
-            body { background: white; }
+            body { background: #fff; }
+            .page { max-width: none; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-bar">
-                <div>
-                    <div class="logo">
-                        <svg width="200" height="24" viewBox="0 0 200 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <g>
-                                <path d="M11.4096 23.7241C11.396 23.717 11.1687 23.6294 10.9472 23.5353C10.9035 23.5146 10.8565 23.4933 10.8163 23.4762C10.7324 23.4377 10.6553 23.3993 10.6021 23.3679C10.3777 23.2348 9.93226 22.8572 9.80193 22.7277C9.70503 22.6265 9.59736 22.4827 9.54749 22.4164C9.53389 22.3957 9.52426 22.3815 9.52426 22.3815C9.52426 22.3815 9.50443 22.2904 9.48063 22.1892C9.46079 22.0845 9.43699 21.9655 9.43359 21.92L9.43699 21.9058L9.52086 21.9549C9.60473 22.0318 9.73166 22.175 9.81213 22.259C9.86596 22.3182 10.0467 22.4898 10.3114 22.7034C10.3482 22.7312 10.3884 22.7626 10.4287 22.7945C10.4757 22.8294 10.5227 22.8643 10.5658 22.8993C10.6599 22.962 10.7466 23.0182 10.8236 23.0673C11.0214 23.1898 11.1687 23.2703 11.2022 23.3294C11.2526 23.4277 11.4033 23.7069 11.4096 23.7247V23.7241Z" fill="#ffffff"/>
-                                <path d="M17.4726 21.9057V21.9092L17.3853 22.3814C17.3853 22.3814 17.238 22.5944 17.1076 22.7276C16.9767 22.8572 16.5313 23.2347 16.3069 23.3678C16.0893 23.4974 15.5266 23.714 15.5 23.7246C15.5068 23.7069 15.6575 23.4276 15.7074 23.3294C15.7142 23.3187 15.7244 23.3051 15.7408 23.2944C15.7442 23.2909 15.7476 23.2838 15.7544 23.2802C15.8179 23.2276 15.9386 23.1578 16.0859 23.0666C16.163 23.0175 16.2503 22.9619 16.3438 22.8986C16.3874 22.8637 16.4344 22.8288 16.4809 22.7939C16.5211 22.7625 16.5614 22.7311 16.5982 22.7027C16.8628 22.4891 17.0436 22.3181 17.0969 22.2583C17.1507 22.2021 17.2244 22.1187 17.2946 22.0518C17.3048 22.0376 17.3145 22.0276 17.3281 22.0169C17.3383 22.0027 17.3479 21.9927 17.3581 21.9856C17.3717 21.9678 17.3881 21.9542 17.4017 21.9436C17.4284 21.9193 17.4522 21.9051 17.4618 21.9051C17.4663 21.9027 17.4697 21.9027 17.472 21.9051L17.4726 21.9057Z" fill="#ffffff"/>
-                                <path d="M8.83153 14.9781C8.77486 14.9538 8.72443 14.9254 8.6808 14.9047C8.47 14.7858 8.38273 14.632 8.36573 14.5657C8.35553 14.5237 8.34589 14.4574 8.34589 14.4083C8.34589 14.3734 8.3527 14.3456 8.36573 14.3385C8.39576 14.3385 8.60033 14.4047 8.82473 14.4781L8.73406 10.0964L8.79753 7.00177L8.73406 6.68343L8.79753 4.20414L6.86916 0H0L8.7947 19.1325C8.77486 18.3213 8.76466 17.6355 8.76466 17.6355L8.87516 17.0166L8.83153 14.9775V14.9781Z" fill="#ffffff"/>
-                                <path d="M16.9295 9.44555L16.6484 9.34082C16.6518 9.61715 16.6654 10.2639 16.6751 10.9112C16.6836 11.4574 16.6938 12.0012 16.7017 12.3373V12.387C16.7034 12.4485 16.7051 12.5006 16.7074 12.5444C16.7091 12.6053 16.7108 12.6521 16.7119 12.6669C16.7119 12.6811 16.7187 12.7089 16.7255 12.7509C16.7323 12.7929 16.7391 12.8521 16.7521 12.9225C16.8326 13.3911 17.0168 14.4053 17.1607 15.1538C17.1743 15.2308 17.1907 15.3077 17.2043 15.3775C17.2111 15.416 17.2179 15.4509 17.2242 15.4822C17.2378 15.5521 17.2508 15.6154 17.261 15.671C17.2678 15.6988 17.2746 15.7272 17.2774 15.755C17.291 15.8077 17.3007 15.8532 17.3075 15.8917C17.3273 15.9722 17.3409 16.0248 17.3477 16.042V16.0456C17.3477 16.0491 17.3511 16.0491 17.3511 16.0491C17.3511 16.0491 17.3545 16.042 17.3511 16.0314C17.3579 15.9893 17.3647 15.8775 17.3647 15.7166C17.3681 15.5905 17.3715 15.4367 17.3749 15.2621C17.3613 15.2728 17.3517 15.2799 17.3381 15.2899C17.3182 15.3106 17.3012 15.3319 17.2876 15.3527C17.2678 15.3769 17.2542 15.4053 17.2508 15.4118H17.2474V14.9325C17.2474 14.9325 17.3075 14.9148 17.3613 14.8976C17.3681 14.8976 17.3749 14.8941 17.3811 14.8905V14.887C17.3811 14.7994 17.3845 14.7118 17.3845 14.6213C17.3879 14.2574 17.3913 13.8592 17.3947 13.471C17.3947 13.3243 17.3947 13.1769 17.3981 13.0373C17.4015 12.8976 17.4015 12.7574 17.4015 12.6278C17.4049 11.9248 17.4083 11.397 17.4083 11.397C17.4083 11.397 17.3885 10.6029 17.3579 9.60295L16.9289 9.44555H16.9295Z" fill="#ffffff"/>
-                                <path d="M26.9109 0H20.0553L18.1128 4.23136L18.1763 6.68284L18.1094 7.00118L18.1763 10.0959L18.089 14.4775C18.31 14.4041 18.518 14.3379 18.5446 14.3379C18.5814 14.3485 18.5644 14.4953 18.5446 14.5651C18.5276 14.6314 18.4409 14.7852 18.2295 14.9041C18.1893 14.9249 18.1355 14.9533 18.0788 14.9775L18.0352 17.0166L18.1457 17.6355C18.1457 17.6355 18.1355 18.3456 18.1122 19.174L26.9109 0Z" fill="#ffffff"/>
-                                <path d="M17.3422 9.09247C17.3388 8.99425 17.3354 8.89306 17.332 8.79188C17.3184 8.33744 17.3053 7.8688 17.2883 7.43862C17.2815 7.27768 17.2747 7.12028 17.2713 6.96999C17.2679 6.87176 17.2645 6.77413 17.2611 6.683C17.2543 6.54336 17.2475 6.41377 17.2441 6.29484C17.2407 6.23862 17.2373 6.18655 17.2373 6.13744C17.2305 6.02561 17.2271 5.92738 17.2237 5.84691C17.2135 5.70016 17.2067 5.60549 17.2005 5.57768V5.57058C17.2005 5.56703 17.1971 5.56703 17.1971 5.56703C17.1971 5.56348 17.1937 5.56348 17.1937 5.56348C17.1835 5.56348 17.1671 5.59484 17.1433 5.65105C17.1331 5.68596 17.12 5.72797 17.103 5.77709C17.0866 5.8333 17.0696 5.89602 17.0492 5.96939C17.0424 5.9972 17.0356 6.02561 17.0294 6.04987C17.0095 6.13034 16.9857 6.22146 16.9625 6.312C16.9523 6.34336 16.9461 6.37117 16.9393 6.40312C16.9257 6.46229 16.9092 6.52561 16.8956 6.58478C16.8418 6.812 16.7919 7.02561 16.7653 7.16525V7.1688C16.7517 7.22502 16.7455 7.26703 16.7387 7.29484C16.7353 7.30904 16.7319 7.3191 16.7319 7.3262C16.7285 7.36466 16.7149 7.63389 16.7018 7.95223C16.6882 8.27058 16.6718 8.64809 16.6582 8.90016L16.9262 8.97709L17.3416 9.09247H17.3422Z" fill="#ffffff"/>
-                                <path d="M10.2518 8.89985H10.2552C10.2552 8.86849 10.2518 8.83358 10.2484 8.79867C10.245 8.72885 10.2416 8.65547 10.2382 8.575C10.2348 8.53654 10.2314 8.49453 10.2314 8.45252C10.2246 8.33003 10.2178 8.20044 10.2149 8.07855C10.1979 7.74601 10.1849 7.44896 10.1781 7.35133V7.32707C10.1781 7.31997 10.1747 7.30932 10.1713 7.29571C10.1645 7.2608 10.1515 7.19808 10.1345 7.11405C10.1345 7.11169 10.1333 7.10932 10.1311 7.10695C10.1243 7.06849 10.1141 7.01938 10.101 6.96731C10.0778 6.85547 10.0472 6.72234 10.0138 6.58624C10.0002 6.52707 9.98373 6.46376 9.97013 6.40459C9.96333 6.37323 9.95653 6.34541 9.94689 6.31346C9.92706 6.22234 9.90326 6.13536 9.88003 6.05133C9.87323 6.02707 9.86643 5.99867 9.86019 5.97086C9.84036 5.90104 9.82336 5.83417 9.80636 5.77855C9.78936 5.72944 9.77633 5.68743 9.76613 5.65252C9.74289 5.5963 9.72589 5.56494 9.71569 5.56494C9.71343 5.56494 9.71229 5.56612 9.71229 5.56849L9.70889 5.57204V5.57914C9.70209 5.60695 9.69529 5.70163 9.68566 5.84837C9.68226 5.92175 9.67886 6.00932 9.67546 6.1105C9.67206 6.16967 9.66866 6.22944 9.66526 6.29571C9.64543 6.78861 9.62163 7.47086 9.59839 8.18092C9.58819 8.48506 9.57856 8.79275 9.56836 9.09394L9.98373 8.97855L10.2518 8.90163V8.89985Z" fill="#ffffff"/>
-                                <path d="M10.1106 13.1807C10.1174 13.1493 10.1242 13.118 10.1276 13.086C10.1378 13.0268 10.1474 12.9706 10.1576 12.9215C10.1678 12.8517 10.1774 12.7919 10.1842 12.7499C10.191 12.7079 10.1944 12.6801 10.1978 12.6659C10.1978 12.6481 10.2012 12.5925 10.2012 12.5085C10.2046 12.4665 10.2046 12.4174 10.2046 12.3617C10.2046 12.3339 10.208 12.3026 10.208 12.2706C10.208 12.2079 10.2114 12.141 10.2114 12.0712C10.2182 11.928 10.2216 11.7635 10.2216 11.5884C10.2273 11.4049 10.2301 11.2091 10.233 11.0138C10.2347 10.931 10.2358 10.8487 10.2375 10.7665C10.2398 10.6404 10.2426 10.515 10.2454 10.3961C10.2454 10.3191 10.2454 10.2422 10.2488 10.1688C10.2488 10.0955 10.2522 10.0221 10.2522 9.95523C10.2522 9.88541 10.2556 9.82209 10.2556 9.75937C10.259 9.58422 10.2624 9.43748 10.2624 9.33984L9.98079 9.44458L9.55239 9.60197C9.52235 10.602 9.50195 11.3961 9.50195 11.3961C9.50195 11.3961 9.50195 11.9239 9.50875 12.6268C9.51215 12.889 9.51215 13.1759 9.51555 13.4694C9.51895 13.9552 9.52575 14.4558 9.52915 14.886V14.8895C9.53595 14.8931 9.54275 14.8966 9.54899 14.8966C9.60282 14.9144 9.66629 14.9316 9.66629 14.9316V15.4073C9.66629 15.4073 9.66402 15.4061 9.66232 15.4055C9.65439 15.3978 9.64815 15.3878 9.63965 15.3724C9.62265 15.3481 9.59942 15.3162 9.57279 15.2919V15.2884C9.56939 15.2848 9.56599 15.2813 9.55919 15.2777C9.55239 15.2706 9.54219 15.2671 9.53595 15.26C9.54275 15.7251 9.54955 16.0398 9.56259 16.0469C9.58922 16.0469 9.89749 14.3824 10.0749 13.389C10.0885 13.3156 10.1015 13.2458 10.1117 13.1789L10.1106 13.1807Z" fill="#ffffff"/>
-                                <path d="M16.7426 15.3626L16.3907 13.3135C16.3907 13.3135 14.8471 13.53 13.822 13.5792C13.6883 13.5863 13.5642 13.5898 13.4537 13.5898C13.35 13.5898 13.2327 13.5863 13.1052 13.5827C12.084 13.5336 10.5195 13.3135 10.5195 13.3135L10.171 15.3277C10.1205 15.6283 10.0769 15.9295 10.0469 16.23V16.2543C10.0469 16.3312 10.0905 16.4011 10.1574 16.4324C11.8585 17.1667 13.3959 17.1738 13.4526 17.1738C13.5092 17.1738 15.0466 17.1667 16.7483 16.4324C16.8254 16.3975 16.8724 16.317 16.8622 16.2295L16.8588 16.1945C16.8288 15.9147 16.7885 15.6383 16.7415 15.362L16.7426 15.3626Z" fill="#ffffff"/>
-                                <path d="M34.103 7.43238C35.0114 7.05546 36.0518 6.8667 37.2237 6.8667V12.0987C36.7154 12.0377 36.2955 12.0069 35.964 12.0069C34.7723 12.0069 33.8395 12.3436 33.1658 13.017C32.492 13.6904 32.1548 14.72 32.1548 16.1069V23.7253H26.5879V7.14185H31.8913V9.1306C32.4574 8.37617 33.1952 7.80989 34.1036 7.43238H34.103Z" fill="#ffffff"/>
-                                <path d="M42.7328 22.8983C41.3654 22.1639 40.2961 21.1444 39.5243 19.8385C38.7525 18.5338 38.3672 17.0545 38.3672 15.4024C38.3672 13.7503 38.7525 12.3024 39.5243 10.9965C40.2956 9.69176 41.3603 8.67637 42.7181 7.95211C44.0752 7.22785 45.6137 6.86572 47.333 6.86572C49.0523 6.86572 50.5948 7.22785 51.9621 7.95211C53.3289 8.67637 54.3943 9.68584 55.1559 10.9805C55.9175 12.2758 56.2983 13.7497 56.2983 15.4018C56.2983 17.0539 55.9175 18.5326 55.1559 19.8379C54.3943 21.1432 53.3289 22.1628 51.9621 22.8977C50.5948 23.632 49.0512 23.9989 47.333 23.9989C45.6149 23.9989 44.1002 23.632 42.7328 22.8977V22.8983ZM49.7357 18.3249C50.3607 17.6213 50.6735 16.6474 50.6735 15.403C50.6735 14.1586 50.3607 13.2208 49.7357 12.5267C49.1101 11.8338 48.3094 11.4864 47.333 11.4864C46.3566 11.4864 45.5554 11.8332 44.9303 12.5267C44.3047 13.2202 43.9925 14.1787 43.9925 15.403C43.9925 16.6273 44.3047 17.6208 44.9303 18.3249C45.5554 19.0284 46.3561 19.3805 47.333 19.3805C48.31 19.3805 49.1101 19.0284 49.7357 18.3249Z" fill="#ffffff"/>
-                                <path d="M62.2465 22.8983C60.8791 22.1639 59.8098 21.1444 59.038 19.8385C58.2662 18.5338 57.8809 17.0545 57.8809 15.4024C57.8809 13.7503 58.2662 12.3024 59.038 10.9965C59.8092 9.69176 60.874 8.67637 62.2317 7.95211C63.5889 7.22785 65.1274 6.86572 66.8467 6.86572C68.566 6.86572 70.1084 7.22785 71.4758 7.95211C72.8426 8.67637 73.9079 9.68584 74.6696 10.9805C75.4312 12.2758 75.812 13.7497 75.812 15.4018C75.812 17.0539 75.4312 18.5326 74.6696 19.8379C73.9079 21.1432 72.8426 22.1628 71.4758 22.8977C70.1084 23.632 68.5648 23.9989 66.8467 23.9989C65.1285 23.9989 63.6138 23.632 62.2465 22.8977V22.8983ZM69.2494 18.3249C69.8744 17.6213 70.1872 16.6474 70.1872 15.403C70.1872 14.1586 69.8744 13.2208 69.2494 12.5267C68.6238 11.8338 67.8231 11.4864 66.8467 11.4864C65.8703 11.4864 65.069 11.8332 64.444 12.5267C63.8184 13.2202 63.5062 14.1787 63.5062 15.403C63.5062 16.6273 63.8184 17.6208 64.444 18.3249C65.069 19.0284 65.8698 19.3805 66.8467 19.3805C67.8236 19.3805 68.6238 19.0284 69.2494 18.3249Z" fill="#ffffff"/>
-                                <path d="M94.5332 16.9016H82.989C83.223 17.7584 83.6775 18.4158 84.3513 18.875C85.025 19.3342 85.8699 19.5631 86.8854 19.5631C87.647 19.5631 88.3066 19.4513 88.8631 19.2265C89.4196 19.0022 89.9811 18.6353 90.5478 18.1253L93.478 21.3075C91.935 23.1022 89.6785 23.9998 86.7097 23.9998C84.8539 23.9998 83.223 23.633 81.8166 22.8987C80.4101 22.1643 79.321 21.1448 78.5497 19.8389C77.7779 18.5342 77.3926 17.0549 77.3926 15.4028C77.3926 13.7507 77.7683 12.3075 78.5208 11.0123C79.2728 9.71759 80.3126 8.7022 81.6415 7.96788C82.9697 7.23356 84.464 6.8667 86.1244 6.8667C87.7847 6.8667 89.1424 7.20871 90.4316 7.89155C91.7208 8.57498 92.7414 9.56433 93.4933 10.859C94.2453 12.1543 94.6216 13.6898 94.6216 15.4637C94.6216 15.5046 94.5921 15.9839 94.5337 16.9016H94.5332ZM83.9999 11.762C83.4236 12.272 83.0576 12.9655 82.9012 13.8424H89.406C89.2496 12.9655 88.8835 12.272 88.3072 11.762C87.7309 11.2519 87.0129 10.9969 86.1538 10.9969C85.2948 10.9969 84.5762 11.2519 84.0005 11.762H83.9999Z" fill="#ffffff"/>
-                                <path d="M122.56 8.7022C123.722 9.92646 124.304 11.7726 124.304 14.2401V23.7247H118.737V15.1886C118.737 14.0259 118.527 13.1691 118.107 12.6182C117.686 12.0673 117.096 11.7921 116.334 11.7921C115.494 11.7921 114.82 12.0987 114.312 12.7105C113.804 13.3223 113.551 14.2507 113.551 15.4945V23.7247H107.984V15.1886C107.984 12.9247 107.182 11.7921 105.581 11.7921C104.721 11.7921 104.038 12.0987 103.53 12.7105C103.021 13.3223 102.768 14.2507 102.768 15.4945V23.7247H97.2012V7.14185H102.505V8.88563C103.091 8.21285 103.789 7.70753 104.6 7.37143C105.41 7.03475 106.294 6.8667 107.251 6.8667C108.365 6.8667 109.361 7.0809 110.24 7.5093C111.119 7.93771 111.831 8.59096 112.379 9.46729C113.004 8.6312 113.795 7.98859 114.752 7.53948C115.709 7.09096 116.754 6.8667 117.887 6.8667C119.841 6.8667 121.398 7.47853 122.561 8.7022H122.56Z" fill="#ffffff"/>
-                                <path d="M127.749 23.0007C127.105 22.3492 126.783 21.5237 126.783 20.5255C126.783 19.5273 127.1 18.6823 127.734 18.0504C128.368 17.419 129.163 17.103 130.119 17.103C131.075 17.103 131.894 17.419 132.519 18.0504C133.143 18.6817 133.456 19.5072 133.456 20.5255C133.456 21.5439 133.138 22.3492 132.505 23.0007C131.871 23.6527 131.076 23.9788 130.12 23.9788C129.164 23.9788 128.393 23.6533 127.749 23.0007H127.749Z" fill="#ffffff"/>
-                                <path d="M139.366 22.878C137.98 22.1449 136.903 21.1266 136.133 19.8224C135.362 18.5189 134.977 17.042 134.977 15.3917C134.977 13.7414 135.361 12.2704 136.133 10.9763C136.903 9.68278 137.98 8.67449 139.366 7.95083C140.751 7.22775 142.322 6.86621 144.077 6.86621C145.833 6.86621 147.423 7.26858 148.73 8.07331C150.037 8.87805 150.964 9.99343 151.51 11.4195L147.209 13.7112C146.487 12.2242 145.433 11.4804 144.048 11.4804C143.053 11.4804 142.229 11.8272 141.575 12.5195C140.921 13.2124 140.595 14.1698 140.595 15.3917C140.595 16.6135 140.921 17.607 141.575 18.31C142.229 19.013 143.053 19.3644 144.048 19.3644C145.433 19.3644 146.487 18.6212 147.209 17.1337L151.51 19.4254C150.964 20.8514 150.037 21.9668 148.73 22.7715C147.423 23.5763 145.872 23.9786 144.077 23.9786C142.283 23.9786 140.751 23.6118 139.366 22.8786V22.878Z" fill="#ffffff"/>
-                                <path d="M156.808 22.8779C155.442 22.1448 154.374 21.1265 153.603 19.8223C152.833 18.5188 152.447 17.0418 152.447 15.3916C152.447 13.7413 152.832 12.2951 153.603 10.9916C154.374 9.688 155.437 8.67439 156.793 7.95131C158.149 7.22824 159.685 6.8667 161.402 6.8667C163.119 6.8667 164.66 7.22883 166.026 7.95131C167.391 8.67439 168.455 9.68327 169.216 10.9768C169.977 12.2708 170.357 13.7424 170.357 15.3921C170.357 17.0418 169.977 18.5194 169.216 19.8229C168.455 21.1271 167.391 22.1454 166.026 22.8785C164.66 23.6117 163.119 23.9785 161.402 23.9785C159.686 23.9785 158.173 23.6117 156.808 22.8785V22.8779ZM163.802 18.3099C164.426 17.6069 164.738 16.6347 164.738 15.3916C164.738 14.1484 164.426 13.2123 163.802 12.5194C163.177 11.8271 162.378 11.4803 161.402 11.4803C160.426 11.4803 159.626 11.8271 159.002 12.5194C158.377 13.2123 158.066 14.1697 158.066 15.3916C158.066 16.6134 158.377 17.6069 159.002 18.3099C159.626 19.0129 160.426 19.3643 161.402 19.3643C162.378 19.3643 163.177 19.0129 163.802 18.3099Z" fill="#ffffff"/>
-                                <path d="M198.259 8.69984C199.42 9.92232 200.001 11.7661 200.001 14.2306V23.7034H194.441V15.1779C194.441 14.017 194.231 13.1614 193.812 12.6111C193.392 12.0608 192.802 11.7862 192.041 11.7862C191.202 11.7862 190.53 12.0916 190.022 12.7028C189.515 13.314 189.261 14.2413 189.261 15.4833V23.7028H183.701V15.1774C183.701 12.9164 182.901 11.7856 181.301 11.7856C180.443 11.7856 179.76 12.091 179.253 12.7022C178.745 13.3134 178.492 14.2407 178.492 15.4827V23.7022H172.932V7.14126H178.228V8.88327C178.814 8.21108 179.511 7.70694 180.32 7.37084C181.13 7.03475 182.013 6.8667 182.969 6.8667C184.081 6.8667 185.076 7.08031 185.954 7.50812C186.831 7.93593 187.544 8.588 188.09 9.46374C188.714 8.62883 189.504 7.98682 190.46 7.53889C191.416 7.09096 192.46 6.8667 193.591 6.8667C195.542 6.8667 197.098 7.47794 198.259 8.69984H198.259Z" fill="#ffffff"/>
-                            </g>
-                        </svg>
-                    </div>
-                    <div class="header-title">Booking Summary</div>
-                    <div class="header-meta">Generated {{ date('F j, Y', strtotime($booking->created_at)) }}</div>
-                </div>
-                <div class="header-right">
-                    <span class="status-badge">{{ ucfirst($booking->booking_status) }}</span>
-                    <div class="header-ref">Booking No: {{ $booking->booking_number }}</div>
-                    @if($booking->provider_booking_ref)
-                        <div class="header-ref">Provider Ref: {{ $booking->provider_booking_ref }}</div>
-                    @endif
-                </div>
-            </div>
-        </div>
+@php
+    $providerMetadata = $booking->provider_metadata ?? [];
+    if (is_string($providerMetadata)) {
+        $providerMetadata = json_decode($providerMetadata, true) ?? [];
+    }
+    $providerPricing = $providerMetadata['provider_pricing'] ?? [];
+    $customerPricing = $providerMetadata['customer_pricing'] ?? [];
+    $policies = $providerMetadata['benefits'] ?? $providerMetadata['policies'] ?? [];
+    $amounts = $booking->amounts ?? null;
+    $currency = $booking->booking_currency ?? 'EUR';
 
-        <div class="content">
-            <div class="summary-strip">
-                <div class="summary-item">
-                    <div class="summary-label">Booking Date</div>
-                    <div class="summary-value">{{ date('M j, Y', strtotime($booking->created_at)) }}</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Provider</div>
-                    <div class="summary-value">{{ $booking->provider_source ? ucfirst(str_replace('_', ' ', $booking->provider_source)) : 'Internal' }}</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Payment Status</div>
-                    <div class="summary-value">{{ ucfirst($payment->payment_status ?? $payment->status ?? $booking->payment_status ?? 'pending') }}</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Currency</div>
-                    <div class="summary-value">{{ $booking->booking_currency ?? $payment->currency ?? 'USD' }}</div>
-                </div>
-            </div>
+    $paidPercentage = $booking->total_amount > 0 ? round(($booking->amount_paid / $booking->total_amount) * 100) : 0;
+    $isPOA = $paidPercentage > 0 && $paidPercentage < 100;
+    $duePercentage = 100 - $paidPercentage;
 
-            <!-- Vehicle Information -->
-            <div class="section">
-                <h2 class="section-title">Vehicle Information</h2>
-                <div class="vehicle-card">
-                    @if(isset($vehicle->images[0]['image_url']))
-                        <img src="{{ $vehicle->images[0]['image_url'] }}" alt="Vehicle" class="vehicle-image">
-                    @else
-                        <div class="vehicle-image" style="display:flex;align-items:center;justify-content:center;background:#e5e7eb;color:#94a3b8;">No Image</div>
-                    @endif
-                    <div class="vehicle-info">
-                        <h3>{{ $vehicle->brand ?? '' }} {{ $vehicle->model ?? $vehicle->vehicle_name ?? '' }}</h3>
-                        @if(isset($vehicle->category->name))
-                            <div class="vehicle-pill">{{ $vehicle->category->name }}</div>
-                        @endif
-                        <div class="vehicle-specs">
-                            @if($vehicle->transmission)
-                                <span>Transmission: {{ ucfirst($vehicle->transmission) }}</span>
-                            @endif
-                            @if($vehicle->fuel)
-                                <span>Fuel: {{ ucfirst($vehicle->fuel) }}</span>
-                            @endif
-                            @if($vehicle->seating_capacity)
-                                <span>Seats: {{ $vehicle->seating_capacity }}</span>
-                            @endif
-                            @if(!empty($vehicle->color))
-                                <span>Color: {{ ucfirst($vehicle->color) }}</span>
-                            @endif
-                            @if(!empty($vehicle->mileage))
-                                <span>Mileage: {{ number_format($vehicle->mileage) }}</span>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
+    $statusClass = match($booking->booking_status) {
+        'confirmed' => 'status-confirmed',
+        'completed' => 'status-completed',
+        'cancelled' => 'status-cancelled',
+        default => 'status-pending',
+    };
 
-            <!-- Trip Details -->
-            <div class="section">
-                <h2 class="section-title">Trip Details</h2>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="info-label">Pickup Location</div>
-                        <div class="info-value">{{ $booking->pickup_location }}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Drop-off Location</div>
-                        <div class="info-value">{{ $booking->return_location }}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Pickup Date & Time</div>
-                        <div class="info-value">{{ date('M j, Y', strtotime($booking->pickup_date)) }} at {{ date('g:i A', strtotime($booking->pickup_time)) }}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Drop-off Date & Time</div>
-                        <div class="info-value">{{ date('M j, Y', strtotime($booking->return_date)) }} at {{ date('g:i A', strtotime($booking->return_time)) }}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Rental Duration</div>
-                        <div class="info-value">{{ $booking->total_days }} {{ $booking->total_days == 1 ? 'Day' : 'Days' }}</div>
-                    </div>
-                    @if($booking->customer && $booking->customer->flight_number)
-                        <div class="info-item">
-                            <div class="info-label">Flight Number</div>
-                            <div class="info-value">{{ $booking->customer->flight_number }}</div>
-                        </div>
-                    @endif
-                    <div class="info-item">
-                        <div class="info-label">Booking Status</div>
-                        <div class="info-value" style="text-transform: capitalize;">{{ $booking->booking_status }}</div>
-                    </div>
-                </div>
-            </div>
+    $pickupLocation = $providerMetadata['pickup_location_details'] ?? $providerMetadata['location'] ?? [];
+    $dropoffLocation = $providerMetadata['dropoff_location_details'] ?? [];
+@endphp
+<div class="page">
 
-            <!-- Payment Summary -->
-            <div class="section">
-                <h2 class="section-title">Payment Summary</h2>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th>Details</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Daily Rate</td>
-                            <td>{{ $booking->total_days }} {{ $booking->total_days == 1 ? 'day' : 'days' }}</td>
-                            <td>{{ $booking->booking_currency ?? 'USD' }} {{ number_format($booking->base_price ?? ($booking->total_amount / max($booking->total_days, 1)), 2) }}</td>
-                        </tr>
-                        @if(isset($booking->plan) && $booking->plan)
-                            <tr>
-                                <td>Plan ({{ $booking->plan }})</td>
-                                <td>Package</td>
-                                <td>{{ $booking->booking_currency ?? 'USD' }} {{ $booking->plan_price ? number_format($booking->plan_price, 2) : '0.00' }}</td>
-                            </tr>
-                        @endif
-                        @if($booking->extras && $booking->extras->count() > 0)
-                            @foreach($booking->extras as $extra)
-                                <tr>
-                                    <td>{{ $extra->name ?? $extra->extra_name }}</td>
-                                    <td>{{ $extra->quantity ? $extra->quantity . 'x' : '-' }}</td>
-                                    <td>{{ $booking->booking_currency ?? 'USD' }} {{ number_format($extra->price, 2) }}</td>
-                                </tr>
-                            @endforeach
-                        @endif
-                        @if($booking->tax_amount)
-                            <tr>
-                                <td>Taxes</td>
-                                <td>-</td>
-                                <td>{{ $booking->booking_currency ?? 'USD' }} {{ number_format($booking->tax_amount, 2) }}</td>
-                            </tr>
-                        @endif
-                        @if($booking->discount_amount)
-                            <tr>
-                                <td>Discount</td>
-                                <td>-</td>
-                                <td>-{{ $booking->booking_currency ?? 'USD' }} {{ number_format($booking->discount_amount, 2) }}</td>
-                            </tr>
-                        @endif
-                        @if(!empty($vehicle->security_deposit))
-                            <tr>
-                                <td>Security Deposit</td>
-                                <td>Refundable</td>
-                                <td>{{ $booking->booking_currency ?? 'USD' }} {{ number_format($vehicle->security_deposit, 2) }}</td>
-                            </tr>
-                        @endif
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="2">Total Amount</td>
-                            <td>{{ $booking->booking_currency ?? 'USD' }} {{ number_format($booking->total_amount ?? 0, 2) }}</td>
-                        </tr>
-                        @if($booking->amount_paid)
-                            <tr>
-                                <td colspan="2">Amount Paid</td>
-                                <td>{{ $payment->currency ?? $booking->booking_currency ?? 'USD' }} {{ number_format($booking->amount_paid, 2) }}</td>
-                            </tr>
-                        @endif
-                        @if($booking->pending_amount)
-                            <tr>
-                                <td colspan="2">Pending Amount</td>
-                                <td>{{ $booking->booking_currency ?? 'USD' }} {{ number_format($booking->pending_amount, 2) }}</td>
-                            </tr>
-                        @endif
-                    </tfoot>
-                </table>
-                <div class="payment-notes">
-                    Payment Method: {{ ucfirst($payment->payment_method ?? $payment->method ?? 'N/A') }}
-                    @if($payment->transaction_id)
-                        | Transaction: {{ $payment->transaction_id }}
-                    @endif
-                    @if($payment->payment_date)
-                        | Date: {{ date('M j, Y', strtotime($payment->payment_date)) }}
-                    @endif
-                </div>
-            </div>
-
-            <!-- Customer Information -->
-            <div class="section">
-                <h2 class="section-title">Customer Information</h2>
-                <div class="info-grid">
-                    @if($booking->customer)
-                        <div class="info-item">
-                            <div class="info-label">Customer Name</div>
-                            <div class="info-value">{{ $booking->customer->first_name }} {{ $booking->customer->last_name }}</div>
-                        </div>
-                        @if($booking->customer->email)
-                            <div class="info-item">
-                                <div class="info-label">Email</div>
-                                <div class="info-value">{{ $booking->customer->email }}</div>
-                            </div>
-                        @endif
-                        @if($booking->customer->phone)
-                            <div class="info-item">
-                                <div class="info-label">Phone</div>
-                                <div class="info-value">{{ $booking->customer->phone }}</div>
-                            </div>
-                        @endif
-                        @if($booking->customer->driver_age)
-                            <div class="info-item">
-                                <div class="info-label">Driver Age</div>
-                                <div class="info-value">{{ $booking->customer->driver_age }}</div>
-                            </div>
-                        @endif
-                    @endif
-                </div>
-            </div>
-
-            @if($vendorUser || $vendorCompany || $booking->provider_source)
-                <!-- Vendor Information -->
-                <div class="section">
-                    <h2 class="section-title">Vendor Information</h2>
-                    <div class="info-grid">
-                        @if($booking->provider_source)
-                            <div class="info-item">
-                                <div class="info-label">Provider</div>
-                                <div class="info-value">{{ ucfirst(str_replace('_', ' ', $booking->provider_source)) }}</div>
-                            </div>
-                        @endif
-                        @if($vendorCompany && $vendorCompany->company_name)
-                            <div class="info-item">
-                                <div class="info-label">Company Name</div>
-                                <div class="info-value">{{ $vendorCompany->company_name }}</div>
-                            </div>
-                        @endif
-                        @if($vendorUser)
-                            <div class="info-item">
-                                <div class="info-label">Vendor Name</div>
-                                <div class="info-value">{{ $vendorUser->first_name }} {{ $vendorUser->last_name }}</div>
-                            </div>
-                        @endif
-                        @if($vendorCompany && $vendorCompany->company_email)
-                            <div class="info-item">
-                                <div class="info-label">Company Email</div>
-                                <div class="info-value">{{ $vendorCompany->company_email }}</div>
-                            </div>
-                        @endif
-                        @if($vendorCompany && $vendorCompany->company_phone_number)
-                            <div class="info-item">
-                                <div class="info-label">Company Phone</div>
-                                <div class="info-value">{{ $vendorCompany->company_phone_number }}</div>
-                            </div>
-                        @endif
-                        @if($vendorUser && $vendorUser->email)
-                            <div class="info-item">
-                                <div class="info-label">Vendor Email</div>
-                                <div class="info-value">{{ $vendorUser->email }}</div>
-                            </div>
-                        @endif
-                        @if($vendorUser && $vendorUser->phone)
-                            <div class="info-item">
-                                <div class="info-label">Vendor Phone</div>
-                                <div class="info-value">{{ $vendorUser->phone }}</div>
-                            </div>
-                        @endif
-                        @if($vendorCompany && $vendorCompany->company_address)
-                            <div class="info-item" style="grid-column: 1 / -1;">
-                                <div class="info-label">Company Address</div>
-                                <div class="info-value">{{ $vendorCompany->company_address }}</div>
-                            </div>
-                        @endif
-                        @if((!empty($vendorProfile?->address_line1) || !empty($vendorProfile?->city)) && empty($vendorCompany?->company_address))
-                            <div class="info-item" style="grid-column: 1 / -1;">
-                                <div class="info-label">Address</div>
-                                <div class="info-value">
-                                    {{ $vendorProfile->address_line1 }}
-                                    {{ $vendorProfile->city ? ', ' . $vendorProfile->city : '' }}
-                                    {{ $vendorProfile->state ? ', ' . $vendorProfile->state : '' }}
-                                    {{ $vendorProfile->country ? ', ' . $vendorProfile->country : '' }}
-                                    {{ $vendorProfile->postal_code ? ' ' . $vendorProfile->postal_code : '' }}
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            @endif
-
-            @if($booking->notes || $booking->cancellation_reason)
-                <div class="section">
-                    <h2 class="section-title">Additional Notes</h2>
-                    <div class="info-grid">
-                        @if($booking->notes)
-                            <div class="info-item" style="grid-column: 1 / -1;">
-                                <div class="info-label">Notes</div>
-                                <div class="info-value">{{ $booking->notes }}</div>
-                            </div>
-                        @endif
-                        @if($booking->cancellation_reason)
-                            <div class="info-item" style="grid-column: 1 / -1;">
-                                <div class="info-label">Cancellation Reason</div>
-                                <div class="info-value">{{ $booking->cancellation_reason }}</div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            @endif
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            <p><strong>Thank you for your booking!</strong></p>
-            <p style="margin-top:5px;">For any questions or changes, please contact our support team.</p>
-            <p style="margin-top:10px;">This is an automatically generated receipt. Generated on {{ date('F j, Y, g:i A') }}</p>
+    {{-- ═══ HEADER ═══ --}}
+    <div class="header">
+        <div class="header-inner">
+            <table style="width:100%; border-collapse:collapse;">
+                <tr>
+                    <td style="vertical-align:top;">
+                        <div class="brand-name">vrooem.</div>
+                        <div class="doc-type">Booking Confirmation</div>
+                    </td>
+                    <td style="text-align:right; vertical-align:top;">
+                        <div class="booking-num">#{{ $booking->booking_number }}</div>
+                        <div class="booking-date">{{ date('F j, Y', strtotime($booking->created_at)) }}</div>
+                        <div class="status-pill {{ $statusClass }}">{{ ucfirst($booking->booking_status) }}</div>
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
+
+    {{-- ═══ QUICK SUMMARY STRIP ═══ --}}
+    <div class="summary-strip">
+        <table>
+            <tr>
+                <td>
+                    <div class="sum-label">Pickup</div>
+                    <div class="sum-value">{{ date('M j, Y', strtotime($booking->pickup_date)) }}</div>
+                </td>
+                <td>
+                    <div class="sum-label">Return</div>
+                    <div class="sum-value">{{ date('M j, Y', strtotime($booking->return_date)) }}</div>
+                </td>
+                <td>
+                    <div class="sum-label">Duration</div>
+                    <div class="sum-value">{{ $booking->total_days }} {{ $booking->total_days == 1 ? 'Day' : 'Days' }}</div>
+                </td>
+                <td>
+                    <div class="sum-label">Currency</div>
+                    <div class="sum-value">{{ $currency }}</div>
+                </td>
+                <td style="text-align:right;">
+                    <div class="sum-label">Total</div>
+                    <div class="sum-value" style="font-size:14px; color:#153B4F;">{{ $currency }} {{ number_format($booking->total_amount ?? 0, 2) }}</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="content">
+
+        {{-- ═══ TRIP DETAILS ═══ --}}
+        <div class="section">
+            <div class="section-head">Trip Details</div>
+            <table style="width:100%; border-collapse:collapse;">
+                <tr>
+                    <td style="width:55%; vertical-align:top; padding-right:16px;">
+                        {{-- Pickup --}}
+                        <table style="width:100%; border-collapse:collapse; margin-bottom:12px;">
+                            <tr>
+                                <td style="width:16px; vertical-align:top; padding-top:3px;">
+                                    <div class="loc-dot loc-dot-pickup"></div>
+                                </td>
+                                <td>
+                                    <div class="loc-label loc-label-pickup">Pickup</div>
+                                    <div class="loc-datetime">{{ date('D, M j, Y', strtotime($booking->pickup_date)) }} &middot; {{ date('g:i A', strtotime($booking->pickup_time)) }}</div>
+                                    <div class="loc-place">{{ $booking->pickup_location }}</div>
+                                    @if(!empty($pickupLocation['name']))
+                                        <div class="loc-place" style="font-weight:600; color:#334155;">{{ $pickupLocation['name'] }}</div>
+                                    @endif
+                                </td>
+                            </tr>
+                        </table>
+                        {{-- Return --}}
+                        <table style="width:100%; border-collapse:collapse;">
+                            <tr>
+                                <td style="width:16px; vertical-align:top; padding-top:3px;">
+                                    <div class="loc-dot loc-dot-return"></div>
+                                </td>
+                                <td>
+                                    <div class="loc-label loc-label-return">Return</div>
+                                    <div class="loc-datetime">{{ date('D, M j, Y', strtotime($booking->return_date)) }} &middot; {{ date('g:i A', strtotime($booking->return_time)) }}</div>
+                                    <div class="loc-place">{{ $booking->return_location ?? $booking->pickup_location }}</div>
+                                    @if(!empty($dropoffLocation['name']))
+                                        <div class="loc-place" style="font-weight:600; color:#334155;">{{ $dropoffLocation['name'] }}</div>
+                                    @endif
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td style="width:45%; vertical-align:top;">
+                        {{-- Vehicle card --}}
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                            @if(isset($vehicle->images[0]['image_url']) || (is_array($vehicle) && isset($vehicle['images'][0]['image_url'])))
+                                @php
+                                    $imgUrl = is_object($vehicle) ? ($vehicle->images[0]['image_url'] ?? '') : ($vehicle['images'][0]['image_url'] ?? '');
+                                @endphp
+                                @if($imgUrl)
+                                    <img src="{{ $imgUrl }}" alt="Vehicle" style="width:100%; height:80px; object-fit:contain; border-radius:6px; margin-bottom:8px;">
+                                @endif
+                            @endif
+                            <div style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:4px;">
+                                {{ is_object($vehicle) ? ($vehicle->brand ?? '') . ' ' . ($vehicle->model ?? $vehicle->vehicle_name ?? '') : (($vehicle['brand'] ?? '') . ' ' . ($vehicle['model'] ?? $vehicle['vehicle_name'] ?? '')) }}
+                            </div>
+                            <table style="width:100%; border-collapse:collapse; margin-top:6px;">
+                                @php
+                                    $trans = is_object($vehicle) ? ($vehicle->transmission ?? null) : ($vehicle['transmission'] ?? null);
+                                    $fuel = is_object($vehicle) ? ($vehicle->fuel ?? null) : ($vehicle['fuel'] ?? null);
+                                    $seats = is_object($vehicle) ? ($vehicle->seating_capacity ?? null) : ($vehicle['seating_capacity'] ?? null);
+                                @endphp
+                                <tr>
+                                    @if($trans)
+                                        <td style="font-size:9px; color:#64748b; padding:2px 0;">
+                                            <span style="display:inline-block; padding:2px 6px; background:#e2e8f0; border-radius:3px; font-weight:600; font-size:8px; color:#475569;">{{ ucfirst($trans) }}</span>
+                                        </td>
+                                    @endif
+                                    @if($fuel)
+                                        <td style="font-size:9px; color:#64748b; padding:2px 0;">
+                                            <span style="display:inline-block; padding:2px 6px; background:#e2e8f0; border-radius:3px; font-weight:600; font-size:8px; color:#475569;">{{ ucfirst($fuel) }}</span>
+                                        </td>
+                                    @endif
+                                    @if($seats)
+                                        <td style="font-size:9px; color:#64748b; padding:2px 0;">
+                                            <span style="display:inline-block; padding:2px 6px; background:#e2e8f0; border-radius:3px; font-weight:600; font-size:8px; color:#475569;">{{ $seats }} Seats</span>
+                                        </td>
+                                    @endif
+                                </tr>
+                            </table>
+                            @if($booking->plan)
+                                <div style="margin-top:6px; font-size:9px; color:#2ea7ad; font-weight:700;">Plan: {{ $booking->plan }}</div>
+                            @endif
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        {{-- ═══ PAYMENT SUMMARY ═══ --}}
+        <div class="section">
+            <div class="section-head">Payment Summary</div>
+
+            <table class="price-table">
+                <thead>
+                    <tr>
+                        <th style="width:55%;">Description</th>
+                        <th>Details</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Vehicle Rental</td>
+                        <td style="color:#94a3b8;">{{ $booking->total_days }} {{ $booking->total_days == 1 ? 'day' : 'days' }}</td>
+                        <td>{{ $currency }} {{ number_format($booking->base_price ?? 0, 2) }}</td>
+                    </tr>
+
+                    @if($booking->extras && $booking->extras->count() > 0)
+                        @foreach($booking->extras as $extra)
+                            <tr>
+                                <td>{{ $extra->extra_name ?? $extra->name ?? 'Extra' }}</td>
+                                <td style="color:#94a3b8;">{{ $extra->quantity ?? 1 }}x</td>
+                                <td>{{ $currency }} {{ number_format(($extra->price ?? 0) * ($extra->quantity ?? 1), 2) }}</td>
+                            </tr>
+                        @endforeach
+                    @elseif($booking->extra_charges > 0)
+                        <tr>
+                            <td>Extras & Add-ons</td>
+                            <td style="color:#94a3b8;">&mdash;</td>
+                            <td>{{ $currency }} {{ number_format($booking->extra_charges, 2) }}</td>
+                        </tr>
+                    @endif
+
+                    @if($booking->tax_amount > 0)
+                        <tr>
+                            <td>Taxes & Fees</td>
+                            <td style="color:#94a3b8;">&mdash;</td>
+                            <td>{{ $currency }} {{ number_format($booking->tax_amount, 2) }}</td>
+                        </tr>
+                    @endif
+
+                    @if($booking->discount_amount > 0)
+                        <tr>
+                            <td style="color:#059669;">Discount</td>
+                            <td style="color:#94a3b8;">&mdash;</td>
+                            <td style="color:#059669;">-{{ $currency }} {{ number_format($booking->discount_amount, 2) }}</td>
+                        </tr>
+                    @endif
+                </tbody>
+            </table>
+
+            {{-- Grand total --}}
+            <div class="grand-total-bar">
+                <table>
+                    <tr>
+                        <td><span class="gt-label">Grand Total</span></td>
+                        <td style="text-align:right;"><span class="gt-amount">{{ $currency }} {{ number_format($booking->total_amount ?? 0, 2) }}</span></td>
+                    </tr>
+                </table>
+            </div>
+
+            {{-- Payment split --}}
+            @if($booking->amount_paid > 0)
+                <div class="payment-split">
+                    <table>
+                        <tr>
+                            <td style="padding-left:0; width:50%;">
+                                <div class="pay-card pay-card-paid">
+                                    <div class="pay-card-label pay-card-label-paid">{{ $isPOA ? "Paid Online ({$paidPercentage}%)" : 'Paid in Full' }}</div>
+                                    <div class="pay-card-amount pay-card-amount-paid">{{ $currency }} {{ number_format($booking->amount_paid, 2) }}</div>
+                                    <div class="pay-card-note" style="color:#059669;">via Stripe</div>
+                                </div>
+                            </td>
+                            @if($booking->pending_amount > 0)
+                                <td style="padding-right:0; width:50%;">
+                                    <div class="pay-card pay-card-due">
+                                        <div class="pay-card-label pay-card-label-due">Due at Pickup ({{ $duePercentage }}%)</div>
+                                        <div class="pay-card-amount pay-card-amount-due">{{ $currency }} {{ number_format($booking->pending_amount, 2) }}</div>
+                                        <div class="pay-card-note" style="color:#d97706;">Pay to vendor on arrival</div>
+                                    </div>
+                                </td>
+                            @endif
+                        </tr>
+                    </table>
+                </div>
+            @endif
+
+            {{-- Payment info --}}
+            <div style="margin-top:8px; font-size:9px; color:#94a3b8;">
+                <strong style="color:#64748b;">Payment:</strong>
+                {{ ucfirst($payment->payment_method ?? $payment->method ?? 'Card') }}
+                @if(!empty($payment->transaction_id) && $payment->transaction_id !== 'N/A')
+                    &middot; Transaction: {{ $payment->transaction_id }}
+                @endif
+                @if(!empty($payment->payment_date))
+                    &middot; {{ date('M j, Y', strtotime($payment->payment_date)) }}
+                @endif
+            </div>
+
+            {{-- Multi-currency note --}}
+            @if($amounts && $amounts->vendor_currency && $amounts->vendor_currency !== $amounts->booking_currency)
+                <div class="note-box" style="margin-top:10px;">
+                    <strong>Currency Note:</strong>
+                    Vendor receives {{ $amounts->vendor_currency }} {{ number_format($amounts->vendor_total_amount, 2) }}.
+                    @if($amounts->booking_to_vendor_rate && $amounts->booking_to_vendor_rate != 1)
+                        Exchange rate: 1 {{ $amounts->booking_currency }} &asymp; {{ number_format($amounts->booking_to_vendor_rate, 4) }} {{ $amounts->vendor_currency }}.
+                    @endif
+                </div>
+            @endif
+        </div>
+
+        {{-- ═══ DEPOSIT & SECURITY ═══ --}}
+        @php
+            $benefitsData = $providerMetadata['benefits'] ?? [];
+            $depositAmount = $benefitsData['deposit_amount'] ?? $providerMetadata['deposit_amount'] ?? $providerMetadata['provider_pricing']['deposit_amount'] ?? $providerMetadata['deposit'] ?? $providerMetadata['Deposit'] ?? null;
+            $securityDeposit = $benefitsData['security_deposit'] ?? null;
+            $depositPaymentMethod = $benefitsData['deposit_payment_method'] ?? null;
+            $selectedDepositType = $benefitsData['selected_deposit_type'] ?? null;
+            $excessAmount = $benefitsData['excess_amount'] ?? $providerMetadata['excess_amount'] ?? $providerMetadata['provider_pricing']['excess_amount'] ?? $providerMetadata['excess'] ?? $providerMetadata['Excess'] ?? null;
+            $excessTheftAmount = $benefitsData['excess_theft_amount'] ?? $providerMetadata['excess_theft_amount'] ?? $providerMetadata['provider_pricing']['excess_theft_amount'] ?? null;
+            $depositCurrency = $benefitsData['deposit_currency'] ?? $providerMetadata['deposit_currency'] ?? $providerMetadata['provider_pricing']['deposit_currency'] ?? $providerMetadata['currency'] ?? $currency;
+            // Use security_deposit for internal vehicles if no provider deposit_amount
+            $displayDeposit = $securityDeposit ?: $depositAmount;
+        @endphp
+        @if($displayDeposit || $excessAmount)
+            <div class="section">
+                <div class="section-head">Deposit & Insurance</div>
+                <table class="grid-2">
+                    <tr>
+                        @if($displayDeposit)
+                            <td>
+                                <div class="info-block">
+                                    <div class="info-block-label">Security Deposit</div>
+                                    <div class="info-block-value">{{ $depositCurrency }} {{ number_format($displayDeposit, 2) }}</div>
+                                    @if($selectedDepositType)
+                                        <div style="font-size:8px; color:#3b82f6; margin-top:2px;">Payment via: {{ ucwords(str_replace(['_', '-'], ' ', $selectedDepositType)) }}</div>
+                                    @elseif($depositPaymentMethod)
+                                        @php
+                                            $methods = $depositPaymentMethod;
+                                            if (is_string($methods)) {
+                                                $decoded = json_decode($methods, true);
+                                                $methods = is_array($decoded) ? $decoded : [$methods];
+                                            }
+                                            $methodText = collect((array) $methods)->map(fn($m) => ucwords(str_replace(['_', '-'], ' ', $m)))->implode(', ');
+                                        @endphp
+                                        <div style="font-size:8px; color:#3b82f6; margin-top:2px;">Accepted: {{ $methodText }}</div>
+                                    @else
+                                        <div style="font-size:8px; color:#94a3b8; margin-top:2px;">Held on card at pickup, refundable</div>
+                                    @endif
+                                </div>
+                            </td>
+                        @endif
+                        @if($excessAmount)
+                            <td>
+                                <div class="info-block">
+                                    <div class="info-block-label">Insurance Excess</div>
+                                    <div class="info-block-value">{{ $depositCurrency }} {{ number_format($excessAmount, 2) }}</div>
+                                    <div style="font-size:8px; color:#94a3b8; margin-top:2px;">Deductible amount</div>
+                                </div>
+                            </td>
+                        @endif
+                        @if($excessTheftAmount)
+                            <td>
+                                <div class="info-block">
+                                    <div class="info-block-label">Theft Excess</div>
+                                    <div class="info-block-value">{{ $depositCurrency }} {{ number_format($excessTheftAmount, 2) }}</div>
+                                    <div style="font-size:8px; color:#94a3b8; margin-top:2px;">Theft deductible</div>
+                                </div>
+                            </td>
+                        @endif
+                    </tr>
+                </table>
+            </div>
+        @endif
+
+        {{-- ═══ RENTAL POLICIES ═══ --}}
+        @if(!empty($policies) || $booking->provider_source)
+            @php
+                $fuelPolicy = $policies['fuel_policy'] ?? $policies['fuelpolicy'] ?? $providerMetadata['fuel_policy'] ?? null;
+
+                // Mileage - check limited_km fields
+                $mileage = 'Unlimited';
+                if (!empty($policies['limited_km_per_day']) && ($policies['limited_km_per_day'] == 1 || $policies['limited_km_per_day'] === true)) {
+                    $range = $policies['limited_km_per_day_range'] ?? null;
+                    $pricePerKm = $policies['price_per_km_per_day'] ?? null;
+                    $mileage = $range ? "{$range} km/day" : 'Limited';
+                    if ($pricePerKm) $mileage .= " (+{$pricePerKm}/km)";
+                } elseif (isset($policies['unlimited_mileage']) && !$policies['unlimited_mileage']) {
+                    $mileage = $policies['included_km'] ?? 'Limited';
+                } elseif (!empty($policies['mileage']) && $policies['mileage'] !== 'Unlimited') {
+                    $mileage = $policies['mileage'];
+                }
+
+                $minAge = $policies['minimum_driver_age'] ?? $providerMetadata['min_age'] ?? null;
+
+                // Cancellation
+                $cancellation = 'Non-refundable';
+                if (!empty($policies['cancellation_available_per_day']) && ($policies['cancellation_available_per_day'] == 1 || $policies['cancellation_available_per_day'] === true)) {
+                    $days = $policies['cancellation_available_per_day_date'] ?? null;
+                    $cancellation = $days ? "Free cancellation ({$days} days before)" : 'Free cancellation';
+                }
+            @endphp
+            <div class="section">
+                <div class="section-head">Rental Policies</div>
+                <table class="policy-grid">
+                    <tr>
+                        @if($fuelPolicy)
+                        <td>
+                            <div class="policy-box">
+                                <div class="policy-label">Fuel Policy</div>
+                                <div class="policy-val">{{ ucfirst($fuelPolicy) }}</div>
+                            </div>
+                        </td>
+                        @endif
+                        <td>
+                            <div class="policy-box">
+                                <div class="policy-label">Mileage</div>
+                                <div class="policy-val">{{ $mileage }}</div>
+                            </div>
+                        </td>
+                        @if($minAge)
+                        <td>
+                            <div class="policy-box">
+                                <div class="policy-label">Min Age</div>
+                                <div class="policy-val">{{ $minAge }}+</div>
+                            </div>
+                        </td>
+                        @endif
+                        <td>
+                            <div class="policy-box">
+                                <div class="policy-label">Cancellation</div>
+                                <div class="policy-val" style="font-size:9px;">{{ $cancellation }}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        @endif
+
+        {{-- ═══ CUSTOMER DETAILS ═══ --}}
+        @if($booking->customer)
+            <div class="section">
+                <div class="section-head">Customer Details</div>
+                <table class="grid-2">
+                    <tr>
+                        <td>
+                            <div class="info-block">
+                                <div class="info-block-label">Full Name</div>
+                                <div class="info-block-value">{{ $booking->customer->first_name }} {{ $booking->customer->last_name }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="info-block">
+                                <div class="info-block-label">Email</div>
+                                <div class="info-block-value">{{ $booking->customer->email ?? '-' }}</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        @if($booking->customer->phone)
+                            <td>
+                                <div class="info-block">
+                                    <div class="info-block-label">Phone</div>
+                                    <div class="info-block-value">{{ $booking->customer->phone }}</div>
+                                </div>
+                            </td>
+                        @endif
+                        @if($booking->customer->driver_age)
+                            <td>
+                                <div class="info-block">
+                                    <div class="info-block-label">Driver Age</div>
+                                    <div class="info-block-value">{{ $booking->customer->driver_age }}</div>
+                                </div>
+                            </td>
+                        @endif
+                    </tr>
+                    @if($booking->customer->flight_number)
+                        <tr>
+                            <td colspan="2">
+                                <div class="info-block">
+                                    <div class="info-block-label">Flight Number</div>
+                                    <div class="info-block-value">{{ $booking->customer->flight_number }}</div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
+                </table>
+            </div>
+        @endif
+
+        {{-- ═══ COMPANY & VENDOR DETAILS ═══ --}}
+        @if($vendorCompany || $vendorUser || $booking->provider_source)
+            <div class="section">
+                <div class="section-head">{{ $vendorCompany ? 'Company & Vendor Details' : ($booking->provider_source ? 'Provider Information' : 'Vendor Details') }}</div>
+                <table class="contact-grid">
+                    <tr>
+                        {{-- Company details --}}
+                        @if($vendorCompany && $vendorCompany->company_name)
+                            <td>
+                                <div class="contact-card">
+                                    <div class="contact-card-title">Company Information</div>
+                                    <div class="contact-name">{{ $vendorCompany->company_name }}</div>
+                                    @if($vendorCompany->company_email)
+                                        <div class="contact-detail">{{ $vendorCompany->company_email }}</div>
+                                    @endif
+                                    @if($vendorCompany->company_phone_number)
+                                        <div class="contact-detail">{{ $vendorCompany->company_phone_number }}</div>
+                                    @endif
+                                    @if($vendorCompany->company_address)
+                                        <div class="contact-detail" style="margin-top:4px;">{{ $vendorCompany->company_address }}</div>
+                                    @endif
+                                    @if($vendorCompany->company_gst_number)
+                                        <div class="contact-detail" style="margin-top:4px; font-size:9px;">GST: {{ $vendorCompany->company_gst_number }}</div>
+                                    @endif
+                                </div>
+                            </td>
+                        @endif
+
+                        {{-- Vendor (person) details --}}
+                        @if($vendorUser)
+                            <td>
+                                <div class="contact-card">
+                                    <div class="contact-card-title">Vendor Contact</div>
+                                    <div class="contact-name">{{ $vendorUser->first_name }} {{ $vendorUser->last_name }}</div>
+                                    @if($vendorUser->email)
+                                        <div class="contact-detail">{{ $vendorUser->email }}</div>
+                                    @endif
+                                    @if($vendorUser->phone)
+                                        <div class="contact-detail">{{ $vendorUser->phone }}</div>
+                                    @endif
+                                </div>
+                            </td>
+                        @endif
+
+                        {{-- External provider fallback --}}
+                        @if(!$vendorCompany && !$vendorUser && $booking->provider_source)
+                            <td>
+                                <div class="contact-card">
+                                    <div class="contact-card-title">Provider</div>
+                                    <div class="contact-name">{{ ucfirst(str_replace('_', ' ', $booking->provider_source)) }}</div>
+                                    @if(!empty($pickupLocation['telephone']) || !empty($pickupLocation['phone']))
+                                        <div class="contact-detail">Tel: {{ $pickupLocation['telephone'] ?? $pickupLocation['phone'] }}</div>
+                                    @endif
+                                    @if(!empty($pickupLocation['email']))
+                                        <div class="contact-detail">{{ $pickupLocation['email'] }}</div>
+                                    @endif
+                                </div>
+                            </td>
+                            @if(!empty($pickupLocation['address_1']) || !empty($pickupLocation['address_city']))
+                                <td>
+                                    <div class="contact-card">
+                                        <div class="contact-card-title">Pickup Office</div>
+                                        @if(!empty($pickupLocation['name']))
+                                            <div class="contact-name" style="font-size:11px;">{{ $pickupLocation['name'] }}</div>
+                                        @endif
+                                        <div class="contact-detail">
+                                            {{ $pickupLocation['address_1'] ?? '' }}
+                                            @if(!empty($pickupLocation['address_city']))
+                                                , {{ $pickupLocation['address_city'] }}
+                                            @endif
+                                            @if(!empty($pickupLocation['address_postcode']))
+                                                {{ $pickupLocation['address_postcode'] }}
+                                            @endif
+                                        </div>
+                                        @if(!empty($pickupLocation['collection_details']) || !empty($pickupLocation['pickup_instructions']))
+                                            <div class="contact-detail" style="margin-top:4px; font-style:italic; color:#d97706;">
+                                                {{ $pickupLocation['collection_details'] ?? $pickupLocation['pickup_instructions'] }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                </td>
+                            @endif
+                        @endif
+                    </tr>
+                </table>
+            </div>
+        @endif
+
+        {{-- ═══ BOOKING REFERENCES ═══ --}}
+        <div class="section">
+            <div class="section-head">Booking References</div>
+            <table class="grid-2">
+                <tr>
+                    <td>
+                        <div class="info-block">
+                            <div class="info-block-label">Booking Number</div>
+                            <div class="info-block-value" style="font-family:monospace; letter-spacing:0.03em;">{{ $booking->booking_number }}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="info-block">
+                            <div class="info-block-label">Booked On</div>
+                            <div class="info-block-value">{{ date('M j, Y', strtotime($booking->created_at)) }}</div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    @if($booking->provider_source)
+                        <td>
+                            <div class="info-block">
+                                <div class="info-block-label">Provider</div>
+                                <div class="info-block-value">{{ ucfirst(str_replace('_', ' ', $booking->provider_source)) }}</div>
+                            </div>
+                        </td>
+                    @endif
+                    @if($booking->provider_booking_ref)
+                        <td>
+                            <div class="info-block">
+                                <div class="info-block-label">Provider Reference</div>
+                                <div class="info-block-value" style="font-family:monospace;">{{ $booking->provider_booking_ref }}</div>
+                            </div>
+                        </td>
+                    @endif
+                </tr>
+            </table>
+        </div>
+
+        {{-- ═══ NOTES ═══ --}}
+        @if($booking->notes || $booking->cancellation_reason)
+            <div class="section">
+                <div class="section-head">Additional Notes</div>
+                @if($booking->notes)
+                    <div class="info-block-full">
+                        <div class="info-block-label">Notes</div>
+                        <div class="info-block-value">{{ $booking->notes }}</div>
+                    </div>
+                @endif
+                @if($booking->cancellation_reason)
+                    <div class="info-block-full" style="background:#fef2f2; border-color:#fecaca;">
+                        <div class="info-block-label" style="color:#dc2626;">Cancellation Reason</div>
+                        <div class="info-block-value" style="color:#991b1b;">{{ $booking->cancellation_reason }}</div>
+                    </div>
+                @endif
+            </div>
+        @endif
+    </div>
+
+    {{-- ═══ FOOTER ═══ --}}
+    <div class="footer">
+        <strong>Thank you for choosing Vrooem!</strong><br>
+        For support, contact us at support@vrooem.com<br>
+        <span style="margin-top:4px; display:inline-block;">This is an automatically generated document &middot; {{ date('F j, Y, g:i A') }}</span>
+    </div>
+
+</div>
 </body>
 </html>

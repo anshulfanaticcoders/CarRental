@@ -11,6 +11,7 @@ use App\Models\StripeCheckoutPayload;
 use App\Services\AdobeCarService;
 use App\Services\StripeBookingService;
 use App\Services\CurrencyConversionService;
+use App\Services\PriceVerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
@@ -31,8 +32,9 @@ class StripeCheckoutController extends Controller
 
     private function isExternalProviderSource(?string $source): bool
     {
+        // Apply platform fee to ALL vehicles including internal
         $normalized = strtolower(trim((string) $source));
-        return $normalized !== '' && $normalized !== 'internal';
+        return $normalized !== '';
     }
 
     private function resolveProviderMarkupPercent(): float
@@ -183,6 +185,7 @@ class StripeCheckoutController extends Controller
                 'rentalCode' => 'nullable|string',
                 'vehicle_total' => 'nullable|numeric',
                 'payment_method' => 'nullable|string',
+                'selected_deposit_type' => 'nullable|string',
                 'location_details' => 'nullable|array',
                 'location_instructions' => 'nullable|string',
                 'driver_requirements' => 'nullable|array',
@@ -364,6 +367,58 @@ class StripeCheckoutController extends Controller
             $payableSetting = PayableSetting::first();
             $paymentPercentage = $payableSetting ? $payableSetting->payment_percentage : 15;
 
+            // SECURITY: Verify prices against server-side stored values
+            $searchSessionId = $request->input('search_session_id') ?? $request->header('X-Search-Session');
+            if (!$searchSessionId) {
+                // Try to get from session
+                $searchSessionId = session()->get('search_session_id');
+            }
+
+            $priceVerificationService = app(PriceVerificationService::class);
+
+            if ($searchSessionId) {
+                $verification = $priceVerificationService->verifyPrices($searchSessionId, $vehicle);
+
+                if (!$verification['valid']) {
+                    Log::warning('Price verification failed during checkout', [
+                        'error' => $verification['error'],
+                        'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
+                        'search_session' => $searchSessionId,
+                        'ip' => $request->ip(),
+                    ]);
+
+                    return response()->json([
+                        'error' => $verification['error'] ?? 'Price verification failed. Please refresh search results and try again.',
+                    ], 422);
+                }
+
+                // Use verified prices from server cache instead of client-sent values
+                $verifiedPrices = $verification['original_prices'];
+                Log::info('Price verification successful', [
+                    'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
+                    'verified_total' => $verifiedPrices['original_total'] ?? null,
+                ]);
+
+                // Override client-sent prices with verified server prices
+                if (isset($verifiedPrices['original_total'])) {
+                    $vehicle['total'] = $verifiedPrices['original_total'];
+                }
+                if (isset($verifiedPrices['products']) && !empty($verifiedPrices['products'])) {
+                    $vehicle['products'] = $verifiedPrices['products'];
+                }
+                if (isset($verifiedPrices['price_per_day'])) {
+                    $vehicle['price_per_day'] = $verifiedPrices['price_per_day'];
+                }
+
+                $validated['vehicle'] = $vehicle;
+            } else {
+                Log::warning('Checkout attempted without search_session_id', [
+                    'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
+                    'ip' => $request->ip(),
+                ]);
+                // Continue anyway for backward compatibility, but log warning
+            }
+
             // Normalize currency (symbols to ISO codes)
             $currency = $validated['currency'] ?? 'EUR';
             $currencyCode = $this->normalizeCurrencyCode($currency);
@@ -396,6 +451,13 @@ class StripeCheckoutController extends Controller
             }
 
             $extrasPayloadId = null;
+
+            // Extract vehicle benefits/policies for storage in provider_metadata
+            $vehicleBenefits = $validated['vehicle']['benefits'] ?? [];
+            if (is_object($vehicleBenefits)) {
+                $vehicleBenefits = (array) $vehicleBenefits;
+            }
+
             $extrasPayload = [
                 'detailed_extras' => $validated['detailed_extras'] ?? [],
                 'extras' => $validated['extras'] ?? [],
@@ -408,15 +470,18 @@ class StripeCheckoutController extends Controller
                 'location_instructions' => $validated['location_instructions'] ?? null,
                 'driver_requirements' => $validated['driver_requirements'] ?? null,
                 'terms' => $validated['terms'] ?? null,
+                // Vehicle benefits, policies, and deposit/excess info
+                'vehicle_benefits' => $vehicleBenefits,
+                'security_deposit' => $validated['vehicle']['security_deposit'] ?? null,
+                'deposit_payment_method' => $validated['vehicle']['payment_method'] ?? null,
+                'selected_deposit_type' => $validated['selected_deposit_type'] ?? null,
+                'fuel_type' => $validated['vehicle']['fuel_type'] ?? $validated['vehicle']['fuel'] ?? null,
+                'mileage' => $validated['vehicle']['mileage'] ?? null,
+                'transmission' => $validated['vehicle']['transmission'] ?? null,
             ];
 
-            $payloadHasContent = !empty($extrasPayload['detailed_extras'])
-                || !empty($extrasPayload['extras'])
-                || !empty($extrasPayload['location_details'])
-                || !empty($extrasPayload['dropoff_location_details'])
-                || !empty($extrasPayload['location_instructions'])
-                || !empty($extrasPayload['driver_requirements'])
-                || !empty($extrasPayload['terms']);
+            // Always save payload since it now contains vehicle benefits
+            $payloadHasContent = true;
 
             if ($payloadHasContent) {
                 $payloadRecord = StripeCheckoutPayload::create([
@@ -485,6 +550,7 @@ class StripeCheckoutController extends Controller
                 'dropoff_location' => $validated['dropoff_location'] ?? $validated['pickup_location'],
                 'number_of_days' => $validated['number_of_days'],
                 'total_amount' => $totalAmount,
+                'total_amount_net' => $computedTotals['booking_total_net'] ?? $totalAmount,
                 'payable_amount' => $payableAmount,
                 'pending_amount' => $pendingAmount,
                 'currency' => $currencyCode,
@@ -496,6 +562,13 @@ class StripeCheckoutController extends Controller
                 'provider_commission_rate' => $commissionRate,
                 'commission_amount' => $commissionAmount,
                 'deposit_percentage' => $paymentPercentage,
+                'deposit_amount' => $validated['vehicle']['benefits']['deposit_amount'] ?? $validated['vehicle']['security_deposit'] ?? null,
+                'excess_amount' => $validated['vehicle']['benefits']['excess_amount'] ?? null,
+                'excess_theft_amount' => $validated['vehicle']['benefits']['excess_theft_amount'] ?? null,
+                'deposit_currency' => $validated['vehicle']['benefits']['deposit_currency'] ?? $providerCurrency,
+                // Multi-currency exchange rate tracking
+                'exchange_rate_provider_to_booking' => $this->calculateExchangeRate($providerCurrency, $currencyCode, $computedTotals['provider_grand_total'] ?? null),
+                'exchange_rate_booking_to_admin' => $this->calculateExchangeRate($currencyCode, config('currency.base_currency', 'EUR'), $totalAmount),
                 'customer_name' => $validated['customer']['name'] ?? '',
                 'customer_email' => $validated['customer']['email'] ?? '',
                 'customer_phone' => $validated['customer']['phone'] ?? '',
@@ -771,15 +844,9 @@ class StripeCheckoutController extends Controller
         $days = max(1, (int) ($validated['number_of_days'] ?? 1));
         $package = $validated['package'] ?? null;
         $vehicleSource = strtolower((string) ($vehicle['source'] ?? ''));
-        $prepaidFlag = $vehicle['prepaid'] ?? null;
-        if ($vehicleSource === 'renteon') {
-            $isPrepaid = filter_var($prepaidFlag ?? false, FILTER_VALIDATE_BOOLEAN);
-        } else {
-            $isPrepaid = filter_var($prepaidFlag ?? true, FILTER_VALIDATE_BOOLEAN);
-        }
         $markupRate = $this->resolveProviderMarkupRate();
         $commissionRate = $this->isExternalProviderSource($vehicleSource) ? $markupRate : 0.0;
-        $useCommissionOnly = $vehicleSource === 'renteon' && $isPrepaid === false;
+        $useCommissionOnly = $this->isExternalProviderSource($vehicleSource);
 
         if (in_array($vehicleSource, ['greenmotion', 'usave'], true)) {
             return $this->computeGreenMotionTotals($validated, $bookingCurrency, $providerCurrency, $paymentPercentage, $days);
@@ -871,18 +938,27 @@ class StripeCheckoutController extends Controller
         $clientTotal = isset($validated['total_amount']) ? (float) $validated['total_amount'] : null;
         if ($clientTotal !== null && $clientTotal > 0) {
             $delta = abs($clientTotal - $bookingTotal);
-            if ($delta > 0.5) {
-                Log::warning('StripeCheckout: total mismatch', [
-                    'client_total' => $clientTotal,
-                    'server_total' => $bookingTotal,
-                    'delta' => $delta,
-                    'vehicle_source' => $vehicleSource,
-                ]);
 
-                return [
-                    'success' => false,
-                    'error' => 'Pricing has changed. Please refresh and try again.',
-                ];
+            // Skip client-total validation for internal vehicles
+            // Price verification is already done via price_hash, and client/server
+            // exchange rates may differ causing false mismatches
+            if ($vehicleSource !== 'internal') {
+                $tolerance = 0.5;
+                if ($delta > $tolerance) {
+                    Log::warning('StripeCheckout: total mismatch', [
+                        'client_total' => $clientTotal,
+                        'server_total' => $bookingTotal,
+                        'delta' => $delta,
+                        'vehicle_source' => $vehicleSource,
+                        'booking_currency' => $bookingCurrency,
+                        'provider_currency' => $providerCurrency,
+                    ]);
+
+                    return [
+                        'success' => false,
+                        'error' => 'Pricing has changed. Please refresh and try again.',
+                    ];
+                }
             }
         }
 
@@ -1035,11 +1111,15 @@ class StripeCheckoutController extends Controller
         $bookingOptionsTotalGross = $this->grossUpProviderAmount(round($bookingOptionsTotal, 2), $vehicle['source'] ?? null);
         $bookingTotal = $this->grossUpProviderAmount($bookingTotalNet, $vehicle['source'] ?? null);
 
-        $bookingDeposit = round($bookingTotal * ($paymentPercentage / 100), 2);
-        $bookingPending = round($bookingTotal - $bookingDeposit, 2);
-
         $markupRate = $this->resolveProviderMarkupRate();
         $commissionRate = $this->isExternalProviderSource($vehicle['source'] ?? null) ? $markupRate : 0.0;
+
+        if ($commissionRate > 0) {
+            $bookingDeposit = round(max($bookingTotal - $bookingTotalNet, 0), 2);
+        } else {
+            $bookingDeposit = round($bookingTotal * ($paymentPercentage / 100), 2);
+        }
+        $bookingPending = round($bookingTotal - $bookingDeposit, 2);
 
         return [
             'success' => true,
@@ -1070,10 +1150,20 @@ class StripeCheckoutController extends Controller
         }
 
         if ($source === 'internal') {
-            if (isset($validated['vehicle_total'])) {
-                return (float) $validated['vehicle_total'];
+            // For internal vehicles: ALWAYS calculate from DB price, ignore frontend values
+            // Frontend sends converted values for display, but we need original vendor pricing
+            $vehicleId = $vehicle['id'] ?? null;
+            if ($vehicleId) {
+                $vehicleModel = \App\Models\Vehicle::find($vehicleId);
+                if ($vehicleModel) {
+                    $pricePerDay = $vehicleModel->price_per_day ?? null;
+                    if ($pricePerDay !== null) {
+                        return (float) $pricePerDay * $days;
+                    }
+                }
             }
 
+            // Fallback if vehicle not found
             $pricePerDay = $vehicle['price_per_day'] ?? null;
             if ($pricePerDay !== null) {
                 return (float) $pricePerDay * $days;
@@ -1161,6 +1251,41 @@ class StripeCheckoutController extends Controller
 
         $upper = strtoupper((string) $value);
         return $upper !== '' ? $upper : 'EUR';
+    }
+
+    /**
+     * Calculate exchange rate between two currencies for a given amount
+     */
+    private function calculateExchangeRate(?string $fromCurrency, ?string $toCurrency, ?float $amount): ?float
+    {
+        if (!$fromCurrency || !$toCurrency || $fromCurrency === $toCurrency) {
+            return 1.0;
+        }
+
+        $amount = $amount ?? 0;
+        if ($amount <= 0) {
+            return 1.0;
+        }
+
+        $conversionService = app(CurrencyConversionService::class);
+        $result = $conversionService->convert($amount, $fromCurrency, $toCurrency);
+
+        if (!($result['success'] ?? false)) {
+            Log::warning('Failed to get exchange rate', [
+                'from' => $fromCurrency,
+                'to' => $toCurrency,
+                'amount' => $amount,
+                'error' => $result['error'] ?? null,
+            ]);
+            return null;
+        }
+
+        $convertedAmount = (float) ($result['converted_amount'] ?? 0);
+        if ($convertedAmount > 0) {
+            return round($convertedAmount / $amount, 6);
+        }
+
+        return 1.0;
     }
 
     /**

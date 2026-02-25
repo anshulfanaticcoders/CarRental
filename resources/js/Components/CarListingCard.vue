@@ -122,7 +122,7 @@ const showAllPlans = ref(false);
 const ratesReady = computed(() => !!exchangeRates.value && !loading.value);
 
 const providerGrossMultiplier = computed(() => {
-    if (props.vehicle?.source === 'internal') return 1;
+    // Apply 15% platform fee to ALL vehicles (including internal)
     const rate = providerMarkupRate.value;
     return Number.isFinite(rate) ? (1 + rate) : 1;
 });

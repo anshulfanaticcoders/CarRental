@@ -54,8 +54,10 @@ class ContactUsNotification extends Notification
     {
 
         return [
+            'title' => 'Contact Form: ' . $this->contactData['name'],
             'name'    => $this->contactData['name'],
             'email'   => $this->contactData['email'],
+            'role' => 'admin',
             'message' => $this->contactData['message'],
         ];
     }

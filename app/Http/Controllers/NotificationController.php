@@ -11,14 +11,34 @@ class NotificationController extends Controller
     public function index()
     {
         $user = Auth::user();
-        
+        $userRole = $user->role ?? 'customer';
+
+        // Map user roles to notification roles they should see
+        $allowedRoles = match ($userRole) {
+            'admin' => ['admin'],
+            'vendor' => ['vendor'],
+            default => ['customer'], // customer, user, etc.
+        };
+
         $notifications = $user->notifications()
+            ->where(function ($query) use ($allowedRoles) {
+                // Show notifications matching the user's role, or those without a role field (legacy)
+                $query->whereIn('data->role', $allowedRoles)
+                      ->orWhereNull('data->role');
+            })
             ->orderBy('created_at', 'desc')
             ->paginate(10);
-    
+
+        $unreadCount = $user->unreadNotifications()
+            ->where(function ($query) use ($allowedRoles) {
+                $query->whereIn('data->role', $allowedRoles)
+                      ->orWhereNull('data->role');
+            })
+            ->count();
+
         return response()->json([
             'notifications' => $notifications,
-            'unread_count' => $user->unreadNotifications()->count()
+            'unread_count' => $unreadCount,
         ]);
     }
     
@@ -54,11 +74,23 @@ class NotificationController extends Controller
     public function getUnreadCount()
     {
         $user = Auth::user();
-        
-        $unreadCount = $user->unreadNotifications()->count();
-            
+        $userRole = $user->role ?? 'customer';
+
+        $allowedRoles = match ($userRole) {
+            'admin' => ['admin'],
+            'vendor' => ['vendor'],
+            default => ['customer'],
+        };
+
+        $unreadCount = $user->unreadNotifications()
+            ->where(function ($query) use ($allowedRoles) {
+                $query->whereIn('data->role', $allowedRoles)
+                      ->orWhereNull('data->role');
+            })
+            ->count();
+
         return response()->json([
-            'unread_count' => $unreadCount
+            'unread_count' => $unreadCount,
         ]);
     }
 }

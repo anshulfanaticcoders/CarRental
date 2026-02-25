@@ -19,6 +19,7 @@ class Booking extends Model
         'provider_vehicle_id',
         'provider_booking_ref',
         'provider_metadata',
+        'provider_grand_total',
         'vehicle_name',
         'vehicle_image',
         'pickup_date',

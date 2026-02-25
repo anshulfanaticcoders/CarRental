@@ -77,11 +77,13 @@ class NewMessageNotification extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'New Message',
             'message_id' => $this->message->id,
-            'booking_id' => $this->message->booking_id, // Corrected from chat_id
+            'booking_id' => $this->message->booking_id,
             'sender_id' => $this->message->sender_id,
             'message_preview' => substr($this->message->message, 0, 50) . (strlen($this->message->message) > 50 ? '...' : ''),
             'notification_type' => 'new_message',
+            'message' => substr($this->message->message, 0, 50) . (strlen($this->message->message) > 50 ? '...' : ''),
             'related_booking_reference' => $this->message->booking->booking_reference ?? null,
         ];
     }

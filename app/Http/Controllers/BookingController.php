@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Message;
 use App\Models\Plan;
 use App\Models\User;
+use App\Models\VendorVehiclePlan;
 use App\Models\Vehicle;
 use App\Models\VendorProfile;
 use App\Notifications\Booking\BookingCancelledNotification;
@@ -346,7 +347,7 @@ class BookingController extends Controller
         $vendorId = auth()->id();
 
         // Get ALL payments for statistics (without pagination)
-        $allPayments = BookingPayment::with(['booking.customer', 'booking.vehicle', 'booking.amounts'])
+        $allPayments = BookingPayment::with(['booking.customer', 'booking.vehicle', 'booking.amounts', 'booking.vendorProfile'])
             ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
             ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
             ->where('vehicles.vendor_id', $vendorId)
@@ -355,7 +356,7 @@ class BookingController extends Controller
             ->get(); // <-- Get ALL payments for statistics
 
         // Get paginated payments for the table
-        $payments = BookingPayment::with(['booking.customer', 'booking.vehicle', 'booking.amounts'])
+        $payments = BookingPayment::with(['booking.customer', 'booking.vehicle', 'booking.amounts', 'booking.vendorProfile'])
             ->join('bookings', 'booking_payments.booking_id', '=', 'bookings.id')
             ->join('vehicles', 'bookings.vehicle_id', '=', 'vehicles.id')
             ->where('vehicles.vendor_id', $vendorId)
@@ -455,7 +456,7 @@ class BookingController extends Controller
         }
 
         // Eager load relationships
-        $booking->load(['payments', 'extras', 'customer']);
+        $booking->load(['payments', 'extras', 'customer', 'amounts']);
 
         // Check if internal vehicle exists
         if ($booking->vehicle_id) {
@@ -520,13 +521,36 @@ class BookingController extends Controller
         // Prepare Payment Data
         $payment = $booking->payments->first(); // Assuming one main payment or take successful one
 
-        // Prepare Plan Data if any
+        // Prepare Plan Data with features
         $plan = null;
         if ($booking->plan) {
             $plan = [
                 'plan_type' => $booking->plan,
-                'price' => $booking->plan_price
+                'price' => $booking->plan_price,
+                'features' => null,
+                'plan_description' => null,
             ];
+
+            // Try to load features from VendorVehiclePlan (vehicle-specific plan)
+            if ($booking->vehicle_id) {
+                $vehiclePlan = VendorVehiclePlan::where('vehicle_id', $booking->vehicle_id)
+                    ->where('plan_type', $booking->plan)
+                    ->first();
+
+                if ($vehiclePlan) {
+                    $plan['features'] = $vehiclePlan->features;
+                    $plan['plan_description'] = $vehiclePlan->plan_description;
+                }
+            }
+
+            // Fallback: load from global Plan table
+            if (empty($plan['features'])) {
+                $globalPlan = Plan::where('plan_type', $booking->plan)->first();
+                if ($globalPlan) {
+                    $plan['features'] = $plan['features'] ?: $globalPlan->features;
+                    $plan['plan_description'] = $plan['plan_description'] ?: $globalPlan->plan_description;
+                }
+            }
         }
 
         return Inertia::render('Booking/BookingDetails', [
@@ -553,8 +577,8 @@ class BookingController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // Eager load relationships
-        $booking->load(['payments', 'extras', 'customer', 'vendorProfile']);
+        // Eager load relationships including booking_amounts
+        $booking->load(['payments', 'extras', 'customer', 'vendorProfile', 'amounts']);
 
         // Check if internal vehicle exists
         if ($booking->vehicle_id) {
@@ -603,15 +627,39 @@ class BookingController extends Controller
             $vendorProfile->load('user');
         }
 
+        // Normalize provider metadata
+        if (!empty($booking->provider_metadata) && is_string($booking->provider_metadata)) {
+            $booking->provider_metadata = json_decode($booking->provider_metadata, true);
+        }
+
         // Get payment - try to get the successful one or just the first one
-        $payment = $booking->payments->where('status', 'success')->first()
+        $payment = $booking->payments->where('payment_status', 'succeeded')->first()
                ?? $booking->payments->where('status', 'succeeded')->first()
-               ?? $booking->payments->first()
-               ?? (object)[
-                   'currency' => $booking->booking_currency ?? 'USD',
-                   'amount' => $booking->total_amount,
-                   'status' => $booking->booking_status ?? 'pending',
-               ];
+               ?? $booking->payments->where('payment_status', 'completed')->first()
+               ?? $booking->payments->where('status', 'completed')->first()
+               ?? $booking->payments->first();
+
+        // Create normalized payment object with guaranteed fields
+        if (!$payment) {
+            $payment = (object)[
+                'payment_method' => $booking->stripe_payment_intent_id ? 'Stripe' : 'Card',
+                'method' => $booking->stripe_payment_intent_id ? 'Stripe' : 'Card',
+                'transaction_id' => $booking->stripe_payment_intent_id ?? $booking->stripe_session_id ?? 'N/A',
+                'currency' => $booking->booking_currency ?? 'EUR',
+                'amount' => $booking->amount_paid ?? $booking->total_amount,
+                'payment_status' => $booking->payment_status ?? 'partial',
+                'status' => $booking->payment_status ?? 'partial',
+                'payment_date' => $booking->created_at,
+            ];
+        } else {
+            // Ensure payment object has all required fields
+            $payment->payment_method = $payment->payment_method ?? $payment->method ?? ($booking->stripe_payment_intent_id ? 'Stripe' : 'Card');
+            $payment->method = $payment->payment_method;
+            $payment->transaction_id = $payment->transaction_id ?? $booking->stripe_payment_intent_id ?? $booking->stripe_session_id ?? 'N/A';
+            $payment->currency = $payment->currency ?? $booking->booking_currency ?? 'EUR';
+            $payment->amount = $payment->amount ?? $booking->amount_paid ?? $booking->total_amount;
+            $payment->status = $payment->status ?? $payment->payment_status ?? $booking->payment_status ?? 'partial';
+        }
 
         // Generate PDF
         $pdf = app('dompdf.wrapper');

@@ -101,6 +101,7 @@ class StripeBookingService
                     'vehicle_id' => $booking->vehicle_id ?? $vehicleId,
                     'provider_source' => $booking->provider_source ?? ($metadata->vehicle_source ?? 'greenmotion'),
                     'provider_vehicle_id' => $booking->provider_vehicle_id ?? ($metadata->vehicle_id ?? null),
+                    'provider_grand_total' => (float) ($metadata->provider_grand_total ?? $metadata->total_amount_net ?? $booking->provider_grand_total ?? 0),
                     'vehicle_name' => $booking->vehicle_name ?: (($metadata->vehicle_brand ?? '') . ' ' . ($metadata->vehicle_model ?? '')),
                     'vehicle_image' => $booking->vehicle_image ?: ($metadata->vehicle_image ?? null),
                     'pickup_date' => $metadata->pickup_date ?? $booking->pickup_date,
@@ -111,11 +112,11 @@ class StripeBookingService
                     'return_location' => $metadata->dropoff_location ?? $metadata->pickup_location ?? $booking->return_location,
                     'plan' => $metadata->package ?? $booking->plan ?? 'BAS',
                     'total_days' => (int) ($metadata->number_of_days ?? $booking->total_days ?? 1),
-                    'base_price' => (float) ($metadata->total_amount ?? $booking->base_price ?? 0),
+                    'base_price' => (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? $booking->base_price ?? 0),
                     'tax_amount' => 0,
                     'total_amount' => (float) ($metadata->total_amount ?? $booking->total_amount ?? 0),
                     'amount_paid' => (float) ($metadata->payable_amount ?? $booking->amount_paid ?? 0),
-                    'pending_amount' => (float) ($metadata->pending_amount ?? $booking->pending_amount ?? 0),
+                    'pending_amount' => (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? $metadata->pending_amount ?? $booking->pending_amount ?? 0),
                     'booking_currency' => $bookingCurrency,
                     'payment_status' => 'partial',
                     'booking_status' => 'confirmed',
@@ -130,6 +131,7 @@ class StripeBookingService
                     'vehicle_id' => $vehicleId,
                     'provider_source' => $metadata->vehicle_source ?? 'greenmotion',
                     'provider_vehicle_id' => $metadata->vehicle_id ?? null,
+                    'provider_grand_total' => (float) ($metadata->provider_grand_total ?? $metadata->total_amount_net ?? 0),
                     'vehicle_name' => ($metadata->vehicle_brand ?? '') . ' ' . ($metadata->vehicle_model ?? ''),
                     'vehicle_image' => $metadata->vehicle_image ?? null,
                     'pickup_date' => $metadata->pickup_date,
@@ -140,11 +142,11 @@ class StripeBookingService
                     'return_location' => $metadata->dropoff_location ?? $metadata->pickup_location,
                     'plan' => $metadata->package ?? 'BAS',
                     'total_days' => (int) ($metadata->number_of_days ?? 1),
-                    'base_price' => (float) ($metadata->total_amount ?? 0),
+                    'base_price' => (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? 0),
                     'tax_amount' => 0,
                     'total_amount' => (float) ($metadata->total_amount ?? 0),
                     'amount_paid' => (float) ($metadata->payable_amount ?? 0),
-                    'pending_amount' => (float) ($metadata->pending_amount ?? 0),
+                    'pending_amount' => (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? 0),
                     'booking_currency' => $bookingCurrency,
                     'payment_status' => 'partial',
                     'booking_status' => 'confirmed',
@@ -178,17 +180,37 @@ class StripeBookingService
                 $vendorCurrency = $vehicle?->vendorProfile?->currency;
             }
 
+            // If vendor currency not found in profile, try metadata
+            if (!$vendorCurrency && !empty($metadata->provider_currency)) {
+                $vendorCurrency = $this->normalizeCurrencyCode($metadata->provider_currency);
+            }
+
             $vehicleTotal = (float) ($metadata->vehicle_total ?? 0);
             $extraAmount = $vehicleTotal > 0
                 ? $vehicleTotal + $extrasTotal
                 : (float) ($metadata->total_amount ?? 0);
+
+            // Prepare provider's ORIGINAL amounts (in vendor's currency)
+            $providerAmounts = null;
+            $providerGrandTotal = (float) ($metadata->provider_grand_total ?? 0);
+            if ($providerGrandTotal > 0) {
+                $providerVehicleTotal = (float) ($metadata->provider_vehicle_total ?? $providerGrandTotal - (float)($metadata->provider_extras_total ?? 0));
+                $providerExtrasTotal = (float) ($metadata->provider_extras_total ?? 0);
+
+                $providerAmounts = [
+                    'total_amount' => $providerGrandTotal,
+                    'amount_paid' => 0, // Vendor paid at pickup, not now
+                    'pending_amount' => $providerGrandTotal, // Full amount due at pickup
+                    'extra_amount' => $providerExtrasTotal,
+                ];
+            }
 
             app(BookingAmountService::class)->createForBooking($booking, [
                 'total_amount' => $booking->total_amount,
                 'amount_paid' => $booking->amount_paid,
                 'pending_amount' => $booking->pending_amount,
                 'extra_amount' => $extraAmount,
-            ], $bookingCurrency, $vendorCurrency);
+            ], $bookingCurrency, $vendorCurrency, $providerAmounts);
 
             Log::info('StripeBookingService: Booking record created', ['booking_id' => $booking->id]);
 
@@ -440,6 +462,13 @@ class StripeBookingService
             'location_instructions' => null,
             'driver_requirements' => null,
             'terms' => null,
+            'vehicle_benefits' => [],
+            'security_deposit' => null,
+            'deposit_payment_method' => null,
+            'selected_deposit_type' => null,
+            'fuel_type' => null,
+            'mileage' => null,
+            'transmission' => null,
         ];
 
         $payloadId = $metadata->extras_payload_id ?? null;
@@ -456,6 +485,14 @@ class StripeBookingService
                     $resolved['location_instructions'] = $payload['location_instructions'] ?? null;
                     $resolved['driver_requirements'] = $payload['driver_requirements'] ?? null;
                     $resolved['terms'] = $payload['terms'] ?? null;
+                    // Vehicle benefits, deposit, and policy data
+                    $resolved['vehicle_benefits'] = $payload['vehicle_benefits'] ?? [];
+                    $resolved['security_deposit'] = $payload['security_deposit'] ?? null;
+                    $resolved['deposit_payment_method'] = $payload['deposit_payment_method'] ?? null;
+                    $resolved['selected_deposit_type'] = $payload['selected_deposit_type'] ?? null;
+                    $resolved['fuel_type'] = $payload['fuel_type'] ?? null;
+                    $resolved['mileage'] = $payload['mileage'] ?? null;
+                    $resolved['transmission'] = $payload['transmission'] ?? null;
                 } else {
                     Log::warning('StripeBookingService: Extras payload missing', [
                         'payload_id' => $payloadId,
@@ -533,15 +570,28 @@ class StripeBookingService
             $terms = $extrasPayload['terms'];
         }
 
-        return [
+        // Calculate commission amounts for customer pricing
+        $totalAmount = (float) ($metadata->total_amount ?? 0);
+        $totalAmountNet = (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? 0);
+        $commissionAmount = $totalAmount > 0 && $totalAmountNet > 0
+            ? round($totalAmount - $totalAmountNet, 2)
+            : 0;
+        $commissionRate = $totalAmountNet > 0
+            ? round(($commissionAmount / $totalAmountNet) * 100, 2)
+            : 15.0;
+
+        $providerMetadata = [
             'provider' => $booking->provider_source ?? ($metadata->vehicle_source ?? null),
-            'quoteid' => $metadata->quoteid ?? null,
-            'rental_code' => $metadata->package ?? $metadata->rental_code ?? null,
             'currency' => $providerCurrency,
             'booking_currency' => $bookingCurrency,
-            'vehicle_total' => $metadata->vehicle_total ?? null,
-            'extras_total' => $metadata->extras_total ?? null,
-            'grand_total' => $metadata->total_amount ?? null,
+            'quoteid' => $metadata->quoteid ?? null,
+            'rental_code' => $metadata->package ?? $metadata->rental_code ?? null,
+
+            // Vendor's ORIGINAL pricing (in vendor's currency)
+            'vehicle_total' => $metadata->provider_vehicle_total ?? null,
+            'extras_total' => $metadata->provider_extras_total ?? null,
+            'grand_total' => $metadata->provider_grand_total ?? $metadata->total_amount_net ?? null,
+
             'provider_pricing' => [
                 'currency' => $providerCurrency,
                 'vehicle_total' => $metadata->provider_vehicle_total ?? null,
@@ -554,7 +604,81 @@ class StripeBookingService
                 'due_at_pickup_total' => isset($metadata->provider_grand_total, $metadata->deposit_percentage)
                     ? round((float) $metadata->provider_grand_total - ((float) $metadata->provider_grand_total * ((float) $metadata->deposit_percentage / 100)), 2)
                     : null,
+                // Deposit & excess in vendor's original currency
+                'deposit_amount' => $metadata->deposit_amount ?? null,
+                'excess_amount' => $metadata->excess_amount ?? null,
+                'excess_theft_amount' => $metadata->excess_theft_amount ?? null,
+                'deposit_currency' => $metadata->deposit_currency ?? $providerCurrency,
             ],
+
+            // Customer-facing pricing (in customer's currency with 15% commission)
+            'customer_pricing' => [
+                'currency' => $bookingCurrency,
+                'vehicle_total' => $metadata->vehicle_total ?? 0,
+                'extras_total' => $metadata->extras_total ?? 0,
+                'commission_rate' => $commissionRate / 100, // Store as decimal (0.15)
+                'commission_amount' => $commissionAmount,
+                'grand_total' => $totalAmount,
+            ],
+
+            // Deposit & excess (in provider's original currency for vendor display)
+            'deposit_amount' => $metadata->deposit_amount ?? null,
+            'excess_amount' => $metadata->excess_amount ?? null,
+            'excess_theft_amount' => $metadata->excess_theft_amount ?? null,
+            'deposit_currency' => $metadata->deposit_currency ?? $providerCurrency,
+
+            // Exchange rates
+            'exchange_rates' => [
+                'provider_to_booking' => $metadata->exchange_rate_provider_to_booking ?? null,
+                'booking_to_admin' => $metadata->exchange_rate_booking_to_admin ?? null,
+            ],
+        ];
+
+        // Extract vehicle benefits/policies from extras payload
+        $vehicleBenefits = $extrasPayload['vehicle_benefits'] ?? [];
+        $benefits = [
+            // Deposit & Excess
+            'deposit_amount' => $vehicleBenefits['deposit_amount'] ?? $metadata->deposit_amount ?? null,
+            'deposit_currency' => $vehicleBenefits['deposit_currency'] ?? $metadata->deposit_currency ?? $providerCurrency,
+            'excess_amount' => $vehicleBenefits['excess_amount'] ?? $metadata->excess_amount ?? null,
+            'excess_theft_amount' => $vehicleBenefits['excess_theft_amount'] ?? $metadata->excess_theft_amount ?? null,
+            'security_deposit' => $extrasPayload['security_deposit'] ?? null,
+            'deposit_payment_method' => $extrasPayload['deposit_payment_method'] ?? null,
+            'selected_deposit_type' => $extrasPayload['selected_deposit_type'] ?? null,
+            // Cancellation
+            'cancellation_available_per_day' => $vehicleBenefits['cancellation_available_per_day'] ?? null,
+            'cancellation_available_per_day_date' => $vehicleBenefits['cancellation_available_per_day_date'] ?? null,
+            'cancellation_available_per_week' => $vehicleBenefits['cancellation_available_per_week'] ?? null,
+            'cancellation_available_per_week_date' => $vehicleBenefits['cancellation_available_per_week_date'] ?? null,
+            'cancellation_available_per_month' => $vehicleBenefits['cancellation_available_per_month'] ?? null,
+            'cancellation_available_per_month_date' => $vehicleBenefits['cancellation_available_per_month_date'] ?? null,
+            // Mileage / KM
+            'limited_km_per_day' => $vehicleBenefits['limited_km_per_day'] ?? null,
+            'limited_km_per_day_range' => $vehicleBenefits['limited_km_per_day_range'] ?? null,
+            'limited_km_per_week' => $vehicleBenefits['limited_km_per_week'] ?? null,
+            'limited_km_per_week_range' => $vehicleBenefits['limited_km_per_week_range'] ?? null,
+            'limited_km_per_month' => $vehicleBenefits['limited_km_per_month'] ?? null,
+            'limited_km_per_month_range' => $vehicleBenefits['limited_km_per_month_range'] ?? null,
+            'price_per_km_per_day' => $vehicleBenefits['price_per_km_per_day'] ?? null,
+            'price_per_km_per_week' => $vehicleBenefits['price_per_km_per_week'] ?? null,
+            'price_per_km_per_month' => $vehicleBenefits['price_per_km_per_month'] ?? null,
+            'unlimited_mileage' => $vehicleBenefits['unlimited_mileage'] ?? null,
+            // Driver Age
+            'minimum_driver_age' => $vehicleBenefits['minimum_driver_age'] ?? null,
+            'maximum_driver_age' => $vehicleBenefits['maximum_driver_age'] ?? null,
+            'young_driver_age_from' => $vehicleBenefits['young_driver_age_from'] ?? null,
+            'young_driver_age_to' => $vehicleBenefits['young_driver_age_to'] ?? null,
+            'senior_driver_age_from' => $vehicleBenefits['senior_driver_age_from'] ?? null,
+            'senior_driver_age_to' => $vehicleBenefits['senior_driver_age_to'] ?? null,
+            // Fuel & Vehicle Info
+            'fuel_policy' => $vehicleBenefits['fuel_policy'] ?? $extrasPayload['fuel_type'] ?? null,
+            'mileage' => $extrasPayload['mileage'] ?? null,
+            'transmission' => $extrasPayload['transmission'] ?? null,
+        ];
+
+        // Merge with the rest of the metadata structure
+        $additionalMetadata = [
+            'benefits' => array_filter($benefits, fn($v) => $v !== null),
             'pickup_location_id' => $metadata->pickup_location_code ?? null,
             'dropoff_location_id' => $metadata->dropoff_location_code ?? $metadata->pickup_location_code ?? null,
             'location' => $pickupLocationDetails,
@@ -598,6 +722,9 @@ class StripeBookingService
                 'notes' => $metadata->notes ?? null,
             ],
         ];
+
+        // Merge provider metadata with additional fields
+        return array_merge($providerMetadata, $additionalMetadata);
     }
 
     protected function normalizeCurrencyCode($currency): string
@@ -813,20 +940,27 @@ class StripeBookingService
                 $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
             }
 
+            // Notify vendor (use direct notify() so notification stores with correct notifiable_id)
             if ($vendor) {
-                Notification::route('mail', $vendor->email)
-                    ->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
+                $vendor->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
             }
 
+            // Company notification (mail only, no database storage needed)
             if ($vendorProfile && $vendorProfile->company_email) {
                 Notification::route('mail', $vendorProfile->company_email)
                     ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
             }
 
+            // Notify customer - use User model so notification stores with correct notifiable_id
             if ($tempPassword) {
                 if (!empty($customer->email) && !str_starts_with($customer->email, 'guest_')) {
-                    Notification::route('mail', $customer->email)
-                        ->notify(new GuestBookingCreatedNotification($booking, $customer, $vehicle, $tempPassword));
+                    $customerUser = $customer->user;
+                    if ($customerUser) {
+                        $customerUser->notify(new GuestBookingCreatedNotification($booking, $customer, $vehicle, $tempPassword));
+                    } else {
+                        Notification::route('mail', $customer->email)
+                            ->notify(new GuestBookingCreatedNotification($booking, $customer, $vehicle, $tempPassword));
+                    }
                 } else {
                     Log::warning('StripeBookingService: Guest account created without deliverable email', [
                         'booking_id' => $booking->id,
@@ -835,8 +969,13 @@ class StripeBookingService
                     ]);
                 }
             } else {
-                Notification::route('mail', $customer->email)
-                    ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+                $customerUser = $customer->user;
+                if ($customerUser) {
+                    $customerUser->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+                } else {
+                    Notification::route('mail', $customer->email)
+                        ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+                }
             }
         } catch (\Exception $e) {
             Log::warning('StripeBookingService: Failed to send booking notifications', [
@@ -1028,11 +1167,11 @@ class StripeBookingService
                 $vehicleId = substr($vehicleId, strlen($booking->provider_source . '_'));
             }
 
-            $providerVehicleTotal = $metadata->provider_vehicle_total ?? $metadata->vehicle_total ?? $metadata->total_amount;
+            $providerVehicleTotal = $metadata->provider_vehicle_total ?? $metadata->vehicle_total ?? $metadata->total_amount_net ?? $metadata->total_amount;
             $providerGrandTotal = $metadata->provider_grand_total
                 ?? (($metadata->provider_vehicle_total ?? null) !== null && ($metadata->provider_extras_total ?? null) !== null
                     ? (float) $metadata->provider_vehicle_total + (float) $metadata->provider_extras_total
-                    : ($metadata->total_amount ?? null));
+                    : ($metadata->total_amount_net ?? $metadata->total_amount ?? null));
 
             $xmlResponse = $greenMotionService->makeReservation(
                 $metadata->pickup_location_code,
@@ -1453,7 +1592,7 @@ class StripeBookingService
             $bookingTotalAmount = $metadata->recordgo_booking_total
                 ?? $metadata->provider_vehicle_total
                 ?? null;
-            $finalCustomerTotalAmount = $metadata->total_amount ?? $bookingTotalAmount;
+            $finalCustomerTotalAmount = $metadata->provider_grand_total ?? $bookingTotalAmount;
 
             $missing = [];
             foreach ([
@@ -1871,7 +2010,7 @@ class StripeBookingService
             }
 
             $bookingData = [
-                'price' => $metadata->payable_amount, // or total_amount depending on payment model
+                'price' => $metadata->provider_grand_total ?? $metadata->total_amount_net ?? $metadata->payable_amount,
                 'currency' => $metadata->provider_currency ?? $metadata->currency,
                 'notes' => $metadata->notes ?? '',
                 'payment_method' => 'pay_at_desk',
@@ -2153,7 +2292,7 @@ class StripeBookingService
             );
 
             $rentPrice = $this->formatFavricaAmount(
-                $metadata->provider_vehicle_total ?? $metadata->vehicle_total ?? $booking->total_amount ?? 0
+                $metadata->provider_vehicle_total ?? $metadata->vehicle_total ?? $metadata->total_amount_net ?? 0
             );
             $extraPrice = $this->formatFavricaAmount(
                 $metadata->provider_extras_total ?? $metadata->extras_total ?? 0
@@ -2301,7 +2440,7 @@ class StripeBookingService
                 $metadata->provider_currency ?? $metadata->currency ?? null
             );
 
-            $rentAmount = (float) ($metadata->provider_vehicle_total ?? $metadata->vehicle_total ?? $booking->total_amount ?? 0);
+            $rentAmount = (float) ($metadata->provider_vehicle_total ?? $metadata->vehicle_total ?? $metadata->total_amount_net ?? 0);
             $extraAmount = (float) ($metadata->provider_extras_total ?? $metadata->extras_total ?? 0);
             $dropAmount = (float) ($metadata->xdrive_drop_fee ?? 0);
             $totalAmount = $rentAmount + $extraAmount + $dropAmount;

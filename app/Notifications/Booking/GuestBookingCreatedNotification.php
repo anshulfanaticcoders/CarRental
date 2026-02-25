@@ -62,8 +62,10 @@ class GuestBookingCreatedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'Booking Confirmed #' . $this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
+            'role' => 'customer',
             'message' => 'Your booking is confirmed. Account access details were sent to your email.'
         ];
     }

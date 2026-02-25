@@ -61,7 +61,7 @@ const isInternal = computed(() => {
 });
 
 const providerGrossMultiplier = computed(() => {
-    // Apply 15% platform fee to ALL vehicles (including internal)
+    if (isInternal.value) return 1;
     const rate = providerMarkupRate.value;
     return Number.isFinite(rate) ? (1 + rate) : 1;
 });
@@ -448,8 +448,6 @@ const props = defineProps({
     locationName: String,
     pickupLocation: String,
     dropoffLocation: String,
-    dropoffLatitude: { type: [String, Number], default: null },
-    dropoffLongitude: { type: [String, Number], default: null },
     locationInstructions: String,
     locationDetails: {
         type: Object,
@@ -474,12 +472,6 @@ const props = defineProps({
     paymentPercentage: {
         type: Number,
         default: 0
-    },
-    // Price verification props
-    searchSessionId: String,
-    priceMap: {
-        type: Object,
-        default: () => ({})
     }
 });
 
@@ -600,53 +592,13 @@ const hasVehicleCoords = computed(() => {
     return isValidCoordinate(props.vehicle?.latitude) && isValidCoordinate(props.vehicle?.longitude);
 });
 
-const hasDropoffCoords = computed(() => {
-    return isValidCoordinate(props.dropoffLatitude) && isValidCoordinate(props.dropoffLongitude);
-});
-
-const isDifferentDropoff = computed(() => {
-    if (!hasDropoffCoords.value || !hasVehicleCoords.value) return false;
-    const pickupLat = parseFloat(props.vehicle.latitude);
-    const pickupLng = parseFloat(props.vehicle.longitude);
-    const dropLat = parseFloat(props.dropoffLatitude);
-    const dropLng = parseFloat(props.dropoffLongitude);
-    return Math.abs(pickupLat - dropLat) > 0.001 || Math.abs(pickupLng - dropLng) > 0.001;
-});
-
-// True when user selected a different dropoff name
-const hasOneWayDropoff = computed(() => {
-    if (!props.dropoffLocation || !props.pickupLocation) return false;
-    return props.dropoffLocation !== props.pickupLocation;
-});
-
 const vehicleLocationTitle = computed(() => {
     if (isInternal.value) return 'Vehicle Location';
-    if (isDifferentDropoff.value) return 'Pickup & Dropoff Locations';
     return 'Pickup Location';
 });
 
 const vehicleMapRef = ref(null);
 let vehicleMap = null;
-
-const createMapIcon = (color, label, pulse = false) => {
-    const pulseRing = pulse
-        ? `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;background:${color};opacity:0.2;animation:marker-pulse 2s ease-out infinite;"></div>`
-        : '';
-    return L.divIcon({
-        className: '',
-        html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center;">
-            <div style="background:${color};color:#fff;font-size:10px;font-weight:600;letter-spacing:0.3px;padding:3px 8px;border-radius:6px;white-space:nowrap;margin-bottom:4px;box-shadow:0 2px 8px ${color}40;backdrop-filter:blur(4px);">${label}</div>
-            <div style="position:relative;display:flex;align-items:center;justify-content:center;">
-                ${pulseRing}
-                <svg width="16" height="16" viewBox="0 0 16 16" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
-                    <circle cx="8" cy="8" r="7" fill="${color}" stroke="#fff" stroke-width="2.5"/>
-                </svg>
-            </div>
-        </div>`,
-        iconSize: [70, 38],
-        iconAnchor: [35, 38],
-    });
-};
 
 const initVehicleMap = () => {
     if (!hasVehicleCoords.value || !vehicleMapRef.value) return;
@@ -656,79 +608,32 @@ const initVehicleMap = () => {
         vehicleMap = null;
     }
 
-    const pickupLat = parseFloat(props.vehicle.latitude);
-    const pickupLng = parseFloat(props.vehicle.longitude);
+    const lat = parseFloat(props.vehicle.latitude);
+    const lng = parseFloat(props.vehicle.longitude);
 
     vehicleMap = L.map(vehicleMapRef.value, {
-        zoomControl: false,
+        zoomControl: true,
         maxZoom: 18,
         minZoom: 3,
-        zoomSnap: 0.5,
-        zoomDelta: 0.5,
-        wheelPxPerZoomLevel: 120,
-        zoomAnimation: true,
-        fadeAnimation: true,
-        markerZoomAnimation: true,
+        zoomSnap: 0.25,
+        markerZoomAnimation: false,
+        preferCanvas: true,
     });
 
-    // Zoom control top-right with smooth style
-    L.control.zoom({ position: 'topright' }).addTo(vehicleMap);
+    vehicleMap.setView([lat, lng], 14);
 
-    // Stadia Maps OSM Bright - colorful, detailed, Google Maps-like
-    const stadiaKey = import.meta.env.VITE_STADIA_MAPS_API_KEY || '';
-    const keyParam = stadiaKey ? `?api_key=${stadiaKey}` : '';
-    L.tileLayer(`https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png${keyParam}`, {
-        attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://openstreetmap.org/copyright">OSM</a>',
-        maxZoom: 20,
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
     }).addTo(vehicleMap);
 
-    const pickupLatLng = [pickupLat, pickupLng];
+    const markerIcon = L.divIcon({
+        className: "",
+        html: '<div style="width:18px;height:18px;background:#1e3a5f;border-radius:999px;border:2px solid #ffffff;box-shadow:0 2px 6px rgba(0,0,0,0.25);"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+    });
 
-    if (isDifferentDropoff.value) {
-        const dropoffLat = parseFloat(props.dropoffLatitude);
-        const dropoffLng = parseFloat(props.dropoffLongitude);
-        const dropoffLatLng = [dropoffLat, dropoffLng];
-
-        const pickupIcon = createMapIcon('#059669', 'Pickup', true);
-        const dropoffIcon = createMapIcon('#dc2626', 'Dropoff');
-
-        L.marker(pickupLatLng, { icon: pickupIcon })
-            .bindPopup(`<div style="font-family:system-ui;text-align:center;padding:4px 0;"><p style="font-weight:600;margin:0 0 2px;">Pickup</p><p style="margin:0;color:#6b7280;font-size:12px;">${props.pickupLocation || ''}</p></div>`, { className: 'rental-popup' })
-            .addTo(vehicleMap);
-
-        L.marker(dropoffLatLng, { icon: dropoffIcon })
-            .bindPopup(`<div style="font-family:system-ui;text-align:center;padding:4px 0;"><p style="font-weight:600;margin:0 0 2px;">Dropoff</p><p style="margin:0;color:#6b7280;font-size:12px;">${props.dropoffLocation || ''}</p></div>`, { className: 'rental-popup' })
-            .addTo(vehicleMap);
-
-        // Curved route line between pickup and dropoff
-        const midLat = (pickupLat + dropoffLat) / 2;
-        const midLng = (pickupLng + dropoffLng) / 2;
-        const latDiff = Math.abs(pickupLat - dropoffLat);
-        const lngDiff = Math.abs(pickupLng - dropoffLng);
-        const curveOffset = Math.max(latDiff, lngDiff) * 0.15;
-        const curvePoints = [];
-        for (let t = 0; t <= 1; t += 0.05) {
-            const lat = (1 - t) * (1 - t) * pickupLat + 2 * (1 - t) * t * (midLat + curveOffset) + t * t * dropoffLat;
-            const lng = (1 - t) * (1 - t) * pickupLng + 2 * (1 - t) * t * midLng + t * t * dropoffLng;
-            curvePoints.push([lat, lng]);
-        }
-
-        L.polyline(curvePoints, {
-            color: '#6366f1',
-            weight: 2.5,
-            opacity: 0.5,
-            dashArray: '8, 10',
-            lineCap: 'round',
-            lineJoin: 'round',
-        }).addTo(vehicleMap);
-
-        const bounds = L.latLngBounds([pickupLatLng, dropoffLatLng]);
-        vehicleMap.fitBounds(bounds, { padding: [50, 50], animate: true, duration: 0.8 });
-    } else {
-        const icon = createMapIcon('#059669', 'Pickup', true);
-        L.marker(pickupLatLng, { icon }).addTo(vehicleMap);
-        vehicleMap.setView(pickupLatLng, 14, { animate: true, duration: 0.6 });
-    }
+    L.marker([lat, lng], { icon: markerIcon }).addTo(vehicleMap);
 
     setTimeout(() => {
         if (vehicleMap) {
@@ -781,33 +686,6 @@ const currentPackage = ref(props.initialPackage || 'BAS');
 const selectedExtras = ref({});
 const showDetailsModal = ref(false);
 const showLocationHoursModal = ref(false);
-
-// Deposit type selector for internal vehicles
-const selectedDepositType = ref(null);
-const availableDepositTypes = computed(() => {
-    const method = props.vehicle?.payment_method;
-    if (!method) return [];
-    let methods = [];
-    try {
-        if (typeof method === 'string' && (method.startsWith('[') || method.startsWith('{'))) {
-            const parsed = JSON.parse(method);
-            methods = Array.isArray(parsed) ? parsed : [method];
-        } else if (Array.isArray(method)) {
-            methods = method;
-        } else {
-            methods = [method];
-        }
-    } catch {
-        methods = [method];
-    }
-    return methods.filter(Boolean);
-});
-// Auto-select first deposit type if only one option
-watch(availableDepositTypes, (types) => {
-    if (types.length === 1 && !selectedDepositType.value) {
-        selectedDepositType.value = types[0];
-    }
-}, { immediate: true });
 
 const ratesReady = computed(() => !!exchangeRates.value && !loading.value);
 
@@ -1971,17 +1849,15 @@ const grandTotal = computed(() => {
 
 const effectivePaymentPercentage = computed(() => {
     if (isRenteon.value) return providerMarkupRate.value * 100;
-    // Default to 15% if not provided, to prevent "Pay 0" bug
-    return props.paymentPercentage || 15;
+    return props.paymentPercentage || 0;
 });
 
 const payableAmount = computed(() => {
     if (isRenteon.value) {
         return (parseFloat(grandTotal.value) - parseFloat(netGrandTotal.value)).toFixed(2);
     }
-    // Default to 15% if paymentPercentage is 0 or not provided
-    const percent = props.paymentPercentage && props.paymentPercentage > 0 ? props.paymentPercentage : 15;
-    return (parseFloat(grandTotal.value) * (percent / 100)).toFixed(2);
+    if (!props.paymentPercentage || props.paymentPercentage <= 0) return 0;
+    return (parseFloat(grandTotal.value) * (props.paymentPercentage / 100)).toFixed(2);
 });
 
 const pendingAmount = computed(() => {
@@ -2333,11 +2209,11 @@ const formatPaymentMethod = (method) => {
                     </div>
                 </div>
 
-                <!-- Vehicle / Pickup Location -->
+                <!-- Vehicle Location -->
                 <div v-if="vehicleLocationText || hasVehicleCoords"
                     class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
                     <div class="flex items-center gap-2 mb-4">
-                        <MapPin class="w-5 h-5" :class="hasOneWayDropoff ? 'text-green-600' : 'text-[#1e3a5f]'" />
+                        <MapPin class="w-5 h-5 text-[#1e3a5f]" />
                         <h4 class="font-display text-xl font-bold text-gray-900">{{ vehicleLocationTitle }}</h4>
                     </div>
                     <p class="text-sm text-gray-600 mb-4">
@@ -2365,33 +2241,9 @@ const formatPaymentMethod = (method) => {
                             View hours & policies
                         </button>
                     </div>
-                </div>
-
-                <!-- Dropoff Location (only when different from pickup) -->
-                <div v-if="hasOneWayDropoff"
-                    class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-                    <div class="flex items-center gap-2 mb-4">
-                        <MapPin class="w-5 h-5 text-red-600" />
-                        <h4 class="font-display text-xl font-bold text-gray-900">Dropoff Location</h4>
-                    </div>
-                    <p class="text-sm text-gray-600">{{ dropoffLocation }}</p>
-                </div>
-
-                <!-- Map -->
-                <div v-if="hasVehicleCoords"
-                    class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden relative">
-                    <div v-if="isDifferentDropoff"
-                        class="absolute top-3 left-3 z-[1000] flex items-center gap-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-sm text-xs font-medium text-gray-600">
-                        <span class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Pickup
-                        </span>
-                        <span class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-red-500"></span> Dropoff
-                        </span>
-                    </div>
-                    <div ref="vehicleMapRef"
-                        :class="isDifferentDropoff ? 'h-72' : 'h-56'"
-                        class="w-full"></div>
+                    <div v-if="hasVehicleCoords" ref="vehicleMapRef"
+                        class="h-56 rounded-xl overflow-hidden border border-gray-200"></div>
+                    <p v-else class="text-xs text-gray-500">Map not available for this vehicle.</p>
                 </div>
 
                 <div v-if="okMobilityInfoAvailable" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
@@ -2679,65 +2531,39 @@ const formatPaymentMethod = (method) => {
                             Benefits & Policy
                         </h5>
 
-                        <!-- Deposit & Security Section -->
-                        <div v-if="vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount"
-                            class="mb-8 border-b border-gray-100 pb-6">
-
-                            <!-- Deposit Amount + Excess in a compact row -->
-                            <div class="grid grid-cols-2 gap-4 mb-5">
-                                <div v-if="vehicle?.security_deposit > 0">
-                                    <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Security Deposit</h5>
-                                    <p class="text-xl font-bold text-gray-900">{{ formatPrice(vehicle?.security_deposit) }}</p>
-                                </div>
-                                <div v-if="vehicle?.benefits?.deposit_amount && !vehicle?.security_deposit">
-                                    <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Deposit Amount</h5>
-                                    <p class="text-xl font-bold text-gray-900">{{ formatPrice(vehicle?.benefits?.deposit_amount) }}</p>
-                                    <p v-if="vehicle?.benefits?.deposit_currency" class="text-xs text-gray-500">Currency: {{ vehicle?.benefits?.deposit_currency }}</p>
-                                </div>
-                                <div v-if="vehicle?.benefits?.excess_amount">
-                                    <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Excess Amount</h5>
-                                    <p class="text-xl font-bold text-gray-900">{{ formatPrice(vehicle?.benefits?.excess_amount) }}</p>
-                                </div>
+                        <!-- Deposit Section -->
+                        <div class="grid grid-cols-2 gap-6 mb-8 border-b border-gray-100 pb-6">
+                            <div v-if="vehicle?.security_deposit > 0">
+                                <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Security
+                                    Deposit
+                                </h5>
+                                <p class="text-xl font-bold text-gray-900">
+                                    {{ formatPrice(vehicle?.security_deposit) }}
+                                </p>
                             </div>
-
-                            <!-- Deposit Type Selector - prominent with clear context -->
-                            <div v-if="availableDepositTypes.length > 1"
-                                class="rounded-xl border-2 p-4 transition-colors"
-                                :class="selectedDepositType ? 'border-emerald-200 bg-emerald-50/30' : 'border-amber-300 bg-amber-50'">
-                                <div class="flex items-start gap-3 mb-3">
-                                    <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                                        :class="selectedDepositType ? 'bg-emerald-100' : 'bg-amber-100'">
-                                        <svg v-if="selectedDepositType" class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                                        <svg v-else class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.834-1.964-.834-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
-                                    </div>
-                                    <div>
-                                        <h5 class="text-sm font-bold text-gray-900">How would you like to pay the deposit at pickup?</h5>
-                                        <p class="text-xs text-gray-500 mt-0.5">The vendor requires a deposit of <strong>{{ formatPrice(vehicle?.security_deposit || vehicle?.benefits?.deposit_amount) }}</strong> when you collect the vehicle. Please select your preferred payment method.</p>
-                                    </div>
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    <label
-                                        v-for="dtype in availableDepositTypes"
-                                        :key="dtype"
-                                        class="relative cursor-pointer"
-                                    >
-                                        <input type="radio" :value="dtype" v-model="selectedDepositType" class="sr-only peer" />
-                                        <span class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all cursor-pointer
-                                            peer-checked:border-[#1e3a5f] peer-checked:bg-[#1e3a5f] peer-checked:text-white peer-checked:shadow-lg
-                                            border-gray-200 bg-white text-gray-700 hover:border-[#1e3a5f]/40 hover:shadow-sm">
-                                            <svg v-if="selectedDepositType === dtype" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                                            <span class="w-4 h-4 rounded-full border-2 border-gray-300" v-else></span>
-                                            {{ formatPaymentMethod(dtype) }}
-                                        </span>
-                                    </label>
-                                </div>
+                            <div v-if="vehicle?.payment_method">
+                                <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Deposit Method
+                                </h5>
+                                <span
+                                    class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                    {{ formatPaymentMethod(vehicle?.payment_method) }}
+                                </span>
                             </div>
-
-                            <!-- Single deposit method - just show it as info -->
-                            <div v-else-if="availableDepositTypes.length === 1"
-                                class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-100">
-                                <svg class="w-4 h-4 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
-                                <p class="text-sm text-blue-700">Deposit payable via <strong>{{ formatPaymentMethod(availableDepositTypes[0]) }}</strong> at pickup</p>
+                            <div v-if="vehicle?.benefits?.deposit_amount">
+                                <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Deposit Amount
+                                </h5>
+                                <p class="text-xl font-bold text-gray-900">
+                                    {{ formatPrice(vehicle?.benefits?.deposit_amount) }}
+                                </p>
+                                <p v-if="vehicle?.benefits?.deposit_currency" class="text-xs text-gray-500">Currency: {{
+                                    vehicle?.benefits?.deposit_currency }}</p>
+                            </div>
+                            <div v-if="vehicle?.benefits?.excess_amount">
+                                <h5 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Excess Amount
+                                </h5>
+                                <p class="text-xl font-bold text-gray-900">
+                                    {{ formatPrice(vehicle?.benefits?.excess_amount) }}
+                                </p>
                             </div>
                         </div>
 
@@ -3677,10 +3503,9 @@ const formatPaymentMethod = (method) => {
                                 payableAmount,
                                 pendingAmount
                             },
-                            vehicle_total: isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0)),
-                            selected_deposit_type: selectedDepositType || null,
+                            vehicle_total: isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0))
                         })" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg"
-                            :disabled="!ratesReady || (availableDepositTypes.length > 1 && !selectedDepositType)" :class="{ 'is-loading': !ratesReady }">
+                            :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                             Proceed to Booking
                         </button>
                         <button @click="$emit('back')"
@@ -3863,24 +3688,6 @@ const formatPaymentMethod = (method) => {
         </div>
     </div>
 </template>
-
-<style>
-/* Leaflet map marker pulse animation */
-@keyframes marker-pulse {
-    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.25; }
-    100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
-}
-
-/* Leaflet popup styling */
-.rental-popup .leaflet-popup-content-wrapper {
-    border-radius: 10px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    border: none;
-}
-.rental-popup .leaflet-popup-tip {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-</style>
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');

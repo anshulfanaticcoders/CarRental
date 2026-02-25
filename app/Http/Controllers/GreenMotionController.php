@@ -1041,121 +1041,39 @@ class GreenMotionController extends Controller
 
     public function getDropoffLocationsForProvider(Request $request, $provider, $location_id)
     {
-        // Handle OK Mobility - it's one-way rental only, no dropoff locations
-        if ($provider === 'okmobility') {
-            return response()->json([
-                'locations' => [],
-                'message' => 'OK Mobility is one-way rental only. Dropoff location is the same as pickup location.'
-            ]);
-        }
-
-        // Handle LocautoRent - return all Locauto locations (they support one-way rentals)
-        if ($provider === 'locauto_rent') {
-            $locautoService = app(\App\Services\LocautoRentService::class);
-            $locautoLocations = $locautoService->parseLocationResponse();
-            return response()->json([
-                'locations' => $locautoLocations,
-                'message' => 'LocautoRent locations - select your preferred dropoff location'
-            ]);
-        }
-
-        // Handle Renteon - return all Renteon locations
-        if ($provider === 'renteon') {
-            try {
-                $renteonService = app(\App\Services\RenteonService::class);
-                $renteonLocations = $renteonService->parseLocationResponse();
-                return response()->json([
-                    'locations' => $renteonLocations,
-                    'message' => 'Renteon locations - select your preferred dropoff location'
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error fetching Renteon locations: ' . $e->getMessage());
-                return response()->json([
-                    'locations' => [],
-                    'message' => 'Could not fetch Renteon locations'
-                ], 500);
-            }
-        }
-
-        if ($provider === 'favrica' || $provider === 'xdrive') {
-            $locationsFilePath = public_path('unified_locations.json');
-            if (!File::exists($locationsFilePath)) {
-                return response()->json(['error' => 'Unified locations file not found.'], 500);
-            }
-
-            $allLocations = json_decode(File::get($locationsFilePath), true);
-            $dropoffLocations = collect($allLocations)->filter(function ($location) use ($provider) {
-                if (!isset($location['providers'])) {
-                    return false;
-                }
-                foreach ($location['providers'] as $p) {
-                    if (($p['provider'] ?? null) === $provider) {
-                        return true;
-                    }
-                }
-                return false;
-            })->values()->all();
-
-            return response()->json([
-                'locations' => $dropoffLocations,
-                'message' => ucfirst($provider) . ' locations - select your preferred dropoff location'
-            ]);
-        }
-
-        try {
-            $this->greenMotionService->setProvider($provider);
-        } catch (\Exception $e) {
-            return response()->json(['error' => "Invalid provider: {$provider}"], 400);
-        }
-
-        $xml = $this->greenMotionService->getLocationInfo($location_id);
-
-        if (is_null($xml) || empty($xml)) {
-            Log::error("{$provider} API returned null or empty XML response for GetLocationInfo.");
-            return response()->json(['error' => 'Failed to retrieve location data. API returned empty response.'], 500);
-        }
-
-        libxml_use_internal_errors(true);
-        $xmlObject = simplexml_load_string($xml);
-
-        if ($xmlObject === false) {
-            $errors = libxml_get_errors();
-            foreach ($errors as $error) {
-                Log::error("XML Parsing Error (GetLocationInfo for dropoff - {$provider}): " . $error->message);
-            }
-            libxml_clear_errors();
-            return response()->json(['error' => 'Failed to parse XML response for location info from API.'], 500);
-        }
-
-        $dropoffLocationIds = [];
-        if (isset($xmlObject->response->location_info->oneway->location_id)) {
-            foreach ($xmlObject->response->location_info->oneway->location_id as $id) {
-                $dropoffLocationIds[] = (string) $id;
-            }
-        }
-
         $locationsFilePath = public_path('unified_locations.json');
         if (!File::exists($locationsFilePath)) {
             return response()->json(['error' => 'Unified locations file not found.'], 500);
         }
-
         $allLocations = json_decode(File::get($locationsFilePath), true);
 
-        $dropoffLocations = collect($allLocations)->filter(function ($location) use ($dropoffLocationIds, $provider) {
-            if (isset($location['providers'])) {
-                foreach ($location['providers'] as $p) {
-                    if ($p['provider'] === $provider && in_array($p['pickup_id'], $dropoffLocationIds)) {
-                        return true;
-                    }
+        // Find the pickup location entry and its pre-stored dropoff IDs for this provider.
+        $dropoffIds = [];
+        foreach ($allLocations as $loc) {
+            foreach ($loc['providers'] ?? [] as $p) {
+                if (($p['provider'] ?? null) === $provider && (string) ($p['pickup_id'] ?? '') === (string) $location_id) {
+                    $dropoffIds = $p['dropoffs'] ?? [];
+                    break 2;
+                }
+            }
+        }
+
+        if (empty($dropoffIds)) {
+            return response()->json(['locations' => []]);
+        }
+
+        // Return unified locations whose provider entry matches one of the dropoff IDs.
+        $dropoffIdSet = array_flip($dropoffIds);
+        $dropoffLocations = collect($allLocations)->filter(function ($location) use ($provider, $dropoffIdSet) {
+            foreach ($location['providers'] ?? [] as $p) {
+                if (($p['provider'] ?? null) === $provider && isset($dropoffIdSet[$p['pickup_id'] ?? ''])) {
+                    return true;
                 }
             }
             return false;
         })->values()->all();
 
-
-        return response()->json([
-            'locations' => $dropoffLocations
-        ]);
+        return response()->json(['locations' => $dropoffLocations]);
     }
 
     public function checkAvailability(Request $request)
@@ -1365,4 +1283,5 @@ class GreenMotionController extends Controller
             return response()->json(['error' => 'Booking submitted, but no reference received. Please check logs.'], 500);
         }
     }
+
 }

@@ -122,64 +122,64 @@ watch([range, startDate, endDate], () => {
       </div>
 
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Card>
+        <Card class="border-l-4 border-l-blue-500">
           <CardHeader class="flex flex-row items-center justify-between space-y-0">
-            <CardTitle class="text-sm font-medium">Total Bookings</CardTitle>
-            <CalendarDays class="h-4 w-4 text-slate-400" />
+            <CardTitle class="text-sm font-medium text-muted-foreground">Total Bookings</CardTitle>
+            <CalendarDays class="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div class="text-2xl font-bold">{{ metrics.total_bookings }}</div>
-            <p class="text-xs text-slate-500">{{ growthLabel(metrics.booking_growth) }} vs previous period</p>
+            <p class="text-xs" :class="metrics.booking_growth >= 0 ? 'text-emerald-600' : 'text-red-500'">{{ growthLabel(metrics.booking_growth) }} vs previous period</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card class="border-l-4 border-l-emerald-500">
           <CardHeader class="flex flex-row items-center justify-between space-y-0">
-            <CardTitle class="text-sm font-medium">Total Revenue</CardTitle>
-            <Wallet class="h-4 w-4 text-slate-400" />
+            <CardTitle class="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+            <Wallet class="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div class="text-2xl font-bold">{{ formatCurrency(metrics.total_revenue) }}</div>
-            <p class="text-xs text-slate-500">{{ growthLabel(metrics.revenue_growth) }} vs previous period</p>
+            <p class="text-xs" :class="metrics.revenue_growth >= 0 ? 'text-emerald-600' : 'text-red-500'">{{ growthLabel(metrics.revenue_growth) }} vs previous period</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card class="border-l-4 border-l-teal-500">
           <CardHeader class="flex flex-row items-center justify-between space-y-0">
-            <CardTitle class="text-sm font-medium">Paid Revenue</CardTitle>
-            <BadgeCheck class="h-4 w-4 text-slate-400" />
+            <CardTitle class="text-sm font-medium text-muted-foreground">Paid Revenue</CardTitle>
+            <BadgeCheck class="h-4 w-4 text-teal-500" />
           </CardHeader>
           <CardContent>
             <div class="text-2xl font-bold">{{ formatCurrency(metrics.paid_revenue) }}</div>
-            <p class="text-xs text-slate-500">Pending {{ formatCurrency(metrics.pending_revenue) }}</p>
+            <p class="text-xs text-muted-foreground">Pending {{ formatCurrency(metrics.pending_revenue) }}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card class="border-l-4 border-l-violet-500">
           <CardHeader class="flex flex-row items-center justify-between space-y-0">
-            <CardTitle class="text-sm font-medium">Total Payments</CardTitle>
-            <WalletCards class="h-4 w-4 text-slate-400" />
+            <CardTitle class="text-sm font-medium text-muted-foreground">Total Payments</CardTitle>
+            <WalletCards class="h-4 w-4 text-violet-500" />
           </CardHeader>
           <CardContent>
             <div class="text-2xl font-bold">{{ metrics.total_payments }}</div>
-            <p class="text-xs text-slate-500">Success rate {{ metrics.success_rate }}%</p>
+            <p class="text-xs text-muted-foreground">Success rate {{ metrics.success_rate }}%</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card class="border-l-4 border-l-amber-500">
           <CardHeader class="flex flex-row items-center justify-between space-y-0">
-            <CardTitle class="text-sm font-medium">Pending Revenue</CardTitle>
-            <AlertTriangle class="h-4 w-4 text-slate-400" />
+            <CardTitle class="text-sm font-medium text-muted-foreground">Pending Revenue</CardTitle>
+            <AlertTriangle class="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
             <div class="text-2xl font-bold">{{ formatCurrency(metrics.pending_revenue) }}</div>
-            <p class="text-xs text-slate-500">Awaiting payment</p>
+            <p class="text-xs text-muted-foreground">Awaiting payment</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card class="border-l-4 border-l-indigo-500">
           <CardHeader class="flex flex-row items-center justify-between space-y-0">
-            <CardTitle class="text-sm font-medium">Revenue Momentum</CardTitle>
-            <TrendingUp class="h-4 w-4 text-slate-400" />
+            <CardTitle class="text-sm font-medium text-muted-foreground">Revenue Momentum</CardTitle>
+            <TrendingUp class="h-4 w-4 text-indigo-500" />
           </CardHeader>
           <CardContent>
-            <div class="text-2xl font-bold">{{ growthLabel(metrics.revenue_growth) }}</div>
-            <p class="text-xs text-slate-500">Admin currency {{ currency }}</p>
+            <div class="text-2xl font-bold" :class="metrics.revenue_growth >= 0 ? 'text-emerald-600' : 'text-red-500'">{{ growthLabel(metrics.revenue_growth) }}</div>
+            <p class="text-xs text-muted-foreground">Admin currency {{ currency }}</p>
           </CardContent>
         </Card>
       </div>

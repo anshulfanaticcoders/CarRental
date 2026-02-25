@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BookingAmount;
 use App\Models\BookingPayment;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -89,11 +90,18 @@ class DashboardController extends Controller
         $completedBookings = Booking::where('booking_status', 'completed')->count();
         $cancelledBookings = Booking::where('booking_status', 'cancelled')->count();
 
-        // Total Revenue
-        $totalRevenue = BookingPayment::sum('amount');
+        // Admin currency (always EUR from config)
+        $adminCurrency = strtoupper(config('currency.base_currency', 'EUR'));
+
+        // Total Revenue: Use admin_total_amount from booking_amounts (admin's actual earnings in EUR)
+        $totalRevenue = BookingAmount::sum('admin_total_amount');
         $revenueGrowth = $this->calculateGrowthPercentage(
-            BookingPayment::whereBetween('created_at', [$startDate, $endDate])->sum('amount'),
-            BookingPayment::where('created_at', '<', $startDate)->sum('amount')
+            BookingAmount::whereHas('booking', function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('created_at', [$startDate, $endDate]);
+            })->sum('admin_total_amount'),
+            BookingAmount::whereHas('booking', function ($q) use ($startDate) {
+                $q->where('created_at', '<', $startDate);
+            })->sum('admin_total_amount')
         );
 
         $bookingOverview = $this->getBookingOverview($startDate, $endDate);
@@ -149,6 +157,7 @@ class DashboardController extends Controller
             'userTableData' => $userTableData,
             'vendorTableData' => $vendorTableData,
             'dateRange' => $dateRange,
+            'adminCurrency' => $adminCurrency,
         ]);
     }
 
@@ -182,7 +191,9 @@ class DashboardController extends Controller
 
             return [
                 'name' => $date->format('M'),
-                'total' => BookingPayment::whereYear('created_at', $date->year)->whereMonth('created_at', $date->month)->sum('amount'),
+                'total' => BookingAmount::whereHas('booking', function ($q) use ($date) {
+                    $q->whereYear('created_at', $date->year)->whereMonth('created_at', $date->month);
+                })->sum('admin_total_amount'),
                 'bookings' => Booking::where('booking_status', 'completed')->whereYear('created_at', $date->year)->whereMonth('created_at', $date->month)->count(),
             ];
         })->values()->all();
@@ -190,7 +201,7 @@ class DashboardController extends Controller
 
     protected function getRecentSales(Carbon $startDate, Carbon $endDate)
     {
-        $recentSales = Booking::with(['customer', 'vehicle'])
+        $recentSales = Booking::with(['customer', 'vehicle', 'amounts'])
             ->whereBetween('created_at', [$startDate, $endDate])
             ->orderBy('created_at', 'desc')
             ->take(10)
@@ -203,7 +214,8 @@ class DashboardController extends Controller
                 'booking_number' => $booking->booking_number,
                 'customer_name' => optional($booking->customer)->first_name . ' ' . optional($booking->customer)->last_name,
                 'vehicle' => optional($booking->vehicle)->name,
-                'total_amount' => $booking->total_amount,
+                'total_amount' => $booking->amounts->admin_total_amount ?? $booking->total_amount,
+                'currency' => $booking->amounts->admin_currency ?? 'EUR',
                 'payment_status' => optional($booking->payment)->status ?? 'Pending',
                 'created_at' => $booking->created_at->format('Y-m-d H:i:s'),
             ];
@@ -223,14 +235,16 @@ class DashboardController extends Controller
 
             return [
                 'name' => $date->format('M'),
-                'completed' => BookingPayment::where('payment_status', BookingPayment::STATUS_SUCCEEDED)
-                    ->whereYear('created_at', $date->year)
-                    ->whereMonth('created_at', $date->month)
-                    ->sum('amount'),
-                'pending' => BookingPayment::where('payment_status', BookingPayment::STATUS_PENDING)
-                    ->whereYear('created_at', $date->year)
-                    ->whereMonth('created_at', $date->month)
-                    ->sum('amount'),
+                'completed' => BookingAmount::whereHas('booking', function ($q) use ($date) {
+                    $q->where('payment_status', 'succeeded')
+                      ->whereYear('created_at', $date->year)
+                      ->whereMonth('created_at', $date->month);
+                })->sum('admin_paid_amount'),
+                'pending' => BookingAmount::whereHas('booking', function ($q) use ($date) {
+                    $q->whereIn('payment_status', ['pending', 'partial'])
+                      ->whereYear('created_at', $date->year)
+                      ->whereMonth('created_at', $date->month);
+                })->sum('admin_pending_amount'),
                 'failed' => BookingPayment::where('payment_status', BookingPayment::STATUS_FAILED)
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
@@ -242,6 +256,13 @@ class DashboardController extends Controller
 
     protected function getTotalPayments($status, Carbon $startDate, Carbon $endDate)
     {
+        if ($status === BookingPayment::STATUS_SUCCEEDED) {
+            return BookingAmount::whereHas('booking', function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('created_at', [$startDate, $endDate]);
+            })->sum('admin_paid_amount');
+        }
+
+        // For failed payments, keep using BookingPayment (no booking_amounts record exists)
         return BookingPayment::where('payment_status', $status)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->sum('amount');
@@ -249,28 +270,32 @@ class DashboardController extends Controller
 
     protected function calculatePaymentGrowth(Carbon $startDate, Carbon $endDate)
     {
-        $currentMonthPayments = BookingPayment::whereBetween('created_at', [$startDate, $endDate])
-            ->sum('amount');
+        $currentPayments = BookingAmount::whereHas('booking', function ($q) use ($startDate, $endDate) {
+            $q->whereBetween('created_at', [$startDate, $endDate]);
+        })->sum('admin_total_amount');
 
-        $previousMonthPayments = BookingPayment::where('created_at', '<', $startDate)
-            ->sum('amount');
+        $previousPayments = BookingAmount::whereHas('booking', function ($q) use ($startDate) {
+            $q->where('created_at', '<', $startDate);
+        })->sum('admin_total_amount');
 
-        if ($previousMonthPayments == 0) {
-            return $currentMonthPayments > 0 ? 100 : 0;
+        if ($previousPayments == 0) {
+            return $currentPayments > 0 ? 100 : 0;
         }
 
-        return round((($currentMonthPayments - $previousMonthPayments) / $previousMonthPayments) * 100, 2);
+        return round((($currentPayments - $previousPayments) / $previousPayments) * 100, 2);
     }
 
     public function getTableData(Carbon $startDate, Carbon $endDate)
     {
-        return Booking::with(['customer', 'vehicle.vendor'])
+        return Booking::with(['customer', 'vehicle.vendor', 'amounts'])
             ->whereBetween('created_at', [$startDate, $endDate])
             ->paginate(10)
             ->through(function ($booking) {
                 $vehicle = $booking->vehicle;
                 $vendor = optional($vehicle)->vendor;
                 $customer = $booking->customer;
+                $adminCurrency = $booking->amounts->admin_currency ?? 'EUR';
+                $adminAmount = $booking->amounts->admin_total_amount ?? $booking->total_amount;
 
                 return [
                     'booking_id' => $booking->id,
@@ -279,7 +304,7 @@ class DashboardController extends Controller
                     'vehicle' => optional($vehicle)->brand . ' ' . optional($vehicle)->model,
                     'start_date' => $booking->pickup_date,
                     'end_date' => $booking->return_date,
-                    'total_amount' => $booking->total_amount,
+                    'total_amount' => $adminCurrency . ' ' . number_format((float) $adminAmount, 2),
                     'status' => $booking->booking_status,
                 ];
             });

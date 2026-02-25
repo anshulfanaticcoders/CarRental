@@ -705,7 +705,7 @@ class RenteonService
         // Transform each vehicle to unified format
         $transformedVehicles = [];
         foreach ($vehicles as $vehicle) {
-            $transformedVehicles[] = $this->transformVehicle($vehicle, $pickupCode, $locationLat, $locationLng, $locationName, $rentalDays);
+            $transformedVehicles[] = $this->transformVehicle($vehicle, $pickupCode, $locationLat, $locationLng, $locationName, $rentalDays, $dropoffCode);
         }
 
         return $transformedVehicles;
@@ -752,7 +752,7 @@ class RenteonService
         // Transform each vehicle to unified format
         $transformedVehicles = [];
         foreach ($vehicles as $vehicle) {
-            $transformedVehicles[] = $this->transformVehicle($vehicle, $pickupCode, $locationLat, $locationLng, $locationName, $rentalDays);
+            $transformedVehicles[] = $this->transformVehicle($vehicle, $pickupCode, $locationLat, $locationLng, $locationName, $rentalDays, $dropoffCode);
         }
 
         return $transformedVehicles;
@@ -761,7 +761,7 @@ class RenteonService
     /**
      * Transform vehicle data to unified format
      */
-    private function transformVehicle($vehicle, $pickupCode, $locationLat = null, $locationLng = null, $locationName = null, $rentalDays = 1)
+    private function transformVehicle($vehicle, $pickupCode, $locationLat = null, $locationLng = null, $locationName = null, $rentalDays = 1, $dropoffCode = null)
     {
         $sippCode = $vehicle['CarCategory'] ?? $vehicle['sipp_code'] ?? $vehicle['acriss_code'] ?? null;
         $parsedSipp = $this->parseSippCode($sippCode);
@@ -848,6 +848,7 @@ class RenteonService
             'longitude' => (float) ($locationLng ?? 0),
             'full_vehicle_address' => $locationName ?? 'Renteon Location',
             'provider_pickup_id' => $pickupCode,
+            'provider_return_id' => $dropoffCode ?? $pickupCode,
             'provider_pickup_office_id' => $pickupOfficeId,
             'provider_dropoff_office_id' => $dropoffOfficeId,
             'pickup_office' => $pickupOfficeDetails,

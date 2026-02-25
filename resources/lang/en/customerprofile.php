@@ -86,4 +86,50 @@ return [
         'download' => 'Download',
         'back_to_bookings' => 'Back to Bookings',
         'back' => 'Back',
+
+        // Booking Details Page - Hero & Navigation
+        'home' => 'Home',
+        'booking' => 'Booking',
+        'duration' => 'Duration',
+
+        // Booking Details Page - Payment Alert
+        'paid_online' => 'Paid Online',
+        'paid_in_full' => 'Paid in Full',
+        'deposit_via_stripe' => 'Deposit via Stripe',
+        'due_at_pickup' => 'Due at Pickup',
+        'pay_to_vendor' => 'Pay to vendor on arrival',
+        'payment_progress' => 'Payment Progress',
+        'paid' => 'paid',
+
+        // Booking Details Page - Cards
+        'vehicle_and_trip' => 'Vehicle & Trip',
+        'vehicle_rental' => 'Vehicle Rental',
+        'price_breakdown' => 'Price Breakdown',
+        'tax_fees' => 'Tax & Fees',
+        'grand_total' => 'Grand Total',
+        'includes_platform_fee' => 'Includes platform fee',
+
+        // Booking Details Page - Deposit & Insurance
+        'deposit_insurance' => 'Deposit & Insurance',
+        'security_deposit' => 'Security Deposit',
+        'insurance_excess' => 'Insurance Excess',
+        'deposit_info' => 'Held on your card at pickup. Released within 7-14 days after return, subject to vehicle inspection.',
+
+        // Booking Details Page - Rental Company & Policies
+        'rental_company' => 'Rental Company',
+        'booking_references' => 'Booking References',
+        'booked_on' => 'Booked On',
+        'rental_policies' => 'Rental Policies',
+        'view_all' => 'View all',
+        'fuel_policy' => 'Fuel Policy',
+        'mileage' => 'Mileage',
+        'min_age' => 'Min Age',
+        'cancellation' => 'Cancellation',
+
+        // Booking Details Page - Customer Details
+        'your_details' => 'Your Details',
+        'full_name' => 'Full Name',
+        'driver_age' => 'Driver Age',
+        'flight_number' => 'Flight Number',
+        'notes' => 'Notes',
 ];

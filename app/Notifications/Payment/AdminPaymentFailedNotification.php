@@ -58,6 +58,7 @@ class AdminPaymentFailedNotification extends Notification
     {
         $amounts = $this->getAdminAmounts($this->booking);
         return [
+            'title' => 'Payment Failed #' . $this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
@@ -71,6 +72,7 @@ class AdminPaymentFailedNotification extends Notification
             'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
             'customer_email' => $this->customer->email,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
+            'role' => 'admin',
             'message' => 'Payment for Booking #' . $this->booking->booking_number . ' has failed.',
         ];
     }

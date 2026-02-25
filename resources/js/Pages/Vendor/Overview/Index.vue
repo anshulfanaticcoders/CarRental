@@ -177,7 +177,7 @@
                         </Badge>
                     </div>
                     <div class="text-center">
-                        <p class="text-2xl sm:text-3xl lg:text-4xl font-bold text-indigo-900">{{ formatNumber(totalRevenue) }}</p>
+                        <p class="text-2xl sm:text-3xl lg:text-4xl font-bold text-indigo-900">{{ currency }} {{ formatNumber(totalRevenue) }}</p>
                         <p class="text-xs sm:text-sm text-indigo-700 mt-1">{{ _t('vendorprofilepages', 'total_revenue_card_title') }}</p>
                     </div>
                 </div>
@@ -226,7 +226,7 @@
                                 show-x-axis
                                 show-y-axis
                                 show-grid-lines
-                                :y-formatter="(tick) => tick ? `$ ${new Intl.NumberFormat('en-US').format(tick)}` : ''"
+                                :y-formatter="(tick) => tick ? `${currency} ${new Intl.NumberFormat('en-US').format(tick)}` : ''"
                                 class="h-64 sm:h-72 lg:h-80 min-w-[300px] sm:min-w-full"
                             />
                         </div>

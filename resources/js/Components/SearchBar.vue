@@ -47,7 +47,7 @@
             <!-- Dropoff Location -->
             <div v-if="isProviderLocation" class="w-full relative group">
               <label
-                class="block text-xs font-semibold text-customLightGrayColor uppercase tracking-wider mb-2 pl-1">Dropoff
+                class="block text-xs font-semibold text-customLightGrayColor uppercase tracking-wider mb-2 pl-1">Drop-off
                 Location</label>
               <div
                 class="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 transition-colors group-hover:border-customPrimaryColor focus-within:border-customPrimaryColor focus-within:ring-1 focus-within:ring-customPrimaryColor/20">
@@ -58,9 +58,15 @@
                     stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
                 <input type="text" v-model="form.dropoff_where" @click="handleDropoffInputClick"
-                  placeholder="Enter dropoff location"
+                  :placeholder="dropoffPlaceholder"
                   class="bg-transparent border-none p-0 w-full text-customDarkBlackColor placeholder-gray-400 focus:ring-0 focus:border-none focus:outline-none text-sm font-medium"
                   readonly />
+              </div>
+              <!-- One-way badge -->
+              <div v-if="form.dropoff_location_id && form.dropoff_location_id !== form.provider_pickup_id" class="mt-1 flex items-center gap-1">
+                <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                  One-way rental
+                </span>
               </div>
             </div>
           </div>
@@ -392,7 +398,10 @@ const form = ref({
   full_credit: null,
   promocode: null,
   dropoff_location_id: null,
+  dropoff_unified_location_id: null,
   dropoff_where: "",
+  dropoff_latitude: null,
+  dropoff_longitude: null,
 });
 
 const props = defineProps({
@@ -481,6 +490,17 @@ const dropoffProvider = ref(null);
 const selectedPickupLocation = ref(null);
 const hasSelectedPickupLocation = ref(false); // Track if user selected from dropdown
 const hasSelectedDropoffLocation = ref(false); // Track if user selected dropoff from dropdown
+
+// Computed placeholder for drop-off input
+const dropoffPlaceholder = computed(() => {
+  if (!form.value.where) {
+    return 'Select pickup location first';
+  }
+  if (dropoffSearchResults.value.length === 0) {
+    return 'Same as pickup';
+  }
+  return 'Select drop-off location (or same as pickup)';
+});
 
 // Clear error messages
 const clearError = () => {
@@ -651,6 +671,9 @@ const selectLocation = (result) => {
     form.value.provider_pickup_id = null;
     form.value.dropoff_where = form.value.where;
     form.value.dropoff_location_id = null;
+    form.value.dropoff_unified_location_id = null;
+    form.value.dropoff_latitude = null;
+    form.value.dropoff_longitude = null;
     dropoffSearchResults.value = [];
     isProviderLocation.value = true;
     return;
@@ -668,6 +691,9 @@ const selectLocation = (result) => {
     // Set default dropoff to be same as pickup while keeping mixed provider
     form.value.dropoff_where = form.value.where;
     form.value.dropoff_location_id = form.value.provider_pickup_id;
+    form.value.dropoff_unified_location_id = result.unified_location_id || null;
+    form.value.dropoff_latitude = result.latitude || null;
+    form.value.dropoff_longitude = result.longitude || null;
 
     // Fetch dropoff locations for the first provider without overriding mixed
     if (providerSupportsDropoffList(result.providers[0].provider)) {
@@ -683,7 +709,7 @@ const selectLocation = (result) => {
   }
 };
 
-const providersWithDropoffList = new Set(['greenmotion', 'usave', 'adobe', 'locauto_rent', 'renteon', 'favrica']);
+const providersWithDropoffList = new Set(['greenmotion', 'usave', 'locauto_rent', 'renteon', 'sicily_by_car', 'recordgo']);
 const providerSupportsDropoffList = (provider) => providersWithDropoffList.has(provider);
 
 const selectProvider = async (provider) => {
@@ -695,6 +721,9 @@ const selectProvider = async (provider) => {
   // Set default dropoff to be same as pickup
   form.value.dropoff_where = form.value.where;
   form.value.dropoff_location_id = form.value.provider_pickup_id;
+  form.value.dropoff_unified_location_id = form.value.unified_location_id;
+  form.value.dropoff_latitude = form.value.latitude;
+  form.value.dropoff_longitude = form.value.longitude;
 
   isProviderLocation.value = true;
   dropoffSearchResults.value = [];
@@ -729,6 +758,9 @@ const selectDropoffLocation = (result) => {
   hasSelectedDropoffLocation.value = true; // User selected dropoff from dropdown
   const locationName = result.name + (result.city ? `, ${result.city}` : '');
   form.value.dropoff_where = locationName;
+  form.value.dropoff_unified_location_id = result.unified_location_id || null;
+  form.value.dropoff_latitude = result.latitude || null;
+  form.value.dropoff_longitude = result.longitude || null;
 
   const providerToFind = form.value.provider === 'mixed' ? dropoffProvider.value : form.value.provider;
   const providerData = result.providers.find(p => p.provider === providerToFind);
@@ -851,6 +883,9 @@ onMounted(async () => {
     }
 
     form.value.dropoff_location_id = props.prefill.dropoff_location_id || null;
+    form.value.dropoff_unified_location_id = props.prefill.dropoff_unified_location_id || null;
+    form.value.dropoff_latitude = props.prefill.dropoff_latitude || null;
+    form.value.dropoff_longitude = props.prefill.dropoff_longitude || null;
     form.value.dropoff_where = props.prefill.dropoff_where || "";
 
     if (props.prefill.provider && props.prefill.provider !== 'internal' && props.prefill.provider_pickup_id) {

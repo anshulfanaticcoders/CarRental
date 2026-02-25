@@ -41,10 +41,12 @@ class ReviewSubmittedVendorNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'New Review: ' . $this->vehicle->brand . ' ' . $this->vehicle->model,
             'review_id' => $this->review->id,
             'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
             'rating' => $this->review->rating,
             'review_text' => $this->review->review_text,
+            'role' => 'vendor',
             'message' => 'A new review has been submitted for ' . $this->vehicle->brand . ' ' . $this->vehicle->model,
         ];
     }

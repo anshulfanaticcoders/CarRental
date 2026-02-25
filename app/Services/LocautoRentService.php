@@ -128,6 +128,7 @@ class LocautoRentService
   {
     $pickupDateTime = $pickupDate . 'T' . $pickupTime . ':00+02:00';
     $returnDateTime = $returnDate . 'T' . $returnTime . ':00+02:00';
+    $returnLocationCode = $options['return_location_code'] ?? $locationCode;
 
     return '<?xml version="1.0" encoding="utf-8"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="http://www.opentravel.org/OTA/2003/05" xmlns:ns2="https://nextrent.locautorent.com">
@@ -142,7 +143,7 @@ class LocautoRentService
         <ns1:VehAvailRQCore Status="Available">
           <ns1:VehRentalCore PickUpDateTime="' . $pickupDateTime . '" ReturnDateTime="' . $returnDateTime . '">
             <ns1:PickUpLocation LocationCode="' . $locationCode . '"/>
-            <ns1:ReturnLocation LocationCode="' . $locationCode . '"/>
+            <ns1:ReturnLocation LocationCode="' . $returnLocationCode . '"/>
           </ns1:VehRentalCore>
           <ns1:DriverType Age="' . $age . '"/>
         </ns1:VehAvailRQCore>

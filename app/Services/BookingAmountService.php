@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class BookingAmountService
 {
-    public function createForBooking(Booking $booking, array $amounts, ?string $bookingCurrency, ?string $vendorCurrency = null): ?BookingAmount
+    public function createForBooking(Booking $booking, array $amounts, ?string $bookingCurrency, ?string $vendorCurrency = null, ?array $providerAmounts = null): ?BookingAmount
     {
         $existing = BookingAmount::where('booking_id', $booking->id)->first();
         if ($existing) {
@@ -22,6 +22,7 @@ class BookingAmountService
         $normalized = $this->normalizeAmounts($amounts);
         $conversionService = app(CurrencyConversionService::class);
 
+        // Convert to admin currency (EUR)
         $adminAmounts = $this->convertAmounts(
             $conversionService,
             $normalized,
@@ -35,8 +36,21 @@ class BookingAmountService
             return null;
         }
 
+        // For vendor amounts: use provider's original amounts if provided, otherwise convert
         $vendorAmounts = null;
-        if ($vendorCurrency) {
+        $vendorRate = null;
+
+        if ($vendorCurrency && $providerAmounts) {
+            // Use provider's ORIGINAL amounts directly (in vendor's currency)
+            $vendorNormalized = $this->normalizeAmounts($providerAmounts);
+            $vendorAmounts = [
+                'success' => true,
+                'values' => $vendorNormalized,
+                'rate' => 1.0, // No conversion needed - already in vendor's currency
+            ];
+            $vendorRate = 1.0;
+        } elseif ($vendorCurrency) {
+            // Convert from booking currency to vendor currency
             $vendorAmounts = $this->convertAmounts(
                 $conversionService,
                 $normalized,
@@ -49,6 +63,7 @@ class BookingAmountService
             if (!$vendorAmounts['success']) {
                 return null;
             }
+            $vendorRate = $vendorAmounts['rate'] ?? null;
         }
 
         return BookingAmount::create([
@@ -69,7 +84,7 @@ class BookingAmountService
             'vendor_pending_amount' => $vendorAmounts['values']['pending_amount'] ?? null,
             'vendor_extra_amount' => $vendorAmounts['values']['extra_amount'] ?? null,
             'booking_to_admin_rate' => $adminAmounts['rate'] ?? null,
-            'booking_to_vendor_rate' => $vendorAmounts['rate'] ?? null,
+            'booking_to_vendor_rate' => $vendorRate,
         ]);
     }
 

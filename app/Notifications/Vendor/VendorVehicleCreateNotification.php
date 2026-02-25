@@ -56,10 +56,12 @@ class VendorVehicleCreateNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'Vehicle Submitted: ' . $this->vehicle->brand . ' ' . $this->vehicle->model,
             'vehicle_id' => $this->vehicle->id,
             'brand' => $this->vehicle->brand,
             'model' => $this->vehicle->model,
             'status' => $this->vehicle->status,
+            'role' => 'vendor',
             'message' => 'Your vehicle listing has been submitted for approval.',
         ];
     }

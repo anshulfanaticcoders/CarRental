@@ -23,7 +23,7 @@ class VendorBookingController extends Controller
     $vendorId = auth()->id();
     $searchQuery = $request->input('search', '');
 
-    $bookings = Booking::with(['customer', 'vehicle', 'payments', 'vendorProfile', 'amounts'])
+    $bookings = Booking::with(['customer', 'vehicle', 'payments', 'vendorProfile', 'amounts', 'extras'])
         ->whereHas('vehicle', function ($query) use ($vendorId) {
             $query->where('vendor_id', $vendorId);
         })
@@ -61,6 +61,19 @@ class VendorBookingController extends Controller
     ]);
 }
     
+
+    public function show($locale, Booking $booking)
+    {
+        if ($booking->vehicle->vendor_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $booking->load(['customer', 'vehicle', 'payments', 'vendorProfile', 'amounts', 'extras']);
+
+        return Inertia::render('Vendor/Bookings/View', [
+            'booking' => $booking,
+        ]);
+    }
 
     public function update(Request $request, $locale, Booking $booking)
     {

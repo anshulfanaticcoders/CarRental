@@ -69,9 +69,11 @@ class VendorStatusUpdatedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'Vendor Status Updated',
             'user_id' => $this->user->id,
             'company_name' => $this->vendorProfile->company_name,
             'status' => $this->vendorProfile->status,
+            'role' => 'vendor',
             'message' => 'Your vendor status has been updated to ' . $this->vendorProfile->status . '.',
         ];
     }

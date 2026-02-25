@@ -85,6 +85,8 @@ class SearchOrchestratorService
                     'provider' => $provider['provider'],
                     'pickup_id' => $provider['pickup_id'],
                     'original_name' => $provider['original_name'] ?? $matchedLocation['name'] ?? $locationAddress,
+                    'latitude' => $provider['latitude'] ?? null,
+                    'longitude' => $provider['longitude'] ?? null,
                 ];
             }
         }

@@ -58,11 +58,13 @@ class VendorRegisteredNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'New Vendor Registration',
             'user_id' => $this->user->id,
             'company_name' => $this->vendorProfile->company_name,
             'email' => $this->user->email,
             'company_phone' => $this->vendorProfile->company_phone_number,
             'status' => $this->vendorProfile->status,
+            'role' => 'admin',
             'message' => 'A new vendor has registered.',
         ];
     }

@@ -163,6 +163,14 @@ const getNotificationLink = (notification) => {
   }
 };
 
+// Format notification type for display (removes "Notification" suffix and adds spaces)
+const formatNotificationType = (type) => {
+  if (!type) return '';
+  const className = type.split('\\').pop().replace(/Notification$/, '');
+  // Add spaces before capitals: "BookingCreatedCustomer" -> "Booking Created Customer"
+  return className.replace(/([A-Z])/g, ' $1').trim();
+};
+
 // Handle notification click: mark as read and redirect
 const handleNotificationClick = async (notification) => {
   await markAsRead(notification);
@@ -497,9 +505,9 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
                   <div v-for="notification in notifications" :key="notification.id"
                     @click="handleNotificationClick(notification)" class="p-4 border-b hover:bg-gray-50 cursor-pointer"
                     :class="{ 'bg-gray-100': !notification.read_at }">
-                    <div class="flex ">
-                      <div class="font-semibold">{{ notification.data.title }}</div>
-                      <div class="text-xs text-gray-500">{{ notification.type.split('\\').pop() }}</div>
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-semibold text-sm">{{ notification.data.title || notification.data.booking_number || 'Notification' }}</div>
+                      <div class="text-[10px] text-gray-400 shrink-0">{{ formatNotificationType(notification.type) }}</div>
                     </div>
                     <p class="text-sm text-gray-600">{{ notification.data.message }}</p>
                     <div class="text-xs text-customPrimaryColor mt-1 text-right">{{ new

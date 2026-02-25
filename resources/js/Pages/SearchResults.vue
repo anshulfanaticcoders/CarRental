@@ -173,6 +173,9 @@ const props = defineProps({
     searchError: String,
     optionalExtras: Array, // GreenMotion optional extras
     locationName: String, // Location Name
+    // Price verification props
+    search_session_id: String, // Unique session ID for price verification
+    price_map: Object, // Map of vehicle_id => {price_hash, vehicle_id_hash}
 });
 
 const formatProviderLabel = (value) => {
@@ -208,7 +211,8 @@ const driverRequirements = ref(null);
 const termsData = ref(null);
 const greenMotionCountries = ref(null);
 const termsCountryId = ref(null);
-const paymentPercentage = ref(0);
+// Initialize with 15% as default to prevent "Pay 0" bug - will be updated from API
+const paymentPercentage = ref(15);
 
 const fetchLocationDetails = async (locationId) => {
     if (!locationId) return;
@@ -296,7 +300,17 @@ const scrollToSection = async (id) => {
 const handlePackageSelection = (event) => {
     // Event contains { vehicle, package, protection_code }
     console.log('Package Selected:', event);
-    selectedVehicle.value = event.vehicle;
+
+    // Attach price_hash from price_map to vehicle for verification
+    const vehicleWithPriceHash = { ...event.vehicle };
+    if (props.price_map && event.vehicle) {
+        const vehicleId = event.vehicle.id || event.vehicle.vehicle_id || event.vehicle.api_vehicle_id;
+        if (vehicleId && props.price_map[vehicleId]) {
+            vehicleWithPriceHash.price_hash = props.price_map[vehicleId].price_hash;
+        }
+    }
+
+    selectedVehicle.value = vehicleWithPriceHash;
     selectedPackage.value = event.package;
     selectedProtectionCode.value = event.protection_code || null;
     bookingStep.value = 'extras';
@@ -304,11 +318,9 @@ const handlePackageSelection = (event) => {
     // Fetch location details if GreenMotion
     if (event.vehicle.source === 'greenmotion' || event.vehicle.source === 'usave') {
         const locId = event.vehicle.location_id;
-        console.log('Fetching details for Location ID:', locId);
         if (locId) {
             fetchLocationDetails(locId);
         } else {
-            console.warn('No location_id found in vehicle data', event.vehicle);
             locationInstructions.value = null;
             locationDetails.value = null;
         }
@@ -437,7 +449,10 @@ const form = useForm({
     full_credit: usePage().props.filters?.full_credit || null,
     promocode: usePage().props.filters?.promocode || null,
     dropoff_location_id: usePage().props.filters?.dropoff_location_id || null,
+    dropoff_unified_location_id: usePage().props.filters?.dropoff_unified_location_id || null,
     dropoff_where: usePage().props.filters?.dropoff_where || "",
+    dropoff_latitude: usePage().props.filters?.dropoff_latitude || null,
+    dropoff_longitude: usePage().props.filters?.dropoff_longitude || null,
 });
 
 class ValidationError extends Error {
@@ -683,7 +698,10 @@ const serverParams = computed(() => {
         full_credit: form.full_credit,
         promocode: form.promocode,
         dropoff_location_id: form.dropoff_location_id,
+        dropoff_unified_location_id: form.dropoff_unified_location_id,
         dropoff_where: form.dropoff_where,
+        dropoff_latitude: form.dropoff_latitude,
+        dropoff_longitude: form.dropoff_longitude,
     };
 
     if (params.matched_field && (params.city || params.state || params.country)) {
@@ -736,7 +754,7 @@ const allVehiclesForMap = computed(() => {
 const grossUpProviderPrice = (value, vehicle) => {
     const numeric = parseFloat(value);
     if (!Number.isFinite(numeric)) return null;
-    if (!vehicle || vehicle.source === 'internal') return numeric;
+    // Apply 15% platform fee to ALL vehicles (including internal)
     const rate = providerMarkupRate.value;
     if (!Number.isFinite(rate) || rate <= 0) return numeric;
     return numeric * (1 + rate);
@@ -1156,13 +1174,18 @@ const initMap = () => {
     }
 
     map = L.map("map", {
-        zoomControl: true,
+        zoomControl: false,
         maxZoom: 18,
         minZoom: 3,
-        zoomSnap: 0.25,
-        markerZoomAnimation: false,
-        preferCanvas: true,
+        zoomSnap: 0.5,
+        zoomDelta: 0.5,
+        wheelPxPerZoomLevel: 120,
+        zoomAnimation: true,
+        fadeAnimation: true,
+        markerZoomAnimation: true,
     });
+
+    L.control.zoom({ position: 'topright' }).addTo(map);
 
     if (vehicleCoords.length === 0) {
         console.warn("No vehicles with valid coordinates to initialize map view. Setting default view.");
@@ -1180,8 +1203,12 @@ const initMap = () => {
         }
     }
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
+    // Stadia Maps OSM Bright
+    const stadiaKey = import.meta.env.VITE_STADIA_MAPS_API_KEY || '';
+    const keyParam = stadiaKey ? `?api_key=${stadiaKey}` : '';
+    L.tileLayer(`https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png${keyParam}`, {
+        attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://openstreetmap.org/copyright">OSM</a>',
+        maxZoom: 20,
     }).addTo(map);
 
     map.createPane("markers");
@@ -1309,6 +1336,9 @@ const resetFilters = () => {
     form.full_credit = null;
     form.promocode = null;
     form.dropoff_location_id = null;
+    form.dropoff_unified_location_id = null;
+    form.dropoff_latitude = null;
+    form.dropoff_longitude = null;
 
     // The other fields like where, lat, lng, dates, source, etc., are NOT touched.
     // They will retain their current values.
@@ -1589,6 +1619,7 @@ const buildProviderFavoritePayload = (vehicle) => {
             provider_pickup_id: form.provider_pickup_id || null,
             unified_location_id: form.unified_location_id || null,
             dropoff_location_id: form.dropoff_location_id || null,
+            dropoff_unified_location_id: form.dropoff_unified_location_id || null,
             date_from: form.date_from || null,
             date_to: form.date_to || null,
             start_time: form.start_time || null,
@@ -1732,7 +1763,10 @@ const searchQuery = computed(() => {
         full_credit: usePage().props.filters?.full_credit || null,
         promocode: usePage().props.filters?.promocode || null,
         dropoff_location_id: usePage().props.filters?.dropoff_location_id || null,
+        dropoff_unified_location_id: usePage().props.filters?.dropoff_unified_location_id || null,
         dropoff_where: usePage().props.filters?.dropoff_where || "",
+        dropoff_latitude: usePage().props.filters?.dropoff_latitude || null,
+        dropoff_longitude: usePage().props.filters?.dropoff_longitude || null,
     };
 });
 
@@ -1763,7 +1797,10 @@ const handleSearchUpdate = (params) => {
     form.full_credit = params.full_credit || null;
     form.promocode = params.promocode || null;
     form.dropoff_location_id = params.dropoff_location_id || null;
+    form.dropoff_unified_location_id = params.dropoff_unified_location_id || null;
     form.dropoff_where = params.dropoff_where || "";
+    form.dropoff_latitude = params.dropoff_latitude || null;
+    form.dropoff_longitude = params.dropoff_longitude || null;
 
 
     if (params.matched_field === 'location') {
@@ -2654,10 +2691,12 @@ watch(
             :initial-protection-code="selectedProtectionCode" :optional-extras="optionalExtras"
             :currency-symbol="getCurrencySymbol(selectedCurrency)" :location-name="locationName"
             :pickup-location="form.where" :dropoff-location="form.dropoff_where || form.where"
+            :dropoff-latitude="form.dropoff_latitude" :dropoff-longitude="form.dropoff_longitude"
             :pickup-date="form.date_from" :pickup-time="form.start_time" :dropoff-date="form.date_to"
             :dropoff-time="form.end_time" :number-of-days="numberOfRentalDays"
             :location-instructions="locationInstructions" :location-details="locationDetails"
             :driver-requirements="driverRequirements" :terms="termsData" :payment-percentage="paymentPercentage"
+            :search-session-id="props.search_session_id" :price-map="props.price_map"
             @back="handleBackToResults" @proceed-to-checkout="handleProceedToCheckout" />
 
         <BookingCheckoutStep v-else-if="bookingStep === 'checkout' && selectedVehicle" class="w-full"
@@ -2672,6 +2711,8 @@ watch(
             :payment-percentage="paymentPercentage" :totals="selectedCheckoutData.totals"
             :vehicle-total="selectedCheckoutData.vehicle_total" :location-details="locationDetails"
             :location-instructions="locationInstructions" :driver-requirements="driverRequirements" :terms="termsData"
+            :search-session-id="props.search_session_id"
+            :selected-deposit-type="selectedCheckoutData?.selected_deposit_type || null"
             @back="handleBackToExtras" />
     </div>
 

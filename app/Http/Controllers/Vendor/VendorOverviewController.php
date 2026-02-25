@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use App\Models\BookingPayment;
+use App\Models\BookingAmount;
 use App\Models\Vehicle;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -32,13 +32,8 @@ class VendorOverviewController extends Controller
             $query->where('vendor_id', $vendorId);
         })->where('booking_status', 'cancelled')->count();
 
-        $totalRevenue = BookingPayment::whereHas('booking', function ($query) use ($vendorId) {
-            $query->whereHas('vehicle', function ($query) use ($vendorId) {
-                $query->where('vendor_id', $vendorId);
-            });
-        })->sum('amount');
-
-        $currency = auth()->user()->profile?->currency ?? 'EUR';
+        // Get vendor's currency from profile
+        $vendorCurrencyRaw = auth()->user()->profile?->currency ?? 'EUR';
         $currencyMap = [
             '€' => 'EUR',
             '$' => 'USD',
@@ -47,7 +42,15 @@ class VendorOverviewController extends Controller
             '₹' => 'INR',
             '¥' => 'JPY',
         ];
-        $currency = $currencyMap[$currency] ?? strtoupper($currency);
+        $currency = $currencyMap[$vendorCurrencyRaw] ?? strtoupper($vendorCurrencyRaw);
+
+        // Revenue: Use vendor_total_amount from booking_amounts (vendor's actual earnings in their currency)
+        $vendorBookingIds = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
+            $query->where('vendor_id', $vendorId);
+        })->pluck('id');
+
+        $totalRevenue = BookingAmount::whereIn('booking_id', $vendorBookingIds)
+            ->sum('vendor_total_amount');
 
         // New count for active vehicles
         $activeVehicles = Vehicle::where('vendor_id', $vendorId)
@@ -120,15 +123,14 @@ class VendorOverviewController extends Controller
         $revenueData = collect(range(0, 11))->map(function ($monthsAgo) use ($vendorId) {
             $date = now()->subMonths($monthsAgo);
 
-            $monthlyRevenue = BookingPayment::whereHas('booking', function ($query) use ($vendorId) {
-                $query->whereHas('vehicle', function ($query) use ($vendorId) {
-                    $query->where('vendor_id', $vendorId);
-                });
-            })
+            // Use vendor_total_amount from booking_amounts (vendor's actual revenue in their currency)
+            $monthlyRevenue = BookingAmount::whereHas('booking', function ($query) use ($vendorId, $date) {
+                $query->whereHas('vehicle', function ($q) use ($vendorId) {
+                    $q->where('vendor_id', $vendorId);
+                })
                 ->whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->sum('amount');
-
+                ->whereMonth('created_at', $date->month);
+            })->sum('vendor_total_amount');
 
             return [
                 'name' => $date->format('M'),

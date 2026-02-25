@@ -75,6 +75,7 @@ class PendingBookingReminderNotification extends Notification
     {
         $amounts = $this->getVendorAmounts($this->booking);
         return [
+            'title' => 'Pending Booking #' . $this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
@@ -89,6 +90,7 @@ class PendingBookingReminderNotification extends Notification
             'pending_amount' => $amounts['pending'],
             'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
+            'role' => 'vendor',
             'message' => 'Reminder: You have a pending booking that requires your attention.',
         ];
     }

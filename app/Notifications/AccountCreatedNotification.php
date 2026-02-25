@@ -56,10 +56,12 @@ class AccountCreatedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'New Account: ' . $this->user->first_name . ' ' . $this->user->last_name,
             'user_id' => $this->user->id,
             'name' => $this->user->first_name . ' ' . $this->user->last_name,
             'email' => $this->user->email,
             'phone' => $this->user->phone_code . ' ' . $this->user->phone,
+            'role' => 'admin',
             'message' => 'A new account has been created.',
         ];
     }
