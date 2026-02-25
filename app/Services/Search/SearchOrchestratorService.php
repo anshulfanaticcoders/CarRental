@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Log;
 
 class SearchOrchestratorService
 {
+    // Providers that support one-way (different pickup/dropoff locations)
+    private const ONE_WAY_PROVIDERS = ['greenmotion', 'usave', 'locauto_rent', 'renteon', 'sicily_by_car', 'recordgo'];
+
     public function resolveProviderEntries(array $validated): array
     {
         $providerName = $validated['provider'] ?? 'mixed';
@@ -91,6 +94,17 @@ class SearchOrchestratorService
             }
         }
 
+        // One-way filtering: when dropoff differs from pickup, remove non-one-way providers
+        $dropoffUnifiedId = $validated['dropoff_unified_location_id'] ?? null;
+        $pickupUnifiedId = $matchedLocation['unified_location_id'] ?? null;
+        $isOneWay = !empty($dropoffUnifiedId) && (string) $dropoffUnifiedId !== (string) $pickupUnifiedId;
+
+        if ($isOneWay && $providerName === 'mixed') {
+            $providerEntries = array_values(array_filter($providerEntries, function ($entry) {
+                return in_array($entry['provider'], self::ONE_WAY_PROVIDERS, true);
+            }));
+        }
+
         $locationLat = $matchedLocation['latitude'] ?? $locationLat;
         $locationLng = $matchedLocation['longitude'] ?? $locationLng;
         $locationAddress = $matchedLocation['name'] ?? $locationAddress;
@@ -102,6 +116,7 @@ class SearchOrchestratorService
             'locationLat' => $locationLat,
             'locationLng' => $locationLng,
             'locationAddress' => $locationAddress,
+            'isOneWay' => $isOneWay,
             'errors' => $errors,
         ];
     }

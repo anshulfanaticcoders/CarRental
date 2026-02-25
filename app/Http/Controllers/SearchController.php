@@ -522,6 +522,7 @@ class SearchController extends Controller
         $locationLng = $orchestratorResult['locationLng'] ?? ($validated['longitude'] ?? null);
         $locationAddress = $orchestratorResult['locationAddress'] ?? ($validated['where'] ?? null);
         $orchestratorErrors = $orchestratorResult['errors'] ?? [];
+        $isOneWay = $orchestratorResult['isOneWay'] ?? false;
 
         if (!empty($orchestratorErrors)) {
             Log::warning('Search orchestrator reported errors.', [
@@ -2661,7 +2662,9 @@ class SearchController extends Controller
             return true;
         });
 
-        $combinedVehicles = $internalVehiclesCollection->merge($filteredProviderVehicles)->merge($filteredOkMobilityVehicles);
+        // Skip internal vehicles for one-way rentals (internal doesn't support different dropoff)
+        $internalForMerge = $isOneWay ? collect() : $internalVehiclesCollection;
+        $combinedVehicles = $internalForMerge->merge($filteredProviderVehicles)->merge($filteredOkMobilityVehicles);
         $perPage = 500;
         $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
         $currentItems = $combinedVehicles->slice(($currentPage - 1) * $perPage, $perPage)->values();
@@ -2843,12 +2846,21 @@ class SearchController extends Controller
     {
         $validated = $request->validate([
             'search_term' => 'sometimes|string|min:2',
+            'limit' => 'sometimes|integer|min:1|max:50',
+            'unified_location_id' => 'sometimes|integer',
         ]);
 
+        // Direct lookup by ID
+        if (!empty($validated['unified_location_id'])) {
+            $location = $this->locationSearchService->getLocationByUnifiedId($validated['unified_location_id']);
+            return response()->json($location ? [$location] : []);
+        }
+
         $searchTerm = $validated['search_term'] ?? null;
+        $limit = $validated['limit'] ?? 20;
 
         if ($searchTerm) {
-            $locations = $this->locationSearchService->searchLocations($searchTerm);
+            $locations = $this->locationSearchService->searchLocations($searchTerm, $limit);
         } else {
             $locations = $this->locationSearchService->getAllLocations();
         }

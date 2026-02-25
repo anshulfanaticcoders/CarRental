@@ -525,13 +525,7 @@ const handleDropoffInputClick = () => {
 };
 
 const fetchPopularPlaces = async () => {
-  try {
-    const response = await axios.get(`/unified_locations.json`);
-    popularPlaces.value = []; // Don't show any popular places
-  } catch (error) {
-    console.error("Error fetching locations:", error);
-    popularPlaces.value = [];
-  }
+  popularPlaces.value = [];
 };
 
 // Watchers for dateRange to update form immediately if needed, mainly for debugging or live updates
@@ -621,21 +615,13 @@ const handleSearchInput = () => {
   searchTimeout.value = setTimeout(async () => {
     isSearching.value = true;
     try {
-      // Fetch from the static JSON file
-      const response = await axios.get(`/unified_locations.json`);
-      const allLocations = response.data;
-      const searchTerm = form.value.where.toLowerCase();
-
-      // Filter locations based on the search term
-      searchResults.value = allLocations.filter(location =>
-        location.name.toLowerCase().includes(searchTerm) ||
-        (location.city && location.city.toLowerCase().includes(searchTerm)) ||
-        (location.country && location.country.toLowerCase().includes(searchTerm))
-      );
-
+      const response = await axios.get('/api/unified-locations', {
+        params: { search_term: form.value.where, limit: 20 }
+      });
+      searchResults.value = response.data;
       searchPerformed.value = true;
     } catch (error) {
-      console.error("Error fetching or filtering locations:", error);
+      console.error("Error searching locations:", error);
       searchResults.value = [];
       searchPerformed.value = true;
     } finally {
@@ -890,9 +876,34 @@ onMounted(async () => {
 
     if (props.prefill.provider && props.prefill.provider !== 'internal' && props.prefill.provider_pickup_id) {
       isProviderLocation.value = true;
-      if (providerSupportsDropoffList(props.prefill.provider)) {
-        await fetchDropoffLocations(props.prefill.provider, props.prefill.provider_pickup_id);
+
+      let providerForDropoff = props.prefill.provider;
+      let pickupIdForDropoff = props.prefill.provider_pickup_id;
+
+      // When provider is 'mixed', look up the actual provider from the unified location
+      if (providerForDropoff === 'mixed' && props.prefill.unified_location_id) {
+        try {
+          const res = await axios.get('/api/unified-locations', {
+            params: { unified_location_id: props.prefill.unified_location_id }
+          });
+          const locationData = res.data?.[0];
+          if (locationData?.providers?.length) {
+            const firstDropoffProvider = locationData.providers.find(p => providerSupportsDropoffList(p.provider));
+            if (firstDropoffProvider) {
+              providerForDropoff = firstDropoffProvider.provider;
+              pickupIdForDropoff = firstDropoffProvider.pickup_id;
+              dropoffProvider.value = firstDropoffProvider.provider;
+            }
+          }
+        } catch (e) {
+          console.error('Failed to resolve dropoff provider from unified location:', e);
+        }
       }
+
+      if (providerSupportsDropoffList(providerForDropoff)) {
+        await fetchDropoffLocations(providerForDropoff, pickupIdForDropoff);
+      }
+
       if (props.prefill.dropoff_where) {
         form.value.dropoff_where = props.prefill.dropoff_where;
       } else if (props.prefill.dropoff_location_id) {

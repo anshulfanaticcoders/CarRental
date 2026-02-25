@@ -293,6 +293,26 @@ class UpdateUnifiedLocationsCommand extends Command
                             $loc->address_postcode = $xpathLocationInfo->query('address_postcode', $locationInfoNode)->item(0)?->nodeValue;
                             $loc->latitude = $xpathLocationInfo->query('latitude', $locationInfoNode)->item(0)?->nodeValue;
                             $loc->longitude = $xpathLocationInfo->query('longitude', $locationInfoNode)->item(0)?->nodeValue;
+                            $loc->iata = $xpathLocationInfo->query('iata', $locationInfoNode)->item(0)?->nodeValue;
+                            $loc->is_airport = $xpathLocationInfo->query('is_airport', $locationInfoNode)->item(0)?->nodeValue;
+
+                            // Extract one-way dropoff location IDs
+                            $dropoffIds = [];
+                            $onewayNodes = $xpathLocationInfo->query('oneway/location_id', $locationInfoNode);
+                            if ($onewayNodes && $onewayNodes->length > 0) {
+                                foreach ($onewayNodes as $owNode) {
+                                    $owId = trim($owNode->nodeValue);
+                                    if ($owId !== '') {
+                                        $dropoffIds[] = $owId;
+                                    }
+                                }
+                            }
+
+                            // Detect location type from API fields
+                            $locationType = '';
+                            if (strtolower(trim($loc->is_airport ?? '')) === 'y') {
+                                $locationType = 'airport';
+                            }
 
                             $allProviderLocations[] = [
                                 'id' => $providerName . '_' . ($loc->location_id ?? $locationId),
@@ -307,6 +327,9 @@ class UpdateUnifiedLocationsCommand extends Command
                                 'source' => $providerName,
                                 'matched_field' => 'location',
                                 'provider_location_id' => $loc->location_id ?? $locationId,
+                                'iata' => trim($loc->iata ?? ''),
+                                'location_type' => $locationType,
+                                'dropoffs' => $dropoffIds,
                             ];
                         } else {
                             $this->warn("{$providerName} GetLocationInfo response for ID {$locationId} in {$countryName} did not contain location_info node.");
@@ -445,8 +468,14 @@ class UpdateUnifiedLocationsCommand extends Command
                     'provider' => $location['source'] ?? 'unknown',
                     'pickup_id' => $location['provider_location_id'],
                     'original_name' => $label,
-                    'dropoffs' => [],
+                    'dropoffs' => $location['dropoffs'] ?? [],
                 ];
+
+                // Preserve per-entry coordinates if available
+                if ($this->hasValidCoordinates($location)) {
+                    $providerData['latitude'] = (float) $location['latitude'];
+                    $providerData['longitude'] = (float) $location['longitude'];
+                }
 
                 $exists = false;
                 foreach ($providers as $existing) {
@@ -495,6 +524,33 @@ class UpdateUnifiedLocationsCommand extends Command
             'providers' => $providers,
             'our_location_id' => $ourLocationId,
         ];
+    }
+
+    private function extractAdobeCity(string $address, string $officeName): ?string
+    {
+        // Adobe address format: "Adobe Rent a Car, Route 3, ..., City, Province 12345"
+        // Extract city from deploymentName/officeName when possible
+        $name = trim($officeName);
+
+        // Try extracting from name patterns like "San Jose Centro / Downtown" or "Aeropuerto Liberia [LIR]"
+        $name = preg_replace('/\[.*?\]/', '', $name);
+        $name = preg_replace('/\s*\/\s*.*$/', '', $name);
+        $name = preg_replace('/\b(aeropuerto|airport|centro|downtown)\b/i', '', $name);
+        $name = trim($name);
+        if ($name !== '') {
+            return $this->normalizeTitleCase($name);
+        }
+
+        // Fallback: parse address parts
+        if ($address !== '') {
+            $parts = array_map('trim', explode(',', $address));
+            // City is usually the second-to-last or third-to-last part
+            if (count($parts) >= 3) {
+                return $this->normalizeTitleCase($parts[count($parts) - 3]);
+            }
+        }
+
+        return null;
     }
 
     private function extractCityFromLabel(string $label, string $type): string
@@ -736,19 +792,25 @@ class UpdateUnifiedLocationsCommand extends Command
                 continue;
             }
 
+            // Extract city from address (format: "..., City, Province 12345")
+            $city = $this->extractAdobeCity($office['address'] ?? '', $office['name']);
+            $isAirport = !empty($office['atAirport']);
+            $locationType = $isAirport ? 'airport' : 'downtown';
+
             $locations[] = [
                 'id' => 'adobe_' . $office['code'],
                 'label' => $office['name'],
                 'below_label' => $office['address'] ?? '',
                 'location' => $office['name'],
-                'city' => null, // Adobe API does not provide a separate city field
-                'state' => null, // Adobe API does not provide a separate state field
-                'country' => 'Costa Rica', // Assuming all locations are in Costa Rica as per docs
+                'city' => $city,
+                'state' => null,
+                'country' => 'Costa Rica',
                 'latitude' => (float) $office['coordinates'][0],
                 'longitude' => (float) $office['coordinates'][1],
                 'source' => 'adobe',
                 'matched_field' => 'location',
                 'provider_location_id' => $office['code'],
+                'location_type' => $locationType,
             ];
         }
 
@@ -877,6 +939,10 @@ class UpdateUnifiedLocationsCommand extends Command
             $allowedLocationCodes = $this->resolveRenteonProviderLocationCodes($providerCodes);
             $allowedSet = !empty($allowedLocationCodes) ? array_fill_keys($allowedLocationCodes, true) : [];
 
+            // Build coordinate map from provider Offices (locations API has no coords)
+            $officeCoords = $this->buildRenteonOfficeCoordinateMap($providerCodes);
+            $this->info("Built Renteon office coordinate map: " . count($officeCoords) . " entries");
+
             $formattedLocations = [];
             foreach ($locations as $location) {
                 // Safety checks for required fields
@@ -893,19 +959,23 @@ class UpdateUnifiedLocationsCommand extends Command
                     continue;
                 }
 
+                // Get coordinates from the Offices endpoint
+                $coords = $officeCoords[$location['Code']] ?? [0, 0];
+
                 $formattedLocations[] = [
                     'id' => 'renteon_' . $location['Code'],
                     'label' => $location['Name'],
                     'below_label' => $location['Path'],
                     'location' => $location['Name'],
                     'city' => $this->extractCityFromPath($location['Path']),
-                    'state' => null, // Not provided in Renteon response
+                    'state' => null,
                     'country' => $this->getCountryName($location['CountryCode']),
-                    'latitude' => 0, // Not provided in Renteon response
-                    'longitude' => 0, // Not provided in Renteon response
+                    'latitude' => (float) $coords[0],
+                    'longitude' => (float) $coords[1],
                     'source' => 'renteon',
                     'matched_field' => 'location',
                     'provider_location_id' => $location['Code'],
+                    'location_type' => strtolower(trim($location['Type'] ?? '')) ?: 'unknown',
                 ];
             }
 
@@ -1133,6 +1203,15 @@ class UpdateUnifiedLocationsCommand extends Command
                 $lat = is_array($coords) ? (float) ($coords['latitude'] ?? 0) : 0.0;
                 $lng = is_array($coords) ? (float) ($coords['longitude'] ?? 0) : 0.0;
 
+                // SBC API returns 0,0 for some locations - use fallback
+                if ($lat == 0 && $lng == 0) {
+                    $fallback = $this->getSicilyByCarFallbackCoords($airportCode, $id);
+                    if ($fallback) {
+                        $lat = $fallback[0];
+                        $lng = $fallback[1];
+                    }
+                }
+
                 $mapped[] = [
                     'id' => 'sicily_by_car_' . $id,
                     'label' => $name,
@@ -1159,6 +1238,32 @@ class UpdateUnifiedLocationsCommand extends Command
         }
     }
 
+    /**
+     * Fallback coordinates for SBC locations where the API returns 0,0.
+     * Keyed by IATA airport code.
+     */
+    private function getSicilyByCarFallbackCoords(string $iataCode, string $locationId): ?array
+    {
+        // Fallback by IATA code
+        $byIata = [
+            'VIE' => [48.1103, 16.5697],
+            'FCO' => [41.8003, 12.2389],
+            'LIN' => [45.4491, 9.2783],
+            'MXP' => [45.6306, 8.7281],
+            'PMO' => [38.1764, 13.0909],
+            'CTA' => [37.4668, 15.0664],
+        ];
+        if ($iataCode !== '' && isset($byIata[strtoupper($iataCode)])) {
+            return $byIata[strtoupper($iataCode)];
+        }
+
+        // Fallback by location ID (for locations without IATA)
+        $byId = [
+            'IT020' => [43.6839, 10.3927], // Pisa Airport (PSA)
+        ];
+        return $byId[$locationId] ?? null;
+    }
+
     private function mapSbcLocationType(string $type): string
     {
         $type = strtolower(trim($type));
@@ -1175,56 +1280,48 @@ class UpdateUnifiedLocationsCommand extends Command
     {
         $this->info('Loading Record Go branch list...');
 
+        // RecordGo has NO location API - branches must be defined here
+        // Coordinates are from each airport/city's known GPS position
         $branches = [
-            'IC' => [
-                34901 => 'Tenerife South',
-                34902 => 'Las Palmas',
-                34903 => 'Lanzarote',
-                34904 => 'Chafiras',
-            ],
-            'IT' => [
-                39001 => 'Palermo',
-                39002 => 'Catania',
-                39003 => 'Olbia',
-                39004 => 'Cagliari',
-                39005 => 'Rome',
-                39006 => 'Milan Bergamo',
-            ],
-            'PT' => [
-                35001 => 'Lisbon',
-                35002 => 'Faro',
-                35003 => 'Porto',
-            ],
-            'GR' => [
-                30001 => 'Athens',
-                30002 => 'Thessaloniki',
-                30003 => 'Zakynthos',
-                30004 => 'Rhodes',
-            ],
+            34901 => ['name' => 'Tenerife South', 'country' => 'IC', 'lat' => 28.0445, 'lng' => -16.5725, 'type' => 'airport', 'iata' => 'TFS'],
+            34902 => ['name' => 'Las Palmas', 'country' => 'IC', 'lat' => 27.9319, 'lng' => -15.3866, 'type' => 'airport', 'iata' => 'LPA'],
+            34903 => ['name' => 'Lanzarote', 'country' => 'IC', 'lat' => 28.9455, 'lng' => -13.6052, 'type' => 'airport', 'iata' => 'ACE'],
+            34904 => ['name' => 'Chafiras', 'country' => 'IC', 'lat' => 28.0561, 'lng' => -16.6329, 'type' => 'downtown'],
+            39001 => ['name' => 'Palermo', 'country' => 'IT', 'lat' => 38.1764, 'lng' => 13.0909, 'type' => 'airport', 'iata' => 'PMO'],
+            39002 => ['name' => 'Catania', 'country' => 'IT', 'lat' => 37.4668, 'lng' => 15.0664, 'type' => 'airport', 'iata' => 'CTA'],
+            39003 => ['name' => 'Olbia', 'country' => 'IT', 'lat' => 40.8986, 'lng' => 9.5176, 'type' => 'airport', 'iata' => 'OLB'],
+            39004 => ['name' => 'Cagliari', 'country' => 'IT', 'lat' => 39.2515, 'lng' => 9.0543, 'type' => 'airport', 'iata' => 'CAG'],
+            39005 => ['name' => 'Rome', 'country' => 'IT', 'lat' => 41.8003, 'lng' => 12.2389, 'type' => 'airport', 'iata' => 'FCO'],
+            39006 => ['name' => 'Milan Bergamo', 'country' => 'IT', 'lat' => 45.6739, 'lng' => 9.7041, 'type' => 'airport', 'iata' => 'BGY'],
+            35001 => ['name' => 'Lisbon', 'country' => 'PT', 'lat' => 38.7756, 'lng' => -9.1354, 'type' => 'airport', 'iata' => 'LIS'],
+            35002 => ['name' => 'Faro', 'country' => 'PT', 'lat' => 37.0144, 'lng' => -7.9659, 'type' => 'airport', 'iata' => 'FAO'],
+            35003 => ['name' => 'Porto', 'country' => 'PT', 'lat' => 41.2481, 'lng' => -8.6814, 'type' => 'airport', 'iata' => 'OPO'],
+            30001 => ['name' => 'Athens', 'country' => 'GR', 'lat' => 37.9364, 'lng' => 23.9445, 'type' => 'airport', 'iata' => 'ATH'],
+            30002 => ['name' => 'Thessaloniki', 'country' => 'GR', 'lat' => 40.5197, 'lng' => 22.9709, 'type' => 'airport', 'iata' => 'SKG'],
+            30003 => ['name' => 'Zakynthos', 'country' => 'GR', 'lat' => 37.7509, 'lng' => 20.8843, 'type' => 'airport', 'iata' => 'ZTH'],
+            30004 => ['name' => 'Rhodes', 'country' => 'GR', 'lat' => 36.4054, 'lng' => 28.0862, 'type' => 'airport', 'iata' => 'RHO'],
         ];
 
         $locations = [];
-        foreach ($branches as $country => $list) {
-            foreach ($list as $branchId => $name) {
-                $label = trim((string) $name);
-                $countryCode = strtoupper((string) $country);
-                $locations[] = [
-                    'id' => 'recordgo_' . $branchId,
-                    'label' => $label,
-                    'below_label' => trim($label . ', ' . $countryCode),
-                    'location' => $label,
-                    'city' => $this->normalizeTitleCase($label),
-                    'state' => null,
-                    'country' => $countryCode,
-                    'latitude' => null,
-                    'longitude' => null,
-                    'source' => 'recordgo',
-                    'matched_field' => 'location',
-                    'provider_location_id' => (string) $branchId,
-                    'location_type' => 'unknown',
-                    'iata' => null,
-                ];
-            }
+        foreach ($branches as $branchId => $info) {
+            $label = trim((string) $info['name']);
+            $countryCode = strtoupper((string) $info['country']);
+            $locations[] = [
+                'id' => 'recordgo_' . $branchId,
+                'label' => $label,
+                'below_label' => trim($label . ', ' . $countryCode),
+                'location' => $label,
+                'city' => $this->normalizeTitleCase($label),
+                'state' => null,
+                'country' => $countryCode,
+                'latitude' => (float) $info['lat'],
+                'longitude' => (float) $info['lng'],
+                'source' => 'recordgo',
+                'matched_field' => 'location',
+                'provider_location_id' => (string) $branchId,
+                'location_type' => $info['type'] ?? 'airport',
+                'iata' => $info['iata'] ?? null,
+            ];
         }
 
         return $locations;
@@ -1237,8 +1334,11 @@ class UpdateUnifiedLocationsCommand extends Command
             return [0.0, 0.0];
         }
 
-        // DMS format (e.g. "25°15'16\"N 55°21'23\"E")
-        $dmsPattern = '/(\d+(?:\.\d+)?)\s*[°º]\s*(\d+(?:\.\d+)?)\s*[\'’]\s*(\d+(?:\.\d+)?)\s*(?:\"|″)?\s*([NSEW])/iu';
+        // Normalize the maps_point string for easier parsing
+        $mapsPoint = $this->normalizeMapsPointString($mapsPoint);
+
+        // DMS format with hemisphere letters
+        $dmsPattern = "/(\d+(?:\.\d+)?)\s*D\s*(\d+(?:\.\d+)?)\s*M\s*(\d+(?:\.\d+)?)\s*S?\s*([NSEW])/i";
         if (preg_match_all($dmsPattern, $mapsPoint, $dmsMatches, PREG_SET_ORDER) && count($dmsMatches) >= 2) {
             $coords = [];
             foreach ($dmsMatches as $m) {
@@ -1260,15 +1360,47 @@ class UpdateUnifiedLocationsCommand extends Command
             }
         }
 
+        // Incomplete DMS: only one hemisphere letter
+        $dmsGroupPattern = "/(\d+(?:\.\d+)?)\s*D\s*(\d+(?:\.\d+)?)\s*M\s*(\d+(?:\.\d+)?)\s*S?\s*([NSEW])?/i";
+        if (preg_match_all($dmsGroupPattern, $mapsPoint, $dmsMatches2, PREG_SET_ORDER) && count($dmsMatches2) >= 2) {
+            $decimals = [];
+            $hemispheres = [];
+            foreach ($dmsMatches2 as $m) {
+                $deg = (float) $m[1];
+                $min = (float) $m[2];
+                $sec = (float) $m[3];
+                $hem = !empty($m[4]) ? strtoupper($m[4]) : null;
+                $decimal = $deg + ($min / 60.0) + ($sec / 3600.0);
+                $decimals[] = $decimal;
+                $hemispheres[] = $hem;
+            }
+
+            // Assign hemispheres: first is lat (N/S), second is lng (E/W)
+            $lat = $decimals[0];
+            $lng = $decimals[1];
+
+            // Apply sign from known hemisphere
+            if ($hemispheres[0] === 'S') $lat *= -1;
+            if ($hemispheres[1] === 'W') $lng *= -1;
+            if ($hemispheres[1] === 'S') { // Swapped: second is lat
+                $tmp = $lat; $lat = $lng; $lng = $tmp;
+                $lat *= -1;
+            }
+
+            if ($lat != 0 || $lng != 0) {
+                return [$lat, $lng];
+            }
+        }
+
         // Decimal / WKT / SRID formats
-        preg_match_all('/-?\d+(?:\.\d+)?/', $mapsPoint, $matches);
+        preg_match_all("/-?\d+(?:\.\d+)?/", $mapsPoint, $matches);
         $numbers = $matches[0] ?? [];
         if (count($numbers) >= 2) {
             $a = (float) $numbers[count($numbers) - 2];
             $b = (float) $numbers[count($numbers) - 1];
 
             // WKT POINT is typically "lng lat"
-            if (stripos($mapsPoint, 'point') !== false) {
+            if (stripos($mapsPoint, "point") !== false) {
                 return [$b, $a];
             }
 
@@ -1281,6 +1413,38 @@ class UpdateUnifiedLocationsCommand extends Command
         }
 
         return [0.0, 0.0];
+    }
+
+    /**
+     * Normalize a maps_point string so DMS patterns can be matched with simple ASCII regex.
+     * Replaces degree symbols with D, minute marks with M, second marks with S,
+     * and strips leading non-numeric junk (en-dashes, etc.).
+     */
+    private function normalizeMapsPointString(string $value): string
+    {
+        // Strip leading non-coordinate characters (en-dash, em-dash, spaces)
+        $value = ltrim($value, " \t\n\r\0\x0B");
+        // Remove leading en-dash / em-dash (UTF-8 bytes)
+        if (substr($value, 0, 3) === "\xE2\x80\x93" || substr($value, 0, 3) === "\xE2\x80\x94") {
+            $value = ltrim(substr($value, 3));
+        }
+
+        // Replace degree symbols: ° (C2 B0), º (C2 BA)
+        $value = str_replace("\xC2\xB0", 'D', $value);
+        $value = str_replace("\xC2\xBA", 'D', $value);
+
+        // Replace minute marks: ' (E2 80 99), ' (E2 80 98), regular '
+        $value = str_replace("\xE2\x80\x99", 'M', $value);
+        $value = str_replace("\xE2\x80\x98", 'M', $value);
+        $value = str_replace("'", 'M', $value);
+
+        // Replace second marks: " (E2 80 9D), " (E2 80 9C), ″ (E2 80 B3), regular "
+        $value = str_replace("\xE2\x80\x9D", 'S', $value);
+        $value = str_replace("\xE2\x80\x9C", 'S', $value);
+        $value = str_replace("\xE2\x80\xB3", 'S', $value);
+        $value = str_replace('"', 'S', $value);
+
+        return $value;
     }
 
     private function extractFavricaCity(string $address, string $fallback): ?string
@@ -1309,6 +1473,27 @@ class UpdateUnifiedLocationsCommand extends Command
         }
 
         return 'unknown';
+    }
+
+    private function buildRenteonOfficeCoordinateMap(array $providerCodes): array
+    {
+        $coordMap = [];
+        foreach ($providerCodes as $providerCode) {
+            $details = $this->renteonService->getProviderDetails($providerCode);
+            if (!is_array($details)) {
+                continue;
+            }
+            $offices = $details['Offices'] ?? [];
+            foreach ($offices as $office) {
+                $locCode = $office['LocationCode'] ?? null;
+                $lat = $office['Latitude'] ?? null;
+                $lng = $office['Longitude'] ?? null;
+                if ($locCode && is_numeric($lat) && is_numeric($lng) && ($lat != 0 || $lng != 0)) {
+                    $coordMap[$locCode] = [(float) $lat, (float) $lng];
+                }
+            }
+        }
+        return $coordMap;
     }
 
     private function extractCityFromPath($path): ?string
