@@ -2750,7 +2750,7 @@ class SearchController extends Controller
             ? $vehicles->getCollection()
             : collect($vehicles);
         foreach ($vehiclesCollection as $vehicle) {
-            $vehicleArray = is_array($vehicle) ? $vehicle : $vehicle->toArray();
+            $vehicleArray = is_array($vehicle) ? $vehicle : (method_exists($vehicle, 'toArray') ? $vehicle->toArray() : (array) $vehicle);
             $vehicleArray['source'] = 'internal';
             $allVehicles[] = $vehicleArray;
         }

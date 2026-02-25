@@ -606,6 +606,8 @@ const hasDropoffCoords = computed(() => {
 
 const isDifferentDropoff = computed(() => {
     if (!hasDropoffCoords.value || !hasVehicleCoords.value) return false;
+    // If user selected same pickup & dropoff location name, it's not a different dropoff
+    if (props.dropoffLocation && props.pickupLocation && props.dropoffLocation === props.pickupLocation) return false;
     const pickupLat = parseFloat(props.vehicle.latitude);
     const pickupLng = parseFloat(props.vehicle.longitude);
     const dropLat = parseFloat(props.dropoffLatitude);

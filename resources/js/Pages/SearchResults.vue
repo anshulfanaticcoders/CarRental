@@ -2359,9 +2359,9 @@ watch(
         </div>
     </section>
 
-    <div v-if="bookingStep === 'results' && (hasSearchError || hasProviderErrors)"
+    <div v-if="bookingStep === 'results' && hasSearchError"
         class="main-container mx-auto px-4 pb-2">
-        <div v-if="hasSearchError"
+        <div
             class="rounded-xl border border-rose-200 bg-rose-50 text-rose-900 px-4 py-3 text-sm flex items-start gap-3 mb-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor" stroke-width="2">
@@ -2371,18 +2371,6 @@ watch(
             <div>
                 <div class="font-semibold">Search is unavailable right now.</div>
                 <div class="text-rose-800">{{ searchErrorMessage }}</div>
-            </div>
-        </div>
-        <div v-if="hasProviderErrors"
-            class="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 text-sm flex items-start gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M12 9v4m0 4h.01M10.29 3.86l-7.09 12.27A2 2 0 0 0 4.91 19h14.18a2 2 0 0 0 1.72-2.87L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            </svg>
-            <div>
-                <div class="font-semibold">Some providers did not return results.</div>
-                <div class="text-amber-800">Unavailable: {{ providerStatusErrorLabels.join(', ') }}.</div>
             </div>
         </div>
     </div>
