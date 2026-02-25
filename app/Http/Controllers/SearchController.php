@@ -1972,7 +1972,16 @@ class SearchController extends Controller
                         }
                         $recordGoProcessedPickups[$currentProviderLocationId] = true;
 
-                        $countryCode = strtoupper((string) ($validated['country'] ?? ''));
+                        $countryRaw = strtoupper(trim((string) ($validated['country'] ?? '')));
+                        // Convert full country names to ISO 2-letter codes for RecordGo API
+                        $countryNameToCode = [
+                            'GREECE' => 'GR',
+                            'ITALY' => 'IT',
+                            'PORTUGAL' => 'PT',
+                            'SPAIN' => 'ES',
+                            'CANARY ISLANDS' => 'IC',
+                        ];
+                        $countryCode = (strlen($countryRaw) === 2) ? $countryRaw : ($countryNameToCode[$countryRaw] ?? $countryRaw);
                         if ($countryCode === '') {
                             $countryCode = 'IT';
                         }
