@@ -68,6 +68,31 @@ class StripeBookingService
 
         $metadata = $session->metadata;
 
+        // Merge full metadata from extras_payload (bypasses Stripe 50-key limit)
+        $extrasPayloadId = $metadata->extras_payload_id ?? null;
+        if ($extrasPayloadId) {
+            try {
+                $payloadRecord = StripeCheckoutPayload::find($extrasPayloadId);
+                if ($payloadRecord && !empty($payloadRecord->payload['full_metadata'])) {
+                    $fullMeta = $payloadRecord->payload['full_metadata'];
+                    // Use toArray() — (array) cast on Stripe\StripeObject gives internal properties, not key-values
+                    $stripeKeys = array_filter($metadata->toArray(), fn($v) => $v !== null && $v !== '');
+                    // Stripe keys take precedence, full_metadata fills in the rest
+                    $merged = array_merge($fullMeta, $stripeKeys);
+                    $metadata = (object) $merged;
+                    Log::info('StripeBookingService: Merged full_metadata from extras_payload', [
+                        'extras_payload_id' => $extrasPayloadId,
+                        'merged_key_count' => count($merged),
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::warning('StripeBookingService: Failed to merge full_metadata', [
+                    'extras_payload_id' => $extrasPayloadId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         // Idempotency check
         $existingBooking = Booking::where('stripe_session_id', $session->id)->first();
         if (!$existingBooking && !empty($metadata->booking_id)) {
@@ -680,7 +705,7 @@ class StripeBookingService
         $additionalMetadata = [
             'benefits' => array_filter($benefits, fn($v) => $v !== null),
             'pickup_location_id' => $metadata->pickup_location_code ?? null,
-            'dropoff_location_id' => $metadata->dropoff_location_code ?? $metadata->pickup_location_code ?? null,
+            'dropoff_location_id' => $metadata->return_location_code ?? $metadata->dropoff_location_code ?? $metadata->pickup_location_code ?? null,
             'location' => $pickupLocationDetails,
             'pickup_location_details' => $pickupLocationDetails,
             'dropoff_location_details' => $dropoffLocationDetails,
@@ -1188,7 +1213,7 @@ class StripeBookingService
                 $booking->stripe_session_id,
                 $metadata->quoteid,
                 $extras,
-                $metadata->dropoff_location_code ?? $metadata->pickup_location_code,
+                $metadata->return_location_code ?? $metadata->dropoff_location_code ?? $metadata->pickup_location_code,
                 'POA', // Payment type
                 $metadata->package ?? $metadata->rental_code ?? '1', // rentalCode (Product Type)
                 $metadata->notes ?? null

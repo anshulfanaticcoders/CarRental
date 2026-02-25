@@ -133,30 +133,6 @@ class StripeCheckoutController extends Controller
         return $filtered;
     }
 
-    private function stripOversizedMetadata(array $metadata): array
-    {
-        $maxLength = 500;
-        $oversizedKeys = [];
-
-        foreach (['location_details', 'dropoff_location_details', 'location_instructions', 'driver_requirements', 'terms'] as $key) {
-            if (!isset($metadata[$key])) {
-                continue;
-            }
-            if (is_string($metadata[$key]) && strlen($metadata[$key]) > $maxLength) {
-                unset($metadata[$key]);
-                $oversizedKeys[] = $key;
-            }
-        }
-
-        if (!empty($oversizedKeys)) {
-            Log::info('Stripe metadata oversized values moved to payload', [
-                'keys' => $oversizedKeys,
-            ]);
-        }
-
-        return $metadata;
-    }
-
     /**
      * Create a Stripe Checkout Session
      */
@@ -458,49 +434,17 @@ class StripeCheckoutController extends Controller
                 $vehicleBenefits = (array) $vehicleBenefits;
             }
 
-            $extrasPayload = [
-                'detailed_extras' => $validated['detailed_extras'] ?? [],
-                'extras' => $validated['extras'] ?? [],
-                'vehicle_source' => $validated['vehicle']['source'] ?? null,
-                'vehicle_id' => $validated['vehicle']['id'] ?? null,
-                'provider_currency' => $providerCurrency,
-                'booking_currency' => $currencyCode,
-                'location_details' => $pickupLocationDetails,
-                'dropoff_location_details' => $dropoffLocationDetails,
-                'location_instructions' => $validated['location_instructions'] ?? null,
-                'driver_requirements' => $validated['driver_requirements'] ?? null,
-                'terms' => $validated['terms'] ?? null,
-                // Vehicle benefits, policies, and deposit/excess info
-                'vehicle_benefits' => $vehicleBenefits,
-                'security_deposit' => $validated['vehicle']['security_deposit'] ?? null,
-                'deposit_payment_method' => $validated['vehicle']['payment_method'] ?? null,
-                'selected_deposit_type' => $validated['selected_deposit_type'] ?? null,
-                'fuel_type' => $validated['vehicle']['fuel_type'] ?? $validated['vehicle']['fuel'] ?? null,
-                'mileage' => $validated['vehicle']['mileage'] ?? null,
-                'transmission' => $validated['vehicle']['transmission'] ?? null,
-            ];
+            $vehicleSource = $validated['vehicle']['source'] ?? 'greenmotion';
 
-            // Always save payload since it now contains vehicle benefits
-            $payloadHasContent = true;
-
-            if ($payloadHasContent) {
-                $payloadRecord = StripeCheckoutPayload::create([
-                    'payload' => $extrasPayload,
-                ]);
-                $extrasPayloadId = $payloadRecord->id;
-            }
-
-            // Get vehicle image (handle internal vehicles with images array)
+            // Resolve vehicle image early so it's available for fullMetadata and Stripe
             $vehicleImage = null;
             if ($validated['vehicle']['source'] === 'internal' && !empty($validated['vehicle']['images'])) {
-                // Find primary image from images array
                 foreach ($validated['vehicle']['images'] as $img) {
                     if (isset($img['image_type']) && $img['image_type'] === 'primary') {
                         $vehicleImage = $img['image_url'] ?? null;
                         break;
                     }
                 }
-                // Fallback to first gallery image
                 if (!$vehicleImage) {
                     foreach ($validated['vehicle']['images'] as $img) {
                         if (isset($img['image_type']) && $img['image_type'] === 'gallery') {
@@ -513,34 +457,18 @@ class StripeCheckoutController extends Controller
                 $vehicleImage = $validated['vehicle']['image'] ?? null;
             }
 
-            // Build line items for Stripe
-            $lineItems = [
-                [
-                    'price_data' => [
-                        'currency' => strtolower($currencyCode),
-                        'product_data' => [
-                            'name' => $validated['vehicle']['brand'] . ' ' . $validated['vehicle']['model'],
-                            'description' => $validated['package'] . ' Package - ' . $validated['number_of_days'] . ' day(s)',
-                            'images' => $vehicleImage ? [$vehicleImage] : [],
-                        ],
-                        'unit_amount' => (int) ($payableAmount * 100), // Stripe uses cents
-                    ],
-                    'quantity' => 1,
-                ],
-            ];
-
-            // Prepare metadata for webhook
-            $userId = $request->user()?->id;
-            $metadata = [
-                'user_id' => $userId,
+            // Build the FULL metadata (no Stripe key limit here — stored in our DB)
+            $fullMetadata = [
+                // Core
+                'user_id' => $request->user()?->id,
                 'vehicle_id' => $validated['vehicle']['id'] ?? '',
-                'vehicle_source' => $validated['vehicle']['source'] ?? 'greenmotion',
+                'vehicle_source' => $vehicleSource,
                 'vehicle_brand' => $validated['vehicle']['brand'] ?? '',
                 'vehicle_model' => $validated['vehicle']['model'] ?? '',
-                'vehicle_image' => $vehicleImage ?? '',
+                'vehicle_image' => $vehicleImage,
                 'vehicle_category' => $validated['vehicle']['category'] ?? $validated['vehicle']['vehicle_category'] ?? '',
                 'vehicle_class' => $validated['vehicle']['class'] ?? '',
-                'adobe_category' => $validated['vehicle']['adobe_category'] ?? '', // Adobe single-letter category code
+                'adobe_category' => $validated['vehicle']['adobe_category'] ?? '',
                 'package' => $validated['package'],
                 'pickup_date' => $validated['pickup_date'],
                 'pickup_time' => $validated['pickup_time'],
@@ -566,18 +494,21 @@ class StripeCheckoutController extends Controller
                 'excess_amount' => $validated['vehicle']['benefits']['excess_amount'] ?? null,
                 'excess_theft_amount' => $validated['vehicle']['benefits']['excess_theft_amount'] ?? null,
                 'deposit_currency' => $validated['vehicle']['benefits']['deposit_currency'] ?? $providerCurrency,
-                // Multi-currency exchange rate tracking
                 'exchange_rate_provider_to_booking' => $this->calculateExchangeRate($providerCurrency, $currencyCode, $computedTotals['provider_grand_total'] ?? null),
                 'exchange_rate_booking_to_admin' => $this->calculateExchangeRate($currencyCode, config('currency.base_currency', 'EUR'), $totalAmount),
                 'customer_name' => $validated['customer']['name'] ?? '',
                 'customer_email' => $validated['customer']['email'] ?? '',
                 'customer_phone' => $validated['customer']['phone'] ?? '',
                 'customer_driver_age' => $validated['customer']['driver_age'] ?? '',
+                'customer_address' => $validated['customer']['address'] ?? null,
+                'customer_city' => $validated['customer']['city'] ?? null,
+                'customer_postal_code' => $validated['customer']['postal_code'] ?? null,
+                'customer_country' => $validated['customer']['country'] ?? null,
                 'flight_number' => $validated['customer']['flight_number'] ?? '',
                 'protection_code' => $validated['protection_code'] ?? '',
                 'protection_amount' => $validated['protection_amount'] ?? 0,
                 'sipp_code' => $validated['vehicle']['sipp_code'] ?? '',
-                'pickup_location_code' => $validated['vehicle']['provider_pickup_id'] ?? '', // For Locauto, this holds the XML location code
+                'pickup_location_code' => $validated['vehicle']['provider_pickup_id'] ?? '',
                 'return_location_code' => $validated['vehicle']['provider_return_id'] ?? $validated['vehicle']['provider_pickup_id'] ?? '',
                 'extras' => json_encode($validated['extras'] ?? []),
                 'quoteid' => !empty($validated['quoteid']) ? $validated['quoteid'] : ($validated['vehicle']['quoteid'] ?? ''),
@@ -585,6 +516,9 @@ class StripeCheckoutController extends Controller
                 'vehicle_total' => $computedTotals['booking_vehicle_total'],
                 'extras_total' => $computedTotals['booking_options_total'],
                 'payment_method' => $validated['payment_method'] ?? 'card',
+                'driver_license_number' => $validated['customer']['driver_license_number'] ?? null,
+                'notes' => $validated['customer']['notes'] ?? null,
+                // Provider-specific
                 'renteon_connector_id' => $validated['vehicle']['connector_id'] ?? null,
                 'renteon_pickup_office_id' => $validated['vehicle']['provider_pickup_office_id'] ?? null,
                 'renteon_dropoff_office_id' => $validated['vehicle']['provider_dropoff_office_id'] ?? null,
@@ -605,8 +539,6 @@ class StripeCheckoutController extends Controller
                 'recordgo_product_ver' => $validated['vehicle']['recordgo_selected_product']['product_ver'] ?? null,
                 'recordgo_rate_prod_ver' => $validated['vehicle']['recordgo_selected_product']['rate_prod_ver'] ?? null,
                 'recordgo_product_name' => $validated['vehicle']['recordgo_selected_product']['name'] ?? null,
-                'recordgo_product_description' => $validated['vehicle']['recordgo_selected_product']['description'] ?? null,
-                'recordgo_product_subtitle' => $validated['vehicle']['recordgo_selected_product']['subtitle'] ?? null,
                 'recordgo_booking_total' => $validated['vehicle']['recordgo_selected_product']['total'] ?? null,
                 'recordgo_automatic_complements' => $validated['vehicle']['recordgo_selected_product']['complements_automatic']
                     ?? $validated['vehicle']['recordgo_selected_product']['complements_autom']
@@ -627,46 +559,92 @@ class StripeCheckoutController extends Controller
                 'xdrive_reservation_source_id' => $validated['vehicle']['xdrive_reservation_source_id'] ?? null,
                 'xdrive_reservation_source' => $validated['vehicle']['xdrive_reservation_source'] ?? null,
                 'xdrive_drop_fee' => $validated['vehicle']['xdrive_drop_fee'] ?? null,
-                'driver_license_number' => $validated['customer']['driver_license_number'] ?? null,
-                'notes' => $validated['customer']['notes'] ?? null,
             ];
 
-            if ($extrasPayloadId) {
-                $metadata['extras_payload_id'] = (string) $extrasPayloadId;
+            $extrasPayload = [
+                'detailed_extras' => $validated['detailed_extras'] ?? [],
+                'extras' => $validated['extras'] ?? [],
+                'vehicle_source' => $vehicleSource,
+                'vehicle_id' => $validated['vehicle']['id'] ?? null,
+                'provider_currency' => $providerCurrency,
+                'booking_currency' => $currencyCode,
+                'location_details' => $pickupLocationDetails,
+                'dropoff_location_details' => $dropoffLocationDetails,
+                'location_instructions' => $validated['location_instructions'] ?? null,
+                'driver_requirements' => $validated['driver_requirements'] ?? null,
+                'terms' => $validated['terms'] ?? null,
+                // Vehicle benefits, policies, and deposit/excess info
+                'vehicle_benefits' => $vehicleBenefits,
+                'security_deposit' => $validated['vehicle']['security_deposit'] ?? null,
+                'deposit_payment_method' => $validated['vehicle']['payment_method'] ?? null,
+                'selected_deposit_type' => $validated['selected_deposit_type'] ?? null,
+                'fuel_type' => $validated['vehicle']['fuel_type'] ?? $validated['vehicle']['fuel'] ?? null,
+                'mileage' => $validated['vehicle']['mileage'] ?? null,
+                'transmission' => $validated['vehicle']['transmission'] ?? null,
+                // Store full metadata here — StripeBookingService merges this back
+                'full_metadata' => array_filter($fullMetadata, fn($v) => $v !== null && $v !== ''),
+            ];
+
+            // Always save payload since it now contains vehicle benefits
+            $payloadHasContent = true;
+
+            if ($payloadHasContent) {
+                $payloadRecord = StripeCheckoutPayload::create([
+                    'payload' => $extrasPayload,
+                ]);
+                $extrasPayloadId = $payloadRecord->id;
             }
 
-            $customerMetadata = array_filter([
-                'customer_address' => $validated['customer']['address'] ?? null,
-                'customer_city' => $validated['customer']['city'] ?? null,
-                'customer_postal_code' => $validated['customer']['postal_code'] ?? null,
-                'customer_country' => $validated['customer']['country'] ?? null,
-            ], static fn($value) => $value !== null && $value !== '');
+            // Build line items for Stripe
+            $lineItems = [
+                [
+                    'price_data' => [
+                        'currency' => strtolower($currencyCode),
+                        'product_data' => [
+                            'name' => $validated['vehicle']['brand'] . ' ' . $validated['vehicle']['model'],
+                            'description' => $validated['package'] . ' Package - ' . $validated['number_of_days'] . ' day(s)',
+                            'images' => $vehicleImage ? [$vehicleImage] : [],
+                        ],
+                        'unit_amount' => (int) ($payableAmount * 100), // Stripe uses cents
+                    ],
+                    'quantity' => 1,
+                ],
+            ];
 
-            if (!empty($customerMetadata)) {
-                $metadata = array_merge($metadata, $customerMetadata);
-            }
+            // Prepare LEAN metadata for Stripe webhook (50 key limit)
+            // All provider-specific keys are stored in extras_payload.full_metadata
+            $metadata = [
+                'user_id' => $request->user()?->id,
+                'vehicle_id' => $validated['vehicle']['id'] ?? '',
+                'vehicle_source' => $validated['vehicle']['source'] ?? 'greenmotion',
+                'vehicle_brand' => $validated['vehicle']['brand'] ?? '',
+                'vehicle_model' => $validated['vehicle']['model'] ?? '',
+                'vehicle_image' => $vehicleImage ?? '',
+                'package' => $validated['package'],
+                'pickup_date' => $validated['pickup_date'],
+                'pickup_time' => $validated['pickup_time'],
+                'dropoff_date' => $validated['dropoff_date'],
+                'dropoff_time' => $validated['dropoff_time'],
+                'pickup_location' => $validated['pickup_location'],
+                'dropoff_location' => $validated['dropoff_location'] ?? $validated['pickup_location'],
+                'number_of_days' => $validated['number_of_days'],
+                'total_amount' => $totalAmount,
+                'total_amount_net' => $computedTotals['booking_total_net'] ?? $totalAmount,
+                'payable_amount' => $payableAmount,
+                'pending_amount' => $pendingAmount,
+                'currency' => $currencyCode,
+                'provider_currency' => $providerCurrency,
+                'provider_grand_total' => $computedTotals['provider_grand_total'] ?? null,
+                'provider_vehicle_total' => $computedTotals['provider_vehicle_total'] ?? null,
+                'provider_extras_total' => $computedTotals['provider_options_total'] ?? null,
+                'customer_name' => $validated['customer']['name'] ?? '',
+                'customer_email' => $validated['customer']['email'] ?? '',
+                'customer_phone' => $validated['customer']['phone'] ?? '',
+                'customer_driver_age' => $validated['customer']['driver_age'] ?? '',
+                'payment_method' => $validated['payment_method'] ?? 'card',
+                'extras_payload_id' => $extrasPayloadId ? (string) $extrasPayloadId : null,
+            ];
 
-            if (!empty($pickupLocationDetails)) {
-                $metadata['location_details'] = json_encode($pickupLocationDetails);
-                if (!empty($dropoffLocationDetails)) {
-                    $metadata['dropoff_location_details'] = json_encode($dropoffLocationDetails);
-                } elseif (!empty($metadata['pickup_location_code'])
-                    && !empty($metadata['return_location_code'])
-                    && $metadata['pickup_location_code'] === $metadata['return_location_code']) {
-                    $metadata['dropoff_location_details'] = $metadata['location_details'];
-                }
-            }
-            if (!empty($validated['location_instructions'])) {
-                $metadata['location_instructions'] = $validated['location_instructions'];
-            }
-            if (!empty($validated['driver_requirements'])) {
-                $metadata['driver_requirements'] = json_encode($validated['driver_requirements']);
-            }
-            if (!empty($validated['terms'])) {
-                $metadata['terms'] = json_encode($validated['terms']);
-            }
-
-            $metadata = $this->stripOversizedMetadata($metadata);
             $metadata = $this->compactStripeMetadata($metadata);
 
 
