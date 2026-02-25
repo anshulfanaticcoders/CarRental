@@ -7,7 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import MapPin from "../../../assets/MapPin.svg";
 import Footer from "@/Components/Footer.vue";
 import { getCurrentInstance } from 'vue';
-import { useBookingData } from '@/Composables/useBookingData';
+import { useBookingData } from '@/composables/useBookingData';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
