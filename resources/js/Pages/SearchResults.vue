@@ -775,8 +775,10 @@ const getVehiclePriceConverted = (vehicle) => {
         originalPrice = vehicle.price_per_day;
         originalCurrency = vehicle.currency || 'USD';
     } else if (vehicle.source === 'greenmotion' || vehicle.source === 'usave') {
-        // For GreenMotion/USave, use the total rental price directly
-        originalPrice = parseFloat(vehicle.products?.[0]?.total || 0);
+        // For GreenMotion/USave, use per-day price for consistent sorting/filtering
+        const gmTotal = parseFloat(vehicle.products?.[0]?.total || 0);
+        const days = numberOfRentalDays.value || 1;
+        originalPrice = vehicle.price_per_day || (gmTotal / days);
         originalCurrency = vehicle.products?.[0]?.currency || 'USD';
     } else if (vehicle.source === 'okmobility') {
         originalPrice = vehicle.price_per_day;
