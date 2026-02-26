@@ -2513,67 +2513,62 @@ class SearchController extends Controller
                 } // Close LocautoRent elseif
                 elseif ($providerToFetch === 'renteon') {
                     try {
-                        Log::info('Attempting to fetch Renteon vehicles from default provider for location ID: ' . $currentProviderLocationId);
-                        Log::info('Search params: ', [
+                        $allowedProviders = config('services.renteon.allowed_providers');
+
+                        Log::info('Attempting to fetch Renteon vehicles for location ID: ' . $currentProviderLocationId, [
                             'pickup_id' => $currentProviderLocationId,
                             'date_from' => $validated['date_from'],
                             'start_time' => $startTimeForProvider,
                             'date_to' => $validated['date_to'],
-                            'end_time' => $endTimeForProvider
+                            'end_time' => $endTimeForProvider,
+                            'mode' => !empty($allowedProviders) ? 'multi-provider' : 'single-provider',
                         ]);
 
-                        $renteonVehicles = $this->renteonService->getTransformedVehicles(
-                            $currentProviderLocationId,
-                            $dropoffIdForProvider,
-                            $validated['date_from'],
-                            $startTimeForProvider,
-                            $validated['date_to'],
-                            $endTimeForProvider,
-                            [
-                                'driver_age' => $validated['age'] ?? 35,
-                                'currency' => 'EUR',
-                                'prepaid' => false,
-                                'include_on_request' => true,
-                            ],
-                            $entryLat,
-                            $entryLng,
-                            $currentProviderLocationName,
-                            $rentalDays
-                        );
+                        if (!empty($allowedProviders)) {
+                            // Multi-provider: search all allowlisted providers simultaneously
+                            $renteonVehicles = $this->renteonService->getTransformedVehiclesFromAllProviders(
+                                $currentProviderLocationId,
+                                $dropoffIdForProvider,
+                                $validated['date_from'],
+                                $startTimeForProvider,
+                                $validated['date_to'],
+                                $endTimeForProvider,
+                                [
+                                    'driver_age' => $validated['age'] ?? 35,
+                                    'currency' => 'EUR',
+                                    'prepaid' => false,
+                                    'include_on_request' => true,
+                                ],
+                                [],
+                                $entryLat,
+                                $entryLng,
+                                $currentProviderLocationName,
+                                $rentalDays
+                            );
 
-                        Log::info('Renteon vehicles processed from default provider: ' . count($renteonVehicles));
+                            Log::info('Renteon vehicles processed from all providers: ' . count($renteonVehicles));
+                        } else {
+                            // Single-provider fallback (no allowlist configured)
+                            $renteonVehicles = $this->renteonService->getTransformedVehicles(
+                                $currentProviderLocationId,
+                                $dropoffIdForProvider,
+                                $validated['date_from'],
+                                $startTimeForProvider,
+                                $validated['date_to'],
+                                $endTimeForProvider,
+                                [
+                                    'driver_age' => $validated['age'] ?? 35,
+                                    'currency' => 'EUR',
+                                    'prepaid' => false,
+                                    'include_on_request' => true,
+                                ],
+                                $entryLat,
+                                $entryLng,
+                                $currentProviderLocationName,
+                                $rentalDays
+                            );
 
-                        if (empty($renteonVehicles)) {
-                            $allowedProviders = config('services.renteon.allowed_providers');
-                            if (!empty($allowedProviders)) {
-                                Log::info('Renteon: No vehicles from default provider, trying allowlisted providers', [
-                                    'pickup_id' => $currentProviderLocationId,
-                                    'date_from' => $validated['date_from'],
-                                    'date_to' => $validated['date_to'],
-                                ]);
-
-                                $renteonVehicles = $this->renteonService->getTransformedVehiclesFromAllProviders(
-                                    $currentProviderLocationId,
-                                    $dropoffIdForProvider,
-                                    $validated['date_from'],
-                                    $startTimeForProvider,
-                                    $validated['date_to'],
-                                    $endTimeForProvider,
-                                    [
-                                        'driver_age' => $validated['age'] ?? 35,
-                                        'currency' => 'EUR',
-                                        'prepaid' => false,
-                                        'include_on_request' => true,
-                                    ],
-                                    [],
-                                    $entryLat,
-                                    $entryLng,
-                                    $currentProviderLocationName,
-                                    $rentalDays
-                                );
-
-                                Log::info('Renteon vehicles processed from allowlisted providers: ' . count($renteonVehicles));
-                            }
+                            Log::info('Renteon vehicles processed from default provider: ' . count($renteonVehicles));
                         }
 
                         foreach ($renteonVehicles as $renteonVehicle) {

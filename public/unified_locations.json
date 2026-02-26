@@ -3316,7 +3316,7 @@
         "unified_location_id": 3171544295,
         "name": "Willemstad Airport",
         "aliases": [
-            "Cura\u00e7ao International Airport"
+            "Cura\u00c3\u00a7ao International Airport"
         ],
         "city": "Willemstad",
         "country": "Curacao",
@@ -3328,7 +3328,7 @@
             {
                 "provider": "greenmotion",
                 "pickup_id": "61209",
-                "original_name": "Cura\u00e7ao International Airport",
+                "original_name": "Cura\u00c3\u00a7ao International Airport",
                 "dropoffs": [],
                 "latitude": 12.110146454569318,
                 "longitude": -68.89614879695263
@@ -6411,12 +6411,12 @@
         "our_location_id": null
     },
     {
-        "unified_location_id": 1607737427,
-        "name": "Reykjav\u00edk Downtown",
+        "unified_location_id": 1023886766,
+        "name": "Reykjav\u00c3\u00adk Downtown",
         "aliases": [
             "Reykjavik Downtown"
         ],
-        "city": "Reykjav\u00edk",
+        "city": "Reykjav\u00c3\u00adk",
         "country": "Iceland",
         "latitude": 64.131888,
         "longitude": -21.91692,
@@ -7353,6 +7353,30 @@
                 ],
                 "latitude": 42.585163,
                 "longitude": 21.027714
+            }
+        ],
+        "our_location_id": null
+    },
+    {
+        "unified_location_id": 1794129471,
+        "name": "Al Dajeej Airport",
+        "aliases": [
+            "Kuwait International Airport"
+        ],
+        "city": "Al Dajeej",
+        "country": "Kuwait",
+        "latitude": 29.240957,
+        "longitude": 47.970607,
+        "location_type": "airport",
+        "iata": "KWI",
+        "providers": [
+            {
+                "provider": "greenmotion",
+                "pickup_id": "61692",
+                "original_name": "Kuwait International Airport",
+                "dropoffs": [],
+                "latitude": 29.24095713380096,
+                "longitude": 47.97060734746005
             }
         ],
         "our_location_id": null
@@ -9290,16 +9314,15 @@
         "our_location_id": null
     },
     {
-        "unified_location_id": 2048709180,
-        "name": "Estado De M\u00e9xico",
+        "unified_location_id": 1932981375,
+        "name": "Estado De M\u00c3\u00a9xico",
         "aliases": [
-            "Mexico Interlomas",
-            "Mexico Reforma"
+            "Mexico Interlomas"
         ],
-        "city": "Estado De M\u00e9xico",
+        "city": "Estado De M\u00c3\u00a9xico",
         "country": "Mexico",
-        "latitude": 19.414234,
-        "longitude": -99.221166,
+        "latitude": 19.396591,
+        "longitude": -99.28752,
         "location_type": "unknown",
         "iata": null,
         "providers": [
@@ -9349,7 +9372,23 @@
                 ],
                 "latitude": 19.39659073406574,
                 "longitude": -99.28751965278758
-            },
+            }
+        ],
+        "our_location_id": null
+    },
+    {
+        "unified_location_id": 4140842478,
+        "name": "Estado De Mexico",
+        "aliases": [
+            "Mexico Reforma"
+        ],
+        "city": "Estado De Mexico",
+        "country": "Mexico",
+        "latitude": 19.431878,
+        "longitude": -99.154813,
+        "location_type": "unknown",
+        "iata": null,
+        "providers": [
             {
                 "provider": "greenmotion",
                 "pickup_id": "86",
@@ -9464,12 +9503,12 @@
         "our_location_id": null
     },
     {
-        "unified_location_id": 2656650014,
-        "name": "Ciudad De M\u00e9xico",
+        "unified_location_id": 1401746888,
+        "name": "Ciudad De M\u00c3\u00a9xico",
         "aliases": [
             "Mexico Villasana"
         ],
-        "city": "Ciudad De M\u00e9xico",
+        "city": "Ciudad De M\u00c3\u00a9xico",
         "country": "Mexico",
         "latitude": 19.418046,
         "longitude": -99.077257,
@@ -10336,12 +10375,12 @@
         "our_location_id": null
     },
     {
-        "unified_location_id": 3490103486,
-        "name": "San Luis Potos\u00ed C.p. Downtown",
+        "unified_location_id": 1082164842,
+        "name": "San Luis Potos\u00c3\u00ad C.p. Downtown",
         "aliases": [
             "San Luis Potosi Downtown"
         ],
-        "city": "San Luis Potos\u00ed C.p.",
+        "city": "San Luis Potos\u00c3\u00ad C.p.",
         "country": "Mexico",
         "latitude": 22.148639,
         "longitude": -100.946963,
@@ -12217,7 +12256,9 @@
     {
         "unified_location_id": 4172816674,
         "name": "Tivat Downtown",
-        "aliases": [],
+        "aliases": [
+            "Tivat airport"
+        ],
         "city": "Tivat",
         "country": "Montenegro",
         "latitude": 42.391395,
@@ -12319,6 +12360,12 @@
                 ],
                 "latitude": 42.391395,
                 "longitude": 18.675037
+            },
+            {
+                "provider": "renteon",
+                "pickup_id": "ME-TIV-TIV",
+                "original_name": "Tivat airport",
+                "dropoffs": []
             }
         ],
         "our_location_id": null
@@ -12724,12 +12771,12 @@
         "our_location_id": null
     },
     {
-        "unified_location_id": 2371705158,
-        "name": "T\u00e9touan Airport",
+        "unified_location_id": 3086227192,
+        "name": "T\u00c3\u00a9touan Airport",
         "aliases": [
             "Sania Ramel Airport"
         ],
-        "city": "T\u00e9touan",
+        "city": "T\u00c3\u00a9touan",
         "country": "Morocco",
         "latitude": 35.591319,
         "longitude": -5.331063,
@@ -13407,6 +13454,14 @@
                 "dropoffs": [],
                 "latitude": 12.62843,
                 "longitude": -87.11815
+            },
+            {
+                "provider": "usave",
+                "pickup_id": "61755",
+                "original_name": "Chinandega",
+                "dropoffs": [],
+                "latitude": 12.62843,
+                "longitude": -87.11815
             }
         ],
         "our_location_id": null
@@ -13426,6 +13481,14 @@
         "providers": [
             {
                 "provider": "greenmotion",
+                "pickup_id": "61756",
+                "original_name": "Penas Blancas",
+                "dropoffs": [],
+                "latitude": 11.22099,
+                "longitude": -85.61644
+            },
+            {
+                "provider": "usave",
                 "pickup_id": "61756",
                 "original_name": "Penas Blancas",
                 "dropoffs": [],
@@ -13686,7 +13749,7 @@
         "unified_location_id": 1594067422,
         "name": "Balice Airport",
         "aliases": [
-            "John Paul II International Airport Krakow\u0096Balice"
+            "John Paul II International Airport Krakow\u00e2\u0080\u0093Balice"
         ],
         "city": "Balice",
         "country": "Poland",
@@ -13698,7 +13761,7 @@
             {
                 "provider": "greenmotion",
                 "pickup_id": "61686",
-                "original_name": "John Paul II International Airport Krakow\u0096Balice",
+                "original_name": "John Paul II International Airport Krakow\u00e2\u0080\u0093Balice",
                 "dropoffs": [
                     "244",
                     "246",
@@ -13719,7 +13782,7 @@
             {
                 "provider": "usave",
                 "pickup_id": "61686",
-                "original_name": "John Paul II International Airport Krakow\u0096Balice",
+                "original_name": "John Paul II International Airport Krakow\u00e2\u0080\u0093Balice",
                 "dropoffs": [
                     "338",
                     "61199",
@@ -18348,7 +18411,7 @@
         "name": "Dubai",
         "aliases": [
             "Dubai IBN Battuta Mall",
-            "M\u00f6venpick Grand Al Bustan Dubai"
+            "M\u00c3\u00b6venpick Grand Al Bustan Dubai"
         ],
         "city": "Dubai",
         "country": "United Arab Emirates",
@@ -18368,7 +18431,7 @@
             {
                 "provider": "greenmotion",
                 "pickup_id": "61295",
-                "original_name": "M\u00f6venpick Grand Al Bustan Dubai",
+                "original_name": "M\u00c3\u00b6venpick Grand Al Bustan Dubai",
                 "dropoffs": [
                     "59610",
                     "60160",
@@ -18389,7 +18452,7 @@
             {
                 "provider": "usave",
                 "pickup_id": "61295",
-                "original_name": "M\u00f6venpick Grand Al Bustan Dubai",
+                "original_name": "M\u00c3\u00b6venpick Grand Al Bustan Dubai",
                 "dropoffs": [
                     "59610",
                     "60160",
@@ -20977,12 +21040,12 @@
         "our_location_id": null
     },
     {
-        "unified_location_id": 2500536087,
-        "name": "Forl\u00ec Airport",
+        "unified_location_id": 2734522869,
+        "name": "Forl\u00c3\u00ac Airport",
         "aliases": [
             "Forli Airport"
         ],
-        "city": "Forl\u00ec",
+        "city": "Forl\u00c3\u00ac",
         "country": "Italy",
         "latitude": 44.238375,
         "longitude": 12.066965,
@@ -22740,6 +22803,28 @@
         "our_location_id": null
     },
     {
+        "unified_location_id": 543183029,
+        "name": "Lisbon",
+        "aliases": [],
+        "city": "Lisbon",
+        "country": "Maine",
+        "latitude": 44.048553,
+        "longitude": -70.122421,
+        "location_type": "unknown",
+        "iata": null,
+        "providers": [
+            {
+                "provider": "usave",
+                "pickup_id": "61463",
+                "original_name": "Lisbon",
+                "dropoffs": [],
+                "latitude": 44.048553,
+                "longitude": -70.122421
+            }
+        ],
+        "our_location_id": null
+    },
+    {
         "unified_location_id": 799219907,
         "name": "Edgefield",
         "aliases": [],
@@ -22950,6 +23035,28 @@
                 "dropoffs": [],
                 "latitude": 39.493293,
                 "longitude": -79.342183
+            }
+        ],
+        "our_location_id": null
+    },
+    {
+        "unified_location_id": 389326402,
+        "name": "Wilmington Airport",
+        "aliases": [],
+        "city": "Wilmington",
+        "country": "North Carolina",
+        "latitude": 34.267131,
+        "longitude": -77.910239,
+        "location_type": "airport",
+        "iata": "ILM",
+        "providers": [
+            {
+                "provider": "usave",
+                "pickup_id": "61737",
+                "original_name": "Wilmington Airport",
+                "dropoffs": [],
+                "latitude": 34.26713140390109,
+                "longitude": -77.91023933261197
             }
         ],
         "our_location_id": null
@@ -26529,6 +26636,28 @@
                 "dropoffs": [],
                 "latitude": 40.601501,
                 "longitude": 19.442532
+            }
+        ],
+        "our_location_id": null
+    },
+    {
+        "unified_location_id": 731623217,
+        "name": "Vlore Port",
+        "aliases": [
+            "Vlore port"
+        ],
+        "city": "Vlore",
+        "country": "AL",
+        "latitude": 0,
+        "longitude": 0,
+        "location_type": "port",
+        "iata": null,
+        "providers": [
+            {
+                "provider": "renteon",
+                "pickup_id": "AL-VLO-PT",
+                "original_name": "Vlore port",
+                "dropoffs": []
             }
         ],
         "our_location_id": null
