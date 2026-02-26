@@ -599,8 +599,14 @@ class SearchController extends Controller
                 $endTimeForProvider = $clampTimeToBusinessHours($endTimeForProvider, $providerDefaultTime($providerToFetch), $providerToFetch);
 
                 // Enforce provider dropoff compatibility.
-                $providersWithDropoffList = ['greenmotion', 'usave', 'locauto_rent', 'renteon', 'sicily_by_car', 'recordgo'];
+                $providersWithDropoffList = ['greenmotion', 'usave'];
                 $supportsDropoff = in_array($providerToFetch, $providersWithDropoffList, true);
+
+                // Skip providers that don't support one-way rentals
+                if ($isOneWay && !$supportsDropoff) {
+                    Log::info("Skipping {$providerToFetch} for one-way rental (not supported)");
+                    continue;
+                }
 
                 $dropoffIdForProvider = $currentProviderLocationId; // default: same location
                 if ($supportsDropoff) {
