@@ -385,7 +385,7 @@ const providerBadge = computed(() => {
             ribbonClassName: 'bg-gradient-to-r from-cyan-700 to-cyan-500 text-white'
         },
         renteon: {
-            label: 'Renteon',
+            label: props.vehicle?.provider_code || 'Renteon',
             className: 'bg-sky-100 text-sky-700',
             ribbonClassName: 'bg-gradient-to-r from-sky-700 to-sky-500 text-white'
         },
