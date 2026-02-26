@@ -20,6 +20,7 @@ use App\Services\BookingAmountService;
 use App\Services\CurrencyConversionService;
 use App\Services\SicilyByCarService;
 use App\Services\RecordGoService;
+use App\Services\SurpriceService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -50,13 +51,15 @@ class StripeBookingService
     protected $renteonService;
     protected $sicilyByCarService;
     protected $recordGoService;
+    protected $surpriceService;
 
-    public function __construct(AdobeCarService $adobeCarService, RenteonService $renteonService, SicilyByCarService $sicilyByCarService, RecordGoService $recordGoService)
+    public function __construct(AdobeCarService $adobeCarService, RenteonService $renteonService, SicilyByCarService $sicilyByCarService, RecordGoService $recordGoService, SurpriceService $surpriceService)
     {
         $this->adobeCarService = $adobeCarService;
         $this->renteonService = $renteonService;
         $this->sicilyByCarService = $sicilyByCarService;
         $this->recordGoService = $recordGoService;
+        $this->surpriceService = $surpriceService;
     }
 
     /**
@@ -337,6 +340,8 @@ class StripeBookingService
                 $this->triggerSicilyByCarReservation($booking, $metadata);
             } elseif ($booking->provider_source === 'recordgo' && $shouldTriggerProvider) {
                 $this->triggerRecordGoReservation($booking, $metadata);
+            } elseif ($booking->provider_source === 'surprice' && $shouldTriggerProvider) {
+                $this->triggerSurpriceReservation($booking, $metadata);
             }
 
             return $booking;
@@ -721,6 +726,13 @@ class StripeBookingService
                 'currency' => $metadata->sbc_currency ?? null,
                 'deposit' => $metadata->deposit ?? null,
                 'excess' => $this->extractSicilyByCarExcessSummary($metadata),
+            ],
+            'surprice' => [
+                'vendor_rate_id' => $metadata->surprice_vendor_rate_id ?? null,
+                'rate_code' => $metadata->surprice_rate_code ?? null,
+                'extended_pickup_code' => $metadata->surprice_extended_pickup_code ?? null,
+                'extended_dropoff_code' => $metadata->surprice_extended_dropoff_code ?? null,
+                'acriss_code' => $metadata->sipp_code ?? null,
             ],
             'recordgo' => [
                 'country' => $metadata->recordgo_country ?? null,
@@ -2693,5 +2705,168 @@ class StripeBookingService
         }
 
         return $flags;
+    }
+
+    protected function triggerSurpriceReservation($booking, $metadata)
+    {
+        Log::info('Surprice: Triggering reservation for booking', ['booking_id' => $booking->id]);
+
+        try {
+            $vendorRateId = $metadata->surprice_vendor_rate_id ?? null;
+            $rateCode = $metadata->surprice_rate_code ?? config('services.surprice.rate_code', 'Vrooem');
+            $acrissCode = $metadata->sipp_code ?? null;
+            $pickupCode = $metadata->pickup_location_code ?? null;
+            $pickupExtCode = $metadata->surprice_extended_pickup_code ?? $pickupCode;
+            $dropoffCode = $metadata->return_location_code ?? $pickupCode;
+            $dropoffExtCode = $metadata->surprice_extended_dropoff_code ?? $pickupExtCode;
+
+            $pickupDateTime = ($metadata->pickup_date ?? '') && ($metadata->pickup_time ?? '')
+                ? $metadata->pickup_date . 'T' . $metadata->pickup_time . ':00'
+                : null;
+            $dropoffDateTime = ($metadata->dropoff_date ?? '') && ($metadata->dropoff_time ?? '')
+                ? $metadata->dropoff_date . 'T' . $metadata->dropoff_time . ':00'
+                : null;
+
+            $missing = [];
+            foreach ([
+                'vendorRateId' => $vendorRateId,
+                'acrissCode' => $acrissCode,
+                'pickupCode' => $pickupCode,
+                'pickupDateTime' => $pickupDateTime,
+                'dropoffDateTime' => $dropoffDateTime,
+            ] as $field => $value) {
+                if ($value === null || $value === '') {
+                    $missing[] = $field;
+                }
+            }
+
+            if (!empty($missing)) {
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '')
+                        . 'Surprice reservation missing fields: ' . implode(', ', $missing),
+                ]);
+                Log::error('Surprice reservation missing fields', [
+                    'booking_id' => $booking->id,
+                    'missing' => $missing,
+                ]);
+                return;
+            }
+
+            $customerName = $metadata->customer_name ?? 'Guest';
+            $customerEmail = $metadata->customer_email ?? '';
+            $customerPhone = $metadata->customer_phone ?? '';
+
+            $payload = array_filter([
+                'pickUpDateTime' => $pickupDateTime,
+                'returnDateTime' => $dropoffDateTime,
+                'pickUpLocationCode' => $pickupCode,
+                'pickUpExtendedLocationCode' => $pickupExtCode,
+                'returnLocationCode' => $dropoffCode,
+                'returnExtendedLocationCode' => $dropoffExtCode,
+                'vehicleGroupPrefAccriss' => $acrissCode,
+                'rateCode' => $rateCode,
+                'vendorRateID' => $vendorRateId,
+                'flightNo' => $metadata->flight_number ?? null,
+                'notes' => $metadata->notes ?? null,
+                'customerInfo' => [
+                    'customer' => array_filter([
+                        'name' => $customerName,
+                        'email' => $customerEmail,
+                        'phone' => $customerPhone,
+                        'addressLine' => $metadata->customer_address ?? null,
+                        'city' => $metadata->customer_city ?? null,
+                        'country' => $metadata->customer_country ?? null,
+                        'postalCode' => $metadata->customer_postal_code ?? null,
+                    ], static fn($v) => $v !== null && $v !== ''),
+                ],
+            ], static fn($v) => $v !== null && $v !== '');
+
+            // Add selected extras as equipment preferences
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+            $selectedExtras = $extrasPayload['detailed_extras'] ?? [];
+            $equipPrefs = [];
+            foreach ($selectedExtras as $extra) {
+                if (!is_array($extra)) {
+                    continue;
+                }
+                $purpose = $extra['purpose'] ?? $extra['surprice_purpose'] ?? null;
+                if ($purpose !== null && (int) $purpose > 0) {
+                    $equipPrefs[] = [
+                        'equipType' => (int) $purpose,
+                        'quantity' => (int) ($extra['qty'] ?? $extra['quantity'] ?? 1),
+                    ];
+                }
+            }
+            if (!empty($equipPrefs)) {
+                $payload['specialEquipmentPreferences'] = $equipPrefs;
+            }
+
+            Log::info('Surprice: Sending reservation request', [
+                'booking_id' => $booking->id,
+                'pickup' => $pickupCode,
+                'acriss' => $acrissCode,
+                'vendor_rate_id' => $vendorRateId,
+            ]);
+
+            $response = $this->surpriceService->createReservation($payload);
+
+            if ($response && isset($response['orderInfo'])) {
+                $orderInfo = $response['orderInfo'];
+                $corporateOrderId = $orderInfo['corporateOrderId'] ?? $orderInfo['id'] ?? null;
+                $brokerOrderId = $orderInfo['brokerOrderId'] ?? null;
+
+                $booking->update([
+                    'provider_booking_ref' => $corporateOrderId ?: ($brokerOrderId ?? null),
+                    'provider_metadata' => array_merge(
+                        $booking->provider_metadata ?? [],
+                        [
+                            'surprice_order_id' => $orderInfo['id'] ?? null,
+                            'surprice_corporate_order_id' => $corporateOrderId,
+                            'surprice_broker_order_id' => $brokerOrderId,
+                            'surprice_status' => $orderInfo['status'] ?? 'committed',
+                            'surprice_reservation_date' => $orderInfo['reservationDate'] ?? null,
+                            'surprice_vehicle' => $response['vehicleInfo'] ?? null,
+                            'surprice_total_charge' => $response['totalCharge'] ?? null,
+                            'surprice_pickup_station' => $response['pickupStationInfo']['name'] ?? null,
+                            'surprice_return_station' => $response['returnStationInfo']['name'] ?? null,
+                            'surprice_pickup_instructions' => $response['pickupStationInfo']['additionalInfo']['text'] ?? null,
+                            'surprice_pricedEquips' => $response['pricedEquips'] ?? [],
+                            'surprice_pricedCoverages' => $response['pricedCoverages'] ?? [],
+                            'surprice_rental_rate' => $response['rentalRate'] ?? null,
+                        ]
+                    ),
+                ]);
+
+                Log::info('Surprice: Reservation created successfully', [
+                    'booking_id' => $booking->id,
+                    'corporate_order_id' => $corporateOrderId,
+                    'broker_order_id' => $brokerOrderId,
+                    'status' => $orderInfo['status'] ?? null,
+                ]);
+            } else {
+                $booking->update([
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '')
+                        . 'Surprice reservation API returned no orderInfo',
+                    'provider_metadata' => array_merge(
+                        $booking->provider_metadata ?? [],
+                        ['surprice_error_response' => $response]
+                    ),
+                ]);
+                Log::error('Surprice: Reservation response missing orderInfo', [
+                    'booking_id' => $booking->id,
+                    'response' => $response,
+                ]);
+            }
+        } catch (\Exception $e) {
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes . "\n" : '')
+                    . 'Surprice reservation exception: ' . $e->getMessage(),
+            ]);
+            Log::error('Surprice: Reservation exception', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
     }
 }

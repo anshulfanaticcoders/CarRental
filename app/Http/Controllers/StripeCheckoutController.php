@@ -170,8 +170,8 @@ class StripeCheckoutController extends Controller
 
             $vehicle = $validated['vehicle'] ?? [];
             $providerSource = strtolower((string) ($vehicle['source'] ?? ''));
-            $pickupLocationDetails = $validated['location_details'] ?? null;
-            $dropoffLocationDetails = $validated['dropoff_location_details'] ?? null;
+            $pickupLocationDetails = $validated['location_details'] ?? ($vehicle['location_details'] ?? null);
+            $dropoffLocationDetails = $validated['dropoff_location_details'] ?? ($vehicle['dropoff_location_details'] ?? null);
 
             if ($providerSource === 'sicily_by_car') {
                 $vehicleId = $vehicle['provider_vehicle_id'] ?? null;
@@ -559,6 +559,10 @@ class StripeCheckoutController extends Controller
                 'xdrive_reservation_source_id' => $validated['vehicle']['xdrive_reservation_source_id'] ?? null,
                 'xdrive_reservation_source' => $validated['vehicle']['xdrive_reservation_source'] ?? null,
                 'xdrive_drop_fee' => $validated['vehicle']['xdrive_drop_fee'] ?? null,
+                'surprice_vendor_rate_id' => $validated['vehicle']['surprice_vendor_rate_id'] ?? null,
+                'surprice_rate_code' => $validated['vehicle']['surprice_rate_code'] ?? null,
+                'surprice_extended_pickup_code' => $validated['vehicle']['surprice_extended_pickup_code'] ?? null,
+                'surprice_extended_dropoff_code' => $validated['vehicle']['surprice_extended_dropoff_code'] ?? null,
             ];
 
             $extrasPayload = [

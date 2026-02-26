@@ -21,6 +21,7 @@ use App\Services\FavricaService;
 use App\Services\XDriveService;
 use App\Services\SicilyByCarService;
 use App\Services\RecordGoService;
+use App\Services\SurpriceService;
 use App\Services\Search\SearchOrchestratorService;
 use App\Services\PriceVerificationService;
 use Illuminate\Support\Facades\Log; // Import Log facade
@@ -41,6 +42,7 @@ class SearchController extends Controller
     protected $xdriveService;
     protected $sicilyByCarService;
     protected $recordGoService;
+    protected $surpriceService;
     protected $searchOrchestratorService;
     protected $priceVerificationService;
 
@@ -56,6 +58,7 @@ class SearchController extends Controller
         XDriveService $xdriveService,
         SicilyByCarService $sicilyByCarService,
         RecordGoService $recordGoService,
+        SurpriceService $surpriceService,
         SearchOrchestratorService $searchOrchestratorService,
         PriceVerificationService $priceVerificationService
     ) {
@@ -70,6 +73,7 @@ class SearchController extends Controller
         $this->xdriveService = $xdriveService;
         $this->sicilyByCarService = $sicilyByCarService;
         $this->recordGoService = $recordGoService;
+        $this->surpriceService = $surpriceService;
         $this->searchOrchestratorService = $searchOrchestratorService;
         $this->priceVerificationService = $priceVerificationService;
     }
@@ -121,7 +125,7 @@ class SearchController extends Controller
             $max = 20 * 60;
 
             // Providers known to be strict about office hours.
-            $strictProviders = ['okmobility', 'greenmotion', 'usave', 'locauto_rent', 'wheelsys', 'adobe', 'favrica', 'xdrive', 'sicily_by_car', 'recordgo'];
+            $strictProviders = ['okmobility', 'greenmotion', 'usave', 'locauto_rent', 'wheelsys', 'adobe', 'favrica', 'xdrive', 'sicily_by_car', 'recordgo', 'surprice'];
             if (!in_array($provider, $strictProviders, true)) {
                 return $time;
             }
@@ -2585,6 +2589,63 @@ class SearchController extends Controller
                         ]);
                     }
                 } // Close Renteon elseif
+                elseif ($providerToFetch === 'surprice') {
+                    try {
+                        Log::info('Attempting to fetch Surprice vehicles for location', [
+                            'pickup_id' => $currentProviderLocationId,
+                            'date_from' => $validated['date_from'],
+                            'date_to' => $validated['date_to'],
+                        ]);
+
+                        $formatDateTime = static function (string $date, string $time): string {
+                            $time = trim($time);
+                            if ($time === '') {
+                                $time = '09:00';
+                            }
+                            if (strlen($time) === 5) {
+                                $time .= ':00';
+                            }
+                            return $date . 'T' . $time;
+                        };
+
+                        $pickupDateTime = $formatDateTime($validated['date_from'], $startTimeForProvider);
+                        $dropoffDateTime = $formatDateTime($validated['date_to'], $endTimeForProvider);
+
+                        // Surprice uses locationCode + extendedLocationCode
+                        // The provider_location_id stores locationCode, extended code stored separately in unified_locations
+                        $pickupExtCode = $providerEntry['extended_location_code'] ?? $currentProviderLocationId;
+                        $dropoffExtCode = $providerEntry['extended_dropoff_code'] ?? $pickupExtCode;
+
+                        $surpriceVehicles = $this->surpriceService->getTransformedVehicles(
+                            $currentProviderLocationId,
+                            $pickupExtCode,
+                            $dropoffIdForProvider ?? $currentProviderLocationId,
+                            $dropoffExtCode,
+                            $pickupDateTime,
+                            $dropoffDateTime,
+                            [
+                                'driver_age' => $validated['age'] ?? 35,
+                            ],
+                            $entryLat,
+                            $entryLng,
+                            $currentProviderLocationName,
+                            $rentalDays
+                        );
+
+                        foreach ($surpriceVehicles as $surpriceVehicle) {
+                            $providerVehicles->push((object) $surpriceVehicle);
+                        }
+
+                        Log::info('Surprice vehicles added to collection: ' . count($surpriceVehicles));
+
+                    } catch (\Exception $e) {
+                        $recordProviderError($providerToFetch, $e->getMessage());
+                        Log::error("Error fetching Surprice vehicles: " . $e->getMessage(), [
+                            'provider_location_id' => $currentProviderLocationId,
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                    }
+                } // Close Surprice elseif
 
                 $providerTimings[$providerToFetch][] = (int) round((microtime(true) - $providerStart) * 1000);
             } // Close foreach $allProviderEntries

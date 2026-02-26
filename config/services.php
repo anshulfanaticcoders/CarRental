@@ -73,6 +73,13 @@ return [
         'pricelist_codes' => env('RENTEON_PRICELIST_CODES'),
     ],
 
+    'surprice' => [
+        'base_url' => env('SURPRICE_BASE_URL'),
+        'api_key' => env('SURPRICE_API_KEY'),
+        'rate_code' => env('SURPRICE_RATE_CODE', 'Vrooem'),
+        'timeout' => env('SURPRICE_TIMEOUT', 30),
+    ],
+
     'favrica' => [
         'base_url' => env('FAVRICA_BASE_URL', 'http://favricarjson.turevrent.com'),
         'key_hack' => env('FAVRICA_KEY_HACK'),

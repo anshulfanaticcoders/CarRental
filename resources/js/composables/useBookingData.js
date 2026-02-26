@@ -46,6 +46,7 @@ export function useBookingData(booking, vehicle, payment) {
   const isFavrica = computed(() => ['favrica'].includes(providerSource.value));
   const isXDrive = computed(() => ['xdrive', 'x_drive'].includes(providerSource.value));
   const isWheelsys = computed(() => ['wheelsys', 'wheelsys'].includes(providerSource.value));
+  const isSurprice = computed(() => providerSource.value === 'surprice');
 
   // Location details - normalized
   const pickupLocation = computed(() => {
@@ -404,6 +405,7 @@ export function useBookingData(booking, vehicle, payment) {
       favrica: 'Favrica',
       xdrive: 'XDrive',
       wheelsys: 'Wheelsys',
+      surprice: 'Surprice',
       internal: 'Vrooem',
     };
     return names[source] || source.charAt(0).toUpperCase() + source.slice(1);
@@ -421,6 +423,7 @@ export function useBookingData(booking, vehicle, payment) {
       locautorent: 'https://www.locautorent.com',
       adobe: 'https://www.adobecar.com',
       wheelsys: 'https://www.wheelsys.com',
+      surprice: 'https://www.surpricecars.com',
     };
     return sites[source] || null;
   }
@@ -487,6 +490,7 @@ export function useBookingData(booking, vehicle, payment) {
     isFavrica,
     isXDrive,
     isWheelsys,
+    isSurprice,
 
     // Location
     pickupLocation,

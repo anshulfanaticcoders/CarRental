@@ -29,7 +29,8 @@
       "mcp__serena__replace_content",
       "Bash(node .claude/prompt-optimizer.cjs:*)",
       "Bash(curl:*)",
-      "mcp__plugin_superpowers-chrome_chrome__use_browser"
+      "mcp__plugin_superpowers-chrome_chrome__use_browser",
+      "mcp__Ref__ref_read_url"
     ]
   },
   "enableAllProjectMcpServers": true,

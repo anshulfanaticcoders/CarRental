@@ -71,6 +71,10 @@ const isRecordGo = computed(() => {
     return props.vehicle?.source === 'recordgo';
 });
 
+const isSurprice = computed(() => {
+    return props.vehicle?.source === 'surprice';
+});
+
 // Helper for highlighting benefits
 const isKeyBenefit = (text) => {
     if (!text) return false;
@@ -519,6 +523,13 @@ const selectSicilyByCarPackage = () => {
 };
 
 const selectRecordGoPackage = () => {
+    emit('select-package', {
+        vehicle: props.vehicle,
+        package: 'BAS'
+    });
+};
+
+const selectSurpricePackage = () => {
     emit('select-package', {
         vehicle: props.vehicle,
         package: 'BAS'
@@ -1039,6 +1050,15 @@ onUnmounted(() => {
                 </button>
 
                 <button v-else-if="isRecordGo" @click="selectRecordGoPackage" class="header-btn primary"
+                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
+                    Book Deal
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+
+                <button v-else-if="isSurprice" @click="selectSurpricePackage" class="header-btn primary"
                     :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

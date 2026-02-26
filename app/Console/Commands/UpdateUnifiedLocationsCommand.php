@@ -31,6 +31,7 @@ class UpdateUnifiedLocationsCommand extends Command
     protected $favricaService;
     protected $xdriveService;
     protected $sicilyByCarService;
+    protected $surpriceService;
 
     public function __construct(
         \App\Services\GreenMotionService $greenMotionService,
@@ -43,7 +44,8 @@ class UpdateUnifiedLocationsCommand extends Command
         \App\Services\RenteonService $renteonService,
         \App\Services\FavricaService $favricaService,
         \App\Services\XDriveService $xdriveService,
-        \App\Services\SicilyByCarService $sicilyByCarService
+        \App\Services\SicilyByCarService $sicilyByCarService,
+        \App\Services\SurpriceService $surpriceService
     ) {
         parent::__construct();
         $this->greenMotionService = $greenMotionService;
@@ -57,6 +59,7 @@ class UpdateUnifiedLocationsCommand extends Command
         $this->favricaService = $favricaService;
         $this->xdriveService = $xdriveService;
         $this->sicilyByCarService = $sicilyByCarService;
+        $this->surpriceService = $surpriceService;
     }
 
     /**
@@ -102,6 +105,9 @@ class UpdateUnifiedLocationsCommand extends Command
         $recordGoLocations = $this->fetchRecordGoLocations();
         $this->info('Fetched ' . count($recordGoLocations) . ' Record Go locations.');
 
+        $surpriceLocations = $this->fetchSurpriceLocations();
+        $this->info('Fetched ' . count($surpriceLocations) . ' Surprice locations.');
+
         $unifiedLocations = $this->mergeAndNormalizeLocations(
             $internalLocations,
             $greenMotionLocations,
@@ -114,7 +120,8 @@ class UpdateUnifiedLocationsCommand extends Command
             $favricaLocations,
             $xdriveLocations,
             $sicilyByCarLocations,
-            $recordGoLocations
+            $recordGoLocations,
+            $surpriceLocations
         );
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
@@ -1325,6 +1332,70 @@ class UpdateUnifiedLocationsCommand extends Command
         }
 
         return $locations;
+    }
+
+    private function fetchSurpriceLocations(): array
+    {
+        $this->info('Fetching Surprice locations...');
+
+        try {
+            $stations = $this->surpriceService->getLocations(500);
+            if (empty($stations)) {
+                $this->error('Failed to retrieve locations from Surprice API or empty response.');
+                return [];
+            }
+
+            $locations = [];
+            foreach ($stations as $station) {
+                if (!is_array($station)) {
+                    continue;
+                }
+
+                $locationCode = $station['locationCode'] ?? null;
+                $extendedCode = $station['extendedLocationCode'] ?? $locationCode;
+                $name = trim((string) ($station['name'] ?? ''));
+                if ($locationCode === null || $name === '') {
+                    continue;
+                }
+
+                $address = $station['address'] ?? [];
+                $coords = $address['coordinates'] ?? [];
+                $country = $address['country'] ?? [];
+                $countryCode = strtoupper((string) ($country['code'] ?? ''));
+                $city = trim((string) ($address['city'] ?? ''));
+                $stationType = strtolower((string) ($station['stationType'] ?? 'office'));
+
+                $lat = (float) ($coords['lat'] ?? $coords['latitude'] ?? 0);
+                $lng = (float) ($coords['lon'] ?? $coords['longitude'] ?? 0);
+
+                // Use IATA code if locationCode is 3 chars (airport code)
+                $iata = (strlen($locationCode) === 3) ? strtoupper($locationCode) : null;
+
+                $locations[] = [
+                    'id' => 'surprice_' . $locationCode,
+                    'label' => $name,
+                    'below_label' => trim($name . ', ' . $countryCode),
+                    'location' => $name,
+                    'city' => $this->normalizeTitleCase($city),
+                    'state' => null,
+                    'country' => $countryCode,
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'source' => 'surprice',
+                    'matched_field' => 'location',
+                    'provider_location_id' => $locationCode,
+                    'provider_extended_location_code' => $extendedCode,
+                    'location_type' => $stationType,
+                    'iata' => $iata,
+                ];
+            }
+
+            return $locations;
+        } catch (\Exception $e) {
+            $this->error('Error fetching Surprice locations: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Surprice location fetch error: ' . $e->getMessage(), ['exception' => $e]);
+            return [];
+        }
     }
 
     private function parseFavricaMapsPoint(?string $mapsPoint): array

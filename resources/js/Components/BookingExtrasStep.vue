@@ -84,6 +84,10 @@ const isRecordGo = computed(() => {
     return props.vehicle?.source === 'recordgo';
 });
 
+const isSurprice = computed(() => {
+    return props.vehicle?.source === 'surprice';
+});
+
 const normalizeExtraCode = (value) => {
     const text = `${value || ''}`.trim();
     return text ? text.toUpperCase() : '';
@@ -1585,6 +1589,28 @@ const providerAllExtras = computed(() => {
     return [];
 });
 
+const surpriceOptionalExtras = computed(() => {
+    if (!isSurprice.value) return [];
+    const extras = Array.isArray(props.vehicle?.extras) ? props.vehicle.extras : [];
+    return extras.map((extra, index) => {
+        const code = extra.code || extra.id || `EXTRA_${index}`;
+        const totalPrice = parseFloat(extra.price || 0);
+        const dailyRate = extra.per_day ? parseFloat(extra.price_per_day || 0) : (props.numberOfDays ? totalPrice / props.numberOfDays : totalPrice);
+        return {
+            id: `surprice_extra_${code}_${index}`,
+            code,
+            name: extra.name || code,
+            description: extra.name || code,
+            price: totalPrice,
+            daily_rate: dailyRate,
+            currency: extra.currency || 'EUR',
+            required: false,
+            allow_quantity: extra.allow_quantity || false,
+            purpose: extra.purpose ?? null,
+        };
+    });
+});
+
 const greenMotionExtras = computed(() => {
     if (!isGreenMotion.value) return [];
     const options = [];
@@ -1812,11 +1838,10 @@ const getBenefits = (product) => {
     const currencyCode = normalizeCurrencyCode(product?.currency || resolveVehicleCurrency());
 
     // Dynamic from API
+    // Note: when excess > 0, the template renders it separately via pkg.excess
+    // so we only add the zero-excess benefit text here to avoid duplication
     if (product.excess !== undefined && parseFloat(product.excess) === 0) {
         benefits.push('Glass and tyres covered');
-    } else if (product.excess !== undefined) {
-        const convertedExcess = convertPrice(product.excess, currencyCode);
-        benefits.push(`Excess: ${getSelectedCurrencySymbol()}${convertedExcess.toFixed(2)}`);
     }
 
     if (product.debitcard === 'Y') {
@@ -1917,6 +1942,8 @@ const extrasTotal = computed(() => {
             extra = sicilyByCarAllExtras.value.find(e => e.id === id);
         } else if (isRecordGo.value) {
             extra = recordGoOptionalExtras.value.find(e => e.id === id);
+        } else if (isSurprice.value) {
+            extra = surpriceOptionalExtras.value.find(e => e.id === id);
         } else if (isFavrica.value || isXDrive.value) {
             extra = providerAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
@@ -2060,6 +2087,8 @@ const getSelectedExtrasDetails = computed(() => {
             extra = sicilyByCarAllExtras.value.find(e => e.id === id);
         } else if (isRecordGo.value) {
             extra = recordGoOptionalExtras.value.find(e => e.id === id);
+        } else if (isSurprice.value) {
+            extra = surpriceOptionalExtras.value.find(e => e.id === id);
         } else if (isFavrica.value || isXDrive.value) {
             extra = providerAllExtras.value.find(e => e.id === id);
         } else if (isGreenMotion.value) {
@@ -2093,7 +2122,8 @@ const getSelectedExtrasDetails = computed(() => {
                 numberAllowed: extra.numberAllowed ?? null,
                 prepay_available: extra.prepay_available ?? null,
                 service_id: extra.service_id,
-                code: extra.code
+                code: extra.code,
+                purpose: extra.purpose ?? null
             });
         }
     }
@@ -3326,7 +3356,7 @@ const formatPaymentMethod = (method) => {
 
                 <!-- 2. Extras Section -->
                 <section
-                    v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && !isXDrive && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || (isSicilyByCar && sicilyByCarOptionalExtras.length > 0) || (isRecordGo && recordGoOptionalExtras.length > 0) || ((isFavrica || isXDrive) && providerOptionalExtras.length > 0)">
+                    v-if="(isGreenMotion && greenMotionExtras.length > 0) || (!isGreenMotion && !isFavrica && !isXDrive && !isSurprice && optionalExtras && optionalExtras.length > 0) || (isLocautoRent && locautoOptionalExtras.length > 0) || (isAdobeCars && adobeOptionalExtras.length > 0) || (isInternal && internalOptionalExtras.length > 0) || (isRenteon && renteonOptionalExtras.length > 0) || (isOkMobility && okMobilityOptionalExtras.length > 0) || (isSicilyByCar && sicilyByCarOptionalExtras.length > 0) || (isRecordGo && recordGoOptionalExtras.length > 0) || (isSurprice && surpriceOptionalExtras.length > 0) || ((isFavrica || isXDrive) && providerOptionalExtras.length > 0)">
                     <div class="mb-6">
                         <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">{{ (isFavrica || isXDrive)?'AdditionalServices': 'Optional Extras' }}</h2>
                         <p class="text-gray-600">{{ (isFavrica || isXDrive) ? 'Add helpful services to your booking': 'Enhance your journey with these add - ons' }}</p>
@@ -3334,7 +3364,7 @@ const formatPaymentMethod = (method) => {
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <template
-                            v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : (isSicilyByCar ? sicilyByCarOptionalExtras : (isRecordGo ? recordGoOptionalExtras : ((isFavrica || isXDrive) ? providerOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras)))))))))"
+                            v-for="extra in (isLocautoRent ? locautoOptionalExtras : (isAdobeCars ? adobeOptionalExtras : (isInternal ? internalOptionalExtras : (isRenteon ? renteonOptionalExtras : (isOkMobility ? okMobilityOptionalExtras : (isSicilyByCar ? sicilyByCarOptionalExtras : (isRecordGo ? recordGoOptionalExtras : (isSurprice ? surpriceOptionalExtras : ((isFavrica || isXDrive) ? providerOptionalExtras : (isGreenMotion ? greenMotionExtras : optionalExtras))))))))))"
                             :key="extra.id">
                             <div v-if="!extra.isHidden" @click="toggleExtra(extra)"
                                 class="extra-card bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all"
