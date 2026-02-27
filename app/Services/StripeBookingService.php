@@ -1040,12 +1040,17 @@ class StripeBookingService
             // Prepare extras (including protection plan)
             $extras = [];
 
-            // Add protection code if present
+            // Add protection code(s) if present
             if (!empty($metadata->protection_code)) {
-                $extras[] = [
-                    'code' => $metadata->protection_code,
-                    'quantity' => 1
-                ];
+                $protectionCodes = json_decode($metadata->protection_code, true);
+                if (is_array($protectionCodes)) {
+                    foreach ($protectionCodes as $code) {
+                        $extras[] = ['code' => $code, 'quantity' => 1];
+                    }
+                } else {
+                    // Single code (legacy / non-array)
+                    $extras[] = ['code' => $metadata->protection_code, 'quantity' => 1];
+                }
             }
 
             // Add other extras
@@ -1844,15 +1849,16 @@ class StripeBookingService
             // Check for user-selected protections from metadata
             $selectedProtectionCodes = [];
             if (!empty($metadata->protection_code)) {
-                $protectionCode = $metadata->protection_code;
-                // Strip adobe_protection_ prefix if present
-                if (strpos($protectionCode, 'adobe_protection_') === 0) {
-                    $protectionCode = substr($protectionCode, strlen('adobe_protection_'));
-                }
-                // Handle comma-separated codes
-                $codes = explode(',', $protectionCode);
+                $raw = $metadata->protection_code;
+                // Try JSON decode first (array format from multi-select)
+                $decoded = json_decode($raw, true);
+                $codes = is_array($decoded) ? $decoded : explode(',', $raw);
                 foreach ($codes as $code) {
                     $code = trim($code);
+                    // Strip adobe_protection_ prefix if present
+                    if (strpos($code, 'adobe_protection_') === 0) {
+                        $code = substr($code, strlen('adobe_protection_'));
+                    }
                     if ($code) {
                         $selectedProtectionCodes[] = $code;
                     }

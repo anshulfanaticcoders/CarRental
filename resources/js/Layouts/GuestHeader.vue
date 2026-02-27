@@ -6,7 +6,7 @@ import axios from "axios";
 
 import Dropdown from "@/Components/Dropdown.vue";
 import { useCurrency } from '@/composables/useCurrency';
-import { hideTawk, showTawk } from '@/lib/tawk';
+// import { hideTawk, showTawk } from '@/lib/tawk';
 import { setScrollLock } from '@/lib/scrollLock';
 import whatsappIcon from '../../assets/whatsapp.svg';
 import callIcon from '../../assets/call.svg';
@@ -229,11 +229,11 @@ watch(() => url.value, () => {
 });
 
 watch(() => showingNavigationDropdown.value, (isOpen) => {
-    if (isOpen) {
-        hideTawk();
-    } else {
-        showTawk();
-    }
+    // if (isOpen) {
+    //     hideTawk();
+    // } else {
+    //     showTawk();
+    // }
     setScrollLock(isOpen);
 });
 

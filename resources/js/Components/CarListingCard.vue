@@ -745,7 +745,7 @@ const stopSlider = () => {
 };
 
 onMounted(() => {
-    startSlider();
+    // No auto-play — user navigates with prev/next buttons
 });
 
 onUnmounted(() => {

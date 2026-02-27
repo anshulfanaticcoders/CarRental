@@ -897,6 +897,16 @@ class SearchController extends Controller
                         if ($adobeResponse && isset($adobeResponse['result']) && $adobeResponse['result'] && !empty($adobeResponse['data'])) {
                             $adobeVehicles = collect($adobeResponse['data']);
 
+                            // Fetch office details for pickup location (address, phone, schedule)
+                            $adobeOfficeInfo = null;
+                            $adobeOffices = $this->adobeCarService->getOfficeList();
+                            foreach ($adobeOffices as $office) {
+                                if (($office['code'] ?? '') === $currentProviderLocationId) {
+                                    $adobeOfficeInfo = $office;
+                                    break;
+                                }
+                            }
+
                             // Process vehicles to get detailed information including protections and extras
                             $processedVehicles = [];
                             $allProtections = [];
@@ -960,6 +970,12 @@ class SearchController extends Controller
                                     'protections' => $vehicleDetails['protections'] ?? [],
                                     'extras' => $vehicleDetails['extras'] ?? [],
                                     'adobe_category' => $vehicle['category'] ?? '',
+                                    // Adobe office details
+                                    'office_address' => $adobeOfficeInfo['address'] ?? null,
+                                    'office_phone' => $adobeOfficeInfo['telephones'][0] ?? null,
+                                    'office_schedule' => $adobeOfficeInfo['schedule'] ?? null,
+                                    'office_name' => $adobeOfficeInfo['deploymentName'] ?? ($adobeOfficeInfo['name'] ?? null),
+                                    'at_airport' => $adobeOfficeInfo['atAirport'] ?? false,
                                     // Adobe-specific fields
                                     'pli' => (float) ($vehicle['pli'] ?? 0),
                                     'ldw' => (float) ($vehicle['ldw'] ?? 0),

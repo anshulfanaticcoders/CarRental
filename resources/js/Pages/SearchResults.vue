@@ -29,7 +29,7 @@ import colorIcon from "../../assets/color-palette.svg";
 import filterIcon from "../../assets/filterIcon.svg";
 import SearchBar from "@/Components/SearchBar.vue";
 import CarListingCard from "@/Components/CarListingCard.vue"; // Import CarListingCard
-import BookingExtrasStep from "@/Components/BookingExtrasStep.vue"; // Import BookingExtrasStep
+import BookingExtrasStep from "@/Components/BookingExtrasStepUnified.vue"; // Import BookingExtrasStep (unified)
 import BookingCheckoutStep from '@/Components/BookingCheckoutStep.vue'; // Import BookingExtrasStep
 import { Label } from "@/Components/ui/label";
 import { Switch } from "@/Components/ui/switch";
@@ -203,6 +203,7 @@ const bookingStep = ref('results'); // 'results' | 'extras' | 'checkout'
 const selectedVehicle = ref(null);
 const selectedPackage = ref(null);
 const selectedProtectionCode = ref(null);
+let savedScrollPosition = 0;
 
 const selectedBookingExtras = ref({});
 const locationInstructions = ref(null);
@@ -310,6 +311,7 @@ const handlePackageSelection = (event) => {
         }
     }
 
+    savedScrollPosition = window.scrollY;
     selectedVehicle.value = vehicleWithPriceHash;
     selectedPackage.value = event.package;
     selectedProtectionCode.value = event.protection_code || null;
@@ -341,7 +343,7 @@ const handlePackageSelection = (event) => {
         termsCountryId.value = null;
     }
 
-    scrollToSection('extras-breadcrumb-section');
+    nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
 };
 
 const handleBackToResults = () => {
@@ -349,7 +351,7 @@ const handleBackToResults = () => {
     selectedVehicle.value = null;
     selectedPackage.value = null;
     selectedProtectionCode.value = null;
-    scrollToSection('results-breadcrumb-section');
+    nextTick(() => window.scrollTo({ top: savedScrollPosition, behavior: 'instant' }));
 };
 
 const selectedCheckoutData = ref(null);
@@ -362,12 +364,12 @@ const handleProceedToCheckout = (data) => {
         vehicle_total: vehicleTotal
     };
     bookingStep.value = 'checkout';
-    scrollToSection('checkout-form-section');
+    nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
 };
 
 const handleBackToExtras = () => {
     bookingStep.value = 'extras';
-    scrollToSection('extras-breadcrumb-section');
+    nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
 };
 
 // Moved to consolidated onMounted at the bottom
@@ -2309,8 +2311,60 @@ watch(
         </transition>
     </Teleport>
     <SchemaInjector v-if="schema" :schema="schema" />
+
+    <!-- Booking Stepper (extras & checkout steps) -->
+    <section v-if="bookingStep !== 'results'" class="booking-stepper-bar">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6">
+            <div class="flex items-center">
+                <!-- Step 1: Search (completed) -->
+                <div class="flex items-center gap-2.5 cursor-pointer group" @click="bookingStep = 'results'">
+                    <div class="stepper-dot stepper-done">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    <div class="hidden sm:block">
+                        <span class="stepper-label text-[#1e3a5f] group-hover:underline">Search</span>
+                        <span class="stepper-sub">Find your car</span>
+                    </div>
+                </div>
+
+                <!-- Connector 1→2 -->
+                <div class="stepper-line flex-1 mx-3">
+                    <div class="stepper-line-fill" :style="{ width: '100%' }"></div>
+                </div>
+
+                <!-- Step 2: Customize -->
+                <div class="flex items-center gap-2.5" :class="bookingStep === 'checkout' ? 'cursor-pointer' : ''" @click="bookingStep === 'checkout' ? bookingStep = 'extras' : null">
+                    <div class="stepper-dot" :class="bookingStep === 'checkout' ? 'stepper-done' : bookingStep === 'extras' ? 'stepper-active' : 'stepper-pending'">
+                        <svg v-if="bookingStep === 'checkout'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                    </div>
+                    <div class="hidden sm:block">
+                        <span class="stepper-label" :class="bookingStep === 'extras' ? 'text-[#1e3a5f]' : bookingStep === 'checkout' ? 'text-[#1e3a5f]' : 'text-gray-400'">Customize</span>
+                        <span class="stepper-sub" :class="bookingStep === 'extras' ? 'text-gray-500' : ''">Extras & options</span>
+                    </div>
+                </div>
+
+                <!-- Connector 2→3 -->
+                <div class="stepper-line flex-1 mx-3">
+                    <div class="stepper-line-fill" :style="{ width: bookingStep === 'checkout' ? '100%' : '0%' }"></div>
+                </div>
+
+                <!-- Step 3: Checkout -->
+                <div class="flex items-center gap-2.5">
+                    <div class="stepper-dot" :class="bookingStep === 'checkout' ? 'stepper-active' : 'stepper-pending'">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    </div>
+                    <div class="hidden sm:block">
+                        <span class="stepper-label" :class="bookingStep === 'checkout' ? 'text-[#1e3a5f]' : 'text-gray-400'">Checkout</span>
+                        <span class="stepper-sub" :class="bookingStep === 'checkout' ? 'text-gray-500' : ''">Secure payment</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Search Header -->
-    <section class="search-header">
+    <section v-if="bookingStep === 'results'" class="search-header">
         <div class="search-header-inner">
             <div class="search-header-top">
                 <div class="search-location">
@@ -2960,6 +3014,74 @@ h4,
 h5,
 h6 {
     font-family: 'Outfit', sans-serif;
+}
+
+/* Booking Stepper Bar */
+.booking-stepper-bar {
+    background: linear-gradient(135deg, #f8fafc 0%, #f0f4f8 100%);
+    border-bottom: 1px solid #e2e8f0;
+    padding: 14px 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(8px);
+}
+.stepper-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+.stepper-done {
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: white;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+.stepper-active {
+    background: linear-gradient(135deg, #1e3a5f, #2d5a8f);
+    color: white;
+    box-shadow: 0 2px 12px rgba(30, 58, 95, 0.35);
+    animation: stepper-pulse 2s ease-in-out infinite;
+}
+.stepper-pending {
+    background: #e2e8f0;
+    color: #94a3b8;
+}
+@keyframes stepper-pulse {
+    0%, 100% { box-shadow: 0 2px 12px rgba(30, 58, 95, 0.35); }
+    50% { box-shadow: 0 2px 20px rgba(30, 58, 95, 0.5), 0 0 0 6px rgba(30, 58, 95, 0.08); }
+}
+.stepper-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+.stepper-sub {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #94a3b8;
+    line-height: 1.3;
+}
+.stepper-line {
+    height: 3px;
+    background: #e2e8f0;
+    border-radius: 9999px;
+    overflow: hidden;
+    position: relative;
+}
+.stepper-line-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #059669, #10b981);
+    border-radius: 9999px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Search Header */

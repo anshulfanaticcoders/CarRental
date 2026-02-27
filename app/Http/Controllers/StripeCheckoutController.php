@@ -155,7 +155,7 @@ class StripeCheckoutController extends Controller
                 'number_of_days' => 'required|integer|min:1',
                 'detailed_extras' => 'nullable|array',
                 'optional_extras' => 'nullable|array',
-                'protection_code' => 'nullable|string',
+                'protection_code' => 'nullable',
                 'protection_amount' => 'nullable|numeric',
                 'quoteid' => 'nullable|string',
                 'rentalCode' => 'nullable|string',
@@ -505,7 +505,7 @@ class StripeCheckoutController extends Controller
                 'customer_postal_code' => $validated['customer']['postal_code'] ?? null,
                 'customer_country' => $validated['customer']['country'] ?? null,
                 'flight_number' => $validated['customer']['flight_number'] ?? '',
-                'protection_code' => $validated['protection_code'] ?? '',
+                'protection_code' => is_array($validated['protection_code'] ?? null) ? json_encode($validated['protection_code']) : ($validated['protection_code'] ?? ''),
                 'protection_amount' => $validated['protection_amount'] ?? 0,
                 'sipp_code' => $validated['vehicle']['sipp_code'] ?? '',
                 'pickup_location_code' => $validated['vehicle']['provider_pickup_id'] ?? '',
@@ -921,10 +921,11 @@ class StripeCheckoutController extends Controller
         if ($clientTotal !== null && $clientTotal > 0) {
             $delta = abs($clientTotal - $bookingTotal);
 
-            // Skip client-total validation for internal vehicles
-            // Price verification is already done via price_hash, and client/server
-            // exchange rates may differ causing false mismatches
-            if ($vehicleSource !== 'internal') {
+            // Skip client-total validation when currencies differ (client/server
+            // exchange rates may differ causing false mismatches).
+            // Price integrity is already guaranteed by price_hash verification.
+            $currenciesDiffer = $providerCurrency && $providerCurrency !== $bookingCurrency;
+            if (!$currenciesDiffer) {
                 $tolerance = 0.5;
                 if ($delta > $tolerance) {
                     Log::warning('StripeCheckout: total mismatch', [
