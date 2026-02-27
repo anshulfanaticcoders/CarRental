@@ -155,6 +155,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/customer-bookings/confirmed', [BookingDashboardController::class, 'confirmed'])->name('customer-bookings.confirmed');
     Route::get('/customer-bookings/completed', [BookingDashboardController::class, 'completed'])->name('customer-bookings.completed');
     Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
+    Route::post('/customer-bookings/{id}/cancel', [BookingDashboardController::class, 'cancelBooking'])->name('customer-bookings.cancel');
 
 
 

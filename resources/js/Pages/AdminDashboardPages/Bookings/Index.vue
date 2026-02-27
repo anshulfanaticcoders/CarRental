@@ -148,6 +148,7 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Amount</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Payment</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -207,6 +208,18 @@
                                         {{ booking.booking_status }}
                                     </Badge>
                                 </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <Button
+                                        v-if="booking.booking_status !== 'cancelled'"
+                                        variant="destructive"
+                                        size="sm"
+                                        @click="openCancelModal(booking)"
+                                    >
+                                        <XCircle class="w-4 h-4 mr-1" />
+                                        Cancel
+                                    </Button>
+                                    <span v-else class="text-sm text-muted-foreground">--</span>
+                                </TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>
@@ -229,6 +242,44 @@
             </div>
 
         </div>
+
+        <!-- Cancel Booking Confirmation Dialog -->
+        <Dialog :open="showCancelModal" @update:open="showCancelModal = $event">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Cancel Booking</DialogTitle>
+                    <DialogDescription>
+                        Are you sure you want to cancel booking
+                        <span class="font-semibold">#{{ cancelTarget?.booking_number }}</span>?
+                        This action will notify the customer, vendor, and attempt to cancel with the provider if applicable.
+                    </DialogDescription>
+                </DialogHeader>
+                <div class="space-y-4 py-4">
+                    <div>
+                        <label class="text-sm font-medium mb-1.5 block">Cancellation Reason</label>
+                        <Textarea
+                            v-model="cancelReason"
+                            placeholder="Enter the reason for cancellation (min 3 characters)..."
+                            rows="3"
+                        />
+                        <p v-if="cancelError" class="text-sm text-red-500 mt-1">{{ cancelError }}</p>
+                    </div>
+                </div>
+                <DialogFooter class="gap-2">
+                    <Button variant="outline" @click="closeCancelModal">
+                        Go Back
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        :disabled="cancelling"
+                        @click="submitCancel"
+                    >
+                        <template v-if="cancelling">Cancelling...</template>
+                        <template v-else>Confirm Cancellation</template>
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </AdminDashboardLayout>
 </template>
 
@@ -239,6 +290,15 @@ import {Table, TableHeader, TableRow, TableHead, TableBody, TableCell} from "@/C
 import { Button } from "@/Components/ui/button";
 import { Badge } from "@/Components/ui/badge";
 import { Input } from "@/Components/ui/input";
+import { Textarea } from "@/Components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/Components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -267,6 +327,50 @@ const props = defineProps({
 
 const search = ref(props.filters.search || '');
 const statusFilter = ref(props.currentStatus || 'all');
+
+// Cancel modal state
+const showCancelModal = ref(false);
+const cancelTarget = ref(null);
+const cancelReason = ref('');
+const cancelError = ref('');
+const cancelling = ref(false);
+
+const openCancelModal = (booking) => {
+    cancelTarget.value = booking;
+    cancelReason.value = '';
+    cancelError.value = '';
+    showCancelModal.value = true;
+};
+
+const closeCancelModal = () => {
+    showCancelModal.value = false;
+    cancelTarget.value = null;
+    cancelReason.value = '';
+    cancelError.value = '';
+};
+
+const submitCancel = () => {
+    if (cancelReason.value.trim().length < 3) {
+        cancelError.value = 'Cancellation reason must be at least 3 characters.';
+        return;
+    }
+    cancelling.value = true;
+    cancelError.value = '';
+
+    router.post(`/customer-bookings/${cancelTarget.value.id}/cancel`, {
+        cancellation_reason: cancelReason.value.trim(),
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeCancelModal();
+            cancelling.value = false;
+        },
+        onError: (errors) => {
+            cancelError.value = errors.cancellation_reason || 'An error occurred.';
+            cancelling.value = false;
+        },
+    });
+};
 
 // Watch for changes in search and status filter
 watch([search, statusFilter], () => {
