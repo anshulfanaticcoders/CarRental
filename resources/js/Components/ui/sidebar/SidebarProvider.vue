@@ -71,9 +71,8 @@ provideSidebarContext({
         '--sidebar-width': SIDEBAR_WIDTH,
         '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
       }"
-      :class="cn('group/sidebar-wrapper pr-3 shadow-[1px_0px_3px_2px_#8d8d8d] flex min-h-svh text-sidebar-foreground has-[[data-variant=inset]]:bg-sidebar', props.class)"
+      :class="cn('group/sidebar-wrapper flex min-h-svh text-sidebar-foreground has-[[data-variant=inset]]:bg-sidebar', props.class)"
       v-bind="$attrs"
-      class="bg-customDarkBlackColor"
     >
       <slot />
     </div>

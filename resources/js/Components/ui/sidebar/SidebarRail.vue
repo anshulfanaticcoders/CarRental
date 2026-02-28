@@ -26,7 +26,6 @@ const { toggleSidebar } = useSidebar()
       props.class,
     )"
     @click="toggleSidebar"
-    class="!hidden"
   >
     <slot />
   </button>
