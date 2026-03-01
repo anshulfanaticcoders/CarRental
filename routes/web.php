@@ -26,7 +26,9 @@ use App\Http\Controllers\Admin\VehicleDashboardController;
 use App\Http\Controllers\Admin\DamageProtectionController as AdminDamageProtectionController;
 use App\Http\Controllers\Admin\SeoMetaController;
 use App\Http\Controllers\Admin\NewsletterSubscriberController;
+use App\Http\Controllers\Admin\NewsletterCampaignController;
 use App\Http\Controllers\Admin\VendorsReportController;
+use App\Http\Controllers\NewsletterTrackingController;
 use App\Http\Controllers\Admin\AdminAdvertisementController; // Import the controller
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\SocialAuthController;
@@ -176,6 +178,32 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->name('admin.newsletter-subscribers.index');
     Route::patch('/admin/newsletter-subscribers/{subscription}/cancel', [NewsletterSubscriberController::class, 'cancel'])
         ->name('admin.newsletter-subscribers.cancel');
+
+    // Newsletter Campaigns
+    Route::get('/admin/newsletter-campaigns', [NewsletterCampaignController::class, 'index'])
+        ->name('admin.newsletter-campaigns.index');
+    Route::get('/admin/newsletter-campaigns/create', [NewsletterCampaignController::class, 'create'])
+        ->name('admin.newsletter-campaigns.create');
+    Route::post('/admin/newsletter-campaigns', [NewsletterCampaignController::class, 'store'])
+        ->name('admin.newsletter-campaigns.store');
+    Route::get('/admin/newsletter-campaigns/{campaign}', [NewsletterCampaignController::class, 'show'])
+        ->name('admin.newsletter-campaigns.show');
+    Route::get('/admin/newsletter-campaigns/{campaign}/edit', [NewsletterCampaignController::class, 'edit'])
+        ->name('admin.newsletter-campaigns.edit');
+    Route::put('/admin/newsletter-campaigns/{campaign}', [NewsletterCampaignController::class, 'update'])
+        ->name('admin.newsletter-campaigns.update');
+    Route::delete('/admin/newsletter-campaigns/{campaign}', [NewsletterCampaignController::class, 'destroy'])
+        ->name('admin.newsletter-campaigns.destroy');
+    Route::post('/admin/newsletter-campaigns/{campaign}/send', [NewsletterCampaignController::class, 'send'])
+        ->name('admin.newsletter-campaigns.send');
+    Route::post('/admin/newsletter-campaigns/{campaign}/schedule', [NewsletterCampaignController::class, 'schedule'])
+        ->name('admin.newsletter-campaigns.schedule');
+    Route::post('/admin/newsletter-campaigns/{campaign}/cancel', [NewsletterCampaignController::class, 'cancel'])
+        ->name('admin.newsletter-campaigns.cancel');
+    Route::post('/admin/newsletter-campaigns/{campaign}/test', [NewsletterCampaignController::class, 'testEmail'])
+        ->name('admin.newsletter-campaigns.test');
+    Route::get('/admin/newsletter-subscribers/export', [NewsletterCampaignController::class, 'exportSubscribers'])
+        ->name('admin.newsletter-subscribers.export');
 
     // Analytics
     Route::get('/admin/analytics', [\App\Http\Controllers\Admin\AnalyticsDashboardController::class, 'index'])
@@ -331,6 +359,17 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/affiliate/businesses/bulk-verify', [AffiliateBusinessModelController::class, 'bulkVerifyBusinesses'])->name('admin.affiliate.businesses.bulk-verify');
     Route::post('/admin/affiliate/businesses/bulk-reject', [AffiliateBusinessModelController::class, 'bulkRejectBusinesses'])->name('admin.affiliate.businesses.bulk-reject');
 });
+
+// Newsletter tracking (public signed routes)
+Route::get('/newsletter/track/open/{log}', [NewsletterTrackingController::class, 'trackOpen'])
+    ->middleware('signed')
+    ->name('newsletter.track.open');
+Route::get('/newsletter/track/click/{log}', [NewsletterTrackingController::class, 'trackClick'])
+    ->middleware('signed')
+    ->name('newsletter.track.click');
+Route::get('/newsletter/unsubscribe/{subscription}', [NewsletterTrackingController::class, 'unsubscribe'])
+    ->middleware('signed')
+    ->name('newsletter.unsubscribe');
 
 // Locale-prefixed routes (for customer and vendor)
 Route::group([

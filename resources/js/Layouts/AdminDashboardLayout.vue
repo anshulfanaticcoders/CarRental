@@ -83,6 +83,8 @@ const routeTitles = {
   '/blogs/create': 'Create a Blog',
   '/admin/payments': 'All Payments',
   '/admin/newsletter-subscribers': 'Newsletter Subscribers',
+  '/admin/newsletter-campaigns': 'Newsletter Campaigns',
+  '/admin/newsletter-campaigns/create': 'Create Campaign',
   '/admin/analytics': 'Analytics',
   '/users-report': 'Users Report',
   '/vendors-report': 'Vendors Report',

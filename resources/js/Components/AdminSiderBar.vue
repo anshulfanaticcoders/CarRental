@@ -249,6 +249,7 @@ const navGroups: NavGroup[] = [
         icon: Mail,
         items: [
           { title: 'Subscribers', url: '/admin/newsletter-subscribers' },
+          { title: 'Campaigns', url: '/admin/newsletter-campaigns' },
         ],
       },
       {

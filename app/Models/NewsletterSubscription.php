@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class NewsletterSubscription extends Model
 {
@@ -21,6 +22,11 @@ class NewsletterSubscription extends Model
         'confirmed_at' => 'datetime',
         'unsubscribed_at' => 'datetime',
     ];
+
+    public function campaignLogs(): HasMany
+    {
+        return $this->hasMany(NewsletterCampaignLog::class, 'subscription_id');
+    }
 
     public static function normalizeEmail(string $email): string
     {
