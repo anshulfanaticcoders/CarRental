@@ -89,4 +89,8 @@ return [
   'popular_searches_header' => 'Recherches populaires',
   'no_location_found' => 'Aucun lieu trouvé. Veuillez essayer une autre recherche.',
 
+  // FAQ Section
+  'faqs_badge' => 'Questions fréquentes',
+  'faqs_title' => 'Des questions ? Nous avons les réponses.',
+
 ];

@@ -31,7 +31,9 @@
       "Bash(curl:*)",
       "mcp__plugin_superpowers-chrome_chrome__use_browser",
       "mcp__Ref__ref_read_url",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(export:*)",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.29-Win32-vs16-x64/php.exe:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

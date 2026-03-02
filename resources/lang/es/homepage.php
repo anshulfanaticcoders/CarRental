@@ -91,4 +91,8 @@ return [
     'popular_searches_header' => 'Búsquedas Populares',
     'no_location_found' => 'No se encontró la ubicación. Por favor, intenta otra búsqueda.',
 
+    // FAQ Section
+    'faqs_badge' => 'Preguntas frecuentes',
+    'faqs_title' => '¿Tienes preguntas? Tenemos las respuestas.',
+
 ];

@@ -5,6 +5,7 @@ import SeoHead from '@/Components/SeoHead.vue';
 import heroImg from "../../assets/heroImage.jpg";
 import FloatingBubbles from '@/Components/FloatingBubbles.vue';
 import Footer from '@/Components/Footer.vue'
+import NewsletterSection from '@/Components/NewsletterSection.vue'
 import wifiIcon from "../../assets/usb.svg";
 import replacementIcon from "../../assets/carIcon.svg";
 import protectionIcon from "../../assets/verification.svg";
@@ -350,20 +351,19 @@ useScrollAnimation('.blogs-trigger', '.blog-title-section', {
     duration: 1,
 });
 
-useScrollAnimation('.blogs-trigger', '.blog-main-image', {
+useScrollAnimation('.blogs-trigger', '.blog-featured', {
     opacity: 0,
-    x: -50,
-    duration: 1.2,
+    y: 40,
+    duration: 1,
 });
 
-useScrollAnimation('.blogs-trigger', '.blog-item', {
+useScrollAnimation('.blogs-trigger', '.blog-stack', {
     opacity: 0,
-    x: 50,
-    duration: 0.8,
-    stagger: 0.2,
+    y: 30,
+    duration: 1,
 });
 
-useScrollAnimation('.blogs-trigger', '.more-button', {
+useScrollAnimation('.blogs-trigger', '.blog-cta', {
     opacity: 0,
     y: 20,
     duration: 0.6,
@@ -675,85 +675,80 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
         <!-- ------------------------Blogs Section-------------------------------- -->
         <!------------------------------ <Start>  -------------------------------------------------->
         <section id="blogs" v-if="!isLoading && blogs && blogs.length"
-            class="home-section home-section--light blogs min-h-[80vh] flex flex-col gap-10 items-center blogs-trigger">
-            <div
-                class="column text-center flex flex-col items-center w-[650px] py-8 max-[768px]:py-0 max-[768px]:w-full max-[768px]:mb-10 blog-title-section">
-                <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('blogs_title') }}-</span>
-                <h3
-                    class="max-w-[883px] text-[3rem] font-bold text-customDarkBlackColor max-[768px]:max-w-full max-[768px]:text-[1.5rem]">
-                    {{ _p('blogs_subtitle') }}
-                </h3>
-            </div>
+            class="home-section home-section--light blogs blogs-trigger">
+            <div class="full-w-container blog-section-inner">
 
-            <!-- Blog Section -->
-            <div class="flex gap-6 w-full full-w-container max-[768px]:flex-col blog-main-container">
-                <!-- First Blog (Large Left) -->
-                <Link
-                    :href="route('blog.show', { locale: page.props.locale, country: blogs[0].canonical_country || (page.props.country || 'us'), blog: blogs[0].translated_slug })"
-                    v-if="!isLoading && blogs.length > 0"
-                    class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container blog-main-image max-[768px]:w-full max-[768px]:h-[380px]">
-                    <img :src="blogs[0].image" :alt="blogs[0].title" class="w-full h-full object-cover rounded-lg">
+                <!-- Header -->
+                <div class="blog-title-section text-center flex flex-col items-center py-8 max-[768px]:py-0 max-[768px]:mb-6 mb-12">
+                    <span class="text-[1.25rem] text-customPrimaryColor">-{{ _p('blogs_title') }}-</span>
+                    <h3 class="max-w-[883px] text-customDarkBlackColor max-[768px]:max-w-full">
+                        {{ _p('blogs_subtitle') }}
+                    </h3>
+                </div>
 
-                    <div class="absolute bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white w-full">
-                        <p class="text-[1.25rem] flex items-center gap-1">
-                            <img :src=calendarWhiteIcon alt=""> {{ formatDate(blogs[0].created_at) }}
-                        </p>
-                        <h4 class="font-semibold text-[2rem] max-[768px]:text-[1.25rem]">{{ blogs[0].title }}</h4>
+                <!-- Blog Grid -->
+                <div class="blog-grid">
+
+                    <!-- Featured Hero (Left) -->
+                    <Link
+                        :href="route('blog.show', { locale: page.props.locale, country: blogs[0].canonical_country || (page.props.country || 'us'), blog: blogs[0].translated_slug })"
+                        class="blog-featured">
+                        <div class="blog-featured-img">
+                            <img :src="blogs[0].image" :alt="blogs[0].title">
+                        </div>
+                        <div class="blog-featured-overlay"></div>
+                        <div class="blog-featured-content">
+                            <div class="blog-meta">
+                                <span class="blog-date blog-date--light">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    {{ formatDate(blogs[0].created_at) }}
+                                </span>
+                            </div>
+                            <h4 class="blog-featured-title">{{ blogs[0].title }}</h4>
+                            <p v-if="blogs[0].excerpt" class="blog-featured-excerpt">{{ blogs[0].excerpt }}</p>
+                            <span class="blog-read-link">
+                                Read Article
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </span>
+                        </div>
+                    </Link>
+
+                    <!-- Stacked Cards (Right) -->
+                    <div class="blog-stack">
                         <Link
-                            :href="route('blog.show', { locale: page.props.locale, country: blogs[0].canonical_country || (page.props.country || 'us'), blog: blogs[0].translated_slug })"
-                            class="inline-flex items-center mt-2 text-blue-400">
-                            <img :src=whiteGoIcon alt="">
+                            v-for="index in Math.min(3, blogs.length - 1)"
+                            :key="index"
+                            :href="route('blog.show', { locale: page.props.locale, country: blogs[index].canonical_country || (page.props.country || 'us'), blog: blogs[index].translated_slug })"
+                            class="blog-card">
+                            <div class="blog-card-img">
+                                <img :src="blogs[index].image" :alt="blogs[index].title">
+                            </div>
+                            <div class="blog-card-body">
+                                <span class="blog-date blog-date--dark">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    {{ formatDate(blogs[index].created_at) }}
+                                </span>
+                                <h4 class="blog-card-title">{{ blogs[index].title }}</h4>
+                                <p v-if="blogs[index].excerpt" class="blog-card-excerpt">{{ blogs[index].excerpt }}</p>
+                                <span class="blog-card-read">
+                                    Read Story
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                </span>
+                            </div>
                         </Link>
                     </div>
-                </Link>
 
-                <div v-else
-                    class="w-1/2 h-[574px] relative rounded-lg overflow-hidden shadow-md blog-container max-[768px]:w-full max-[768px]:h-[380px]">
-                    <Skeleton class="h-full w-full rounded-lg" />
                 </div>
 
-                <!-- Other Blogs (Stacked Right, Dividing Height) -->
-                <div class="flex flex-col gap-6 w-1/2 max-[768px]:w-full max-[768px]:gap-0 blog-list-container">
-                    <div v-for="index in 3" :key="index"
-                        class="relative rounded-lg h-[175px] flex justify-between gap-5 items-center blog-item">
-                        <div v-if="!isLoading && blogs.length > index"
-                            class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
-                            <Link
-                                :href="route('blog.show', { locale: page.props.locale, country: blogs[index].canonical_country || (page.props.country || 'us'), blog: blogs[index].translated_slug })">
-                                <img :src="blogs[index].image" :alt="blogs[index].title"
-                                    class="w-full h-full object-cover rounded-lg transform transition-transform duration-300 ease-in-out hover:scale-105">
-                            </Link>
-                        </div>
-                        <div v-else class="w-[30%] h-full blog-container max-[768px]:w-[40%] max-[768px]:h-[120px]">
-                            <Skeleton class="h-full w-full rounded-lg" />
-                        </div>
-
-                        <div class="w-[70%]">
-                            <p v-if="!isLoading && blogs.length > index"
-                                class="text-sm flex items-center gap-1 text-customLightGrayColor">
-                                <img :src=calendarIcon alt=""> {{ formatDate(blogs[index].created_at) }}
-                            </p>
-                            <h4 v-if="!isLoading && blogs.length > index"
-                                class="font-semibold text-[1.5rem] text-customDarkBlackColor max-[768px]:text-[1rem]">{{
-                                    blogs[index].title }}</h4>
-                            <Link v-if="!isLoading && blogs.length > index"
-                                :href="route('blog.show', { locale: page.props.locale, country: blogs[index].canonical_country || (page.props.country || 'us'), blog: blogs[index].translated_slug })"
-                                class="inline-flex items-center mt-2 text-customPrimaryColor read-story">
-                                Read Story
-                                <img :src=goIcon alt="" class="w-[1.5rem]">
-                            </Link>
-                            <div v-else class="space-y-2">
-                                <Skeleton class="h-4 w-[70%]" />
-                                <Skeleton class="h-4 w-[50%]" />
-                            </div>
-                        </div>
-                    </div>
+                <!-- CTA -->
+                <div class="blog-cta-wrap blog-cta">
+                    <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })"
+                        class="button-secondary text-center w-[10rem] hover:bg-customPrimaryColor hover:text-white">
+                        {{ _p('more_blogs') }}
+                    </Link>
                 </div>
+
             </div>
-
-            <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })"
-                class="button-secondary more-button text-center w-[10rem] mt-6 hover:bg-customPrimaryColor hover:text-white">
-                {{ _p('more_blogs') }}</Link>
         </section>
 
 
@@ -767,6 +762,8 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
             <Faq :faqs="props.faqs" />
         </section>
         <!-- ---------------------------<End>---------------------------------------------------->
+
+        <NewsletterSection />
     </main>
 
     <Footer />
@@ -823,9 +820,9 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
 .why-choose-us-card-right,
 .popular-place-card,
 .blog-title-section,
-.blog-main-image,
-.blog-item,
-.more-button {
+.blog-featured,
+.blog-stack,
+.blog-cta {
     will-change: transform, opacity;
 }
 
@@ -948,21 +945,322 @@ useScrollAnimation('.blogs-trigger', '.more-button', {
     }
 }
 
-.blog-container>img {
-    transition: transform 0.3s ease-in-out;
+/* ========================================
+   BLOG SECTION — Magazine Editorial
+   ======================================== */
+.blog-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: stretch;
 }
 
-.blog-container:hover>img {
-    transform: scale(1.1);
+.blog-featured {
+    position: relative;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 574px;
     cursor: pointer;
+    background: #0a1d28;
+}
+
+.blog-featured-img {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+.blog-featured-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.blog-featured:hover .blog-featured-img img {
+    transform: scale(1.05);
+    filter: brightness(0.8);
+}
+
+.blog-featured-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(10, 29, 40, 0.9) 0%, rgba(10, 29, 40, 0.55) 35%, rgba(10, 29, 40, 0.08) 65%, transparent 100%);
+    z-index: 1;
+}
+
+.blog-featured-content {
+    position: relative;
+    z-index: 2;
+    margin-top: auto;
+    padding: 36px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.blog-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.blog-date {
+    font-size: 0.82rem;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.blog-date svg {
+    width: 14px;
+    height: 14px;
+}
+
+.blog-date--light {
+    color: #cbd5e1;
+}
+
+.blog-date--dark {
+    color: rgba(43, 43, 43, 0.6);
+}
+
+.blog-featured-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #ffffff;
+    letter-spacing: -0.015em;
+    transition: color 0.3s ease;
+}
+
+.blog-featured:hover .blog-featured-title {
+    color: #dceef6;
+}
+
+.blog-featured-excerpt {
+    font-size: 0.95rem;
+    font-weight: 300;
+    line-height: 1.65;
+    color: #cbd5e1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.blog-read-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #dceef6;
+    margin-top: 4px;
+}
+
+.blog-read-link svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.blog-featured:hover .blog-read-link svg {
+    transform: translateX(6px);
+}
+
+/* Stacked Cards */
+.blog-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.blog-card {
+    display: flex;
+    gap: 0;
+    background: #ffffff;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(21, 59, 79, 0.04);
+    border: 1px solid transparent;
+}
+
+.blog-card:hover {
+    box-shadow: 0 12px 32px rgba(21, 59, 79, 0.08), 0 2px 8px rgba(21, 59, 79, 0.04);
+    transform: translateY(-3px);
+    border-color: #dceef6;
+}
+
+.blog-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #153b4f;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    border-radius: 0 0 0.75rem 0.75rem;
+}
+
+.blog-card:hover::after {
+    transform: scaleX(1);
+}
+
+.blog-card-img {
+    width: 200px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.blog-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.blog-card:hover .blog-card-img img {
+    transform: scale(1.08);
+}
+
+.blog-card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    padding: 20px;
+}
+
+.blog-card-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #2b2b2b;
+    letter-spacing: -0.01em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    transition: color 0.3s ease;
+}
+
+.blog-card:hover .blog-card-title {
+    color: #153b4f;
+}
+
+.blog-card-excerpt {
+    font-size: 0.88rem;
+    font-weight: 300;
+    line-height: 1.55;
+    color: #64748b;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.blog-card-read {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #153b4f;
+    margin-top: 2px;
+}
+
+.blog-card-read svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.blog-card:hover .blog-card-read svg {
+    transform: translateX(4px);
+}
+
+.blog-cta-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 48px;
+}
+
+/* Blog Responsive */
+@media (max-width: 1024px) {
+    .blog-card-img {
+        width: 160px;
+    }
+    .blog-card-title {
+        font-size: 1rem;
+    }
+    .blog-card-excerpt {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .blog-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+    .blog-featured {
+        min-height: 380px;
+    }
+    .blog-featured-content {
+        padding: 24px 20px;
+    }
+    .blog-featured-title {
+        font-size: 1.25rem;
+    }
+    .blog-featured-excerpt {
+        display: none;
+    }
+    .blog-card-img {
+        width: 40%;
+        min-height: 120px;
+    }
+    .blog-card-body {
+        padding: 16px;
+    }
+    .blog-card-title {
+        font-size: 1rem;
+    }
+    .blog-card-excerpt {
+        display: none;
+    }
+    .blog-cta-wrap {
+        margin-top: 32px;
+    }
+}
+
+@media (max-width: 480px) {
+    .blog-featured {
+        min-height: 320px;
+    }
+    .blog-card-img {
+        width: 35%;
+        min-height: 100px;
+    }
 }
 
 .category-carousel .disabled\:pointer-events-none:disabled {
     pointer-events: unset;
-}
-
-.read-story img {
-    margin-left: 0.75rem;
 }
 
 

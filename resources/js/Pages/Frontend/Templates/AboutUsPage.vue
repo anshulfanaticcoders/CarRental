@@ -3,6 +3,11 @@ import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import SeoHead from '@/Components/SeoHead.vue';
 import { computed, onMounted, onUnmounted } from 'vue';
+import {
+    Car, Wallet, Clock, MapPin, Wrench, HeartHandshake,
+    Shield, Star, Headphones, Zap, Globe, Users, Award,
+    ThumbsUp, CheckCircle, Sparkles
+} from 'lucide-vue-next';
 
 const props = defineProps({
     page: Object,
@@ -23,7 +28,6 @@ const statsSection = computed(() => getSection('stats'));
 const splitSection = computed(() => getSection('split'));
 const ctaSection = computed(() => getSection('cta'));
 
-// Structured data from settings
 const featuresItems = computed(() => {
     const items = featuresSection.value?.settings?.items;
     return Array.isArray(items) ? items : [];
@@ -42,33 +46,73 @@ const splitImageUrl = computed(() => splitSection.value?.settings?.image_url || 
 const ctaButtonText = computed(() => ctaSection.value?.settings?.button_text || 'Book Your Ride Today');
 const ctaButtonUrl = computed(() => ctaSection.value?.settings?.button_url || '');
 
+const heroImageUrl = computed(() => {
+    return heroSection.value?.settings?.image_url
+        || 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1400&q=80';
+});
+
+// Map emoji or title keywords to Lucide icon components
+const emojiIconMap = {
+    '🚙': Car, '🚗': Car, '🏎': Car,
+    '💰': Wallet, '💵': Wallet, '💲': Wallet,
+    '⏰': Clock, '🕐': Clock, '⏱': Clock,
+    '📍': MapPin, '📌': MapPin, '🗺': MapPin,
+    '🔧': Wrench, '🛠': Wrench,
+    '🤝': HeartHandshake, '👥': Users,
+    '🛡': Shield, '🔒': Shield,
+    '⭐': Star, '🌟': Star,
+    '🎧': Headphones, '📞': Headphones,
+    '⚡': Zap, '🌍': Globe, '🏆': Award,
+    '👍': ThumbsUp, '✅': CheckCircle,
+};
+
+const titleKeywordMap = [
+    [/fleet|car|vehicle/i, Car],
+    [/pric|cost|money|budget|transparent/i, Wallet],
+    [/time|hour|flexible|rental option/i, Clock],
+    [/location|place|convenient|map/i, MapPin],
+    [/maintain|repair|service|wrench/i, Wrench],
+    [/support|customer|help|contact/i, HeartHandshake],
+    [/safe|secur|protect|insur|shield/i, Shield],
+    [/quality|star|premium|excel/i, Star],
+    [/fast|speed|quick|instant/i, Zap],
+    [/global|world|intern/i, Globe],
+    [/team|people|staff/i, Users],
+    [/award|best|trust/i, Award],
+];
+
+const getFeatureIcon = (feature) => {
+    if (feature.emoji && emojiIconMap[feature.emoji]) {
+        return emojiIconMap[feature.emoji];
+    }
+    const title = feature.title || '';
+    for (const [regex, icon] of titleKeywordMap) {
+        if (regex.test(title)) return icon;
+    }
+    return Sparkles;
+};
+
 // --- Scroll-reveal + counter animation ---
 let revealObserver = null;
 let statsObserver = null;
 
 onMounted(() => {
-    // Scroll reveal
-    const revealOptions = {
-        threshold: 0.12,
-        rootMargin: '0px 0px -40px 0px',
-    };
-
     revealObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
+                entry.target.classList.add('au-visible');
                 revealObserver.unobserve(entry.target);
             }
         });
-    }, revealOptions);
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
 
-    document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach(el => {
+    document.querySelectorAll('.au-reveal').forEach(el => {
         revealObserver.observe(el);
     });
 
     // Counter animation for stats
     const animateCounters = () => {
-        const counters = document.querySelectorAll('.stat-number');
+        const counters = document.querySelectorAll('.au-stat-num');
         counters.forEach(counter => {
             const rawText = counter.textContent;
             const target = parseInt(rawText.replace(/[^\d]/g, ''));
@@ -103,7 +147,7 @@ onMounted(() => {
         });
     }, { threshold: 0.4 });
 
-    const statsEl = document.querySelector('.stats-section');
+    const statsEl = document.querySelector('.au-stats-row');
     if (statsEl) statsObserver.observe(statsEl);
 });
 
@@ -117,388 +161,376 @@ onUnmounted(() => {
     <SeoHead :seo="seo" />
     <AuthenticatedHeaderLayout />
 
-    <div class="about-page text-gray-800">
-        <!-- Hero Section -->
-        <section class="hero-section relative overflow-hidden text-white">
-            <div class="absolute inset-0 bg-gradient-to-br from-[#0a1d28] via-customPrimaryColor to-[#1a4d66]"></div>
+    <div class="au-page">
 
-            <!-- Background car image -->
-            <div class="absolute inset-0 bg-cover bg-center opacity-10"
-                 style="background-image: url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1600&q=80')">
+        <!-- Hero -->
+        <section class="au-hero">
+            <div class="au-hero-bg">
+                <img :src="heroImageUrl" :alt="page.title" />
             </div>
-
-            <!-- Decorative glows -->
-            <div class="absolute -top-1/2 -right-[20%] w-[700px] h-[700px] rounded-full bg-[radial-gradient(circle,rgba(6,182,212,0.12)_0%,transparent_70%)] animate-glow"></div>
-            <div class="absolute -bottom-[30%] -left-[10%] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(6,182,212,0.08)_0%,transparent_70%)] animate-glow-delayed"></div>
-
-            <!-- Grain -->
-            <div class="absolute inset-0 opacity-[0.03] pointer-events-none bg-repeat"
-                 style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)">
+            <div class="au-container">
+                <div class="au-hero-content">
+                    <div class="au-hero-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                        {{ page.title }}
+                    </div>
+                    <h1>{{ page.title }}</h1>
+                    <div v-if="heroSection?.content" class="au-hero-sub" v-html="heroSection.content"></div>
+                </div>
             </div>
-
-            <div class="container mx-auto px-6 py-24 md:py-32 relative z-10 text-center max-w-[720px]">
-                <h1 class="text-4xl md:text-5xl lg:text-[56px] font-extrabold mb-5 leading-[1.12] tracking-[-1.5px] animate-hero-fade">
-                    {{ page.title }}
-                </h1>
-                <p v-if="heroSection?.content"
-                   class="text-base md:text-lg opacity-0 leading-relaxed font-light animate-hero-fade-delay"
-                   v-html="heroSection.content">
-                </p>
-            </div>
-
-            <!-- Wave -->
-            <div class="absolute bottom-[-1px] left-0 w-full leading-[0]">
-                <svg viewBox="0 0 1440 48" fill="none" preserveAspectRatio="none" class="w-full h-12">
-                    <path d="M0 48h1440V20c-120 15-360 28-720 28S120 35 0 20v28z" fill="white"/>
+            <div class="au-wave">
+                <svg viewBox="0 0 1440 40" fill="none" preserveAspectRatio="none">
+                    <path d="M0 40h1440V16c-120 12-360 24-720 24S120 28 0 16v24z" fill="#ffffff"/>
                 </svg>
             </div>
         </section>
 
-        <!-- Story / Content Section -->
-        <section v-if="contentSection?.content || page.content" class="py-16 md:py-20 bg-white">
-            <div class="container mx-auto px-6">
-                <div class="mission-card bg-white rounded-[20px] p-12 max-md:p-8 max-sm:p-6 shadow-md border border-slate-200 max-w-[880px] mx-auto transition-all duration-400 hover:-translate-y-1 hover:shadow-lg reveal">
-                    <h2 v-if="contentSection?.title"
-                        class="text-[30px] max-md:text-2xl font-extrabold text-customPrimaryColor mb-6 relative inline-block after:content-[''] after:absolute after:bottom-[-6px] after:left-0 after:w-12 after:h-[3px] after:bg-cyan-500 after:rounded">
-                        {{ contentSection.title }}
-                    </h2>
-                    <div class="mission-text text-slate-500 text-[15.5px] leading-[1.9]"
-                         v-html="contentSection?.content || page.content">
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Company Bio + Team Image -->
-        <section v-if="meta?.company_bio || meta?.team_image" class="pb-16 md:pb-20 bg-white">
-            <div class="container mx-auto px-6">
-                <div class="grid md:grid-cols-2 gap-14 max-md:gap-8 items-center">
-                    <!-- Bio Content -->
-                    <div class="reveal-left" v-if="meta?.company_bio">
-                        <div class="bio-content text-slate-500 text-[15px] leading-[1.85]"
-                             v-html="meta.company_bio">
-                        </div>
-                    </div>
-
-                    <!-- Team Image -->
-                    <div class="reveal-right" v-if="meta?.team_image">
-                        <div class="rounded-[20px] overflow-hidden shadow-lg aspect-[4/3] bg-gradient-to-br from-slate-200 to-slate-100 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl">
-                            <img :src="meta.team_image"
-                                 :alt="page.title"
-                                 class="w-full h-full object-cover" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Mission Statement -->
-        <section v-if="meta?.mission_statement" class="py-20 md:py-[88px] bg-slate-50 relative">
-            <!-- Top accent line -->
-            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[3px] bg-gradient-to-r from-cyan-500 to-customPrimaryColor rounded"></div>
-
-            <div class="container mx-auto px-6">
-                <div class="text-center max-w-[780px] mx-auto reveal">
-                    <h2 class="text-3xl md:text-4xl font-extrabold text-customPrimaryColor mb-5 tracking-tight">
-                        {{ _t('aboutus', 'commitment_to_excellence_title') || 'Our Commitment to Excellence' }}
-                    </h2>
-                    <div class="text-base md:text-[16.5px] text-slate-500 leading-[1.9]"
-                         v-html="meta.mission_statement">
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Features Grid -->
-        <section v-if="featuresItems.length > 0" class="py-16 md:py-20 bg-white">
-            <div class="container mx-auto px-6">
-                <h2 v-if="featuresSection?.title"
-                    class="text-3xl md:text-4xl font-extrabold text-customPrimaryColor text-center mb-12 tracking-tight reveal">
-                    {{ featuresSection.title }}
-                    <span class="block w-14 h-[3px] bg-gradient-to-r from-cyan-500 to-customPrimaryColor rounded mx-auto mt-3"></span>
-                </h2>
-                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-7">
-                    <div
-                        v-for="(feature, fi) in featuresItems"
-                        :key="fi"
-                        class="feature-card bg-white border border-slate-200 rounded-[20px] p-9 max-md:p-7 text-center shadow-sm transition-all duration-400 relative overflow-hidden hover:-translate-y-2 hover:shadow-xl reveal"
-                        :class="`reveal-delay-${fi % 6 + 1}`"
-                    >
-                        <div class="before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-customPrimaryColor before:to-cyan-500 before:scale-x-0 before:origin-left before:transition-transform before:duration-400 hover:before:scale-x-100"></div>
-                        <div class="w-[72px] h-[72px] bg-customLightPrimaryColor rounded-[18px] mx-auto mb-5 flex items-center justify-center text-3xl transition-all duration-400 feature-icon-wrap">
-                            {{ feature.emoji || '✨' }}
-                        </div>
-                        <h3 class="text-[17px] font-bold text-customPrimaryColor mb-2">{{ feature.title }}</h3>
-                        <p class="text-sm text-slate-500 leading-relaxed">{{ feature.description }}</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Stats Section -->
-        <section v-if="statsItems.length > 0" class="px-6 pb-16 md:pb-20">
-            <div class="stats-section max-w-[1200px] mx-auto bg-gradient-to-br from-customPrimaryColor to-[#1a5570] text-white py-[72px] px-10 max-md:py-12 max-md:px-6 rounded-[20px] text-center relative overflow-hidden">
-                <div class="absolute -top-[40%] -right-[10%] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(6,182,212,0.18)_0%,transparent_70%)]"></div>
-                <div class="relative z-10">
-                    <h2 v-if="statsSection?.title" class="text-3xl md:text-4xl font-extrabold mb-2">{{ statsSection.title }}</h2>
-                    <p v-if="statsSubtitle" class="text-[17px] opacity-75 mb-10">{{ statsSubtitle }}</p>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
-                        <div v-for="(stat, si) in statsItems" :key="si" class="p-4">
-                            <span class="stat-number block text-4xl md:text-5xl font-extrabold mb-1">{{ stat.number }}</span>
-                            <span class="text-sm opacity-75 font-medium">{{ stat.label }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Split Layout Section -->
-        <section v-if="splitSection" class="py-16 md:py-20 bg-white">
-            <div class="container mx-auto px-6">
-                <div class="grid md:grid-cols-2 gap-14 items-center reveal">
+        <!-- Story / Content -->
+        <section v-if="contentSection?.content || page.content" class="au-story">
+            <div class="au-container">
+                <div class="au-story-grid au-reveal">
                     <div>
-                        <h2 v-if="splitSection.title" class="text-[30px] max-md:text-2xl font-extrabold text-customPrimaryColor mb-5">{{ splitSection.title }}</h2>
-                        <h3 v-if="splitSubtitle" class="text-[22px] max-md:text-lg font-bold text-slate-800 mb-4">{{ splitSubtitle }}</h3>
-                        <div v-if="splitSection.content" class="text-[15px] text-slate-500 leading-[1.85] space-y-3" v-html="splitSection.content"></div>
+                        <div v-if="contentSection?.title" class="au-story-label">{{ contentSection.title }}</div>
+                        <div class="au-story-text" v-html="contentSection?.content || page.content"></div>
                     </div>
-                    <div v-if="splitImageUrl" class="rounded-[20px] overflow-hidden shadow-lg bg-slate-50 border border-slate-200">
-                        <img :src="splitImageUrl" :alt="splitSection.title || ''" class="w-full h-auto object-cover" />
+                    <div v-if="meta?.team_image" class="au-story-img">
+                        <img :src="meta.team_image" :alt="page.title" />
                     </div>
-                    <div v-else class="rounded-[20px] bg-slate-50 border border-slate-200 p-10 flex items-center justify-center min-h-[240px]">
-                        <div class="text-center text-slate-300">
-                            <svg class="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="0.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                            <p class="text-sm">Image placeholder</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Company Bio + Team Image (only when no content section) -->
+        <section v-if="!contentSection && (meta?.company_bio || meta?.team_image)" class="au-story au-story--flush">
+            <div class="au-container">
+                <div class="au-story-grid au-reveal">
+                    <div v-if="meta?.company_bio" class="au-story-text" v-html="meta.company_bio"></div>
+                    <div v-if="meta?.team_image" class="au-story-img">
+                        <img :src="meta.team_image" :alt="page.title" />
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mission + Stats — Dark -->
+        <section v-if="meta?.mission_statement || statsItems.length > 0" class="au-dark-band">
+            <div class="au-dark-orb au-dark-orb--1"></div>
+            <div class="au-dark-orb au-dark-orb--2"></div>
+            <div class="au-container au-dark-inner">
+                <div v-if="meta?.mission_statement" class="au-mission-block au-reveal">
+                    <h2>{{ _t('aboutus', 'commitment_to_excellence_title') || 'Our Commitment to Excellence' }}</h2>
+                    <div v-html="meta.mission_statement"></div>
+                </div>
+                <div v-if="statsItems.length > 0" class="au-stats-row">
+                    <div v-for="(stat, si) in statsItems" :key="si" class="au-stat">
+                        <div class="au-stat-num">{{ stat.number }}</div>
+                        <div class="au-stat-lbl">{{ stat.label }}</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section v-if="featuresItems.length > 0" class="au-features">
+            <div class="au-container">
+                <div v-if="featuresSection?.title" class="au-features-head au-reveal">
+                    <h2>{{ featuresSection.title }}</h2>
+                </div>
+                <div class="au-features-grid">
+                    <div v-for="(feature, fi) in featuresItems" :key="fi" class="au-feat au-reveal">
+                        <div class="au-feat-icon">
+                            <component :is="getFeatureIcon(feature)" :size="22" :stroke-width="2" />
+                        </div>
+                        <div class="au-feat-body">
+                            <h3>{{ feature.title }}</h3>
+                            <p>{{ feature.description }}</p>
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- CTA Section -->
-        <section v-if="ctaSection" class="cta-section relative overflow-hidden text-white py-20 md:py-[88px]">
-            <div class="absolute inset-0 bg-gradient-to-br from-[#0a1d28] to-customPrimaryColor"></div>
-            <div class="absolute -bottom-[30%] left-[20%] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(6,182,212,0.12)_0%,transparent_70%)]"></div>
-
-            <div class="container mx-auto px-6 relative z-10 text-center max-w-[600px] reveal">
-                <h2 v-if="ctaSection.title" class="text-3xl md:text-[42px] font-extrabold mb-4 tracking-tight">{{ ctaSection.title }}</h2>
-                <div v-if="ctaSection.content" class="text-[17px] opacity-80 mb-8 leading-relaxed" v-html="ctaSection.content"></div>
-                <a v-if="ctaButtonUrl"
-                   :href="ctaButtonUrl"
-                   class="inline-block bg-cyan-500 text-white py-4 px-11 rounded-full font-bold text-base transition-all duration-300 hover:-translate-y-[3px] hover:shadow-[0_10px_32px_rgba(6,182,212,0.4)]">
-                    {{ ctaButtonText }}
-                </a>
+        <!-- Split Layout -->
+        <section v-if="splitSection" class="au-bio">
+            <div class="au-container">
+                <div class="au-bio-grid au-reveal">
+                    <div v-if="splitImageUrl" class="au-bio-img">
+                        <img :src="splitImageUrl" :alt="splitSection.title || ''" />
+                    </div>
+                    <div class="au-bio-content">
+                        <h2 v-if="splitSection.title">{{ splitSection.title }}</h2>
+                        <h3 v-if="splitSubtitle">{{ splitSubtitle }}</h3>
+                        <div v-if="splitSection.content" v-html="splitSection.content"></div>
+                    </div>
+                </div>
             </div>
         </section>
-    </div>
 
+        <!-- CTA -->
+        <section v-if="ctaSection" class="au-cta">
+            <div class="au-container au-cta-inner au-reveal">
+                <h2 v-if="ctaSection.title">{{ ctaSection.title }}</h2>
+                <div v-if="ctaSection.content" class="au-cta-text" v-html="ctaSection.content"></div>
+                <a v-if="ctaButtonUrl" :href="ctaButtonUrl" class="au-cta-btn">{{ ctaButtonText }}</a>
+            </div>
+        </section>
+
+    </div>
     <Footer />
 </template>
 
 <style scoped>
-.hero-section {
-    min-height: 50vh;
+/* ═══════════ HERO — FULL BG IMAGE ═══════════ */
+.au-hero {
+    position: relative;
+    overflow: hidden;
+    min-height: 420px;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-direction: column;
 }
-
-/* Hero animations */
-@keyframes heroFadeUp {
-    from { opacity: 0; transform: translateY(24px); }
-    to { opacity: 0.88; transform: translateY(0); }
+.au-hero-bg { position: absolute; inset: 0; z-index: 0; }
+.au-hero-bg img { width: 100%; height: 100%; object-fit: cover; }
+.au-hero-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, rgba(10,29,40,0.88) 0%, rgba(21,59,79,0.75) 50%, rgba(15,41,54,0.85) 100%);
 }
-
-.animate-hero-fade {
-    opacity: 0;
-    animation: heroFadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.au-hero-content {
+    position: relative; z-index: 2; text-align: center;
+    max-width: 680px; margin: 0 auto;
+    padding: clamp(4rem,8vw,6rem) 1.5rem;
 }
-
-.animate-hero-fade-delay {
-    animation: heroFadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+.au-hero-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.75rem; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: #06b6d4; padding: 6px 16px;
+    background: rgba(6,182,212,0.12);
+    border: 1px solid rgba(6,182,212,0.2);
+    border-radius: 100px; margin-bottom: 1.25rem;
 }
-
-/* Glow animation */
-@keyframes pulseGlow {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.15); opacity: 0.7; }
+.au-hero-badge svg { width: 12px; height: 12px; }
+.au-hero h1 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: clamp(2.25rem,5.5vw,3.5rem);
+    font-weight: 900; color: #fff; line-height: 1.12;
+    letter-spacing: -0.03em; margin-bottom: 1rem;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.3);
 }
+.au-hero-sub { font-size: 1.08rem; color: rgba(255,255,255,0.75); line-height: 1.7; max-width: 540px; margin: 0 auto; }
+.au-hero-sub :deep(p) { margin: 0; }
+.au-wave { position: absolute; bottom: -1px; left: 0; width: 100%; line-height: 0; z-index: 3; }
+.au-wave svg { width: 100%; height: 40px; }
 
-.animate-glow {
-    animation: pulseGlow 6s ease-in-out infinite;
+/* ═══════════ CONTAINER ═══════════ */
+.au-container { width: min(92%, 1200px); margin-inline: auto; }
+
+/* ═══════════ STORY — LIGHT ═══════════ */
+.au-story { padding: clamp(3rem,6vw,4.5rem) 0; background: #fff; }
+.au-story--flush { padding-top: 0; }
+.au-story-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; }
+.au-story-label {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.76rem; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: #06b6d4; margin-bottom: 0.6rem;
 }
-
-.animate-glow-delayed {
-    animation: pulseGlow 8s ease-in-out infinite 2s;
+.au-story-text { font-size: 0.96rem; color: #64748b; line-height: 1.8; }
+.au-story-text :deep(h2) {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: clamp(1.4rem,2.8vw,1.85rem); font-weight: 800;
+    color: #153b4f; line-height: 1.25; margin-bottom: 1rem;
 }
-
-/* Scroll reveal */
-.reveal {
-    opacity: 0;
-    transform: translateY(32px);
-    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+.au-story-text :deep(p) { margin-bottom: 0.75rem; line-height: 1.8; }
+.au-story-text :deep(p:last-child) { margin-bottom: 0; }
+.au-story-img {
+    border-radius: 18px; overflow: hidden; aspect-ratio: 5/4;
+    box-shadow: 0 10px 36px rgba(21,59,79,0.08);
+    border: 1px solid #e2e8f0;
 }
+.au-story-img img { width: 100%; height: 100%; object-fit: cover; }
 
-.reveal.visible {
-    opacity: 1;
-    transform: translateY(0);
+/* ═══════════ MISSION + STATS — DARK ═══════════ */
+.au-dark-band {
+    position: relative; overflow: hidden; isolation: isolate;
+    padding: clamp(2.5rem,5vw,4rem) 0;
+    background: linear-gradient(155deg, #0a1d28 0%, #153b4f 40%, #0f2936 70%, #0b1b26 100%);
 }
-
-.reveal-left {
-    opacity: 0;
-    transform: translateX(-40px);
-    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+.au-dark-band::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 600px 400px at 30% 30%, rgba(6,182,212,0.1), transparent),
+                radial-gradient(ellipse 400px 300px at 75% 75%, rgba(6,182,212,0.05), transparent);
+    pointer-events: none; z-index: 0;
 }
-
-.reveal-left.visible {
-    opacity: 1;
-    transform: translateX(0);
+.au-dark-band::after {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(6,182,212,0.025) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(6,182,212,0.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 70%);
+    pointer-events: none; z-index: 0;
 }
-
-.reveal-right {
-    opacity: 0;
-    transform: translateX(40px);
-    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+.au-dark-orb {
+    position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.2;
+    pointer-events: none; z-index: 0; animation: auFloat 14s ease-in-out infinite;
 }
-
-.reveal-right.visible {
-    opacity: 1;
-    transform: translateX(0);
+.au-dark-orb--1 { width: 220px; height: 220px; background: #06b6d4; top: 5%; left: -3%; }
+.au-dark-orb--2 { width: 160px; height: 160px; background: #06b6d4; bottom: 5%; right: -2%; animation-delay: -7s; opacity: 0.12; }
+@keyframes auFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-14px) scale(1.04); }
 }
-
-.reveal-delay-1 { transition-delay: 0.1s; }
-.reveal-delay-2 { transition-delay: 0.2s; }
-.reveal-delay-3 { transition-delay: 0.3s; }
-
-/* Mission card text */
-.mission-text :deep(p) {
-    margin-bottom: 16px;
-    line-height: 1.9;
+.au-dark-inner { position: relative; z-index: 1; }
+.au-mission-block { text-align: center; max-width: 760px; margin: 0 auto 2.5rem; }
+.au-mission-block h2 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: clamp(1.4rem,3vw,2rem); font-weight: 800;
+    color: #fff; letter-spacing: -0.02em; margin-bottom: 0.85rem;
 }
-
-.mission-text :deep(p:last-child) {
-    margin-bottom: 0;
+.au-mission-block :deep(p) { font-size: 1rem; color: #94a3b8; line-height: 1.75; max-width: 640px; margin: 0 auto; }
+.au-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; }
+.au-stat {
+    background: rgba(21,59,79,0.28);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(6,182,212,0.08); border-radius: 16px;
+    padding: 1.5rem 1rem; text-align: center;
+    transition: border-color 0.4s ease, box-shadow 0.4s ease;
 }
-
-/* Bio content styling */
-.bio-content :deep(h2) {
-    font-size: 30px;
-    font-weight: 800;
-    color: #153b4f;
-    margin-bottom: 20px;
-    line-height: 1.2;
+.au-stat:hover { border-color: rgba(6,182,212,0.18); box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+.au-stat-num {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 2rem; font-weight: 800;
+    background: linear-gradient(135deg, #22d3ee, #06b6d4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; line-height: 1.15; margin-bottom: 0.15rem;
 }
+.au-stat-lbl { font-size: 0.82rem; color: #64748b; font-weight: 500; }
 
-.bio-content :deep(p) {
-    margin-bottom: 16px;
-    line-height: 1.85;
+/* ═══════════ FEATURES — LIGHT ═══════════ */
+.au-features {
+    padding: clamp(3rem,6vw,4.5rem) 0;
+    background: linear-gradient(180deg, #f8fafc 0%, #fff 50%, #f8fafc 100%);
 }
-
-/* Features content: style v-html output to look like a card grid */
-.features-content :deep(h2),
-.features-content :deep(h3) {
-    font-weight: 700;
-    color: #153b4f;
-    margin-bottom: 8px;
+.au-features-head { text-align: center; margin-bottom: 2.25rem; }
+.au-features-head h2 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: clamp(1.4rem,3vw,2rem); font-weight: 800;
+    color: #153b4f; letter-spacing: -0.02em;
 }
-
-.features-content :deep(p) {
-    color: #64748b;
-    font-size: 14px;
-    line-height: 1.65;
-    margin-bottom: 12px;
+.au-features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.au-feat {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+    padding: 1.5rem 1.25rem; display: flex; align-items: flex-start; gap: 1rem;
+    transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
 }
-
-/* Stats section inner v-html styling */
-.stats-section :deep(h2) {
-    font-size: clamp(28px, 4vw, 36px);
-    font-weight: 800;
-    margin-bottom: 8px;
+.au-feat:hover {
+    border-color: rgba(6,182,212,0.3);
+    box-shadow: 0 10px 30px rgba(21,59,79,0.07);
+    transform: translateY(-2px);
 }
-
-.stats-section :deep(p) {
-    font-size: 17px;
-    opacity: 0.75;
-    margin-bottom: 20px;
+.au-feat-icon {
+    width: 50px; height: 50px; min-width: 50px; border-radius: 14px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    box-shadow: 0 4px 14px rgba(6,182,212,0.3);
+    color: #fff;
+    transition: box-shadow 0.4s ease, transform 0.4s ease;
 }
-
-.stats-section :deep(.stat-number) {
-    font-size: clamp(36px, 5vw, 48px);
-    font-weight: 800;
-    display: block;
-    margin-bottom: 4px;
+.au-feat:hover .au-feat-icon {
+    box-shadow: 0 6px 22px rgba(6,182,212,0.4);
+    transform: scale(1.05);
 }
-
-.stats-section :deep(.stat-label) {
-    font-size: 14px;
-    opacity: 0.75;
-    font-weight: 500;
+.au-feat-body { flex: 1; min-width: 0; }
+.au-feat h3 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.98rem; font-weight: 700; color: #153b4f;
+    margin-bottom: 0.25rem; line-height: 1.3;
 }
+.au-feat p { font-size: 0.88rem; color: #64748b; line-height: 1.6; margin: 0; }
 
-/* Split content styling */
-.split-content :deep(h2) {
-    font-size: 30px;
-    font-weight: 800;
-    color: #153b4f;
-    margin-bottom: 20px;
+/* ═══════════ SPLIT / VISION — LIGHT ═══════════ */
+.au-bio {
+    padding: clamp(3rem,6vw,4.5rem) 0;
+    background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
 }
-
-.split-content :deep(h3) {
-    font-size: 22px;
-    font-weight: 700;
-    color: #1e293b;
-    margin-bottom: 14px;
+.au-bio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; }
+.au-bio-img {
+    border-radius: 18px; overflow: hidden; aspect-ratio: 5/4;
+    box-shadow: 0 10px 36px rgba(21,59,79,0.08); border: 1px solid #e2e8f0;
 }
-
-.split-content :deep(p) {
-    font-size: 15px;
-    color: #64748b;
-    line-height: 1.85;
-    margin-bottom: 12px;
+.au-bio-img img { width: 100%; height: 100%; object-fit: cover; }
+.au-bio-content h2 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: clamp(1.4rem,2.8vw,1.85rem); font-weight: 800;
+    color: #153b4f; line-height: 1.25; margin-bottom: 0.4rem;
 }
-
-.split-content :deep(img) {
-    border-radius: 20px;
-    max-width: 100%;
-    height: auto;
+.au-bio-content h3 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 1.08rem; font-weight: 600; color: #334155; margin-bottom: 0.85rem;
 }
+.au-bio-content :deep(p) { font-size: 0.96rem; color: #64748b; line-height: 1.8; margin-bottom: 0.65rem; }
+.au-bio-content :deep(p:last-child) { margin-bottom: 0; }
 
-/* CTA inner v-html styling */
-.cta-section :deep(h2) {
-    font-size: clamp(32px, 4.5vw, 42px);
-    font-weight: 800;
-    margin-bottom: 16px;
-    letter-spacing: -0.5px;
+/* ═══════════ CTA — DARK ═══════════ */
+.au-cta {
+    position: relative; overflow: hidden; isolation: isolate;
+    padding: clamp(2.5rem,5vw,4rem) 0;
+    background: linear-gradient(155deg, #0a1d28 0%, #153b4f 40%, #0f2936 70%, #0b1b26 100%);
 }
-
-.cta-section :deep(p) {
-    font-size: 17px;
-    opacity: 0.8;
-    margin-bottom: 16px;
-    line-height: 1.6;
+.au-cta::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 500px 300px at 50% 50%, rgba(6,182,212,0.1), transparent);
+    pointer-events: none;
 }
+.au-cta-inner { position: relative; z-index: 1; text-align: center; max-width: 520px; margin: 0 auto; }
+.au-cta h2 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: clamp(1.5rem,3.5vw,2.25rem); font-weight: 800;
+    color: #fff; margin-bottom: 0.6rem; letter-spacing: -0.02em;
+}
+.au-cta-text { margin-bottom: 1.5rem; }
+.au-cta-text :deep(p) { font-size: 0.98rem; color: #94a3b8; line-height: 1.65; }
+.au-cta-btn {
+    display: inline-block; padding: 0.85rem 2.25rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.92rem; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    border: none; border-radius: 100px; text-decoration: none; cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
+    box-shadow: 0 4px 18px rgba(6,182,212,0.3);
+}
+.au-cta-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(6,182,212,0.4); }
 
-/* Responsive */
+/* ═══════════ SCROLL REVEAL ═══════════ */
+.au-reveal {
+    opacity: 0; transform: translateY(28px);
+    transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+}
+.au-reveal.au-visible { opacity: 1; transform: translateY(0); }
+
+/* ═══════════ RESPONSIVE ═══════════ */
+@media (max-width: 1024px) {
+    .au-features-grid { grid-template-columns: repeat(2, 1fr); }
+    .au-stats-row { grid-template-columns: repeat(2, 1fr); }
+}
 @media (max-width: 768px) {
-    .hero-section {
-        min-height: auto;
-    }
-
-    .mission-card {
-        padding: 32px 24px;
-    }
-
-    .stats-section :deep(h2) {
-        font-size: 26px;
-    }
+    .au-hero { min-height: 340px; }
+    .au-hero h1 { font-size: 1.85rem; }
+    .au-hero-sub { font-size: 0.95rem; }
+    .au-hero-content { padding: 3rem 1rem; }
+    .au-story-grid, .au-bio-grid { grid-template-columns: 1fr; gap: 1.75rem; }
+    .au-story-img { order: -1; aspect-ratio: 16/9; }
+    .au-bio-img { order: -1; aspect-ratio: 16/9; }
+    .au-features-grid { grid-template-columns: 1fr; }
+    .au-stats-row { grid-template-columns: repeat(2, 1fr); gap: 0.65rem; }
+    .au-stat { padding: 1.15rem 0.75rem; }
+    .au-stat-num { font-size: 1.6rem; }
 }
-
 @media (max-width: 480px) {
-    .mission-card {
-        padding: 24px 18px;
-    }
+    .au-stats-row { grid-template-columns: 1fr 1fr; }
 }
 </style>

@@ -91,4 +91,8 @@ return [
     'popular_searches_header' => 'عمليات البحث الشائعة',
     'no_location_found' => 'لم يتم العثور على موقع. الرجاء المحاولة ببحث آخر.',
 
+    // FAQ Section
+    'faqs_badge' => 'الأسئلة الشائعة',
+    'faqs_title' => 'هل لديك أسئلة؟ لدينا الإجابات.',
+
 ];

@@ -89,4 +89,9 @@ return [
     'search_around_me' => 'Zoek in mijn omgeving..',
     'popular_searches_header' => 'Populaire zoekopdrachten',
     'no_location_found' => 'Geen locatie gevonden. Probeer een andere zoekopdracht.',
+
+    // FAQ Section
+    'faqs_badge' => 'Veelgestelde vragen',
+    'faqs_title' => 'Heb je vragen? Wij hebben de antwoorden.',
+
 ];
