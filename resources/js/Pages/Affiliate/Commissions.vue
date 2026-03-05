@@ -4,9 +4,7 @@
         <div v-if="!isVerified" class="bg-amber-50 border-b border-amber-200">
             <div class="max-w-[min(92%,1200px)] mx-auto py-3 flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01" />
-                    </svg>
+                    <AlertCircle class="w-4 h-4" />
                 </div>
                 <div>
                     <span class="text-sm font-bold text-amber-800">Account Pending Approval</span>
@@ -143,6 +141,7 @@ import { router, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
 import { Toaster } from '@/Components/ui/sonner';
 import AffiliateHeader from '@/Layouts/AffiliateHeader.vue';
+import { AlertCircle } from 'lucide-vue-next';
 
 
 const page = usePage();

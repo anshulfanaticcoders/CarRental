@@ -29,7 +29,8 @@ use App\Http\Controllers\Admin\NewsletterSubscriberController;
 use App\Http\Controllers\Admin\NewsletterCampaignController;
 use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\NewsletterTrackingController;
-use App\Http\Controllers\Admin\AdminAdvertisementController; // Import the controller
+use App\Http\Controllers\Admin\AdminAdvertisementController;
+use App\Http\Controllers\Admin\AdminAffiliateController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\Auth\EmailValidationController;
@@ -310,53 +311,28 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/settings/payable-amount', [PayableSettingController::class, 'index'])->name('admin.settings.payable-amount.index');
     Route::post('/admin/settings/payable-amount', [PayableSettingController::class, 'update'])->name('admin.settings.payable-amount.update');
 
-    // Affiliate Business Model Management
+    // Affiliate Business Model Settings (kept — already clean)
     Route::get('/admin/affiliate/business-model', [AffiliateBusinessModelController::class, 'index'])->name('admin.affiliate.business-model.index');
     Route::get('/admin/affiliate/global-settings', [AffiliateBusinessModelController::class, 'getGlobalSettings'])->name('admin.affiliate.global-settings');
     Route::post('/admin/affiliate/global-settings', [AffiliateBusinessModelController::class, 'updateGlobalSettings'])->name('admin.affiliate.global-settings.update');
-    Route::get('/admin/affiliate/businesses', [AffiliateBusinessModelController::class, 'getBusinesses'])->name('admin.affiliate.businesses');
     Route::post('/admin/affiliate/businesses/{businessId}/model', [AffiliateBusinessModelController::class, 'updateBusinessModel'])->name('admin.affiliate.businesses.model.update');
     Route::delete('/admin/affiliate/businesses/{businessId}/model', [AffiliateBusinessModelController::class, 'deleteBusinessModel'])->name('admin.affiliate.businesses.model.delete');
-    Route::get('/admin/affiliate/statistics', [AffiliateBusinessModelController::class, 'getBusinessStatistics'])->name('admin.affiliate.statistics');
-    Route::get('/admin/affiliate/statistics-data', [AffiliateBusinessModelController::class, 'getBusinessStatisticsData'])->name('admin.affiliate.statistics-data');
-    Route::get('/admin/affiliate/businesses/{businessId}/preview', [AffiliateBusinessModelController::class, 'previewBusinessRates'])->name('admin.affiliate.businesses.preview');
-    Route::get('/admin/affiliate/businesses/{businessId}', [AffiliateBusinessModelController::class, 'getBusinessDetails'])->name('admin.affiliate.businesses.show');
-    Route::put('/admin/affiliate/businesses/{businessId}', [AffiliateBusinessModelController::class, 'updateBusinessDetails'])->name('admin.affiliate.businesses.update');
-    Route::put('/admin/affiliate/businesses/{businessId}/status', [AffiliateBusinessModelController::class, 'updateBusinessStatus'])->name('admin.affiliate.businesses.status.update');
-    Route::get('/admin/affiliate/businesses/{businessId}/export', [AffiliateBusinessModelController::class, 'exportBusinessData'])->name('admin.affiliate.businesses.export');
+    Route::get('/admin/affiliate/businesses', [AffiliateBusinessModelController::class, 'getBusinesses'])->name('admin.affiliate.businesses');
 
-    // Business Model Dashboard Routes
-    Route::get('/admin/affiliate/business-statistics', [AffiliateBusinessModelController::class, 'businessStatistics'])->name('admin.affiliate.business-statistics');
-    Route::get('/admin/affiliate/business-verification', [AffiliateBusinessModelController::class, 'businessVerification'])->name('admin.affiliate.business-verification');
-    Route::get('/admin/affiliate/payment-tracking', [AffiliateBusinessModelController::class, 'paymentTracking'])->name('admin.affiliate.payment-tracking');
-    Route::get('/admin/affiliate/business-details/{businessId?}', [AffiliateBusinessModelController::class, 'businessDetails'])->name('admin.affiliate.business-details');
-    Route::get('/admin/affiliate/commission-management', [AffiliateBusinessModelController::class, 'commissionManagement'])->name('admin.affiliate.commission-management');
-    Route::get('/admin/affiliate/qr-analytics', [AffiliateBusinessModelController::class, 'qrAnalytics'])->name('admin.affiliate.qr-analytics');
-
-    // Admin Business Registration Routes
-    Route::get('/admin/affiliate/business-register', [AffiliateBusinessModelController::class, 'registerBusiness'])->name('admin.affiliate.business-register');
-    Route::post('/admin/affiliate/business-register', [AffiliateBusinessModelController::class, 'storeBusiness'])->name('admin.affiliate.business-register.store');
-
-    // Commission Management API Routes
-    Route::get('/admin/affiliate/commissions-data', [AffiliateBusinessModelController::class, 'getCommissionsData'])->name('admin.affiliate.commissions-data');
-    Route::get('/admin/affiliate/commission-statistics', [AffiliateBusinessModelController::class, 'getCommissionStatistics'])->name('admin.affiliate.commission-statistics');
-    Route::patch('/admin/affiliate/commissions/{commissionId}/status', [AffiliateBusinessModelController::class, 'updateCommissionStatus'])->name('admin.affiliate.commissions.status.update');
-    Route::post('/admin/affiliate/commissions/{commissionId}/pay', [AffiliateBusinessModelController::class, 'processCommissionPayment'])->name('admin.affiliate.commissions.pay');
-    Route::get('/admin/affiliate/commissions-export', [AffiliateBusinessModelController::class, 'exportCommissions'])->name('admin.affiliate.commissions-export');
-
-    // QR Analytics API Routes
-    Route::get('/admin/affiliate/qr-analytics-data', [AffiliateBusinessModelController::class, 'getQrAnalyticsData'])->name('admin.affiliate.qr-analytics-data');
-    Route::get('/admin/affiliate/qr-analytics-export', [AffiliateBusinessModelController::class, 'exportQrAnalytics'])->name('admin.affiliate.qr-analytics-export');
-
-    // Business Verification Actions
+    // Business Verification Actions (kept — used by partner detail page)
     Route::post('/admin/affiliate/businesses/{businessId}/verify', [AffiliateBusinessModelController::class, 'verifyBusiness'])->name('admin.affiliate.businesses.verify');
     Route::post('/admin/affiliate/businesses/{businessId}/reject', [AffiliateBusinessModelController::class, 'rejectBusiness'])->name('admin.affiliate.businesses.reject');
     Route::post('/admin/affiliate/businesses/{businessId}/suspend', [AffiliateBusinessModelController::class, 'suspendBusiness'])->name('admin.affiliate.businesses.suspend');
     Route::post('/admin/affiliate/businesses/{businessId}/activate', [AffiliateBusinessModelController::class, 'activateBusiness'])->name('admin.affiliate.businesses.activate');
-    Route::post('/admin/affiliate/businesses/bulk-verify', [AffiliateBusinessModelController::class, 'bulkVerifyBusinesses'])->name('admin.affiliate.businesses.bulk-verify');
-    Route::post('/admin/affiliate/businesses/bulk-reject', [AffiliateBusinessModelController::class, 'bulkRejectBusinesses'])->name('admin.affiliate.businesses.bulk-reject');
 
-    // Scout Payout Management
+    // New Affiliate Admin Pages
+    Route::get('/admin/affiliate/overview', [AdminAffiliateController::class, 'overview'])->name('admin.affiliate.overview');
+    Route::get('/admin/affiliate/partners', [AdminAffiliateController::class, 'partners'])->name('admin.affiliate.partners');
+    Route::get('/admin/affiliate/partners/{id}', [AdminAffiliateController::class, 'partnerDetail'])->name('admin.affiliate.partners.show');
+    Route::get('/admin/affiliate/commissions', [AdminAffiliateController::class, 'commissions'])->name('admin.affiliate.commissions');
+    Route::patch('/admin/affiliate/commissions/{id}/status', [AdminAffiliateController::class, 'updateCommissionStatus'])->name('admin.affiliate.commissions.status.update');
+
+    // Scout Payout Management (kept — already clean)
     Route::get('/admin/affiliate/payouts', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'index'])->name('admin.affiliate.payouts');
     Route::post('/admin/affiliate/payouts', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'createPayout'])->name('admin.affiliate.payouts.create');
     Route::post('/admin/affiliate/payouts/{payout}/mark-paid', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'markAsPaid'])->name('admin.affiliate.payouts.mark-paid');

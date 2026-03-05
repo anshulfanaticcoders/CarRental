@@ -17,7 +17,8 @@ class NotificationController extends Controller
         $allowedRoles = match ($userRole) {
             'admin' => ['admin'],
             'vendor' => ['vendor'],
-            default => ['customer'], // customer, user, etc.
+            'affiliate' => ['affiliate'],
+            default => ['customer'],
         };
 
         $notifications = $user->notifications()

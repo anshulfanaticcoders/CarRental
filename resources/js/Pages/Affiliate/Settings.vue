@@ -4,9 +4,7 @@
         <div v-if="!isVerified" class="bg-amber-50 border-b border-amber-200">
             <div class="max-w-[min(92%,1200px)] mx-auto py-3 flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01" />
-                    </svg>
+                    <AlertCircle class="w-4 h-4" />
                 </div>
                 <div>
                     <span class="text-sm font-bold text-amber-800">Account Pending Approval</span>
@@ -34,9 +32,7 @@
                 <!-- Flash Success Message -->
                 <div v-if="$page.props.flash?.success"
                     class="mb-5 flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700">
-                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
+                    <CheckCircle2 class="w-5 h-5 text-emerald-500 shrink-0" />
                     {{ $page.props.flash.success }}
                 </div>
 
@@ -60,9 +56,7 @@
                 <!-- Account Status Banner -->
                 <div v-if="business.verification_status === 'verified'" class="flex items-center gap-3.5 px-4 py-3.5 bg-emerald-50 border border-emerald-200 rounded-xl mb-5">
                     <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
+                        <CheckCircle2 class="w-4 h-4" />
                     </div>
                     <div>
                         <h4 class="text-sm font-bold text-emerald-800">Account Verified & Active</h4>
@@ -73,9 +67,7 @@
                 </div>
                 <div v-else class="flex items-center gap-3.5 px-4 py-3.5 bg-amber-50 border border-amber-200 rounded-xl mb-5">
                     <div class="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01" />
-                        </svg>
+                        <AlertCircle class="w-4 h-4" />
                     </div>
                     <div>
                         <h4 class="text-sm font-bold text-amber-800">Verification Pending</h4>
@@ -307,6 +299,7 @@ import { useForm, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
 import { Toaster } from '@/Components/ui/sonner';
 import AffiliateHeader from '@/Layouts/AffiliateHeader.vue';
+import { AlertCircle, CheckCircle2 } from 'lucide-vue-next';
 
 
 const page = usePage();

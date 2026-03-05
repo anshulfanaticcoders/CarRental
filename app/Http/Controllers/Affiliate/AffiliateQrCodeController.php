@@ -637,6 +637,20 @@ class AffiliateQrCodeController extends Controller
             return redirect('/')->with('error', 'Failed to process QR code scan');
         }
 
+        // If already scanned, still set affiliate session but inform user
+        if (($result['scan_result'] ?? null) === 'limit_reached') {
+            session(['affiliate_data' => [
+                'business_id' => $qrCode->business_id,
+                'qr_code_id' => $qrCode->id,
+                'customer_scan_id' => $result['customer_scan']->id,
+                'discount_type' => $qrCode->discount_type,
+                'discount_value' => $qrCode->discount_value,
+                'business_name' => $qrCode->business->name,
+                'scanned_at' => $result['customer_scan']->created_at->toISOString(),
+            ]]);
+            return redirect('/en/vehicles')->with('info', 'You have already activated your discount from ' . $qrCode->business->name . '. Your exclusive offer is still active!');
+        }
+
         // Store affiliate data
         $affiliateData = [
             'business_id' => $qrCode->business_id,
@@ -666,6 +680,21 @@ class AffiliateQrCodeController extends Controller
                 // Invalid QR code or tracking data - redirect to homepage with error
                 return redirect()->route('welcome', ['locale' => app()->getLocale()])
                     ->with('error', 'Invalid or expired QR code');
+            }
+
+            // If already scanned, still set affiliate session but inform user
+            if (($result['scan_result'] ?? null) === 'limit_reached') {
+                session(['affiliate_data' => [
+                    'business_id' => $result['qr_code']->business_id,
+                    'qr_code_id' => $result['qr_code']->id,
+                    'customer_scan_id' => $result['customer_scan']->id,
+                    'discount_type' => $result['qr_code']->discount_type,
+                    'discount_value' => $result['qr_code']->discount_value,
+                    'business_name' => $result['business']->name,
+                    'scanned_at' => $result['customer_scan']->created_at->toISOString(),
+                ]]);
+                return redirect()->route('welcome', ['locale' => app()->getLocale()])
+                    ->with('info', 'You have already activated your discount from ' . $result['business']->name . '. Your exclusive offer is still active!');
             }
 
             // Store affiliate data in session

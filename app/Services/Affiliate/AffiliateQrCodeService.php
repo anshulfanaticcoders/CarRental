@@ -214,6 +214,21 @@ class AffiliateQrCodeService
         // Get current user ID (null if not logged in)
         $currentCustomerId = auth()->id();
 
+        // Check for existing scan by this user/session (one scan per user per QR code)
+        $existingScan = $this->findExistingScan($qrCode, $currentCustomerId, $sessionToken);
+
+        if ($existingScan) {
+            $businessModel = $qrCode->business->getEffectiveBusinessModel();
+            return [
+                'qr_code' => $qrCode,
+                'customer_scan' => $existingScan,
+                'business' => $qrCode->business,
+                'discount_rate' => $businessModel['discount_value'],
+                'discount_type' => $businessModel['discount_type'],
+                'scan_result' => 'limit_reached',
+            ];
+        }
+
         // Create customer scan record
         $customerScan = \App\Models\Affiliate\AffiliateCustomerScan::create([
             'uuid' => Str::uuid(),
@@ -267,6 +282,20 @@ class AffiliateQrCodeService
         session([$sessionKey => $sessionToken]);
 
         return $sessionToken;
+    }
+
+    /**
+     * Find an existing scan for this QR code by the same user or session.
+     */
+    private function findExistingScan(AffiliateQrCode $qrCode, ?int $customerId, string $sessionToken): ?\App\Models\Affiliate\AffiliateCustomerScan
+    {
+        $query = \App\Models\Affiliate\AffiliateCustomerScan::where('qr_code_id', $qrCode->id);
+
+        if ($customerId) {
+            return $query->where('customer_id', $customerId)->first();
+        }
+
+        return $query->where('session_id', $sessionToken)->first();
     }
 
     /**

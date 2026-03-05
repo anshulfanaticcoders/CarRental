@@ -23,7 +23,7 @@ class AffiliateBusinessModelController extends Controller
         $globalSettings = $this->affiliateBusinessModelService->getGlobalSettings();
         $businesses = $this->affiliateBusinessModelService->getAllBusinessesWithModels();
 
-        return Inertia::render('AdminDashboardPages/BusinessModel/Index', [
+        return Inertia::render('AdminDashboardPages/Affiliate/Settings', [
             'globalSettings' => $globalSettings,
             'businesses' => $businesses,
         ]);

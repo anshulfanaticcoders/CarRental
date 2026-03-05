@@ -4,9 +4,7 @@
         <div v-if="!isVerified" class="bg-amber-50 border-b border-amber-200">
             <div class="max-w-[min(92%,1200px)] mx-auto py-3 flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01" />
-                    </svg>
+                    <AlertCircle class="w-4 h-4" />
                 </div>
                 <div>
                     <span class="text-sm font-bold text-amber-800">Account Pending Approval</span>
@@ -27,10 +25,7 @@
                         <p class="text-[0.88rem] text-slate-400">Welcome back, {{ business.name }}.</p>
                     </div>
                     <div class="flex gap-2 items-center">
-                        <div class="w-9 h-9 rounded-[10px] border border-white/10 bg-white/5 flex items-center justify-center cursor-pointer text-base relative">
-                            &#x1F514;
-                            <div class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-red-500 border-[1.5px] border-[#0a1d28]"></div>
-                        </div>
+                        <NotificationBell />
                         <a :href="route('affiliate.qr-codes', { locale })"
                             class="inline-flex items-center gap-1.5 px-4 py-2.5 text-[0.8rem] font-bold text-white rounded-[10px] bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-[0_4px_14px_rgba(6,182,212,0.25)] transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(6,182,212,0.35)]">
                             + Create QR
@@ -43,7 +38,7 @@
                     <div v-for="stat in statCards" :key="stat.label"
                         class="bg-[rgba(21,59,79,0.28)] backdrop-blur-[16px] border border-[rgba(6,182,212,0.08)] rounded-2xl p-4 text-center transition-all duration-400 hover:border-[rgba(6,182,212,0.18)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
                         <div class="w-9 h-9 rounded-[10px] flex items-center justify-center text-base bg-[rgba(6,182,212,0.12)] border border-[rgba(6,182,212,0.08)] mx-auto mb-2.5">
-                            {{ stat.icon }}
+                            <component :is="iconMap[stat.icon]" class="w-5 h-5 text-cyan-400" />
                         </div>
                         <div class="text-2xl font-[800] bg-gradient-to-br from-cyan-300 to-cyan-500 bg-clip-text text-transparent leading-tight mb-0.5">
                             {{ stat.value }}
@@ -121,7 +116,7 @@
                             <div v-for="qr in qrCodes" :key="qr.id"
                                 class="flex items-center gap-3 py-2.5 border-b border-[rgba(15,23,42,0.04)] last:border-b-0">
                                 <div class="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[rgba(6,182,212,0.12)] to-[rgba(21,59,79,0.05)] border border-[rgba(6,182,212,0.1)] flex items-center justify-center text-base shrink-0">
-                                    &#x1F4F1;
+                                    <Smartphone class="w-5 h-5 text-cyan-600" />
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <div class="font-semibold text-[0.85rem] text-[#153b4f] truncate">{{ qr.label || qr.short_code }}</div>
@@ -149,6 +144,8 @@ import { usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
 import { Toaster } from '@/Components/ui/sonner';
 import AffiliateHeader from '@/Layouts/AffiliateHeader.vue';
+import { AlertCircle, Smartphone, Euro, Hourglass, Camera, Target } from 'lucide-vue-next';
+import NotificationBell from '@/Components/NotificationBell.vue';
 
 
 const page = usePage();
@@ -167,11 +164,13 @@ const props = defineProps({
     qrCodes: Array,
 });
 
+const iconMap = { Euro, Hourglass, Camera, Target };
+
 const statCards = computed(() => [
-    { icon: '\u{1F4B6}', label: 'Total Revenue', value: '\u20AC' + formatCurrency(props.stats.total_commissions) },
-    { icon: '\u23F3', label: 'Pending', value: '\u20AC' + formatCurrency(props.stats.pending_commissions) },
-    { icon: '\u{1F4F7}', label: 'Total Scans', value: formatWholeNumber(props.stats.total_scans) },
-    { icon: '\u{1F3AF}', label: 'Conversion', value: props.stats.conversion_rate + '%' },
+    { icon: 'Euro', label: 'Total Revenue', value: '\u20AC' + formatCurrency(props.stats.total_commissions) },
+    { icon: 'Hourglass', label: 'Pending', value: '\u20AC' + formatCurrency(props.stats.pending_commissions) },
+    { icon: 'Camera', label: 'Total Scans', value: formatWholeNumber(props.stats.total_scans) },
+    { icon: 'Target', label: 'Conversion', value: props.stats.conversion_rate + '%' },
 ]);
 
 const chartBars = computed(() => {

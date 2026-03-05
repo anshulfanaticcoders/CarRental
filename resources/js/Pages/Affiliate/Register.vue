@@ -19,7 +19,7 @@
                     <div v-for="perk in perks" :key="perk.title"
                         class="bg-[rgba(21,59,79,0.28)] backdrop-blur-[16px] border border-[rgba(6,182,212,0.08)] rounded-2xl p-4 text-center transition-all duration-400 hover:border-[rgba(6,182,212,0.18)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
                         <div class="w-[42px] h-[42px] rounded-xl flex items-center justify-center text-lg bg-[rgba(6,182,212,0.12)] border border-[rgba(6,182,212,0.1)] mx-auto mb-2.5">
-                            {{ perk.icon }}
+                            <component :is="perkIconMap[perk.icon]" class="w-5 h-5 text-cyan-400" />
                         </div>
                         <h4 class="font-bold text-[0.82rem] text-white mb-0.5">{{ perk.title }}</h4>
                         <p class="text-[0.72rem] text-white/45 leading-snug">{{ perk.desc }}</p>
@@ -42,7 +42,7 @@
                                 <h2 class="text-xl md:text-[1.4rem] font-[800] text-slate-900 mb-1">
                                     Create your <span class="bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] bg-clip-text text-transparent">partner account.</span>
                                 </h2>
-                                <p class="text-[0.88rem] text-slate-500 mb-6">Fill in your details to get started.</p>
+                                <p class="text-[0.88rem] text-slate-500 mb-6">Fill in your details to get started. <a :href="route('login', { locale })" class="text-[#2ea7ad] font-semibold no-underline hover:underline">Already a partner? Sign in</a></p>
 
                                 <!-- Step Indicator -->
                                 <div class="flex items-center gap-0 mb-7 py-3.5 px-5 bg-slate-50 border border-slate-200 rounded-2xl">
@@ -55,7 +55,7 @@
                                                 'bg-white text-slate-400 border-[1.5px] border-slate-200'
                                             ]">
                                                 <template v-if="currentStep > i + 1">
-                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                    <Check class="w-3.5 h-3.5" :stroke-width="3" />
                                                 </template>
                                                 <template v-else>{{ i + 1 }}</template>
                                             </div>
@@ -76,7 +76,7 @@
                                             <div>
                                                 <label class="af-label">First Name</label>
                                                 <div class="relative">
-                                                    <span class="af-icon">&#x1F464;</span>
+                                                    <span class="af-icon"><User class="w-4 h-4" /></span>
                                                     <input v-model="form.first_name" type="text" class="af-input" placeholder="John" />
                                                 </div>
                                                 <p v-if="stepErrors.first_name || form.errors.first_name" class="text-red-500 text-xs mt-1">{{ stepErrors.first_name || form.errors.first_name }}</p>
@@ -84,7 +84,7 @@
                                             <div>
                                                 <label class="af-label">Last Name</label>
                                                 <div class="relative">
-                                                    <span class="af-icon">&#x1F464;</span>
+                                                    <span class="af-icon"><User class="w-4 h-4" /></span>
                                                     <input v-model="form.last_name" type="text" class="af-input" placeholder="Smith" />
                                                 </div>
                                                 <p v-if="stepErrors.last_name || form.errors.last_name" class="text-red-500 text-xs mt-1">{{ stepErrors.last_name || form.errors.last_name }}</p>
@@ -93,7 +93,7 @@
                                         <div class="mb-4">
                                             <label class="af-label">Email Address</label>
                                             <div class="relative">
-                                                <span class="af-icon">&#x2709;</span>
+                                                <span class="af-icon"><Mail class="w-4 h-4" /></span>
                                                 <input v-model="form.email" type="email" class="af-input" placeholder="you@business.com" />
                                             </div>
                                             <p v-if="stepErrors.email || form.errors.email" class="text-red-500 text-xs mt-1">{{ stepErrors.email || form.errors.email }}</p>
@@ -101,7 +101,7 @@
                                         <div class="mb-4">
                                             <label class="af-label">Password</label>
                                             <div class="relative">
-                                                <span class="af-icon">&#x1F512;</span>
+                                                <span class="af-icon"><Lock class="w-4 h-4" /></span>
                                                 <input v-model="form.password" type="password" class="af-input" placeholder="Minimum 8 characters" />
                                             </div>
                                             <!-- Password Strength Meter -->
@@ -114,7 +114,7 @@
                                         <div class="mb-4">
                                             <label class="af-label">Confirm Password</label>
                                             <div class="relative">
-                                                <span class="af-icon">&#x1F512;</span>
+                                                <span class="af-icon"><Lock class="w-4 h-4" /></span>
                                                 <input v-model="form.password_confirmation" type="password" class="af-input" placeholder="Repeat your password" />
                                             </div>
                                             <p v-if="stepErrors.password_confirmation" class="text-red-500 text-xs mt-1">{{ stepErrors.password_confirmation }}</p>
@@ -123,7 +123,7 @@
                                             <button type="button" @click="nextStep" :disabled="isValidating" class="af-btn-primary">
                                                 <span v-if="isValidating">Validating...</span>
                                                 <span v-else>Continue</span>
-                                                <svg v-if="!isValidating" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                                <ChevronRight v-if="!isValidating" class="w-4 h-4" :stroke-width="2.5" />
                                             </button>
                                         </div>
                                     </div>
@@ -133,7 +133,7 @@
                                         <div class="mb-4">
                                             <label class="af-label">Business Name</label>
                                             <div class="relative">
-                                                <span class="af-icon">&#x1F3E2;</span>
+                                                <span class="af-icon"><Building2 class="w-4 h-4" /></span>
                                                 <input v-model="form.business_name" type="text" class="af-input" placeholder="Hotel Playa del Sol" />
                                             </div>
                                             <p v-if="stepErrors.business_name || form.errors.business_name" class="text-red-500 text-xs mt-1">{{ stepErrors.business_name || form.errors.business_name }}</p>
@@ -156,7 +156,7 @@
                                             <div>
                                                 <label class="af-label">Phone Number</label>
                                                 <div class="relative">
-                                                    <span class="af-icon">&#x1F4DE;</span>
+                                                    <span class="af-icon"><Phone class="w-4 h-4" /></span>
                                                     <input v-model="form.contact_phone" type="tel" class="af-input" placeholder="+34 612 345 678" />
                                                 </div>
                                             </div>
@@ -165,7 +165,7 @@
                                             <div>
                                                 <label class="af-label">City</label>
                                                 <div class="relative">
-                                                    <span class="af-icon">&#x1F3D9;</span>
+                                                    <span class="af-icon"><MapPin class="w-4 h-4" /></span>
                                                     <input v-model="form.city" type="text" class="af-input" placeholder="Malaga" />
                                                 </div>
                                                 <p v-if="stepErrors.city" class="text-red-500 text-xs mt-1">{{ stepErrors.city }}</p>
@@ -178,12 +178,12 @@
                                         </div>
                                         <div class="flex justify-between mt-6 pt-4 border-t border-slate-100">
                                             <button type="button" @click="prevStep" class="af-btn-outline">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                                                <ChevronLeft class="w-4 h-4" :stroke-width="2.5" />
                                                 Back
                                             </button>
                                             <button type="button" @click="nextStep" class="af-btn-primary">
                                                 Continue
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                                <ChevronRight class="w-4 h-4" :stroke-width="2.5" />
                                             </button>
                                         </div>
                                     </div>
@@ -193,14 +193,14 @@
                                         <div class="mb-4">
                                             <label class="af-label">Bank Name</label>
                                             <div class="relative">
-                                                <span class="af-icon">&#x1F3E6;</span>
+                                                <span class="af-icon"><Landmark class="w-4 h-4" /></span>
                                                 <input v-model="form.bank_name" type="text" class="af-input" placeholder="Banco Santander" />
                                             </div>
                                         </div>
                                         <div class="mb-4">
                                             <label class="af-label">IBAN</label>
                                             <div class="relative">
-                                                <span class="af-icon">&#x1F4B3;</span>
+                                                <span class="af-icon"><CreditCard class="w-4 h-4" /></span>
                                                 <input v-model="form.bank_iban" type="text" class="af-input" placeholder="ES91 2100 0418 4502 0005 1332" />
                                             </div>
                                         </div>
@@ -208,14 +208,14 @@
                                             <div>
                                                 <label class="af-label">BIC / SWIFT</label>
                                                 <div class="relative">
-                                                    <span class="af-icon">&#x1F310;</span>
+                                                    <span class="af-icon"><Globe class="w-4 h-4" /></span>
                                                     <input v-model="form.bank_bic" type="text" class="af-input" placeholder="BSCHESMMXXX" />
                                                 </div>
                                             </div>
                                             <div>
                                                 <label class="af-label">Account Holder Name</label>
                                                 <div class="relative">
-                                                    <span class="af-icon">&#x1F464;</span>
+                                                    <span class="af-icon"><User class="w-4 h-4" /></span>
                                                     <input v-model="form.bank_account_name" type="text" class="af-input" placeholder="Hotel Playa del Sol S.L." />
                                                 </div>
                                             </div>
@@ -239,14 +239,14 @@
                                         <p class="text-[0.75rem] text-slate-400 mt-1">Bank details are used for commission payouts only. Select the currency your bank account uses.</p>
                                         <div class="flex justify-between mt-6 pt-4 border-t border-slate-100">
                                             <button type="button" @click="prevStep" class="af-btn-outline">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                                                <ChevronLeft class="w-4 h-4" :stroke-width="2.5" />
                                                 Back
                                             </button>
                                             <div class="flex items-center gap-3">
                                                 <button type="button" @click="nextStep" class="text-sm text-slate-400 hover:text-[#2ea7ad] transition-colors font-medium">Skip this step</button>
                                                 <button type="button" @click="nextStep" class="af-btn-primary">
                                                     Continue
-                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                                    <ChevronRight class="w-4 h-4" :stroke-width="2.5" />
                                                 </button>
                                             </div>
                                         </div>
@@ -276,7 +276,7 @@
                                         </div>
                                         <div class="flex justify-between mt-6 pt-4 border-t border-slate-100">
                                             <button type="button" @click="prevStep" class="af-btn-outline">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                                                <ChevronLeft class="w-4 h-4" :stroke-width="2.5" />
                                                 Back
                                             </button>
                                             <button type="submit" :disabled="form.processing || !agreeTerms || !agreePrivacy"
@@ -356,7 +356,7 @@
                                     <li>You can update bank details anytime</li>
                                 </ul>
                                 <div class="af-info-note">
-                                    <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <Info class="w-4 h-4 shrink-0 mt-0.5" />
                                     <span>You can skip this step now and add bank details later from your dashboard settings.</span>
                                 </div>
                             </div>
@@ -419,16 +419,19 @@ import { Toaster } from '@/Components/ui/sonner';
 import axios from 'axios';
 import GuestHeader from '@/Layouts/GuestHeader.vue';
 import Footer from '@/Components/Footer.vue';
+import { Check, User, Mail, Lock, ChevronRight, ChevronLeft, Building2, Phone, MapPin, Landmark, CreditCard, Globe, Info, DollarSign, Smartphone, BarChart3 } from 'lucide-vue-next';
 
 const page = usePage();
 const locale = computed(() => page.props.locale || 'en');
 
 const perks = [
-    { icon: '\u{1F4B0}', title: 'Earn Commissions', desc: 'Get paid for every booking from your location.' },
-    { icon: '\u{1F4F1}', title: 'Smart QR Codes', desc: 'Geo-targeted with real-time analytics.' },
-    { icon: '\u{1F4CA}', title: 'Live Dashboard', desc: 'Track scans, bookings & revenue.' },
-    { icon: '\u{1F3E6}', title: 'Bank Payouts', desc: 'Direct monthly bank transfers.' },
+    { icon: 'DollarSign', title: 'Earn Commissions', desc: 'Get paid for every booking from your location.' },
+    { icon: 'Smartphone', title: 'Smart QR Codes', desc: 'Geo-targeted with real-time analytics.' },
+    { icon: 'BarChart3', title: 'Live Dashboard', desc: 'Track scans, bookings & revenue.' },
+    { icon: 'Landmark', title: 'Bank Payouts', desc: 'Direct monthly bank transfers.' },
 ];
+
+const perkIconMap = { DollarSign, Smartphone, BarChart3, Landmark };
 
 const steps = [
     { label: 'Account' },

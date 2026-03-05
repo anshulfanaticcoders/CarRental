@@ -38,7 +38,7 @@ import {
   CameraIcon,
   ShieldPlusIcon,
   Target,
-  Building,
+  Handshake,
   Megaphone,
   LogOut,
 } from 'lucide-vue-next';
@@ -136,17 +136,15 @@ const navGroups: NavGroup[] = [
     label: 'Business',
     items: [
       {
-        title: 'Business Model',
+        title: 'Affiliates',
         url: '#',
-        icon: Building,
+        icon: Handshake,
         items: [
-          { title: 'Business Statistics', url: '/admin/affiliate/business-statistics' },
-          { title: 'Business Verification', url: '/admin/affiliate/business-verification' },
-          { title: 'Payment Tracking', url: '/admin/affiliate/payment-tracking' },
-          { title: 'Commission Management', url: '/admin/affiliate/commission-management' },
-          { title: 'QR Code Analytics', url: '/admin/affiliate/qr-analytics' },
-          { title: 'Business Model Settings', url: '/admin/affiliate/business-model' },
-          { title: 'Register Business', url: '/admin/affiliate/business-register' },
+          { title: 'Overview', url: '/admin/affiliate/overview' },
+          { title: 'Partners', url: '/admin/affiliate/partners' },
+          { title: 'Commissions', url: '/admin/affiliate/commissions' },
+          { title: 'Payouts', url: '/admin/affiliate/payouts' },
+          { title: 'Settings', url: '/admin/affiliate/business-model' },
         ],
       },
       {
