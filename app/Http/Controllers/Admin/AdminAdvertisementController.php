@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Advertisement;
+use App\Services\PromoService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -37,6 +38,8 @@ class AdminAdvertisementController extends Controller
             'end_date' => 'required|date|after:start_date',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'is_external' => 'boolean',
+            'is_promo' => 'boolean',
+            'discount_percentage' => 'nullable|numeric|min:0|max:50',
         ]);
 
         $imagePath = null;
@@ -74,7 +77,11 @@ class AdminAdvertisementController extends Controller
             'image_path' => $imagePath,
             'is_active' => $request->has('is_active') ? $request->is_active : true,
             'is_external' => $request->has('is_external') ? $request->is_external : false,
+            'is_promo' => $request->boolean('is_promo', false),
+            'discount_percentage' => $request->is_promo ? ($request->discount_percentage ?? 0) : 0,
         ]);
+
+        app(PromoService::class)->invalidateCache();
 
         return redirect()->back()->with('success', 'Advertisement created successfully.');
     }
@@ -94,9 +101,13 @@ class AdminAdvertisementController extends Controller
             'end_date' => 'required|date|after:start_date',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'is_external' => 'boolean',
+            'is_promo' => 'boolean',
+            'discount_percentage' => 'nullable|numeric|min:0|max:50',
         ]);
 
         $data = $request->except('image');
+        $data['is_promo'] = $request->boolean('is_promo', false);
+        $data['discount_percentage'] = $data['is_promo'] ? ($request->discount_percentage ?? 0) : 0;
 
         if ($request->hasFile('image')) {
             // Delete old image from UpCloud if exists
@@ -133,6 +144,8 @@ class AdminAdvertisementController extends Controller
 
         $advertisement->update($data);
 
+        app(PromoService::class)->invalidateCache();
+
         return redirect()->back()->with('success', 'Advertisement updated successfully.');
     }
 
@@ -155,6 +168,8 @@ class AdminAdvertisementController extends Controller
         }
 
         $advertisement->delete();
+
+        app(PromoService::class)->invalidateCache();
 
         return redirect()->back()->with('success', 'Advertisement deleted successfully.');
     }

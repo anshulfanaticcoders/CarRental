@@ -39,40 +39,6 @@ class AffiliateBusinessModelService
     }
 
     /**
-     * Calculate discount amount based on business model
-     */
-    public function calculateDiscount(array $businessModel, float $bookingAmount): float
-    {
-        $discountValue = $businessModel['discount_value'];
-        $discountType = $businessModel['discount_type'];
-        $minBookingAmount = $businessModel['min_booking_amount'];
-        $maxDiscountAmount = $businessModel['max_discount_amount'];
-
-        // Check minimum booking amount requirement
-        if ($minBookingAmount && $bookingAmount < $minBookingAmount) {
-            return 0;
-        }
-
-        $discountAmount = 0;
-
-        switch ($discountType) {
-            case 'percentage':
-                $discountAmount = ($bookingAmount * $discountValue) / 100;
-                break;
-            case 'fixed_amount':
-                $discountAmount = min($discountValue, $bookingAmount);
-                break;
-        }
-
-        // Apply maximum discount limit if set
-        if ($maxDiscountAmount && $discountAmount > $maxDiscountAmount) {
-            $discountAmount = $maxDiscountAmount;
-        }
-
-        return round($discountAmount, 2);
-    }
-
-    /**
      * Calculate commission amount based on business model
      */
     public function calculateCommission(array $businessModel, float $bookingAmount, float $discountAmount = 0): float

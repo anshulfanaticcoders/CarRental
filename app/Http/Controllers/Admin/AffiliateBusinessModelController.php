@@ -1978,7 +1978,20 @@ class AffiliateBusinessModelController extends Controller
     {
         try {
             $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
-            $business->update(['verification_status' => 'verified']);
+            $oldStatus = $business->verification_status;
+            $business->update([
+                'verification_status' => 'verified',
+                'verified_at' => now(),
+                'status' => 'active',
+            ]);
+
+            try {
+                if ($business->user) {
+                    $business->user->notify(new BusinessStatusChangedNotification($business, $oldStatus, 'verified'));
+                }
+            } catch (\Exception $mailError) {
+                \Illuminate\Support\Facades\Log::warning('Verify notification failed: ' . $mailError->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
@@ -1999,7 +2012,16 @@ class AffiliateBusinessModelController extends Controller
     {
         try {
             $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
+            $oldStatus = $business->verification_status;
             $business->update(['verification_status' => 'rejected']);
+
+            try {
+                if ($business->user) {
+                    $business->user->notify(new BusinessStatusChangedNotification($business, $oldStatus, 'rejected'));
+                }
+            } catch (\Exception $mailError) {
+                \Illuminate\Support\Facades\Log::warning('Reject notification failed: ' . $mailError->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
@@ -2070,9 +2092,13 @@ class AffiliateBusinessModelController extends Controller
 
             $business->update(['status' => $data['status']]);
 
-            // Send notification to business about status change
-            if ($oldStatus !== $data['status']) {
-                $business->notify(new BusinessStatusChangedNotification($business, $oldStatus, $data['status']));
+            // Send notification to business owner about status change
+            try {
+                if ($oldStatus !== $data['status'] && $business->user) {
+                    $business->user->notify(new BusinessStatusChangedNotification($business, $oldStatus, $data['status']));
+                }
+            } catch (\Exception $mailError) {
+                \Illuminate\Support\Facades\Log::warning('Status change notification failed: ' . $mailError->getMessage());
             }
 
             return response()->json([
@@ -2100,12 +2126,29 @@ class AffiliateBusinessModelController extends Controller
                 'business_ids.*' => 'required|integer'
             ]);
 
-            $updated = \App\Models\Affiliate\AffiliateBusiness::whereIn('id', $data['business_ids'])
-                ->update(['verification_status' => 'verified']);
+            $businesses = \App\Models\Affiliate\AffiliateBusiness::whereIn('id', $data['business_ids'])->get();
+            $count = 0;
+
+            foreach ($businesses as $business) {
+                $oldStatus = $business->verification_status;
+                $business->update([
+                    'verification_status' => 'verified',
+                    'verified_at' => now(),
+                    'status' => 'active',
+                ]);
+                try {
+                    if ($business->user) {
+                        $business->user->notify(new BusinessStatusChangedNotification($business, $oldStatus, 'verified'));
+                    }
+                } catch (\Exception $mailError) {
+                    \Illuminate\Support\Facades\Log::warning('Bulk verify notification failed for business ' . $business->id . ': ' . $mailError->getMessage());
+                }
+                $count++;
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => "{$updated} businesses verified successfully"
+                'message' => "{$count} businesses verified successfully"
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -2126,12 +2169,25 @@ class AffiliateBusinessModelController extends Controller
                 'business_ids.*' => 'required|integer'
             ]);
 
-            $updated = \App\Models\Affiliate\AffiliateBusiness::whereIn('id', $data['business_ids'])
-                ->update(['verification_status' => 'rejected']);
+            $businesses = \App\Models\Affiliate\AffiliateBusiness::whereIn('id', $data['business_ids'])->get();
+            $count = 0;
+
+            foreach ($businesses as $business) {
+                $oldStatus = $business->verification_status;
+                $business->update(['verification_status' => 'rejected']);
+                try {
+                    if ($business->user) {
+                        $business->user->notify(new BusinessStatusChangedNotification($business, $oldStatus, 'rejected'));
+                    }
+                } catch (\Exception $mailError) {
+                    \Illuminate\Support\Facades\Log::warning('Bulk reject notification failed for business ' . $business->id . ': ' . $mailError->getMessage());
+                }
+                $count++;
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => "{$updated} businesses rejected successfully"
+                'message' => "{$count} businesses rejected successfully"
             ]);
         } catch (\Exception $e) {
             return response()->json([

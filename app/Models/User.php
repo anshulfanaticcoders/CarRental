@@ -110,4 +110,9 @@ public function bookings()
     {
         return $this->hasMany(SocialAccount::class);
     }
+
+    public function affiliateBusiness(): HasOne
+    {
+        return $this->hasOne(\App\Models\Affiliate\AffiliateBusiness::class, 'user_id');
+    }
 }

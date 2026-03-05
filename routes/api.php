@@ -114,6 +114,7 @@ Route::get('/unified-locations', [App\Http\Controllers\SearchController::class, 
 
 // Vendor API routes - Note: Moved to web.php for proper authentication
 Route::get('/advertisement', [\App\Http\Controllers\AdvertisementController::class, 'index']);
+Route::get('/active-promo', [\App\Http\Controllers\AdvertisementController::class, 'activePromo']);
 Route::get('/footer-contact-info', [ContactUsPageController::class, 'getContactInfo']);
 Route::post('/newsletter/subscriptions', [NewsletterSubscriptionController::class, 'store'])
     ->middleware('throttle:newsletter');

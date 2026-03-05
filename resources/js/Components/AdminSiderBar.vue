@@ -177,11 +177,11 @@ const navGroups: NavGroup[] = [
         ],
       },
       {
-        title: 'Advertisements',
+        title: 'Marketing',
         url: '#',
         icon: Megaphone,
         items: [
-          { title: 'Manage Ads', url: '/admin/advertisements' },
+          { title: 'Marketing Dashboard', url: '/admin/advertisements' },
         ],
       },
     ],

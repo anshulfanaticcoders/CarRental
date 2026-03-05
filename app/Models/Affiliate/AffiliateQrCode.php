@@ -45,6 +45,7 @@ class AffiliateQrCode extends Model
         'location_address',
         'is_revoked',
         'image_url',
+        'download_url',
         'conversion_rate'
     ];
 
@@ -83,7 +84,7 @@ class AffiliateQrCode extends Model
      */
     public function customerScans()
     {
-        return $this->hasMany(AffiliateCustomerScan::class);
+        return $this->hasMany(AffiliateCustomerScan::class, 'qr_code_id');
     }
 
     /**
@@ -169,6 +170,14 @@ class AffiliateQrCode extends Model
             \Log::error('QR code image URL generation failed: ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Get the QR code download URL.
+     */
+    public function getDownloadUrlAttribute(): ?string
+    {
+        return $this->image_url;
     }
 
     /**

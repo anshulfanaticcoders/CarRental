@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\PayableSetting;
 use App\Models\StripeCheckoutPayload;
 use App\Services\AdobeCarService;
+use App\Services\PromoService;
 use App\Services\StripeBookingService;
 use App\Services\CurrencyConversionService;
 use App\Services\PriceVerificationService;
@@ -138,6 +139,14 @@ class StripeCheckoutController extends Controller
      */
     public function createSession(Request $request)
     {
+        // Only regular users can make bookings
+        $user = auth()->user();
+        if ($user && !in_array($user->role, ['user', null], true)) {
+            return response()->json([
+                'error' => 'Only customer accounts can make bookings. Please use a regular account.',
+            ], 403);
+        }
+
         try {
             $validated = $request->validate([
                 'vehicle' => 'required|array',
@@ -412,6 +421,22 @@ class StripeCheckoutController extends Controller
             $payableAmount = $computedTotals['booking_deposit'];
             $pendingAmount = $computedTotals['booking_pending'];
 
+            // Promo pricing: compute inflated display price if active promo exists
+            $promoService = app(PromoService::class);
+            $activePromo = $promoService->getActivePromo();
+            $promoDiscountAmount = 0;
+            $bookingTotalDisplay = $totalAmount; // default: same as actual
+            $promoId = null;
+            $promoRate = 0;
+
+            if ($activePromo && $activePromo->promo_markup_rate > 0) {
+                $promoId = $activePromo->id;
+                $promoRate = (float) $activePromo->promo_markup_rate;
+                $promoResult = $promoService->computePromoPrice($totalAmount, $promoRate);
+                $bookingTotalDisplay = $promoResult['inflated_price'];
+                $promoDiscountAmount = $promoResult['discount_amount'];
+            }
+
             $isProviderVehicle = $this->isExternalProviderSource($providerSource);
             $commissionRate = $isProviderVehicle
                 ? ($computedTotals['provider_commission_rate'] ?? $this->resolveProviderMarkupRate())
@@ -563,6 +588,14 @@ class StripeCheckoutController extends Controller
                 'surprice_rate_code' => $validated['vehicle']['surprice_rate_code'] ?? null,
                 'surprice_extended_pickup_code' => $validated['vehicle']['surprice_extended_pickup_code'] ?? null,
                 'surprice_extended_dropoff_code' => $validated['vehicle']['surprice_extended_dropoff_code'] ?? null,
+                // Promo pricing
+                'promo_id' => $promoId,
+                'promo_rate' => $promoRate > 0 ? (string) $promoRate : null,
+                'promo_discount_amount' => $promoDiscountAmount > 0 ? (string) $promoDiscountAmount : null,
+                'booking_total_display' => $bookingTotalDisplay != $totalAmount ? (string) $bookingTotalDisplay : null,
+                // Affiliate tracking
+                'affiliate_business_id' => session('affiliate_data.business_id'),
+                'affiliate_scan_id' => session('affiliate_data.customer_scan_id'),
             ];
 
             $extrasPayload = [
@@ -647,6 +680,12 @@ class StripeCheckoutController extends Controller
                 'customer_driver_age' => $validated['customer']['driver_age'] ?? '',
                 'payment_method' => $validated['payment_method'] ?? 'card',
                 'extras_payload_id' => $extrasPayloadId ? (string) $extrasPayloadId : null,
+                'promo_id' => $promoId,
+                'promo_rate' => $promoRate > 0 ? (string) $promoRate : null,
+                'promo_discount_amount' => $promoDiscountAmount > 0 ? (string) $promoDiscountAmount : null,
+                'booking_total_display' => $bookingTotalDisplay != $totalAmount ? (string) $bookingTotalDisplay : null,
+                'affiliate_business_id' => session('affiliate_data.business_id'),
+                'affiliate_scan_id' => session('affiliate_data.customer_scan_id'),
             ];
 
             $metadata = $this->compactStripeMetadata($metadata);

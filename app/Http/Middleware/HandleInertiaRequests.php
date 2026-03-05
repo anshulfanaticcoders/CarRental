@@ -3,9 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Models\VendorProfile;
+use App\Services\PromoService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use App\Models\UserDocument; // Import the UserDocument model
+use App\Models\UserDocument;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -68,7 +69,13 @@ class HandleInertiaRequests extends Middleware
                         return $vendorProfile ? $vendorProfile->status : 'pending';
                     }
                     return 'pending';
-                }
+                },
+                'affiliateVerificationStatus' => function () use ($user) {
+                    if ($user->role === 'affiliate' && $user->affiliateBusiness) {
+                        return $user->affiliateBusiness->verification_status;
+                    }
+                    return null;
+                },
             ]);
         } else {
             // If the user is not authenticated
@@ -89,6 +96,20 @@ class HandleInertiaRequests extends Middleware
         }
         $sharedData['provider_markup_percent'] = $markupPercent;
         $sharedData['provider_markup_rate'] = $markupPercent / 100;
+
+        $sharedData['active_promo'] = function () {
+            $promo = app(PromoService::class)->getActivePromo();
+            if (!$promo) {
+                return null;
+            }
+            return [
+                'id' => $promo->id,
+                'title' => $promo->title,
+                'description' => $promo->description,
+                'discount_percentage' => (float) $promo->discount_percentage,
+                'promo_markup_rate' => (float) $promo->promo_markup_rate,
+            ];
+        };
 
         $sharedData['flash'] = function () use ($request) {
             return [

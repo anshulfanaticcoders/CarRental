@@ -63,6 +63,10 @@ class AuthenticatedSessionController extends Controller
             return Inertia::location(route('admin.dashboard'));
         }
 
+        if ($user && $user->role === 'affiliate') {
+            return Inertia::location(route('affiliate.dashboard', ['locale' => $locale]));
+        }
+
         return Inertia::location(route('profile.edit', ['locale' => $locale]));
     }
 

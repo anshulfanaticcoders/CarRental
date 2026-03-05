@@ -15,6 +15,7 @@ class AffiliateBusiness extends Model
 
     protected $fillable = [
         'uuid',
+        'user_id',
         'business_registration_number',
         'tax_id',
         'name',
@@ -30,6 +31,10 @@ class AffiliateBusiness extends Model
         'country',
         'postal_code',
         'currency',
+        'bank_name',
+        'bank_iban',
+        'bank_bic',
+        'bank_account_name',
         'max_qr_codes_per_month',
         'allowed_discount_types',
         'verification_status',
@@ -125,12 +130,14 @@ class AffiliateBusiness extends Model
         return $this->hasMany(AffiliateCommission::class, 'business_id');
     }
 
-    /**
-     * Get the dashboard sessions for this business.
-     */
-    public function dashboardSessions()
+    public function payouts()
     {
-        return $this->hasMany(AffiliateDashboardSession::class);
+        return $this->hasMany(AffiliatePayout::class, 'business_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
     }
 
     /**

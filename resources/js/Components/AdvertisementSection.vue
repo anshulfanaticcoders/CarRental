@@ -112,7 +112,12 @@ onUnmounted(() => {
 
                         <div class="ad-image"
                             :style="{ backgroundImage: `url(${currentAd.image_path || heroImage})` }"
-                            :aria-label="currentAd.title || 'Advertisement'" role="img"></div>
+                            :aria-label="currentAd.title || 'Advertisement'" role="img">
+                            <span v-if="currentAd.is_promo && currentAd.discount_percentage > 0"
+                                class="ad-promo-badge">
+                                SAVE {{ Math.round(currentAd.discount_percentage) }}%
+                            </span>
+                        </div>
                     </div>
                 </Transition>
 
@@ -224,6 +229,21 @@ onUnmounted(() => {
     background-size: contain;
     background-color: #153b4f;
     background-repeat: no-repeat;
+    position: relative;
+}
+
+.ad-promo-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: #dc2626;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    letter-spacing: 0.05em;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
 }
 
 /* Glassmorphism utility */

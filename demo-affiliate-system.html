@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Partner Portal — Vrooem</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'IBM Plex Sans', sans-serif; background: #ffffff; color: #0f172a; overflow-x: hidden; }
+.af-container { width: min(92%, 1200px); margin-inline: auto; }
+
+/* ── Demo Switcher ── */
+.af-demo-bar { position: sticky; top: 0; z-index: 999; background: linear-gradient(135deg, #0a1d28, #153b4f); border-bottom: 1px solid rgba(6,182,212,0.2); box-shadow: 0 2px 16px rgba(0,0,0,0.2); }
+.af-demo-bar-inner { width: min(92%, 1200px); margin-inline: auto; display: flex; align-items: center; overflow-x: auto; scrollbar-width: none; }
+.af-demo-bar-inner::-webkit-scrollbar { display: none; }
+.af-demo-bar-label { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #06b6d4; padding: 14px 18px 14px 0; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08); margin-right: 4px; }
+.af-demo-tab { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.5); padding: 14px 16px; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: color 0.3s, border-color 0.3s; user-select: none; }
+.af-demo-tab:hover { color: rgba(255,255,255,0.85); }
+.af-demo-tab.active { color: #06b6d4; border-bottom-color: #06b6d4; }
+.af-page { display: none; }
+.af-page.active { display: block; }
+
+/* ── Shared Tokens ── */
+.af-label { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #06b6d4; }
+.af-grad { background: linear-gradient(135deg, #153b4f, #2ea7ad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+/* Buttons */
+.af-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0.75rem 1.5rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.88rem; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; text-decoration: none; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s cubic-bezier(0.22,1,0.36,1); line-height: 1; position: relative; overflow: hidden; }
+.af-btn--primary { color: #fff; background: linear-gradient(135deg, #153b4f, #2ea7ad); box-shadow: 0 4px 14px rgba(21,59,79,0.18); }
+.af-btn--primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(21,59,79,0.22); }
+.af-btn--primary::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent); animation: shimmer 3.5s ease-in-out infinite; }
+@keyframes shimmer { 0%, 70%, 100% { left: -100%; } 85% { left: 100%; } }
+.af-btn--accent { color: #fff; background: linear-gradient(135deg, #06b6d4, #0891b2); box-shadow: 0 4px 14px rgba(6,182,212,0.25); }
+.af-btn--accent:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(6,182,212,0.35); }
+.af-btn--outline { color: #153b4f; background: transparent; border: 1.5px solid rgba(15,23,42,0.12); box-shadow: none; }
+.af-btn--outline:hover { border-color: #153b4f; background: rgba(21,59,79,0.03); }
+.af-btn--outline-w { color: #fff; background: transparent; border: 1.5px solid rgba(255,255,255,0.2); box-shadow: none; }
+.af-btn--outline-w:hover { border-color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.06); }
+.af-btn--sm { padding: 0.55rem 1.1rem; font-size: 0.8rem; border-radius: 10px; }
+.af-btn--lg { padding: 0.9rem 2rem; font-size: 0.92rem; }
+.af-btn--ghost { color: #2ea7ad; background: transparent; padding: 0.45rem 0.75rem; font-size: 0.78rem; box-shadow: none; }
+.af-btn--ghost:hover { background: rgba(46,167,173,0.06); }
+
+/* Badge */
+.af-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 100px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.65rem; letter-spacing: 0.3px; text-transform: uppercase; }
+.af-badge--success { background: #d1fae5; color: #065f46; }
+.af-badge--warning { background: #fef3c7; color: #92400e; }
+.af-badge--danger { background: #fee2e2; color: #991b1b; }
+.af-badge--info { background: #cffafe; color: #155e75; }
+.af-badge--neutral { background: #f1f5f9; color: #475569; }
+
+/* Form Inputs - Compact, SearchBar style */
+.af-fg { margin-bottom: 0.85rem; }
+.af-fl { display: block; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.7rem; color: #475569; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+.af-fl--w { color: rgba(255,255,255,0.6); }
+.af-fi, .af-fs {
+    width: 100%; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 12px; color: #0f172a; padding: 0.7rem 0.85rem;
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.88rem; outline: none;
+    transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+}
+.af-fi:hover, .af-fs:hover { border-color: #153b4f; }
+.af-fi:focus, .af-fs:focus { border-color: #153b4f; box-shadow: 0 0 0 3px rgba(21,59,79,0.08); background: #fff; }
+.af-fi::placeholder { color: #94a3b8; }
+.af-fi--dark { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: #fff; }
+.af-fi--dark:hover { border-color: rgba(255,255,255,0.25); }
+.af-fi--dark:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.15); background: rgba(255,255,255,0.08); }
+.af-fi--dark::placeholder { color: rgba(255,255,255,0.3); }
+.af-hint { font-size: 0.72rem; color: #94a3b8; margin-top: 3px; }
+.af-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+
+/* Dark band */
+.af-dark { position: relative; overflow: hidden; isolation: isolate; background: linear-gradient(155deg, #0a1d28 0%, #153b4f 40%, #0f2936 70%, #0b1b26 100%); }
+.af-dark::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 600px 400px at 30% 30%, rgba(6,182,212,0.1), transparent), radial-gradient(ellipse 400px 300px at 75% 75%, rgba(6,182,212,0.05), transparent); pointer-events: none; z-index: 0; }
+.af-dark::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(6,182,212,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,0.025) 1px, transparent 1px); background-size: 60px 60px; mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 70%); -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 70%); pointer-events: none; z-index: 0; }
+.af-z { position: relative; z-index: 1; }
+.af-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.2; pointer-events: none; z-index: 0; animation: afF 14s ease-in-out infinite; }
+.af-orb--1 { width: 220px; height: 220px; background: #06b6d4; top: 5%; left: -3%; }
+.af-orb--2 { width: 160px; height: 160px; background: #06b6d4; bottom: 5%; right: -2%; animation-delay: -7s; opacity: 0.12; }
+@keyframes afF { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-14px) scale(1.04); } }
+
+/* Glass */
+.af-glass { background: rgba(21,59,79,0.28); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(6,182,212,0.08); border-radius: 16px; transition: border-color 0.4s, box-shadow 0.4s; }
+.af-glass:hover { border-color: rgba(6,182,212,0.18); box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+
+/* Card */
+.af-card { background: #fff; border: 1px solid rgba(15,23,42,0.07); border-radius: 20px; box-shadow: 0 1px 2px rgba(21,59,79,0.03), 0 8px 24px rgba(21,59,79,0.06); transition: box-shadow 0.4s cubic-bezier(0.22,1,0.36,1), border-color 0.4s; }
+.af-card:hover { box-shadow: 0 1px 2px rgba(21,59,79,0.03), 0 12px 32px rgba(21,59,79,0.08); border-color: rgba(15,23,42,0.1); }
+
+/* Table */
+.af-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.af-table th { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.7rem 1rem; text-align: left; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.af-table td { padding: 0.75rem 1rem; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.af-table tbody tr { transition: background 0.2s; }
+.af-table tbody tr:hover { background: #f0f8fc; }
+.af-tmono { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; color: #153b4f; }
+
+
+/* ════════════════════════════════════════
+   PAGE 1 — REGISTRATION (Column Layout)
+   ════════════════════════════════════════ */
+.af-reg-hero { padding: clamp(2rem, 4vw, 3rem) 0; }
+.af-reg-hero h1 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 900; color: #fff; margin-bottom: 0.35rem; }
+.af-reg-hero h1 span { color: #22d3ee; }
+.af-reg-hero-sub { font-size: 0.9rem; color: rgba(255,255,255,0.6); line-height: 1.6; margin-bottom: 1.5rem; max-width: 520px; }
+.af-perks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+.af-perk-card { padding: 1rem; text-align: center; }
+.af-perk-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.1); margin: 0 auto 0.6rem; }
+.af-perk-card h4 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.82rem; color: #fff; margin-bottom: 2px; }
+.af-perk-card p { font-size: 0.72rem; color: rgba(255,255,255,0.45); line-height: 1.45; }
+
+.af-reg-body { background: linear-gradient(180deg, #f8fafc, #fff); padding: clamp(1.5rem, 3vw, 2.5rem) 0; }
+.af-reg-wrap {
+    max-width: 620px; margin: 0 auto; position: relative;
+    border-radius: 20px; overflow: hidden;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(21,59,79,0.04), 0 4px 16px rgba(21,59,79,0.06), 0 16px 48px rgba(21,59,79,0.08);
+    border: 1px solid rgba(15,23,42,0.06);
+}
+.af-reg-wrap::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, #153b4f, #06b6d4, #2ea7ad);
+}
+.af-reg-inner { padding: clamp(1.25rem, 3vw, 2rem); }
+.af-reg-inner h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.15rem; }
+.af-reg-inner h2 span { background: linear-gradient(135deg, #153b4f, #2ea7ad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.af-reg-inner .af-sub { font-size: 0.85rem; color: #64748b; margin-bottom: 1.25rem; }
+
+/* Input with icon */
+.af-ig { position: relative; }
+.af-ig .af-fi { padding-left: 2.6rem; }
+.af-ig-icon { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); font-size: 1rem; color: #94a3b8; pointer-events: none; transition: color 0.25s; }
+.af-ig:focus-within .af-ig-icon { color: #153b4f; }
+
+/* Steps - compact inline */
+.af-steps { display: flex; align-items: center; gap: 0; margin-bottom: 1.25rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; }
+.af-step { display: flex; align-items: center; gap: 6px; }
+.af-sd { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.75rem; flex-shrink: 0; transition: all 0.3s; }
+.af-sd--on { background: linear-gradient(135deg, #153b4f, #2ea7ad); color: #fff; box-shadow: 0 2px 6px rgba(21,59,79,0.2); }
+.af-sd--done { background: #10b981; color: #fff; }
+.af-sd--off { background: #fff; color: #94a3b8; border: 1.5px solid #e2e8f0; }
+.af-sl { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.72rem; color: #94a3b8; }
+.af-sl--on { color: #153b4f; }
+.af-sline { flex: 1; height: 2px; background: #e2e8f0; margin: 0 6px; border-radius: 1px; }
+.af-sline--done { background: #10b981; }
+
+.af-sc { display: none; }
+.af-sc.active { display: block; }
+.af-sactions { display: flex; justify-content: space-between; margin-top: 1.15rem; padding-top: 0.85rem; border-top: 1px solid #f1f5f9; }
+
+/* PW strength */
+.af-pws { display: flex; gap: 3px; margin-top: 5px; }
+.af-pwb { height: 3px; flex: 1; border-radius: 2px; background: #e2e8f0; }
+.af-pwb--s { background: #10b981; }
+
+/* Terms */
+.af-terms { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.85rem; max-height: 130px; overflow-y: auto; font-size: 0.78rem; color: #475569; line-height: 1.6; margin-bottom: 0.85rem; }
+.af-chk { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 0.5rem; }
+.af-chk input { width: 16px; height: 16px; accent-color: #153b4f; margin-top: 2px; flex-shrink: 0; }
+.af-chk label { font-size: 0.82rem; color: #334155; cursor: pointer; }
+.af-chk label a { color: #2ea7ad; text-decoration: none; font-weight: 600; }
+
+
+/* ════════════════════════════════════════
+   PAGE 2 — LOGIN
+   ════════════════════════════════════════ */
+.af-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+.af-login-card { padding: 2rem; text-align: center; max-width: 380px; width: 100%; position: relative; z-index: 1; }
+.af-login-brand { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 900; font-size: 1.6rem; color: #fff; margin-bottom: 0.15rem; }
+.af-login-brand span { color: #22d3ee; }
+.af-login-sub { font-size: 0.88rem; color: #94a3b8; margin-bottom: 1.5rem; }
+.af-forgot { display: block; text-align: right; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.78rem; font-weight: 600; color: #22d3ee; text-decoration: none; margin-top: -0.35rem; margin-bottom: 1rem; }
+.af-login-foot { margin-top: 1.25rem; font-size: 0.85rem; color: #64748b; }
+.af-login-foot a { color: #22d3ee; text-decoration: none; font-weight: 600; }
+
+
+/* ════════════════════════════════════════
+   PAGE 3 — DASHBOARD
+   ════════════════════════════════════════ */
+.af-dh { padding: clamp(1.25rem, 2.5vw, 2rem) 0; }
+.af-dh-inner { display: flex; justify-content: space-between; align-items: center; }
+.af-dh h1 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(1.35rem, 2.8vw, 1.75rem); font-weight: 800; color: #fff; margin-bottom: 0.1rem; }
+.af-dh-sub { font-size: 0.88rem; color: #94a3b8; }
+.af-dh-actions { display: flex; gap: 8px; align-items: center; }
+.af-bell { width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; position: relative; }
+.af-bell-dot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: #ef4444; border: 1.5px solid #0a1d28; }
+
+/* Stats */
+.af-sg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.65rem; margin-top: 1.15rem; }
+.af-st { padding: 1rem 0.85rem; text-align: center; }
+.af-st-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; margin: 0 auto 0.6rem; background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.08); }
+.af-st-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #22d3ee, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.15; margin-bottom: 0.1rem; }
+.af-st-lbl { font-size: 0.75rem; color: #64748b; }
+.af-st-ch { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.68rem; font-weight: 600; margin-top: 0.35rem; }
+.af-st-ch--up { color: #10b981; }
+.af-st-ch--dn { color: #ef4444; }
+
+/* Chart */
+.af-chart { padding: clamp(1.5rem, 3vw, 2.5rem) 0; background: linear-gradient(180deg, #f8fafc, #fff); }
+.af-chart-box { padding: 1.25rem; border: 1px solid rgba(15,23,42,0.07); border-radius: 16px; background: #fff; }
+.af-chart-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.af-chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 130px; }
+.af-cb { flex: 1; border-radius: 4px 4px 0 0; background: linear-gradient(to top, #153b4f, #2ea7ad); min-height: 6px; position: relative; cursor: pointer; transition: opacity 0.3s; }
+.af-cb:hover { opacity: 0.8; }
+.af-cb span { position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%); font-size: 0.62rem; color: #94a3b8; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+/* Dashboard grid */
+.af-dg { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-bottom: clamp(1.5rem, 3vw, 2.5rem); }
+.af-dc-hd { display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; border-bottom: 1px solid rgba(15,23,42,0.06); }
+.af-dc-hd h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.9rem; font-weight: 700; color: #153b4f; }
+.af-dc-body { padding: 0.35rem 1rem 1rem; }
+.af-sr { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid rgba(15,23,42,0.04); }
+.af-sr:last-child { border-bottom: none; }
+.af-sr-name { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.85rem; color: #153b4f; }
+.af-sr-meta { font-size: 0.7rem; color: #94a3b8; margin-top: 1px; }
+.af-qr-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0; border-bottom: 1px solid rgba(15,23,42,0.04); }
+.af-qr-row:last-child { border-bottom: none; }
+.af-qi { width: 36px; height: 36px; background: linear-gradient(135deg, rgba(6,182,212,0.12), rgba(21,59,79,0.05)); border: 1px solid rgba(6,182,212,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.af-qn { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.85rem; color: #153b4f; }
+.af-qs { font-size: 0.72rem; color: #94a3b8; }
+
+
+/* ════════════════════════════════════════
+   PAGE 4 — QR CODES
+   ════════════════════════════════════════ */
+.af-qg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.af-qc-prev { background: linear-gradient(135deg, #f0f8fc, #e0f7fa); padding: 1.5rem; display: flex; align-items: center; justify-content: center; position: relative; border-radius: 20px 20px 0 0; }
+.af-qc-ph { width: 90px; height: 90px; background: #fff; border-radius: 12px; box-shadow: 0 4px 16px rgba(21,59,79,0.1); display: grid; grid-template-columns: repeat(7, 1fr); gap: 1.5px; padding: 10px; }
+.af-qd { border-radius: 1px; }
+.af-qd--f { background: #153b4f; }
+.af-qc-st { position: absolute; top: 8px; right: 8px; }
+.af-qc-body { padding: 1rem 1.15rem; }
+.af-qc-body h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.9rem; color: #153b4f; margin-bottom: 2px; }
+.af-qc-loc { font-size: 0.75rem; color: #64748b; margin-bottom: 0.85rem; }
+.af-qc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 0.85rem; }
+.af-qc-sc { text-align: center; padding: 0.4rem; background: #f8fafc; border-radius: 8px; }
+.af-qc-sv { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.88rem; color: #153b4f; }
+.af-qc-sl { font-size: 0.6rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; }
+.af-qc-act { display: flex; gap: 6px; padding-top: 0.7rem; border-top: 1px solid #f1f5f9; }
+.af-qc-act .af-btn { flex: 1; }
+
+/* Create QR */
+.af-lp { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.af-lo { padding: 0.85rem; border: 1.5px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.25s; background: #fff; }
+.af-lo:hover { border-color: rgba(46,167,173,0.4); }
+.af-lo.sel { border-color: #2ea7ad; background: #f0fdfa; box-shadow: 0 2px 8px rgba(46,167,173,0.1); }
+.af-lo h4 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.82rem; color: #153b4f; }
+.af-lo p { font-size: 0.72rem; color: #64748b; }
+
+
+/* ════════════════════════════════════════
+   PAGE 5 — COMMISSIONS
+   ════════════════════════════════════════ */
+.af-ct { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.65rem; margin-top: 1.15rem; }
+.af-ct-item { padding: 0.85rem; text-align: center; }
+.af-ct-lbl { font-size: 0.68rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; font-family: 'Plus Jakarta Sans', sans-serif; }
+.af-ct-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.35rem; font-weight: 800; background: linear-gradient(135deg, #22d3ee, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-top: 0.15rem; }
+
+.af-filters { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+.af-chip { padding: 5px 12px; border-radius: 100px; border: 1px solid #e2e8f0; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500; font-size: 0.78rem; color: #475569; cursor: pointer; transition: all 0.2s; }
+.af-chip:hover { border-color: #94a3b8; }
+.af-chip.on { background: #153b4f; color: #fff; border-color: #153b4f; }
+.af-df { padding: 5px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.78rem; background: #fff; color: #334155; }
+.af-tw { border: 1px solid rgba(15,23,42,0.07); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(21,59,79,0.03), 0 4px 12px rgba(21,59,79,0.04); }
+.af-tf { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 1rem; border-top: 1px solid #e2e8f0; font-size: 0.78rem; color: #64748b; background: #fff; }
+.af-pg { display: flex; gap: 3px; }
+.af-pg button { width: 28px; height: 28px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.75rem; color: #475569; cursor: pointer; }
+.af-pg button.on { background: #153b4f; color: #fff; border-color: #153b4f; }
+
+
+/* ════════════════════════════════════════
+   PAGE 6 — SCAN LANDING
+   ════════════════════════════════════════ */
+.af-scan { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
+.af-scan-in { position: relative; z-index: 1; width: 100%; max-width: 360px; text-align: center; }
+.af-scan-br { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 900; font-size: 1.25rem; color: #fff; margin-bottom: 1.5rem; }
+.af-scan-br span { color: #22d3ee; }
+.af-dc { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 24px 48px rgba(0,0,0,0.1); animation: sUp 0.6s ease-out; }
+@keyframes sUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.af-dc-hdr { background: linear-gradient(135deg, #153b4f, #2ea7ad); padding: 1.5rem 1.25rem; text-align: center; position: relative; overflow: hidden; }
+.af-dc-hdr::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(255,255,255,0.03) 10px, rgba(255,255,255,0.03) 20px); }
+.af-dc-from { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.68rem; color: rgba(255,255,255,0.7); letter-spacing: 0.1em; text-transform: uppercase; position: relative; }
+.af-dc-biz { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1rem; color: #fff; margin-bottom: 0.85rem; position: relative; }
+.af-dc-amt { display: inline-flex; align-items: baseline; gap: 3px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 100px; padding: 0.65rem 1.5rem; position: relative; }
+.af-dc-pct { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 900; font-size: 2.25rem; color: #fff; line-height: 1; }
+.af-dc-off { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.9rem; color: rgba(255,255,255,0.85); text-transform: uppercase; }
+.af-dc-body { padding: 1.5rem 1.25rem; text-align: center; }
+.af-dc-body h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 1rem; color: #153b4f; margin-bottom: 0.35rem; }
+.af-dc-body p { font-size: 0.82rem; color: #64748b; line-height: 1.55; margin-bottom: 1.15rem; }
+.af-dc-body .af-btn { width: 100%; }
+.af-dc-exp { margin-top: 0.6rem; font-size: 0.72rem; color: #94a3b8; }
+.af-dc-exp strong { color: #475569; }
+.af-scan-note { margin-top: 1rem; font-size: 0.7rem; color: rgba(255,255,255,0.35); line-height: 1.5; position: relative; z-index: 1; }
+
+/* Geo-restricted */
+.af-geo { text-align: center; position: relative; z-index: 1; }
+.af-geo-icon { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.4rem; }
+.af-geo h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.15rem; color: #fff; margin-bottom: 0.4rem; }
+.af-geo p { font-size: 0.85rem; color: #94a3b8; line-height: 1.55; max-width: 260px; margin: 0 auto 1.15rem; }
+.af-geo strong { color: #fff; }
+
+
+/* ════════════════════════════════════════
+   PAGE 7 — SETTINGS
+   ════════════════════════════════════════ */
+.af-stabs { display: flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 1.25rem; }
+.af-stab { padding: 0.7rem 1rem; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.82rem; color: #94a3b8; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
+.af-stab:hover { color: #334155; }
+.af-stab.on { color: #153b4f; border-bottom-color: #2ea7ad; }
+
+.af-sbanner { display: flex; align-items: center; gap: 0.85rem; padding: 0.85rem 1rem; background: #d1fae5; border: 1px solid rgba(16,185,129,0.15); border-radius: 12px; margin-bottom: 1.25rem; }
+.af-sbi { width: 32px; height: 32px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; font-weight: 700; }
+.af-sbt h4 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.82rem; color: #065f46; }
+.af-sbt p { font-size: 0.75rem; color: #047857; }
+
+.af-fcard { padding: 1.25rem; margin-bottom: 0.85rem; }
+.af-fcard h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.95rem; color: #153b4f; margin-bottom: 0.1rem; }
+.af-fcard-sub { font-size: 0.78rem; color: #64748b; margin-bottom: 1rem; }
+.af-ffooter { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid #f1f5f9; }
+
+.af-rates { background: #f0f8fc; border: 1px solid #dceef6; border-radius: 12px; padding: 0.85rem; }
+.af-rr { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #dceef6; }
+.af-rr:last-child { border-bottom: none; }
+.af-rr-l { font-size: 0.82rem; color: #475569; }
+.af-rr-v { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 0.82rem; color: #153b4f; }
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+    .af-sg { grid-template-columns: repeat(2, 1fr); }
+    .af-qg { grid-template-columns: repeat(2, 1fr); }
+    .af-ct { grid-template-columns: repeat(2, 1fr); }
+    .af-dg { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+    .af-perks { grid-template-columns: 1fr 1fr; }
+    .af-qg { grid-template-columns: 1fr; }
+    .af-row { grid-template-columns: 1fr; }
+    .af-lp { grid-template-columns: 1fr; }
+    .af-dh-inner, .af-qr-hero-inner, .af-comm-hero-inner { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+}
+@media (max-width: 480px) { .af-sg, .af-ct { grid-template-columns: 1fr 1fr; } .af-perks { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<nav class="af-demo-bar"><div class="af-demo-bar-inner">
+    <div class="af-demo-bar-label">Partner Portal</div>
+    <div class="af-demo-tab active" onclick="showPage('register')">Registration</div>
+    <div class="af-demo-tab" onclick="showPage('login')">Login</div>
+    <div class="af-demo-tab" onclick="showPage('dashboard')">Dashboard</div>
+    <div class="af-demo-tab" onclick="showPage('qrcodes')">QR Codes</div>
+    <div class="af-demo-tab" onclick="showPage('commissions')">Commissions</div>
+    <div class="af-demo-tab" onclick="showPage('scan')">Scan Landing</div>
+    <div class="af-demo-tab" onclick="showPage('geo')">Geo-Restricted</div>
+    <div class="af-demo-tab" onclick="showPage('settings')">Settings</div>
+</div></nav>
+
+
+<!-- ═══════════ PAGE 1 — REGISTRATION ═══════════ -->
+<div id="page-register" class="af-page active">
+    <!-- Dark hero section -->
+    <section class="af-dark af-reg-hero">
+        <div class="af-orb af-orb--1"></div><div class="af-orb af-orb--2"></div>
+        <div class="af-container af-z">
+            <span class="af-label">Partner Program</span>
+            <h1>Become a Vrooem <span>Partner.</span></h1>
+            <p class="af-reg-hero-sub">Earn commissions on every car rental booking your guests make through your QR codes. Set up takes just 3 minutes.</p>
+            <div class="af-perks">
+                <div class="af-glass af-perk-card"><div class="af-perk-icon">&#x1F4B0;</div><h4>Earn Commissions</h4><p>Get paid for every booking from your location.</p></div>
+                <div class="af-glass af-perk-card"><div class="af-perk-icon">&#x1F4F1;</div><h4>Smart QR Codes</h4><p>Geo-targeted with real-time analytics.</p></div>
+                <div class="af-glass af-perk-card"><div class="af-perk-icon">&#x1F4CA;</div><h4>Live Dashboard</h4><p>Track scans, bookings &amp; revenue.</p></div>
+                <div class="af-glass af-perk-card"><div class="af-perk-icon">&#x1F3E6;</div><h4>Bank Payouts</h4><p>Direct monthly bank transfers.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Form section -->
+    <section class="af-reg-body">
+        <div class="af-container">
+            <div class="af-reg-wrap">
+                <div class="af-reg-inner">
+                    <h2>Create your <span>partner account.</span></h2>
+                    <p class="af-sub">Fill in your details to get started.</p>
+                    <div class="af-steps">
+                        <div class="af-step"><div class="af-sd af-sd--on" id="sd1">1</div><span class="af-sl af-sl--on" id="sl1">Account</span></div>
+                        <div class="af-sline" id="sln1"></div>
+                        <div class="af-step"><div class="af-sd af-sd--off" id="sd2">2</div><span class="af-sl" id="sl2">Business</span></div>
+                        <div class="af-sline" id="sln2"></div>
+                        <div class="af-step"><div class="af-sd af-sd--off" id="sd3">3</div><span class="af-sl" id="sl3">Bank Info</span></div>
+                        <div class="af-sline" id="sln3"></div>
+                        <div class="af-step"><div class="af-sd af-sd--off" id="sd4">4</div><span class="af-sl" id="sl4">Terms</span></div>
+                    </div>
+                    <div class="af-sc active" id="step1">
+                        <div class="af-fg"><label class="af-fl">Full Name</label><div class="af-ig"><span class="af-ig-icon">&#x1F464;</span><input type="text" class="af-fi" placeholder="John Smith" value="Maria Gonzalez"></div></div>
+                        <div class="af-fg"><label class="af-fl">Email Address</label><div class="af-ig"><span class="af-ig-icon">&#x2709;</span><input type="email" class="af-fi" placeholder="you@business.com" value="maria@hotelplaya.es"></div></div>
+                        <div class="af-fg"><label class="af-fl">Password</label><div class="af-ig"><span class="af-ig-icon">&#x1F512;</span><input type="password" class="af-fi" placeholder="Minimum 8 characters" value="SecurePass123!"></div><div class="af-pws"><div class="af-pwb af-pwb--s"></div><div class="af-pwb af-pwb--s"></div><div class="af-pwb af-pwb--s"></div><div class="af-pwb af-pwb--s"></div></div><span class="af-hint">Strong password</span></div>
+                        <div class="af-fg"><label class="af-fl">Confirm Password</label><div class="af-ig"><span class="af-ig-icon">&#x1F512;</span><input type="password" class="af-fi" placeholder="Repeat your password" value="SecurePass123!"></div></div>
+                        <div class="af-sactions"><span></span><button class="af-btn af-btn--primary" onclick="goStep(2)">Continue &rarr;</button></div>
+                    </div>
+                    <div class="af-sc" id="step2">
+                        <div class="af-fg"><label class="af-fl">Business Name</label><div class="af-ig"><span class="af-ig-icon">&#x1F3E2;</span><input type="text" class="af-fi" value="Hotel Playa del Sol"></div></div>
+                        <div class="af-row"><div class="af-fg"><label class="af-fl">Business Type</label><select class="af-fs"><option>Hotel / Resort</option><option>Travel Agency</option><option>Car Dealership</option><option>Tour Operator</option></select></div><div class="af-fg"><label class="af-fl">Registration Number</label><div class="af-ig"><span class="af-ig-icon">&#x1F4CB;</span><input type="text" class="af-fi" value="ES-B12345678" placeholder="Optional"></div></div></div>
+                        <div class="af-fg"><label class="af-fl">Phone Number</label><div class="af-ig"><span class="af-ig-icon">&#x1F4DE;</span><input type="tel" class="af-fi" value="+34 612 345 678"></div></div>
+                        <div class="af-row"><div class="af-fg"><label class="af-fl">City</label><div class="af-ig"><span class="af-ig-icon">&#x1F3D9;</span><input type="text" class="af-fi" value="Malaga"></div></div><div class="af-fg"><label class="af-fl">Country</label><select class="af-fs"><option selected>Spain</option><option>France</option><option>Italy</option><option>Portugal</option></select></div></div>
+                        <div class="af-fg"><label class="af-fl">Address</label><div class="af-ig"><span class="af-ig-icon">&#x1F4CD;</span><input type="text" class="af-fi" value="Calle del Mar 42, 29016"></div></div>
+                        <div class="af-sactions"><button class="af-btn af-btn--outline" onclick="goStep(1)">&larr; Back</button><button class="af-btn af-btn--primary" onclick="goStep(3)">Continue &rarr;</button></div>
+                    </div>
+                    <div class="af-sc" id="step3">
+                        <div class="af-fg"><label class="af-fl">Bank Name</label><div class="af-ig"><span class="af-ig-icon">&#x1F3E6;</span><input type="text" class="af-fi" value="Banco Santander"></div></div>
+                        <div class="af-fg"><label class="af-fl">IBAN</label><div class="af-ig"><span class="af-ig-icon">&#x1F4B3;</span><input type="text" class="af-fi" value="ES91 2100 0418 4502 0005 1332"></div></div>
+                        <div class="af-row"><div class="af-fg"><label class="af-fl">BIC / SWIFT</label><div class="af-ig"><span class="af-ig-icon">&#x1F310;</span><input type="text" class="af-fi" value="BSCHESMMXXX"></div></div><div class="af-fg"><label class="af-fl">Payout Currency</label><select class="af-fs"><option selected>EUR &mdash; Euro</option><option>GBP</option><option>USD</option></select></div></div>
+                        <div class="af-fg"><label class="af-fl">Account Holder Name</label><div class="af-ig"><span class="af-ig-icon">&#x1F464;</span><input type="text" class="af-fi" value="Hotel Playa del Sol S.L."></div></div>
+                        <span class="af-hint">Bank details are used for commission payouts only.</span>
+                        <div class="af-sactions"><button class="af-btn af-btn--outline" onclick="goStep(2)">&larr; Back</button><button class="af-btn af-btn--primary" onclick="goStep(4)">Continue &rarr;</button></div>
+                    </div>
+                    <div class="af-sc" id="step4">
+                        <div class="af-terms"><strong>Vrooem Partner Agreement</strong><br><br>By registering as a Vrooem Partner, you agree to the following terms:<br><br><strong>1. Commission Structure</strong><br>You will receive a commission on each eligible booking made through your unique QR codes.<br><br><strong>2. QR Code Usage</strong><br>QR codes must be displayed only at registered locations. Codes are geo-restricted.<br><br><strong>3. Payouts</strong><br>Commissions are paid monthly via bank transfer.<br><br><strong>4. Termination</strong><br>Either party may terminate with 30 days notice.</div>
+                        <div class="af-chk"><input type="checkbox" id="t1" checked><label for="t1">I agree to the <a href="#">Partner Terms &amp; Conditions</a></label></div>
+                        <div class="af-chk"><input type="checkbox" id="t2" checked><label for="t2">I agree to the <a href="#">Privacy Policy</a></label></div>
+                        <div class="af-sactions"><button class="af-btn af-btn--outline" onclick="goStep(3)">&larr; Back</button><button class="af-btn af-btn--primary af-btn--lg" style="flex:1;">Create Partner Account</button></div>
+                    </div>
+                </div>
+            </div>
+            <p style="text-align:center;margin-top:1rem;font-size:0.82rem;color:#64748b;">Already have an account? <a href="#" style="color:#2ea7ad;font-weight:600;text-decoration:none;">Sign in</a></p>
+        </div>
+    </section>
+</div>
+
+
+<!-- ═══════════ PAGE 2 — LOGIN ═══════════ -->
+<div id="page-login" class="af-page">
+    <section class="af-dark af-login">
+        <div class="af-orb af-orb--1"></div><div class="af-orb af-orb--2"></div>
+        <div class="af-glass af-login-card af-z">
+            <div class="af-login-brand">Vrooem<span>.</span></div>
+            <p class="af-login-sub">Sign in to your partner dashboard</p>
+            <div class="af-fg" style="text-align:left;"><label class="af-fl af-fl--w">Email Address</label><input type="email" class="af-fi af-fi--dark" placeholder="you@business.com" value="maria@hotelplaya.es"></div>
+            <div class="af-fg" style="text-align:left;"><label class="af-fl af-fl--w">Password</label><input type="password" class="af-fi af-fi--dark" placeholder="Enter your password" value="SecurePass123!"></div>
+            <a href="#" class="af-forgot">Forgot password?</a>
+            <button class="af-btn af-btn--accent af-btn--lg" style="width:100%;">Sign In</button>
+            <div class="af-login-foot">Don't have an account? <a href="#">Register as a partner</a></div>
+        </div>
+    </section>
+</div>
+
+
+<!-- ═══════════ PAGE 3 — DASHBOARD ═══════════ -->
+<div id="page-dashboard" class="af-page">
+    <section class="af-dark af-dh"><div class="af-orb af-orb--1"></div><div class="af-orb af-orb--2"></div>
+        <div class="af-container af-z">
+            <div class="af-dh-inner"><div><h1>Dashboard</h1><div class="af-dh-sub">Welcome back, Maria. Here's your overview for March 2026.</div></div><div class="af-dh-actions"><div class="af-bell">&#x1F514;<div class="af-bell-dot"></div></div><button class="af-btn af-btn--accent af-btn--sm">+ Create QR</button></div></div>
+            <div class="af-sg">
+                <div class="af-glass af-st"><div class="af-st-icon">&#x1F4B6;</div><div class="af-st-num">&euro;2,847</div><div class="af-st-lbl">Total Revenue</div><div class="af-st-ch af-st-ch--up">&#x2191; 12.5%</div></div>
+                <div class="af-glass af-st"><div class="af-st-icon">&#x23F3;</div><div class="af-st-num">&euro;634</div><div class="af-st-lbl">Pending</div><div class="af-st-ch af-st-ch--up">&#x2191; 3 new</div></div>
+                <div class="af-glass af-st"><div class="af-st-icon">&#x1F4F7;</div><div class="af-st-num">1,284</div><div class="af-st-lbl">Total Scans</div><div class="af-st-ch af-st-ch--up">&#x2191; 8.2%</div></div>
+                <div class="af-glass af-st"><div class="af-st-icon">&#x1F3AF;</div><div class="af-st-num">4.7%</div><div class="af-st-lbl">Conversion</div><div class="af-st-ch af-st-ch--dn">&#x2193; 0.3%</div></div>
+            </div>
+        </div>
+    </section>
+    <section class="af-chart"><div class="af-container">
+        <div class="af-chart-box">
+            <div class="af-chart-hd"><div><span class="af-label">Revenue</span><br><span style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.92rem;color:#153b4f;">Last 30 Days</span></div><div style="display:flex;gap:4px;"><button class="af-btn af-btn--ghost">Daily</button><button class="af-btn af-btn--ghost" style="background:rgba(46,167,173,0.08);">Weekly</button></div></div>
+            <div class="af-chart-bars"><div class="af-cb" style="height:35%"><span>W1</span></div><div class="af-cb" style="height:52%"><span>W2</span></div><div class="af-cb" style="height:88%"><span>W3</span></div><div class="af-cb" style="height:65%"><span>W4</span></div><div class="af-cb" style="height:74%"><span>W5</span></div><div class="af-cb" style="height:45%"><span>W6</span></div><div class="af-cb" style="height:92%"><span>W7</span></div><div class="af-cb" style="height:60%"><span>W8</span></div></div>
+        </div>
+    </div></section>
+    <section style="background:#fff;padding-bottom:clamp(1.5rem,3vw,2.5rem);"><div class="af-container">
+        <div class="af-dg">
+            <div class="af-card"><div class="af-dc-hd"><h3>Recent Scans</h3><a class="af-btn af-btn--ghost">View All</a></div><div class="af-dc-body">
+                <div class="af-sr"><div><div class="af-sr-name">Lobby QR</div><div class="af-sr-meta">2 min ago &middot; iPhone 15</div></div><span class="af-badge af-badge--success">Booked</span></div>
+                <div class="af-sr"><div><div class="af-sr-name">Pool Area QR</div><div class="af-sr-meta">15 min ago &middot; Samsung S24</div></div><span class="af-badge af-badge--info">Browsing</span></div>
+                <div class="af-sr"><div><div class="af-sr-name">Reception Desk QR</div><div class="af-sr-meta">1 hr ago &middot; iPad Air</div></div><span class="af-badge af-badge--neutral">Expired</span></div>
+                <div class="af-sr"><div><div class="af-sr-name">Lobby QR</div><div class="af-sr-meta">2 hrs ago &middot; Pixel 8</div></div><span class="af-badge af-badge--success">Booked</span></div>
+            </div></div>
+            <div class="af-card"><div class="af-dc-hd"><h3>Active QR Codes</h3><a class="af-btn af-btn--ghost">Manage</a></div><div class="af-dc-body">
+                <div class="af-qr-row"><div class="af-qi">&#x1F4F1;</div><div style="flex:1;"><div class="af-qn">Lobby &mdash; Main Entrance</div><div class="af-qs">487 scans &middot; 23 bookings &middot; &euro;1,230</div></div><span class="af-badge af-badge--success">Active</span></div>
+                <div class="af-qr-row"><div class="af-qi">&#x1F4F1;</div><div style="flex:1;"><div class="af-qn">Pool Area</div><div class="af-qs">312 scans &middot; 15 bookings &middot; &euro;845</div></div><span class="af-badge af-badge--success">Active</span></div>
+                <div class="af-qr-row"><div class="af-qi">&#x1F4F1;</div><div style="flex:1;"><div class="af-qn">Reception Desk</div><div class="af-qs">485 scans &middot; 22 bookings &middot; &euro;772</div></div><span class="af-badge af-badge--success">Active</span></div>
+            </div></div>
+        </div>
+    </div></section>
+</div>
+
+
+<!-- ═══════════ PAGE 4 — QR CODES ═══════════ -->
+<div id="page-qrcodes" class="af-page">
+    <section class="af-dark" style="padding:clamp(1.25rem,2.5vw,2rem) 0;"><div class="af-orb af-orb--1"></div><div class="af-container af-z"><div style="display:flex;justify-content:space-between;align-items:center;" class="af-qr-hero-inner"><div><h1 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(1.35rem,2.8vw,1.75rem);font-weight:800;color:#fff;">QR Codes</h1><div style="font-size:0.85rem;color:#94a3b8;">Manage your location QR codes and view performance.</div></div><button class="af-btn af-btn--accent af-btn--sm">+ New QR</button></div></div></section>
+    <section style="background:linear-gradient(180deg,#f8fafc,#fff);padding:clamp(1.5rem,3vw,2.5rem) 0;"><div class="af-container"><div class="af-qg" id="qr-grid"></div></div></section>
+    <section style="background:#fff;padding:0 0 clamp(2rem,4vw,3rem);"><div class="af-container">
+        <div style="margin-bottom:1.25rem;"><span class="af-label">New QR Code</span><h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.15rem;font-weight:800;color:#153b4f;">Create a QR code for <span class="af-grad">a location.</span></h2></div>
+        <div class="af-card" style="max-width:580px;padding:1.25rem;">
+            <div class="af-fg"><label class="af-fl">Select Location</label><div class="af-lp">
+                <div class="af-lo sel"><h4>&#x1F3E8; Lobby</h4><p>Main entrance, Calle del Mar 42</p></div>
+                <div class="af-lo"><h4>&#x1F3CA; Pool Area</h4><p>Pool deck, Level 1</p></div>
+                <div class="af-lo"><h4>&#x1F6CE; Reception</h4><p>Ground floor desk</p></div>
+                <div class="af-lo"><h4>&#x2795; New Location</h4><p>Add a new location</p></div>
+            </div></div>
+            <div class="af-row"><div class="af-fg"><label class="af-fl">QR Code Label</label><input type="text" class="af-fi" value="Restaurant Terrace"></div><div class="af-fg"><label class="af-fl">Geo-Radius (km)</label><input type="number" class="af-fi" value="5"><span class="af-hint">Scans outside this radius rejected</span></div></div>
+            <div style="display:flex;gap:8px;margin-top:0.5rem;"><button class="af-btn af-btn--primary">Generate QR Code</button><button class="af-btn af-btn--outline">Cancel</button></div>
+        </div>
+    </div></section>
+</div>
+
+
+<!-- ═══════════ PAGE 5 — COMMISSIONS ═══════════ -->
+<div id="page-commissions" class="af-page">
+    <section class="af-dark" style="padding:clamp(1.25rem,2.5vw,2rem) 0;"><div class="af-orb af-orb--1"></div><div class="af-orb af-orb--2"></div>
+        <div class="af-container af-z">
+            <div style="display:flex;justify-content:space-between;align-items:center;" class="af-comm-hero-inner"><div><h1 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(1.35rem,2.8vw,1.75rem);font-weight:800;color:#fff;">Commission History</h1><div style="font-size:0.85rem;color:#94a3b8;">Track your earnings from QR code bookings.</div></div><button class="af-btn af-btn--outline-w af-btn--sm">&#x1F4E5; Export CSV</button></div>
+            <div class="af-ct">
+                <div class="af-glass af-ct-item"><div class="af-ct-lbl">Total Earned</div><div class="af-ct-val">&euro;2,847</div></div>
+                <div class="af-glass af-ct-item"><div class="af-ct-lbl">Pending</div><div class="af-ct-val">&euro;634</div></div>
+                <div class="af-glass af-ct-item"><div class="af-ct-lbl">Paid Out</div><div class="af-ct-val">&euro;2,013</div></div>
+                <div class="af-glass af-ct-item"><div class="af-ct-lbl">This Month</div><div class="af-ct-val">&euro;412</div></div>
+            </div>
+        </div>
+    </section>
+    <section style="background:linear-gradient(180deg,#f8fafc,#fff);padding:clamp(1.5rem,3vw,2.5rem) 0;"><div class="af-container">
+        <div class="af-filters"><span class="af-chip on">All</span><span class="af-chip">Pending</span><span class="af-chip">Approved</span><span class="af-chip">Paid</span><span class="af-chip">Cancelled</span><input type="date" class="af-df" value="2026-02-01"><span style="color:#94a3b8;font-size:0.78rem;">to</span><input type="date" class="af-df" value="2026-03-02"></div>
+        <div class="af-tw"><table class="af-table"><thead><tr><th>Date</th><th>Booking</th><th>Customer</th><th>Amount</th><th>Rate</th><th>Commission</th><th>Status</th></tr></thead><tbody>
+            <tr><td>02 Mar</td><td class="af-tmono">#VRM-8842</td><td>James Wilson</td><td>&euro;285</td><td>8%</td><td class="af-tmono">&euro;22.80</td><td><span class="af-badge af-badge--warning">Pending</span></td></tr>
+            <tr><td>01 Mar</td><td class="af-tmono">#VRM-8830</td><td>Anna Petrov</td><td>&euro;412</td><td>8%</td><td class="af-tmono">&euro;33.00</td><td><span class="af-badge af-badge--warning">Pending</span></td></tr>
+            <tr><td>28 Feb</td><td class="af-tmono">#VRM-8815</td><td>Thomas M&uuml;ller</td><td>&euro;560</td><td>8%</td><td class="af-tmono">&euro;44.80</td><td><span class="af-badge af-badge--success">Paid</span></td></tr>
+            <tr><td>25 Feb</td><td class="af-tmono">#VRM-8790</td><td>Sophie Laurent</td><td>&euro;180</td><td>8%</td><td class="af-tmono">&euro;14.40</td><td><span class="af-badge af-badge--success">Paid</span></td></tr>
+            <tr><td>22 Feb</td><td class="af-tmono">#VRM-8771</td><td>Erik Johansson</td><td>&euro;725</td><td>10%</td><td class="af-tmono">&euro;72.50</td><td><span class="af-badge af-badge--success">Paid</span></td></tr>
+            <tr><td>18 Feb</td><td class="af-tmono">#VRM-8745</td><td>Isabella Rossi</td><td>&euro;340</td><td>8%</td><td class="af-tmono">&euro;27.20</td><td><span class="af-badge af-badge--info">Approved</span></td></tr>
+            <tr><td>12 Feb</td><td class="af-tmono">#VRM-8710</td><td>Oliver Chen</td><td>&euro;495</td><td>8%</td><td class="af-tmono">&euro;39.60</td><td><span class="af-badge af-badge--danger">Cancelled</span></td></tr>
+        </tbody></table>
+        <div class="af-tf"><span>Showing 1&ndash;7 of 42</span><div class="af-pg"><button>&laquo;</button><button class="on">1</button><button>2</button><button>3</button><button>&hellip;</button><button>6</button><button>&raquo;</button></div></div></div>
+    </div></section>
+</div>
+
+
+<!-- ═══════════ PAGE 6a — SCAN LANDING ═══════════ -->
+<div id="page-scan" class="af-page"><section class="af-dark af-scan"><div class="af-orb af-orb--1"></div><div class="af-orb af-orb--2"></div>
+    <div class="af-scan-in">
+        <div class="af-scan-br">Vrooem<span>.</span></div>
+        <div class="af-dc"><div class="af-dc-hdr"><div class="af-dc-from">Exclusive offer from</div><div class="af-dc-biz">Hotel Playa del Sol</div><div class="af-dc-amt"><span class="af-dc-pct">10%</span><span class="af-dc-off">OFF</span></div></div><div class="af-dc-body"><h3>Your car rental discount is ready!</h3><p>Book any vehicle through Vrooem and save 10% as a guest of Hotel Playa del Sol. Valid for 30 days.</p><button class="af-btn af-btn--primary af-btn--lg">Book Now &amp; Save 10%</button><div class="af-dc-exp">Expires <strong>01 April 2026</strong></div></div></div>
+        <div class="af-scan-note">Discount auto-applied at checkout. No code needed.</div>
+    </div>
+</section></div>
+
+
+<!-- ═══════════ PAGE 6b — GEO-RESTRICTED ═══════════ -->
+<div id="page-geo" class="af-page"><section class="af-dark af-scan"><div class="af-orb af-orb--1"></div><div class="af-orb af-orb--2"></div>
+    <div class="af-scan-in">
+        <div class="af-scan-br">Vrooem<span>.</span></div>
+        <div class="af-geo"><div class="af-geo-icon">&#x1F4CD;</div><h3>Visit to Unlock This Offer</h3><p>This discount is available at <strong>Hotel Playa del Sol</strong> in Malaga. Scan the QR code at the hotel.</p><button class="af-btn af-btn--outline-w af-btn--sm">&#x1F4CD; Get Directions</button></div>
+    </div>
+</section></div>
+
+
+<!-- ═══════════ PAGE 7 — SETTINGS ═══════════ -->
+<div id="page-settings" class="af-page">
+    <section class="af-dark" style="padding:clamp(1.25rem,2.5vw,2rem) 0;"><div class="af-container af-z"><h1 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(1.35rem,2.8vw,1.75rem);font-weight:800;color:#fff;">Settings</h1><div style="font-size:0.85rem;color:#94a3b8;">Manage your profile, bank details, and account.</div></div></section>
+    <section style="background:linear-gradient(180deg,#f8fafc,#fff);padding:clamp(1.5rem,3vw,2.5rem) 0;"><div class="af-container">
+        <div class="af-stabs"><div class="af-stab on">Business Info</div><div class="af-stab">Bank Details</div><div class="af-stab">Password</div><div class="af-stab">Commission Terms</div></div>
+        <div class="af-sbanner"><div class="af-sbi">&#x2713;</div><div class="af-sbt"><h4>Account Verified &amp; Active</h4><p>Verified on 15 Jan 2026. Earning commissions.</p></div></div>
+        <div class="af-card af-fcard">
+            <h3>Business Information</h3><p class="af-fcard-sub">Update your business details.</p>
+            <div class="af-row"><div class="af-fg"><label class="af-fl">Business Name</label><input type="text" class="af-fi" value="Hotel Playa del Sol"></div><div class="af-fg"><label class="af-fl">Business Type</label><select class="af-fs"><option selected>Hotel / Resort</option><option>Travel Agency</option></select></div></div>
+            <div class="af-row"><div class="af-fg"><label class="af-fl">Contact Email</label><input type="email" class="af-fi" value="maria@hotelplaya.es"></div><div class="af-fg"><label class="af-fl">Phone</label><input type="tel" class="af-fi" value="+34 612 345 678"></div></div>
+            <div class="af-fg"><label class="af-fl">Address</label><input type="text" class="af-fi" value="Calle del Mar 42, 29016 Malaga, Spain"></div>
+            <div class="af-ffooter"><button class="af-btn af-btn--outline af-btn--sm">Cancel</button><button class="af-btn af-btn--primary af-btn--sm">Save Changes</button></div>
+        </div>
+        <div class="af-card af-fcard">
+            <h3>Bank Details</h3><p class="af-fcard-sub">For commission payouts.</p>
+            <div class="af-row"><div class="af-fg"><label class="af-fl">Bank Name</label><input type="text" class="af-fi" value="Banco Santander"></div><div class="af-fg"><label class="af-fl">Account Holder</label><input type="text" class="af-fi" value="Hotel Playa del Sol S.L."></div></div>
+            <div class="af-fg"><label class="af-fl">IBAN</label><input type="text" class="af-fi" value="ES91 2100 0418 4502 0005 1332"></div>
+            <div class="af-row"><div class="af-fg"><label class="af-fl">BIC / SWIFT</label><input type="text" class="af-fi" value="BSCHESMMXXX"></div><div class="af-fg"><label class="af-fl">Payout Currency</label><select class="af-fs"><option selected>EUR</option><option>GBP</option></select></div></div>
+            <div class="af-ffooter"><button class="af-btn af-btn--outline af-btn--sm">Cancel</button><button class="af-btn af-btn--primary af-btn--sm">Update</button></div>
+        </div>
+        <div class="af-card af-fcard">
+            <h3>Change Password</h3><p class="af-fcard-sub">Keep your account secure.</p>
+            <div style="max-width:380px;"><div class="af-fg"><label class="af-fl">Current Password</label><input type="password" class="af-fi" placeholder="Enter current password"></div><div class="af-fg"><label class="af-fl">New Password</label><input type="password" class="af-fi" placeholder="Minimum 8 characters"></div><div class="af-fg"><label class="af-fl">Confirm</label><input type="password" class="af-fi" placeholder="Repeat new password"></div></div>
+            <div class="af-ffooter"><button class="af-btn af-btn--primary af-btn--sm">Update Password</button></div>
+        </div>
+        <div class="af-card af-fcard">
+            <h3>Commission Terms</h3><p class="af-fcard-sub">Your current rates and terms.</p>
+            <div class="af-rates">
+                <div class="af-rr"><span class="af-rr-l">Commission Rate</span><span class="af-rr-v">8%</span></div>
+                <div class="af-rr"><span class="af-rr-l">Tier 2 (50+ bookings)</span><span class="af-rr-v">10%</span></div>
+                <div class="af-rr"><span class="af-rr-l">Customer Discount</span><span class="af-rr-v">10% off</span></div>
+                <div class="af-rr"><span class="af-rr-l">Min Payout</span><span class="af-rr-v">&euro;50</span></div>
+                <div class="af-rr"><span class="af-rr-l">Schedule</span><span class="af-rr-v">Monthly</span></div>
+                <div class="af-rr"><span class="af-rr-l">Geo-Radius</span><span class="af-rr-v">5 km</span></div>
+                <div class="af-rr"><span class="af-rr-l">Tracking Window</span><span class="af-rr-v">30 days</span></div>
+            </div>
+        </div>
+    </div></section>
+</div>
+
+<script>
+function showPage(id) { document.querySelectorAll('.af-page').forEach(p => p.classList.remove('active')); document.querySelectorAll('.af-demo-tab').forEach(t => t.classList.remove('active')); document.getElementById('page-' + id).classList.add('active'); event.target.classList.add('active'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+function goStep(n) { document.querySelectorAll('.af-sc').forEach(s => s.classList.remove('active')); document.getElementById('step' + n).classList.add('active'); for (let i = 1; i <= 4; i++) { const d = document.getElementById('sd' + i), l = document.getElementById('sl' + i), ln = document.getElementById('sln' + i); d.className = 'af-sd'; l.className = 'af-sl'; if (i < n) { d.classList.add('af-sd--done'); d.innerHTML = '&#x2713;'; l.classList.add('af-sl--on'); } else if (i === n) { d.classList.add('af-sd--on'); d.textContent = i; l.classList.add('af-sl--on'); } else { d.classList.add('af-sd--off'); d.textContent = i; } if (ln) ln.className = i < n ? 'af-sline af-sline--done' : 'af-sline'; } }
+
+const qrData = [{name:'Lobby — Main Entrance',loc:'Calle del Mar 42, Malaga',scans:487,bookings:23,rev:'€1,230',st:'success',stT:'Active'},{name:'Pool Area',loc:'Pool Deck, Level 1',scans:312,bookings:15,rev:'€845',st:'success',stT:'Active'},{name:'Reception Desk',loc:'Ground Floor',scans:485,bookings:22,rev:'€772',st:'warning',stT:'Expiring'}];
+const g = document.getElementById('qr-grid'); if (g) { const p = [1,1,1,0,1,1,1,1,0,1,1,1,0,1,1,1,1,0,1,1,1,0,1,0,1,0,1,0,1,1,1,0,1,1,1,1,0,1,1,1,0,1,1,1,1,0,1,1,1]; qrData.forEach((q, idx) => { let dots = ''; p.forEach((v, i) => { const s = (i + idx * 3) % 3 === 0 ? !v : v; dots += '<div class="af-qd' + (s ? ' af-qd--f' : '') + '"></div>'; }); const e = q.st === 'warning'; g.innerHTML += '<div class="af-card"><div class="af-qc-prev"><div class="af-qc-ph">' + dots + '</div><div class="af-qc-st"><span class="af-badge af-badge--' + q.st + '">' + q.stT + '</span></div></div><div class="af-qc-body"><h3>' + q.name + '</h3><div class="af-qc-loc">&#x1F4CD; ' + q.loc + '</div><div class="af-qc-stats"><div class="af-qc-sc"><div class="af-qc-sv">' + q.scans + '</div><div class="af-qc-sl">Scans</div></div><div class="af-qc-sc"><div class="af-qc-sv">' + q.bookings + '</div><div class="af-qc-sl">Bookings</div></div><div class="af-qc-sc"><div class="af-qc-sv">' + q.rev + '</div><div class="af-qc-sl">Revenue</div></div></div><div class="af-qc-act"><button class="af-btn af-btn--outline af-btn--sm">&#x2B07; Download</button>' + (e ? '<button class="af-btn af-btn--accent af-btn--sm">Renew</button>' : '<button class="af-btn af-btn--outline af-btn--sm">&#x1F4CA; Analytics</button>') + '</div></div></div>'; }); }
+
+document.querySelectorAll('.af-chip').forEach(c => c.addEventListener('click', () => { c.parentElement.querySelectorAll('.af-chip').forEach(x => x.classList.remove('on')); c.classList.add('on'); }));
+document.querySelectorAll('.af-lo').forEach(o => o.addEventListener('click', () => { o.parentElement.querySelectorAll('.af-lo').forEach(x => x.classList.remove('sel')); o.classList.add('sel'); }));
+document.querySelectorAll('.af-stab').forEach(t => t.addEventListener('click', () => { t.parentElement.querySelectorAll('.af-stab').forEach(x => x.classList.remove('on')); t.classList.add('on'); }));
+</script>
+</body>
+</html>

@@ -110,9 +110,11 @@ const updateBusiness = async () => {
 // Verify business
 const verifyBusiness = async (approve = true) => {
   try {
-    await axios.post(`/admin/affiliate/businesses/${props.businessId}/verify`, {
-      action: approve ? 'approve' : 'reject'
-    })
+    const endpoint = approve
+      ? `/admin/affiliate/businesses/${props.businessId}/verify`
+      : `/admin/affiliate/businesses/${props.businessId}/reject`
+
+    await axios.post(endpoint)
 
     if (approve) {
       business.value.verification_status = 'verified'
@@ -122,10 +124,10 @@ const verifyBusiness = async (approve = true) => {
       business.value.verification_status = 'rejected'
     }
 
-    showNotification(`Business ${approve ? 'verified' : 'rejected'} successfully`, 'success')
+    showNotification(`Business ${approve ? 'approved' : 'rejected'} successfully`, 'success')
   } catch (error) {
-    console.error(`Error ${approve ? 'verifying' : 'rejecting'} business:`, error)
-    showNotification(`Error ${approve ? 'verifying' : 'rejecting'} business`, 'error')
+    console.error(`Error ${approve ? 'approving' : 'rejecting'} business:`, error)
+    showNotification(`Error ${approve ? 'approving' : 'rejecting'} business`, 'error')
   }
 }
 

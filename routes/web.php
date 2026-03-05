@@ -46,7 +46,6 @@ use App\Http\Controllers\NewsletterSubscriptionController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\OkMobilityBookingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SearchController;
@@ -76,14 +75,12 @@ use Inertia\Inertia;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\GreenMotionController;
-use App\Http\Controllers\GreenMotionBookingController; // Import the new GreenMotionBookingController
 use App\Http\Controllers\OkMobilityController; // Import the OkMobilityController
 use App\Http\Controllers\AdobeCarController; // Import the AdobeCarController
 use App\Http\Controllers\AdobeBookingController; // Import the AdobeBookingController
 use App\Http\Controllers\LocautoRentController; // Import the LocautoRentController
 use App\Http\Controllers\RenteonCarController; // Import the RenteonCarController
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
-use App\Http\Controllers\Affiliate\AffiliateBusinessController; // Import the AffiliateBusinessController
 use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
 use App\Http\Controllers\Affiliate\AffiliateQrCodeController; // Import the AffiliateQrCodeController
 use Stevebauman\Location\Facades\Location;
@@ -358,6 +355,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/affiliate/businesses/{businessId}/activate', [AffiliateBusinessModelController::class, 'activateBusiness'])->name('admin.affiliate.businesses.activate');
     Route::post('/admin/affiliate/businesses/bulk-verify', [AffiliateBusinessModelController::class, 'bulkVerifyBusinesses'])->name('admin.affiliate.businesses.bulk-verify');
     Route::post('/admin/affiliate/businesses/bulk-reject', [AffiliateBusinessModelController::class, 'bulkRejectBusinesses'])->name('admin.affiliate.businesses.bulk-reject');
+
+    // Scout Payout Management
+    Route::get('/admin/affiliate/payouts', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'index'])->name('admin.affiliate.payouts');
+    Route::post('/admin/affiliate/payouts', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'createPayout'])->name('admin.affiliate.payouts.create');
+    Route::post('/admin/affiliate/payouts/{payout}/mark-paid', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'markAsPaid'])->name('admin.affiliate.payouts.mark-paid');
 });
 
 // Newsletter tracking (public signed routes)
@@ -461,48 +463,6 @@ Route::group([
     Route::get('/wheelsys-booking/success/{booking}', [WheelsysBookingController::class, 'success'])->name('wheelsys.booking.success');
     Route::get('/wheelsys-booking/{booking}', [WheelsysBookingController::class, 'show'])->name('wheelsys.booking.show');
 
-    // Affiliate Business Routes
-    Route::prefix('business')->name('affiliate.business.')->group(function () {
-        Route::get('/register', [AffiliateBusinessController::class, 'create'])->name('register');
-        Route::post('/register', [AffiliateBusinessController::class, 'store'])->name('store');
-        Route::get('/verify/{token}', [AffiliateBusinessController::class, 'verifyEmail'])->name('verify');
-        Route::get('/dashboard/{token}', [AffiliateBusinessController::class, 'dashboard'])->name('dashboard');
-        Route::post('/dashboard/{token}/refresh', [AffiliateBusinessController::class, 'refreshToken'])->name('refresh.token');
-        Route::get('/logout/{token}', [AffiliateBusinessController::class, 'logout'])->name('logout');
-        Route::post('/check-email', [AffiliateBusinessController::class, 'checkEmail'])->name('check-email');
-        Route::post('/login', [AffiliateBusinessController::class, 'login'])->name('login')->middleware('throttle:5,1');
-        Route::post('/refresh-access', [AffiliateBusinessController::class, 'refreshAccess'])->name('refresh-access')->middleware('throttle:3,1');
-
-        // Location Management Routes
-        Route::post('/locations/create/{token}', [AffiliateBusinessController::class, 'createLocation'])->name('locations.create');
-
-        // QR Code Management Routes
-        Route::get('/qr-codes/{token}', [AffiliateQrCodeController::class, 'index'])->name('qr-codes.index');
-        Route::get('/qr-codes/create/{token}', [AffiliateQrCodeController::class, 'create'])->name('qr-codes.create');
-        Route::post('/qr-codes/store/{token}', [AffiliateQrCodeController::class, 'store'])->name('qr-codes.store');
-        Route::get('/qr-codes/show/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'show'])->name('qr-codes.show');
-        Route::get('/qr-codes/image/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'viewImage'])->name('qr-codes.image');
-        Route::get('/qr-codes/download/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'download'])->name('qr-codes.download');
-        Route::put('/qr-codes/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'update'])->name('qr-codes.update');
-        Route::post('/qr-codes/revoke/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'revoke'])->name('qr-codes.revoke');
-        Route::post('/qr-codes/reactivate/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'reactivate'])->name('qr-codes.reactivate');
-        Route::delete('/qr-codes/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'destroy'])->name('qr-codes.destroy')->withoutMiddleware(['web']);
-        Route::delete('/qr-codes/bulk-delete/{token}', [AffiliateQrCodeController::class, 'bulkDestroy'])->name('qr-codes.bulk-destroy')->withoutMiddleware(['web']);
-        Route::get('/qr-codes/analytics/{token}/{qrCodeId}', [AffiliateQrCodeController::class, 'analytics'])->name('qr-codes.analytics');
-
-        // Admin-only routes (will be protected by middleware)
-        Route::middleware(['auth', 'role:admin'])->group(function () {
-            Route::get('/statistics', [AffiliateBusinessController::class, 'statistics'])->name('statistics');
-        });
-
-        // Manual verification route (for testing purposes)
-        Route::get('/manual-verify/{token}', [AffiliateBusinessController::class, 'manualVerify'])->name('manual.verify');
-
-        // Debug route to check token status
-        Route::get('/debug-token/{token}', [AffiliateBusinessController::class, 'debugToken'])->name('debug.token');
-    });
-
-
     // Show Blogs on Home page
     Route::get('/', [BlogController::class, 'homeBlogs'])->name('welcome');
     // Route::get('/blog/{blog:slug}', [BlogController::class, 'show'])->name('blog.show');
@@ -523,6 +483,22 @@ Route::group([
     // Public QR Code Tracking Routes (with locale prefix)
     Route::get('/affiliate/track/{trackingData}', [AffiliateQrCodeController::class, 'track'])->name('affiliate.qr.track');
     Route::get('/affiliate/qr/{shortCode}', [AffiliateQrCodeController::class, 'qrLanding'])->name('affiliate.qr.landing');
+
+    // Public affiliate registration
+    Route::get('/affiliate/register', [\App\Http\Controllers\Affiliate\AffiliateRegisteredController::class, 'create'])->name('affiliate.register');
+    Route::post('/affiliate/register', [\App\Http\Controllers\Affiliate\AffiliateRegisteredController::class, 'store'])->name('affiliate.register.store');
+
+    // Auth-based affiliate routes
+    Route::middleware(['auth', 'affiliate'])->prefix('affiliate')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'index'])->name('affiliate.dashboard');
+        Route::get('/commissions', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'commissions'])->name('affiliate.commissions');
+        Route::get('/qr-codes', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'qrCodes'])->name('affiliate.qr-codes');
+        Route::post('/qr-codes', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'createQrCode'])->name('affiliate.qr-codes.store');
+        Route::get('/settings', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'settings'])->name('affiliate.settings');
+        Route::put('/settings', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'updateSettings'])->name('affiliate.settings.update');
+        Route::put('/bank-details', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'updateBankDetails'])->name('affiliate.bank-details.update');
+        Route::put('/password', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'updatePassword'])->name('affiliate.password.update');
+    });
 
     // Test route to manually set country for testing
     Route::get('/set-country/{country}', function ($country) {
@@ -904,9 +880,9 @@ Route::group([
         // Route::get('/profile/bookings/pending', [BookingController::class, 'getPendingBookings'])->name('profile.bookings.pending');
         // Route::get('/profile/bookings/confirmed', [BookingController::class, 'getConfirmedBookings'])->name('profile.bookings.confirmed');
         // Route::get('/profile/bookings/completed', [BookingController::class, 'getCompletedBookings'])->name('profile.bookings.completed');
-        // Route::get('/profile/bookings/green-motion', [GreenMotionBookingController::class, 'getCustomerGreenMotionBookings'])->name('profile.bookings.green-motion');
+        // Route::get('/profile/bookings/green-motion', ...); // Removed: GreenMotionBookingController deleted
         // Route::get('/profile/bookings/adobe', [AdobeBookingController::class, 'getCustomerAdobeBookings'])->name('profile.bookings.adobe');
-        // Route::get('/profile/bookings/ok-mobility', [OkMobilityBookingController::class, 'getCustomerOkMobilityBookings'])->name('profile.bookings.ok-mobility');
+        // Route::get('/profile/bookings/ok-mobility', ...); // Removed: OkMobilityBookingController deleted
 
         // Favourite vehicles
         Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');
@@ -915,11 +891,6 @@ Route::group([
         Route::get('/favorites/status', [FavoriteController::class, 'getFavoriteStatus'])->name('favorites.status');
         Route::post('/favorites/provider/toggle', [FavoriteController::class, 'toggleProviderFavourite'])->name('favorites.provider.toggle');
 
-        // GreenMotion Booking Routes
-        Route::post('/green-motion-booking/charge', [GreenMotionBookingController::class, 'processGreenMotionBookingPayment'])->name('greenmotion.booking.charge');
-        Route::get('/green-motion-booking-success', [GreenMotionBookingController::class, 'greenMotionBookingSuccess'])->name('greenmotion.booking.success');
-        Route::get('/green-motion-booking-cancel', [GreenMotionBookingController::class, 'greenMotionBookingCancel'])->name('greenmotion.booking.cancel');
-
         // Adobe Booking Routes
         Route::get('/adobe-booking/create/{id}', [AdobeBookingController::class, 'create'])->name('adobe-booking.create');
         Route::post('/adobe-booking/charge', [AdobeBookingController::class, 'processAdobeBookingPayment'])->name('adobe.booking.charge');
@@ -927,11 +898,6 @@ Route::group([
         Route::get('/adobe-booking-cancel', [AdobeBookingController::class, 'adobeBookingCancel'])->name('adobe.booking.cancel');
 
     });
-
-    // OK Mobility Booking Routes (allow guests)
-    Route::post('/ok-mobility-booking/charge', [OkMobilityBookingController::class, 'processOkMobilityBookingPayment'])->name('okmobility.booking.charge');
-    Route::get('/ok-mobility-booking-success', [OkMobilityBookingController::class, 'bookingSuccess'])->name('okmobility.booking.success');
-    Route::get('/ok-mobility-booking-cancel', [OkMobilityBookingController::class, 'bookingCancel'])->name('okmobility.booking.cancel');
 
     // Vendor status check for vehicle creation
     Route::middleware(['auth', 'vendor.status'])->group(function () {
@@ -1041,10 +1007,6 @@ Route::group([
     Route::get('/locauto-rent-booking/cancel', [LocautoRentController::class, 'handlePaymentCancel'])->name('locauto-rent-booking-cancel');
 
 }); // End of locale group
-
-// Public QR Code Tracking Routes (outside locale prefix for backward compatibility)
-Route::get('/affiliate/track/{trackingData}', [AffiliateQrCodeController::class, 'track'])->name('affiliate.qr.track.legacy');
-Route::get('/affiliate/qr/{shortCode}', [AffiliateQrCodeController::class, 'qrLanding'])->name('affiliate.qr.landing.legacy');
 
 Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
 Route::get('/green-motion-countries', [GreenMotionController::class, 'getGreenMotionCountries'])->name('green-motion-countries');

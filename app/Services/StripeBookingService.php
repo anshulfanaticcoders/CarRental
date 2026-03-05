@@ -181,7 +181,14 @@ class StripeBookingService
                     'stripe_session_id' => $session->id,
                     'stripe_payment_intent_id' => $session->payment_intent,
                     'provider_booking_ref' => $metadata->provider_booking_ref ?? null,
+                    'discount_amount' => (float) ($metadata->promo_discount_amount ?? 0),
                 ]);
+            }
+
+            // Update discount_amount for existing bookings too (idempotent re-processing)
+            $promoDiscount = (float) ($metadata->promo_discount_amount ?? 0);
+            if ($promoDiscount > 0 && (float) ($booking->discount_amount ?? 0) === 0.0) {
+                $booking->update(['discount_amount' => $promoDiscount]);
             }
 
             if (empty($booking->provider_metadata)) {
@@ -308,6 +315,24 @@ class StripeBookingService
 
             DB::commit();
             Log::info('StripeBookingService: Transaction committed successfully', ['booking_id' => $booking->id]);
+
+            // Create affiliate commission if QR scan tracking data exists
+            $affiliateBusinessId = $metadata->affiliate_business_id ?? null;
+            if ($affiliateBusinessId) {
+                $affiliateData = [
+                    'business_id' => $affiliateBusinessId,
+                    'customer_scan_id' => $metadata->affiliate_scan_id ?? null,
+                ];
+                $basePrice = (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? 0);
+                app(\App\Services\Affiliate\ScoutCommissionService::class)->createCommission(
+                    $booking->id,
+                    $customer->id,
+                    $basePrice,
+                    'stripe',
+                    $affiliateData,
+                    $booking->booking_currency ?? 'EUR'
+                );
+            }
 
             $this->notifyBookingCreated($booking, $customer, $customerData['temp_password']);
 

@@ -360,16 +360,14 @@ class AffiliateQrCodeService
      */
     private function storeAffiliateDataInSession(AffiliateQrCode $qrCode, \App\Models\Affiliate\AffiliateCustomerScan $customerScan, ?int $customerId = null): void
     {
-        $businessModel = $qrCode->business->getEffectiveBusinessModel();
-
         $sessionData = [
             'business_id' => $qrCode->business_id,
             'qr_code_id' => $qrCode->id,
             'customer_scan_id' => $customerScan->id,
             'scan_token' => $customerScan->scan_token,
-            'discount_type' => $businessModel['discount_type'],
-            'discount_value' => $businessModel['discount_value'],
-            'discount_rate' => $businessModel['discount_value'], // For backward compatibility
+            'discount_type' => null,
+            'discount_value' => 0,
+            'discount_rate' => 0,
             'business_name' => $qrCode->business->name,
             'scanned_at' => now()->toISOString(),
         ];
@@ -446,25 +444,4 @@ class AffiliateQrCodeService
         return $qrCode->isValid();
     }
 
-    /**
-     * Apply affiliate discount to booking.
-     */
-    public function applyAffiliateDiscount(float $originalPrice, float $discountRate, string $discountType = 'percentage'): array
-    {
-        if ($discountType === 'fixed_amount') {
-            $discountAmount = min($discountRate, $originalPrice);
-        } else {
-            $discountAmount = $originalPrice * ($discountRate / 100);
-        }
-
-        $finalPrice = $originalPrice - $discountAmount;
-
-        return [
-            'original_price' => $originalPrice,
-            'discount_type' => $discountType,
-            'discount_rate' => $discountType === 'percentage' ? $discountRate : null,
-            'discount_amount' => $discountAmount,
-            'final_price' => $finalPrice,
-        ];
-    }
 }

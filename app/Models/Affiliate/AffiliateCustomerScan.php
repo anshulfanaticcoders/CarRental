@@ -76,7 +76,7 @@ class AffiliateCustomerScan extends Model
      */
     public function qrCode()
     {
-        return $this->belongsTo(AffiliateQrCode::class);
+        return $this->belongsTo(AffiliateQrCode::class, 'qr_code_id');
     }
 
     /**

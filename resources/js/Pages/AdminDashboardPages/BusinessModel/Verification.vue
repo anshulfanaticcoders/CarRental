@@ -157,6 +157,26 @@ const selectAll = () => {
   }
 }
 
+// Verify or reject a single business
+const verifyBusiness = async (businessId, approve = true) => {
+  processing.value.add(businessId)
+  try {
+    const endpoint = approve
+      ? `/admin/affiliate/businesses/${businessId}/verify`
+      : `/admin/affiliate/businesses/${businessId}/reject`
+
+    await axios.post(endpoint)
+
+    showNotification(`Business ${approve ? 'approved' : 'rejected'} successfully`, 'success')
+    await loadBusinesses()
+  } catch (error) {
+    console.error(`Error ${approve ? 'approving' : 'rejecting'} business:`, error)
+    showNotification(`Error ${approve ? 'approving' : 'rejecting'} business`, 'error')
+  } finally {
+    processing.value.delete(businessId)
+  }
+}
+
 // Bulk action
 const bulkAction = async (action) => {
   if (selectedBusinesses.value.size === 0) {
@@ -547,6 +567,26 @@ onMounted(() => {
                   <Eye />
                   View
                 </Link>
+
+                <button
+                  v-if="business.verification_status === 'pending'"
+                  @click="verifyBusiness(business.id, true)"
+                  :disabled="processing.has(business.id)"
+                  class="btn-approve-row"
+                >
+                  <CheckCircle />
+                  Approve
+                </button>
+
+                <button
+                  v-if="business.verification_status === 'pending'"
+                  @click="verifyBusiness(business.id, false)"
+                  :disabled="processing.has(business.id)"
+                  class="btn-reject-row"
+                >
+                  <XCircle />
+                  Reject
+                </button>
 
                 <div class="status-dropdown">
                   <select
@@ -1198,5 +1238,45 @@ onMounted(() => {
   .action-buttons {
     justify-content: center;
   }
+}
+
+.btn-approve-row, .btn-reject-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+}
+
+.btn-approve-row {
+  background: #10b981;
+}
+
+.btn-approve-row:hover {
+  background: #059669;
+}
+
+.btn-reject-row {
+  background: #ef4444;
+}
+
+.btn-reject-row:hover {
+  background: #dc2626;
+}
+
+.btn-approve-row:disabled, .btn-reject-row:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-approve-row svg, .btn-reject-row svg {
+  width: 14px;
+  height: 14px;
 }
 </style>

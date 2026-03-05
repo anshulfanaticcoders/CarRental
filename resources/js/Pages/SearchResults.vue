@@ -65,6 +65,15 @@ const providerMarkupRate = computed(() => {
     return 0.15;
 });
 
+// Active promo from backend (shared via HandleInertiaRequests)
+const activePromo = computed(() => page.props.active_promo ?? null);
+const promoMarkupRate = computed(() => activePromo.value?.promo_markup_rate ?? 0);
+
+const getInflatedPrice = (basePrice) => {
+    if (!activePromo.value || promoMarkupRate.value <= 0) return null;
+    return basePrice * (1 + promoMarkupRate.value);
+};
+
 // Currency names mapping for better display
 const currencyNames = {
     'USD': 'United States Dollar',
@@ -2686,12 +2695,23 @@ watch(
                     @toggleFavourite="toggleFavourite" @saveSearchUrl="saveSearchUrl"
                     @select-package="handlePackageSelection">
                     <template #dailyPrice>
-                        <div class="flex items-baseline gap-1">
-                            <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
-                                {{ getCurrencySymbol(selectedCurrency) }}{{
-                                    getVehiclePriceConverted(vehicle)?.toFixed(2)
-                                }}
-                            </span>
+                        <div class="flex items-baseline gap-1 flex-wrap">
+                            <template v-if="activePromo && getInflatedPrice(getVehiclePriceConverted(vehicle))">
+                                <span class="text-gray-400 text-base line-through font-['Outfit']">
+                                    {{ getCurrencySymbol(selectedCurrency) }}{{ getInflatedPrice(getVehiclePriceConverted(vehicle))?.toFixed(2) }}
+                                </span>
+                                <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
+                                    {{ getCurrencySymbol(selectedCurrency) }}{{ getVehiclePriceConverted(vehicle)?.toFixed(2) }}
+                                </span>
+                                <span class="bg-red-100 text-red-600 text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                                    -{{ activePromo.discount_percentage }}%
+                                </span>
+                            </template>
+                            <template v-else>
+                                <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
+                                    {{ getCurrencySymbol(selectedCurrency) }}{{ getVehiclePriceConverted(vehicle)?.toFixed(2) }}
+                                </span>
+                            </template>
                         </div>
                     </template>
                 </CarListingCard>
