@@ -352,7 +352,8 @@ const handlePackageSelection = (event) => {
         termsCountryId.value = null;
     }
 
-    nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    nextTick(() => window.scrollTo({ top: 0, behavior: 'instant' }));
 };
 
 const handleBackToResults = () => {
@@ -373,12 +374,14 @@ const handleProceedToCheckout = (data) => {
         vehicle_total: vehicleTotal
     };
     bookingStep.value = 'checkout';
-    nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    nextTick(() => window.scrollTo({ top: 0, behavior: 'instant' }));
 };
 
 const handleBackToExtras = () => {
     bookingStep.value = 'extras';
-    nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    nextTick(() => window.scrollTo({ top: 0, behavior: 'instant' }));
 };
 
 // Moved to consolidated onMounted at the bottom
@@ -2695,24 +2698,24 @@ watch(
                     @toggleFavourite="toggleFavourite" @saveSearchUrl="saveSearchUrl"
                     @select-package="handlePackageSelection">
                     <template #dailyPrice>
-                        <div class="flex items-baseline gap-1 flex-wrap">
-                            <template v-if="activePromo && getInflatedPrice(getVehiclePriceConverted(vehicle))">
-                                <span class="text-gray-400 text-base line-through font-['Outfit']">
+                        <template v-if="activePromo && getInflatedPrice(getVehiclePriceConverted(vehicle))">
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-500 text-sm font-semibold line-through font-['Outfit']">
                                     {{ getCurrencySymbol(selectedCurrency) }}{{ getInflatedPrice(getVehiclePriceConverted(vehicle))?.toFixed(2) }}
                                 </span>
-                                <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
-                                    {{ getCurrencySymbol(selectedCurrency) }}{{ getVehiclePriceConverted(vehicle)?.toFixed(2) }}
-                                </span>
-                                <span class="bg-red-100 text-red-600 text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                                <span class="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full leading-none">
                                     -{{ activePromo.discount_percentage }}%
                                 </span>
-                            </template>
-                            <template v-else>
-                                <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
-                                    {{ getCurrencySymbol(selectedCurrency) }}{{ getVehiclePriceConverted(vehicle)?.toFixed(2) }}
-                                </span>
-                            </template>
-                        </div>
+                            </div>
+                            <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
+                                {{ getCurrencySymbol(selectedCurrency) }}{{ getVehiclePriceConverted(vehicle)?.toFixed(2) }}
+                            </span>
+                        </template>
+                        <template v-else>
+                            <span class="text-customPrimaryColor text-2xl font-bold font-['Outfit']">
+                                {{ getCurrencySymbol(selectedCurrency) }}{{ getVehiclePriceConverted(vehicle)?.toFixed(2) }}
+                            </span>
+                        </template>
                     </template>
                 </CarListingCard>
             </div>

@@ -270,6 +270,9 @@ const pricingSummary = computed(() => {
     extrasTotal: bookingPricing.extrasTotal || 0,
     taxTotal: bookingPricing.taxTotal || 0,
     discountTotal: bookingPricing.discountTotal || 0,
+    discountPercentage: (bookingPricing.discountTotal > 0 && bookingPricing.grandTotal > 0)
+      ? Math.round(bookingPricing.discountTotal / (bookingPricing.grandTotal + bookingPricing.discountTotal) * 100)
+      : 0,
     grandTotal: bookingPricing.grandTotal || 0,
     paidNow: payment.paidNow || 0,
     dueOnArrival: payment.dueOnArrival || 0,
@@ -707,7 +710,10 @@ const vendorInitials = computed(() => {
                 <span class="bd-info-value">{{ bookingData.formatCurrency(pricingSummary.taxTotal) }}</span>
               </div>
               <div v-if="pricingSummary.discountTotal > 0" class="bd-info-row">
-                <span class="bd-info-label text-emerald-600">{{ _t('customerprofile', 'discount') || 'Discount' }}</span>
+                <span class="bd-info-label text-emerald-600">
+                  {{ _t('customerprofile', 'discount') || 'Discount' }}
+                  <span v-if="pricingSummary.discountPercentage > 0" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">-{{ pricingSummary.discountPercentage }}%</span>
+                </span>
                 <span class="bd-info-value text-emerald-600">-{{ bookingData.formatCurrency(pricingSummary.discountTotal) }}</span>
               </div>
 

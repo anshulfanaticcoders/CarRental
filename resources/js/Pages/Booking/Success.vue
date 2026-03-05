@@ -21,6 +21,12 @@ const formatTime = (timeStr) => {
   const ampm = hour >= 12 ? 'PM' : 'AM';
   return `${hour % 12 || 12}:${m} ${ampm}`;
 };
+
+const discountAmount = parseFloat(booking.discount_amount || 0);
+const totalAmount = parseFloat(booking.total_amount || 0);
+const discountPercentage = discountAmount > 0 && totalAmount > 0
+  ? Math.round(discountAmount / (totalAmount + discountAmount) * 100)
+  : 0;
 </script>
 
 <template>
@@ -101,6 +107,17 @@ const formatTime = (timeStr) => {
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 Confirmed
               </span>
+            </div>
+          </div>
+
+          <!-- Discount savings notice -->
+          <div v-if="discountAmount > 0" class="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+            <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-emerald-700">You saved {{ booking.booking_currency }} {{ discountAmount.toFixed(2) }}<span v-if="discountPercentage > 0"> ({{ discountPercentage }}% off)</span></p>
+              <p class="text-xs text-emerald-600/70">Promotional discount applied to your booking</p>
             </div>
           </div>
 

@@ -954,9 +954,9 @@ onUnmounted(() => {
 
                         <!-- Standard Price (Slot) -->
                         <template v-else>
-                            <span class="car-price" v-if="ratesReady">
+                            <div class="car-price" v-if="ratesReady">
                                 <slot name="dailyPrice"></slot>
-                            </span>
+                            </div>
                             <span class="price-skeleton" v-else></span>
                         </template>
                     </div>
