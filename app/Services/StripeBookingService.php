@@ -2797,6 +2797,7 @@ class StripeBookingService
                 'vehicleGroupPrefAccriss' => $acrissCode,
                 'rateCode' => $rateCode,
                 'vendorRateID' => $vendorRateId,
+                'brokerOrderId' => $booking->booking_reference,
                 'flightNo' => $metadata->flight_number ?? null,
                 'notes' => $metadata->notes ?? null,
                 'customerInfo' => [
