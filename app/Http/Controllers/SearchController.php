@@ -26,8 +26,6 @@ use App\Services\Search\InternalVehicleMergeService;
 use App\Services\Search\GatewaySearchService;
 use App\Services\Search\SearchOrchestratorService;
 use App\Services\PriceVerificationService;
-use App\Services\VrooemGatewayService;
-use App\Services\GatewaySearchParamsBuilder;
 use Illuminate\Support\Facades\Log; // Import Log facade
 use App\Services\Seo\SeoMetaResolver;
 use Illuminate\Support\Facades\App;
@@ -51,8 +49,6 @@ class SearchController extends Controller
     protected $internalVehicleMergeService;
     protected $gatewaySearchService;
     protected $priceVerificationService;
-    protected $gatewayService;
-    protected $gatewaySearchParamsBuilder;
 
     public function __construct(
         GreenMotionService $greenMotionService,
@@ -70,9 +66,7 @@ class SearchController extends Controller
         SearchOrchestratorService $searchOrchestratorService,
         InternalVehicleMergeService $internalVehicleMergeService,
         GatewaySearchService $gatewaySearchService,
-        PriceVerificationService $priceVerificationService,
-        VrooemGatewayService $gatewayService,
-        GatewaySearchParamsBuilder $gatewaySearchParamsBuilder
+        PriceVerificationService $priceVerificationService
     ) {
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
@@ -90,8 +84,6 @@ class SearchController extends Controller
         $this->internalVehicleMergeService = $internalVehicleMergeService;
         $this->gatewaySearchService = $gatewaySearchService;
         $this->priceVerificationService = $priceVerificationService;
-        $this->gatewayService = $gatewayService;
-        $this->gatewaySearchParamsBuilder = $gatewaySearchParamsBuilder;
     }
 
     public function search(Request $request)

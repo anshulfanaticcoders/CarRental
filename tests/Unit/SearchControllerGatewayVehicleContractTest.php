@@ -5,7 +5,6 @@ namespace Tests\Unit;
 use App\Http\Controllers\SearchController;
 use App\Services\AdobeCarService;
 use App\Services\FavricaService;
-use App\Services\GatewaySearchParamsBuilder;
 use App\Services\GreenMotionService;
 use App\Services\LocationSearchService;
 use App\Services\LocautoRentService;
@@ -18,7 +17,6 @@ use App\Services\Search\InternalVehicleMergeService;
 use App\Services\Search\SearchOrchestratorService;
 use App\Services\SicilyByCarService;
 use App\Services\SurpriceService;
-use App\Services\VrooemGatewayService;
 use App\Services\WheelsysService;
 use App\Services\XDriveService;
 use PHPUnit\Framework\TestCase;
@@ -44,8 +42,6 @@ class SearchControllerGatewayVehicleContractTest extends TestCase
             $this->createMock(InternalVehicleMergeService::class),
             $this->createMock(GatewaySearchService::class),
             $this->createMock(PriceVerificationService::class),
-            $this->createMock(VrooemGatewayService::class),
-            $this->createMock(GatewaySearchParamsBuilder::class),
         );
 
         $method = new \ReflectionMethod(SearchController::class, 'transformGatewayVehicle');
