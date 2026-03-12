@@ -13,6 +13,7 @@ use App\Services\OkMobilityService;
 use App\Services\PriceVerificationService;
 use App\Services\RecordGoService;
 use App\Services\RenteonService;
+use App\Services\Search\GatewaySearchService;
 use App\Services\Search\InternalVehicleMergeService;
 use App\Services\Search\SearchOrchestratorService;
 use App\Services\SicilyByCarService;
@@ -41,6 +42,7 @@ class SearchControllerGatewayVehicleContractTest extends TestCase
             $this->createMock(SurpriceService::class),
             $this->createMock(SearchOrchestratorService::class),
             $this->createMock(InternalVehicleMergeService::class),
+            $this->createMock(GatewaySearchService::class),
             $this->createMock(PriceVerificationService::class),
             $this->createMock(VrooemGatewayService::class),
             $this->createMock(GatewaySearchParamsBuilder::class),

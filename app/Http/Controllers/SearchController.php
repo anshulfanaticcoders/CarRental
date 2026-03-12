@@ -23,6 +23,7 @@ use App\Services\SicilyByCarService;
 use App\Services\RecordGoService;
 use App\Services\SurpriceService;
 use App\Services\Search\InternalVehicleMergeService;
+use App\Services\Search\GatewaySearchService;
 use App\Services\Search\SearchOrchestratorService;
 use App\Services\PriceVerificationService;
 use App\Services\VrooemGatewayService;
@@ -48,6 +49,7 @@ class SearchController extends Controller
     protected $surpriceService;
     protected $searchOrchestratorService;
     protected $internalVehicleMergeService;
+    protected $gatewaySearchService;
     protected $priceVerificationService;
     protected $gatewayService;
     protected $gatewaySearchParamsBuilder;
@@ -67,6 +69,7 @@ class SearchController extends Controller
         SurpriceService $surpriceService,
         SearchOrchestratorService $searchOrchestratorService,
         InternalVehicleMergeService $internalVehicleMergeService,
+        GatewaySearchService $gatewaySearchService,
         PriceVerificationService $priceVerificationService,
         VrooemGatewayService $gatewayService,
         GatewaySearchParamsBuilder $gatewaySearchParamsBuilder
@@ -85,6 +88,7 @@ class SearchController extends Controller
         $this->surpriceService = $surpriceService;
         $this->searchOrchestratorService = $searchOrchestratorService;
         $this->internalVehicleMergeService = $internalVehicleMergeService;
+        $this->gatewaySearchService = $gatewaySearchService;
         $this->priceVerificationService = $priceVerificationService;
         $this->gatewayService = $gatewayService;
         $this->gatewaySearchParamsBuilder = $gatewaySearchParamsBuilder;
@@ -2968,229 +2972,36 @@ class SearchController extends Controller
         array $categoriesFromOptions,
         $vehicleListSchema
     ) {
-        $locationName = $validated['where'] ?? 'Selected Location';
-        $matchedLocation = $this->locationSearchService->resolveSearchLocation($validated);
-        if (!empty($validated['unified_location_id'])) {
-            $selectedLocation = $this->locationSearchService->getLocationByUnifiedId((int) $validated['unified_location_id']);
-            $locationName = $selectedLocation['name'] ?? $locationName;
-        }
-
-        $gatewayParams = $this->gatewaySearchParamsBuilder->build($validated);
-
-        $gatewayResult = $this->gatewayService->searchVehicles($gatewayParams);
-
-        if (empty($gatewayResult) || empty($gatewayResult['vehicles'])) {
-            Log::info('VrooemGateway: No vehicles returned or gateway error');
-            $providerVehicles = collect();
-            $providerStatus = [];
-        } else {
-            Log::info('VrooemGateway: Raw vehicle count from gateway', ['count' => count($gatewayResult['vehicles'])]);
-
-            // Transform gateway canonical vehicles to Laravel's expected format
-            $transformErrors = [];
-            $transformedVehicles = collect($gatewayResult['vehicles'])->map(function ($gv) use ($rentalDays, &$transformErrors) {
-                try {
-                    return $this->transformGatewayVehicle($gv, $rentalDays);
-                } catch (\Throwable $e) {
-                    $transformErrors[] = ['vehicle_id' => $gv['id'] ?? 'unknown', 'error' => $e->getMessage()];
-                    return null;
-                }
-            })->filter()->values();
-            if (!empty($transformErrors)) {
-                Log::warning('VrooemGateway: Transform errors', ['errors' => $transformErrors]);
-            }
-            Log::info('VrooemGateway: After transform', ['count' => $transformedVehicles->count(), 'sources' => $transformedVehicles->pluck('source')->countBy()->all()]);
-
-            $presentationService = app(\App\Services\GatewayVehiclePresentationService::class);
-
-            $transformedVehicles = $presentationService
-                ->collapseEquivalentSicilyByCarVehicles($transformedVehicles);
-            Log::info('VrooemGateway: After SBC collapse', ['count' => $transformedVehicles->count()]);
-
-            $transformedVehicles = $presentationService
-                ->collapseEquivalentRenteonVehicles($transformedVehicles);
-            Log::info('VrooemGateway: After Renteon collapse', ['count' => $transformedVehicles->count()]);
-
-            // RecordGo grouping: gateway creates one vehicle per product,
-            // but frontend expects one vehicle with recordgo_products[] array
-            $providerVehicles = $this->groupRecordGoVehicles($transformedVehicles);
-            Log::info('VrooemGateway: After RecordGo grouping', ['count' => $providerVehicles->count()]);
-
-            $providerVehicles = $this->searchOrchestratorService
-                ->filterGatewayVehiclesForRequestedProvider($providerVehicles, $validated);
-            Log::info('VrooemGateway: After requested-provider filter', [
-                'count' => $providerVehicles->count(),
-                'provider' => $validated['provider'] ?? 'mixed',
-            ]);
-
-            $providerStatus = collect($gatewayResult['supplier_results'] ?? [])->map(function ($sr) {
-                $providerId = $this->normalizeGatewaySupplierId((string) ($sr['supplier_id'] ?? 'unknown'));
-                return [
-                    'provider' => $providerId,
-                    'status' => empty($sr['error']) ? 'ok' : 'error',
-                    'vehicles' => $sr['vehicle_count'] ?? 0,
-                    'ms' => $sr['response_time_ms'] ?? null,
-                    'errors' => !empty($sr['error']) ? [$sr['error']] : [],
-                ];
-            })->values()->all();
-        }
-
-        // Filter provider vehicles (same logic as legacy path)
-        $filteredProviderVehicles = $providerVehicles->filter(function ($vehicle) use ($validated) {
-            $v = is_array($vehicle) ? $vehicle : (array) $vehicle;
-            if (!empty($validated['seating_capacity']) && ($v['seating_capacity'] ?? null) != $validated['seating_capacity']) return false;
-            if (!empty($validated['brand']) && strcasecmp($v['brand'] ?? '', $validated['brand']) != 0) return false;
-            if (!empty($validated['transmission']) && strcasecmp($v['transmission'] ?? '', $validated['transmission']) != 0) return false;
-            if (!empty($validated['fuel']) && strcasecmp($v['fuel'] ?? '', $validated['fuel']) != 0) return false;
-            if (!empty($validated['category_id']) && !is_numeric($validated['category_id'])) {
-                if (strcasecmp($v['category'] ?? '', $validated['category_id']) != 0) return false;
-            }
-            return true;
-        });
-        Log::info('VrooemGateway: After filtering', [
-            'before' => $providerVehicles->count(),
-            'after' => $filteredProviderVehicles->count(),
-            'filters_applied' => array_filter([
-                'seating_capacity' => $validated['seating_capacity'] ?? null,
-                'brand' => $validated['brand'] ?? null,
-                'transmission' => $validated['transmission'] ?? null,
-                'fuel' => $validated['fuel'] ?? null,
-                'category_id' => $validated['category_id'] ?? null,
-            ]),
-        ]);
-
-        $isOneWay = !empty($validated['dropoff_unified_location_id'])
-            && $validated['dropoff_unified_location_id'] != $validated['unified_location_id'];
-        $internalForMerge = $this->internalVehicleMergeService->forGatewayMerge(
-            $internalVehiclesCollection,
-            $validated,
-            $matchedLocation,
-            $isOneWay
-        );
-
-        $combinedVehicles = $internalForMerge->merge($filteredProviderVehicles);
-        Log::info('VrooemGateway: Combined vehicles', [
-            'internal' => $internalForMerge->count(),
-            'provider' => $filteredProviderVehicles->count(),
-            'combined' => $combinedVehicles->count(),
-            'isOneWay' => $isOneWay,
-        ]);
-        $perPage = 500;
-        $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
-        $currentItems = $combinedVehicles->slice(($currentPage - 1) * $perPage, $perPage)->values();
-        $vehicles = new \Illuminate\Pagination\LengthAwarePaginator(
-            $currentItems, $combinedVehicles->count(), $perPage, $currentPage,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
-        // Build filter options from provider vehicles
-        $allProviderBrands = $providerVehicles->pluck('brand')->unique()->filter()->values()->all();
-        $allProviderSeatingCapacities = $providerVehicles->pluck('seating_capacity')->unique()->filter()->values()->all();
-        $allProviderTransmissions = $providerVehicles->pluck('transmission')->unique()->filter()->values()->all();
-        $allProviderFuels = $providerVehicles->pluck('fuel')->unique()->filter()->values()->all();
-
-        $combinedBrands = collect($brands)->merge($allProviderBrands)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
-        $combinedSeatingCapacities = collect($seatingCapacities)->merge($allProviderSeatingCapacities)->unique()->sort()->values()->all();
-        $combinedTransmissions = collect($transmissions)->merge($allProviderTransmissions)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
-        $combinedFuels = collect($fuels)->merge($allProviderFuels)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
-
-        // Provider categories
-        $providerCategories = $providerVehicles->pluck('category')->unique()->filter()
-            ->map(fn($cat) => ['id' => $cat, 'name' => ucfirst(is_string($cat) ? $cat : (string) $cat)])
-            ->values()->all();
-        $categoriesFromOptions = collect(array_merge($categoriesFromOptions, $providerCategories))->unique('id')->values()->all();
-
-        // Price verification
-        $searchSessionId = 'search_' . session()->getId() . '_' . now()->timestamp;
-        $allVehicles = [];
-
-        $vehiclesCollection = $vehicles->getCollection();
-        foreach ($vehiclesCollection as $vehicle) {
-            $vehicleArray = is_array($vehicle) ? $vehicle : (array) $vehicle;
-            $vehicleArray['source'] = $vehicleArray['source'] ?? 'internal';
-            $allVehicles[] = $vehicleArray;
-        }
-        foreach ($providerVehicles as $vehicle) {
-            $allVehicles[] = is_array($vehicle) ? $vehicle : (array) $vehicle;
-        }
-
-        $priceMap = $this->priceVerificationService->storeOriginalPrices($searchSessionId, $allVehicles);
-
-        // Attach price_hash to vehicles
-        $vehicles = new \Illuminate\Pagination\LengthAwarePaginator(
-            $vehicles->getCollection()->map(function ($vehicle) use ($priceMap) {
-                $vid = is_array($vehicle) ? ($vehicle['id'] ?? null) : ($vehicle->id ?? null);
-                if ($vid && isset($priceMap[$vid])) {
-                    if (is_array($vehicle)) {
-                        $vehicle['price_hash'] = $priceMap[$vid]['price_hash'];
-                    } else {
-                        $vehicle->price_hash = $priceMap[$vid]['price_hash'];
-                    }
-                }
-                return $vehicle;
-            }),
-            $vehicles->total(), $vehicles->perPage(), $vehicles->currentPage(),
-            ['path' => $vehicles->path()]
-        );
-
-        // OK Mobility + Renteon paginated (gateway merges them into providerVehicles, split by source)
-        $okMobilityVehicles = $providerVehicles->filter(fn($v) => ($v['source'] ?? '') === 'okmobility');
-        $renteonVehicles = $providerVehicles->filter(fn($v) => ($v['source'] ?? '') === 'renteon');
-
-        $okMobilityVehiclesPaginated = new \Illuminate\Pagination\LengthAwarePaginator(
-            $okMobilityVehicles->values(), $okMobilityVehicles->count(), $perPage, $currentPage,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-        $renteonVehiclesPaginated = new \Illuminate\Pagination\LengthAwarePaginator(
-            $renteonVehicles->values(), $renteonVehicles->count(), $perPage, $currentPage,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
         $seo = app(SeoMetaResolver::class)->resolveForRoute(
-            'search', [], App::getLocale(),
-            route('search', ['locale' => App::getLocale()]), 'noindex,follow'
+            'search',
+            [],
+            App::getLocale(),
+            route('search', ['locale' => App::getLocale()]),
+            'noindex,follow'
         )->toArray();
 
-        // Gateway vehicles carry their own extras per-vehicle (in vehicle.options / vehicle.extras).
-        // Do NOT merge them into a shared optionalExtras list — that causes cross-vehicle contamination.
-        // The shared optionalExtras was only needed for old GreenMotion XML flow which had location-level extras.
-        $searchOptionalExtras = [];
+        $props = $this->gatewaySearchService->buildPageProps(
+            $request,
+            $validated,
+            $rentalDays,
+            collect($internalVehiclesCollection),
+            [
+                'brands' => $brands,
+                'colors' => $colors,
+                'seatingCapacities' => $seatingCapacities,
+                'transmissions' => $transmissions,
+                'fuels' => $fuels,
+                'mileages' => $mileages,
+                'categories' => $categoriesFromOptions,
+                'schema' => $vehicleListSchema,
+                'seo' => $seo,
+                'locale' => App::getLocale(),
+            ],
+            fn (array $gatewayVehicle, int $days): array => $this->transformGatewayVehicle($gatewayVehicle, $days),
+            fn (string $supplierId): string => $this->normalizeGatewaySupplierId($supplierId)
+        );
 
-        $vehicleSources = $vehicles->getCollection()->map(fn($v) => is_array($v) ? ($v['source'] ?? 'unknown') : ($v->source ?? 'unknown'));
-        Log::info('VrooemGateway: FINAL Inertia render', [
-            'total_vehicles_in_paginator' => $vehicles->total(),
-            'paginator_page_items' => $vehicles->getCollection()->count(),
-            'sources_breakdown' => $vehicleSources->countBy()->all(),
-            'okMobility_count' => $okMobilityVehicles->count(),
-            'renteon_count' => $renteonVehicles->count(),
-        ]);
-
-        return Inertia::render('SearchResults', [
-            'vehicles' => $vehicles,
-            'okMobilityVehicles' => $okMobilityVehiclesPaginated,
-            'renteonVehicles' => $renteonVehiclesPaginated,
-            'providerStatus' => $providerStatus,
-            'searchError' => null,
-            'filters' => $validated,
-            'pagination_links' => $vehicles->links('pagination::tailwind')->toHtml(),
-            'brands' => $combinedBrands,
-            'colors' => $colors,
-            'seatingCapacities' => $combinedSeatingCapacities,
-            'transmissions' => $combinedTransmissions,
-            'fuels' => $combinedFuels,
-            'mileages' => $mileages,
-            'categories' => $categoriesFromOptions,
-            'schema' => $vehicleListSchema,
-            'seo' => $seo,
-            'locale' => App::getLocale(),
-            'optionalExtras' => array_values($searchOptionalExtras),
-            'locationName' => $locationName,
-            'search_session_id' => $searchSessionId,
-            'price_map' => $priceMap,
-            'via_gateway' => true,
-            'gateway_search_id' => $gatewayResult['search_id'] ?? null,
-            'gateway_response_time_ms' => $gatewayResult['response_time_ms'] ?? null,
-        ]);
+        return Inertia::render('SearchResults', $props);
     }
 
     /**
