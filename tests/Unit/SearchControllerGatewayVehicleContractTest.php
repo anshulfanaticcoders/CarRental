@@ -2,52 +2,16 @@
 
 namespace Tests\Unit;
 
-use App\Http\Controllers\SearchController;
-use App\Services\AdobeCarService;
-use App\Services\FavricaService;
-use App\Services\GreenMotionService;
-use App\Services\LocationSearchService;
-use App\Services\LocautoRentService;
-use App\Services\OkMobilityService;
-use App\Services\PriceVerificationService;
-use App\Services\RecordGoService;
-use App\Services\RenteonService;
-use App\Services\Search\GatewaySearchService;
-use App\Services\Search\InternalVehicleMergeService;
-use App\Services\Search\SearchOrchestratorService;
-use App\Services\SicilyByCarService;
-use App\Services\SurpriceService;
-use App\Services\WheelsysService;
-use App\Services\XDriveService;
+use App\Services\Vehicles\GatewayVehicleTransformer;
 use PHPUnit\Framework\TestCase;
 
 class SearchControllerGatewayVehicleContractTest extends TestCase
 {
     public function test_it_transforms_gateway_vehicles_to_the_canonical_contract_shape(): void
     {
-        $controller = new SearchController(
-            $this->createMock(GreenMotionService::class),
-            $this->createMock(OkMobilityService::class),
-            $this->createMock(LocationSearchService::class),
-            $this->createMock(AdobeCarService::class),
-            $this->createMock(WheelsysService::class),
-            $this->createMock(LocautoRentService::class),
-            $this->createMock(RenteonService::class),
-            $this->createMock(FavricaService::class),
-            $this->createMock(XDriveService::class),
-            $this->createMock(SicilyByCarService::class),
-            $this->createMock(RecordGoService::class),
-            $this->createMock(SurpriceService::class),
-            $this->createMock(SearchOrchestratorService::class),
-            $this->createMock(InternalVehicleMergeService::class),
-            $this->createMock(GatewaySearchService::class),
-            $this->createMock(PriceVerificationService::class),
-        );
+        $transformer = new GatewayVehicleTransformer();
 
-        $method = new \ReflectionMethod(SearchController::class, 'transformGatewayVehicle');
-        $method->setAccessible(true);
-
-        $vehicle = $method->invoke($controller, [
+        $vehicle = $transformer->transform([
             'id' => 'gw_1',
             'supplier_id' => 'renteon',
             'supplier_vehicle_id' => 'veh-1',
