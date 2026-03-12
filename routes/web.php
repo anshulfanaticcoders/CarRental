@@ -39,6 +39,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BulkVehicleController;
 use App\Http\Controllers\BulkVehicleUploadController;
 use App\Http\Controllers\ContactFormController;
+use App\Http\Controllers\EsimAccessController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\FrontendPageController;
 use App\Http\Controllers\GeocodingController;
@@ -246,7 +247,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // Contact form submissions and notifications
     Route::get('/contact-us-mails', [ContactFormController::class, 'fetchSubmissions'])->name('contact.mails');
-    Route::get('/notifications/unread', [ContactFormController::class, 'unreadNotifications'])->name('notifications.unread');
+    Route::get('/notifications/unread', [ContactFormController::class, 'unreadNotifications'])->name('admin.notifications.unread');
     Route::post('/notifications/mark-as-read/{id}', [ContactFormController::class, 'markAsRead'])->name('notifications.markAsRead');
 
     // Testimonials
@@ -302,7 +303,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // Admin Profile Settings
     Route::get('/admin/settings/profile', [AdminProfileController::class, 'index'])->name('admin.settings.profile');
-    Route::post('/admin/settings/profile', [AdminProfileController::class, 'update'])->name('admin.settings.profile');
+    Route::post('/admin/settings/profile', [AdminProfileController::class, 'update'])->name('admin.settings.profile.update');
 
     // Advertisements Management
     Route::resource('admin/advertisements', AdminAdvertisementController::class)->names('admin.advertisements');
@@ -412,6 +413,9 @@ Route::group([
     Route::post('/store-search', [SearchController::class, 'storeSearchData'])->name('search.store');
     Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
     Route::get('/api/geocoding/reverse', [GeocodingController::class, 'reverse']);
+    Route::get('/api/esim/countries', [EsimAccessController::class, 'countries'])->name('api.esim.countries');
+    Route::get('/api/esim/plans/{countryCode}', [EsimAccessController::class, 'plans'])->name('api.esim.plans');
+    Route::post('/api/esim/order', [EsimAccessController::class, 'order'])->name('api.esim.order');
     // Route::get('/blog', [BlogController::class, 'showBlogPage'])->name('blog');
     Route::get('/page/{slug}', [PageController::class, 'showPublic'])->name('pages.show');
     Route::get('/faq', [FaqController::class, 'showPublicFaqPage'])->name('faq.show');
@@ -452,7 +456,7 @@ Route::group([
 
     Route::get('/booking/cancel', function () {
         return Inertia::render('Booking/Cancel');
-    })->name('booking.cancel');
+    })->name('booking.cancel.page');
 
     // Booking Details Route - moved to authenticated customer routes with locale prefix (line 849)
 

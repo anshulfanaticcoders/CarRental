@@ -1,7 +1,7 @@
 # Development Workflow - CarRental Project
 
-> **Last Updated:** 2026-02-18
-> **Project:** Laravel 10 + Vue.js 3 Car Rental Platform
+> **Last Updated:** 2026-03-05
+> **Project:** Laravel 10 + Vue.js 3 Car Rental Platform + Vrooem Gateway (FastAPI/Python)
 
 ## Overview
 
@@ -35,6 +35,10 @@ This workflow ensures consistent, high-quality development across the CarRental 
 - MySQL migrations → `mysql`
 - API design → `backend-development:api-design-principles`
 - Frontend UI → `frontend-design`
+- FastAPI/Python (`vrooem-gateway/`) → `fastapi-templates`
+- Redis caching → `redis-development`
+- Supabase/PostgreSQL → `supabase-postgres-best-practices`
+- Python async patterns → `async-python-patterns`
 
 ### 5. Code Search (LSP-Based)
 **Tools:** LSP for JavaScript, LSP for PHP
@@ -50,6 +54,7 @@ This workflow ensures consistent, high-quality development across the CarRental 
 **Tools:**
 - Frontend: `npm run type-check`, `npm run lint`
 - Backend: `php artisan code:analyse` (if available), Laravel Pint
+- Gateway (Python): `ruff check app/`, `ruff format app/`
 **When:** After code changes
 
 ### 8. MySQL Best Practices
@@ -133,25 +138,45 @@ When multiple skills apply, load in this order:
 - `resources/js/Layouts/` - Layout components
 - Inertia.js for Laravel-Vue bridge
 
+**Vrooem Gateway (FastAPI/Python) — separate repo at `/mnt/c/laragon/www/vrooem-gateway/`:**
+- `app/main.py` - FastAPI application entry point
+- `app/core/` - Config, auth, exceptions
+- `app/schemas/` - Pydantic schemas (Vehicle, Location, Pricing, Booking, Search)
+- `app/adapters/` - Provider adapters (one per car rental supplier)
+- `app/services/` - Cache (Redis), circuit breaker
+- `app/db/` - SQLAlchemy models + async session (Supabase/PostgreSQL)
+- `app/api/v1/` - API route handlers
+- `config/suppliers/` - YAML configs per provider
+- **Skills:** `fastapi-templates`, `redis-development`, `supabase-postgres-best-practices`, `async-python-patterns`
+
 **Testing:**
 - `tests/Feature/` - Feature tests
 - `tests/Unit/` - Unit tests
 - PHPUnit for backend, Vitest for frontend
+- Gateway: `pytest` with `pytest-asyncio`
 
 ### Common Commands
 
 ```bash
-# Backend
+# Backend (Laravel)
 php artisan migrate:fresh --seed
 php artisan test
 php artisan route:list
 composer dump-autoload
 
-# Frontend
+# Frontend (Vue.js)
 npm run dev
 npm run build
 npm run type-check
 npm run lint
+
+# Gateway (FastAPI) — run from /mnt/c/laragon/www/vrooem-gateway/
+docker-compose up                    # Start gateway + Redis + PostgreSQL
+docker-compose up -d                 # Start in background
+docker-compose down                  # Stop all
+ruff check app/                      # Lint Python
+ruff format app/                     # Format Python
+pytest                               # Run tests
 
 # Git
 git status
@@ -183,6 +208,16 @@ git commit -m "feat: description"
 3. agent-browser → Test
 4. Git commit
 
+**For Gateway (FastAPI/Python):**
+1. brainstorming → Design approach
+2. fastapi-templates → FastAPI patterns
+3. async-python-patterns → Async implementation
+4. redis-development → Caching patterns
+5. supabase-postgres-best-practices → Database design
+6. error-handling-patterns → Validate
+7. verification-before-completion → Confirm
+8. Git commit
+
 ---
 
 ## Additional Resources
@@ -190,3 +225,6 @@ git commit -m "feat: description"
 - **Project Summary:** `PROJECT_SUMMARY.md`
 - **Bug Prevention:** `docs/bug-prevention/README.md`
 - **Design Documents:** `docs/plans/`
+- **Gateway Implementation Guide:** `docs/plans/vrooem-gateway-implementation-guide.md`
+- **Provider API Data:** `docs/apidata/` (12 provider API docs)
+- **Gateway Codebase:** `/mnt/c/laragon/www/vrooem-gateway/`

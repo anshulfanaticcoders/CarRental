@@ -3,7 +3,6 @@ import { Link } from "@inertiajs/vue3";
 import SchemaInjector from '@/Components/SchemaInjector.vue'; // Import SchemaInjector
 import SeoHead from '@/Components/SeoHead.vue';
 import heroImg from "../../assets/heroImage.jpg";
-import FloatingBubbles from '@/Components/FloatingBubbles.vue';
 import Footer from '@/Components/Footer.vue'
 import NewsletterSection from '@/Components/NewsletterSection.vue'
 import wifiIcon from "../../assets/usb.svg";
@@ -14,13 +13,10 @@ import supportIcon from "../../assets/call.svg";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
 import EsimSection from "@/Components/EsimSection.vue";
-import SearchBar from "@/Components/SearchBar.vue";
-import goIcon from "../../assets/goIcon.svg";
 import Autoplay from 'embla-carousel-autoplay';
-import calendarIcon from '../../assets/CalendarBlank.svg';
-import whiteGoIcon from '../../assets/whiteGoIcon.svg';
-import calendarWhiteIcon from '../../assets/CalendarWhite.svg';
 import { Skeleton } from '@/Components/ui/skeleton';
+import WelcomeHero from '@/Components/Welcome/WelcomeHero.vue';
+import AdvertisementSection from "@/Components/AdvertisementSection.vue";
 
 const plugin = Autoplay({
     delay: 4000,
@@ -123,6 +119,39 @@ const getHomepageLabel = (key, fallback) => {
     return label && label !== key ? label : fallback;
 };
 
+const heroTrustItems = computed(() => [
+    {
+        id: 'hero_trust_1',
+        icon: 'star',
+        label: getHomepageLabel('hero_trust_1', 'Free Internet Included'),
+    },
+    {
+        id: 'hero_trust_2',
+        icon: 'bag',
+        label: getHomepageLabel('hero_trust_2', 'Instant Replacement Guarantee'),
+    },
+    {
+        id: 'hero_trust_3',
+        icon: 'clock',
+        label: getHomepageLabel('hero_trust_3', 'Fair Damage Protection'),
+    },
+    {
+        id: 'hero_trust_4',
+        icon: 'shield',
+        label: getHomepageLabel('hero_trust_4', 'Best Price Guarantee'),
+    },
+    {
+        id: 'hero_trust_5',
+        icon: 'support',
+        label: getHomepageLabel('hero_trust_5', '24/7 Worldwide Support'),
+    },
+    {
+        id: 'hero_trust_6',
+        icon: 'layers',
+        label: getHomepageLabel('hero_trust_6', 'No Rushing, No Waiting'),
+    },
+]);
+
 const translatedPhrases = computed(() => [
     _t('typewriter_text_1'),
     _t('typewriter_text_2'),
@@ -171,16 +200,6 @@ const typeWriter = () => {
     }
 };
 
-const scrollToSearch = () => {
-    const searchSection = document.querySelector('.hero-search');
-    if (searchSection) {
-        // Offset for sticky header if needed
-        const yOffset = -50;
-        const y = searchSection.getBoundingClientRect().top + window.pageYOffset + yOffset;
-        window.scrollTo({ top: y, behavior: 'smooth' });
-    }
-};
-
 onMounted(() => {
     // Start the typing animation
     timer = setTimeout(typeWriter, 500);
@@ -190,10 +209,6 @@ onBeforeUnmount(() => {
     // Clean up the timer when component is destroyed
     if (timer) clearTimeout(timer);
 });
-
-
-import GreenMotionSearchComponent from "@/Components/GreenMotionSearchComponent.vue";
-import AdvertisementSection from "@/Components/AdvertisementSection.vue";
 
 const heroImageSource = computed(() => {
     return props.heroImage ? props.heroImage : heroImg;
@@ -292,32 +307,6 @@ const updateSearchUrl = (place) => {
 };
 
 
-
-// Animations
-useScrollAnimation('.hero_section', '.hero-content', {
-    opacity: 0,
-    y: -50,
-    duration: 1.2,
-});
-
-useScrollAnimation('.hero_section', '.anim-title-word', {
-    y: 150,
-    opacity: 0,
-    stagger: 0.05,
-    duration: 1,
-});
-
-useScrollAnimation('.hero_section', '.hero-image', {
-    opacity: 0,
-    duration: 1.5,
-});
-
-useScrollAnimation('.search-bar-section', '.search-bar-animation', {
-    opacity: 0,
-    y: 50,
-    duration: 1,
-});
-
 useScrollAnimation('.why-choose-us-trigger', '.why-choose-us-title', {
     opacity: 0,
     y: 30,
@@ -393,90 +382,14 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
     </div>
 
     <main class="overflow-x-hidden">
-        <section class="hero_section hero" :style="{ '--hero-image': `url(${heroImageSource})` }">
-            <div class="hero-bg-image hero-image" :style="{ backgroundImage: `url(${heroImageSource})` }"></div>
-            <div class="hero-orb orb-1"></div>
-            <div class="hero-orb orb-2"></div>
-            <div class="hero-bubble bubble-1"></div>
-            <div class="hero-bubble bubble-2"></div>
-            <div class="hero-bubble bubble-3"></div>
-            <div class="hero-bubble bubble-4"></div>
-            <div class="hero-bubble bubble-5"></div>
-            <div class="hero-wrapper full-w-container">
-                <div class="hero-left">
-                    <h1 class="hero-title anim-title clip-path-anim" v-html="animatedTagline"></h1>
-                    <p class="hero-subtitle">{{ heroSubtitle }}</p>
-                    <div class="hero-typewriter">
-                        <span class="typewriter-text">{{ displayedText }}</span>
-                        <span class="cursor-blink ml-1"></span>
-                    </div>
-
-                    <div class="hero-trust">
-                        <span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path
-                                    d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z"
-                                    fill="currentColor" />
-                            </svg>
-                            {{ getHomepageLabel('hero_trust_1', 'Free Internet Included') }}
-                        </span>
-                        <span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 6h14l-1.2 12.5a2 2 0 01-2 1.8H8.2a2 2 0 01-2-1.8L5 6z"
-                                    fill="currentColor" />
-                                <path d="M9 6V5a3 3 0 016 0v1" fill="none" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" />
-                            </svg>
-                            {{ getHomepageLabel('hero_trust_2', 'Instant Replacement Guarantee') }}
-                        </span>
-                        <span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 2a9 9 0 019 9 9 9 0 01-9 9 9 9 0 01-9-9 9 9 0 019-9z" fill="none"
-                                    stroke="currentColor" stroke-width="1.5" />
-                                <path d="M12 6v5l3 2" fill="none" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                            {{ getHomepageLabel('hero_trust_3', 'Fair Damage Protection') }}
-                        </span>
-                        <span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 3l7 4v6c0 4.2-2.8 7.5-7 9-4.2-1.5-7-4.8-7-9V7l7-4z"
-                                    fill="none" stroke="currentColor" stroke-width="1.5" />
-                                <path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                            {{ getHomepageLabel('hero_trust_4', 'Best Price Guarantee') }}
-                        </span>
-                        <span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" stroke-linejoin="round" />
-                                <path d="M12 2a10 10 0 1010 10" fill="none" stroke="currentColor"
-                                    stroke-width="1.5" stroke-linecap="round" />
-                                <path d="M21 2l-4 4" fill="none" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" />
-                            </svg>
-                            {{ getHomepageLabel('hero_trust_5', '24/7 Worldwide Support') }}
-                        </span>
-                        <span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 5v14" fill="none" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" />
-                                <path d="M6 9l6-4 6 4" fill="none" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" stroke-linejoin="round" />
-                                <path d="M6 15l6 4 6-4" fill="none" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                            {{ getHomepageLabel('hero_trust_6', 'No Rushing, No Waiting') }}
-                        </span>
-                    </div>
-
-                </div>
-            </div>
-            <div class="search-bar-section hero-search">
-                <SearchBar class="searchbar-in-header search-bar-animation" :simple="true" />
-            </div>
-        </section>
+        <WelcomeHero
+            :hero-badge="heroBadge"
+            :animated-tagline="animatedTagline"
+            :hero-subtitle="heroSubtitle"
+            :displayed-text="displayedText"
+            :hero-image="heroImageSource"
+            :trust-items="heroTrustItems"
+        />
 
 
 
@@ -973,9 +886,11 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
 }
 
 .blog-featured-img img {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center;
     transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1082,7 +997,10 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
 }
 
 .blog-card {
-    display: flex;
+    --blog-card-media-width: 200px;
+    --blog-card-height: 184px;
+    display: grid;
+    grid-template-columns: var(--blog-card-media-width) minmax(0, 1fr);
     gap: 0;
     background: #ffffff;
     border-radius: 0.75rem;
@@ -1092,6 +1010,8 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(21, 59, 79, 0.04);
     border: 1px solid transparent;
+    min-height: var(--blog-card-height);
+    height: var(--blog-card-height);
 }
 
 .blog-card:hover {
@@ -1119,15 +1039,21 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
 }
 
 .blog-card-img {
-    width: 200px;
-    flex-shrink: 0;
+    position: relative;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
+    background: #eef4f7;
 }
 
 .blog-card-img img {
+    position: absolute;
+    inset: 0;
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center;
     transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1140,8 +1066,8 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
     flex-direction: column;
     justify-content: center;
     gap: 10px;
-    flex: 1;
     min-width: 0;
+    overflow: hidden;
     padding: 20px;
 }
 
@@ -1203,12 +1129,19 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
 
 /* Blog Responsive */
 @media (max-width: 1024px) {
-    .blog-card-img {
-        width: 160px;
+    .blog-card {
+        --blog-card-media-width: 160px;
+        --blog-card-height: 168px;
     }
+
+    .blog-card-img {
+        width: 100%;
+    }
+
     .blog-card-title {
         font-size: 1rem;
     }
+
     .blog-card-excerpt {
         display: none;
     }
@@ -1231,10 +1164,17 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
     .blog-featured-excerpt {
         display: none;
     }
-    .blog-card-img {
-        width: 40%;
-        min-height: 120px;
+
+    .blog-card {
+        --blog-card-media-width: 40%;
+        --blog-card-height: 152px;
     }
+
+    .blog-card-img {
+        width: 100%;
+        min-height: 0;
+    }
+
     .blog-card-body {
         padding: 16px;
     }
@@ -1253,9 +1193,14 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
     .blog-featured {
         min-height: 320px;
     }
+
+    .blog-card {
+        --blog-card-media-width: 35%;
+        --blog-card-height: 132px;
+    }
+
     .blog-card-img {
-        width: 35%;
-        min-height: 100px;
+        width: 100%;
     }
 }
 
@@ -1322,457 +1267,4 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
     transform: scale(1.01);
     filter: brightness(0.8);
 }
-
-.hero {
-    position: relative;
-    overflow: visible;
-    padding: 2.6rem 0 7.2rem;
-    background: radial-gradient(circle at 14% 18%, rgba(46, 167, 173, 0.28), transparent 55%),
-        radial-gradient(circle at 78% 12%, rgba(255, 236, 206, 0.26), transparent 45%),
-        linear-gradient(132deg, #122a3a 0%, #1a3f53 48%, #102531 100%);
-}
-
-.hero::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 30% 12%, rgba(255, 255, 255, 0.16), transparent 48%),
-        radial-gradient(circle at 70% 75%, rgba(46, 167, 173, 0.18), transparent 60%);
-    opacity: 0.8;
-    pointer-events: none;
-}
-
-.hero::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(circle at 76% 18%, rgba(255, 255, 255, 0.16), transparent 48%),
-        url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 120C40 120 60 90 100 90C140 90 160 120 200 120' stroke='rgba(255,255,255,0.05)' stroke-width='1'/%3E%3Cpath d='M0 150C40 150 60 120 100 120C140 120 160 150 200 150' stroke='rgba(255,255,255,0.03)' stroke-width='1'/%3E%3Cpath d='M0 60C40 60 60 30 100 30C140 30 160 60 200 60' stroke='rgba(255,255,255,0.04)' stroke-width='1'/%3E%3C/svg%3E");
-    opacity: 0.3;
-    pointer-events: none;
-}
-
-.hero-bg-image {
-    position: absolute;
-    top: -8%;
-    right: -6%;
-    width: 60%;
-    height: 120%;
-    background-size: cover;
-    background-position: center right;
-    opacity: 0.5;
-    filter: saturate(1.08) contrast(1.02);
-    mix-blend-mode: normal;
-    pointer-events: none;
-}
-
-.hero-bg-image::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, rgba(10, 30, 42, 0.72) 0%, rgba(10, 30, 42, 0.28) 45%, rgba(10, 30, 42, 0) 100%),
-        linear-gradient(180deg, rgba(10, 30, 42, 0.68) 0%, rgba(10, 30, 42, 0) 40%, rgba(10, 30, 42, 0) 60%, rgba(10, 30, 42, 0.68) 100%);
-}
-
-.hero-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(0px);
-    opacity: 0.6;
-    mix-blend-mode: screen;
-    pointer-events: none;
-}
-
-.hero-orb.orb-1 {
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(46, 167, 173, 0.38), transparent 70%);
-    top: -80px;
-    left: 8%;
-}
-
-.hero-orb.orb-2 {
-    width: 210px;
-    height: 210px;
-    background: radial-gradient(circle, rgba(255, 214, 168, 0.22), transparent 70%);
-    bottom: 12%;
-    right: 16%;
-}
-
-.hero-bubble {
-    position: absolute;
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, rgb(255 255 255 / 10%), rgba(46, 167, 173, 0.05));
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 14px 30px rgba(5, 15, 24, 0.28);
-    pointer-events: none;
-    animation: floatBubble 10s ease-in-out infinite;
-}
-
-.hero-bubble.bubble-1 {
-    width: 120px;
-    height: 120px;
-    top: 18%;
-    right: 16%;
-    animation-delay: 0.2s;
-}
-
-.hero-bubble.bubble-2 {
-    width: 90px;
-    height: 90px;
-    bottom: 14%;
-    left: 8%;
-    animation-delay: 1s;
-}
-
-.hero-bubble.bubble-3 {
-    width: 70px;
-    height: 70px;
-    top: 55%;
-    right: 6%;
-    animation-delay: 1.6s;
-}
-
-.hero-bubble.bubble-4 {
-    width: 100px;
-    height: 100px;
-    top: 8%;
-    left: 22%;
-    animation-delay: 0.6s;
-}
-
-.hero-bubble.bubble-5 {
-    width: 80px;
-    height: 80px;
-    bottom: 26%;
-    right: 28%;
-    animation-delay: 2.2s;
-}
-
-@keyframes floatBubble {
-
-    0%,
-    100% {
-        transform: translateY(0) translateX(0);
-    }
-
-    50% {
-        transform: translateY(-14px) translateX(8px);
-    }
-}
-
-.hero-wrapper {
-    max-width: none;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2.5rem;
-    position: relative;
-    z-index: 1;
-    align-items: stretch;
-    justify-items: start;
-}
-
-.hero-left {
-    padding: 3.6rem 0 3.4rem;
-    border-radius: 32px;
-    border: none;
-    position: relative;
-    overflow: hidden;
-    background: none;
-    backdrop-filter: none;
-    box-shadow: none;
-    max-width: 680px;
-    width: 100%;
-}
-
-.hero-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.26);
-    border-radius: 999px;
-    padding: 0.45rem 0.95rem;
-    font-size: 0.8rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: #f1e7d6;
-    font-weight: 600;
-    margin-bottom: 1.6rem;
-    position: relative;
-    z-index: 1;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-.hero-title {
-    font-size: clamp(2.7rem, 4.2vw, 4rem);
-    line-height: 1.08;
-    color: #f9f4ec;
-    margin-bottom: 1.6rem;
-    position: relative;
-    z-index: 1;
-    letter-spacing: -0.01em;
-    text-shadow: 0 24px 60px rgba(2, 10, 16, 0.45);
-}
-
-.hero-title .anim-title-word {
-    color: #f0d7ad;
-}
-
-.hero-subtitle {
-    font-size: 1.08rem;
-    color: rgba(240, 234, 224, 0.82);
-    max-width: 28rem;
-    line-height: 1.65;
-    margin-bottom: 1.9rem;
-    position: relative;
-    z-index: 1;
-}
-
-.hero-typewriter {
-    display: inline-flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.8rem 1.35rem;
-    border-radius: 999px;
-    background: rgba(8, 22, 32, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #f1e7d6;
-    font-size: 0.98rem;
-    position: relative;
-    z-index: 1;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 12px 24px rgba(5, 14, 22, 0.28);
-    min-height: 2.6rem;
-}
-
-.hero-typewriter::before {
-    content: "";
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: #f0d7ad;
-    box-shadow: 0 0 0 6px rgba(240, 215, 173, 0.28);
-    position: relative;
-    z-index: 1;
-    animation: premiumPulse 2.4s ease-in-out infinite;
-}
-
-.hero-typewriter::after {
-    content: none;
-}
-
-@keyframes premiumPulse {
-    0% {
-        background: #f0d7ad;
-        box-shadow: 0 0 0 6px rgba(240, 215, 173, 0.25);
-        opacity: 0.9;
-    }
-
-    50% {
-        background: #2ea7ad;
-        box-shadow: 0 0 0 8px rgba(46, 167, 173, 0.25);
-        opacity: 1;
-    }
-
-    100% {
-        background: #f0d7ad;
-        box-shadow: 0 0 0 6px rgba(240, 215, 173, 0.25);
-        opacity: 0.9;
-    }
-}
-
-.hero-typewriter .typewriter-text {
-    display: inline-block;
-    min-width: 24ch;
-    white-space: nowrap;
-}
-
-.hero-trust {
-    display: flex;
-    gap: 1.35rem;
-    flex-wrap: wrap;
-    margin-top: 2.6rem;
-    color: rgba(229, 223, 212, 0.7);
-    font-size: 0.93rem;
-    position: relative;
-    z-index: 1;
-}
-
-.hero-trust span {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.hero-trust svg {
-    width: 18px;
-    height: 18px;
-    color: #e8d7c0;
-    flex-shrink: 0;
-}
-
-/* SearchBar in Hero (match SearchResults header style) */
-.searchbar-in-header :deep(.full-w-container) {
-    padding-bottom: 0 !important;
-}
-
-.searchbar-in-header :deep(.search_bar) {
-    background: transparent !important;
-    border: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-}
-
-.searchbar-in-header :deep(.search_bar > .flex > .column:first-child) {
-    display: none !important;
-}
-
-.searchbar-in-header :deep(.search_bar > .flex > .column:last-child) {
-    width: 100% !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-}
-
-.searchbar-in-header :deep(.search_bar form) {
-    background: transparent !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 1rem;
-    align-items: end;
-}
-
-.searchbar-in-header :deep(.search_bar form input),
-.searchbar-in-header :deep(.search_bar form select) {
-    background: white !important;
-}
-
-.searchbar-in-header :deep(label) {
-    display: none;
-}
-
-.hero-search {
-    max-width: none;
-    margin: 2.8rem auto 0;
-    position: relative;
-    z-index: 10;
-}
-
-@media (max-width: 768px) {
-    .hero-search {
-        margin-top: 4rem;
-        padding: 0;
-    }
-    .hero-typewriter {
-        font-size: 0.75em;
-    }
-}
-
-@media (max-width: 768px) {
-    .hero-search .search_bar,
-    .hero-search :deep(.search_bar) {
-        border-radius: 0 !important;
-    }
-}
-
-@media (max-width: 900px) {
-    .hero {
-        padding: 1.5rem 0vw 2rem;
-    }
-
-    .hero-wrapper {
-        max-width: 100%;
-    }
-
-    .hero-left {
-        padding: 3rem 2.4rem 3rem;
-        border-radius: 0;
-    }
-
-    .hero-title {
-        font-size: clamp(2.2rem, 5vw, 3rem);
-    }
-
-    .hero-subtitle {
-        max-width: 100%;
-    }
-
-    .hero-trust {
-        gap: 1rem;
-        font-size: 0.9rem;
-    }
-
-    .hero-bubble.bubble-1 {
-        width: 100px;
-        height: 100px;
-        right: 10%;
-    }
-
-    .hero-bubble.bubble-4 {
-        width: 85px;
-        height: 85px;
-        left: 12%;
-    }
-
-    .hero-bg-image {
-        width: 100%;
-        height: 70%;
-        top: 30%;
-        right: 0;
-        opacity: 0.22;
-    }
-
-
-}
-
-@media (max-width: 600px) {
-    .hero {
-        background-image: linear-gradient(135deg, rgba(12, 40, 56, 0.82), rgba(12, 40, 56, 0.52)),
-            var(--hero-image);
-        background-size: cover;
-        background-position: center;
-    }
-
-    .hero-left {
-        padding: 3.4rem 0 0;
-        max-width: none;
-    }
-
-    .hero-trust {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem 1rem;
-    }
-
-    .hero-trust span {
-        flex: 0 0 calc(50% - 0.5rem);
-    }
-
-    .hero-title {
-        font-size: clamp(2rem, 8vw, 2.6rem);
-    }
-
-
-
-
-    .hero-bubble.bubble-2 {
-        width: 70px;
-        height: 70px;
-        left: 4%;
-    }
-
-    .hero-bubble.bubble-3 {
-        width: 60px;
-        height: 60px;
-        right: 4%;
-    }
-}
 </style>
-    .hero-bg-image {
-        display: none;
-    }

@@ -12,7 +12,7 @@ class NewsletterSubscriptionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'email' => 'required|email:rfc,dns|max:254',
+            'email' => 'required|email:rfc|max:254',
             'source' => 'nullable|string|max:50',
             'locale' => 'nullable|string|in:en,fr,nl,es,ar',
         ]);

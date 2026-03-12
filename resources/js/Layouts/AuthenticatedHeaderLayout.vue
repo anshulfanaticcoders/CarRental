@@ -432,6 +432,9 @@ const isWelcomeRoute = computed(() => {
   return path === `/${currentLocale.value}` || path === `/${currentLocale.value}/` || path === '/';
 });
 
+// Transparent header on Welcome page hero
+const heroTransparent = computed(() => isWelcomeRoute.value);
+
 const handleNavClick = (event, targetId) => {
   if (!isWelcomeRoute.value) return;
   event.preventDefault();
@@ -464,17 +467,22 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
 </script>
 
 <template>
-  <header class="border-b border-gray-200 shadow-sm bg-white relative z-40">
+  <header
+    class="z-40"
+    :class="isWelcomeRoute
+      ? 'hero-header-transparent absolute top-0 left-0 right-0'
+      : 'relative border-b border-gray-200 shadow-sm bg-white'"
+  >
     <div class="full-w-container mx-auto">
       <div class="flex items-center justify-between h-16 md:h-20 gap-4">
         <div class="flex-shrink-0">
           <Link :href="route('welcome', { locale: page.props.locale })"
             class="block w-32 md:w-40 transition-transform hover:opacity-80">
-            <ApplicationLogo class="w-full h-auto" />
+            <ApplicationLogo class="w-full h-auto" :logo-color="heroTransparent ? '#ffffff' : '#153B4F'" />
           </Link>
         </div>
 
-        <nav v-if="isWelcomeRoute" class="hidden lg:flex items-center gap-8 font-medium text-gray-700">
+        <nav v-if="isWelcomeRoute" class="hidden lg:flex items-center gap-8 font-medium" :class="heroTransparent ? 'text-white/90' : 'text-gray-700'">
           <button v-for="item in middleNavItems" :key="item.id" type="button" class="header-nav-link"
             @click="handleNavClick($event, item.id)">
             {{ item.label }}
@@ -487,7 +495,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
               @click="showingNotificationDropdown = !showingNotificationDropdown; markAllAsRead()"
               class="bell-minimal relative"
               :class="{ 'ripple-effect': unreadCount > 0 }">
-              <img :src="bellIcon" alt="Notifications" class="w-5 h-5">
+              <img :src="bellIcon" alt="Notifications" class="w-5 h-5" :class="{ 'brightness-0 invert': heroTransparent }">
               <span v-if="unreadCount > 0"
                 class="bell-badge absolute inline-flex items-center justify-center text-xs font-bold leading-none text-white bg-red-600 rounded-full">{{
                   unreadCount }}</span>
@@ -528,7 +536,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
                 <button type="button" class="header-icon-trigger is-labeled" :disabled="currencyLoading"
                   aria-label="Change currency">
                   <img :src="moneyExchangeSymbol" alt="" class="w-5 h-5"
-                    :class="{ 'opacity-60': currencyLoading }">
+                    :class="[{ 'opacity-60': currencyLoading }, heroTransparent ? 'brightness-0 invert' : '']">
                   <span class="header-trigger-label" :class="{ 'opacity-60': currencyLoading }">
                     {{ formatCurrencyTriggerDisplay(selectedCurrency) }}
                   </span>
@@ -1276,5 +1284,83 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
   .offcanvas-panel {
     width: 380px;
   }
+}
+
+/* Glassmorphism header over hero — uses ::before to avoid
+   creating a containing block that breaks fixed children
+   (offcanvas, floating icons) */
+.hero-header-transparent {
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.hero-header-transparent::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 22, 32, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.hero-header-transparent .header-nav-link {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.hero-header-transparent .header-nav-link:hover,
+.hero-header-transparent .header-nav-link:focus-visible {
+  color: #ffffff;
+}
+
+.hero-header-transparent .header-nav-link::after {
+  background: #ffffff;
+}
+
+.hero-header-transparent .header-icon-trigger {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.hero-header-transparent .header-icon-trigger:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.hero-header-transparent .header-trigger-label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.hero-header-transparent .menu-toggle {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.hero-header-transparent .menu-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.hero-header-transparent .menu-bar {
+  background: #ffffff;
+}
+
+.hero-header-transparent .bell-minimal {
+  color: #ffffff;
+}
+
+.hero-header-transparent .bell-minimal:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 </style>

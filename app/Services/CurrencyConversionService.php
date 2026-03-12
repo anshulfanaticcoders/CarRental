@@ -232,7 +232,11 @@ class CurrencyConversionService
      */
     private function normalizeCurrencyCode(string $currency): string
     {
-        // Map common currency symbols to ISO codes
+        $raw = trim($currency);
+        if ($raw === '') {
+            return 'USD';
+        }
+
         $symbolToCode = [
             '$' => 'USD',
             '€' => 'EUR',
@@ -257,38 +261,44 @@ class CurrencyConversionService
             '؋' => 'AFN',
             '₸' => 'KZT',
             '₼' => 'AZN',
-            '€' => 'EUR',
-            // Common currency code variations
-            'R' => 'ZAR', // South African Rand
-            'RM' => 'MYR', // Malaysian Ringgit
-            'C$' => 'CAD', // Canadian Dollar
-            'A$' => 'AUD', // Australian Dollar
-            'HK$' => 'HKD', // Hong Kong Dollar
-            'S$' => 'SGD', // Singapore Dollar
-            'NZ$' => 'NZD', // New Zealand Dollar
-            'Fr' => 'CHF', // Swiss Franc
+            'R' => 'ZAR',
+            'RM' => 'MYR',
+            'C$' => 'CAD',
+            'A$' => 'AUD',
+            'HK$' => 'HKD',
+            'S$' => 'SGD',
+            'NZ$' => 'NZD',
+            'FR' => 'CHF',
+            'د.إ' => 'AED',
         ];
 
-        // Remove whitespace and convert to uppercase
-        $currency = trim($currency);
-
-        // Check if it's already a valid 3-letter ISO code
-        if (strlen($currency) === 3 && ctype_alpha($currency)) {
-            return strtoupper($currency);
+        if (isset($symbolToCode[$raw])) {
+            return $symbolToCode[$raw];
         }
 
-        // Check if it's a known symbol
-        if (isset($symbolToCode[$currency])) {
-            return $symbolToCode[$currency];
+        $upper = strtoupper($raw);
+        $aliasToCode = [
+            'EURO' => 'EUR',
+            'TL' => 'TRY',
+            'US$' => 'USD',
+            'USD$' => 'USD',
+            'RMB' => 'CNY',
+        ];
+
+        if (isset($aliasToCode[$upper])) {
+            return $aliasToCode[$upper];
         }
 
-        // Log warning for unknown currency
+        if (strlen($upper) === 3 && ctype_alpha($upper)) {
+            return $upper;
+        }
+
         Log::warning('Unknown currency symbol, defaulting to USD', [
-            'original_currency' => $currency,
-            'normalized_currency' => 'USD'
+            'original_currency' => $raw,
+            'normalized_currency' => 'USD',
         ]);
 
-        return 'USD'; // Default fallback
+        return 'USD';
     }
 
     /**

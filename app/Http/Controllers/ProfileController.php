@@ -12,6 +12,7 @@ use Illuminate\Http\Request; // Make sure to import this
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\DB;
@@ -83,7 +84,10 @@ class ProfileController extends Controller
             $userFields = ['first_name', 'last_name', 'email', 'phone'];
             $userInput = array_intersect_key($validated, array_flip($userFields));
 
-            if ($user->isDirty('email')) {
+            if (
+                array_key_exists('email', $userInput)
+                && strtolower((string) $userInput['email']) !== strtolower((string) $user->email)
+            ) {
                 $userInput['email_verified_at'] = null;
             }
 
@@ -93,22 +97,26 @@ class ProfileController extends Controller
             $profileFields = array_diff(array_keys($validated), $userFields);
             $profileInput = array_intersect_key($validated, array_flip($profileFields));
 
-            $user->profile()->updateOrCreate(
-                ['user_id' => $user->id],
-                $profileInput
-            );
+            if (!empty($profileInput)) {
+                $user->profile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    $profileInput
+                );
+            }
 
             DB::commit();
 
             // Log the activity
             ActivityLogHelper::logActivity('update', 'User Updates Profile', $user, $request);
-            return Redirect::route('profile.edit')
+            $locale = $request->route('locale') ?? config('app.fallback_locale', 'en');
+
+            return Redirect::route('profile.edit', ['locale' => $locale])
                 ->with('status', 'Profile updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('success', 'Profile updated successfully!');
+            return back()->withErrors(['error' => 'Failed to update profile. Please try again.']);
         }
     }
 
@@ -139,6 +147,9 @@ class ProfileController extends Controller
             ActivityLogHelper::logActivity('delete', 'User Deleted', $user, $request);
             return Redirect::to('/');
 
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
 

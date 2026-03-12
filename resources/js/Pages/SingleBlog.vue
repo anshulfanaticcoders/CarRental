@@ -235,24 +235,10 @@
                 <aside class="hidden lg:block">
                     <div class="sticky top-8 space-y-8">
 
-                        <!-- Reading Progress -->
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Reading Progress</span>
-                                <span class="text-xs font-bold text-cyan-600">{{ Math.round(readingProgress) }}%</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-1.5">
-                                <div
-                                    class="bg-cyan-500 h-1.5 rounded-full transition-all duration-150 ease-out"
-                                    :style="{ width: readingProgress + '%' }"
-                                ></div>
-                            </div>
-                        </div>
-
                         <!-- Table of Contents -->
                         <div v-if="tocItems.length > 0">
                             <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">In This Article</h3>
-                            <nav>
+                            <nav class="max-h-[60vh] overflow-y-auto">
                                 <ul class="space-y-1.5">
                                     <li
                                         v-for="item in tocItems"
