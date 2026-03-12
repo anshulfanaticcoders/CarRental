@@ -20,7 +20,11 @@ class PriceVerificationService
         $priceMap = [];
 
         foreach ($vehicles as $vehicle) {
-            $vehicleId = $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? $vehicle['unified_location_id'] ?? null;
+            $vehicleId = $vehicle['id']
+                ?? $vehicle['gateway_vehicle_id']
+                ?? $vehicle['provider_vehicle_id']
+                ?? $vehicle['unified_location_id']
+                ?? null;
             if (!$vehicleId) {
                 continue;
             }
@@ -34,9 +38,11 @@ class PriceVerificationService
             $priceData = [
                 'vehicle_id' => $vehicleId,
                 'provider' => $vehicle['source'] ?? 'unknown',
-                'original_total' => $vehicle['total'] ?? null,
-                'original_daily_rate' => $vehicle['daily_rate'] ?? null,
+                // Gateway vehicles use total_price/price_per_day while legacy uses total/daily_rate.
+                'original_total' => $vehicle['total'] ?? ($vehicle['total_price'] ?? null),
+                'original_daily_rate' => $vehicle['daily_rate'] ?? ($vehicle['price_per_day'] ?? null),
                 'products' => $vehicle['products'] ?? [],
+                'extras' => $vehicle['extras'] ?? ($vehicle['options'] ?? []),
                 'price_per_day' => $vehicle['price_per_day'] ?? null,
                 'currency' => $vehicle['currency'] ?? 'EUR',
                 'stored_at' => now()->toIso8601String(),
@@ -74,7 +80,11 @@ class PriceVerificationService
      */
     public function verifyPrices(string $searchSessionId, array $vehicleData): array
     {
-        $vehicleId = $vehicleData['id'] ?? $vehicleData['provider_vehicle_id'] ?? $vehicleData['unified_location_id'] ?? null;
+        $vehicleId = $vehicleData['id']
+            ?? $vehicleData['gateway_vehicle_id']
+            ?? $vehicleData['provider_vehicle_id']
+            ?? $vehicleData['unified_location_id']
+            ?? null;
         $clientSentHash = $vehicleData['price_hash'] ?? null;
 
         if (!$vehicleId) {
@@ -120,7 +130,7 @@ class PriceVerificationService
         }
 
         // Verify total price matches (with small tolerance for rounding)
-        $clientTotal = $vehicleData['total'] ?? null;
+        $clientTotal = $vehicleData['total'] ?? ($vehicleData['total_price'] ?? null);
         $storedTotal = $storedData['original_total'];
 
         if ($clientTotal !== null && $storedTotal !== null) {
@@ -241,45 +251,83 @@ class PriceVerificationService
      */
     public function verifyExtrasPrices(array $clientExtras, array $storedData): array
     {
-        // For each extra sent by client, verify the price matches our records
+        $result = $this->verifyAndResolveExtras($clientExtras, $storedData);
+
+        return [
+            'valid' => $result['valid'],
+            'error' => $result['error'] ?? null,
+        ];
+    }
+
+    public function verifyAndResolveExtras(array $clientExtras, array $storedData): array
+    {
+        $resolvedExtras = [];
+
         foreach ($clientExtras as $extra) {
-            $extraId = $extra['id'] ?? $extra['option_id'] ?? $extra['code'] ?? null;
-            $clientPrice = $extra['total_for_booking'] ?? $extra['daily_rate'] ?? $extra['price'] ?? null;
+            if (!is_array($extra)) {
+                continue;
+            }
 
-            if ($extraId && $clientPrice !== null) {
-                // Look for this extra in stored data
-                $storedExtra = collect($storedData['extras'] ?? [])
-                    ->first(fn($e) =>
-                        ($e['id'] ?? $e['option_id'] ?? $e['code']) === $extraId
-                    );
+            $extraId = $this->resolveExtraIdentifier($extra);
+            if ($extraId === null) {
+                return [
+                    'valid' => false,
+                    'error' => 'Price verification failed: Invalid extra selection.',
+                ];
+            }
 
-                if ($storedExtra) {
-                    $storedPrice = $storedExtra['total_for_booking'] ?? $storedExtra['daily_rate'] ?? $storedExtra['price'] ?? null;
+            $storedExtra = collect($storedData['extras'] ?? [])
+                ->first(fn($candidate) => $this->resolveExtraIdentifier($candidate) === $extraId);
 
-                    if ($storedPrice !== null) {
-                        $difference = abs((float) $clientPrice - (float) $storedPrice);
-                        // Allow 5% tolerance for currency conversion variations
-                        $tolerance = max(0.01, (float) $storedPrice * 0.05);
+            if (!$storedExtra) {
+                Log::warning('Price manipulation detected - unknown selected extra', [
+                    'extra_id' => $extraId,
+                    'available_extra_ids' => collect($storedData['extras'] ?? [])
+                        ->map(fn($candidate) => $this->resolveExtraIdentifier($candidate))
+                        ->filter()
+                        ->values()
+                        ->all(),
+                ]);
 
-                        if ($difference > $tolerance) {
-                            Log::warning('Price manipulation detected - extra price mismatch', [
-                                'extra_id' => $extraId,
-                                'expected_price' => $storedPrice,
-                                'received_price' => $clientPrice,
-                                'difference' => $difference,
-                            ]);
+                return [
+                    'valid' => false,
+                    'error' => 'Price verification failed: Selected extra is no longer available.',
+                ];
+            }
 
-                            return [
-                                'valid' => false,
-                                'error' => 'Price verification failed: Extra price mismatch detected.',
-                            ];
-                        }
-                    }
+            $clientPrice = $this->resolveExtraReferencePrice($extra);
+            $storedPrice = $this->resolveExtraReferencePrice($storedExtra);
+
+            if ($clientPrice !== null && $storedPrice !== null) {
+                $difference = abs((float) $clientPrice - (float) $storedPrice);
+                $tolerance = max(0.01, (float) $storedPrice * 0.05);
+
+                if ($difference > $tolerance) {
+                    Log::warning('Price manipulation detected - extra price mismatch', [
+                        'extra_id' => $extraId,
+                        'expected_price' => $storedPrice,
+                        'received_price' => $clientPrice,
+                        'difference' => $difference,
+                    ]);
+
+                    return [
+                        'valid' => false,
+                        'error' => 'Price verification failed: Extra price mismatch detected.',
+                    ];
                 }
             }
+
+            $quantity = max(1, (int) ($extra['qty'] ?? $extra['quantity'] ?? 1));
+            $resolvedExtras[] = array_merge($storedExtra, [
+                'qty' => $quantity,
+                'quantity' => $quantity,
+            ]);
         }
 
-        return ['valid' => true];
+        return [
+            'valid' => true,
+            'extras' => $resolvedExtras,
+        ];
     }
 
     /**
@@ -290,5 +338,37 @@ class PriceVerificationService
         if ($vehicleId) {
             Cache::forget($this->getPriceCacheKey($searchSessionId, $vehicleId));
         }
+    }
+
+    private function resolveExtraIdentifier(array $extra): ?string
+    {
+        $identifier = $extra['id']
+            ?? $extra['option_id']
+            ?? $extra['optionID']
+            ?? $extra['extra_id']
+            ?? $extra['extraId']
+            ?? $extra['code']
+            ?? null;
+
+        if ($identifier === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $identifier);
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    private function resolveExtraReferencePrice(array $extra): ?float
+    {
+        $raw = $extra['total_for_booking']
+            ?? $extra['Total_for_this_booking']
+            ?? $extra['total_for_this_booking']
+            ?? $extra['daily_rate']
+            ?? $extra['dailyRate']
+            ?? $extra['price']
+            ?? $extra['amount']
+            ?? null;
+
+        return $raw !== null ? (float) $raw : null;
     }
 }

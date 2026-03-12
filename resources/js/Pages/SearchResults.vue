@@ -44,6 +44,9 @@ import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
 
 import { useCurrency } from '@/composables/useCurrency';
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
+import { resolveProviderMarkupRate } from '@/utils/platformPricing';
+import { resolveSearchCurrency } from '@/utils/searchCurrency';
+import { computeVehicleDisplayDailyPrice } from '@/utils/vehicleSearchPricing';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -58,11 +61,7 @@ const { convertPrice, fetchExchangeRates } = useCurrencyConversion();
 const page = usePage();
 
 const providerMarkupRate = computed(() => {
-    const rawRate = parseFloat(page.props.provider_markup_rate ?? '');
-    if (Number.isFinite(rawRate) && rawRate >= 0) return rawRate;
-    const rawPercent = parseFloat(page.props.provider_markup_percent ?? '');
-    if (Number.isFinite(rawPercent) && rawPercent >= 0) return rawPercent / 100;
-    return 0.15;
+    return resolveProviderMarkupRate(page.props);
 });
 
 // Active promo from backend (shared via HandleInertiaRequests)
@@ -185,6 +184,9 @@ const props = defineProps({
     // Price verification props
     search_session_id: String, // Unique session ID for price verification
     price_map: Object, // Map of vehicle_id => {price_hash, vehicle_id_hash}
+    via_gateway: { type: Boolean, default: false },
+    gateway_search_id: { type: String, default: null },
+    gateway_response_time_ms: { type: Number, default: null },
 });
 
 const formatProviderLabel = (value) => {
@@ -224,12 +226,15 @@ const termsCountryId = ref(null);
 // Initialize with 15% as default to prevent "Pay 0" bug - will be updated from API
 const paymentPercentage = ref(15);
 
-const fetchLocationDetails = async (locationId) => {
+let locationFetchId = 0; // Guard against stale async responses
+const fetchLocationDetails = async (locationId, provider = 'greenmotion') => {
     if (!locationId) return;
+    const fetchId = ++locationFetchId;
     try {
         const response = await axios.get(route('green-motion-locations'), {
-            params: { location_id: locationId }
+            params: { location_id: locationId, provider }
         });
+        if (fetchId !== locationFetchId) return; // Stale response, discard
         if (response.data) {
             locationDetails.value = response.data;
             locationInstructions.value = response.data.collection_details || null;
@@ -238,6 +243,7 @@ const fetchLocationDetails = async (locationId) => {
             locationInstructions.value = null;
         }
     } catch (error) {
+        if (fetchId !== locationFetchId) return;
         console.error("Error fetching location details:", error);
         locationInstructions.value = null;
         locationDetails.value = null;
@@ -308,9 +314,6 @@ const scrollToSection = async (id) => {
 
 
 const handlePackageSelection = (event) => {
-    // Event contains { vehicle, package, protection_code }
-    console.log('Package Selected:', event);
-
     // Attach price_hash from price_map to vehicle for verification
     const vehicleWithPriceHash = { ...event.vehicle };
     if (props.price_map && event.vehicle) {
@@ -326,14 +329,18 @@ const handlePackageSelection = (event) => {
     selectedProtectionCode.value = event.protection_code || null;
     bookingStep.value = 'extras';
 
-    // Fetch location details if GreenMotion
+    // Clear previous location state immediately to prevent leaking across providers
+    locationInstructions.value = null;
+    locationDetails.value = null;
+    driverRequirements.value = null;
+    termsData.value = null;
+    termsCountryId.value = null;
+
+    // Fetch location details if GreenMotion/USave
     if (event.vehicle.source === 'greenmotion' || event.vehicle.source === 'usave') {
         const locId = event.vehicle.location_id;
         if (locId) {
-            fetchLocationDetails(locId);
-        } else {
-            locationInstructions.value = null;
-            locationDetails.value = null;
+            fetchLocationDetails(locId, event.vehicle.source);
         }
         resolveGreenMotionRequirements();
     } else if (event.vehicle.location_details) {
@@ -341,15 +348,6 @@ const handlePackageSelection = (event) => {
         locationInstructions.value = event.vehicle.location_instructions
             || event.vehicle.location_details.collection_details
             || null;
-        driverRequirements.value = null;
-        termsData.value = null;
-        termsCountryId.value = null;
-    } else {
-        locationInstructions.value = null;
-        locationDetails.value = null;
-        driverRequirements.value = null;
-        termsData.value = null;
-        termsCountryId.value = null;
     }
 
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -361,13 +359,15 @@ const handleBackToResults = () => {
     selectedVehicle.value = null;
     selectedPackage.value = null;
     selectedProtectionCode.value = null;
+    locationFetchId++; // Cancel any in-flight location fetch
+    locationDetails.value = null;
+    locationInstructions.value = null;
     nextTick(() => window.scrollTo({ top: savedScrollPosition, behavior: 'instant' }));
 };
 
 const selectedCheckoutData = ref(null);
 
 const handleProceedToCheckout = (data) => {
-    // console.log('Proceed to Checkout:', data);
     const vehicleTotal = data.vehicle_total ?? selectedVehicle.value?.total_price ?? 0;
     selectedCheckoutData.value = {
         ...data,
@@ -455,7 +455,10 @@ const form = useForm({
     end_time: usePage().props.filters?.end_time || '09:00',
     age: usePage().props.filters?.age || 35,
     rentalCode: usePage().props.filters?.rentalCode || '1',
-    currency: usePage().props.filters?.currency || null,
+    currency: resolveSearchCurrency({
+        currentCurrency: usePage().props.filters?.currency,
+        selectedCurrency: selectedCurrency.value,
+    }),
     fuel: usePage().props.filters?.fuel || null,
     userid: usePage().props.filters?.userid || null,
     username: usePage().props.filters?.username || null,
@@ -764,58 +767,13 @@ const allVehiclesForMap = computed(() => {
     return Array.from(byId.values());
 });
 
-// Helper to get vehicle price in selected currency
-const grossUpProviderPrice = (value, vehicle) => {
-    const numeric = parseFloat(value);
-    if (!Number.isFinite(numeric)) return null;
-    // Apply 15% platform fee to ALL vehicles (including internal)
-    const rate = providerMarkupRate.value;
-    if (!Number.isFinite(rate) || rate <= 0) return numeric;
-    return numeric * (1 + rate);
-};
-
 const getVehiclePriceConverted = (vehicle) => {
-    if (!vehicle) return null;
-
-    let originalPrice = null;
-    let originalCurrency = 'USD';
-
-    // Determine price and currency based on source
-    if (vehicle.source === 'adobe' && vehicle.tdr) {
-        // For Adobe, use tdr / rental days (or use price_per_day if already calculated)
-        originalPrice = vehicle.price_per_day || (vehicle.tdr / (numberOfRentalDays.value || 1));
-        originalCurrency = 'USD';
-    } else if (vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent' || vehicle.source === 'sicily_by_car' || vehicle.source === 'recordgo' || vehicle.source === 'surprice') {
-        originalPrice = vehicle.price_per_day;
-        originalCurrency = vehicle.currency || 'USD';
-    } else if (vehicle.source === 'greenmotion' || vehicle.source === 'usave') {
-        // For GreenMotion/USave, use per-day price for consistent sorting/filtering
-        const gmTotal = parseFloat(vehicle.products?.[0]?.total || 0);
-        const days = numberOfRentalDays.value || 1;
-        originalPrice = vehicle.price_per_day || (gmTotal / days);
-        originalCurrency = vehicle.products?.[0]?.currency || 'USD';
-    } else if (vehicle.source === 'okmobility') {
-        originalPrice = vehicle.price_per_day;
-        originalCurrency = 'EUR';
-    } else if (vehicle.source === 'renteon') {
-        // For Renteon, use price_per_day or calculate from products
-        originalPrice = vehicle.price_per_day || parseFloat(vehicle.products?.[0]?.total || 0);
-        originalCurrency = vehicle.currency || vehicle.products?.[0]?.currency || 'EUR';
-    } else if (vehicle.source === 'favrica') {
-        const days = numberOfRentalDays.value || 1;
-        originalPrice = vehicle.price_per_day || (parseFloat(vehicle.products?.[0]?.total || 0) / days);
-        originalCurrency = vehicle.currency || vehicle.products?.[0]?.currency || 'EUR';
-    } else {
-        // Internal vehicles
-        originalPrice = vehicle.price_per_day;
-        originalCurrency = vehicle.currency || vehicle.vendor_profile?.currency || 'USD';
-    }
-
-    if (originalPrice === null || isNaN(parseFloat(originalPrice))) return null;
-
-    const converted = convertCurrency(parseFloat(originalPrice), originalCurrency);
-    if (converted === null) return null;
-    return grossUpProviderPrice(converted, vehicle);
+    return computeVehicleDisplayDailyPrice({
+        vehicle,
+        rentalDays: numberOfRentalDays.value,
+        markupRate: providerMarkupRate.value,
+        convertAmount: convertCurrency,
+    });
 };
 
 // Compute dynamic min/max price range from all vehicles
@@ -1204,7 +1162,6 @@ const initMap = () => {
     L.control.zoom({ position: 'topright' }).addTo(map);
 
     if (vehicleCoords.length === 0) {
-        console.warn("No vehicles with valid coordinates to initialize map view. Setting default view.");
         map.setView([20, 0], 2);
     } else {
         const bounds = L.latLngBounds(vehicleCoords);
@@ -1258,52 +1215,9 @@ const initMap = () => {
 
 
 const createCustomIcon = (vehicle, isHighlighted = false) => {
-    let currencySymbol = '$';
+    const currencySymbol = getCurrencySymbol(selectedCurrency.value);
     let priceToDisplay = "N/A";
-    let priceValue = null;
-
-    if (vehicle.source === 'wheelsys') {
-        const originalCurrency = vehicle.currency || 'USD';
-        priceValue = convertCurrency(vehicle.price_per_day, originalCurrency);
-        currencySymbol = getCurrencySymbol(selectedCurrency.value);
-    } else if (vehicle.source !== 'internal') {
-        // Handle specific providers that don't use the standard products array structure
-        if (vehicle.source === 'adobe') {
-            const total = parseFloat(vehicle.tdr || 0);
-            priceValue = convertCurrency(total, 'USD');
-        } else if ((vehicle.source === 'wheelsys' || vehicle.source === 'locauto_rent' || vehicle.source === 'renteon' || vehicle.source === 'favrica' || vehicle.source === 'sicily_by_car' || vehicle.source === 'recordgo' || vehicle.source === 'surprice') && vehicle.price_per_day) {
-            priceValue = convertCurrency(vehicle.price_per_day, vehicle.currency || 'USD');
-        } else {
-            // For GreenMotion/USave, show total rental price
-            const currencyCode = vehicle.products?.[0]?.currency || 'USD';
-            const totalProviderPrice = parseFloat(vehicle.products?.[0]?.total || 0);
-            priceValue = convertCurrency(totalProviderPrice, currencyCode);
-        }
-        currencySymbol = getCurrencySymbol(selectedCurrency.value);
-    } else {
-        const originalCurrency = vehicle.vendor_profile?.currency || 'USD';
-        if (form.package_type === 'day' && vehicle.price_per_day) {
-            priceValue = convertCurrency(vehicle.price_per_day, originalCurrency);
-        } else if (form.package_type === 'week' && vehicle.price_per_week) {
-            priceValue = convertCurrency(vehicle.price_per_week, originalCurrency);
-        } else if (form.package_type === 'month' && vehicle.price_per_month) {
-            priceValue = convertCurrency(vehicle.price_per_month, originalCurrency);
-        } else {
-            // Fallback if no package_type is selected or price for selected type is null
-            if (vehicle.price_per_day) {
-                priceValue = convertCurrency(vehicle.price_per_day, originalCurrency);
-            } else if (vehicle.price_per_week) {
-                priceValue = convertCurrency(vehicle.price_per_week, originalCurrency);
-            } else if (vehicle.price_per_month) {
-                priceValue = convertCurrency(vehicle.price_per_month, originalCurrency);
-            }
-        }
-        currencySymbol = getCurrencySymbol(selectedCurrency.value);
-    }
-
-    if (vehicle.source !== 'internal' && priceValue !== null) {
-        priceValue = grossUpProviderPrice(priceValue, vehicle);
-    }
+    const priceValue = getVehiclePriceConverted(vehicle);
 
     if (priceValue !== null && priceValue > 0) { // Ensure priceValue is greater than 0
         priceToDisplay = `${currencySymbol}${parseFloat(priceValue).toFixed(2)}`;
@@ -1311,19 +1225,18 @@ const createCustomIcon = (vehicle, isHighlighted = false) => {
         priceToDisplay = "N/A"; // Explicitly set to N/A if price is 0 or null
     }
 
-    const bgColor = isHighlighted ? 'bg-black' : 'bg-white';
-    const textColor = isHighlighted ? 'text-white' : 'text-black';
+    const hlClass = isHighlighted ? ' marker-bnb-highlighted' : '';
 
     return L.divIcon({
         className: "custom-div-icon",
         html: `
-    <div class="marker-pin ${bgColor} rounded-[99px] flex justify-center p-2 shadow-md">
-      <span class="font-bold ${textColor}">${priceToDisplay}</span>
+    <div class="marker-bnb${hlClass}">
+      <div class="marker-bnb-inner">${priceToDisplay}</div>
     </div>
   `,
-        iconSize: [80, 30],
-        iconAnchor: [40, 30],
-        popupAnchor: [0, -30],
+        iconSize: [90, 42],
+        iconAnchor: [45, 42],
+        popupAnchor: [0, -42],
         pane: "markers",
     });
 };
@@ -1345,7 +1258,9 @@ const resetFilters = () => {
     tempPriceRangeValues.value = [dynamicPriceRange.value.min, dynamicPriceRange.value.max];
 
     // Reset other non-essential GreenMotion params to default
-    form.currency = null;
+    form.currency = resolveSearchCurrency({
+        selectedCurrency: selectedCurrency.value,
+    });
     form.userid = null;
     form.username = null;
     form.language = null;
@@ -1362,24 +1277,30 @@ const resetFilters = () => {
 };
 
 const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
-    // Shared content generator for consistency
     const popupName = vehicle?.source === 'okmobility'
         ? (vehicle.display_name || vehicle.group_description || vehicle.model || '')
         : `${vehicle.brand || ''} ${vehicle.model || ''}`.trim();
+
+    const ratingHtml = vehicle.source === 'internal' && vehicle.average_rating
+        ? `<div class="popup-bnb-rating"><span class="popup-bnb-star">&#9733;</span> ${vehicle.average_rating.toFixed(1)} (${vehicle.review_count} reviews)</div>`
+        : '';
+
+    const locationText = vehicle.station
+        ? vehicle.station
+        : (vehicle.full_vehicle_address || '');
+
     const content = `
-        <div class="text-center popup-content">
-            <img src="${primaryImage}" alt="${popupName}" class="popup-image !w-40 !h-20" />
-            ${vehicle.source === 'internal' && vehicle.average_rating ? `<p class="rating !w-40">${vehicle.average_rating.toFixed(1)} ★ (${vehicle.review_count} reviews)</p>` : ''}
-            <p class="font-semibold !w-40">${popupName}</p>
-            ${vehicle.sipp_code ? `<p class="!w-40 text-sm">SIPP: ${vehicle.sipp_code}</p>` : ''}
-            ${vehicle.acriss_code || vehicle.group_code ? `<p class="!w-40 text-sm">${vehicle.acriss_code || vehicle.group_code}</p>` : ''}
-            <p class="!w-40">${vehicle.full_vehicle_address || ''}</p>
-            ${vehicle.station ? `<p class="!w-40 text-sm"><strong>Station:</strong> ${vehicle.station}</p>` : ''}
-            <p class="!w-40 font-semibold">Price: ${popupPrice}</p>
-            <button onclick="window.selectVehicleFromMap('${vehicle.id}')"
-               class="text-white bg-[#153B4F] hover:bg-[#0f2936] block mt-2 px-4 py-2 rounded text-sm font-semibold w-full">
-                Book Deal
-            </button>
+        <div class="popup-bnb">
+            <img src="${primaryImage}" alt="${popupName}" class="popup-bnb-img" />
+            <div class="popup-bnb-body">
+                <div class="popup-bnb-name">${popupName}</div>
+                ${ratingHtml}
+                ${locationText ? `<div class="popup-bnb-location"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${locationText}</div>` : ''}
+                <div class="popup-bnb-footer">
+                    <div class="popup-bnb-price">${popupPrice}</div>
+                    <button onclick="window.selectVehicleFromMap('${vehicle.id}')" class="popup-bnb-btn">Book Deal</button>
+                </div>
+            </div>
         </div>
     `;
     return content;
@@ -1398,7 +1319,6 @@ const addMarkers = () => {
 
     allVehiclesForMap.value.forEach((vehicle) => {
         if (!isValidCoordinate(vehicle.latitude) || !isValidCoordinate(vehicle.longitude)) {
-            console.warn(`Skipping vehicle ID ${vehicle.id} with invalid coordinates: Lat=${vehicle.latitude}, Lng=${vehicle.longitude}`);
             return;
         }
 
@@ -1417,49 +1337,30 @@ const addMarkers = () => {
         const occurrence = dataAtCoord.count;
 
         if (occurrence > 1) {
-            const K_MAX_MARKERS_PER_RING = 8; // Max markers in one ring before increasing radius
+            const K_MAX_MARKERS_PER_RING = 10;
             const ringNum = Math.floor((occurrence - 2) / K_MAX_MARKERS_PER_RING);
             const indexInRing = (occurrence - 2) % K_MAX_MARKERS_PER_RING;
 
             const angle = indexInRing * (2 * Math.PI / K_MAX_MARKERS_PER_RING);
 
-            // Start with a more significant base radius, and increase for new "rings"
-            const baseEffectiveRadius = 0.00030; // Approx 33 meters, adjust as needed
-            const effectiveRadius = baseEffectiveRadius * (1 + ringNum * 0.65); // Increase radius for outer rings
+            const baseEffectiveRadius = 0.0012; // ~130 meters, prevents marker overlap
+            const effectiveRadius = baseEffectiveRadius * (1 + ringNum * 0.7);
 
             displayLat = lat + effectiveRadius * Math.sin(angle);
             displayLng = lng + effectiveRadius * Math.cos(angle);
         }
 
-        const primaryImage = (vehicle.source === 'greenmotion' || vehicle.source === 'wheelsys' || vehicle.source === 'adobe' || vehicle.source === 'locauto_rent') ? vehicle.image : (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
+        const primaryImage = vehicle.image || (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
         const detailRoute = vehicle.source !== 'internal'
             ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, provider: vehicle.source, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode })
             : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
 
         let popupPrice = "N/A";
         let popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
+        const popupPriceValue = getVehiclePriceConverted(vehicle);
 
-        if (vehicle.source === 'wheelsys' && vehicle.price_per_day) {
-            const originalCurrency = vehicle.currency || 'USD';
-            const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
-            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)} total`; // Display price per day (actually total)
-        } else if (vehicle.source === 'adobe' && vehicle.tdr) {
-            const convertedPrice = convertCurrency(vehicle.tdr, 'USD');
-            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)} total`; // Display total price
-        } else if (vehicle.source !== 'internal' && vehicle.products && vehicle.products[0]?.total && vehicle.products[0].total > 0) {
-            // For GreenMotion/USave, show total rental price
-            const currencyCode = vehicle.products[0]?.currency || 'USD';
-            const totalProviderPrice = parseFloat(vehicle.products[0]?.total || 0);
-            const convertedPrice = convertCurrency(totalProviderPrice, currencyCode);
-            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)} total`; // Display total price
-        } else if (vehicle.source === 'internal' && vehicle.price_per_day && vehicle.price_per_day > 0) {
-            const originalCurrency = vehicle.vendor_profile?.currency || 'USD';
-            const convertedPrice = convertCurrency(vehicle.price_per_day, originalCurrency);
-            popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
-            popupPrice = `${popupCurrencySymbol}${convertedPrice.toFixed(2)}`;
+        if (popupPriceValue !== null && popupPriceValue > 0) {
+            popupPrice = `${popupCurrencySymbol}${parseFloat(popupPriceValue).toFixed(2)}`;
         }
 
         const marker = L.marker([displayLat, displayLng], {
@@ -1489,7 +1390,6 @@ const addMarkers = () => {
         if (map && (!map.getCenter() || (map.getCenter().lat === 20 && map.getCenter().lng === 0 && map.getZoom() === 2))) {
             map.setView([20, 0], 2);
         }
-        console.warn("No vehicles with valid coordinates to fit map bounds after adding markers.");
     }
 };
 
@@ -1771,7 +1671,10 @@ const searchQuery = computed(() => {
         end_time: usePage().props.filters?.end_time || '09:00',
         age: usePage().props.filters?.age || 35,
         rentalCode: usePage().props.filters?.rentalCode || '1',
-        currency: usePage().props.filters?.currency || null,
+        currency: resolveSearchCurrency({
+            currentCurrency: usePage().props.filters?.currency,
+            selectedCurrency: selectedCurrency.value,
+        }),
         fuel: usePage().props.filters?.fuel || null,
         userid: usePage().props.filters?.userid || null,
         username: usePage().props.filters?.username || null,
@@ -1805,7 +1708,10 @@ const handleSearchUpdate = (params) => {
     form.end_time = params.end_time || '09:00';
     form.age = params.age || 35;
     form.rentalCode = params.rentalCode || '1';
-    form.currency = params.currency || null;
+    form.currency = resolveSearchCurrency({
+        currentCurrency: params.currency,
+        selectedCurrency: selectedCurrency.value,
+    });
     form.fuel = params.fuel || null;
     form.userid = params.userid || null;
     form.username = params.username || null;
@@ -2078,8 +1984,6 @@ onMounted(() => {
             });
             // Close mobile map modal if open, though handlePackageSelection scrolls up and changes step
             showMap.value = false;
-        } else {
-            console.error("Vehicle not found for map selection:", vehicleId);
         }
     };
 
@@ -2107,9 +2011,6 @@ const handleImageError = (event) => {
     if (event.target.src.includes('placeholder') || event.target.src.includes('no-vehicle') || event.target.onerror === null) {
         return;
     }
-
-    console.error('Image failed to load:', event.target.src);
-    console.error('Data URL:', event.target.dataset.imageUrl);
 
     // Set fallback image - use Wheelsys placeholder for Wheelsys vehicles
     if (event.target.dataset.imageUrl && event.target.dataset.imageUrl.includes('wheelsys')) {
@@ -2443,10 +2344,6 @@ watch(
         </div>
     </div>
 
-
-
-
-
     <!-- Main Content -->
     <div id="results-breadcrumb-section" class="main-container mx-auto px-4 py-4" v-if="bookingStep === 'results'">
         <Breadcrumb>
@@ -2470,6 +2367,7 @@ watch(
                 <button class="filters-reset" @click="resetFilters">Reset All</button>
             </div>
 
+            <div class="filters-scroll-area">
             <!-- Price Range -->
             <div class="filter-card">
                 <div class="filter-section-header" @click="toggleFilterSection('price')">
@@ -2608,6 +2506,7 @@ watch(
                         </label>
                     </div>
                 </div>
+            </div>
             </div>
         </aside>
 
@@ -2776,9 +2675,13 @@ watch(
             :dropoff-location="form.dropoff_where || form.where" :number-of-days="numberOfRentalDays"
             :currency-symbol="getCurrencySymbol(selectedCurrency)" :selected-currency-code="selectedCurrency"
             :payment-percentage="paymentPercentage" :totals="selectedCheckoutData.totals"
-            :vehicle-total="selectedCheckoutData.vehicle_total" :location-details="locationDetails"
+            :totals-currency="selectedCheckoutData.totals_currency"
+            :vehicle-total="selectedCheckoutData.vehicle_total"
+            :vehicle-total-currency="selectedCheckoutData.vehicle_total_currency"
+            :location-details="locationDetails"
             :location-instructions="locationInstructions" :driver-requirements="driverRequirements" :terms="termsData"
             :search-session-id="props.search_session_id"
+            :gateway-search-id="props.gateway_search_id"
             :selected-deposit-type="selectedCheckoutData?.selected_deposit_type || null"
             @back="handleBackToExtras" />
     </div>
@@ -2816,32 +2719,77 @@ watch(
 @import "leaflet/dist/leaflet.css";
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap');
 
-.marker-pin {
-    width: 80px;
-    /* Fixed width to match iconSize */
-    height: 30px;
-    /* background color is now controlled by Tailwind classes in HTML */
-    border: 2px solid #666;
-    border-radius: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+/* Airbnb-Style Marker Styles */
+.marker-bnb {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.15s ease;
 }
 
-.marker-pin span {
-    /* text color is now controlled by Tailwind classes in HTML */
-    font-weight: bold;
-    font-size: 11px;
-    padding: 0 4px;
+.marker-bnb-inner {
+    background: white;
+    color: #1a1a1a;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1.5px solid rgba(0, 0, 0, 0.04);
+    position: relative;
+    text-align: center;
+}
+
+.marker-bnb-inner::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 2px;
+    transform: translateX(-50%) rotate(45deg);
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.marker-bnb-inner:hover {
+    background: #153B4F;
+    color: white;
+    transform: scale(1.08);
+    box-shadow: 0 4px 16px rgba(21, 59, 79, 0.35), 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.marker-bnb-inner:hover::after {
+    background: #153B4F;
+}
+
+.marker-bnb-inner:active {
+    background: #0f2936;
+    color: white;
+    transform: scale(1.02);
+}
+
+.marker-bnb-inner:active::after {
+    background: #0f2936;
+}
+
+.marker-bnb-highlighted .marker-bnb-inner {
+    background: #153B4F;
+    color: white;
+    transform: scale(1.08);
+    box-shadow: 0 4px 16px rgba(21, 59, 79, 0.35), 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.marker-bnb-highlighted .marker-bnb-inner::after {
+    background: #153B4F;
 }
 
 .custom-div-icon {
-    background: none;
-    border: none;
+    background: none !important;
+    border: none !important;
 }
 
 /* Leaflet pane z-index overrides */
@@ -2863,6 +2811,120 @@ watch(
 
 .leaflet-popup {
     z-index: 1001 !important;
+}
+
+/* Airbnb-Style Popup Styles */
+.leaflet-popup-content-wrapper {
+    padding: 0 !important;
+    overflow: hidden;
+    border-radius: 16px !important;
+    background: white !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    border: none !important;
+}
+
+.leaflet-popup-content {
+    margin: 0 !important;
+    width: 240px !important;
+}
+
+.leaflet-popup-tip {
+    background: white !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.leaflet-popup-close-button {
+    top: 8px !important;
+    right: 8px !important;
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 18px !important;
+    line-height: 24px !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #1a1a1a !important;
+    border-radius: 50% !important;
+    text-align: center !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+}
+
+.popup-bnb {
+    font-family: 'DM Sans', sans-serif;
+}
+
+.popup-bnb-img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+}
+
+.popup-bnb-body {
+    padding: 14px 16px 16px;
+}
+
+.popup-bnb-name {
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.popup-bnb-rating {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+
+.popup-bnb-star {
+    color: #153B4F;
+}
+
+.popup-bnb-location {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.popup-bnb-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.popup-bnb-price {
+    font-family: 'Outfit', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #153B4F;
+}
+
+.popup-bnb-btn {
+    background: #153B4F;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: 100%;
+    text-align: center;
+}
+
+.popup-bnb-btn:hover {
+    background: #0f2936;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(21, 59, 79, 0.3);
 }
 
 
@@ -2964,14 +3026,7 @@ select:focus+.caret-rotate {
 
 /* Removed .marker-cluster-small styles as clustering is removed */
 
-.popup-image {
-    width: 100%;
-    height: 70px;
-    object-fit: cover;
-    border-top-left-radius: 0.5rem;
-    border-top-right-radius: 0.5rem;
-    margin-bottom: 5px;
-}
+/* .popup-image replaced by .popup-dark-img */
 
 .animate-fade-in {
     animation: fadeIn 0.2s ease-in-out;
@@ -3262,10 +3317,34 @@ h6 {
 .filters-sidebar {
     position: sticky;
     top: 90px;
-    height: fit-content;
+    max-height: calc(100vh - 110px);
     display: none;
     flex-direction: column;
+    overflow: hidden;
+}
+
+.filters-scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
+    padding-top: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.filters-scroll-area::-webkit-scrollbar {
+    width: 4px;
+}
+
+.filters-scroll-area::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+}
+
+.filters-scroll-area::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 @media (min-width: 1280px) {
@@ -3278,6 +3357,7 @@ h6 {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-shrink: 0;
 }
 
 .filters-title {
@@ -3351,6 +3431,19 @@ h6 {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+.filter-options::-webkit-scrollbar {
+    width: 3px;
+}
+
+.filter-options::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 3px;
 }
 
 .filter-checkbox {

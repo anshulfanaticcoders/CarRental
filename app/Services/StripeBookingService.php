@@ -21,6 +21,7 @@ use App\Services\CurrencyConversionService;
 use App\Services\SicilyByCarService;
 use App\Services\RecordGoService;
 use App\Services\SurpriceService;
+use App\Services\VrooemGatewayService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -284,6 +285,7 @@ class StripeBookingService
                             'booking_id' => $booking->id,
                             'extra_type' => 'optional',
                             'extra_name' => $extraItem['name'] ?? 'Unknown Extra',
+                            'provider_extra_id' => $extraItem['id'] ?? null,
                             'quantity' => (int) ($extraItem['qty'] ?? 1),
                             'price' => $price,
                         ]);
@@ -339,7 +341,10 @@ class StripeBookingService
             $shouldTriggerProvider = empty($booking->provider_booking_ref);
 
             // Phase 2: Trigger Provider Reservations
-            if ($booking->provider_source === 'locauto_rent' && $shouldTriggerProvider) {
+            // When gateway is enabled, route ALL external providers through the gateway
+            if (config('vrooem.enabled') && $booking->provider_source !== 'internal' && $shouldTriggerProvider) {
+                $this->triggerGatewayReservation($booking, $metadata);
+            } elseif ($booking->provider_source === 'locauto_rent' && $shouldTriggerProvider) {
                 $this->triggerLocautoReservation($booking, $metadata);
             } elseif (($booking->provider_source === 'greenmotion' || $booking->provider_source === 'usave') && $shouldTriggerProvider) {
                 $this->triggerGreenMotionReservation($booking, $metadata);
@@ -770,6 +775,10 @@ class StripeBookingService
                 'booking_total' => $metadata->recordgo_booking_total ?? null,
                 'automatic_complements' => $metadata->recordgo_automatic_complements ?? null,
             ],
+            'cancellation_deadline' => $metadata->cancellation_deadline ?? null,
+            'cancellation_free' => $metadata->cancellation_free ?? null,
+            'cancellation_fee' => $metadata->cancellation_fee ?? null,
+            'cancellation_fee_currency' => $metadata->cancellation_fee_currency ?? null,
             'customer_snapshot' => [
                 'name' => $metadata->customer_name ?? null,
                 'email' => $metadata->customer_email ?? null,
@@ -1043,6 +1052,106 @@ class StripeBookingService
             Log::warning('StripeBookingService: Failed to send booking notifications', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Trigger reservation via Vrooem Gateway (replaces all provider-specific trigger methods).
+     */
+    protected function triggerGatewayReservation($booking, $metadata)
+    {
+        Log::info('VrooemGateway: Triggering reservation for booking', [
+            'booking_id' => $booking->id,
+            'provider_source' => $booking->provider_source,
+        ]);
+
+        try {
+            $gateway = app(VrooemGatewayService::class);
+
+            $gatewayVehicleId = $metadata->gateway_vehicle_id ?? null;
+            if (!$gatewayVehicleId) {
+                Log::warning('VrooemGateway: No gateway_vehicle_id in metadata, falling back to vehicle_id', [
+                    'booking_id' => $booking->id,
+                    'vehicle_id' => $metadata->vehicle_id ?? 'N/A',
+                ]);
+                $gatewayVehicleId = $metadata->vehicle_id ?? '';
+            }
+
+            $nameParts = explode(' ', $metadata->customer_name ?? '', 2);
+
+            $result = $gateway->createBooking([
+                'vehicle_id' => $gatewayVehicleId,
+                'search_id' => $metadata->gateway_search_id ?? ($metadata->search_session_id ?? ''),
+                'driver' => [
+                    'first_name' => $nameParts[0] ?? '',
+                    'last_name' => $nameParts[1] ?? '',
+                    'email' => $metadata->customer_email ?? '',
+                    'phone' => $metadata->customer_phone ?? '',
+                    'age' => (int) ($metadata->customer_driver_age ?? 30),
+                    'address' => $metadata->customer_address ?? null,
+                    'city' => $metadata->customer_city ?? null,
+                    'postal_code' => $metadata->customer_postal_code ?? null,
+                    'country' => $metadata->customer_country ?? null,
+                ],
+                'flight_number' => $metadata->flight_number ?? null,
+                'extras' => collect($booking->extras ?? [])->map(function ($extra) {
+                    return [
+                        'extra_id' => $extra->provider_extra_id ?? $extra->extra_name ?? '',
+                        'quantity' => $extra->quantity ?? 1,
+                    ];
+                })->all(),
+                'pickup_date' => $metadata->pickup_date ?? null,
+                'pickup_time' => $metadata->pickup_time ?? '09:00',
+                'dropoff_date' => $metadata->dropoff_date ?? null,
+                'dropoff_time' => $metadata->dropoff_time ?? '09:00',
+                'laravel_booking_id' => $booking->id,
+            ]);
+
+            if ($result && !empty($result['supplier_booking_id'])) {
+                $providerBookingRef = $result['supplier_booking_id'];
+                Log::info('VrooemGateway: Reservation successful', [
+                    'booking_id' => $booking->id,
+                    'gateway_booking_id' => $result['gateway_booking_id'] ?? null,
+                    'supplier_booking_id' => $providerBookingRef,
+                ]);
+
+                $booking->update([
+                    'provider_booking_ref' => $providerBookingRef,
+                    'provider_metadata' => array_merge(
+                        $booking->provider_metadata ?? [],
+                        [
+                            'gateway_booking_id' => $result['gateway_booking_id'] ?? null,
+                            'gateway_status' => $result['status'] ?? 'confirmed',
+                            'gateway_supplier_id' => $result['supplier_id'] ?? null,
+                        ]
+                    ),
+                    'notes' => ($booking->notes ? $booking->notes . "\n" : '')
+                        . 'Gateway Conf: ' . $providerBookingRef,
+                ]);
+            } else {
+                Log::error('VrooemGateway: Reservation failed - no booking ref returned', [
+                    'booking_id' => $booking->id,
+                    'result' => $result,
+                ]);
+                $booking->update([
+                    'provider_metadata' => array_merge(
+                        $booking->provider_metadata ?? [],
+                        ['gateway_error' => 'No booking reference returned']
+                    ),
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('VrooemGateway: Reservation error', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $booking->update([
+                'provider_metadata' => array_merge(
+                    $booking->provider_metadata ?? [],
+                    ['gateway_error' => $e->getMessage()]
+                ),
             ]);
         }
     }

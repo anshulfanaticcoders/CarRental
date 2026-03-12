@@ -36,8 +36,11 @@ const props = defineProps({
     selectedCurrencyCode: String,
     paymentPercentage: Number,
     totals: Object, // { grandTotal, payableAmount, pendingAmount }
+    totalsCurrency: String,
     vehicleTotal: [String, Number],
+    vehicleTotalCurrency: String,
     searchSessionId: String, // For price verification
+    gatewaySearchId: { type: String, default: null },
     selectedDepositType: { type: String, default: null },
 });
 
@@ -209,21 +212,47 @@ const normalizeCurrencyCode = (currency) => {
         'A$': 'AUD',
         'C$': 'CAD',
         'د.إ': 'AED',
-        '¥': 'JPY'
+        '¥': 'JPY',
+        'EURO': 'EUR',
+        'TL': 'TRY',
+        'US$': 'USD',
+        'USD$': 'USD',
+        'RMB': 'CNY',
     };
     const trimmed = `${currency}`.trim();
     return (currencyMap[trimmed] || trimmed).toUpperCase();
 };
 
+const resolvePackageCurrency = () => {
+    const packageType = props.package;
+    const products = props.vehicle?.products;
+    if (Array.isArray(products) && packageType) {
+        const selectedProduct = products.find(product => product?.type === packageType);
+        if (selectedProduct?.currency) {
+            return normalizeCurrencyCode(selectedProduct.currency);
+        }
+    }
+    return null;
+};
+
 const resolveVehicleCurrency = () => {
     return normalizeCurrencyCode(
-        props.vehicle?.currency
+        resolvePackageCurrency()
+        || props.vehicle?.currency
         || props.vehicle?.vendor_profile?.currency
         || props.vehicle?.vendorProfile?.currency
         || props.vehicle?.benefits?.deposit_currency
         || 'EUR'
     );
 };
+
+const totalsSourceCurrency = computed(() => {
+    return normalizeCurrencyCode(props.totalsCurrency || resolveVehicleCurrency());
+});
+
+const vehicleTotalSourceCurrency = computed(() => {
+    return normalizeCurrencyCode(props.vehicleTotalCurrency || totalsSourceCurrency.value);
+});
 
 const checkoutCurrency = computed(() => {
     const preferred = props.selectedCurrencyCode || selectedCurrency.value;
@@ -236,9 +265,9 @@ const normalizeTotalValue = (value) => {
     return Number.isNaN(numeric) ? 0 : numeric;
 };
 
-const convertTotal = (value) => {
-    const vehicleCurrency = resolveVehicleCurrency();
-    return convertPrice(normalizeTotalValue(value), vehicleCurrency);
+const convertTotal = (value, sourceCurrency) => {
+    const fromCurrency = normalizeCurrencyCode(sourceCurrency || totalsSourceCurrency.value);
+    return convertPrice(normalizeTotalValue(value), fromCurrency);
 };
 
 onMounted(() => {
@@ -287,23 +316,26 @@ const bookingData = computed(() => {
         pickup_location: props.pickupLocation,
         dropoff_location: props.dropoffLocation,
         number_of_days: props.numberOfDays,
-        total_amount: convertTotal(props.totals?.grandTotal),
+        total_amount: convertTotal(props.totals?.grandTotal, totalsSourceCurrency.value),
         currency: checkoutCurrency.value,
         quoteid: props.vehicle.quoteid || null,
         rentalCode: props.vehicle.rentalCode || null,
-        vehicle_total: convertTotal(props.vehicleTotal || 0),
+        vehicle_total: convertTotal(props.vehicleTotal || 0, vehicleTotalSourceCurrency.value),
         payment_method: selectedPaymentMethod.value,
-        search_session_id: props.searchSessionId, // For price verification
+        search_session_id: props.searchSessionId,
+        gateway_search_id: props.gatewaySearchId || null,
         selected_deposit_type: props.selectedDepositType || null,
     };
 });
 
 // Helper to format currency
-const formatPrice = (val) => {
-    const currencyCode = resolveVehicleCurrency();
+const formatPrice = (val, sourceCurrency = totalsSourceCurrency.value) => {
+    const currencyCode = normalizeCurrencyCode(sourceCurrency || totalsSourceCurrency.value);
     const converted = convertPrice(parseFloat(val), currencyCode);
     return `${getSelectedCurrencySymbol()}${converted.toFixed(2)}`;
 };
+
+const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
 </script>
 
 <template>
@@ -766,7 +798,7 @@ const formatPrice = (val) => {
                     <div class="space-y-3 mb-5">
                         <div class="flex justify-between text-base">
                             <span class="text-gray-600 font-medium">Total Amount</span>
-                            <span class="font-bold text-gray-900">{{ formatPrice(totals.grandTotal) }}</span>
+                            <span class="font-bold text-gray-900">{{ formatTotalPrice(totals.grandTotal) }}</span>
                         </div>
 
                         <div class="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-xl">
@@ -775,13 +807,13 @@ const formatPrice = (val) => {
                                     <div class="text-sm font-semibold text-emerald-800">Pay Now ({{ effectivePaymentPercentage }}%)</div>
                                     <div class="text-xs text-emerald-600">Secure deposit</div>
                                 </div>
-                                <span class="text-2xl font-bold text-emerald-700">{{ formatPrice(totals.payableAmount) }}</span>
+                                <span class="text-2xl font-bold text-emerald-700">{{ formatTotalPrice(totals.payableAmount) }}</span>
                             </div>
                         </div>
 
                         <div class="flex justify-between text-sm text-gray-500 px-1">
                             <span>Pay On Arrival</span>
-                            <span class="font-semibold text-gray-700">{{ formatPrice(totals.pendingAmount) }}</span>
+                            <span class="font-semibold text-gray-700">{{ formatTotalPrice(totals.pendingAmount) }}</span>
                         </div>
                     </div>
 
@@ -789,7 +821,7 @@ const formatPrice = (val) => {
                     <div class="space-y-3">
                         <div v-if="form.name && form.email && form.phone && form.driver_age">
                             <StripeCheckoutButton v-if="!Object.keys(errors).length" :booking-data="bookingData"
-                                :label="`Pay ${formatPrice(totals.payableAmount)}`" />
+                                :label="`Pay ${formatTotalPrice(totals.payableAmount)}`" />
                             <button v-else @click="validate()"
                                 class="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold cursor-pointer border border-red-200 hover:bg-red-100 transition-colors">
                                 Please Fix Errors Above

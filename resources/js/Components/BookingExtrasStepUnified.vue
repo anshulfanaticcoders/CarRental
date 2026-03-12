@@ -2,6 +2,12 @@
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted, nextTick } from "vue";
 import { usePage } from "@inertiajs/vue3";
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
+import { computeBookingChargeBreakdown, resolveProviderMarkupRate, toProviderGrossMultiplier } from '@/utils/platformPricing';
+import {
+    buildSicilyByCarOptionalExtras,
+    expandSicilyByCarSelectedExtras,
+    getSicilyByCarExtraTotal,
+} from '@/utils/sicilyByCarExtras';
 import check from "../../assets/Check.svg";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -48,11 +54,7 @@ const isLocautoRent = computed(() => {
 const page = usePage();
 
 const providerMarkupRate = computed(() => {
-    const rawRate = parseFloat(page.props.provider_markup_rate ?? '');
-    if (Number.isFinite(rawRate) && rawRate >= 0) return rawRate;
-    const rawPercent = parseFloat(page.props.provider_markup_percent ?? '');
-    if (Number.isFinite(rawPercent) && rawPercent >= 0) return rawPercent / 100;
-    return 0.15;
+    return resolveProviderMarkupRate(page.props);
 });
 
 // Check if vehicle is Internal
@@ -62,8 +64,7 @@ const isInternal = computed(() => {
 
 const providerGrossMultiplier = computed(() => {
     // Apply 15% platform fee to ALL vehicles (including internal)
-    const rate = providerMarkupRate.value;
-    return Number.isFinite(rate) ? (1 + rate) : 1;
+    return toProviderGrossMultiplier(providerMarkupRate.value);
 });
 
 // Check if vehicle is Renteon
@@ -238,24 +239,10 @@ const sicilyByCarProtectionPlans = computed(() => {
 
 const sicilyByCarOptionalExtras = computed(() => {
     if (!isSicilyByCar.value) return [];
-    return sicilyByCarServices.value
-        .filter(service => !service?.isMandatory && !SBC_PROTECTION_CODES.includes(`${service?.id || ''}`.toUpperCase()))
-        .map((service, index) => {
-            const code = `${service?.id || ''}`.toUpperCase() || `EXTRA_${index}`;
-            const total = parseFloat(service?.total || 0);
-            return {
-                id: `sbc_extra_${code}_${index}`,
-                code,
-                name: service?.description || code,
-                description: service?.description || code,
-                price: total,
-                daily_rate: props.numberOfDays ? total / props.numberOfDays : total,
-                total_for_booking: total,
-                amount: total,
-                required: false,
-                payment: service?.payment || null,
-            };
-        });
+    return buildSicilyByCarOptionalExtras(
+        sicilyByCarServices.value.filter(service => !service?.isMandatory && !SBC_PROTECTION_CODES.includes(`${service?.id || ''}`.toUpperCase())),
+        props.numberOfDays,
+    );
 });
 
 const sicilyByCarAllExtras = computed(() => {
@@ -1835,13 +1822,28 @@ const locautoBaseDaily = computed(() => {
     return total / props.numberOfDays;
 });
 
-const resolveVehicleCurrency = () => {
-    const rawCurrency = props.vehicle?.currency
+const pricingCurrency = computed(() => {
+    const rawCurrency = currentProduct.value?.currency
+        || props.vehicle?.currency
         || props.vehicle?.vendor_profile?.currency
         || props.vehicle?.vendorProfile?.currency
         || props.vehicle?.benefits?.deposit_currency
         || 'EUR';
     return normalizeCurrencyCode(rawCurrency);
+});
+
+const vehicleTotalCurrency = computed(() => {
+    const rawCurrency = currentProduct.value?.currency
+        || props.vehicle?.currency
+        || props.vehicle?.vendor_profile?.currency
+        || props.vehicle?.vendorProfile?.currency
+        || props.vehicle?.benefits?.deposit_currency
+        || 'EUR';
+    return normalizeCurrencyCode(rawCurrency);
+});
+
+const resolveVehicleCurrency = () => {
+    return pricingCurrency.value;
 };
 
 const normalizeCurrencyCode = (currency) => {
@@ -1898,6 +1900,19 @@ const getExtraPerDay = (extra) => {
     }
     const total = getExtraTotal(extra);
     return props.numberOfDays ? total / props.numberOfDays : total;
+};
+
+const getSelectedSicilyByCarExtraTotal = (extra, quantity) => {
+    const qty = parseInt(quantity ?? 0, 10) || 0;
+    if (qty <= 0 || !extra) return 0;
+
+    if (!Array.isArray(extra.service_slots) || extra.service_slots.length === 0) {
+        return getSicilyByCarExtraTotal(extra) * qty;
+    }
+
+    return extra.service_slots
+        .slice(0, qty)
+        .reduce((sum, slot) => sum + getSicilyByCarExtraTotal(slot), 0);
 };
 
 const getBenefits = (product) => {
@@ -2026,6 +2041,10 @@ const extrasTotal = computed(() => {
         }
 
         if (extra) {
+            if (isSicilyByCar.value && Array.isArray(extra.service_slots) && extra.service_slots.length > 0) {
+                total += getSelectedSicilyByCarExtraTotal(extra, qty);
+                continue;
+            }
             if (extra.total_for_booking !== undefined && extra.total_for_booking !== null) {
                 total += parseFloat(extra.total_for_booking) * qty;
             } else {
@@ -2067,31 +2086,28 @@ const netGrandTotal = computed(() => {
     return pkgPrice + mandatoryExtra + extrasTotal.value;
 });
 
-// Customer-facing grand total (grossed up for provider vehicles)
-const grandTotal = computed(() => {
-    return (parseFloat(netGrandTotal.value || 0) * providerGrossMultiplier.value).toFixed(2);
+const bookingChargeBreakdown = computed(() => {
+    const percent = props.paymentPercentage && props.paymentPercentage > 0 ? props.paymentPercentage : 15;
+
+    return computeBookingChargeBreakdown({
+        netTotal: parseFloat(netGrandTotal.value || 0),
+        markupRate: providerMarkupRate.value,
+        depositPercentage: percent,
+        useCommissionOnly: Boolean(props.vehicle?.source),
+    });
 });
+
+// Customer-facing grand total (grossed up for provider vehicles)
+const grandTotal = computed(() => bookingChargeBreakdown.value.grandTotal.toFixed(2));
+
+const payableAmount = computed(() => bookingChargeBreakdown.value.payableAmount.toFixed(2));
+
+const pendingAmount = computed(() => bookingChargeBreakdown.value.pendingAmount.toFixed(2));
 
 const effectivePaymentPercentage = computed(() => {
-    if (isRenteon.value) return providerMarkupRate.value * 100;
-    // Default to 15% if not provided, to prevent "Pay 0" bug
-    return props.paymentPercentage || 15;
-});
-
-const payableAmount = computed(() => {
-    if (isRenteon.value) {
-        return (parseFloat(grandTotal.value) - parseFloat(netGrandTotal.value)).toFixed(2);
-    }
-    // Default to 15% if paymentPercentage is 0 or not provided
-    const percent = props.paymentPercentage && props.paymentPercentage > 0 ? props.paymentPercentage : 15;
-    return (parseFloat(grandTotal.value) * (percent / 100)).toFixed(2);
-});
-
-const pendingAmount = computed(() => {
-    if (isRenteon.value) {
-        return parseFloat(netGrandTotal.value || 0).toFixed(2);
-    }
-    return (parseFloat(grandTotal.value) - parseFloat(payableAmount.value)).toFixed(2);
+    const grand = bookingChargeBreakdown.value.grandTotal;
+    if (grand <= 0) return 0;
+    return Math.round(((bookingChargeBreakdown.value.payableAmount / grand) * 100) * 100) / 100;
 });
 
 const selectPackage = (pkgType) => {
@@ -2175,10 +2191,12 @@ const getSelectedExtrasDetails = computed(() => {
             if (isOkMobility.value && coverCodes.has(normalizeExtraCode(extra.code))) {
                 continue;
             }
-            const total = extra.total_for_booking !== undefined && extra.total_for_booking !== null
-                ? parseFloat(extra.total_for_booking) * qty
-                : (parseFloat(extra.daily_rate !== undefined ? extra.daily_rate : (extra.price / props.numberOfDays))
-                    * props.numberOfDays * qty);
+            const total = isSicilyByCar.value
+                ? getSelectedSicilyByCarExtraTotal(extra, qty)
+                : (extra.total_for_booking !== undefined && extra.total_for_booking !== null
+                    ? parseFloat(extra.total_for_booking) * qty
+                    : (parseFloat(extra.daily_rate !== undefined ? extra.daily_rate : (extra.price / props.numberOfDays))
+                        * props.numberOfDays * qty));
 
             details.push({
                 id: extra.id, // Good for key
@@ -2202,6 +2220,14 @@ const getSelectedExtrasDetails = computed(() => {
         }
     }
     return details;
+});
+
+const providerSelectedExtrasDetails = computed(() => {
+    if (!isSicilyByCar.value) {
+        return getSelectedExtrasDetails.value;
+    }
+
+    return expandSicilyByCarSelectedExtras(selectedExtras.value, sicilyByCarAllExtras.value);
 });
 
 const getExtraIcon = (name) => {
@@ -3391,13 +3417,15 @@ const hasProviderNotes = computed(() => {
                                     }, 0)
                                     : 0,
                                 extras: selectedExtras,
-                                detailedExtras: getSelectedExtrasDetails,
+                                detailedExtras: providerSelectedExtrasDetails,
                                 totals: {
                                     grandTotal,
                                     payableAmount,
                                     pendingAmount
                                 },
+                                totals_currency: pricingCurrency,
                                 vehicle_total: isLocautoRent ? locautoBaseTotal : (isOkMobility ? okMobilityBaseTotal : (currentProduct?.total || props.vehicle?.total_price || 0)),
+                                vehicle_total_currency: vehicleTotalCurrency,
                                 selected_deposit_type: selectedDepositType || null,
                             })" class="btn-cta w-full py-3.5 rounded-xl bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f] text-white font-bold text-sm shadow-lg shadow-[#1e3a5f]/20 hover:shadow-xl hover:shadow-[#1e3a5f]/30 hover:-translate-y-0.5 transition-all duration-300 active:scale-[0.98]"
                                 :disabled="!ratesReady || (availableDepositTypes.length > 1 && !selectedDepositType)" :class="{ 'opacity-60 cursor-not-allowed': !ratesReady }">

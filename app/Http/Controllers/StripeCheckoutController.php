@@ -175,6 +175,7 @@ class StripeCheckoutController extends Controller
                 'location_instructions' => 'nullable|string',
                 'driver_requirements' => 'nullable|array',
                 'terms' => 'nullable|array',
+                'gateway_search_id' => 'nullable|string',
             ]);
 
             $vehicle = $validated['vehicle'] ?? [];
@@ -394,6 +395,35 @@ class StripeCheckoutController extends Controller
                 if (isset($verifiedPrices['price_per_day'])) {
                     $vehicle['price_per_day'] = $verifiedPrices['price_per_day'];
                 }
+                if (isset($verifiedPrices['extras']) && is_array($verifiedPrices['extras'])) {
+                    $vehicle['extras'] = $verifiedPrices['extras'];
+                    if (in_array($providerSource, ['greenmotion', 'usave'], true)) {
+                        $vehicle['options'] = $verifiedPrices['extras'];
+                        $vehicle['insurance_options'] = [];
+                        $vehicle['optional_extras'] = [];
+                    }
+                }
+
+                $extrasVerification = $priceVerificationService->verifyAndResolveExtras(
+                    $validated['detailed_extras'] ?? [],
+                    $verifiedPrices
+                );
+
+                if (!$extrasVerification['valid']) {
+                    Log::warning('Extras verification failed during checkout', [
+                        'error' => $extrasVerification['error'] ?? 'unknown',
+                        'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
+                        'search_session' => $searchSessionId,
+                        'ip' => $request->ip(),
+                    ]);
+
+                    return response()->json([
+                        'error' => $extrasVerification['error'] ?? 'Extras verification failed. Please refresh search results and try again.',
+                    ], 422);
+                }
+
+                $validated['detailed_extras'] = $extrasVerification['extras'] ?? [];
+                $validated['optional_extras'] = [];
 
                 $validated['vehicle'] = $vehicle;
             } else {
@@ -487,6 +517,8 @@ class StripeCheckoutController extends Controller
                 // Core
                 'user_id' => $request->user()?->id,
                 'vehicle_id' => $validated['vehicle']['id'] ?? '',
+                'gateway_vehicle_id' => $validated['vehicle']['gateway_vehicle_id'] ?? null,
+                'gateway_search_id' => $validated['gateway_search_id'] ?? null,
                 'vehicle_source' => $vehicleSource,
                 'vehicle_brand' => $validated['vehicle']['brand'] ?? '',
                 'vehicle_model' => $validated['vehicle']['model'] ?? '',
@@ -588,6 +620,11 @@ class StripeCheckoutController extends Controller
                 'surprice_rate_code' => $validated['vehicle']['surprice_rate_code'] ?? null,
                 'surprice_extended_pickup_code' => $validated['vehicle']['surprice_extended_pickup_code'] ?? null,
                 'surprice_extended_dropoff_code' => $validated['vehicle']['surprice_extended_dropoff_code'] ?? null,
+                // Cancellation policy
+                'cancellation_deadline' => $validated['vehicle']['cancellation']['deadline'] ?? null,
+                'cancellation_free' => $validated['vehicle']['cancellation']['available'] ?? null,
+                'cancellation_fee' => $validated['vehicle']['cancellation']['amount'] ?? null,
+                'cancellation_fee_currency' => $validated['vehicle']['cancellation']['currency'] ?? null,
                 // Promo pricing
                 'promo_id' => $promoId,
                 'promo_rate' => $promoRate > 0 ? (string) $promoRate : null,
@@ -729,7 +766,7 @@ class StripeCheckoutController extends Controller
                 // Use route() to generate the correct URL with locale, but we need to append the session_id placeholder manually
                 // to avoid URL encoding issues with the curly braces.
                 'success_url' => route('booking.success', ['locale' => $currentLocale]) . '?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => route('booking.cancel', ['locale' => $currentLocale]),
+                'cancel_url' => route('booking.cancel.page', ['locale' => $currentLocale]),
                 'customer_email' => $validated['customer']['email'] ?? null,
                 'metadata' => $metadata,
                 'payment_intent_data' => [
@@ -1250,12 +1287,9 @@ class StripeCheckoutController extends Controller
     private function normalizeCurrencyCode($currency): string
     {
         $value = $currency ?? 'EUR';
-
-        if (is_string($value)) {
-            $trimmed = trim($value);
-            if ($trimmed !== '') {
-                $value = $trimmed;
-            }
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return 'EUR';
         }
 
         $symbolMap = [
@@ -1265,14 +1299,27 @@ class StripeCheckoutController extends Controller
             "\u{20BD}" => 'RUB',
             'A$' => 'AUD',
             '$' => 'USD',
+            'د.إ' => 'AED',
         ];
 
-        if (is_string($value) && array_key_exists($value, $symbolMap)) {
-            return $symbolMap[$value];
+        if (array_key_exists($raw, $symbolMap)) {
+            return $symbolMap[$raw];
         }
 
-        $upper = strtoupper((string) $value);
-        return $upper !== '' ? $upper : 'EUR';
+        $upper = strtoupper($raw);
+        $aliasMap = [
+            'EURO' => 'EUR',
+            'TL' => 'TRY',
+            'US$' => 'USD',
+            'USD$' => 'USD',
+            'RMB' => 'CNY',
+        ];
+
+        if (array_key_exists($upper, $aliasMap)) {
+            return $aliasMap[$upper];
+        }
+
+        return $upper;
     }
 
     /**

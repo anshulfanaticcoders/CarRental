@@ -42,6 +42,42 @@ export function useCurrencyConversion() {
         'ALL': 'L'
     };
 
+    const normalizeCurrencyCode = (currency) => {
+        const raw = `${currency ?? ''}`.trim();
+        if (!raw) return 'USD';
+
+        const symbolMap = {
+            '$': 'USD',
+            '€': 'EUR',
+            '£': 'GBP',
+            '¥': 'JPY',
+            '₹': 'INR',
+            '₽': 'RUB',
+            '₺': 'TRY',
+            'د.إ': 'AED',
+            'A$': 'AUD',
+            'C$': 'CAD',
+            'S$': 'SGD',
+            'HK$': 'HKD',
+            'NZ$': 'NZD',
+            'RM': 'MYR',
+            'Fr': 'CHF'
+        };
+
+        if (symbolMap[raw]) return symbolMap[raw];
+
+        const upper = raw.toUpperCase();
+        const aliasMap = {
+            EURO: 'EUR',
+            TL: 'TRY',
+            'US$': 'USD',
+            'USD$': 'USD',
+            RMB: 'CNY',
+        };
+
+        return aliasMap[upper] || upper;
+    };
+
     // Fetch exchange rates
     const fetchExchangeRates = async () => {
         if (exchangeRates.value) return exchangeRates.value;
@@ -79,8 +115,8 @@ export function useCurrencyConversion() {
             return numericPrice;
         }
 
-        const fromCurrencyCode = fromCurrency.toUpperCase();
-        const toCurrencyCode = selectedCurrency.value.toUpperCase();
+        const fromCurrencyCode = normalizeCurrencyCode(fromCurrency);
+        const toCurrencyCode = normalizeCurrencyCode(selectedCurrency.value);
 
         // If same currency, no conversion needed
         if (fromCurrencyCode === toCurrencyCode) {
@@ -106,7 +142,8 @@ export function useCurrencyConversion() {
     // Get currency symbol for a specific currency code
     const getCurrencySymbol = (currencyCode) => {
         if (!currencyCode) return '$';
-        return currencySymbols[currencyCode.toUpperCase()] || currencyCode;
+        const normalized = normalizeCurrencyCode(currencyCode);
+        return currencySymbols[normalized] || normalized;
     };
 
     return {
@@ -116,6 +153,7 @@ export function useCurrencyConversion() {
         convertPrice,
         getSelectedCurrencySymbol,
         getCurrencySymbol,
+        normalizeCurrencyCode,
         fetchExchangeRates
     };
 }

@@ -296,7 +296,7 @@
             <div v-for="result in searchResults" :key="result.unified_location_id" @click="selectLocation(result)"
               class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
               <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
-                <img :src="flighIcon" v-if="result.name.toLowerCase().includes('airport')" class="w-1/2 h-1/2" />
+                <img :src="flighIcon" v-if="isAirportLocation(result)" class="w-1/2 h-1/2" />
                 <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
                   class="w-1/2 h-1/2 group-hover:stroke-white">
                   <path clip-rule="evenodd"
@@ -308,9 +308,9 @@
                 </svg>
               </div>
               <div class="flex flex-col">
-                <div class="font-medium">{{ result.name }}</div>
+                <div class="font-medium">{{ formatLocationPrimaryLabel(result) }}</div>
                 <div class="text-sm text-gray-500 group-hover:text-white">
-                  {{ [result.city, result.country].filter(Boolean).join(', ') }}
+                  {{ formatLocationSecondaryLabel(result) }}
                 </div>
               </div>
             </div>
@@ -336,7 +336,7 @@
             @click="selectDropoffLocation(result)"
             class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
             <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
-              <img :src="flighIcon" v-if="result.name.toLowerCase().includes('airport')" class="w-1/2 h-1/2" />
+              <img :src="flighIcon" v-if="isAirportLocation(result)" class="w-1/2 h-1/2" />
               <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
                 class="w-1/2 h-1/2 group-hover:stroke-white">
                 <path clip-rule="evenodd"
@@ -348,9 +348,9 @@
               </svg>
             </div>
             <div class="flex flex-col">
-              <div class="font-medium">{{ result.name }}</div>
+              <div class="font-medium">{{ formatLocationPrimaryLabel(result) }}</div>
               <div class="text-sm text-gray-500 group-hover:text-white">
-                {{ [result.city, result.country].filter(Boolean).join(', ') }}
+                {{ formatLocationSecondaryLabel(result) }}
               </div>
             </div>
           </div>
@@ -364,6 +364,14 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import axios from "axios";
 import { router, usePage } from "@inertiajs/vue3";
+import { resolveSearchCurrency } from "@/utils/searchCurrency";
+import {
+  buildLocationInputValue,
+  formatLocationPrimaryLabel,
+  formatLocationSecondaryLabel,
+  getLocationSelectionData,
+  isAirportLocation,
+} from "@/utils/locationSearchDisplay";
 const searchBarContainer = ref(null);
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
@@ -411,6 +419,8 @@ const props = defineProps({
     default: false
   }
 });
+
+const page = usePage();
 
 const dateRange = ref(null);
 const selectedStartTime = ref('09:00');
@@ -551,7 +561,7 @@ watch(() => form.value.where, (newVal, oldVal) => {
   if (oldVal && newVal !== oldVal && hasSelectedPickupLocation.value) {
     // Check if the new value matches the selected location
     if (selectedPickupLocation.value) {
-      const expectedValue = selectedPickupLocation.value.name + (selectedPickupLocation.value.city ? `, ${selectedPickupLocation.value.city}` : '');
+      const expectedValue = buildLocationInputValue(selectedPickupLocation.value);
       if (newVal !== expectedValue) {
         // User modified the text manually
         hasSelectedPickupLocation.value = false;
@@ -631,14 +641,22 @@ const handleSearchInput = () => {
 };
 
 const selectLocation = (result) => {
-  selectedPickupLocation.value = result;
+  const selectionData = getLocationSelectionData(result);
+  const normalizedResult = {
+    ...result,
+    name: selectionData.displayName,
+    city: selectionData.city,
+    country: selectionData.country,
+  };
+
+  selectedPickupLocation.value = normalizedResult;
   hasSelectedPickupLocation.value = true; // User selected from dropdown
   locationError.value = null; // Clear any error
-  form.value.where = result.name + (result.city ? `, ${result.city}` : '');
+  form.value.where = buildLocationInputValue(result);
   form.value.latitude = result.latitude;
   form.value.longitude = result.longitude;
-  form.value.city = result.city;
-  form.value.country = result.country;
+  form.value.city = selectionData.city;
+  form.value.country = selectionData.country;
 
   // Always set the unified_location_id for multi-provider matching
   form.value.unified_location_id = result.unified_location_id || null;
@@ -742,8 +760,7 @@ const fetchDropoffLocations = async (provider, locationId) => {
 
 const selectDropoffLocation = (result) => {
   hasSelectedDropoffLocation.value = true; // User selected dropoff from dropdown
-  const locationName = result.name + (result.city ? `, ${result.city}` : '');
-  form.value.dropoff_where = locationName;
+  form.value.dropoff_where = buildLocationInputValue(result);
   form.value.dropoff_unified_location_id = result.unified_location_id || null;
   form.value.dropoff_latitude = result.latitude || null;
   form.value.dropoff_longitude = result.longitude || null;
@@ -781,6 +798,12 @@ const submit = async () => {
   isLoading.value = true;
 
   try {
+    form.value.currency = resolveSearchCurrency({
+      currentCurrency: form.value.currency,
+      prefillCurrency: props.prefill?.currency,
+      selectedCurrency: page.props.currency,
+    });
+
     const pickupDate = new Date(form.value.date_from);
     const returnDate = new Date(form.value.date_to);
     const diffTime = Math.abs(returnDate - pickupDate);
@@ -799,7 +822,7 @@ const submit = async () => {
     // form.value.radius = 30000; // Removed
 
     await new Promise(resolve => {
-      router.get(route('search', { locale: usePage().props.locale }), form.value, {
+      router.get(route('search', { locale: page.props.locale }), form.value, {
         onFinish: () => resolve(),
       });
     });
@@ -827,10 +850,11 @@ onMounted(async () => {
   document.addEventListener('click', closeSearchResults);
   fetchPopularPlaces();
 
-  // Set default currency if not already set
-  if (!form.value.currency) {
-    form.value.currency = 'USD';
-  }
+  form.value.currency = resolveSearchCurrency({
+    currentCurrency: form.value.currency,
+    prefillCurrency: props.prefill?.currency,
+    selectedCurrency: page.props.currency,
+  });
 
   // Set default dates if not prefilled
   if (!props.prefill?.date_from) {

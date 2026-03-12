@@ -2,13 +2,27 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\FrontendPageController;
+use App\Models\HeaderFooterScript;
+use App\Services\Locations\Fetchers\AdobeLocationFetcher;
+use App\Services\Locations\Fetchers\FavricaLocationFetcher;
+use App\Services\Locations\Fetchers\GreenMotionLocationFetcher;
+use App\Services\Locations\Fetchers\InternalLocationFetcher;
+use App\Services\Locations\Fetchers\LocautoLocationFetcher;
+use App\Services\Locations\Fetchers\OkMobilityLocationFetcher;
+use App\Services\Locations\Fetchers\RecordGoLocationFetcher;
+use App\Services\Locations\Fetchers\RenteonLocationFetcher;
+use App\Services\Locations\Fetchers\SicilyByCarLocationFetcher;
+use App\Services\Locations\Fetchers\SurpriceLocationFetcher;
+use App\Services\Locations\Fetchers\USaveLocationFetcher;
+use App\Services\Locations\Fetchers\WheelsysLocationFetcher;
+use App\Services\Locations\Fetchers\XDriveLocationFetcher;
+use App\Services\Locations\ProviderLocationFetchManager;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\View;
-use App\Models\HeaderFooterScript;
-use Illuminate\Support\Facades\Schema;
-use App\Http\Controllers\FrontendPageController; // Import FrontendPageController
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -17,7 +31,23 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(ProviderLocationFetchManager::class, function ($app) {
+            return new ProviderLocationFetchManager([
+                $app->make(InternalLocationFetcher::class),
+                $app->make(GreenMotionLocationFetcher::class),
+                $app->make(USaveLocationFetcher::class),
+                $app->make(OkMobilityLocationFetcher::class),
+                $app->make(AdobeLocationFetcher::class),
+                $app->make(LocautoLocationFetcher::class),
+                $app->make(WheelsysLocationFetcher::class),
+                $app->make(RenteonLocationFetcher::class),
+                $app->make(FavricaLocationFetcher::class),
+                $app->make(XDriveLocationFetcher::class),
+                $app->make(SicilyByCarLocationFetcher::class),
+                $app->make(RecordGoLocationFetcher::class),
+                $app->make(SurpriceLocationFetcher::class),
+            ]);
+        });
     }
 
     /**

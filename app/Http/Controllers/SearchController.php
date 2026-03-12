@@ -22,8 +22,11 @@ use App\Services\XDriveService;
 use App\Services\SicilyByCarService;
 use App\Services\RecordGoService;
 use App\Services\SurpriceService;
+use App\Services\Search\InternalVehicleMergeService;
 use App\Services\Search\SearchOrchestratorService;
 use App\Services\PriceVerificationService;
+use App\Services\VrooemGatewayService;
+use App\Services\GatewaySearchParamsBuilder;
 use Illuminate\Support\Facades\Log; // Import Log facade
 use App\Services\Seo\SeoMetaResolver;
 use Illuminate\Support\Facades\App;
@@ -44,7 +47,10 @@ class SearchController extends Controller
     protected $recordGoService;
     protected $surpriceService;
     protected $searchOrchestratorService;
+    protected $internalVehicleMergeService;
     protected $priceVerificationService;
+    protected $gatewayService;
+    protected $gatewaySearchParamsBuilder;
 
     public function __construct(
         GreenMotionService $greenMotionService,
@@ -60,7 +66,10 @@ class SearchController extends Controller
         RecordGoService $recordGoService,
         SurpriceService $surpriceService,
         SearchOrchestratorService $searchOrchestratorService,
-        PriceVerificationService $priceVerificationService
+        InternalVehicleMergeService $internalVehicleMergeService,
+        PriceVerificationService $priceVerificationService,
+        VrooemGatewayService $gatewayService,
+        GatewaySearchParamsBuilder $gatewaySearchParamsBuilder
     ) {
         $this->greenMotionService = $greenMotionService;
         $this->okMobilityService = $okMobilityService;
@@ -75,7 +84,10 @@ class SearchController extends Controller
         $this->recordGoService = $recordGoService;
         $this->surpriceService = $surpriceService;
         $this->searchOrchestratorService = $searchOrchestratorService;
+        $this->internalVehicleMergeService = $internalVehicleMergeService;
         $this->priceVerificationService = $priceVerificationService;
+        $this->gatewayService = $gatewayService;
+        $this->gatewaySearchParamsBuilder = $gatewaySearchParamsBuilder;
     }
 
     public function search(Request $request)
@@ -515,7 +527,17 @@ class SearchController extends Controller
 
         $internalVehiclesCollection = collect($internalVehiclesData);
 
-        // --- Provider Vehicle Fetching Logic ---
+        // --- Gateway-based provider search (replaces all provider-specific code below) ---
+        if (config('vrooem.enabled')) {
+            return $this->searchViaGateway(
+                $request, $validated, $rentalDays,
+                $internalVehiclesCollection,
+                $brands, $colors, $seatingCapacities, $transmissions, $fuels, $mileages,
+                $categoriesFromOptions, $vehicleListSchema
+            );
+        }
+
+        // --- Provider Vehicle Fetching Logic (legacy — skipped when gateway is enabled) ---
         $providerVehicles = collect();
         $okMobilityVehicles = collect(); // Separate collection for OK Mobility vehicles
         $orchestratorResult = $this->searchOrchestratorService->resolveProviderEntries($validated);
@@ -617,17 +639,11 @@ class SearchController extends Controller
                             $dropoffUnifiedIdStr = (string) $dropoffUnifiedId;
                             $pickupUnifiedIdStr = (string) ($matchedLocation['unified_location_id'] ?? '');
                             if ($dropoffUnifiedIdStr !== $pickupUnifiedIdStr) {
-                                // Find the dropoff location in unified_locations.json and get this provider's pickup_id there
-                                $allLocations ??= json_decode(\Illuminate\Support\Facades\File::get(public_path('unified_locations.json')), true);
-                                foreach ($allLocations as $loc) {
-                                    if ((string) ($loc['unified_location_id'] ?? '') === $dropoffUnifiedIdStr) {
-                                        foreach ($loc['providers'] ?? [] as $p) {
-                                            if (($p['provider'] ?? null) === $providerToFetch) {
-                                                $dropoffIdForProvider = $p['pickup_id'];
-                                                break 2;
-                                            }
-                                        }
-                                        break; // Found the unified location but provider not present there
+                                $dropoffLocation = $this->locationSearchService->getLocationByUnifiedId((int) $dropoffUnifiedIdStr);
+                                foreach ($dropoffLocation['providers'] ?? [] as $p) {
+                                    if (($p['provider'] ?? null) === $providerToFetch) {
+                                        $dropoffIdForProvider = $p['pickup_id'];
+                                        break;
                                     }
                                 }
                             }
@@ -2749,8 +2765,12 @@ class SearchController extends Controller
             return true;
         });
 
-        // Skip internal vehicles for one-way rentals (internal doesn't support different dropoff)
-        $internalForMerge = $isOneWay ? collect() : $internalVehiclesCollection;
+        $internalForMerge = $this->internalVehicleMergeService->forGatewayMerge(
+            $internalVehiclesCollection,
+            $validated,
+            $matchedLocation,
+            $isOneWay
+        );
         $combinedVehicles = $internalForMerge->merge($filteredProviderVehicles)->merge($filteredOkMobilityVehicles);
         $perPage = 500;
         $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
@@ -2925,9 +2945,807 @@ class SearchController extends Controller
             'locationName' => $validated['location_name'] ?? 'Selected Location', // Pass location name
             'search_session_id' => $searchSessionId, // For price verification
             'price_map' => $priceMap, // Price hashes for all vehicles
+            'via_gateway' => false,
         ]);
     }
 
+
+    /**
+     * Gateway-based search: replaces all provider-specific fetching with a single gateway call.
+     * Internal vehicles are still fetched from the local DB.
+     */
+    private function searchViaGateway(
+        Request $request,
+        array $validated,
+        int $rentalDays,
+        $internalVehiclesCollection,
+        array $brands,
+        array $colors,
+        array $seatingCapacities,
+        array $transmissions,
+        array $fuels,
+        array $mileages,
+        array $categoriesFromOptions,
+        $vehicleListSchema
+    ) {
+        $locationName = $validated['where'] ?? 'Selected Location';
+        $matchedLocation = $this->locationSearchService->resolveSearchLocation($validated);
+        if (!empty($validated['unified_location_id'])) {
+            $selectedLocation = $this->locationSearchService->getLocationByUnifiedId((int) $validated['unified_location_id']);
+            $locationName = $selectedLocation['name'] ?? $locationName;
+        }
+
+        $gatewayParams = $this->gatewaySearchParamsBuilder->build($validated);
+
+        $gatewayResult = $this->gatewayService->searchVehicles($gatewayParams);
+
+        if (empty($gatewayResult) || empty($gatewayResult['vehicles'])) {
+            Log::info('VrooemGateway: No vehicles returned or gateway error');
+            $providerVehicles = collect();
+            $providerStatus = [];
+        } else {
+            Log::info('VrooemGateway: Raw vehicle count from gateway', ['count' => count($gatewayResult['vehicles'])]);
+
+            // Transform gateway canonical vehicles to Laravel's expected format
+            $transformErrors = [];
+            $transformedVehicles = collect($gatewayResult['vehicles'])->map(function ($gv) use ($rentalDays, &$transformErrors) {
+                try {
+                    return $this->transformGatewayVehicle($gv, $rentalDays);
+                } catch (\Throwable $e) {
+                    $transformErrors[] = ['vehicle_id' => $gv['id'] ?? 'unknown', 'error' => $e->getMessage()];
+                    return null;
+                }
+            })->filter()->values();
+            if (!empty($transformErrors)) {
+                Log::warning('VrooemGateway: Transform errors', ['errors' => $transformErrors]);
+            }
+            Log::info('VrooemGateway: After transform', ['count' => $transformedVehicles->count(), 'sources' => $transformedVehicles->pluck('source')->countBy()->all()]);
+
+            $presentationService = app(\App\Services\GatewayVehiclePresentationService::class);
+
+            $transformedVehicles = $presentationService
+                ->collapseEquivalentSicilyByCarVehicles($transformedVehicles);
+            Log::info('VrooemGateway: After SBC collapse', ['count' => $transformedVehicles->count()]);
+
+            $transformedVehicles = $presentationService
+                ->collapseEquivalentRenteonVehicles($transformedVehicles);
+            Log::info('VrooemGateway: After Renteon collapse', ['count' => $transformedVehicles->count()]);
+
+            // RecordGo grouping: gateway creates one vehicle per product,
+            // but frontend expects one vehicle with recordgo_products[] array
+            $providerVehicles = $this->groupRecordGoVehicles($transformedVehicles);
+            Log::info('VrooemGateway: After RecordGo grouping', ['count' => $providerVehicles->count()]);
+
+            $providerVehicles = $this->searchOrchestratorService
+                ->filterGatewayVehiclesForRequestedProvider($providerVehicles, $validated);
+            Log::info('VrooemGateway: After requested-provider filter', [
+                'count' => $providerVehicles->count(),
+                'provider' => $validated['provider'] ?? 'mixed',
+            ]);
+
+            $providerStatus = collect($gatewayResult['supplier_results'] ?? [])->map(function ($sr) {
+                $providerId = $this->normalizeGatewaySupplierId((string) ($sr['supplier_id'] ?? 'unknown'));
+                return [
+                    'provider' => $providerId,
+                    'status' => empty($sr['error']) ? 'ok' : 'error',
+                    'vehicles' => $sr['vehicle_count'] ?? 0,
+                    'ms' => $sr['response_time_ms'] ?? null,
+                    'errors' => !empty($sr['error']) ? [$sr['error']] : [],
+                ];
+            })->values()->all();
+        }
+
+        // Filter provider vehicles (same logic as legacy path)
+        $filteredProviderVehicles = $providerVehicles->filter(function ($vehicle) use ($validated) {
+            $v = is_array($vehicle) ? $vehicle : (array) $vehicle;
+            if (!empty($validated['seating_capacity']) && ($v['seating_capacity'] ?? null) != $validated['seating_capacity']) return false;
+            if (!empty($validated['brand']) && strcasecmp($v['brand'] ?? '', $validated['brand']) != 0) return false;
+            if (!empty($validated['transmission']) && strcasecmp($v['transmission'] ?? '', $validated['transmission']) != 0) return false;
+            if (!empty($validated['fuel']) && strcasecmp($v['fuel'] ?? '', $validated['fuel']) != 0) return false;
+            if (!empty($validated['category_id']) && !is_numeric($validated['category_id'])) {
+                if (strcasecmp($v['category'] ?? '', $validated['category_id']) != 0) return false;
+            }
+            return true;
+        });
+        Log::info('VrooemGateway: After filtering', [
+            'before' => $providerVehicles->count(),
+            'after' => $filteredProviderVehicles->count(),
+            'filters_applied' => array_filter([
+                'seating_capacity' => $validated['seating_capacity'] ?? null,
+                'brand' => $validated['brand'] ?? null,
+                'transmission' => $validated['transmission'] ?? null,
+                'fuel' => $validated['fuel'] ?? null,
+                'category_id' => $validated['category_id'] ?? null,
+            ]),
+        ]);
+
+        $isOneWay = !empty($validated['dropoff_unified_location_id'])
+            && $validated['dropoff_unified_location_id'] != $validated['unified_location_id'];
+        $internalForMerge = $this->internalVehicleMergeService->forGatewayMerge(
+            $internalVehiclesCollection,
+            $validated,
+            $matchedLocation,
+            $isOneWay
+        );
+
+        $combinedVehicles = $internalForMerge->merge($filteredProviderVehicles);
+        Log::info('VrooemGateway: Combined vehicles', [
+            'internal' => $internalForMerge->count(),
+            'provider' => $filteredProviderVehicles->count(),
+            'combined' => $combinedVehicles->count(),
+            'isOneWay' => $isOneWay,
+        ]);
+        $perPage = 500;
+        $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+        $currentItems = $combinedVehicles->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        $vehicles = new \Illuminate\Pagination\LengthAwarePaginator(
+            $currentItems, $combinedVehicles->count(), $perPage, $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        // Build filter options from provider vehicles
+        $allProviderBrands = $providerVehicles->pluck('brand')->unique()->filter()->values()->all();
+        $allProviderSeatingCapacities = $providerVehicles->pluck('seating_capacity')->unique()->filter()->values()->all();
+        $allProviderTransmissions = $providerVehicles->pluck('transmission')->unique()->filter()->values()->all();
+        $allProviderFuels = $providerVehicles->pluck('fuel')->unique()->filter()->values()->all();
+
+        $combinedBrands = collect($brands)->merge($allProviderBrands)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+        $combinedSeatingCapacities = collect($seatingCapacities)->merge($allProviderSeatingCapacities)->unique()->sort()->values()->all();
+        $combinedTransmissions = collect($transmissions)->merge($allProviderTransmissions)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+        $combinedFuels = collect($fuels)->merge($allProviderFuels)->map(fn($val) => trim($val))->unique(fn($val) => strtolower($val))->sort()->values()->all();
+
+        // Provider categories
+        $providerCategories = $providerVehicles->pluck('category')->unique()->filter()
+            ->map(fn($cat) => ['id' => $cat, 'name' => ucfirst(is_string($cat) ? $cat : (string) $cat)])
+            ->values()->all();
+        $categoriesFromOptions = collect(array_merge($categoriesFromOptions, $providerCategories))->unique('id')->values()->all();
+
+        // Price verification
+        $searchSessionId = 'search_' . session()->getId() . '_' . now()->timestamp;
+        $allVehicles = [];
+
+        $vehiclesCollection = $vehicles->getCollection();
+        foreach ($vehiclesCollection as $vehicle) {
+            $vehicleArray = is_array($vehicle) ? $vehicle : (array) $vehicle;
+            $vehicleArray['source'] = $vehicleArray['source'] ?? 'internal';
+            $allVehicles[] = $vehicleArray;
+        }
+        foreach ($providerVehicles as $vehicle) {
+            $allVehicles[] = is_array($vehicle) ? $vehicle : (array) $vehicle;
+        }
+
+        $priceMap = $this->priceVerificationService->storeOriginalPrices($searchSessionId, $allVehicles);
+
+        // Attach price_hash to vehicles
+        $vehicles = new \Illuminate\Pagination\LengthAwarePaginator(
+            $vehicles->getCollection()->map(function ($vehicle) use ($priceMap) {
+                $vid = is_array($vehicle) ? ($vehicle['id'] ?? null) : ($vehicle->id ?? null);
+                if ($vid && isset($priceMap[$vid])) {
+                    if (is_array($vehicle)) {
+                        $vehicle['price_hash'] = $priceMap[$vid]['price_hash'];
+                    } else {
+                        $vehicle->price_hash = $priceMap[$vid]['price_hash'];
+                    }
+                }
+                return $vehicle;
+            }),
+            $vehicles->total(), $vehicles->perPage(), $vehicles->currentPage(),
+            ['path' => $vehicles->path()]
+        );
+
+        // OK Mobility + Renteon paginated (gateway merges them into providerVehicles, split by source)
+        $okMobilityVehicles = $providerVehicles->filter(fn($v) => ($v['source'] ?? '') === 'okmobility');
+        $renteonVehicles = $providerVehicles->filter(fn($v) => ($v['source'] ?? '') === 'renteon');
+
+        $okMobilityVehiclesPaginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $okMobilityVehicles->values(), $okMobilityVehicles->count(), $perPage, $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+        $renteonVehiclesPaginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $renteonVehicles->values(), $renteonVehicles->count(), $perPage, $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        $seo = app(SeoMetaResolver::class)->resolveForRoute(
+            'search', [], App::getLocale(),
+            route('search', ['locale' => App::getLocale()]), 'noindex,follow'
+        )->toArray();
+
+        // Gateway vehicles carry their own extras per-vehicle (in vehicle.options / vehicle.extras).
+        // Do NOT merge them into a shared optionalExtras list — that causes cross-vehicle contamination.
+        // The shared optionalExtras was only needed for old GreenMotion XML flow which had location-level extras.
+        $searchOptionalExtras = [];
+
+        $vehicleSources = $vehicles->getCollection()->map(fn($v) => is_array($v) ? ($v['source'] ?? 'unknown') : ($v->source ?? 'unknown'));
+        Log::info('VrooemGateway: FINAL Inertia render', [
+            'total_vehicles_in_paginator' => $vehicles->total(),
+            'paginator_page_items' => $vehicles->getCollection()->count(),
+            'sources_breakdown' => $vehicleSources->countBy()->all(),
+            'okMobility_count' => $okMobilityVehicles->count(),
+            'renteon_count' => $renteonVehicles->count(),
+        ]);
+
+        return Inertia::render('SearchResults', [
+            'vehicles' => $vehicles,
+            'okMobilityVehicles' => $okMobilityVehiclesPaginated,
+            'renteonVehicles' => $renteonVehiclesPaginated,
+            'providerStatus' => $providerStatus,
+            'searchError' => null,
+            'filters' => $validated,
+            'pagination_links' => $vehicles->links('pagination::tailwind')->toHtml(),
+            'brands' => $combinedBrands,
+            'colors' => $colors,
+            'seatingCapacities' => $combinedSeatingCapacities,
+            'transmissions' => $combinedTransmissions,
+            'fuels' => $combinedFuels,
+            'mileages' => $mileages,
+            'categories' => $categoriesFromOptions,
+            'schema' => $vehicleListSchema,
+            'seo' => $seo,
+            'locale' => App::getLocale(),
+            'optionalExtras' => array_values($searchOptionalExtras),
+            'locationName' => $locationName,
+            'search_session_id' => $searchSessionId,
+            'price_map' => $priceMap,
+            'via_gateway' => true,
+            'gateway_search_id' => $gatewayResult['search_id'] ?? null,
+            'gateway_response_time_ms' => $gatewayResult['response_time_ms'] ?? null,
+        ]);
+    }
+
+    /**
+     * Transform a gateway canonical vehicle to Laravel's expected frontend format.
+     */
+    private function transformGatewayVehicle(array $gv, int $rentalDays): array
+    {
+        $rawSupplierId = $gv['supplier_id'] ?? 'unknown';
+        $supplierId = $this->normalizeGatewaySupplierId((string) $rawSupplierId);
+        $supplierVehicleId = $gv['supplier_vehicle_id'] ?? '';
+        $pricing = $gv['pricing'] ?? [];
+        $pickup = $gv['pickup_location'] ?? [];
+        $supplierData = $gv['supplier_data'] ?? [];
+        $totalPrice = (float) ($pricing['total_price'] ?? 0);
+        $dailyRate = (float) ($pricing['daily_rate'] ?? 0);
+        $priceCurrency = $pricing['currency'] ?? 'EUR';
+
+        // Map gateway transmission enum to frontend string
+        $transmission = $gv['transmission'] ?? 'manual';
+
+        // Map gateway fuel_type to frontend fuel
+        $fuelMap = [
+            'petrol' => 'Petrol',
+            'diesel' => 'Diesel',
+            'electric' => 'Electric',
+            'hybrid' => 'Hybrid',
+            'lpg' => 'LPG',
+            'unknown' => null,
+        ];
+        $fuel = $fuelMap[$gv['fuel_type'] ?? 'unknown'] ?? ($gv['fuel_type'] ?? null);
+
+        // Build features array
+        $features = [];
+        if ($gv['air_conditioning'] ?? true) $features[] = 'Air Conditioning';
+
+        // Map extras with ALL field names various frontend provider components expect.
+        // GreenMotion expects: daily_rate, Daily_rate, total_for_booking, Total_for_this_booking
+        // Renteon expects: price, amount, daily_rate, service_id
+        // Surprice expects: price, price_per_day
+        // Favrica/XDrive expects: total_for_booking, daily_rate
+        $extras = collect($gv['extras'] ?? [])->map(function ($extra) {
+            $dailyRate = (float) ($extra['daily_rate'] ?? 0);
+            $totalPrice = (float) ($extra['total_price'] ?? 0);
+            $extCurrency = $extra['currency'] ?? 'EUR';
+            $maxQty = $extra['max_quantity'] ?? 1;
+            $name = $extra['name'] ?? '';
+            $description = $extra['description'] ?? $name;
+            $extId = $extra['id'] ?? '';
+
+            return [
+                'id' => $extId,
+                'name' => $name,
+                'description' => $description,
+                // GreenMotion field names
+                'daily_rate' => $dailyRate,
+                'Daily_rate' => $dailyRate,
+                'total_for_booking' => $totalPrice,
+                'Total_for_this_booking' => $totalPrice,
+                'total_for_booking_currency' => $extCurrency,
+                'Total_for_this_booking_currency' => $extCurrency,
+                'option_id' => $extId,
+                'optionID' => $extId,
+                // Renteon / Surprice field names
+                'price' => $dailyRate,
+                'amount' => $dailyRate,
+                'total_price' => $totalPrice,
+                'price_per_day' => $dailyRate,
+                'service_id' => $extId,
+                // Common fields
+                'currency' => $extCurrency,
+                'max_quantity' => $maxQty,
+                'numberAllowed' => $maxQty,
+                'mandatory' => $extra['mandatory'] ?? false,
+                'required' => $extra['mandatory'] ?? false,
+                'type' => $extra['type'] ?? 'equipment',
+                'code' => $extId,
+            ];
+        })->all();
+        $options = $extras;
+
+        // Map insurance_options
+        $insuranceOptions = collect($gv['insurance_options'] ?? [])->map(function ($ins) {
+            return [
+                'id' => $ins['id'] ?? '',
+                'name' => $ins['name'] ?? '',
+                'coverage_type' => $ins['coverage_type'] ?? 'basic',
+                'daily_rate' => $ins['daily_rate'] ?? 0,
+                'total_price' => $ins['total_price'] ?? 0,
+                'currency' => $ins['currency'] ?? 'EUR',
+                'excess_amount' => $ins['excess_amount'] ?? null,
+                'included' => $ins['included'] ?? false,
+            ];
+        })->all();
+
+        // SicilyByCar: Transform gateway extras back to SBC service format for frontend
+        $sbcExtras = $extras;
+        if ($rawSupplierId === 'sicily_by_car') {
+            $sbcExtras = collect($gv['extras'] ?? [])->map(function ($extra) {
+                $sd = $extra['supplier_data'] ?? [];
+                return [
+                    'id' => $sd['id'] ?? ($extra['id'] ?? ''),
+                    'description' => $sd['description'] ?? ($extra['name'] ?? ''),
+                    'isMandatory' => $sd['isMandatory'] ?? ($extra['mandatory'] ?? false),
+                    'total' => $sd['total'] ?? ($extra['total_price'] ?? 0),
+                    'excess' => $sd['excess'] ?? null,
+                    'excessAmount' => $sd['excessAmount'] ?? null,
+                    'payment' => $sd['payment'] ?? null,
+                    // Standard extra fields for price display
+                    'price' => (float) ($extra['daily_rate'] ?? 0),
+                    'daily_rate' => (float) ($extra['daily_rate'] ?? 0),
+                    'total_price' => (float) ($extra['total_price'] ?? 0),
+                    'total_for_booking' => (float) ($extra['total_price'] ?? 0),
+                    'name' => $sd['description'] ?? ($extra['name'] ?? ''),
+                    'mandatory' => $sd['isMandatory'] ?? ($extra['mandatory'] ?? false),
+                ];
+            })->all();
+        }
+
+        // OkMobility: Transform gateway extras back to raw OkMobility format for frontend.
+        // The Vue component needs original fields: extraID, code, valueWithTax, pricePerContract,
+        // extra_Included, extra_Required — to identify cover extras (OPC/OPCO) and filter by
+        // extras_included/required/available lists.
+        $okMobilityExtras = $extras;
+        if ($rawSupplierId === 'ok_mobility') {
+            $okMobilityExtras = collect($gv['extras'] ?? [])->map(function ($extra) {
+                $sd = $extra['supplier_data'] ?? [];
+                return [
+                    'extraID' => $sd['extraID'] ?? ($extra['id'] ?? ''),
+                    'code' => $sd['code'] ?? ($sd['extraID'] ?? ($extra['id'] ?? '')),
+                    'extra' => $sd['extra'] ?? ($extra['name'] ?? ''),
+                    'name' => $extra['name'] ?? '',
+                    'description' => $extra['description'] ?? '',
+                    'value' => $sd['value'] ?? (string) ($extra['daily_rate'] ?? 0),
+                    'valueWithTax' => $sd['valueWithTax'] ?? (string) ($extra['daily_rate'] ?? 0),
+                    'pricePerContract' => $sd['pricePerContract'] ?? 'false',
+                    'extra_Included' => $sd['extra_Included'] ?? 'false',
+                    'extra_Required' => $sd['extra_Required'] ?? 'false',
+                    // Standard fields for price display
+                    'price' => (float) ($extra['daily_rate'] ?? 0),
+                    'daily_rate' => (float) ($extra['daily_rate'] ?? 0),
+                    'total_price' => (float) ($extra['total_price'] ?? 0),
+                    'amount' => (float) ($extra['daily_rate'] ?? 0),
+                    'mandatory' => $extra['mandatory'] ?? false,
+                    'required' => $extra['mandatory'] ?? false,
+                    'type' => $extra['type'] ?? 'equipment',
+                    'id' => $extra['id'] ?? '',
+                ];
+            })->all();
+        }
+
+        // Renteon: Transform gateway extras to expose raw service code, service_group/type,
+        // and inclusion flags (free_of_charge, included_in_price, included_in_price_limited).
+        // Vue's isRenteonProtectionExtra checks code.startsWith('INS-') and service_group for 'insurance'.
+        // Vue's renteonIncludedServices filters by included/free_of_charge/included_in_price flags.
+        $renteonExtras = $extras;
+        if ($rawSupplierId === 'renteon') {
+            $renteonExtras = collect($gv['extras'] ?? [])->map(function ($extra) {
+                $sd = $extra['supplier_data'] ?? [];
+                $code = $sd['code'] ?? ($extra['id'] ?? '');
+                return [
+                    'id' => $extra['id'] ?? '',
+                    'name' => $extra['name'] ?? '',
+                    'description' => $extra['description'] ?? ($extra['name'] ?? ''),
+                    'code' => $code,
+                    'service_id' => $code,
+                    'service_group' => $sd['service_group'] ?? '',
+                    'service_type' => $sd['service_type'] ?? '',
+                    'price' => (float) ($extra['daily_rate'] ?? 0),
+                    'amount' => (float) ($extra['daily_rate'] ?? 0),
+                    'daily_rate' => (float) ($extra['daily_rate'] ?? 0),
+                    'total_price' => (float) ($extra['total_price'] ?? 0),
+                    'price_per_day' => (float) ($extra['daily_rate'] ?? 0),
+                    'currency' => $extra['currency'] ?? 'EUR',
+                    'max_quantity' => $extra['max_quantity'] ?? 1,
+                    'mandatory' => $extra['mandatory'] ?? false,
+                    'required' => $extra['mandatory'] ?? false,
+                    'type' => $extra['type'] ?? 'equipment',
+                    // Inclusion flags for renteonIncludedServices filter
+                    'included' => ($sd['free_of_charge'] ?? false) || ($sd['included_in_price'] ?? false) || ($sd['included_in_price_limited'] ?? false),
+                    'free_of_charge' => $sd['free_of_charge'] ?? false,
+                    'included_in_price' => $sd['included_in_price'] ?? false,
+                    'included_in_price_limited' => $sd['included_in_price_limited'] ?? false,
+                    'is_one_time' => $sd['is_one_time'] ?? false,
+                    'quantity_included' => $sd['quantity_included'] ?? 0,
+                ];
+            })->all();
+        }
+
+        // LocautoRent: Transform gateway extras to expose equip_type code and total amount.
+        // Vue's locautoProtectionPlans filters by extra.code in ['136','147','145','140','146','6','43']
+        // and requires extra.amount > 0 (total price, not daily rate).
+        $locautoExtras = $extras;
+        if ($rawSupplierId === 'locauto_rent') {
+            $locautoExtras = collect($gv['extras'] ?? [])->map(function ($extra) {
+                $sd = $extra['supplier_data'] ?? [];
+                return [
+                    'id' => $extra['id'] ?? '',
+                    'name' => $extra['name'] ?? '',
+                    'description' => $extra['description'] ?? ($extra['name'] ?? ''),
+                    'code' => $sd['code'] ?? ($extra['id'] ?? ''),
+                    'amount' => (float) ($sd['amount'] ?? ($extra['total_price'] ?? 0)),
+                    'price' => (float) ($extra['daily_rate'] ?? 0),
+                    'daily_rate' => (float) ($extra['daily_rate'] ?? 0),
+                    'total_price' => (float) ($extra['total_price'] ?? 0),
+                    'total_for_booking' => (float) ($extra['total_price'] ?? 0),
+                    'currency' => $extra['currency'] ?? 'EUR',
+                    'mandatory' => $extra['mandatory'] ?? false,
+                    'included_in_rate' => $sd['included_in_rate'] ?? false,
+                    'type' => $extra['type'] ?? 'equipment',
+                ];
+            })->all();
+        }
+
+        // Surprice: Transform gateway extras to expose raw code, per_day flag, and purpose.
+        // Vue's surpriceOptionalExtras reads: extra.code, extra.price (total), extra.per_day,
+        // extra.price_per_day, extra.allow_quantity, extra.purpose.
+        $surpriceExtras = $extras;
+        if ($rawSupplierId === 'surprice') {
+            $surpriceExtras = collect($gv['extras'] ?? [])->map(function ($extra) {
+                $sd = $extra['supplier_data'] ?? [];
+                return [
+                    'id' => $extra['id'] ?? '',
+                    'name' => $extra['name'] ?? '',
+                    'description' => $extra['description'] ?? ($extra['name'] ?? ''),
+                    'code' => $sd['code'] ?? ($extra['id'] ?? ''),
+                    'price' => (float) ($extra['total_price'] ?? 0),
+                    'daily_rate' => (float) ($extra['daily_rate'] ?? 0),
+                    'total_price' => (float) ($extra['total_price'] ?? 0),
+                    'price_per_day' => (float) ($sd['unit_charge'] ?? ($extra['daily_rate'] ?? 0)),
+                    'per_day' => $sd['per_day'] ?? false,
+                    'allow_quantity' => $sd['allow_quantity'] ?? 1,
+                    'purpose' => $sd['purpose'] ?? null,
+                    'currency' => $extra['currency'] ?? 'EUR',
+                    'mandatory' => $extra['mandatory'] ?? false,
+                    'type' => $extra['type'] ?? 'equipment',
+                ];
+            })->all();
+        }
+
+        // Adobe: Build protections from insurance_options for frontend compatibility
+        $protections = [];
+        if ($rawSupplierId === 'adobe_car') {
+            $protections = collect($gv['insurance_options'] ?? [])->map(function ($ins) {
+                return [
+                    'code' => strtoupper(str_replace(['ins_adobe_car_', 'ins_adobe_'], '', $ins['id'] ?? '')),
+                    'name' => $ins['name'] ?? '',
+                    'displayName' => $ins['name'] ?? '',
+                    'description' => $ins['description'] ?? '',
+                    'price' => $ins['total_price'] ?? 0,
+                    'total' => $ins['total_price'] ?? 0,
+                    'daily_rate' => $ins['daily_rate'] ?? 0,
+                    'required' => $ins['included'] ?? false,
+                    'excess_amount' => $ins['excess_amount'] ?? null,
+                ];
+            })->all();
+        }
+
+        // Deposit: check pricing first, then supplier_data, then SBC deposit
+        $depositAmount = $pricing['deposit_amount']
+            ?? ($supplierData['deposit_amount'] ?? ($supplierData['deposit'] ?? null));
+        $depositCurrency = $pricing['deposit_currency']
+            ?? ($supplierData['deposit_currency'] ?? null);
+
+        // Extract cancellation policy data for frontend (all providers)
+        $cancellationData = null;
+        $cp = $gv['cancellation_policy'] ?? [];
+        if (!empty($cp)) {
+            $cancellationData = [
+                'available' => $cp['free_cancellation'] ?? true,
+                'penalty' => !($cp['free_cancellation'] ?? true),
+                'amount' => $cp['cancellation_fee'] ?? 0,
+                'currency' => $cp['cancellation_fee_currency'] ?? 'EUR',
+                'deadline' => $cp['free_cancellation_until'] ?? null,
+            ];
+        }
+
+        return [
+            'id' => $gv['id'] ?? ($supplierId . '_' . $supplierVehicleId),
+            'gateway_vehicle_id' => $gv['id'] ?? null,
+            'provider_vehicle_id' => $supplierData['vehicle_category_id'] ?? ($supplierData['vehicle_id'] ?? ($supplierVehicleId ?: null)),
+            'location_id' => $pickup['supplier_location_id'] ?? '',
+            'source' => $supplierId,
+            'brand' => $gv['make'] ?? '',
+            'model' => $gv['model'] ?? '',
+            'category' => $gv['category'] ?? 'other',
+            'image' => $gv['image_url'] ?? '',
+            'total_price' => (float) ($pricing['total_price'] ?? 0),
+            // Legacy aliases used by price verification and some legacy frontend paths.
+            'total' => (float) ($pricing['total_price'] ?? 0),
+            'price_per_day' => (float) ($pricing['daily_rate'] ?? 0),
+            'daily_rate' => (float) ($pricing['daily_rate'] ?? 0),
+            'price_per_week' => (float) ($pricing['daily_rate'] ?? 0) * 7,
+            'price_per_month' => (float) ($pricing['daily_rate'] ?? 0) * 30,
+            'currency' => $pricing['currency'] ?? 'EUR',
+            'transmission' => $transmission,
+            'fuel' => $fuel,
+            'seating_capacity' => $gv['seats'] ?? 5,
+            'mileage' => $gv['mileage_policy'] ?? 'unlimited',
+            'co2' => null,
+            'latitude' => (float) ($pickup['latitude'] ?? 0),
+            'longitude' => (float) ($pickup['longitude'] ?? 0),
+            'full_vehicle_address' => $pickup['name'] ?? '',
+            'provider_pickup_id' => $pickup['supplier_location_id'] ?? '',
+            'provider_return_id' => ($gv['dropoff_location']['supplier_location_id'] ?? null) ?: ($pickup['supplier_location_id'] ?? ''),
+            'provider_dropoff_id' => ($gv['dropoff_location']['supplier_location_id'] ?? null) ?: ($pickup['supplier_location_id'] ?? ''),
+            'ok_mobility_pickup_time' => null,
+            'ok_mobility_dropoff_time' => null,
+            'features' => $features,
+            'airConditioning' => $gv['air_conditioning'] ?? true,
+            'sipp_code' => $gv['sipp_code'] ?? null,
+            'doors' => $gv['doors'] ?? 4,
+            'benefits' => [
+                'minimum_driver_age' => $gv['min_driver_age'] ?? null,
+                'maximum_driver_age' => $gv['max_driver_age'] ?? null,
+                'fuel_policy' => $supplierData['fuel_policy'] ?? null,
+                'deposit_amount' => $depositAmount,
+                'deposit_currency' => $depositCurrency,
+                'excess_amount' => !empty($gv['insurance_options']) ? ($gv['insurance_options'][0]['excess_amount'] ?? null) : null,
+                'excess_theft_amount' => $supplierData['excess_theft_amount'] ?? ($supplierData['theft_excess'] ?? null),
+            ],
+            // Tax breakdown for Renteon/Surprice/OkMobility
+            'provider_gross_amount' => !empty($supplierData['net_amount']) ? ($totalPrice) : null,
+            'provider_net_amount' => $supplierData['net_amount'] ?? null,
+            'provider_vat_amount' => $supplierData['vat_amount'] ?? null,
+            'luggageSmall' => (string) ($gv['bags_small'] ?? 0),
+            'luggageMed' => '0',
+            'luggageLarge' => (string) ($gv['bags_large'] ?? 0),
+            'products' => $this->buildGatewayProducts($rawSupplierId, $totalPrice, $dailyRate, $priceCurrency, $rentalDays, $gv),
+            'tdr' => $supplierData['tdr'] ?? $totalPrice, // Adobe: daily rate (includes PLI+LDW+SPP)
+            'quoteid' => $supplierData['quote_id'] ?? null,
+            'rentalCode' => null,
+            'options' => ($rawSupplierId === 'ok_mobility') ? $okMobilityExtras : $options,
+            'extras' => match($rawSupplierId) {
+                'sicily_by_car' => $sbcExtras,
+                'ok_mobility' => $okMobilityExtras,
+                'locauto_rent' => $locautoExtras,
+                'surprice' => $surpriceExtras,
+                'renteon' => $renteonExtras,
+                default => $extras,
+            },
+            'insurance_options' => $insuranceOptions,
+            'supplier_data' => $gv['supplier_data'] ?? [],
+            // Office details for location display (Renteon, Surprice, etc.)
+            'pickup_office' => $supplierData['pickup_office'] ?? null,
+            'dropoff_office' => $supplierData['dropoff_office'] ?? null,
+            // Renteon-specific fields for checkout compatibility
+            'connector_id' => $supplierData['connector_id'] ?? null,
+            'provider_pickup_office_id' => $supplierData['pickup_office_id'] ?? null,
+            'provider_dropoff_office_id' => $supplierData['dropoff_office_id'] ?? null,
+            'pricelist_id' => $supplierData['pricelist_id'] ?? null,
+            'pricelist_code' => $supplierData['pricelist_code'] ?? null,
+            'price_date' => $supplierData['price_date'] ?? null,
+            'prepaid' => $supplierData['prepaid'] ?? false,
+            'provider_code' => $supplierData['provider_code'] ?? $rawSupplierId,
+            'is_on_request' => $supplierData['is_on_request'] ?? false,
+            // OkMobility-specific fields
+            'pickup_station_name' => $supplierData['pickup_station_name'] ?? null,
+            'dropoff_station_name' => $supplierData['dropoff_station_name'] ?? null,
+            'pickup_address' => $supplierData['pickup_address'] ?? null,
+            'dropoff_address' => $supplierData['dropoff_address'] ?? null,
+            'fuel_policy' => $supplierData['fuel_policy'] ?? null,
+            'cancellation' => $cancellationData,
+            'extras_included' => $supplierData['extras_included'] ?? '',
+            'extras_required' => $supplierData['extras_required'] ?? '',
+            'extras_available' => $supplierData['extras_available'] ?? '',
+            'ok_mobility_token' => $supplierData['token'] ?? null,
+            'ok_mobility_group_id' => $supplierData['group_id'] ?? null,
+            'ok_mobility_rate_code' => $supplierData['rate_code'] ?? null,
+            'value_without_tax' => $supplierData['value_without_tax'] ?? null,
+            'tax_rate' => $supplierData['tax_rate'] ?? null,
+            // Adobe-specific fields
+            'protections' => $protections,
+            'office_address' => $supplierData['office_address'] ?? null,
+            'office_phone' => $supplierData['office_phone'] ?? null,
+            'office_schedule' => $supplierData['office_schedule'] ?? null,
+            'at_airport' => $supplierData['at_airport'] ?? false,
+            'pli' => $supplierData['pli'] ?? 0,
+            'ldw' => $supplierData['ldw'] ?? 0,
+            'spp' => $supplierData['spp'] ?? 0,
+            'dro' => $supplierData['dro'] ?? 0,
+            // SicilyByCar-specific fields
+            'deposit' => $supplierData['deposit'] ?? null,
+            'availability_id' => $supplierData['availability_id'] ?? null,
+            'rate_id' => $supplierData['rate_id'] ?? null,
+            'rate_name' => $supplierData['rate_description'] ?? null,
+            'payment_type' => $supplierData['rate_payment'] ?? null,
+            // RecordGo-specific fields
+            'recordgo_acriss_id' => $supplierData['acriss_id'] ?? null,
+            'recordgo_sellcode_ver' => $supplierData['sell_code_ver'] ?? null,
+            'recordgo_country' => $supplierData['country'] ?? null,
+            'recordgo_partner_user' => null, // Set from gateway config
+            'bags' => ($gv['bags_large'] ?? 0) + ($gv['bags_small'] ?? 0) ?: null,
+            'suitcases' => $gv['bags_large'] ?? null,
+            'security_deposit' => $depositAmount,
+        ];
+    }
+
+    /**
+     * Build products array for gateway vehicles matching the legacy frontend format.
+     * GreenMotion expects products[].type/total/currency, Adobe uses tdr field.
+     */
+    private function buildGatewayProducts(string $supplierId, float $totalPrice, float $dailyRate, string $currency, int $rentalDays, array $gv): array
+    {
+        $supplierData = $gv['supplier_data'] ?? [];
+
+        // GreenMotion/USave: Gateway stores all product tiers (BAS, MED, PRE, PMP) in supplier_data.products
+        $rawProducts = $supplierData['products'] ?? [];
+        if (!empty($rawProducts) && is_array($rawProducts)) {
+            // GreenMotion: pass all product fields so getBenefits() in Vue can build
+            // granular benefit labels (fuel policy, mileage, excess, debit card, etc.)
+            return collect($rawProducts)->map(function ($p) use ($rentalDays) {
+                $total = (float) ($p['total'] ?? 0);
+                return [
+                    'type' => $p['type'] ?? 'BAS',
+                    'name' => $this->getProductName($p['type'] ?? 'BAS'),
+                    'total' => $total,
+                    'price_per_day' => $rentalDays > 0 ? round($total / $rentalDays, 2) : $total,
+                    'currency' => $p['currency'] ?? 'EUR',
+                    'excess' => $p['excess'] ?? null,
+                    'deposit' => $p['deposit'] ?? null,
+                    'mileage' => $p['mileage'] ?? 0,
+                    'costperextradistance' => $p['costperextradistance'] ?? null,
+                    'fuelpolicy' => $p['fuelpolicy'] ?? '',
+                    'minage' => $p['minage'] ?? 0,
+                    'debitcard' => $p['debitcard'] ?? '',
+                ];
+            })->all();
+        }
+
+        // Fallback for providers without products: build a single basic package
+        $deposit = $gv['pricing']['deposit_amount'] ?? null;
+        $excess = !empty($gv['insurance_options']) ? ($gv['insurance_options'][0]['excess_amount'] ?? null) : null;
+        $mileagePolicy = $gv['mileage_policy'] ?? 'unlimited';
+
+        $benefits = [];
+        if ($mileagePolicy === 'unlimited') {
+            $benefits[] = 'Unlimited Mileage';
+        } elseif ($mileagePolicy === 'limited') {
+            $limitKm = $gv['mileage_limit_km'] ?? null;
+            $benefits[] = $limitKm ? "Limited: {$limitKm} km" : 'Limited Mileage';
+        }
+        if ($deposit) {
+            $benefits[] = 'Deposit: ' . $currency . ' ' . number_format($deposit, 2);
+        }
+        if ($excess) {
+            $benefits[] = 'Excess: ' . $currency . ' ' . number_format($excess, 2);
+        }
+
+        return [[
+            'type' => 'BAS',
+            'name' => 'Basic Package',
+            'total' => $totalPrice,
+            'price_per_day' => $dailyRate,
+            'currency' => $currency,
+            'excess' => $excess,
+            'deposit' => $deposit,
+            'benefits' => $benefits,
+        ]];
+    }
+
+    private function getProductName(string $type): string
+    {
+        return match (strtoupper($type)) {
+            'BAS' => 'Basic',
+            'MED' => 'Medium',
+            'PRE' => 'Premium',
+            'PMP' => 'Premium Plus',
+            'PLU' => 'Plus',
+            default => ucfirst(strtolower($type)),
+        };
+    }
+
+    /**
+     * Group RecordGo vehicles by ACRISS code.
+     * Gateway creates one vehicle per product; frontend expects one vehicle with recordgo_products[].
+     * Non-RecordGo vehicles pass through unchanged.
+     */
+    private function groupRecordGoVehicles($vehicles)
+    {
+        $recordGoGroups = [];
+        $otherVehicles = [];
+
+        foreach ($vehicles as $vehicle) {
+            $v = is_array($vehicle) ? $vehicle : (array) $vehicle;
+            if (($v['source'] ?? '') !== 'recordgo') {
+                $otherVehicles[] = $vehicle;
+                continue;
+            }
+
+            $acrissCode = $v['sipp_code'] ?? ($v['supplier_data']['acriss_code'] ?? 'unknown');
+            $pickupId = $v['provider_pickup_id'] ?? '';
+            $groupKey = $pickupId . '_' . $acrissCode;
+
+            if (!isset($recordGoGroups[$groupKey])) {
+                $recordGoGroups[$groupKey] = [
+                    'base' => $v,
+                    'products' => [],
+                ];
+            }
+
+            // Extract product data from supplier_data
+            $sd = $v['supplier_data'] ?? [];
+            $productData = $sd['product_data'] ?? null;
+
+            if ($productData) {
+                $recordGoGroups[$groupKey]['products'][] = $productData;
+            }
+
+            // Keep the lowest price vehicle as the base
+            $currentBase = $recordGoGroups[$groupKey]['base'];
+            if (($v['total_price'] ?? PHP_FLOAT_MAX) < ($currentBase['total_price'] ?? PHP_FLOAT_MAX)) {
+                $recordGoGroups[$groupKey]['base'] = $v;
+            }
+        }
+
+        // Merge grouped RecordGo vehicles
+        foreach ($recordGoGroups as $group) {
+            $base = $group['base'];
+            $base['recordgo_products'] = $group['products'];
+            // Use the lowest-priced product as the vehicle total
+            if (!empty($group['products'])) {
+                $minTotal = null;
+                $minDaily = null;
+                foreach ($group['products'] as $p) {
+                    $pTotal = (float) ($p['total'] ?? PHP_FLOAT_MAX);
+                    if ($minTotal === null || $pTotal < $minTotal) {
+                        $minTotal = $pTotal;
+                        $minDaily = (float) ($p['price_per_day'] ?? 0);
+                    }
+                }
+                if ($minTotal !== null) {
+                    $base['total_price'] = $minTotal;
+                    $base['total'] = $minTotal;
+                    $base['price_per_day'] = $minDaily;
+                    $base['daily_rate'] = $minDaily;
+                }
+            }
+            $otherVehicles[] = $base;
+        }
+
+        return collect($otherVehicles);
+    }
+
+    private function normalizeGatewaySupplierId(string $supplierId): string
+    {
+        $map = [
+            'green_motion' => 'greenmotion',
+            'adobe_car' => 'adobe',
+            'ok_mobility' => 'okmobility',
+            'record_go' => 'recordgo',
+            'u_save' => 'usave',
+        ];
+
+        return $map[$supplierId] ?? $supplierId;
+    }
 
     public function searchUnifiedLocations(Request $request)
     {

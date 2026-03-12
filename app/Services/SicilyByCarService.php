@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +13,7 @@ class SicilyByCarService
     private string $accountCode;
     private string $apiKey;
     private int $timeout;
+    private bool $verifySsl;
 
     public function __construct()
     {
@@ -19,6 +21,7 @@ class SicilyByCarService
         $this->accountCode = (string) config('services.sicily_by_car.account_code', '');
         $this->apiKey = (string) config('services.sicily_by_car.api_key', '');
         $this->timeout = (int) config('services.sicily_by_car.timeout', 20);
+        $this->verifySsl = (bool) config('services.sicily_by_car.verify_ssl', false);
     }
 
     public function listLocations(): array
@@ -115,12 +118,7 @@ class SicilyByCarService
         $url = $this->baseUrl . '/v2/' . rawurlencode($this->accountCode) . '/' . $endpoint;
 
         try {
-            $response = Http::timeout($this->timeout)
-                ->acceptJson()
-                ->asJson()
-                ->withHeaders([
-                    'X-API-Key' => $this->apiKey,
-                ])
+            $response = $this->makePendingRequest()
                 ->post($url, $payload);
 
             return $this->normalizeResponse($endpoint, $url, $response);
@@ -138,6 +136,19 @@ class SicilyByCarService
                 'errors' => [['code' => 'REQUEST_FAILED', 'description' => $e->getMessage()]],
             ];
         }
+    }
+
+    protected function makePendingRequest(): PendingRequest
+    {
+        return Http::timeout($this->timeout)
+            ->acceptJson()
+            ->asJson()
+            ->withOptions([
+                'verify' => $this->verifySsl,
+            ])
+            ->withHeaders([
+                'X-API-Key' => $this->apiKey,
+            ]);
     }
 
     private function normalizeResponse(string $endpoint, string $url, Response $response): array

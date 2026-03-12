@@ -190,21 +190,64 @@ const retryPayment = async (bookingId) => {
   }
 };
 
-const isGreenMotionBooking = (booking) => {
+// Providers that support customer-initiated API cancellation
+const CANCELLABLE_PROVIDERS = ['greenmotion', 'usave', 'favrica', 'xdrive', 'surprice', 'renteon', 'sicilybycar'];
+
+// Providers where cancellation is manual (contact support)
+const MANUAL_CANCEL_PROVIDERS = ['adobe', 'okmobility', 'locauto_rent', 'wheelsys', 'recordgo'];
+
+const hasProviderCancelApi = (booking) => {
   const source = booking.provider_source?.toLowerCase();
-  return source === 'greenmotion' || source === 'usave';
+  return CANCELLABLE_PROVIDERS.includes(source);
+};
+
+const isManualCancelProvider = (booking) => {
+  const source = booking.provider_source?.toLowerCase();
+  return MANUAL_CANCEL_PROVIDERS.includes(source);
 };
 
 const canCancelProviderBooking = (booking) => {
-  if (!isGreenMotionBooking(booking)) return false;
+  if (['cancelled', 'completed'].includes(booking.booking_status)) return false;
+  // Internal vehicles can be cancelled by customer
+  if (!booking.provider_source) return true;
+  // External providers with cancel API
+  if (!hasProviderCancelApi(booking)) return false;
   if (!booking.provider_booking_ref) return false;
-  return !['cancelled', 'completed'].includes(booking.booking_status);
+  return true;
+};
+
+const canShowContactSupport = (booking) => {
+  if (['cancelled', 'completed'].includes(booking.booking_status)) return false;
+  return isManualCancelProvider(booking);
+};
+
+const getCancellationDeadlineInfo = (booking) => {
+  const metadata = booking.provider_metadata || {};
+  const deadline = metadata.cancellation_deadline;
+  if (!deadline) return null;
+  const deadlineDate = new Date(deadline);
+  const now = new Date();
+  const isExpired = now > deadlineDate;
+  return {
+    deadline: deadlineDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    isExpired
+  };
 };
 
 const cancelProviderBooking = async (booking) => {
-  const confirmMessage = _t('customerbooking', 'modal_confirm_cancellation_message')
+  // Check cancellation deadline
+  const deadlineInfo = getCancellationDeadlineInfo(booking);
+  if (deadlineInfo?.isExpired) {
+    alert(`Free cancellation period expired on ${deadlineInfo.deadline}. Please contact support for assistance.`);
+    return;
+  }
+
+  let confirmMsg = _t('customerbooking', 'modal_confirm_cancellation_message')
     || 'Are you sure you want to cancel this booking?';
-  if (!confirm(confirmMessage)) return;
+  if (deadlineInfo) {
+    confirmMsg += `\n\nFree cancellation available until: ${deadlineInfo.deadline}`;
+  }
+  if (!confirm(confirmMsg)) return;
 
   const reasonPrompt = 'Please enter a cancellation reason:';
   const reason = prompt(reasonPrompt) || '';
@@ -224,7 +267,6 @@ const cancelProviderBooking = async (booking) => {
     });
     router.reload({ preserveScroll: true });
   } catch (error) {
-    console.error('Error canceling booking:', error);
     const message = error?.response?.data?.message || 'Failed to cancel booking. Please try again.';
     alert(message);
   } finally {
@@ -493,6 +535,27 @@ const getCardDelay = (index) => {
                       </svg>
                       {{ _t('customerbooking', 'cancel_booking_button') || 'Cancel Booking' }}
                     </button>
+
+                    <a
+                      v-if="canShowContactSupport(booking)"
+                      :href="`mailto:${usePage().props.adminEmail || 'support@vrooem.com'}?subject=Cancel Booking ${booking.booking_number}`"
+                      class="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      {{ _t('customerbooking', 'contact_support_cancel') || 'Contact Support to Cancel' }}
+                    </a>
+                  </div>
+
+                  <!-- Cancellation deadline info -->
+                  <div v-if="getCancellationDeadlineInfo(booking) && !['cancelled', 'completed'].includes(booking.booking_status)" class="mt-2">
+                    <p v-if="!getCancellationDeadlineInfo(booking).isExpired" class="text-xs text-emerald-600">
+                      Free cancellation until {{ getCancellationDeadlineInfo(booking).deadline }}
+                    </p>
+                    <p v-else class="text-xs text-rose-500">
+                      Free cancellation period expired {{ getCancellationDeadlineInfo(booking).deadline }}
+                    </p>
                   </div>
                 </div>
               </div>

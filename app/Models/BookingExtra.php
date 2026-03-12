@@ -14,6 +14,7 @@ class BookingExtra extends Model
         'booking_id',
         'extra_type',
         'extra_name',
+        'provider_extra_id',
         'quantity',
         'price'
     ];

@@ -109,6 +109,7 @@ return [
         'account_code' => env('SBC_ACCOUNT_CODE', 'demo'),
         'api_key' => env('SBC_API_KEY'),
         'timeout' => env('SBC_TIMEOUT', 20),
+        'verify_ssl' => env('SBC_VERIFY_SSL', false),
     ],
 
     'recordgo' => [

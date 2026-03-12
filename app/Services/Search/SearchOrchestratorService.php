@@ -2,12 +2,18 @@
 
 namespace App\Services\Search;
 
+use App\Services\LocationSearchService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class SearchOrchestratorService
 {
     // Providers that support one-way (different pickup/dropoff locations)
     private const ONE_WAY_PROVIDERS = ['greenmotion', 'usave', 'locauto_rent', 'renteon', 'sicily_by_car', 'recordgo'];
+
+    public function __construct(private LocationSearchService $locationSearchService)
+    {
+    }
 
     public function resolveProviderEntries(array $validated): array
     {
@@ -18,49 +24,13 @@ class SearchOrchestratorService
         $locationAddress = $validated['where'] ?? null;
 
         $errors = [];
-        $filePath = public_path('unified_locations.json');
-        if (!file_exists($filePath)) {
-            Log::error('Unified locations file missing.', ['path' => $filePath]);
-            $errors[] = 'unified_locations_missing';
-            return [
-                'providerName' => $providerName,
-                'matchedLocation' => null,
-                'providerEntries' => [],
-                'locationLat' => $locationLat,
-                'locationLng' => $locationLng,
-                'locationAddress' => $locationAddress,
-                'errors' => $errors,
-            ];
-        }
-
-        $raw = file_get_contents($filePath);
-        $allLocations = json_decode($raw, true);
-        if (!is_array($allLocations)) {
-            Log::error('Unified locations JSON invalid.', ['path' => $filePath]);
-            $errors[] = 'unified_locations_invalid';
-            return [
-                'providerName' => $providerName,
-                'matchedLocation' => null,
-                'providerEntries' => [],
-                'locationLat' => $locationLat,
-                'locationLng' => $locationLng,
-                'locationAddress' => $locationAddress,
-                'errors' => $errors,
-            ];
-        }
-
         $unifiedLocationId = $validated['unified_location_id'] ?? null;
-        $matchedLocation = null;
-
-        if ($unifiedLocationId) {
-            $matchedLocation = collect($allLocations)->first(function ($location) use ($unifiedLocationId) {
-                return ($location['unified_location_id'] ?? null) == $unifiedLocationId;
-            });
-        }
+        $matchedLocation = $this->locationSearchService->resolveSearchLocation($validated);
 
         if (!$matchedLocation) {
             Log::warning('Unified location not found for search.', [
                 'unified_location_id' => $unifiedLocationId,
+                'provider_pickup_id' => $validated['provider_pickup_id'] ?? null,
             ]);
             return [
                 'providerName' => $providerName,
@@ -119,5 +89,28 @@ class SearchOrchestratorService
             'isOneWay' => $isOneWay,
             'errors' => $errors,
         ];
+    }
+
+    public function filterGatewayVehiclesForRequestedProvider(Collection $vehicles, array $validated): Collection
+    {
+        $providerName = strtolower(trim((string) ($validated['provider'] ?? 'mixed')));
+
+        if ($providerName === '' || $providerName === 'mixed') {
+            return $vehicles->values();
+        }
+
+        if ($providerName === 'internal') {
+            return collect();
+        }
+
+        return $vehicles
+            ->filter(function ($vehicle) use ($providerName) {
+                $source = is_array($vehicle)
+                    ? strtolower(trim((string) ($vehicle['source'] ?? '')))
+                    : strtolower(trim((string) ($vehicle->source ?? '')));
+
+                return $source === $providerName;
+            })
+            ->values();
     }
 }

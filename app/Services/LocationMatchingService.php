@@ -142,11 +142,9 @@ class LocationMatchingService
             return 0;
         }
 
-        $countryKey1 = $this->normalizeValue($loc1['country'] ?? '');
-        $countryKey2 = $this->normalizeValue($loc2['country'] ?? '');
-        if ($countryKey1 !== '' && $countryKey2 !== '' && $countryKey1 !== $countryKey2) {
-            return 0;
-        }
+        $countryKey1 = $this->buildCountryKey($loc1);
+        $countryKey2 = $this->buildCountryKey($loc2);
+        $countryMismatch = $countryKey1 !== '' && $countryKey2 !== '' && $countryKey1 !== $countryKey2;
 
         // Check for terminal conflict FIRST - different terminals should NEVER merge
         // e.g., "Dubai Terminal 1" and "Dubai Terminal 2" should stay separate
@@ -161,19 +159,33 @@ class LocationMatchingService
         }
 
         // Calculate individual scores
+        $hasGps = $this->hasValidCoordinates($loc1) && $this->hasValidCoordinates($loc2);
         $gpsScore = $this->calculateGpsSimilarity($loc1, $loc2);
         $nameScore = $this->calculateNameSimilarity($loc1, $loc2);
         $cityScore = $this->calculateCitySimilarity($loc1, $loc2);
         $typeScore = $this->calculateTypeSimilarity($loc1, $loc2);
 
-        if (($countryKey1 === '' || $countryKey2 === '') && $gpsScore < 0.9) {
+        if ($countryMismatch && $hasGps && $gpsScore < 0.9) {
             return 0;
         }
 
         $cityKey1 = $this->normalizeLocationName($loc1['city'] ?? '');
         $cityKey2 = $this->normalizeLocationName($loc2['city'] ?? '');
-        if ($cityKey1 !== '' && $cityKey2 !== '' && $cityKey1 !== $cityKey2 && $gpsScore < 0.9) {
+        if (($countryKey1 === '' || $countryKey2 === '') && $hasGps && $gpsScore < 0.9) {
             return 0;
+        }
+
+        if ($cityKey1 !== '' && $cityKey2 !== '' && $cityKey1 !== $cityKey2 && $hasGps && $gpsScore < 0.9 && $nameScore < 0.9) {
+            return 0;
+        }
+
+        if (!$hasGps) {
+            if ($countryMismatch) {
+                return 0;
+            }
+
+            $textOnlyScore = ($nameScore * 0.55) + ($cityScore * 0.25) + ($typeScore * 0.20);
+            return $textOnlyScore >= 0.88 ? $textOnlyScore : 0;
         }
 
         // If GPS distance is too far (> 50km), don't merge regardless of name
@@ -201,11 +213,11 @@ class LocationMatchingService
     {
         $name = $location['label'] ?? $location['name'] ?? '';
         $city = $location['city'] ?? '';
-        $country = $location['country'] ?? '';
+        $country = $this->buildCountryKey($location);
 
         $normalizedName = $this->locationSearchService->normalizeString($name);
         $normalizedCity = $this->locationSearchService->normalizeString($city);
-        $normalizedCountry = $this->locationSearchService->normalizeString($country);
+        $normalizedCountry = $country;
 
         if ($normalizedName === '' || $normalizedCity === '' || $normalizedCountry === '') {
             return '';
@@ -721,7 +733,7 @@ class LocationMatchingService
         $buckets = [];
 
         foreach ($locations as $index => $location) {
-            $countryKey = $this->normalizeValue($location['country'] ?? '');
+            $countryKey = $this->buildCountryKey($location);
             $cityKey = $this->normalizeLocationName($location['city'] ?? '');
             $iata = $this->getIataCode($location);
             $type = strtolower(trim((string) ($location['location_type'] ?? '')));
@@ -732,9 +744,13 @@ class LocationMatchingService
             if ($iata !== '') {
                 $bucketKey = $countryKey !== '' ? 'iata:' . $countryKey . ':' . $iata : 'iata:' . $iata;
                 $buckets[$bucketKey][] = $index;
-            } elseif ($cityKey !== '' && $countryKey !== '') {
+            }
+
+            if ($cityKey !== '' && $countryKey !== '') {
                 $buckets['city:' . $countryKey . ':' . $cityKey][] = $index;
-            } elseif ($countryKey !== '') {
+            }
+
+            if ($countryKey !== '') {
                 $buckets['country:' . $countryKey . ':' . $type][] = $index;
             } elseif ($cityKey !== '') {
                 $buckets['nocountry:' . $cityKey][] = $index;
@@ -757,6 +773,16 @@ class LocationMatchingService
     private function normalizeValue(?string $value): string
     {
         return $this->locationSearchService->normalizeString((string) $value);
+    }
+
+    private function buildCountryKey(array $location): string
+    {
+        $countryCode = strtoupper(trim((string) ($location['country_code'] ?? '')));
+        if ($countryCode !== '') {
+            return $this->normalizeValue($countryCode);
+        }
+
+        return $this->normalizeValue($location['country'] ?? '');
     }
 
     private function getIataCode(array $location): string

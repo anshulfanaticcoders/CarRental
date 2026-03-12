@@ -708,7 +708,7 @@ class RenteonService
             $transformedVehicles[] = $this->transformVehicle($vehicle, $pickupCode, $locationLat, $locationLng, $locationName, $rentalDays, $dropoffCode);
         }
 
-        return $transformedVehicles;
+        return $this->deduplicateEquivalentTransformedVehicles($transformedVehicles);
     }
 
     /**
@@ -755,7 +755,7 @@ class RenteonService
             $transformedVehicles[] = $this->transformVehicle($vehicle, $pickupCode, $locationLat, $locationLng, $locationName, $rentalDays, $dropoffCode);
         }
 
-        return $transformedVehicles;
+        return $this->deduplicateEquivalentTransformedVehicles($transformedVehicles);
     }
 
     /**
@@ -910,6 +910,41 @@ class RenteonService
             'options' => [],
             'insurance_options' => [],
         ];
+    }
+
+    private function deduplicateEquivalentTransformedVehicles(array $vehicles): array
+    {
+        $deduplicated = [];
+        $seen = [];
+
+        foreach ($vehicles as $vehicle) {
+            $signature = implode('|', [
+                $vehicle['source'] ?? '',
+                $vehicle['provider_code'] ?? '',
+                $vehicle['id'] ?? '',
+                $vehicle['connector_id'] ?? '',
+                $vehicle['currency'] ?? '',
+                $this->formatMoneySignature($vehicle['total_price'] ?? null),
+                $vehicle['provider_pickup_office_id'] ?? '',
+                $vehicle['provider_dropoff_office_id'] ?? '',
+                !empty($vehicle['prepaid']) ? '1' : '0',
+                !empty($vehicle['is_on_request']) ? '1' : '0',
+            ]);
+
+            if (isset($seen[$signature])) {
+                continue;
+            }
+
+            $seen[$signature] = true;
+            $deduplicated[] = $vehicle;
+        }
+
+        return $deduplicated;
+    }
+
+    private function formatMoneySignature($amount): string
+    {
+        return number_format((float) ($amount ?? 0), 4, '.', '');
     }
 
     private function parseAllowedProviders($allowedProviders): array

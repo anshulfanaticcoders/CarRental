@@ -1,7 +1,9 @@
 <script setup>
 import { Link, usePage } from "@inertiajs/vue3";
+import { Vue3Lottie } from 'vue3-lottie';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
+import paymentSuccessAnimation from '../../../assets/payment-successful.json';
 
 const props = usePage().props;
 const booking = props.booking || {};
@@ -40,11 +42,8 @@ const discountPercentage = discountAmount > 0 && totalAmount > 0
 
         <!-- Green header strip -->
         <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-8 text-center">
-          <div class="success-animation mb-4">
-            <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-              <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" />
-              <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
-            </svg>
+          <div class="mb-4 flex justify-center">
+            <Vue3Lottie :animation-data="paymentSuccessAnimation" :height="120" :width="120" :loop="false" />
           </div>
           <h2 class="text-2xl font-extrabold text-white tracking-tight">Booking Confirmed!</h2>
           <p class="mt-1.5 text-emerald-100 text-sm">Your reservation is all set. Have a great trip!</p>
@@ -155,51 +154,3 @@ const discountPercentage = discountAmount > 0 && totalAmount > 0
   <Footer />
 </template>
 
-<style scoped>
-/* Checkmark Animation */
-.success-animation { margin: 0 auto; width: 80px; height: 80px; }
-
-.checkmark {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  display: block;
-  stroke-width: 2;
-  stroke: #10b981;
-  stroke-miterlimit: 10;
-  box-shadow: inset 0px 0px 0px rgba(255,255,255,0.3);
-  animation: checkmark-fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
-}
-
-.checkmark__circle {
-  stroke-dasharray: 166;
-  stroke-dashoffset: 166;
-  stroke-width: 2;
-  stroke-miterlimit: 10;
-  stroke: #10b981;
-  fill: #fff;
-  animation: stroke .6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
-}
-
-.checkmark__check {
-  transform-origin: 50% 50%;
-  stroke-dasharray: 48;
-  stroke-dashoffset: 48;
-  stroke: #10b981;
-  stroke-width: 3;
-  animation: stroke .3s cubic-bezier(0.65, 0, 0.45, 1) .8s forwards;
-}
-
-@keyframes stroke {
-  100% { stroke-dashoffset: 0; }
-}
-
-@keyframes scale {
-  0%, 100% { transform: none; }
-  50% { transform: scale3d(1.1, 1.1, 1); }
-}
-
-@keyframes checkmark-fill {
-  100% { box-shadow: inset 0px 0px 0px 50px rgba(255,255,255,0.2); }
-}
-</style>

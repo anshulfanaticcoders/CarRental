@@ -2,6 +2,7 @@
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
+import { resolveProviderMarkupRate, grossUpAmount } from '@/utils/platformPricing';
 
 // Icons
 import carIcon from "../../assets/carIcon.svg";
@@ -103,15 +104,11 @@ const props = defineProps({
 
 const emit = defineEmits(['toggleFavourite', 'saveSearchUrl', 'select-package']);
 
-const { selectedCurrency, convertPrice, getSelectedCurrencySymbol, getCurrencySymbol, fetchExchangeRates, exchangeRates, loading } = useCurrencyConversion();
+const { selectedCurrency, convertPrice, getSelectedCurrencySymbol, getCurrencySymbol, fetchExchangeRates, exchangeRates, loading, normalizeCurrencyCode } = useCurrencyConversion();
 const page = usePage();
 
 const providerMarkupRate = computed(() => {
-    const rawRate = parseFloat(page.props.provider_markup_rate ?? '');
-    if (Number.isFinite(rawRate) && rawRate >= 0) return rawRate;
-    const rawPercent = parseFloat(page.props.provider_markup_percent ?? '');
-    if (Number.isFinite(rawPercent) && rawPercent >= 0) return rawPercent / 100;
-    return 0.15;
+    return resolveProviderMarkupRate(page.props);
 });
 
 // Fetch exchange rates on mount
@@ -125,24 +122,18 @@ const showAllPlans = ref(false);
 
 const ratesReady = computed(() => !!exchangeRates.value && !loading.value);
 
-const providerGrossMultiplier = computed(() => {
-    // Apply 15% platform fee to ALL vehicles (including internal)
-    const rate = providerMarkupRate.value;
-    return Number.isFinite(rate) ? (1 + rate) : 1;
-});
-
 // Convert to selected currency and gross-up for provider vehicles (except internal).
 const convertRentalPrice = (price, fromCurrency) => {
     const converted = convertPrice(parseFloat(price || 0), fromCurrency);
-    return converted * providerGrossMultiplier.value;
+    return grossUpAmount(converted, providerMarkupRate.value) ?? 0;
 };
 
 const canConvertFrom = (fromCurrency) => {
     if (!fromCurrency || !selectedCurrency.value) return false;
     if (!exchangeRates.value || loading.value) return false;
 
-    const fromCode = fromCurrency.toUpperCase();
-    const toCode = selectedCurrency.value.toUpperCase();
+    const fromCode = normalizeCurrencyCode(fromCurrency);
+    const toCode = normalizeCurrencyCode(selectedCurrency.value);
 
     if (fromCode === toCode) return true;
 

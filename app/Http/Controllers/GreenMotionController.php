@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\GreenMotionService;
+use App\Services\LocationSearchService;
 use Illuminate\Http\Request;
 use SimpleXMLElement;
 use Inertia\Inertia;
@@ -16,7 +17,10 @@ use App\Services\Affiliate\AffiliateQrCodeService;
 
 class GreenMotionController extends Controller
 {
-    public function __construct(private GreenMotionService $greenMotionService)
+    public function __construct(
+        private GreenMotionService $greenMotionService,
+        private LocationSearchService $locationSearchService
+    )
     {
     }
 
@@ -812,9 +816,15 @@ class GreenMotionController extends Controller
     public function getGreenMotionLocations(Request $request)
     {
         $locationId = $request->input('location_id');
+        $provider = $request->input('provider', 'greenmotion');
 
         if (empty($locationId)) {
             return response()->json(['error' => 'Location ID is required to get location info.'], 400);
+        }
+
+        // Support USave (same FuseMetrix API, different credentials)
+        if (in_array($provider, ['usave', 'greenmotion'])) {
+            $this->greenMotionService->setProvider($provider);
         }
 
         $xml = $this->greenMotionService->getLocationInfo($locationId);
@@ -1026,35 +1036,19 @@ class GreenMotionController extends Controller
             }
         }
 
-        $locationsFilePath = public_path('unified_locations.json');
-        if (!File::exists($locationsFilePath)) {
-            return response()->json(['error' => 'Unified locations file not found.'], 500);
-        }
-
-        $allLocations = json_decode(File::get($locationsFilePath), true);
-        $dropoffLocations = collect($allLocations)->whereIn('greenmotion_location_id', $dropoffLocationIds)->values()->all();
-
         return response()->json([
-            'locations' => $dropoffLocations
+            'locations' => $this->resolveProviderDropoffLocations('greenmotion', $dropoffLocationIds),
         ]);
     }
 
     public function getDropoffLocationsForProvider(Request $request, $provider, $location_id)
     {
-        $locationsFilePath = public_path('unified_locations.json');
-        if (!File::exists($locationsFilePath)) {
-            return response()->json(['error' => 'Unified locations file not found.'], 500);
-        }
-        $allLocations = json_decode(File::get($locationsFilePath), true);
-
-        // Find the pickup location entry and its pre-stored dropoff IDs for this provider.
         $dropoffIds = [];
-        foreach ($allLocations as $loc) {
-            foreach ($loc['providers'] ?? [] as $p) {
-                if (($p['provider'] ?? null) === $provider && (string) ($p['pickup_id'] ?? '') === (string) $location_id) {
-                    $dropoffIds = $p['dropoffs'] ?? [];
-                    break 2;
-                }
+        $pickupLocation = $this->locationSearchService->getLocationByProviderId((string) $location_id, (string) $provider);
+        foreach ($pickupLocation['providers'] ?? [] as $providerEntry) {
+            if (($providerEntry['provider'] ?? null) === $provider && (string) ($providerEntry['pickup_id'] ?? '') === (string) $location_id) {
+                $dropoffIds = $providerEntry['dropoffs'] ?? [];
+                break;
             }
         }
 
@@ -1062,18 +1056,25 @@ class GreenMotionController extends Controller
             return response()->json(['locations' => []]);
         }
 
-        // Return unified locations whose provider entry matches one of the dropoff IDs.
-        $dropoffIdSet = array_flip($dropoffIds);
-        $dropoffLocations = collect($allLocations)->filter(function ($location) use ($provider, $dropoffIdSet) {
-            foreach ($location['providers'] ?? [] as $p) {
-                if (($p['provider'] ?? null) === $provider && isset($dropoffIdSet[$p['pickup_id'] ?? ''])) {
-                    return true;
-                }
-            }
-            return false;
-        })->values()->all();
+        return response()->json([
+            'locations' => $this->resolveProviderDropoffLocations((string) $provider, $dropoffIds),
+        ]);
+    }
 
-        return response()->json(['locations' => $dropoffLocations]);
+    private function resolveProviderDropoffLocations(string $provider, array $dropoffIds): array
+    {
+        $dropoffLocations = [];
+
+        foreach ($dropoffIds as $dropoffId) {
+            $location = $this->locationSearchService->getLocationByProviderId((string) $dropoffId, $provider);
+            if (empty($location)) {
+                continue;
+            }
+
+            $dropoffLocations[$location['unified_location_id']] = $location;
+        }
+
+        return array_values($dropoffLocations);
     }
 
     public function checkAvailability(Request $request)
