@@ -740,7 +740,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
                   class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
                   Contact Us
                 </Link>
-                <Link :href="`/${page.props.locale}/business/register`"
+                <Link :href="route('affiliate.register', { locale: page.props.locale })"
                   class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
                   Business
                 </Link>

@@ -682,7 +682,7 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
     <Footer />
 </template>
 
-<style>
+<style scoped>
 
 .newsletter-flash {
     padding: 0.75rem 0;
@@ -712,15 +712,15 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
     }
 }
 
-.carousel .cardContent {
+.carousel :deep(.cardContent) {
     padding: 0rem;
 }
 
-.category-carousel .next-btn {
+.category-carousel :deep(.next-btn) {
     right: 15% !important;
 }
 
-.popular-places button {
+.popular-places :deep(button) {
     display: none;
 }
 
@@ -1204,7 +1204,7 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
     }
 }
 
-.category-carousel .disabled\:pointer-events-none:disabled {
+.category-carousel :deep(.disabled\:pointer-events-none:disabled) {
     pointer-events: unset;
 }
 
@@ -1227,13 +1227,13 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
 }
 
 @media screen and (max-width:768px) {
-    .category-carousel .next-btn {
+    .category-carousel :deep(.next-btn) {
         right: 10% !important;
         display: none;
 
     }
 
-    .category-carousel .prev-btn {
+    .category-carousel :deep(.prev-btn) {
         left: -4% !important;
         display: none;
     }
