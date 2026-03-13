@@ -79,7 +79,12 @@ class ProviderLocationFetchManager
         return $this->fetchByKey('surprice');
     }
 
-    private function fetchByKey(string $key): array
+    public function getRegisteredKeys(): array
+    {
+        return array_keys($this->fetchers);
+    }
+
+    public function fetchByKey(string $key): array
     {
         $fetcher = $this->fetchers[$key] ?? null;
 

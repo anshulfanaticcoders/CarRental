@@ -12,7 +12,9 @@ class UpdateUnifiedLocationsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'locations:update-unified';
+    protected $signature = 'locations:update-unified
+                            {--provider= : Fetch only a specific provider by key (diagnostic mode, does not update file)}
+                            {--retries=3 : Maximum retry attempts for API providers}';
 
     /**
      * The console command description.
@@ -43,75 +45,114 @@ class UpdateUnifiedLocationsCommand extends Command
     {
         $this->info('Starting to update unified locations...');
 
-        $internalLocations = $this->getInternalVehicleLocations();
-        $this->info('Fetched ' . count($internalLocations) . ' internal vehicle locations.');
+        $providerFilter = $this->option('provider');
+        $maxRetries = max(1, (int) $this->option('retries'));
+        $registry = $this->getProviderRegistry();
 
-        $okMobilityLocations = $this->fetchOkMobilityLocations();
-        $this->info('Fetched ' . count($okMobilityLocations) . ' OK Mobility locations.');
+        if ($providerFilter !== null) {
+            $validKeys = array_column($registry, 'key');
+            if (!in_array($providerFilter, $validKeys, true)) {
+                $this->error("Unknown provider key: {$providerFilter}");
+                $this->info('Available providers: ' . implode(', ', $validKeys));
+                return 1;
+            }
+            $registry = array_values(array_filter($registry, fn ($p) => $p['key'] === $providerFilter));
+            $this->info("Single-provider mode: {$registry[0]['label']}");
+        }
 
-        $adobeLocations = $this->fetchAdobeLocations();
-        $this->info('Fetched ' . count($adobeLocations) . ' Adobe locations.');
+        $results = [];
+        $locationsByProvider = [];
 
-        $greenMotionLocations = $this->fetchProviderLocations('greenmotion');
-        $this->info('Fetched ' . count($greenMotionLocations) . ' GreenMotion locations.');
+        foreach ($registry as $provider) {
+            $attempts = $provider['retry'] ? $maxRetries : 1;
+            $locations = $this->fetchWithRetry($provider['key'], $provider['label'], $attempts);
+            $count = count($locations);
 
-        $usaveLocations = $this->fetchProviderLocations('usave');
-        $this->info('Fetched ' . count($usaveLocations) . ' U-SAVE locations.');
+            $results[] = [
+                'provider' => $provider['label'],
+                'count' => $count,
+                'status' => $count > 0 ? 'OK' : 'EMPTY',
+            ];
 
-        $locautoLocations = $this->fetchLocautoLocations();
-        $this->info('Fetched ' . count($locautoLocations) . ' Locauto Rent locations.');
+            $locationsByProvider[] = $locations;
+        }
 
-        $wheelsysLocations = $this->fetchWheelsysLocations();
-        $this->info('Fetched ' . count($wheelsysLocations) . ' Wheelsys locations.');
+        $this->printSummaryTable($results);
 
-        $renteonLocations = $this->fetchRenteonLocations();
-        $this->info('Fetched ' . count($renteonLocations) . ' Renteon locations.');
+        if ($providerFilter !== null) {
+            $this->info('Single-provider mode: skipping merge and file update.');
+            return 0;
+        }
 
-        $favricaLocations = $this->fetchFavricaLocations();
-        $this->info('Fetched ' . count($favricaLocations) . ' Favrica locations.');
+        $allLocations = array_merge(...$locationsByProvider);
+        if (empty($allLocations)) {
+            $this->warn('No locations fetched from any provider. Skipping file update.');
+            return 1;
+        }
 
-        $xdriveLocations = $this->fetchXDriveLocations();
-        $this->info('Fetched ' . count($xdriveLocations) . ' XDrive locations.');
-
-        $sicilyByCarLocations = $this->fetchSicilyByCarLocations();
-        $this->info('Fetched ' . count($sicilyByCarLocations) . ' Sicily By Car locations.');
-
-        $recordGoLocations = $this->fetchRecordGoLocations();
-        $this->info('Fetched ' . count($recordGoLocations) . ' Record Go locations.');
-
-        $surpriceLocations = $this->fetchSurpriceLocations();
-        $this->info('Fetched ' . count($surpriceLocations) . ' Surprice locations.');
-
-        $unifiedLocations = $this->mergeAndNormalizeLocations(
-            $internalLocations,
-            $greenMotionLocations,
-            $usaveLocations,
-            $okMobilityLocations,
-            $adobeLocations,
-            $locautoLocations,
-            $wheelsysLocations,
-            $renteonLocations,
-            $favricaLocations,
-            $xdriveLocations,
-            $sicilyByCarLocations,
-            $recordGoLocations,
-            $surpriceLocations
-        );
+        $unifiedLocations = $this->mergeAndNormalizeLocations(...$locationsByProvider);
         $this->info('Merged into ' . count($unifiedLocations) . ' unique unified locations.');
 
         $this->saveUnifiedLocations(array_values($unifiedLocations));
 
         $this->info('Unified locations updated successfully!');
+        return 0;
     }
 
-    private function getInternalVehicleLocations(): array
+    private function getProviderRegistry(): array
     {
-        return $this->providerLocationFetchManager->getInternalVehicleLocations();
+        return [
+            ['key' => 'internal', 'label' => 'Internal', 'retry' => false],
+            ['key' => 'okmobility', 'label' => 'OK Mobility', 'retry' => true],
+            ['key' => 'adobe', 'label' => 'Adobe', 'retry' => true],
+            ['key' => 'greenmotion', 'label' => 'GreenMotion', 'retry' => true],
+            ['key' => 'usave', 'label' => 'U-SAVE', 'retry' => true],
+            ['key' => 'locauto_rent', 'label' => 'Locauto Rent', 'retry' => true],
+            ['key' => 'wheelsys', 'label' => 'Wheelsys', 'retry' => true],
+            ['key' => 'renteon', 'label' => 'Renteon', 'retry' => true],
+            ['key' => 'favrica', 'label' => 'Favrica', 'retry' => true],
+            ['key' => 'xdrive', 'label' => 'XDrive', 'retry' => true],
+            ['key' => 'sicily_by_car', 'label' => 'Sicily By Car', 'retry' => true],
+            ['key' => 'recordgo', 'label' => 'Record Go', 'retry' => true],
+            ['key' => 'surprice', 'label' => 'Surprice', 'retry' => true],
+        ];
     }
 
-    private function fetchProviderLocations(string $providerName): array
+    private function fetchWithRetry(string $key, string $label, int $maxAttempts): array
     {
-        return $this->providerLocationFetchManager->fetchProviderLocations($providerName);
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $locations = $this->providerLocationFetchManager->fetchByKey($key);
+
+            if (count($locations) > 0) {
+                $this->info("Fetched " . count($locations) . " {$label} locations.");
+                return $locations;
+            }
+
+            if ($attempt < $maxAttempts) {
+                $delay = $attempt * 3;
+                $this->warn("{$label}: empty result (attempt {$attempt}/{$maxAttempts}), retrying in {$delay}s...");
+                sleep($delay);
+            } else {
+                $suffix = $maxAttempts > 1 ? " after {$maxAttempts} attempts" : '';
+                $this->warn("{$label}: 0 locations{$suffix}.");
+            }
+        }
+
+        return [];
+    }
+
+    private function printSummaryTable(array $results): void
+    {
+        $this->newLine();
+        $this->table(
+            ['Provider', 'Locations', 'Status'],
+            array_map(fn ($r) => [$r['provider'], $r['count'], $r['status']], $results)
+        );
+
+        $succeeded = count(array_filter($results, fn ($r) => $r['count'] > 0));
+        $failed = count(array_filter($results, fn ($r) => $r['count'] === 0));
+        $totalRaw = array_sum(array_column($results, 'count'));
+        $this->info("{$succeeded} providers succeeded, {$failed} returned empty. {$totalRaw} raw locations total.");
     }
 
     private function mergeAndNormalizeLocations(array ...$locationGroups): array
@@ -497,16 +538,6 @@ class UpdateUnifiedLocationsCommand extends Command
         }
     }
 
-    private function fetchOkMobilityLocations(): array
-    {
-        return $this->providerLocationFetchManager->fetchOkMobilityLocations();
-    }
-
-    private function fetchAdobeLocations(): array
-    {
-        return $this->providerLocationFetchManager->fetchAdobeLocations();
-    }
-
     private function normalizeTitleCase(?string $value): string
     {
         $value = trim((string) $value);
@@ -518,50 +549,6 @@ class UpdateUnifiedLocationsCommand extends Command
         $value = preg_replace('/\s+/', ' ', $value);
 
         return ucwords(strtolower($value));
-    }
-
-    private function fetchLocautoLocations(): array
-    {
-        return $this->providerLocationFetchManager->fetchLocautoLocations();
-    }
-
-    private function fetchWheelsysLocations(): array
-    {
-        return $this->providerLocationFetchManager->fetchWheelsysLocations();
-    }
-
-    private function fetchRenteonLocations(): array
-    {
-        return $this->providerLocationFetchManager->fetchRenteonLocations();
-    }
-
-    private function fetchFavricaLocations(): array
-    {
-        return $this->providerLocationFetchManager->fetchFavricaLocations();
-    }
-
-    private function fetchXDriveLocations(): array
-    {
-        return $this->providerLocationFetchManager->fetchXDriveLocations();
-    }
-
-    private function fetchSicilyByCarLocations(): array
-    {
-        return $this->providerLocationFetchManager->fetchSicilyByCarLocations();
-    }
-
-    /**
-     * Fallback coordinates for SBC locations where the API returns 0,0.
-     * Keyed by IATA airport code.
-     */
-    private function fetchRecordGoLocations(): array
-    {
-        return $this->providerLocationFetchManager->fetchRecordGoLocations();
-    }
-
-    private function fetchSurpriceLocations(): array
-    {
-        return $this->providerLocationFetchManager->fetchSurpriceLocations();
     }
 
     private function normalizeCountryName(?string $country): ?string
