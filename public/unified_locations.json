@@ -2070,8 +2070,8 @@
         "city": "Fiumicino",
         "country": "Italy",
         "country_code": "IT",
-        "latitude": 41.791473,
-        "longitude": 12.243135,
+        "latitude": 41.787763,
+        "longitude": 12.244829,
         "location_type": "airport",
         "iata": "FCO",
         "providers": [
@@ -2119,25 +2119,6 @@
                 ],
                 "latitude": 41.77150814941881,
                 "longitude": 12.242366303852906,
-                "country_code": "IT",
-                "iata": "FCO"
-            },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "FCO",
-                "original_name": "Rome Fiumicino Airport",
-                "dropoffs": [],
-                "latitude": 41.8012,
-                "longitude": 12.2389,
-                "country_code": "IT"
-            },
-            {
-                "provider": "sicily_by_car",
-                "pickup_id": "IT011",
-                "original_name": "Rome Fiumicino Airport",
-                "dropoffs": [],
-                "latitude": 41.8003,
-                "longitude": 12.2389,
                 "country_code": "IT",
                 "iata": "FCO"
             },
@@ -2574,14 +2555,13 @@
         "aliases": [
             "Zagreb Downtown",
             "Zagreb Jankomir",
-            "Zagreb downtown",
-            "Zagreb airport"
+            "Zagreb downtown"
         ],
         "city": "Zagreb",
         "country": "Croatia",
         "country_code": "HR",
-        "latitude": 45.770005,
-        "longitude": 20.311402,
+        "latitude": 45.774699,
+        "longitude": 21.016521,
         "location_type": "airport",
         "iata": "ZAG",
         "providers": [
@@ -2718,16 +2698,6 @@
                 "country_code": "HR"
             },
             {
-                "provider": "sicily_by_car",
-                "pickup_id": "HRZAGT01",
-                "original_name": "Zagreb airport",
-                "dropoffs": [],
-                "latitude": 45.74184,
-                "longitude": 16.08069,
-                "country_code": "HR",
-                "iata": "ZAG"
-            },
-            {
                 "provider": "surprice",
                 "pickup_id": "ZAG",
                 "original_name": "Zagreb Airport",
@@ -2751,8 +2721,8 @@
         "city": "Dubrovnik",
         "country": "Croatia",
         "country_code": "HR",
-        "latitude": 42.574146,
-        "longitude": 18.232495,
+        "latitude": 42.577021,
+        "longitude": 18.226856,
         "location_type": "airport",
         "iata": "DBV",
         "providers": [
@@ -2865,16 +2835,6 @@
                 "country_code": "HR"
             },
             {
-                "provider": "sicily_by_car",
-                "pickup_id": "HRDBVT01",
-                "original_name": "Dubrovnik Airport",
-                "dropoffs": [],
-                "latitude": 42.55977111262085,
-                "longitude": 18.260686912178777,
-                "country_code": "HR",
-                "iata": "DBV"
-            },
-            {
                 "provider": "surprice",
                 "pickup_id": "DBV",
                 "original_name": "Dubrovnik Airport",
@@ -2897,8 +2857,8 @@
         "city": "Split",
         "country": "Croatia",
         "country_code": "HR",
-        "latitude": 43.530992,
-        "longitude": 16.328292,
+        "latitude": 43.530254,
+        "longitude": 16.335268,
         "location_type": "airport",
         "iata": "SPU",
         "providers": [
@@ -2997,16 +2957,6 @@
                 ],
                 "latitude": 43.506299,
                 "longitude": 16.441773,
-                "country_code": "HR",
-                "iata": "SPU"
-            },
-            {
-                "provider": "sicily_by_car",
-                "pickup_id": "HRSPUT01",
-                "original_name": "Split Airport",
-                "dropoffs": [],
-                "latitude": 43.53394,
-                "longitude": 16.30039,
                 "country_code": "HR",
                 "iata": "SPU"
             },
@@ -4263,8 +4213,8 @@
         "city": "Catania",
         "country": "Italy",
         "country_code": "IT",
-        "latitude": 37.468425,
-        "longitude": 15.066513,
+        "latitude": 37.468751,
+        "longitude": 15.066535,
         "location_type": "airport",
         "iata": "CTA",
         "providers": [
@@ -4311,16 +4261,6 @@
                 "latitude": 37.4667,
                 "longitude": 15.0664,
                 "country_code": "IT"
-            },
-            {
-                "provider": "sicily_by_car",
-                "pickup_id": "IT094",
-                "original_name": "Catania Airport",
-                "dropoffs": [],
-                "latitude": 37.4668,
-                "longitude": 15.0664,
-                "country_code": "IT",
-                "iata": "CTA"
             },
             {
                 "provider": "recordgo",
@@ -4594,7 +4534,7 @@
             "Istanbul New Airport"
         ],
         "city": "Istanbul",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.156746,
         "longitude": 28.877341,
@@ -6398,8 +6338,8 @@
         "city": "Fischamend",
         "country": "Austria",
         "country_code": "AT",
-        "latitude": 48.118322,
-        "longitude": 16.5938,
+        "latitude": 48.120997,
+        "longitude": 16.601833,
         "location_type": "airport",
         "iata": "VIE",
         "providers": [
@@ -6502,16 +6442,6 @@
                 ],
                 "latitude": 48.11425563784268,
                 "longitude": 16.62612396559258,
-                "country_code": "AT",
-                "iata": "VIE"
-            },
-            {
-                "provider": "sicily_by_car",
-                "pickup_id": "ATVIE",
-                "original_name": "Vienna Airport",
-                "dropoffs": [],
-                "latitude": 48.1103,
-                "longitude": 16.5697,
                 "country_code": "AT",
                 "iata": "VIE"
             },
@@ -11620,6 +11550,7 @@
                     "248",
                     "261",
                     "262",
+                    "297",
                     "374",
                     "338",
                     "53981",
@@ -12271,21 +12202,17 @@
         "our_location_id": null
     },
     {
-        "unified_location_id": 1465733162,
-        "name": "Milano Airport",
+        "unified_location_id": 1835205449,
+        "name": "Malpensa Airport",
         "aliases": [
             "Milano Malpensa Airport",
-            "Milan Malpensa Airport T1",
-            "Milan Malpensa Airport T2",
-            "Milano Malpensa Airport T1",
-            "Milano Malpensa Airport T2",
             "Milano Malpensa"
         ],
-        "city": "Milano",
+        "city": "Malpensa",
         "country": "Italy",
         "country_code": "IT",
-        "latitude": 45.628204,
-        "longitude": 8.727939,
+        "latitude": 45.621412,
+        "longitude": 8.729616,
         "location_type": "airport",
         "iata": "MXP",
         "providers": [
@@ -12298,44 +12225,6 @@
                 ],
                 "latitude": 45.58924420025599,
                 "longitude": 8.736585882778357,
-                "country_code": "IT",
-                "iata": "MXP"
-            },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "MXP",
-                "original_name": "Milan Malpensa Airport T1",
-                "dropoffs": [],
-                "latitude": 45.6326,
-                "longitude": 8.7261,
-                "country_code": "IT"
-            },
-            {
-                "provider": "locauto_rent",
-                "pickup_id": "MXP2",
-                "original_name": "Milan Malpensa Airport T2",
-                "dropoffs": [],
-                "latitude": 45.6326,
-                "longitude": 8.7261,
-                "country_code": "IT"
-            },
-            {
-                "provider": "sicily_by_car",
-                "pickup_id": "IT015",
-                "original_name": "Milano Malpensa Airport T1",
-                "dropoffs": [],
-                "latitude": 45.6306,
-                "longitude": 8.7281,
-                "country_code": "IT",
-                "iata": "MXP"
-            },
-            {
-                "provider": "sicily_by_car",
-                "pickup_id": "IT035",
-                "original_name": "Milano Malpensa Airport T2",
-                "dropoffs": [],
-                "latitude": 45.6306,
-                "longitude": 8.7281,
                 "country_code": "IT",
                 "iata": "MXP"
             },
@@ -12439,8 +12328,8 @@
         "city": "Palermo",
         "country": "Italy",
         "country_code": "IT",
-        "latitude": 38.17096,
-        "longitude": 13.136834,
+        "latitude": 38.1696,
+        "longitude": 13.148317,
         "location_type": "airport",
         "iata": "PMO",
         "providers": [
@@ -12488,16 +12377,6 @@
                 "latitude": 38.1607,
                 "longitude": 13.2919,
                 "country_code": "IT"
-            },
-            {
-                "provider": "sicily_by_car",
-                "pickup_id": "IT091",
-                "original_name": "Palermo Airport",
-                "dropoffs": [],
-                "latitude": 38.1764,
-                "longitude": 13.0909,
-                "country_code": "IT",
-                "iata": "PMO"
             },
             {
                 "provider": "recordgo",
@@ -22014,7 +21893,7 @@
             "Ankara Esenbo\u011fa Havaliman\u0131 (ESB)"
         ],
         "city": "Ankara",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.119747,
         "longitude": 32.992208,
@@ -22083,7 +21962,7 @@
             "Antalya Airport (AYT)"
         ],
         "city": "Antalya",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.916781,
         "longitude": 30.801927,
@@ -22161,7 +22040,7 @@
             "Bodrum Milas Havaliman\u0131 (BJV)"
         ],
         "city": "Bodrum",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.250948,
         "longitude": 27.665043,
@@ -22231,7 +22110,7 @@
             "Dalaman Havaliman\u0131 (DLM)"
         ],
         "city": "Dalaman Havaliman\u0131",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.726937,
         "longitude": 28.799184,
@@ -22300,7 +22179,7 @@
             "Denizli \u00c7ardak Havaliman\u0131 (DNZ)"
         ],
         "city": "Denizli",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.773775,
         "longitude": 29.689859,
@@ -22370,7 +22249,7 @@
             "Diyarbak\u0131r Havaliman\u0131 (DIY)"
         ],
         "city": "Kam\u0131\u015fl\u0131 Blv",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.907823,
         "longitude": 40.142207,
@@ -22440,7 +22319,7 @@
             "Erzurum Havaliman\u0131 (ERZ)"
         ],
         "city": "Erzurum",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 39.934343,
         "longitude": 41.217525,
@@ -22508,7 +22387,7 @@
             "GAZ\u0130ANTEP HAVAL\u0130MANI (GZT)"
         ],
         "city": "Gaziantep",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.954904,
         "longitude": 37.472221,
@@ -22586,7 +22465,7 @@
             "Istanbul SAW Airport"
         ],
         "city": "Istanbul",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.908996,
         "longitude": 29.317604,
@@ -22667,7 +22546,7 @@
             "\u0130zmir Adnan Menderes Havaliman\u0131 (ADB)"
         ],
         "city": "Izmir",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.292744,
         "longitude": 27.15,
@@ -22748,7 +22627,7 @@
             "Kayseri Airport (ASR)"
         ],
         "city": "Kayseri",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.764623,
         "longitude": 35.484876,
@@ -22828,7 +22707,7 @@
             "Konya Havaliman\u0131 (KYA)"
         ],
         "city": "Konya",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.966941,
         "longitude": 32.551048,
@@ -22897,7 +22776,7 @@
             "Mardin Havaliman\u0131 (MQM)"
         ],
         "city": "Mardin",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.28108,
         "longitude": 40.675023,
@@ -22966,7 +22845,7 @@
             "\u00c7UKUROVA HAVAL\u0130MANI (COV)"
         ],
         "city": "Mersin",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.899386,
         "longitude": 35.069209,
@@ -23046,7 +22925,7 @@
             "Ordu Giresun Havaliman\u0131 (OGU)"
         ],
         "city": "Ordu",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.964264,
         "longitude": 38.076576,
@@ -23111,7 +22990,7 @@
             "Samsun \u00c7ar\u015famba Havaliman\u0131 (SZF)"
         ],
         "city": "Samsun",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.249652,
         "longitude": 36.547367,
@@ -23179,7 +23058,7 @@
             "Ankara Downtown"
         ],
         "city": "Balgat\/cankaya\/ankara",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 39.911807,
         "longitude": 32.812082,
@@ -23239,7 +23118,7 @@
             "Bursa Nilufer"
         ],
         "city": "Bursa",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.211636,
         "longitude": 28.997811,
@@ -23336,7 +23215,7 @@
             "Denizli Downtown"
         ],
         "city": "Pamukkale\/denizli",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.776255,
         "longitude": 29.092583,
@@ -23388,7 +23267,7 @@
         "name": "Erzurum Downtown",
         "aliases": [],
         "city": "Erzurum",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 39.906526,
         "longitude": 41.256056,
@@ -23446,7 +23325,7 @@
             "Istanbul Atasehir Office"
         ],
         "city": "Istanbul",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.991195,
         "longitude": 29.104279,
@@ -23512,7 +23391,7 @@
         "name": "Istanbul Beylikduzu",
         "aliases": [],
         "city": "Istanbul",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.015475,
         "longitude": 28.639859,
@@ -23568,7 +23447,7 @@
         "name": "Istanbul Levent",
         "aliases": [],
         "city": "Levent",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.078282,
         "longitude": 29.01117,
@@ -23625,7 +23504,7 @@
             "\u0130stanbul Taksim"
         ],
         "city": "Istanbul",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.035757,
         "longitude": 28.987456,
@@ -23692,7 +23571,7 @@
             "Kanyon Downtown"
         ],
         "city": "Levent",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.07869,
         "longitude": 29.01098,
@@ -23747,7 +23626,7 @@
         "name": "Konya Downtown",
         "aliases": [],
         "city": "Konya",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.948731,
         "longitude": 32.525339,
@@ -23801,7 +23680,7 @@
             "Maltepe Downtown"
         ],
         "city": "Istanbul",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.915047,
         "longitude": 29.194279,
@@ -23857,7 +23736,7 @@
         "name": "Mardin Downtown",
         "aliases": [],
         "city": "Mardin",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.327494,
         "longitude": 40.712614,
@@ -23914,7 +23793,7 @@
             "Mugla Mentese Downtown"
         ],
         "city": "Mugla",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.195618,
         "longitude": 28.368351,
@@ -23969,7 +23848,7 @@
         "name": "Samsun Atakum",
         "aliases": [],
         "city": "Atakum\/samsun",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.333486,
         "longitude": 36.28121,
@@ -24024,7 +23903,7 @@
         "name": "Samsun Downtown",
         "aliases": [],
         "city": "Samsun",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.284356,
         "longitude": 36.339756,
@@ -24079,7 +23958,7 @@
         "name": "Tokat Downtown",
         "aliases": [],
         "city": "Tokat",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.323917,
         "longitude": 36.551,
@@ -24137,7 +24016,7 @@
             "Yenibosna Downtown"
         ],
         "city": "Istanbul",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.990775,
         "longitude": 28.830649,
@@ -24194,7 +24073,7 @@
         "name": "Yozgat",
         "aliases": [],
         "city": "Yozgat",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 39.826495,
         "longitude": 34.822089,
@@ -29134,6 +29013,32 @@
         "our_location_id": null
     },
     {
+        "unified_location_id": 2131955349,
+        "name": "Rome Airport",
+        "aliases": [
+            "Rome Fiumicino Airport"
+        ],
+        "city": "Rome",
+        "country": "Italy",
+        "country_code": "IT",
+        "latitude": 41.8012,
+        "longitude": 12.2389,
+        "location_type": "airport",
+        "iata": null,
+        "providers": [
+            {
+                "provider": "locauto_rent",
+                "pickup_id": "FCO",
+                "original_name": "Rome Fiumicino Airport",
+                "dropoffs": [],
+                "latitude": 41.8012,
+                "longitude": 12.2389,
+                "country_code": "IT"
+            }
+        ],
+        "our_location_id": null
+    },
+    {
         "unified_location_id": 3010089397,
         "name": "Genoa Airport",
         "aliases": [],
@@ -29158,19 +29063,18 @@
         "our_location_id": null
     },
     {
-        "unified_location_id": 4282983534,
-        "name": "Milano Airport",
+        "unified_location_id": 524791273,
+        "name": "Milan Airport",
         "aliases": [
-            "Milan Linate Airport",
-            "Milano Linate Airport"
+            "Milan Linate Airport"
         ],
-        "city": "Milano",
+        "city": "Milan",
         "country": "Italy",
         "country_code": "IT",
-        "latitude": 45.4478,
-        "longitude": 9.27785,
+        "latitude": 45.4465,
+        "longitude": 9.2774,
         "location_type": "airport",
-        "iata": "LIN",
+        "iata": null,
         "providers": [
             {
                 "provider": "locauto_rent",
@@ -29180,16 +29084,58 @@
                 "latitude": 45.4465,
                 "longitude": 9.2774,
                 "country_code": "IT"
-            },
+            }
+        ],
+        "our_location_id": null
+    },
+    {
+        "unified_location_id": 524791273,
+        "name": "Milan Airport",
+        "aliases": [
+            "Milan Malpensa Airport T1"
+        ],
+        "city": "Milan",
+        "country": "Italy",
+        "country_code": "IT",
+        "latitude": 45.6326,
+        "longitude": 8.7261,
+        "location_type": "airport",
+        "iata": null,
+        "providers": [
             {
-                "provider": "sicily_by_car",
-                "pickup_id": "IT014",
-                "original_name": "Milano Linate Airport",
+                "provider": "locauto_rent",
+                "pickup_id": "MXP",
+                "original_name": "Milan Malpensa Airport T1",
                 "dropoffs": [],
-                "latitude": 45.4491,
-                "longitude": 9.2783,
-                "country_code": "IT",
-                "iata": "LIN"
+                "latitude": 45.6326,
+                "longitude": 8.7261,
+                "country_code": "IT"
+            }
+        ],
+        "our_location_id": null
+    },
+    {
+        "unified_location_id": 524791273,
+        "name": "Milan Airport",
+        "aliases": [
+            "Milan Malpensa Airport T2"
+        ],
+        "city": "Milan",
+        "country": "Italy",
+        "country_code": "IT",
+        "latitude": 45.6326,
+        "longitude": 8.7261,
+        "location_type": "airport",
+        "iata": null,
+        "providers": [
+            {
+                "provider": "locauto_rent",
+                "pickup_id": "MXP2",
+                "original_name": "Milan Malpensa Airport T2",
+                "dropoffs": [],
+                "latitude": 45.6326,
+                "longitude": 8.7261,
+                "country_code": "IT"
             }
         ],
         "our_location_id": null
@@ -32832,7 +32778,7 @@
         "name": "Adana Otogar\u0131",
         "aliases": [],
         "city": "Adana",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.997437,
         "longitude": 35.263529,
@@ -32856,7 +32802,7 @@
         "name": "Adana \u015eehir Merkezi",
         "aliases": [],
         "city": "Adana",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.991268,
         "longitude": 35.330624,
@@ -32882,7 +32828,7 @@
             "Ad\u0131yaman Havaliman\u0131 (ADF)"
         ],
         "city": "Sar\u0131harman",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.736927,
         "longitude": 38.471262,
@@ -32909,7 +32855,7 @@
             "Alanya Gazipa\u015fa Havaliman\u0131 (GZP)"
         ],
         "city": "Sar\u0131a\u011fa\u00e7",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.296908,
         "longitude": 32.300987,
@@ -32934,7 +32880,7 @@
         "name": "Alanya \u015eehir Merkezi",
         "aliases": [],
         "city": "Atat\u00fcrk Blv.",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.544398,
         "longitude": 31.995287,
@@ -32958,7 +32904,7 @@
         "name": "Ankara \u015eehir Merkezi",
         "aliases": [],
         "city": "Talatpa\u015fa Blv No:9",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 39.933473,
         "longitude": 32.859381,
@@ -32982,7 +32928,7 @@
         "name": "Antalya \u015eehir Merkezi",
         "aliases": [],
         "city": "Yenig\u00fcn",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.897014,
         "longitude": 30.714023,
@@ -33006,7 +32952,7 @@
         "name": "Artvin Hopa",
         "aliases": [],
         "city": "Hopa",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.389926,
         "longitude": 41.415184,
@@ -33030,7 +32976,7 @@
         "name": "Artvin \u015eehir Merkezi",
         "aliases": [],
         "city": "\u0130n\u00f6n\u00fc Cd. No:37",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.18001,
         "longitude": 41.819215,
@@ -33054,7 +33000,7 @@
         "name": "Bal\u0131kesir Koca Seyit Havaliman\u0131 (EDO)",
         "aliases": [],
         "city": "Bostanc\u0131",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 39.550838,
         "longitude": 27.011554,
@@ -33080,7 +33026,7 @@
             "Batman Havaliman\u0131 (BAL)"
         ],
         "city": "G\u00fcltepe",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.946665,
         "longitude": 41.119675,
@@ -33105,7 +33051,7 @@
         "name": "Batman \u015eehir Merkezi",
         "aliases": [],
         "city": "Stad Cd.",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.889682,
         "longitude": 41.136277,
@@ -33129,7 +33075,7 @@
         "name": "Bodrum \u015eehir Merkezi",
         "aliases": [],
         "city": "\u00c7ar\u015f\u0131",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.034416,
         "longitude": 27.430702,
@@ -33153,7 +33099,7 @@
         "name": "Bolu \u015eehir Merkezi",
         "aliases": [],
         "city": "Katl\u0131 Otopark",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.732577,
         "longitude": 31.608719,
@@ -33177,7 +33123,7 @@
         "name": "Budva \u015eehir Merkezi",
         "aliases": [],
         "city": "Parking",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 42.285441,
         "longitude": 18.840075,
@@ -33201,7 +33147,7 @@
         "name": "Diyarbak\u0131r \u015eehir Merkezi",
         "aliases": [],
         "city": "Selahhatin Eyyubi Blv.",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.937079,
         "longitude": 40.181577,
@@ -33227,7 +33173,7 @@
             "Elaz\u0131\u011f Havaliman\u0131 (EZS)"
         ],
         "city": "Otopark",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.600824,
         "longitude": 39.267837,
@@ -33254,7 +33200,7 @@
             "Erzincan Y\u0131ld\u0131r\u0131m Akbulut Havaliman\u0131 (ERC)"
         ],
         "city": "Bayrak",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 39.718344,
         "longitude": 39.522363,
@@ -33279,7 +33225,7 @@
         "name": "Erzurum \u015eehir Merkezi",
         "aliases": [],
         "city": "\u00c7aykara Cd. Lalapa\u015fa",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 39.907885,
         "longitude": 41.267735,
@@ -33305,7 +33251,7 @@
             "Eski\u015fehir Hasan Polatkan Havaliman\u0131 (AOE)"
         ],
         "city": "Gazipa\u015fa",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 39.813625,
         "longitude": 30.528266,
@@ -33330,7 +33276,7 @@
         "name": "Fethiye \u015eehir Merkezi",
         "aliases": [],
         "city": "Fo\u00e7a",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.659264,
         "longitude": 29.126481,
@@ -33356,7 +33302,7 @@
             "Hakkari Y\u00fcksekova Selahaddin Eyy\u00fbb\u00ee Havaliman\u0131 (YKO)"
         ],
         "city": "Yeni",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.546128,
         "longitude": 44.254935,
@@ -33384,7 +33330,7 @@
             "HATAY HAVAL\u0130MANI (HTY)"
         ],
         "city": "Hatay",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.364315,
         "longitude": 36.283877,
@@ -33419,7 +33365,7 @@
         "name": "\u0130stanbul Be\u015fikta\u015f",
         "aliases": [],
         "city": "Be\u015fikta\u015f Cd.",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.041875,
         "longitude": 29.005154,
@@ -33443,7 +33389,7 @@
         "name": "\u0130stanbul \u015ei\u015fli",
         "aliases": [],
         "city": "19 May\u0131s Cd. 2",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.061358,
         "longitude": 28.989329,
@@ -33467,7 +33413,7 @@
         "name": "\u0130zmir \u015eehir Merkezi",
         "aliases": [],
         "city": "1363. Sk. No:14",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.423532,
         "longitude": 27.142875,
@@ -33491,7 +33437,7 @@
         "name": "Kahramanmara\u015f Havaliman\u0131 (KCM)",
         "aliases": [],
         "city": "Erkenez",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.535872,
         "longitude": 36.960024,
@@ -33517,7 +33463,7 @@
             "Kars Harakani Havaliman\u0131 (KSY)"
         ],
         "city": "Yeni\u015fehir",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.565175,
         "longitude": 43.111061,
@@ -33542,7 +33488,7 @@
         "name": "Kayseri \u015eehir Merkezi",
         "aliases": [],
         "city": "Kocasinan",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.720625,
         "longitude": 35.481963,
@@ -33568,7 +33514,7 @@
             "K\u0131br\u0131s Ercan Havaliman\u0131 (ECN)"
         ],
         "city": "Ercan Havaliman\u0131 99100 Lefko\u015fa \/ Kktc",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 35.147043,
         "longitude": 33.505683,
@@ -33593,7 +33539,7 @@
         "name": "K\u0131br\u0131s Girne",
         "aliases": [],
         "city": "Ziya R\u0131zk\u0131 Cd",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 35.337291,
         "longitude": 33.3107,
@@ -33617,7 +33563,7 @@
         "name": "Kotor \u015eehir Merkezi",
         "aliases": [],
         "city": "\u0160kaljari",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 42.422413,
         "longitude": 18.770328,
@@ -33643,7 +33589,7 @@
             "Malatya Havaliman\u0131 (MLX)"
         ],
         "city": "A\u015fa\u011f\u0131\u00f6r\u00fck\u00e7\u00fc",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.439842,
         "longitude": 38.10462,
@@ -33668,7 +33614,7 @@
         "name": "Mardin \u015eehir Merkezi",
         "aliases": [],
         "city": "Mehtap Cd. 13 Mart",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.327925,
         "longitude": 40.715391,
@@ -33692,7 +33638,7 @@
         "name": "Mersin \u015eehir Merkezi",
         "aliases": [],
         "city": "Mersin Akdeniz\/mersin",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.812081,
         "longitude": 34.642021,
@@ -33718,7 +33664,7 @@
             "Mu\u015f Sultan Alparslan Havaliman\u0131 (MSR)"
         ],
         "city": "Mu\u015f Merkez",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.759672,
         "longitude": 41.646803,
@@ -33743,7 +33689,7 @@
         "name": "Nev\u015fehir G\u00f6reme",
         "aliases": [],
         "city": "G\u00f6reme",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.643081,
         "longitude": 34.829082,
@@ -33770,7 +33716,7 @@
             "Nev\u015fehir Cappadocia Airport (NAV)"
         ],
         "city": "Nev\u015fehir",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.77232,
         "longitude": 34.525357,
@@ -33805,7 +33751,7 @@
         "name": "Nev\u015fehir \u015eehir Merkezi",
         "aliases": [],
         "city": "Karasoku",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.624733,
         "longitude": 34.713915,
@@ -33829,7 +33775,7 @@
         "name": "Nev\u015fehir \u00dcrg\u00fcp",
         "aliases": [],
         "city": "Ahmet Refik Cd. 3",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.630879,
         "longitude": 34.909862,
@@ -33853,7 +33799,7 @@
         "name": "Ohri Aziz Pavlus Havaliman\u0131 (OHD)",
         "aliases": [],
         "city": "Ohrid St. Paul The Apostle Airport",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.181232,
         "longitude": 20.745,
@@ -33877,7 +33823,7 @@
         "name": "Podgorica Havaliman\u0131 (TGD)",
         "aliases": [],
         "city": "Podgorica Havaliman\u0131",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 42.367805,
         "longitude": 19.246885,
@@ -33903,7 +33849,7 @@
             "Rize Artvin Havaliman\u0131 (RZV)"
         ],
         "city": "Rize Artvin Havaliman\u0131",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.172735,
         "longitude": 40.843638,
@@ -33928,7 +33874,7 @@
         "name": "Rize \u015eehir Merkezi",
         "aliases": [],
         "city": "Meydan Cd. 30 47",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.024184,
         "longitude": 40.521596,
@@ -33954,7 +33900,7 @@
             "Siirt Havaliman\u0131 (SXZ)"
         ],
         "city": "P\u0131narca",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.978903,
         "longitude": 41.846613,
@@ -33981,7 +33927,7 @@
             "Sivas Nuri Demira\u011f Havaliman\u0131 (VAS)"
         ],
         "city": "Yaz\u0131ba\u015f\u0131 Mh",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 39.803487,
         "longitude": 36.892518,
@@ -34008,7 +33954,7 @@
             "\u015eanl\u0131urfa GAP Havaliman\u0131 (GNY)"
         ],
         "city": "Merkez\/\u015eanl\u0131urfa",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.445659,
         "longitude": 38.904477,
@@ -34035,7 +33981,7 @@
             "\u015e\u0131rnak \u015eerafettin El\u00e7i Havaliman\u0131 (NKT)"
         ],
         "city": "Cizre \u0130dil Yol Aras\u0131 D\u00fczova K\u00f6y\u00fc Yan\u0131\/\u015eirnak",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 37.365178,
         "longitude": 42.055354,
@@ -34060,7 +34006,7 @@
         "name": "Tiran \u015eehir Merkezi",
         "aliases": [],
         "city": "Unaza 41",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.322552,
         "longitude": 19.813799,
@@ -34084,7 +34030,7 @@
         "name": "Tivat \u015eehir Merkezi",
         "aliases": [],
         "city": "5 Marshal Tito Coast",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 42.430114,
         "longitude": 18.695779,
@@ -34110,7 +34056,7 @@
             "Trabzon Havaliman\u0131 (TZX)"
         ],
         "city": "Pelitli",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 40.995316,
         "longitude": 39.780041,
@@ -34135,7 +34081,7 @@
         "name": "\u00dcsk\u00fcp \u015eehir Merkezi",
         "aliases": [],
         "city": "Dimitrie Cupovski 21 19",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.995332,
         "longitude": 21.426867,
@@ -34159,7 +34105,7 @@
         "name": "\u00dcsk\u00fcp Uluslararas\u0131 Havaliman\u0131 (SKP)",
         "aliases": [],
         "city": "Skopje",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.960886,
         "longitude": 21.627,
@@ -34185,7 +34131,7 @@
             "Van Ferit Melen Havaliman\u0131 (VAN)"
         ],
         "city": "Eminpa\u015fa",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 38.468405,
         "longitude": 43.336854,
@@ -34210,7 +34156,7 @@
         "name": "ADANA \u015eEH\u0130R OF\u0130S",
         "aliases": [],
         "city": "Adana",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 36.843989,
         "longitude": 35.598061,
@@ -34744,58 +34690,6 @@
                 "longitude": 36.81483,
                 "country_code": "KE",
                 "iata": "WIL"
-            }
-        ],
-        "our_location_id": null
-    },
-    {
-        "unified_location_id": 2423426814,
-        "name": "Le Thillay Airport",
-        "aliases": [
-            "Le Thillay"
-        ],
-        "city": "Le Thillay",
-        "country": "France",
-        "country_code": "FR",
-        "latitude": 49.00449,
-        "longitude": 2.48596,
-        "location_type": "airport",
-        "iata": null,
-        "providers": [
-            {
-                "provider": "sicily_by_car",
-                "pickup_id": "FR0060",
-                "original_name": "Le Thillay",
-                "dropoffs": [],
-                "latitude": 49.00449,
-                "longitude": 2.48596,
-                "country_code": "FR"
-            }
-        ],
-        "our_location_id": null
-    },
-    {
-        "unified_location_id": 2119300798,
-        "name": "Pisa Airport",
-        "aliases": [
-            "PISA"
-        ],
-        "city": "Pisa",
-        "country": "Italy",
-        "country_code": "IT",
-        "latitude": 43.6839,
-        "longitude": 10.3927,
-        "location_type": "airport",
-        "iata": null,
-        "providers": [
-            {
-                "provider": "sicily_by_car",
-                "pickup_id": "IT020",
-                "original_name": "PISA",
-                "dropoffs": [],
-                "latitude": 43.6839,
-                "longitude": 10.3927,
-                "country_code": "IT"
             }
         ],
         "our_location_id": null
@@ -37637,7 +37531,7 @@
             "Istanbul Eyup Office"
         ],
         "city": "Istanbul",
-        "country": "Turkey",
+        "country": "T\u00fcrkiye",
         "country_code": "TR",
         "latitude": 41.06438,
         "longitude": 28.939908,
