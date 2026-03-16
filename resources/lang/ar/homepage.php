@@ -90,6 +90,8 @@ return [
     'search_around_me' => 'البحث من حولي..',
     'popular_searches_header' => 'عمليات البحث الشائعة',
     'no_location_found' => 'لم يتم العثور على موقع. الرجاء المحاولة ببحث آخر.',
+    'start_typing_to_search_all_locations' => 'ابدأ بالكتابة للبحث في جميع المواقع',
+    'dates_required' => 'تواريخ الإيجار مطلوبة',
 
     // FAQ Section
     'faqs_badge' => 'الأسئلة الشائعة',

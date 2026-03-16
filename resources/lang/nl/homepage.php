@@ -89,6 +89,8 @@ return [
     'search_around_me' => 'Zoek in mijn omgeving..',
     'popular_searches_header' => 'Populaire zoekopdrachten',
     'no_location_found' => 'Geen locatie gevonden. Probeer een andere zoekopdracht.',
+    'start_typing_to_search_all_locations' => 'Begin te typen om alle locaties te zoeken',
+    'dates_required' => 'Huurperiode is verplicht',
 
     // FAQ Section
     'faqs_badge' => 'Veelgestelde vragen',

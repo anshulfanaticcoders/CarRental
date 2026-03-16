@@ -1140,6 +1140,7 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
 
     .blog-card-title {
         font-size: 1rem;
+        padding-bottom:3em;
     }
 
     .blog-card-excerpt {

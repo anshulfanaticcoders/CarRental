@@ -347,6 +347,7 @@ class GatewayVehicleTransformer
             'rate_id' => $supplierData['rate_id'] ?? null,
             'rate_name' => $supplierData['rate_description'] ?? null,
             'payment_type' => $supplierData['rate_payment'] ?? null,
+            'recordgo_products' => $this->extractRecordGoProducts($rawSupplierId, $supplierData),
             'recordgo_acriss_id' => $supplierData['acriss_id'] ?? null,
             'recordgo_sellcode_ver' => $supplierData['sell_code_ver'] ?? null,
             'recordgo_country' => $supplierData['country'] ?? null,
@@ -434,5 +435,24 @@ class GatewayVehicleTransformer
             'PLU' => 'Plus',
             default => ucfirst(strtolower($type)),
         };
+    }
+
+    private function extractRecordGoProducts(string $supplierId, array $supplierData): array
+    {
+        if (!in_array($supplierId, ['record_go', 'recordgo'], true)) {
+            return [];
+        }
+
+        $products = $supplierData['products'] ?? null;
+        if (is_array($products) && $products !== []) {
+            return array_values(array_filter($products, fn ($product) => is_array($product)));
+        }
+
+        $productData = $supplierData['product_data'] ?? null;
+        if (is_array($productData) && $productData !== []) {
+            return [$productData];
+        }
+
+        return [];
     }
 }

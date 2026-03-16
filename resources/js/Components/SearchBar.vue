@@ -287,9 +287,9 @@
           <Vue3Lottie :animation-data="LoaderAnimation" :height="200" :width="200" />
         </div>
 
-        <!-- Search results dropdown -->
-        <div v-if="showSearchBox && (searchResults.length > 0 || popularPlaces.length > 0 || searchPerformed)"
-          class="search-results absolute z-[9999] top-[105%] w-[50%] rounded-[12px] border border-gray-100 left-0 p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto shadow-xl max-[768px]:w-full max-[768px]:top-[25%] max-[768px]:left-0">
+        <!-- Search results dropdown (desktop only) -->
+        <div v-if="showSearchBox && !isMobile && (searchResults.length > 0 || popularPlaces.length > 0 || searchPerformed)"
+          class="search-results absolute z-[9999] top-[105%] w-[50%] rounded-[12px] border border-gray-100 left-0 p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto shadow-xl">
 
           <!-- Existing search results -->
           <div v-if="searchResults.length > 0">
@@ -329,9 +329,9 @@
           </div>
         </div>
 
-        <!-- Dropoff search results dropdown -->
-        <div v-if="showDropoffSearchBox && dropoffSearchResults.length > 0"
-          class="search-results absolute z-[9999] top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-0 p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto max-[768px]:w-full max-[768px]:top-[46%] max-[768px]:left-0">
+        <!-- Dropoff search results dropdown (desktop only) -->
+        <div v-if="showDropoffSearchBox && !isMobile && dropoffSearchResults.length > 0"
+          class="search-results absolute z-[9999] top-[105%] w-[50%] rounded-[12px] border-[1px] border-white left-0 p-5 bg-white text-customDarkBlackColor max-h-[400px] overflow-y-auto">
           <div v-for="result in dropoffSearchResults" :key="result.unified_location_id"
             @click="selectDropoffLocation(result)"
             class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
@@ -356,12 +356,125 @@
           </div>
         </div>
       </div>
+
+      <!-- Mobile Pickup Location Fullscreen Modal -->
+      <Teleport to="body">
+        <div v-if="showMobileLocationPicker" class="fixed inset-0 z-[99999] bg-white flex flex-col">
+          <!-- Header -->
+          <div class="flex justify-between items-center p-4 border-b border-gray-100">
+            <h3 class="text-lg font-bold text-customPrimaryColor m-0 leading-none">{{ _t('homepage', 'pickup_return_location_label') || 'Pickup Location' }}</h3>
+            <button @click="closeMobileLocationPicker" class="p-2 -mr-2 text-gray-400 hover:text-gray-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Search Input -->
+          <div class="p-4 border-b border-gray-100">
+            <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 focus-within:border-customPrimaryColor focus-within:ring-1 focus-within:ring-customPrimaryColor/20">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="text-customPrimaryColor mr-3 flex-shrink-0">
+                <path
+                  d="M12 21.75C12 21.75 19.5 16.5 19.5 9.75C19.5 7.76088 18.7098 5.85322 17.3033 4.4467C15.8968 3.04018 13.9891 2.25 12 2.25C10.0109 2.25 8.10322 3.04018 6.6967 4.4467C5.29018 5.85322 4.5 7.76088 4.5 9.75C4.5 16.5 12 21.75 12 21.75ZM15 9.75C15 11.4069 13.6569 12.75 12 12.75C10.3431 12.75 9 11.4069 9 9.75C9 8.09315 10.3431 6.75 12 6.75C13.6569 6.75 15 8.09315 15 9.75Z"
+                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <input type="text" v-model="form.where" @input="handleSearchInput" ref="mobileLocationInputRef"
+                :placeholder="isSearching ? _t('homepage', 'searching_placeholder') : _t('homepage', 'pickup_location_placeholder')"
+                class="bg-transparent border-none p-0 w-full text-customDarkBlackColor placeholder-gray-400 focus:ring-0 focus:outline-none text-sm font-medium" />
+              <button v-if="form.where" @click="form.where = ''; searchResults = []; searchPerformed = false;"
+                class="ml-2 p-1 text-gray-400 hover:text-gray-600 flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Results -->
+          <div class="flex-1 overflow-y-auto">
+            <!-- Loading -->
+            <div v-if="isSearching" class="p-6 text-center text-gray-400 text-sm">
+              {{ _t('homepage', 'searching_placeholder') || 'Searching...' }}
+            </div>
+
+            <!-- Results list -->
+            <div v-else-if="searchResults.length > 0" class="p-3">
+              <div v-for="result in searchResults" :key="result.unified_location_id" @click="selectLocation(result)"
+                class="p-3 active:bg-customPrimaryColor active:text-white cursor-pointer flex gap-3 rounded-xl transition-colors">
+                <div class="h-10 w-10 bg-gray-100 text-gray-300 rounded flex justify-center items-center flex-shrink-0">
+                  <img :src="flighIcon" v-if="isAirportLocation(result)" class="w-1/2 h-1/2" />
+                  <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
+                    <path clip-rule="evenodd"
+                      d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z"
+                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path clip-rule="evenodd"
+                      d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z"
+                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                  </svg>
+                </div>
+                <div class="flex flex-col justify-center">
+                  <div class="font-medium text-sm">{{ formatLocationPrimaryLabel(result) }}</div>
+                  <div class="text-xs text-gray-500">{{ formatLocationSecondaryLabel(result) }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- No results -->
+            <div v-else-if="searchPerformed && !isSearching" class="p-6 text-center text-gray-400 text-sm">
+              {{ _t('homepage', 'no_location_found') }}
+            </div>
+
+            <!-- Prompt -->
+            <div v-else class="p-6 text-center text-gray-400 text-sm">
+              {{ _t('homepage', 'start_typing_to_search_all_locations') }}
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Mobile Dropoff Location Fullscreen Modal -->
+      <Teleport to="body">
+        <div v-if="showMobileDropoffPicker" class="fixed inset-0 z-[99999] bg-white flex flex-col">
+          <!-- Header -->
+          <div class="flex justify-between items-center p-4 border-b border-gray-100">
+            <h3 class="text-lg font-bold text-customPrimaryColor m-0 leading-none">Drop-off Location</h3>
+            <button @click="showMobileDropoffPicker = false" class="p-2 -mr-2 text-gray-400 hover:text-gray-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Dropoff Results list -->
+          <div class="flex-1 overflow-y-auto p-3">
+            <div v-for="result in dropoffSearchResults" :key="result.unified_location_id"
+              @click="selectDropoffLocation(result)"
+              class="p-3 active:bg-customPrimaryColor active:text-white cursor-pointer flex gap-3 rounded-xl transition-colors">
+              <div class="h-10 w-10 bg-gray-100 text-gray-300 rounded flex justify-center items-center flex-shrink-0">
+                <img :src="flighIcon" v-if="isAirportLocation(result)" class="w-1/2 h-1/2" />
+                <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
+                  <path clip-rule="evenodd"
+                    d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                  <path clip-rule="evenodd"
+                    d="M20.879 9.79c0 7.937-6.696 12.387-8.335 13.36a.7.7 0 0 1-.718 0c-1.64-.973-8.334-5.425-8.334-13.36 0-4.992 3.892-9.04 8.693-9.04s8.694 4.048 8.694 9.04Z"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+              </div>
+              <div class="flex flex-col justify-center">
+                <div class="font-medium text-sm">{{ formatLocationPrimaryLabel(result) }}</div>
+                <div class="text-xs text-gray-500">{{ formatLocationSecondaryLabel(result) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Teleport>
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import axios from "axios";
 import { router, usePage } from "@inertiajs/vue3";
 import { resolveSearchCurrency } from "@/utils/searchCurrency";
@@ -521,13 +634,20 @@ const clearError = () => {
 };
 
 const handleInputClick = () => {
+  if (isMobile.value) {
+    openMobileLocationPicker();
+    return;
+  }
   showSearchBox.value = !showSearchBox.value;
   showDropoffSearchBox.value = false; // Close other dropdown
-  // No need to fetch popular places since we want search-only behavior
 };
 
 const handleDropoffInputClick = () => {
   if (!dropoffSearchResults.value.length) {
+    return;
+  }
+  if (isMobile.value) {
+    showMobileDropoffPicker.value = true;
     return;
   }
   showDropoffSearchBox.value = !showDropoffSearchBox.value;
@@ -572,6 +692,21 @@ watch(() => form.value.where, (newVal, oldVal) => {
 
 const showMobileDatePicker = ref(false);
 const mobileDateRange = ref(null);
+
+const showMobileLocationPicker = ref(false);
+const showMobileDropoffPicker = ref(false);
+const mobileLocationInputRef = ref(null);
+
+const openMobileLocationPicker = () => {
+  showMobileLocationPicker.value = true;
+  nextTick(() => {
+    mobileLocationInputRef.value?.focus();
+  });
+};
+
+const closeMobileLocationPicker = () => {
+  showMobileLocationPicker.value = false;
+};
 
 const openMobileDatePicker = () => {
   // Sync mobile range with current selected range
@@ -662,6 +797,7 @@ const selectLocation = (result) => {
   form.value.unified_location_id = result.unified_location_id || null;
 
   showSearchBox.value = false;
+  showMobileLocationPicker.value = false;
   searchPerformed.value = false;
   searchResults.value = [];
 
@@ -776,6 +912,7 @@ const selectDropoffLocation = (result) => {
   }
 
   showDropoffSearchBox.value = false;
+  showMobileDropoffPicker.value = false;
 };
 
 

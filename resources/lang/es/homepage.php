@@ -90,6 +90,8 @@ return [
     'search_around_me' => 'Buscar a mi alrededor..',
     'popular_searches_header' => 'Búsquedas Populares',
     'no_location_found' => 'No se encontró la ubicación. Por favor, intenta otra búsqueda.',
+    'start_typing_to_search_all_locations' => 'Empieza a escribir para buscar todas las ubicaciones',
+    'dates_required' => 'Las fechas de alquiler son obligatorias',
 
     // FAQ Section
     'faqs_badge' => 'Preguntas frecuentes',

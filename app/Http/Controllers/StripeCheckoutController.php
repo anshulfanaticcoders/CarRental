@@ -134,6 +134,114 @@ class StripeCheckoutController extends Controller
         return $filtered;
     }
 
+    private function normalizeLocationCoordinate(mixed $value): ?float
+    {
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        $numeric = (float) $value;
+        return $numeric === 0.0 ? null : $numeric;
+    }
+
+    private function buildFallbackLocationDetailsFromVehicle(array $vehicle, string $leg = 'pickup'): ?array
+    {
+        $isDropoff = $leg === 'dropoff';
+        $officeKey = $isDropoff ? 'dropoff_office' : 'pickup_office';
+        $office = (!empty($vehicle[$officeKey]) && is_array($vehicle[$officeKey])) ? $vehicle[$officeKey] : [];
+
+        $stationName = $isDropoff
+            ? ($vehicle['dropoff_station_name'] ?? null)
+            : ($vehicle['pickup_station_name'] ?? null);
+        $directAddress = $isDropoff
+            ? ($vehicle['dropoff_address'] ?? null)
+            : ($vehicle['pickup_address'] ?? null);
+
+        $addressLine = $directAddress
+            ?: ($office['address'] ?? null)
+            ?: ($vehicle['office_address'] ?? null)
+            ?: ($vehicle['full_vehicle_address'] ?? null);
+
+        $name = $stationName
+            ?: ($office['name'] ?? null)
+            ?: ($vehicle['full_vehicle_address'] ?? null)
+            ?: ($vehicle['pickup_location'] ?? null)
+            ?: ($vehicle['location'] ?? null);
+
+        $details = array_filter([
+            'name' => $name,
+            'address_1' => $addressLine,
+            'address_city' => $office['town'] ?? null,
+            'address_postcode' => $office['postal_code'] ?? null,
+            'telephone' => $office['phone'] ?? ($vehicle['office_phone'] ?? null),
+            'email' => $office['email'] ?? null,
+            'collection_details' => $isDropoff
+                ? ($office['dropoff_instructions'] ?? null)
+                : ($office['pickup_instructions'] ?? null),
+            'latitude' => $this->normalizeLocationCoordinate($vehicle[$isDropoff ? 'dropoff_latitude' : 'latitude'] ?? null)
+                ?? $this->normalizeLocationCoordinate($vehicle['latitude'] ?? null),
+            'longitude' => $this->normalizeLocationCoordinate($vehicle[$isDropoff ? 'dropoff_longitude' : 'longitude'] ?? null)
+                ?? $this->normalizeLocationCoordinate($vehicle['longitude'] ?? null),
+        ], static fn ($value) => $value !== null && $value !== '');
+
+        return !empty($details) ? $details : null;
+    }
+
+    private function resolveCheckoutLocationDetails(array $validated): array
+    {
+        $vehicle = $validated['vehicle'] ?? [];
+        $providerSource = strtolower((string) ($vehicle['source'] ?? ''));
+
+        $pickupLocationDetails = $validated['location_details'] ?? ($vehicle['location_details'] ?? null);
+        $dropoffLocationDetails = $validated['dropoff_location_details'] ?? ($vehicle['dropoff_location_details'] ?? null);
+
+        // Preserve existing Renteon-specific fallback behavior first.
+        if ($providerSource === 'renteon') {
+            if (empty($pickupLocationDetails) && !empty($vehicle['pickup_office']) && is_array($vehicle['pickup_office'])) {
+                $pickupLocationDetails = $vehicle['pickup_office'];
+            }
+            if (empty($dropoffLocationDetails) && !empty($vehicle['dropoff_office']) && is_array($vehicle['dropoff_office'])) {
+                $dropoffLocationDetails = $vehicle['dropoff_office'];
+            }
+        }
+
+        // Generic fallback for providers that only expose address fields on the vehicle payload.
+        if (empty($pickupLocationDetails)) {
+            $pickupLocationDetails = $this->buildFallbackLocationDetailsFromVehicle($vehicle, 'pickup');
+        }
+        if (empty($dropoffLocationDetails)) {
+            $dropoffLocationDetails = $this->buildFallbackLocationDetailsFromVehicle($vehicle, 'dropoff');
+        }
+        if (empty($dropoffLocationDetails) && !empty($pickupLocationDetails)) {
+            $dropoffLocationDetails = $pickupLocationDetails;
+        }
+
+        $pickupLocationDetails = $this->enrichLocationDetailsFromVehicle($pickupLocationDetails, $vehicle, 'pickup');
+        $dropoffLocationDetails = $this->enrichLocationDetailsFromVehicle($dropoffLocationDetails, $vehicle, 'dropoff');
+
+        return [$pickupLocationDetails, $dropoffLocationDetails];
+    }
+
+    private function enrichLocationDetailsFromVehicle(mixed $details, array $vehicle, string $leg = 'pickup'): mixed
+    {
+        if (!is_array($details)) {
+            return $details;
+        }
+
+        $fallback = $this->buildFallbackLocationDetailsFromVehicle($vehicle, $leg) ?? [];
+        if (empty($fallback)) {
+            return $details;
+        }
+
+        foreach (['name', 'address_1', 'address_city', 'address_postcode', 'telephone', 'email', 'collection_details', 'latitude', 'longitude'] as $field) {
+            if ((!isset($details[$field]) || $details[$field] === '' || $details[$field] === null) && array_key_exists($field, $fallback)) {
+                $details[$field] = $fallback[$field];
+            }
+        }
+
+        return $details;
+    }
+
     /**
      * Create a Stripe Checkout Session
      */
@@ -172,6 +280,7 @@ class StripeCheckoutController extends Controller
                 'payment_method' => 'nullable|string',
                 'selected_deposit_type' => 'nullable|string',
                 'location_details' => 'nullable|array',
+                'dropoff_location_details' => 'nullable|array',
                 'location_instructions' => 'nullable|string',
                 'driver_requirements' => 'nullable|array',
                 'terms' => 'nullable|array',
@@ -180,8 +289,6 @@ class StripeCheckoutController extends Controller
 
             $vehicle = $validated['vehicle'] ?? [];
             $providerSource = strtolower((string) ($vehicle['source'] ?? ''));
-            $pickupLocationDetails = $validated['location_details'] ?? ($vehicle['location_details'] ?? null);
-            $dropoffLocationDetails = $validated['dropoff_location_details'] ?? ($vehicle['dropoff_location_details'] ?? null);
 
             if ($providerSource === 'sicily_by_car') {
                 $vehicleId = $vehicle['provider_vehicle_id'] ?? null;
@@ -266,14 +373,9 @@ class StripeCheckoutController extends Controller
                 }
             }
 
-            if ($providerSource === 'renteon') {
-                if (empty($pickupLocationDetails) && !empty($vehicle['pickup_office']) && is_array($vehicle['pickup_office'])) {
-                    $pickupLocationDetails = $vehicle['pickup_office'];
-                }
-                if (empty($dropoffLocationDetails) && !empty($vehicle['dropoff_office']) && is_array($vehicle['dropoff_office'])) {
-                    $dropoffLocationDetails = $vehicle['dropoff_office'];
-                }
-            }
+            $vehicle = $validated['vehicle'] ?? [];
+            [$pickupLocationDetails, $dropoffLocationDetails] = $this->resolveCheckoutLocationDetails($validated);
+
             if (in_array($providerSource, ['greenmotion', 'usave'], true)) {
                 $missing = [];
                 $customer = $validated['customer'] ?? [];

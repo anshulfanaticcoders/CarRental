@@ -91,6 +91,8 @@ return [
     'search_around_me' => 'Search around me..',
     'popular_searches_header' => 'Popular Searches',
     'no_location_found' => 'No location found. Please try another search.',
+    'start_typing_to_search_all_locations' => 'Start typing to search all locations',
+    'dates_required' => 'Rental dates are required',
 
     // FAQ Section
     'faqs_badge' => 'Frequently Asked',

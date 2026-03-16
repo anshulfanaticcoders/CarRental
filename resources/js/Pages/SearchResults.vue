@@ -28,6 +28,7 @@ import brandIcon from "../../assets/SedanCarIcon.svg";
 import colorIcon from "../../assets/color-palette.svg";
 import filterIcon from "../../assets/filterIcon.svg";
 import SearchBar from "@/Components/SearchBar.vue";
+import { Filter, DollarSign, Car, Cog, Fuel, Users, ChevronDown, X } from 'lucide-vue-next';
 import CarListingCard from "@/Components/CarListingCard.vue"; // Import CarListingCard
 import BookingExtrasStep from "@/Components/BookingExtrasStepUnified.vue"; // Import BookingExtrasStep (unified)
 import BookingCheckoutStep from '@/Components/BookingCheckoutStep.vue'; // Import BookingExtrasStep
@@ -1741,11 +1742,11 @@ const toggleMobileFilters = () => {
 
 // Filter accordion state
 const expandedFilters = ref({
-    price: true,
+    price: false,
     category: true,
-    transmission: true,
-    fuel: true,
-    seats: true
+    transmission: false,
+    fuel: false,
+    seats: false
 });
 
 const toggleFilterSection = (section) => {
@@ -1766,6 +1767,17 @@ const activeFiltersCount = computed(() => {
     if (form.category_id) count++;
     return count;
 });
+
+const isSectionActive = (section) => {
+    switch (section) {
+        case 'price': return !!form.price_range;
+        case 'category': return !!form.category_id;
+        case 'transmission': return !!form.transmission;
+        case 'fuel': return !!form.fuel;
+        case 'seats': return !!form.seating_capacity;
+        default: return false;
+    }
+};
 
 const getStarIcon = (rating, starNumber) => {
     const fullStars = Math.floor(rating);
@@ -2085,138 +2097,135 @@ watch(
 
                 <!-- Sidebar -->
                 <div class="relative w-full max-w-xs bg-white h-full shadow-2xl flex flex-col">
-                    <div class="flex items-center justify-between p-4 border-b">
-                        <h2 class="text-xl font-bold text-gray-900 font-['Outfit']">Filters</h2>
-                        <button @click="showMobileFilters = false" class="p-2 text-gray-400 hover:text-gray-600">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                    <div class="fpm-header">
+                        <span class="fpm-title">Filters</span>
+                        <button @click="showMobileFilters = false" class="fpm-close-btn">
+                            <X :size="14" />
                         </button>
                     </div>
 
-                    <div class="flex-1 overflow-y-auto p-4 space-y-6">
-                        <!-- Filters will be injected here via a reusable component or raw HTML -->
-                        <!-- I'll use a slot or similar pattern if I refactor, but for now I'll copy the filter logic -->
-                        <div class="filter-card border-none shadow-none p-0">
-                            <div class="filter-section-header" @click="toggleFilterSection('price')">
-                                <span class="filter-section-title">Price Per Day</span>
-                                <svg :class="{ 'rotate-180': !expandedFilters.price }"
-                                    xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    class="w-4 h-4 text-gray-400 transition-transform duration-200">
-                                    <path d="M6 9l6 6 6-6" />
-                                </svg>
+                    <div class="fpm-body">
+                        <!-- Price Per Day -->
+                        <div class="fp-section">
+                            <div class="fp-section-header" :aria-expanded="expandedFilters.price" @click="toggleFilterSection('price')">
+                                <div class="fp-icon-badge fp-icon-badge-sm fp-icon-price"><DollarSign :size="14" /></div>
+                                <span class="fp-section-label fpm-label">Price Per Day</span>
+                                <span v-show="isSectionActive('price')" class="fp-active-dot"></span>
+                                <ChevronDown :size="14" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.price }" />
                             </div>
-                            <div v-show="expandedFilters.price" class="px-2 pb-2 mt-4">
-                                <div class="mb-4">
-                                    <span class="text-sm font-medium text-gray-900">
-                                        {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }} - {{
-                                            getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}
-                                    </span>
+                            <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.price }">
+                                <div class="fp-section-body fpm-section-body">
+                                    <div class="fp-price-display">
+                                        <strong>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}</strong>
+                                        <strong>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}</strong>
+                                    </div>
+                                    <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min"
+                                        :max="dynamicPriceRange.max" :enable-cross="false" :lazy="true"
+                                        @change="applyPriceRange" :tooltip="'none'"
+                                        :process-style="{ backgroundColor: '#245f7d' }"
+                                        :bg-style="{ backgroundColor: '#e2e8f0' }"></VueSlider>
                                 </div>
-                                <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min"
-                                    :max="dynamicPriceRange.max" :enable-cross="false" :lazy="true"
-                                    @change="applyPriceRange" :tooltip="'none'"
-                                    :process-style="{ backgroundColor: '#245f7d' }"
-                                    :bg-style="{ backgroundColor: '#e2e8f0' }"></VueSlider>
                             </div>
                         </div>
 
-                        <!-- Other Filters -->
-                        <div class="space-y-6">
-                            <!-- Category -->
-                            <div>
-                                <h3 class="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">Vehicle Type
-                                </h3>
-                                <div class="space-y-3">
-                                    <label
-                                        class="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
-                                        v-for="cat in facets.categories" :key="cat.value">
-                                        <div class="flex items-center gap-3">
-                                            <input type="checkbox" :value="cat.value"
-                                                :checked="form.category_id === cat.value"
-                                                @change="form.category_id = form.category_id === cat.value ? '' : cat.value"
-                                                class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
-                                            <span class="text-sm font-medium text-gray-700">{{ cat.label }}</span>
+                        <!-- Vehicle Type -->
+                        <div class="fp-section">
+                            <div class="fp-section-header" :aria-expanded="expandedFilters.category" @click="toggleFilterSection('category')">
+                                <div class="fp-icon-badge fp-icon-badge-sm fp-icon-category"><Car :size="14" /></div>
+                                <span class="fp-section-label fpm-label">Vehicle Type</span>
+                                <span v-show="isSectionActive('category')" class="fp-active-dot"></span>
+                                <ChevronDown :size="14" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.category }" />
+                            </div>
+                            <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.category }">
+                                <div class="fp-options fpm-options">
+                                    <label class="fp-option fpm-option" :class="{ 'fp-option-active': form.category_id === cat.value }" v-for="cat in facets.categories" :key="cat.value">
+                                        <input type="checkbox" :value="cat.value" :checked="form.category_id === cat.value"
+                                            @change="form.category_id = form.category_id === cat.value ? '' : cat.value">
+                                        <div class="fp-checkbox fpm-checkbox">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                                         </div>
-                                        <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
-                                            cat.count }}</span>
+                                        <span class="fp-option-label fpm-option-label">{{ cat.label }}</span>
+                                        <span class="fp-option-count fpm-option-count">{{ cat.count }}</span>
                                     </label>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Transmission -->
-                            <div>
-                                <h3 class="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">Transmission
-                                </h3>
-                                <div class="space-y-3">
-                                    <label
-                                        class="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
-                                        v-for="item in facets.transmissions" :key="item.value">
-                                        <div class="flex items-center gap-3">
-                                            <input type="checkbox" :value="item.value"
-                                                :checked="form.transmission === item.value"
-                                                @change="form.transmission = form.transmission === item.value ? '' : item.value"
-                                                class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
-                                            <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                                }}</span>
+                        <!-- Transmission -->
+                        <div class="fp-section">
+                            <div class="fp-section-header" :aria-expanded="expandedFilters.transmission" @click="toggleFilterSection('transmission')">
+                                <div class="fp-icon-badge fp-icon-badge-sm fp-icon-transmission"><Cog :size="14" /></div>
+                                <span class="fp-section-label fpm-label">Transmission</span>
+                                <span v-show="isSectionActive('transmission')" class="fp-active-dot"></span>
+                                <ChevronDown :size="14" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.transmission }" />
+                            </div>
+                            <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.transmission }">
+                                <div class="fp-options fpm-options">
+                                    <label class="fp-option fpm-option" :class="{ 'fp-option-active': form.transmission === item.value }" v-for="item in facets.transmissions" :key="item.value">
+                                        <input type="checkbox" :value="item.value" :checked="form.transmission === item.value"
+                                            @change="form.transmission = form.transmission === item.value ? '' : item.value">
+                                        <div class="fp-checkbox fpm-checkbox">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                                         </div>
-                                        <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
-                                            item.count }}</span>
+                                        <span class="fp-option-label fpm-option-label capitalize">{{ item.label }}</span>
+                                        <span class="fp-option-count fpm-option-count">{{ item.count }}</span>
                                     </label>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Fuel Type -->
-                            <div>
-                                <h3 class="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">Fuel Type</h3>
-                                <div class="space-y-3">
-                                    <label
-                                        class="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
-                                        v-for="item in facets.fuels" :key="item.value">
-                                        <div class="flex items-center gap-3">
-                                            <input type="checkbox" :value="item.value"
-                                                :checked="form.fuel === item.value"
-                                                @change="form.fuel = form.fuel === item.value ? '' : item.value"
-                                                class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
-                                            <span class="text-sm font-medium text-gray-700 capitalize">{{ item.label
-                                                }}</span>
+                        <!-- Fuel Type -->
+                        <div class="fp-section">
+                            <div class="fp-section-header" :aria-expanded="expandedFilters.fuel" @click="toggleFilterSection('fuel')">
+                                <div class="fp-icon-badge fp-icon-badge-sm fp-icon-fuel"><Fuel :size="14" /></div>
+                                <span class="fp-section-label fpm-label">Fuel Type</span>
+                                <span v-show="isSectionActive('fuel')" class="fp-active-dot"></span>
+                                <ChevronDown :size="14" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.fuel }" />
+                            </div>
+                            <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.fuel }">
+                                <div class="fp-options fpm-options">
+                                    <label class="fp-option fpm-option" :class="{ 'fp-option-active': form.fuel === item.value }" v-for="item in facets.fuels" :key="item.value">
+                                        <input type="checkbox" :value="item.value" :checked="form.fuel === item.value"
+                                            @change="form.fuel = form.fuel === item.value ? '' : item.value">
+                                        <div class="fp-checkbox fpm-checkbox">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                                         </div>
-                                        <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
-                                            item.count }}</span>
+                                        <span class="fp-option-label fpm-option-label capitalize">{{ item.label }}</span>
+                                        <span class="fp-option-count fpm-option-count">{{ item.count }}</span>
                                     </label>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Capacity -->
-                            <div>
-                                <h3 class="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">Capacity</h3>
-                                <div class="space-y-3">
-                                    <label
-                                        class="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
-                                        v-for="item in facets.seats" :key="item.value">
-                                        <div class="flex items-center gap-3">
-                                            <input type="checkbox" :value="item.value"
-                                                :checked="form.seating_capacity == item.value"
-                                                @change="form.seating_capacity = form.seating_capacity == item.value ? '' : item.value"
-                                                class="w-5 h-5 rounded-full border-gray-300 text-[#245f7d] focus:ring-[#245f7d]">
-                                            <span class="text-sm font-medium text-gray-700">{{ item.label }}</span>
+                        <!-- Capacity -->
+                        <div class="fp-section">
+                            <div class="fp-section-header" :aria-expanded="expandedFilters.seats" @click="toggleFilterSection('seats')">
+                                <div class="fp-icon-badge fp-icon-badge-sm fp-icon-seats"><Users :size="14" /></div>
+                                <span class="fp-section-label fpm-label">Capacity</span>
+                                <span v-show="isSectionActive('seats')" class="fp-active-dot"></span>
+                                <ChevronDown :size="14" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.seats }" />
+                            </div>
+                            <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.seats }">
+                                <div class="fp-options fpm-options">
+                                    <label class="fp-option fpm-option" :class="{ 'fp-option-active': form.seating_capacity == item.value }" v-for="item in facets.seats" :key="item.value">
+                                        <input type="checkbox" :value="item.value" :checked="form.seating_capacity == item.value"
+                                            @change="form.seating_capacity = form.seating_capacity == item.value ? '' : item.value">
+                                        <div class="fp-checkbox fpm-checkbox">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                                         </div>
-                                        <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{
-                                            item.count }}</span>
+                                        <span class="fp-option-label fpm-option-label">{{ item.label }}</span>
+                                        <span class="fp-option-count fpm-option-count">{{ item.count }}</span>
                                     </label>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="p-4 border-t gap-3 flex">
+                    <div class="fpm-footer">
                         <button @click="resetFilters"
-                            class="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-colors text-sm">Reset</button>
+                            class="fpm-btn-reset">Reset</button>
                         <button @click="showMobileFilters = false"
-                            class="flex-[2] py-3 bg-[#245f7d] text-white rounded-xl font-bold hover:bg-[#1e4a63] shadow-lg shadow-blue-100 transition-all text-sm">Show
+                            class="fpm-btn-show">Show
                             {{ clientFilteredVehicles?.length }} Cars</button>
                     </div>
                 </div>
@@ -2362,151 +2371,133 @@ watch(
         :style="bookingStep !== 'results' ? 'display: block; max-width: 1440px; margin: 0 auto;' : ''">
         <!-- Filters Sidebar -->
         <aside class="filters-sidebar hidden lg:flex" v-if="bookingStep === 'results'">
-            <div class="filters-header">
-                <span class="filters-title">FILTERS</span>
-                <button class="filters-reset" @click="resetFilters">Reset All</button>
-            </div>
-
-            <div class="filters-scroll-area">
-            <!-- Price Range -->
-            <div class="filter-card">
-                <div class="filter-section-header" @click="toggleFilterSection('price')">
-                    <span class="filter-section-title">Price Per Day</span>
-                    <svg :class="{ 'rotate-180': !expandedFilters.price }" xmlns="http://www.w3.org/2000/svg" width="24"
-                        height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round"
-                        class="w-4 h-4 text-gray-400 transition-transform duration-200">
-                        <path d="M6 9l6 6 6-6" />
-                    </svg>
+            <div class="filters-panel">
+                <!-- Panel Header -->
+                <div class="fp-header">
+                    <span class="fp-title">
+                        <Filter :size="16" />
+                        Filters
+                        <span v-show="activeFiltersCount > 0" class="fp-count-badge">{{ activeFiltersCount }}</span>
+                    </span>
+                    <button class="fp-reset" @click="resetFilters">Reset All</button>
                 </div>
-                <div v-show="expandedFilters.price" class="px-2 pb-2">
-                    <div class="mb-4">
-                        <span class="text-sm font-medium text-gray-900">
-                            {{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }} - {{
-                                getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}
-                        </span>
-                    </div>
-                    <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
-                        :enable-cross="false" :lazy="true" @change="applyPriceRange" :tooltip="'none'"
-                        :process-style="{ backgroundColor: '#245f7d' }" :bg-style="{ backgroundColor: '#e2e8f0' }">
-                    </VueSlider>
-                </div>
-            </div>
 
-            <!-- Specific Checkbox Filters -->
-            <div class="filter-card">
-                <!-- Vehicle Type -->
-                <div class="filter-section">
-                    <div class="filter-section-header" @click="toggleFilterSection('category')">
-                        <span class="filter-section-title">Vehicle Type</span>
-                        <svg :class="{ 'rotate-180': !expandedFilters.category }" xmlns="http://www.w3.org/2000/svg"
-                            width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="w-4 h-4 text-gray-400 transition-transform duration-200">
-                            <path d="M6 9l6 6 6-6" />
-                        </svg>
-                    </div>
-                    <div class="filter-options" v-show="expandedFilters.category">
-                        <label class="filter-checkbox" v-for="cat in facets.categories" :key="cat.value">
-                            <input type="checkbox" :value="cat.value" :checked="form.category_id === cat.value"
-                                @change="form.category_id = form.category_id === cat.value ? '' : cat.value">
-                            <div class="checkbox-visual">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                                    stroke-linejoin="round" class="lucide lucide-check">
-                                    <path d="M20 6 9 17l-5-5" />
-                                </svg>
+                <!-- Scrollable Sections -->
+                <div class="fp-scroll-area">
+                    <!-- Price Per Day -->
+                    <div class="fp-section">
+                        <div class="fp-section-header" :aria-expanded="expandedFilters.price" @click="toggleFilterSection('price')">
+                            <div class="fp-icon-badge fp-icon-price"><DollarSign :size="17" /></div>
+                            <span class="fp-section-label">Price Per Day</span>
+                            <span v-show="isSectionActive('price')" class="fp-active-dot"></span>
+                            <ChevronDown :size="16" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.price }" />
+                        </div>
+                        <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.price }">
+                            <div class="fp-section-body">
+                                <div class="fp-price-display">
+                                    <strong>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}</strong>
+                                    <strong>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}</strong>
+                                </div>
+                                <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
+                                    :enable-cross="false" :lazy="true" @change="applyPriceRange" :tooltip="'none'"
+                                    :process-style="{ backgroundColor: '#245f7d' }" :bg-style="{ backgroundColor: '#e2e8f0' }">
+                                </VueSlider>
                             </div>
-                            <span class="checkbox-label">{{ cat.label }}</span>
-                            <span class="checkbox-count">{{ cat.count }}</span>
-                        </label>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Transmission -->
-                <div class="filter-section">
-                    <div class="filter-section-header" @click="toggleFilterSection('transmission')">
-                        <span class="filter-section-title">Transmission</span>
-                        <svg :class="{ 'rotate-180': !expandedFilters.transmission }" xmlns="http://www.w3.org/2000/svg"
-                            width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="w-4 h-4 text-gray-400 transition-transform duration-200">
-                            <path d="m6 9 6 6 6-6" />
-                        </svg>
-                    </div>
-                    <div class="filter-options" v-show="expandedFilters.transmission">
-                        <label class="filter-checkbox" v-for="item in facets.transmissions" :key="item.value">
-                            <input type="checkbox" :value="item.value" :checked="form.transmission === item.value"
-                                @change="form.transmission = form.transmission === item.value ? '' : item.value">
-                            <div class="checkbox-visual">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                                    stroke-linejoin="round" class="lucide lucide-check">
-                                    <path d="M20 6 9 17l-5-5" />
-                                </svg>
+                    <!-- Vehicle Type -->
+                    <div class="fp-section">
+                        <div class="fp-section-header" :aria-expanded="expandedFilters.category" @click="toggleFilterSection('category')">
+                            <div class="fp-icon-badge fp-icon-category"><Car :size="17" /></div>
+                            <span class="fp-section-label">Vehicle Type</span>
+                            <span v-show="isSectionActive('category')" class="fp-active-dot"></span>
+                            <ChevronDown :size="16" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.category }" />
+                        </div>
+                        <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.category }">
+                            <div class="fp-options">
+                                <label class="fp-option" :class="{ 'fp-option-active': form.category_id === cat.value }" v-for="cat in facets.categories" :key="cat.value">
+                                    <input type="checkbox" :value="cat.value" :checked="form.category_id === cat.value"
+                                        @change="form.category_id = form.category_id === cat.value ? '' : cat.value">
+                                    <div class="fp-checkbox">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                                    </div>
+                                    <span class="fp-option-label">{{ cat.label }}</span>
+                                    <span class="fp-option-count">{{ cat.count }}</span>
+                                </label>
                             </div>
-                            <span class="checkbox-label capitalize">{{ item.label }}</span>
-                            <span class="checkbox-count">{{ item.count }}</span>
-                        </label>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Fuel Type -->
-                <div class="filter-section">
-                    <div class="filter-section-header" @click="toggleFilterSection('fuel')">
-                        <span class="filter-section-title">Fuel Type</span>
-                        <svg :class="{ 'rotate-180': !expandedFilters.fuel }" xmlns="http://www.w3.org/2000/svg"
-                            width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="w-4 h-4 text-gray-400 transition-transform duration-200">
-                            <path d="m6 9 6 6 6-6" />
-                        </svg>
-                    </div>
-                    <div class="filter-options" v-show="expandedFilters.fuel">
-                        <label class="filter-checkbox" v-for="item in facets.fuels" :key="item.value">
-                            <input type="checkbox" :value="item.value" :checked="form.fuel === item.value"
-                                @change="form.fuel = form.fuel === item.value ? '' : item.value">
-                            <div class="checkbox-visual">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                                    stroke-linejoin="round" class="lucide lucide-check">
-                                    <path d="M20 6 9 17l-5-5" />
-                                </svg>
+                    <!-- Transmission -->
+                    <div class="fp-section">
+                        <div class="fp-section-header" :aria-expanded="expandedFilters.transmission" @click="toggleFilterSection('transmission')">
+                            <div class="fp-icon-badge fp-icon-transmission"><Cog :size="17" /></div>
+                            <span class="fp-section-label">Transmission</span>
+                            <span v-show="isSectionActive('transmission')" class="fp-active-dot"></span>
+                            <ChevronDown :size="16" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.transmission }" />
+                        </div>
+                        <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.transmission }">
+                            <div class="fp-options">
+                                <label class="fp-option" :class="{ 'fp-option-active': form.transmission === item.value }" v-for="item in facets.transmissions" :key="item.value">
+                                    <input type="checkbox" :value="item.value" :checked="form.transmission === item.value"
+                                        @change="form.transmission = form.transmission === item.value ? '' : item.value">
+                                    <div class="fp-checkbox">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                                    </div>
+                                    <span class="fp-option-label capitalize">{{ item.label }}</span>
+                                    <span class="fp-option-count">{{ item.count }}</span>
+                                </label>
                             </div>
-                            <span class="checkbox-label capitalize">{{ item.label }}</span>
-                            <span class="checkbox-count">{{ item.count }}</span>
-                        </label>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Seats -->
-                <div class="filter-section">
-                    <div class="filter-section-header" @click="toggleFilterSection('seats')">
-                        <span class="filter-section-title">Capacity</span>
-                        <svg :class="{ 'rotate-180': !expandedFilters.seats }" xmlns="http://www.w3.org/2000/svg"
-                            width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="w-4 h-4 text-gray-400 transition-transform duration-200">
-                            <path d="m6 9 6 6 6-6" />
-                        </svg>
-                    </div>
-                    <div class="filter-options" v-show="expandedFilters.seats">
-                        <label class="filter-checkbox" v-for="item in facets.seats" :key="item.value">
-                            <input type="checkbox" :value="item.value" :checked="form.seating_capacity == item.value"
-                                @change="form.seating_capacity = form.seating_capacity == item.value ? '' : item.value">
-                            <div class="checkbox-visual">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                                    stroke-linejoin="round" class="lucide lucide-check">
-                                    <path d="M20 6 9 17l-5-5" />
-                                </svg>
+                    <!-- Fuel Type -->
+                    <div class="fp-section">
+                        <div class="fp-section-header" :aria-expanded="expandedFilters.fuel" @click="toggleFilterSection('fuel')">
+                            <div class="fp-icon-badge fp-icon-fuel"><Fuel :size="17" /></div>
+                            <span class="fp-section-label">Fuel Type</span>
+                            <span v-show="isSectionActive('fuel')" class="fp-active-dot"></span>
+                            <ChevronDown :size="16" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.fuel }" />
+                        </div>
+                        <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.fuel }">
+                            <div class="fp-options">
+                                <label class="fp-option" :class="{ 'fp-option-active': form.fuel === item.value }" v-for="item in facets.fuels" :key="item.value">
+                                    <input type="checkbox" :value="item.value" :checked="form.fuel === item.value"
+                                        @change="form.fuel = form.fuel === item.value ? '' : item.value">
+                                    <div class="fp-checkbox">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                                    </div>
+                                    <span class="fp-option-label capitalize">{{ item.label }}</span>
+                                    <span class="fp-option-count">{{ item.count }}</span>
+                                </label>
                             </div>
-                            <span class="checkbox-label">{{ item.label }}</span>
-                            <span class="checkbox-count">{{ item.count }}</span>
-                        </label>
+                        </div>
+                    </div>
+
+                    <!-- Capacity -->
+                    <div class="fp-section">
+                        <div class="fp-section-header" :aria-expanded="expandedFilters.seats" @click="toggleFilterSection('seats')">
+                            <div class="fp-icon-badge fp-icon-seats"><Users :size="17" /></div>
+                            <span class="fp-section-label">Capacity</span>
+                            <span v-show="isSectionActive('seats')" class="fp-active-dot"></span>
+                            <ChevronDown :size="16" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.seats }" />
+                        </div>
+                        <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.seats }">
+                            <div class="fp-options">
+                                <label class="fp-option" :class="{ 'fp-option-active': form.seating_capacity == item.value }" v-for="item in facets.seats" :key="item.value">
+                                    <input type="checkbox" :value="item.value" :checked="form.seating_capacity == item.value"
+                                        @change="form.seating_capacity = form.seating_capacity == item.value ? '' : item.value">
+                                    <div class="fp-checkbox">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                                    </div>
+                                    <span class="fp-option-label">{{ item.label }}</span>
+                                    <span class="fp-option-count">{{ item.count }}</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
             </div>
         </aside>
 
@@ -3323,192 +3314,442 @@ h6 {
     overflow: hidden;
 }
 
-.filters-scroll-area {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-top: 12px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
-}
-
-.filters-scroll-area::-webkit-scrollbar {
-    width: 4px;
-}
-
-.filters-scroll-area::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 4px;
-}
-
-.filters-scroll-area::-webkit-scrollbar-track {
-    background: transparent;
-}
-
 @media (min-width: 1280px) {
     .filters-sidebar {
         display: flex;
     }
 }
 
-.filters-header {
+/* Unified Filter Panel */
+.filters-panel {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+    padding: 18px 18px 14px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 110px);
+}
+
+/* Panel Header */
+.fp-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--gray-100);
     flex-shrink: 0;
 }
 
-.filters-title {
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--gray-500);
+.fp-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.filters-reset {
+.fp-title svg {
+    color: var(--gray-600);
+}
+
+.fp-count-badge {
+    font-size: 11px;
+    background: var(--primary-800);
+    color: var(--white);
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
+.fp-reset {
     background: none;
     border: none;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     color: var(--primary-600);
     cursor: pointer;
     font-family: inherit;
+    padding: 4px 0;
     transition: color var(--duration-fast);
 }
 
-.filters-reset:hover {
+.fp-reset:hover {
     color: var(--primary-800);
+    text-decoration: underline;
 }
 
-.filter-card {
-    background: var(--white);
-    border-radius: var(--radius-lg);
-    padding: 14px;
-    box-shadow: var(--shadow-sm);
+/* Scrollable Sections Area */
+.fp-scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
 }
 
-.filter-section {
-    padding: 8px 0;
+.fp-scroll-area::-webkit-scrollbar {
+    width: 4px;
 }
 
-.filter-section:first-child {
-    padding-top: 0;
+.fp-scroll-area::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
 }
 
-.filter-section:not(:last-child) {
+.fp-scroll-area::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Filter Section */
+.fp-section {
+    padding: 12px 0;
     border-bottom: 1px solid var(--gray-100);
 }
 
-.filter-section:last-child {
-    padding-bottom: 0;
+.fp-section:last-child {
+    border-bottom: none;
 }
 
-.filter-section-header {
+/* Section Header */
+.fp-section-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 10px;
     cursor: pointer;
-    margin-bottom: 8px;
+    padding: 2px 0;
+    transition: opacity 0.15s;
 }
 
-.filter-section-title {
+.fp-section-header:hover {
+    opacity: 0.85;
+}
+
+/* Icon Badges */
+.fp-icon-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+}
+
+.fp-section-header:hover .fp-icon-badge {
+    transform: scale(1.05);
+}
+
+.fp-icon-badge-sm {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+}
+
+.fp-icon-price { background: #fef3c7; color: #b45309; }
+.fp-icon-category { background: #dbeafe; color: #1d4ed8; }
+.fp-icon-transmission { background: #f3e8ff; color: #7c3aed; }
+.fp-icon-fuel { background: #dcfce7; color: #15803d; }
+.fp-icon-seats { background: #ffe4e6; color: #be123c; }
+
+.fp-section-label {
+    flex: 1;
     font-size: 14px;
     font-weight: 600;
     color: var(--gray-800);
 }
 
-.filter-section-header svg {
-    width: 16px;
-    height: 16px;
-    color: var(--gray-400);
-    transition: transform var(--duration-fast);
+/* Active Dot */
+.fp-active-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--primary-800);
+    flex-shrink: 0;
 }
 
-.filter-options {
+/* Chevron */
+.fp-chevron {
+    color: var(--gray-400);
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+}
+
+.fp-chevron-collapsed {
+    transform: rotate(-90deg);
+}
+
+/* Collapse Animation (grid-template-rows) */
+.fp-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s ease;
+}
+
+.fp-collapse-open {
+    grid-template-rows: 1fr;
+}
+
+.fp-collapse > div {
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Section Body (price) */
+.fp-section-body {
+    margin-top: 10px;
+    margin-left: 44px;
+}
+
+.fp-price-display {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--gray-500);
+    margin-bottom: 12px;
+}
+
+.fp-price-display strong {
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+/* Options (checkboxes) */
+.fp-options {
+    margin-top: 10px;
+    margin-left: 44px;
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
-    max-height: 200px;
+    gap: 1px;
+    max-height: 220px;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
 }
 
-.filter-options::-webkit-scrollbar {
+.fp-options::-webkit-scrollbar {
     width: 3px;
 }
 
-.filter-options::-webkit-scrollbar-thumb {
+.fp-options::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.12);
     border-radius: 3px;
 }
 
-.filter-checkbox {
+/* Filter Option Row */
+.fp-option {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-2) 0;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
     cursor: pointer;
-    transition: opacity var(--duration-fast);
+    transition: all 0.15s;
+    user-select: none;
 }
 
-.filter-checkbox:hover {
-    opacity: 0.8;
+.fp-option:hover {
+    background: var(--gray-50);
 }
 
-.filter-checkbox input {
+.fp-option-active {
+    background: #f0f7fa;
+}
+
+.fp-option input {
     position: absolute;
     opacity: 0;
     pointer-events: none;
 }
 
-.checkbox-visual {
-    width: 20px;
-    height: 20px;
-    background: var(--gray-100);
+/* Custom Checkbox */
+.fp-checkbox {
+    width: 19px;
+    height: 19px;
+    border-radius: 5px;
     border: 1.5px solid var(--gray-300);
-    border-radius: var(--radius-sm);
+    background: var(--gray-50);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all var(--duration-fast);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     flex-shrink: 0;
 }
 
-.filter-checkbox input:checked+.checkbox-visual {
+.fp-option-active .fp-checkbox {
     background: var(--primary-800);
     border-color: var(--primary-800);
+    box-shadow: 0 0 0 2px rgba(36, 95, 125, 0.15);
 }
 
-.checkbox-visual svg {
+.fp-checkbox svg {
     width: 12px;
     height: 12px;
     color: var(--white);
     opacity: 0;
     transform: scale(0.5);
-    transition: all var(--duration-fast);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.filter-checkbox input:checked+.checkbox-visual svg {
+.fp-option-active .fp-checkbox svg {
     opacity: 1;
     transform: scale(1);
 }
 
-.checkbox-label {
+.fp-option-label {
     flex: 1;
-    font-size: 14px;
-    color: var(--gray-700);
+    font-size: 13.5px;
+    color: var(--gray-600);
+    transition: all 0.15s;
 }
 
-.checkbox-count {
-    font-size: 12px;
+.fp-option-active .fp-option-label {
+    color: var(--gray-800);
+    font-weight: 500;
+}
+
+.fp-option-count {
+    font-size: 11px;
     color: var(--gray-400);
     background: var(--gray-100);
     padding: 2px 8px;
-    border-radius: var(--radius-full);
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.15s;
+}
+
+.fp-option-active .fp-option-count {
+    background: #dbeef5;
+    color: var(--primary-600);
+}
+
+/* ===== Mobile Filter Drawer ===== */
+.fpm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 14px;
+    border-bottom: 1px solid var(--gray-100);
+    flex-shrink: 0;
+}
+
+.fpm-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.fpm-close-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--gray-100);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--gray-600);
+    transition: background 0.15s;
+}
+
+.fpm-close-btn:hover {
+    background: var(--gray-200);
+}
+
+.fpm-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+.fpm-label {
+    font-size: 13px;
+}
+
+.fpm-section-body {
+    margin-left: 38px;
+}
+
+.fpm-options {
+    margin-left: 38px;
+}
+
+.fpm-option {
+    padding: 6px 8px;
+    gap: 8px;
+}
+
+.fpm-checkbox {
+    width: 17px;
+    height: 17px;
+    border-radius: 4px;
+}
+
+.fpm-checkbox svg {
+    width: 10px;
+    height: 10px;
+}
+
+.fpm-option-label {
+    font-size: 12.5px;
+}
+
+.fpm-option-count {
+    font-size: 10px;
+    padding: 1px 6px;
+}
+
+.fpm-footer {
+    display: flex;
+    gap: 10px;
+    padding: 14px;
+    border-top: 1px solid var(--gray-100);
+    flex-shrink: 0;
+}
+
+.fpm-btn-reset {
+    flex: 1;
+    padding: 10px 0;
+    border-radius: 10px;
+    border: 1.5px solid var(--gray-200);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.fpm-btn-reset:hover {
+    background: var(--gray-50);
+}
+
+.fpm-btn-show {
+    flex: 2;
+    padding: 10px 0;
+    border-radius: 10px;
+    border: none;
+    background: var(--primary-600);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--white);
+    cursor: pointer;
+    transition: background 0.15s;
+    box-shadow: 0 4px 12px rgba(36, 95, 125, 0.2);
+}
+
+.fpm-btn-show:hover {
+    background: var(--primary-800);
 }
 
 /* Results Header */

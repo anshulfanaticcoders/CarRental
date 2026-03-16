@@ -88,6 +88,8 @@ return [
   'search_around_me' => 'Rechercher autour de moi..',
   'popular_searches_header' => 'Recherches populaires',
   'no_location_found' => 'Aucun lieu trouvé. Veuillez essayer une autre recherche.',
+  'start_typing_to_search_all_locations' => 'Commencez à taper pour rechercher tous les emplacements',
+  'dates_required' => 'Les dates de location sont obligatoires',
 
   // FAQ Section
   'faqs_badge' => 'Questions fréquentes',

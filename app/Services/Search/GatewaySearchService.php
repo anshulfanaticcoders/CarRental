@@ -64,21 +64,40 @@ class GatewaySearchService
             if (!empty($transformErrors)) {
                 Log::warning('VrooemGateway: Transform errors', ['errors' => $transformErrors]);
             }
-            Log::info('VrooemGateway: After transform', ['count' => $transformedVehicles->count(), 'sources' => $transformedVehicles->pluck('source')->countBy()->all()]);
 
-            $transformedVehicles = $this->presentationService
-                ->collapseEquivalentSicilyByCarVehicles($transformedVehicles);
-            Log::info('VrooemGateway: After SBC collapse', ['count' => $transformedVehicles->count()]);
+            $fallbackLatitude = $matchedLocation['latitude'] ?? ($validated['latitude'] ?? null);
+            $fallbackLongitude = $matchedLocation['longitude'] ?? ($validated['longitude'] ?? null);
+            $fallbackAppliedCount = 0;
+
+            $transformedVehicles = $transformedVehicles->map(function ($vehicle) use ($fallbackLatitude, $fallbackLongitude, &$fallbackAppliedCount) {
+                $v = is_array($vehicle) ? $vehicle : (array) $vehicle;
+                if (!$this->requiresCoordinateFallback($v) || !$this->isUsableCoordinatePair($fallbackLatitude, $fallbackLongitude)) {
+                    return $v;
+                }
+
+                $v['latitude'] = (float) $fallbackLatitude;
+                $v['longitude'] = (float) $fallbackLongitude;
+                $fallbackAppliedCount++;
+
+                return $v;
+            })->values();
+
+            if ($fallbackAppliedCount > 0) {
+                Log::info('VrooemGateway: Applied coordinate fallback', [
+                    'count' => $fallbackAppliedCount,
+                    'fallback_latitude' => (float) $fallbackLatitude,
+                    'fallback_longitude' => (float) $fallbackLongitude,
+                ]);
+            }
+
+            Log::info('VrooemGateway: After transform', ['count' => $transformedVehicles->count(), 'sources' => $transformedVehicles->pluck('source')->countBy()->all()]);
 
             $transformedVehicles = $this->presentationService
                 ->collapseEquivalentRenteonVehicles($transformedVehicles);
             Log::info('VrooemGateway: After Renteon collapse', ['count' => $transformedVehicles->count()]);
 
-            $providerVehicles = $this->groupRecordGoVehicles($transformedVehicles);
-            Log::info('VrooemGateway: After RecordGo grouping', ['count' => $providerVehicles->count()]);
-
             $providerVehicles = $this->searchOrchestratorService
-                ->filterGatewayVehiclesForRequestedProvider($providerVehicles, $validated);
+                ->filterGatewayVehiclesForRequestedProvider($transformedVehicles, $validated);
             Log::info('VrooemGateway: After requested-provider filter', [
                 'count' => $providerVehicles->count(),
                 'provider' => $validated['provider'] ?? 'mixed',
@@ -250,65 +269,35 @@ class GatewaySearchService
         ];
     }
 
-    private function groupRecordGoVehicles(Collection $vehicles): Collection
+    private function requiresCoordinateFallback(array $vehicle): bool
     {
-        $recordGoGroups = [];
-        $otherVehicles = [];
+        $lat = $vehicle['latitude'] ?? null;
+        $lng = $vehicle['longitude'] ?? null;
 
-        foreach ($vehicles as $vehicle) {
-            $v = is_array($vehicle) ? $vehicle : (array) $vehicle;
-            if (($v['source'] ?? '') !== 'recordgo') {
-                $otherVehicles[] = $vehicle;
-                continue;
-            }
-
-            $acrissCode = $v['sipp_code'] ?? ($v['supplier_data']['acriss_code'] ?? 'unknown');
-            $pickupId = $v['provider_pickup_id'] ?? '';
-            $groupKey = $pickupId . '_' . $acrissCode;
-
-            if (!isset($recordGoGroups[$groupKey])) {
-                $recordGoGroups[$groupKey] = [
-                    'base' => $v,
-                    'products' => [],
-                ];
-            }
-
-            $supplierData = $v['supplier_data'] ?? [];
-            $productData = $supplierData['product_data'] ?? null;
-
-            if ($productData) {
-                $recordGoGroups[$groupKey]['products'][] = $productData;
-            }
-
-            $currentBase = $recordGoGroups[$groupKey]['base'];
-            if (($v['total_price'] ?? PHP_FLOAT_MAX) < ($currentBase['total_price'] ?? PHP_FLOAT_MAX)) {
-                $recordGoGroups[$groupKey]['base'] = $v;
-            }
+        if (!$this->isNumericCoordinate($lat) || !$this->isNumericCoordinate($lng)) {
+            return true;
         }
 
-        foreach ($recordGoGroups as $group) {
-            $base = $group['base'];
-            $base['recordgo_products'] = $group['products'];
-            if (!empty($group['products'])) {
-                $minTotal = null;
-                $minDaily = null;
-                foreach ($group['products'] as $product) {
-                    $productTotal = (float) ($product['total'] ?? PHP_FLOAT_MAX);
-                    if ($minTotal === null || $productTotal < $minTotal) {
-                        $minTotal = $productTotal;
-                        $minDaily = (float) ($product['price_per_day'] ?? 0);
-                    }
-                }
-                if ($minTotal !== null) {
-                    $base['total_price'] = $minTotal;
-                    $base['total'] = $minTotal;
-                    $base['price_per_day'] = $minDaily;
-                    $base['daily_rate'] = $minDaily;
-                }
-            }
-            $otherVehicles[] = $base;
+        $lat = (float) $lat;
+        $lng = (float) $lng;
+
+        return abs($lat) < 0.000001 && abs($lng) < 0.000001;
+    }
+
+    private function isUsableCoordinatePair(mixed $lat, mixed $lng): bool
+    {
+        if (!$this->isNumericCoordinate($lat) || !$this->isNumericCoordinate($lng)) {
+            return false;
         }
 
-        return collect($otherVehicles);
+        $lat = (float) $lat;
+        $lng = (float) $lng;
+
+        return $lat >= -90.0 && $lat <= 90.0 && $lng >= -180.0 && $lng <= 180.0;
+    }
+
+    private function isNumericCoordinate(mixed $value): bool
+    {
+        return is_numeric($value);
     }
 }

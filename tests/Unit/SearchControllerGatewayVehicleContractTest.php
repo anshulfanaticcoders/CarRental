@@ -110,4 +110,67 @@ class SearchControllerGatewayVehicleContractTest extends TestCase
             'excess_theft_amount',
         ], array_keys($vehicle['benefits']));
     }
+
+    public function test_it_preserves_recordgo_products_needed_for_booking(): void
+    {
+        $transformer = new GatewayVehicleTransformer();
+
+        $vehicle = $transformer->transform([
+            'id' => 'gw_rg_1',
+            'supplier_id' => 'record_go',
+            'supplier_vehicle_id' => 'MDMR',
+            'make' => 'Fiat',
+            'model' => '500',
+            'category' => 'mini',
+            'image_url' => 'https://example.com/fiat.png',
+            'pricing' => [
+                'total_price' => 180.00,
+                'daily_rate' => 36.00,
+                'currency' => 'EUR',
+            ],
+            'pickup_location' => [
+                'supplier_location_id' => '35001',
+                'name' => 'Loures Airport',
+                'latitude' => 38.7742,
+                'longitude' => -9.1342,
+            ],
+            'supplier_data' => [
+                'sell_code_ver' => 'sell-v1',
+                'products' => [
+                    [
+                        'type' => 'BAS',
+                        'name' => 'Basic',
+                        'total' => 180.00,
+                        'price_per_day' => 36.00,
+                        'product_id' => 11,
+                        'product_ver' => 1,
+                        'rate_prod_ver' => 'A',
+                    ],
+                    [
+                        'type' => 'PRE',
+                        'name' => 'Premium',
+                        'total' => 220.00,
+                        'price_per_day' => 44.00,
+                        'product_id' => 12,
+                        'product_ver' => 1,
+                        'rate_prod_ver' => 'B',
+                    ],
+                ],
+            ],
+            'transmission' => 'manual',
+            'fuel_type' => 'petrol',
+            'seats' => 4,
+            'doors' => 3,
+            'bags_small' => 1,
+            'bags_large' => 1,
+            'extras' => [],
+            'insurance_options' => [],
+            'sipp_code' => 'MDMR',
+        ], 5);
+
+        $this->assertArrayHasKey('recordgo_products', $vehicle);
+        $this->assertCount(2, $vehicle['recordgo_products']);
+        $this->assertSame(11, $vehicle['recordgo_products'][0]['product_id']);
+        $this->assertSame('B', $vehicle['recordgo_products'][1]['rate_prod_ver']);
+    }
 }
