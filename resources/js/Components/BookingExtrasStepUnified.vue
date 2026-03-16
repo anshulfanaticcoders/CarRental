@@ -2105,6 +2105,11 @@ const payableAmount = computed(() => bookingChargeBreakdown.value.payableAmount.
 const pendingAmount = computed(() => bookingChargeBreakdown.value.pendingAmount.toFixed(2));
 
 const effectivePaymentPercentage = computed(() => {
+    const isCommissionOnlyFlow = Boolean(props.vehicle?.source);
+    if (isCommissionOnlyFlow) {
+        return Math.round((providerMarkupRate.value * 100) * 100) / 100;
+    }
+
     const grand = bookingChargeBreakdown.value.grandTotal;
     if (grand <= 0) return 0;
     return Math.round(((bookingChargeBreakdown.value.payableAmount / grand) * 100) * 100) / 100;
@@ -2516,7 +2521,7 @@ const showProviderNotes = ref(false);
 
 const hasProviderNotes = computed(() => {
     if (isInternal.value) {
-        return !!(props.vehicle?.vendor?.profile || props.vehicle?.vendorProfile || props.vehicle?.vendor_profile || props.vehicle?.guidelines);
+        return !!(props.vehicle?.vendor?.profile || props.vehicle?.vendorProfile || props.vehicle?.vendor_profile || props.vehicle?.guidelines || props.vehicle?.terms_policy);
     }
     if (isRecordGo.value) return recordGoAutomaticComplements.value.length > 0;
     return false;
@@ -3258,6 +3263,10 @@ const hasProviderNotes = computed(() => {
                             <div v-if="vehicle?.guidelines" class="bg-amber-50 rounded-xl p-4 border border-amber-100">
                                 <p class="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">Pick-up Guidelines</p>
                                 <p class="text-sm text-gray-700 whitespace-pre-line">{{ vehicle?.guidelines }}</p>
+                            </div>
+                            <div v-if="vehicle?.terms_policy" class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                <p class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Vendor Terms &amp; Conditions</p>
+                                <p class="text-sm text-gray-700 whitespace-pre-line">{{ vehicle?.terms_policy }}</p>
                             </div>
                         </template>
                         <template v-if="isRecordGo && recordGoAutomaticComplements.length > 0">

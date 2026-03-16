@@ -939,13 +939,7 @@ const clientFilteredVehicles = computed(() => {
         const seats = parseInt(form.seating_capacity);
         result = result.filter(v => {
             const s = parseInt(v.seating_capacity || v.passenger_capacity || v.passengers || v.adults || v.seat_number || v.seats || 0);
-            return s >= seats; // Logic: "4 seats" filter means 4 or 4+? User usually wants explicit count or min.
-            // "5 seats" usually means strict 5 or 5+. Let's do exact if standard dropdown, or >=.
-            // Given "4, 5, 7" options, exact match is often better for "Passenger Capacity" unless it's "4+ ".
-            // Let's use exact match for now as per usual Facet logic, or maybe >=.
-            // Actually, for "5 seats", a 7 seater is acceptable? Usually yes.
-            // But let's stick to equality for facets count accuracy if options are discrete numbers.
-            return s == seats;
+            return s === seats;
         });
     }
 

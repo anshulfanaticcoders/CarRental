@@ -115,13 +115,13 @@ class VendorVehicleController extends Controller
             'brand' => 'required|string|max:50',
             'model' => 'required|string|max:50',
             'color' => 'required|string|max:30',
-            'mileage' => 'required|decimal:0,2',
+            'mileage' => 'required|integer|min:0',
             'transmission' => 'required|string',
             'fuel' => 'required|string',
             'seating_capacity' => 'required|integer|min:1',
             'number_of_doors' => 'required|integer|min:2',
             'luggage_capacity' => 'required|integer|min:0',
-            'horsepower' => 'required|decimal:0,2',
+            'horsepower' => 'required|integer|min:0',
             'co2' => 'required|string',
             'location' => 'nullable|string',
             'location_type' => 'required|string|max:255',
@@ -173,6 +173,7 @@ class VendorVehicleController extends Controller
             'benefits.price_per_km_per_month' => 'nullable|numeric|min:0',
             'benefits.minimum_driver_age' => 'required|integer|min:18',
             'guidelines' => 'nullable|string|max:50000',
+            'terms_policy' => 'nullable|string|max:50000',
             'pickup_times' => 'required|array',
             'return_times' => 'required|array',
 
@@ -302,6 +303,7 @@ class VendorVehicleController extends Controller
                     'monthly_discount' => $request->monthly_discount == 0 ? null : $request->monthly_discount,
                     'preferred_price_type' => $request->preferred_price_type,
                     'guidelines' => $request->guidelines,
+                    'terms_policy' => $request->terms_policy,
                     'pickup_times' => $request->pickup_times,
                     'return_times' => $request->return_times,
                 ]);
@@ -576,7 +578,10 @@ class VendorVehicleController extends Controller
 
         // Delete images from storage
         foreach ($vehicle->images as $image) {
-            Storage::disk('upcloud')->delete($image->image_url);
+            $path = $image->image_path ?: $image->image_url;
+            if ($path) {
+                Storage::disk('upcloud')->delete($path);
+            }
         }
 
         $vehicle->delete();
@@ -594,10 +599,11 @@ class VendorVehicleController extends Controller
             return response()->json(['message' => 'Image not found'], 404);
         }
 
-        if ($image->image_url && $image->image_url !== null) {
+        $path = $image->image_path ?: $image->image_url;
+        if ($path) {
 
             try {
-                Storage::disk('upcloud')->delete($image->image_url);
+                Storage::disk('upcloud')->delete($path);
             } catch (\Exception $e) {
 
             }
@@ -635,9 +641,10 @@ class VendorVehicleController extends Controller
         foreach ($vehicles as $vehicle) {
             // Delete images from storage
             foreach ($vehicle->images as $image) {
-                if ($image->image_url) { // Check if image_url is not null
+                $path = $image->image_path ?: $image->image_url;
+                if ($path) {
                     try {
-                        Storage::disk('upcloud')->delete($image->image_url);
+                        Storage::disk('upcloud')->delete($path);
                     } catch (\Exception $e) {
                         // Log error or handle as needed
                     }

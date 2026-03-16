@@ -936,6 +936,15 @@
                                     <textarea type="text" v-model="form.guidelines" id="guidelines" required
                                         class="border p-2 rounded-lg w-full" />
                                 </div>
+                                <div class="mt-4">
+                                    <InputLabel for="terms_policy">Terms &amp; Conditions</InputLabel>
+                                    <textarea
+                                        id="terms_policy"
+                                        v-model="form.terms_policy"
+                                        class="border p-2 rounded-lg w-full"
+                                        placeholder="Add vendor terms and policy for this vehicle."
+                                    />
+                                </div>
                                 <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
                                     <p>{{ _t('vendorprofilepages', 'text_choose_pickup_return_time') }}</p>
                                     <div class="grid gap-10 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
@@ -1238,6 +1247,7 @@ const form = useForm({
     security_deposit: 0.00,
     payment_method: [],
     guidelines: "",
+    terms_policy: "",
     price_per_day: 0.00,
     price_per_week: 0.00,
     price_per_month: 0.00,
@@ -1726,6 +1736,7 @@ onMounted(() => {
         }
         ensurePreferredPriceType();
         form.guidelines = props.vehicle.guidelines;
+        form.terms_policy = props.vehicle.terms_policy || '';
 
         // Set existing primary image ID if one exists
         const primaryExistingImage = props.vehicle.images?.find(img => img.image_type === 'primary');

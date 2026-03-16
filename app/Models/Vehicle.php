@@ -39,6 +39,7 @@ class Vehicle extends Model
         'security_deposit',
         'payment_method',
         'guidelines',
+        'terms_policy',
         'price_per_day',
         'price_per_week',
         'weekly_discount',

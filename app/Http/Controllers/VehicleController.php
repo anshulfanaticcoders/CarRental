@@ -7,6 +7,7 @@ use App\Models\BookingAddon;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleBenefit;
+use App\Models\VehicleCategory;
 use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
@@ -61,13 +62,13 @@ class VehicleController extends Controller
             'brand' => 'required|string|max:50',
             'model' => 'required|string|max:50',
             'color' => 'required|string|max:30',
-            'mileage' => 'required|decimal:0,2',
+            'mileage' => 'required|integer|min:0',
             'transmission' => 'required|string',
             'fuel' => 'required|string',
             'seating_capacity' => 'required|integer|min:1',
             'number_of_doors' => 'required|integer|min:2',
             'luggage_capacity' => 'required|integer|min:0',
-            'horsepower' => 'required|decimal:0,2',
+            'horsepower' => 'required|integer|min:0',
             'co2' => 'required|string',
             'location' => 'required|string',
             'location_type' => 'required|string|max:255',
@@ -83,6 +84,7 @@ class VehicleController extends Controller
             'payment_method' => 'required|array',
             'payment_method.*' => 'string|in:credit_card,cheque,bank_wire,cryptocurrency,cash',
             'guidelines' => 'nullable|string|max:50000',
+            'terms_policy' => 'nullable|string|max:50000',
             'price_per_day' => 'nullable|decimal:0,2',
             'price_per_week' => 'nullable|decimal:0,2',
             'weekly_discount' => 'nullable|decimal:0,2',
@@ -124,6 +126,7 @@ class VehicleController extends Controller
             'pickup_times' => 'required|array',
             'return_times' => 'required|array',
             'primary_image_index' => 'required|numeric|min:0',
+            'images' => 'required|array|min:5|max:20',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:10240',
 
             'selected_plans' => 'nullable|array|max:3',
@@ -164,212 +167,226 @@ class VehicleController extends Controller
             return back()->withErrors(['primary_image_index' => 'Primary image index is out of bounds.'])->withInput();
         }
 
-        // Create the vehicle
-        $vehicle = Vehicle::create([
-            'vendor_id' => $request->user()->id,
-            'category_id' => $request->category_id,
-            'brand' => $request->brand,
-            'model' => $request->model,
-            'color' => $request->color,
-            'mileage' => $request->mileage,
-            'transmission' => $request->transmission,
-            'fuel' => $request->fuel,
-            'seating_capacity' => $request->seating_capacity,
-            'number_of_doors' => $request->number_of_doors,
-            'luggage_capacity' => $request->luggage_capacity,
-            'horsepower' => $request->horsepower,
-            'co2' => $request->co2,
-            'location' => $request->location,
-            'location_type' => $request->location_type,
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-            'city' => $request->city,
-            'state' => $request->state,
-            'country' => $request->country,
-            'full_vehicle_address' => $request->full_vehicle_address,
-            'status' => $request->status,
-            'features' => json_encode($request->features),
-            'featured' => $request->featured,
-            'security_deposit' => $request->security_deposit,
-            // 'payment_method' => $request->payment_method,
-            'payment_method' => json_encode($request->payment_method),
-            'guidelines' => $request->guidelines,
-            'price_per_day' => $request->price_per_day,
-            'price_per_week' => $request->price_per_week,
-            'weekly_discount' => $request->weekly_discount,
-            'price_per_month' => $request->price_per_month,
-            'monthly_discount' => $request->monthly_discount,
-            'preferred_price_type' => $request->preferred_price_type,
-            'limited_km' => $request->limited_km ?? false,
-            'cancellation_available' => $request->cancellation_available ?? false,
-            'price_per_km' => $request->price_per_km,
+        try {
+            DB::beginTransaction();
 
-            'pickup_times' => $request->pickup_times,
-            'return_times' => $request->return_times,
-        ]);
+            // Create the vehicle
+            $vehicle = Vehicle::create([
+                'vendor_id' => $request->user()->id,
+                'category_id' => $request->category_id,
+                'brand' => $request->brand,
+                'model' => $request->model,
+                'color' => $request->color,
+                'mileage' => $request->mileage,
+                'transmission' => $request->transmission,
+                'fuel' => $request->fuel,
+                'seating_capacity' => $request->seating_capacity,
+                'number_of_doors' => $request->number_of_doors,
+                'luggage_capacity' => $request->luggage_capacity,
+                'horsepower' => $request->horsepower,
+                'co2' => $request->co2,
+                'location' => $request->location,
+                'location_type' => $request->location_type,
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'city' => $request->city,
+                'state' => $request->state,
+                'country' => $request->country,
+                'full_vehicle_address' => $request->full_vehicle_address,
+                'status' => $request->status,
+                'features' => json_encode($request->features),
+                'featured' => $request->featured,
+                'security_deposit' => $request->security_deposit,
+                // 'payment_method' => $request->payment_method,
+                'payment_method' => json_encode($request->payment_method),
+                'guidelines' => $request->guidelines,
+                'terms_policy' => $request->terms_policy,
+                'price_per_day' => $request->price_per_day,
+                'price_per_week' => $request->price_per_week,
+                'weekly_discount' => $request->weekly_discount,
+                'price_per_month' => $request->price_per_month,
+                'monthly_discount' => $request->monthly_discount,
+                'preferred_price_type' => $request->preferred_price_type,
+                'limited_km' => $request->limited_km ?? false,
+                'cancellation_available' => $request->cancellation_available ?? false,
+                'price_per_km' => $request->price_per_km,
 
-
-        VehicleBenefit::create([
-            'vehicle_id' => $vehicle->id,
-            'limited_km_per_day' => $request->limited_km_per_day ?? false,
-            'limited_km_per_week' => $request->limited_km_per_week ?? false,
-            'limited_km_per_month' => $request->limited_km_per_month ?? false,
-            'limited_km_per_day_range' => $request->limited_km_per_day_range,
-            'limited_km_per_week_range' => $request->limited_km_per_week_range,
-            'limited_km_per_month_range' => $request->limited_km_per_month_range,
-            'cancellation_available_per_day' => $request->cancellation_available_per_day ?? false,
-            'cancellation_available_per_week' => $request->cancellation_available_per_week ?? false,
-            'cancellation_available_per_month' => $request->cancellation_available_per_month ?? false,
-            'cancellation_available_per_day_date' => $request->cancellation_available_per_day_date,
-            'cancellation_available_per_week_date' => $request->cancellation_available_per_week_date,
-            'cancellation_available_per_month_date' => $request->cancellation_available_per_month_date,
-            'price_per_km_per_day' => $request->price_per_km_per_day,
-            'price_per_km_per_week' => $request->price_per_km_per_week,
-            'price_per_km_per_month' => $request->price_per_km_per_month,
-            'minimum_driver_age' => $request->minimum_driver_age,
-        ]);
-
-        // Create the vehicle specifications
-        VehicleSpecification::create([
-            'vehicle_id' => $vehicle->id,
-            'registration_number' => $request->registration_number,
-            'registration_country' => $request->registration_country,
-            'registration_date' => $request->registration_date,
-            'gross_vehicle_mass' => $request->gross_vehicle_mass,
-            'vehicle_height' => $request->vehicle_height,
-            'dealer_cost' => $request->dealer_cost,
-            'phone_number' => $request->phone_number,
-        ]);
+                'pickup_times' => $request->pickup_times,
+                'return_times' => $request->return_times,
+            ]);
 
 
-        // Save the selected plan details
-        if (!empty($selectedPlans)) {
-            $planId = 1;
+            VehicleBenefit::create([
+                'vehicle_id' => $vehicle->id,
+                'limited_km_per_day' => $request->limited_km_per_day ?? false,
+                'limited_km_per_week' => $request->limited_km_per_week ?? false,
+                'limited_km_per_month' => $request->limited_km_per_month ?? false,
+                'limited_km_per_day_range' => $request->limited_km_per_day_range,
+                'limited_km_per_week_range' => $request->limited_km_per_week_range,
+                'limited_km_per_month_range' => $request->limited_km_per_month_range,
+                'cancellation_available_per_day' => $request->cancellation_available_per_day ?? false,
+                'cancellation_available_per_week' => $request->cancellation_available_per_week ?? false,
+                'cancellation_available_per_month' => $request->cancellation_available_per_month ?? false,
+                'cancellation_available_per_day_date' => $request->cancellation_available_per_day_date,
+                'cancellation_available_per_week_date' => $request->cancellation_available_per_week_date,
+                'cancellation_available_per_month_date' => $request->cancellation_available_per_month_date,
+                'price_per_km_per_day' => $request->price_per_km_per_day,
+                'price_per_km_per_week' => $request->price_per_km_per_week,
+                'price_per_km_per_month' => $request->price_per_km_per_month,
+                'minimum_driver_age' => $request->minimum_driver_age,
+            ]);
 
-            foreach ($selectedPlans as $selectedPlan) {
-                $features = isset($selectedPlan['features']) && is_array($selectedPlan['features'])
-                    ? array_values(array_filter($selectedPlan['features'], fn($feature) => trim($feature) !== ''))
-                    : null;
+            // Create the vehicle specifications
+            VehicleSpecification::create([
+                'vehicle_id' => $vehicle->id,
+                'registration_number' => $request->registration_number,
+                'registration_country' => $request->registration_country,
+                'registration_date' => $request->registration_date,
+                'gross_vehicle_mass' => $request->gross_vehicle_mass,
+                'vehicle_height' => $request->vehicle_height,
+                'dealer_cost' => $request->dealer_cost,
+                'phone_number' => $request->phone_number,
+            ]);
 
-                $planType = $selectedPlan['plan_type'] ?? 'Basic';
-                $planValue = $planType === 'Basic'
-                    ? ($request->price_per_day ?? 0)
-                    : ($selectedPlan['plan_value'] ?? 0);
 
-                VendorVehiclePlan::create([
-                    'vendor_id' => $request->user()->id,
-                    'vehicle_id' => $vehicle->id,
-                    'plan_id' => $planId,
-                    'plan_type' => $planType,
-                    'price' => $planValue,
-                    'features' => $features ? json_encode(array_slice($features, 0, 5)) : null,
-                    'plan_description' => $selectedPlan['plan_description'] ?? null,
-                ]);
+            // Save the selected plan details
+            if (!empty($selectedPlans)) {
+                $planId = 1;
 
-                $planId++;
-            }
-        }
+                foreach ($selectedPlans as $selectedPlan) {
+                    $features = isset($selectedPlan['features']) && is_array($selectedPlan['features'])
+                        ? array_values(array_filter($selectedPlan['features'], fn($feature) => trim($feature) !== ''))
+                        : null;
 
-        // Save the selected addon details
-        if ($request->has('selected_addons')) {
-            $selectedAddons = $request->input('selected_addons');
-            $addonPrices = $request->input('addon_prices');
-            $addonQuantities = $request->input('addon_quantities');
+                    $planType = $selectedPlan['plan_type'] ?? 'Basic';
+                    $planValue = $planType === 'Basic'
+                        ? ($request->price_per_day ?? 0)
+                        : ($selectedPlan['plan_value'] ?? 0);
 
-            foreach ($selectedAddons as $addonId) {
-                $addon = BookingAddon::find($addonId); // Fetch the addon details
-
-                VendorVehicleAddon::create([
-                    'vendor_id' => $request->user()->id,
-                    'vehicle_id' => $vehicle->id,
-                    'addon_id' => $addonId,
-                    'extra_type' => $addon->extra_type, // Add extra_type
-                    'extra_name' => $addon->extra_name, // Add extra_name
-                    'price' => $addonPrices[$addonId],
-                    'quantity' => $addonQuantities[$addonId],
-                    'description' => $addon->description, // Add description
-                ]);
-            }
-        }
-
-        $customAddons = $request->input('custom_addons', []);
-        if (!empty($customAddons)) {
-            foreach ($customAddons as $customAddon) {
-                $extraName = trim($customAddon['extra_name'] ?? '');
-                if ($extraName === '') {
-                    continue;
-                }
-                $extraType = trim($customAddon['extra_type'] ?? '') ?: 'custom';
-                $description = trim($customAddon['description'] ?? '');
-                $price = $customAddon['price'] ?? 0;
-                $quantity = $customAddon['quantity'] ?? 1;
-
-                $addon = BookingAddon::updateOrCreate(
-                    [
+                    VendorVehiclePlan::create([
                         'vendor_id' => $request->user()->id,
-                        'extra_name' => $extraName,
-                        'extra_type' => $extraType,
-                    ],
-                    [
-                        'description' => $description,
+                        'vehicle_id' => $vehicle->id,
+                        'plan_id' => $planId,
+                        'plan_type' => $planType,
+                        'price' => $planValue,
+                        'features' => $features ? json_encode(array_slice($features, 0, 5)) : null,
+                        'plan_description' => $selectedPlan['plan_description'] ?? null,
+                    ]);
+
+                    $planId++;
+                }
+            }
+
+            // Save the selected addon details
+            if ($request->has('selected_addons')) {
+                $selectedAddons = $request->input('selected_addons');
+                $addonPrices = $request->input('addon_prices');
+                $addonQuantities = $request->input('addon_quantities');
+
+                foreach ($selectedAddons as $addonId) {
+                    $addon = BookingAddon::find($addonId); // Fetch the addon details
+
+                    VendorVehicleAddon::create([
+                        'vendor_id' => $request->user()->id,
+                        'vehicle_id' => $vehicle->id,
+                        'addon_id' => $addonId,
+                        'extra_type' => $addon->extra_type, // Add extra_type
+                        'extra_name' => $addon->extra_name, // Add extra_name
+                        'price' => $addonPrices[$addonId],
+                        'quantity' => $addonQuantities[$addonId],
+                        'description' => $addon->description, // Add description
+                    ]);
+                }
+            }
+
+            $customAddons = $request->input('custom_addons', []);
+            if (!empty($customAddons)) {
+                foreach ($customAddons as $customAddon) {
+                    $extraName = trim($customAddon['extra_name'] ?? '');
+                    if ($extraName === '') {
+                        continue;
+                    }
+                    $extraType = trim($customAddon['extra_type'] ?? '') ?: 'custom';
+                    $description = trim($customAddon['description'] ?? '');
+                    $price = $customAddon['price'] ?? 0;
+                    $quantity = $customAddon['quantity'] ?? 1;
+
+                    $addon = BookingAddon::updateOrCreate(
+                        [
+                            'vendor_id' => $request->user()->id,
+                            'extra_name' => $extraName,
+                            'extra_type' => $extraType,
+                        ],
+                        [
+                            'description' => $description,
+                            'price' => $price,
+                            'quantity' => $quantity,
+                        ]
+                    );
+
+                    VendorVehicleAddon::create([
+                        'vendor_id' => $request->user()->id,
+                        'vehicle_id' => $vehicle->id,
+                        'addon_id' => $addon->id,
+                        'extra_type' => $addon->extra_type,
+                        'extra_name' => $addon->extra_name,
                         'price' => $price,
                         'quantity' => $quantity,
-                    ]
-                );
-
-                VendorVehicleAddon::create([
-                    'vendor_id' => $request->user()->id,
-                    'vehicle_id' => $vehicle->id,
-                    'addon_id' => $addon->id,
-                    'extra_type' => $addon->extra_type,
-                    'extra_name' => $addon->extra_name,
-                    'price' => $price,
-                    'quantity' => $quantity,
-                    'description' => $addon->description,
-                ]);
-            }
-        }
-
-        // Handle vehicle images
-        if ($request->hasFile('images')) {
-            $primaryImageIndex = (int)$request->primary_image_index;
-            $folderName = 'vehicle_images';
-
-            foreach ($request->file('images') as $index => $image) {
-                $compressedImageUrl = ImageCompressionHelper::compressImage(
-                    $image,
-                    $folderName,
-                    quality: 80, // Adjust quality as needed
-                    maxWidth: 1200, // Optional: Set max width for vehicle images
-                    maxHeight: 900 // Optional: Set max height for vehicle images
-                );
-
-                if ($compressedImageUrl) {
-                    // Determine image type
-                    $imageType = ($index === $primaryImageIndex) ? 'primary' : 'gallery';
-
-                    // Get the full URL for the stored image
-                    $fullImageUrl = Storage::disk('upcloud')->url($compressedImageUrl);
-
-                    // Create vehicle image record - store the relative path in image_path and full URL in image_url
-                    VehicleImage::create([
-                        'vehicle_id' => $vehicle->id,
-                        'image_path' => $compressedImageUrl, // Store the relative path
-                        'image_url' => $fullImageUrl,        // Store the full URL
-                        'image_type' => $imageType,
+                        'description' => $addon->description,
                     ]);
-                } else {
-                    // Handle compression failure for a specific image
-                    // You might want to log this or return an error,
-                    // but for now, we'll just skip this image.
-                    // For a more robust solution, consider collecting errors and returning them.
-                    ActivityLogHelper::logActivity('error', 'Failed to compress vehicle image: ' . $image->getClientOriginalName(), $vehicle, $request);
                 }
             }
+
+            // Handle vehicle images
+            if ($request->hasFile('images')) {
+                $primaryImageIndex = (int)$request->primary_image_index;
+                $folderName = 'vehicle_images';
+
+                foreach ($request->file('images') as $index => $image) {
+                    $compressedImageUrl = ImageCompressionHelper::compressImage(
+                        $image,
+                        $folderName,
+                        quality: 80, // Adjust quality as needed
+                        maxWidth: 1200, // Optional: Set max width for vehicle images
+                        maxHeight: 900 // Optional: Set max height for vehicle images
+                    );
+
+                    if ($compressedImageUrl) {
+                        // Determine image type
+                        $imageType = ($index === $primaryImageIndex) ? 'primary' : 'gallery';
+
+                        // Get the full URL for the stored image
+                        $fullImageUrl = Storage::disk('upcloud')->url($compressedImageUrl);
+
+                        // Create vehicle image record - store the relative path in image_path and full URL in image_url
+                        VehicleImage::create([
+                            'vehicle_id' => $vehicle->id,
+                            'image_path' => $compressedImageUrl, // Store the relative path
+                            'image_url' => $fullImageUrl,        // Store the full URL
+                            'image_type' => $imageType,
+                        ]);
+                    } else {
+                        // Handle compression failure for a specific image
+                        // You might want to log this or return an error,
+                        // but for now, we'll just skip this image.
+                        // For a more robust solution, consider collecting errors and returning them.
+                        ActivityLogHelper::logActivity('error', 'Failed to compress vehicle image: ' . $image->getClientOriginalName(), $vehicle, $request);
+                    }
+                }
+            }
+
+            ActivityLogHelper::logActivity('create', 'Created a new vehicle', $vehicle, $request);
+            DB::commit();
+        } catch (\Throwable $exception) {
+            DB::rollBack();
+            \Log::error('Vehicle creation failed', [
+                'vendor_id' => $request->user()->id,
+                'message' => $exception->getMessage(),
+            ]);
+            return back()->withErrors([
+                'vehicle' => 'We could not save this vehicle. Please review the form and try again.',
+            ])->withInput();
         }
-
-
-        ActivityLogHelper::logActivity('create', 'Created a new vehicle', $vehicle, $request);
 
 
         // Notify the admin
@@ -423,6 +440,27 @@ class VehicleController extends Controller
     {
         $features = VehicleFeature::with('category')->get();
         return response()->json($features);
+    }
+
+    public function getCategories()
+    {
+        $categories = VehicleCategory::query()
+            ->select('id', 'name', 'slug', 'status')
+            ->where('status', true)
+            ->orderBy('name')
+            ->get();
+
+        return response()->json($categories);
+    }
+
+    public function showAllVendorVehicles()
+    {
+        $vehicles = Vehicle::query()
+            ->with(['category', 'vendorProfileData'])
+            ->latest()
+            ->get();
+
+        return response()->json($vehicles);
     }
 
     //This is for getting particular vehicle information to the single car page

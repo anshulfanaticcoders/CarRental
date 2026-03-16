@@ -376,7 +376,6 @@ Route::group([
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
         Route::get('/user', [ProfileController::class, 'show'])->name('user.profile');
         Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
-        Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
 
         // Message routes
         Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');
@@ -764,7 +763,7 @@ Route::group([
 
 
         // Vendor Vehicles
-        Route::resource('current-vendor-vehicles', VendorVehicleController::class);
+        Route::resource('current-vendor-vehicles', VendorVehicleController::class)->except(['create', 'store', 'show']);
         Route::patch('current-vendor-vehicles/{vehicle}/parking-address', [VendorVehicleController::class, 'updateParkingAddress'])
             ->name('current-vendor-vehicles.update-parking-address');
         Route::post('current-vendor-vehicles/bulk-destroy', [VendorVehicleController::class, 'bulkDestroy'])->name('current-vendor-vehicles.bulk-destroy');
@@ -880,8 +879,9 @@ Route::group([
     });
 
     // Vendor status check for vehicle creation
-    Route::middleware(['auth', 'vendor.status'])->group(function () {
+    Route::middleware(['auth', 'role:vendor', 'vendor.status'])->group(function () {
         Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
+        Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
         Route::inertia('vehicle-listing', 'Auth/VehicleListing');
     });
 

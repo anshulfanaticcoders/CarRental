@@ -615,7 +615,8 @@
     </div>
 
     <!-- Step-3 -->
-    <div v-if="currentStep === 3" class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
+    <div v-if="currentStep === 3"
+        class="overflow-x-hidden vehicle-listing h-screen md:overflow-y-hidden relative">
         <div class="absolute inset-0 flex justify-between max-[768px]:relative max-[768px]:flex-col max-[768px]:h-auto">
             <div
                 class="column overflow-y-auto w-[50%] h-full flex justify-center pb-[4rem] max-[768px]:w-full max-[768px]:h-auto bg-white">
@@ -869,6 +870,18 @@
                         <textarea type="text" v-model="form.guidelines" id="guidelines" required
                             :placeholder="_t('createvehicle', 'step4_guidelines_placeholder')"
                             class="w-full min-h-[150px]" />
+                    </div>
+                    <div class="max-[768px]:px-[1.5rem]">
+                        <InputLabel for="terms_policy">Terms &amp; Conditions</InputLabel>
+                        <textarea
+                            id="terms_policy"
+                            v-model="form.terms_policy"
+                            placeholder="Add vendor terms and policy for this vehicle."
+                            class="w-full min-h-[150px]"
+                        />
+                        <span v-if="errors.terms_policy" class="text-red-500 max-[768px]:text-[0.75rem] text-sm">
+                            {{ errors.terms_policy }}
+                        </span>
                     </div>
 
                     <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
@@ -1636,8 +1649,6 @@ import axios from "axios";
 import InputLabel from "@/Components/InputLabel.vue";
 // import input from "@/Components/input.vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
-import L from 'leaflet' // Import Leaflet
-import 'leaflet/dist/leaflet.css';
 import { useToast } from 'vue-toastification'; // Add this import
 import Select from "@/Components/ui/select/Select.vue";
 import SelectItem from "@/Components/ui/select/SelectItem.vue";
@@ -1680,6 +1691,7 @@ const form = useForm({
     // payment_method: "",
     payment_method: [],
     guidelines: "",
+    terms_policy: "",
     price_per_day: null,
     price_per_week: null,
     price_per_month: null,
@@ -2085,7 +2097,15 @@ const submit = () => {
                 draggable: true,
             });
         },
-        onError: (errors) => {
+        onError: (serverErrors) => {
+            Object.keys(errors).forEach((key) => {
+                errors[key] = '';
+            });
+            Object.entries(serverErrors || {}).forEach(([key, value]) => {
+                if (key in errors) {
+                    errors[key] = Array.isArray(value) ? value[0] : value;
+                }
+            });
             toast.error('Something went wrong. Please check your inputs.', {
                 position: 'top-right',
                 timeout: 3000,
@@ -2093,7 +2113,6 @@ const submit = () => {
                 pauseOnHover: true,
                 draggable: true,
             });
-            console.error(errors);
         },
         onFinish: () => {
             isLoading.value = false;
@@ -2283,8 +2302,6 @@ const closeErrorDialog = () => {
     errorMessage.value = '';
 };
 
-let map = null;
-let marker = null // Marker instance
 const currentStep = ref(isAddressOnlyEdit.value ? 3 : 0);
 
 onMounted(() => {
@@ -2322,6 +2339,7 @@ const errors = reactive({
     longitude: '',
     security_deposit: '',
     payment_method: '',
+    terms_policy: '',
     minimum_driver_age: '',
     price_per_day: '',
     price_per_week: '',
@@ -2415,7 +2433,7 @@ const nextStep = () => {
                 isValid = false;
                 errors.security_deposit = 'Please enter the security deposit';
             }
-            if (!form.payment_method) {
+            if (!Array.isArray(form.payment_method) || form.payment_method.length === 0) {
                 isValid = false;
                 errors.payment_method = 'Please select a payment method';
             }
@@ -2511,9 +2529,6 @@ const nextStep = () => {
         if (currentStep.value < 7) {
             currentStep.value++;
             window.scrollTo(0, 0);
-            if (currentStep.value === 3) {
-                initializeMap();
-            }
         }
     } else {
         // If validation fails, find the first error and scroll to it
@@ -2598,31 +2613,6 @@ const updateParkingAddress = async () => {
 };
 
 const isImageCountValid = computed(() => form.images.length >= 5);
-// leaflet map
-const mapform = ref({
-    location: '',
-    latitude: null,
-    longitude: null,
-    radius: 831867.4340914232
-})
-const searchResults = ref([]);
-
-const handleSearchInput = async () => {
-    // Ensure the location input is at least 3 characters long
-    if (form.location.length < 3) {
-        searchResults.value = [];
-        return;
-    }
-
-    try {
-        const response = await axios.get(
-            `/api/geocoding/autocomplete?text=${encodeURIComponent(form.location)}`
-        );
-        searchResults.value = response.data.features; // Store fetched results
-    } catch (error) {
-        console.error('Error fetching locations:', error);
-    }
-};
 
 const selectLocation = (location) => {
     form.location = location.address || location.formattedAddress || '';
@@ -2631,19 +2621,6 @@ const selectLocation = (location) => {
     form.city = location.city || '';
     form.state = location.state || '';
     form.country = location.country || '';
-};
-
-const initializeMap = () => {
-    // Check if the map already exists and remove it
-    if (map) {
-        map.remove(); // Remove the existing map instance
-    }
-    // Initialize the map
-    map = L.map("map").setView([20.5937, 78.9629], 5); // Default to India
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(map);
 };
 
 const countries = ref([]);
@@ -2759,8 +2736,6 @@ watch(customAddons, () => {
 
 
 <style scoped>
-@import 'leaflet/dist/leaflet.css';
-
 select {
     width: 100%;
 }
@@ -2867,79 +2842,6 @@ input[type="range"]::-webkit-slider-runnable-track {
     color: white;
     border: none;
     cursor: pointer;
-}
-
-
-
-.marker-pin {
-    width: auto;
-    min-width: 50px;
-    height: 30px;
-    background: white;
-    border: 2px solid #666;
-    border-radius: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transform: translate3d(0, 0, 1000px);
-}
-
-.marker-pin span {
-    color: black;
-    font-weight: bold;
-    font-size: 12px;
-    padding: 0 8px;
-}
-
-.custom-div-icon {
-    background: none;
-    border: none;
-}
-
-/* Leaflet pane z-index overrides */
-.leaflet-pane.leaflet-marker-pane,
-.leaflet-pane.leaflet-popup-pane {
-    z-index: 1000 !important;
-}
-
-.leaflet-pane.leaflet-tile-pane {
-    z-index: 200;
-}
-
-.leaflet-pane.leaflet-overlay-pane {
-    z-index: 400;
-}
-
-.leaflet-marker-icon {
-    transform: translate3d(0, 0, 1000px);
-}
-
-.leaflet-popup {
-    z-index: 1001 !important;
-}
-
-/* Hardware acceleration */
-.leaflet-marker-icon,
-.leaflet-marker-shadow,
-.leaflet-popup {
-    will-change: transform;
-    transform: translate3d(0, 0, 0);
-}
-
-/* Additional styles to ensure markers are always visible */
-.leaflet-container {
-    z-index: 1;
-}
-
-.leaflet-control-container {
-    z-index: 2000;
-}
-
-#map {
-    height: 600px;
-    width: 100%;
-    margin-top: 1rem;
 }
 
 input,
@@ -3068,49 +2970,50 @@ select {
 }
 
 .currency-loader {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 14px 22px;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.9rem 1.1rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(21, 59, 79, 0.16);
+    box-shadow: 0 10px 32px rgba(15, 23, 42, 0.18);
 }
 
 .currency-loader .dot {
-    width: 10px;
-    height: 10px;
+    width: 0.68rem;
+    height: 0.68rem;
     border-radius: 999px;
-    background: #f8fafc;
-    animation: currencyDots 1.1s ease-in-out infinite;
+    background: #153b4f;
+    animation: pulse 1.05s ease-in-out infinite;
 }
 
 .currency-loader .dot:nth-child(2) {
-    animation-delay: 0.2s;
+    animation-delay: 0.14s;
 }
 
 .currency-loader .dot:nth-child(3) {
-    animation-delay: 0.4s;
+    animation-delay: 0.28s;
 }
 
-@keyframes currencyDots {
+@keyframes pulse {
     0%,
+    80%,
     100% {
-        transform: translateY(0);
-        opacity: 0.5;
+        opacity: 0.3;
+        transform: scale(0.86);
     }
 
-    50% {
-        transform: translateY(-6px);
+    40% {
         opacity: 1;
+        transform: scale(1.2);
     }
 }
 
 ::-webkit-scrollbar {
     display: none;
 }
-
 
 @media screen and (max-width:768px) {
     :deep(.dp__input) {
