@@ -19,6 +19,7 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\BookingExtra;
 use App\Models\Customer;
+use App\Models\VehicleOperatingHour;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 use App\Services\BookingAmountService;
@@ -82,6 +83,34 @@ class BookingController extends Controller
 
         // Ensure extra_charges is set to 0 if not provided
         $validatedData['extra_charges'] = $validatedData['extra_charges'] ?? 0;
+
+        // Validate operating hours for internal vehicles
+        $vehicle = Vehicle::with('operatingHours')->findOrFail($validatedData['vehicle_id']);
+        if ($vehicle->operatingHours->isNotEmpty()) {
+            $pickupDay = \Carbon\Carbon::parse($validatedData['pickup_date'])->dayOfWeekIso - 1;
+            $returnDay = \Carbon\Carbon::parse($validatedData['return_date'])->dayOfWeekIso - 1;
+            $pickupTime = $validatedData['pickup_time'];
+            $returnTime = $validatedData['return_time'];
+
+            if (!$vehicle->isAvailableAt($pickupDay, $pickupTime)) {
+                $hours = $vehicle->getOperatingHoursForDay($pickupDay);
+                $dayName = VehicleOperatingHour::DAY_NAMES[$pickupDay] ?? 'this day';
+                $msg = $hours && $hours->is_open
+                    ? "Pickup is not available on {$dayName} at {$pickupTime}. Operating hours: {$hours->open_time}–{$hours->close_time}."
+                    : "This vehicle is not available for pickup on {$dayName}s. Please select a different date.";
+                return back()->withErrors(['pickup_time' => $msg])->withInput();
+            }
+
+            if (!$vehicle->isAvailableAt($returnDay, $returnTime)) {
+                $hours = $vehicle->getOperatingHoursForDay($returnDay);
+                $dayName = VehicleOperatingHour::DAY_NAMES[$returnDay] ?? 'this day';
+                $msg = $hours && $hours->is_open
+                    ? "Return is not available on {$dayName} at {$returnTime}. Operating hours: {$hours->open_time}–{$hours->close_time}."
+                    : "This vehicle is not available for return on {$dayName}s. Please select a different date.";
+                return back()->withErrors(['return_time' => $msg])->withInput();
+            }
+        }
+
         // Customer logic (unchanged from your implementation)
         $customer = Customer::where('email', $request->input('customer.email'))->first();
 
@@ -107,8 +136,7 @@ class BookingController extends Controller
         }
 
 
-        // Vehicle logic (unchanged)
-        $vehicle = Vehicle::findOrFail($validatedData['vehicle_id']);
+        // Vehicle already loaded above with operatingHours
 
         // Booking creation
         $bookingCurrency = strtoupper($request->input('currency', config('currency.default', 'EUR')));

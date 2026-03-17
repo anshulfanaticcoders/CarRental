@@ -12,6 +12,7 @@ use App\Models\VehicleFeature;
 use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
 use App\Models\VendorProfile;
+use App\Models\VehicleOperatingHour;
 use App\Models\VendorVehicleAddon;
 use App\Models\VendorVehiclePlan;
 use App\Notifications\VehicleCreatedNotification;
@@ -46,7 +47,7 @@ class VehicleController extends Controller
     {
         $categories = DB::table('vehicle_categories')->select('id', 'name')->get();
 
-        return Inertia::render('Auth/VehicleListing', [
+        return Inertia::render('Auth/VehicleListingNew', [
             'categories' => $categories,
         ]);
     }
@@ -123,8 +124,14 @@ class VehicleController extends Controller
             'price_per_km_per_month' => 'nullable|decimal:0,2',
             'minimum_driver_age' => 'nullable|integer',
 
-            'pickup_times' => 'required|array',
-            'return_times' => 'required|array',
+            'pickup_times' => 'nullable|array',
+            'return_times' => 'nullable|array',
+
+            'operating_hours' => 'required|array|size:7',
+            'operating_hours.*.day' => 'required|integer|between:0,6',
+            'operating_hours.*.is_open' => 'required|boolean',
+            'operating_hours.*.open_time' => 'required_if:operating_hours.*.is_open,true|nullable|date_format:H:i',
+            'operating_hours.*.close_time' => 'required_if:operating_hours.*.is_open,true|nullable|date_format:H:i',
             'primary_image_index' => 'required|numeric|min:0',
             'images' => 'required|array|min:5|max:20',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:10240',
@@ -247,6 +254,17 @@ class VehicleController extends Controller
                 'dealer_cost' => $request->dealer_cost,
                 'phone_number' => $request->phone_number,
             ]);
+
+            // Save operating hours (7 days)
+            foreach ($request->input('operating_hours', []) as $hours) {
+                VehicleOperatingHour::create([
+                    'vehicle_id' => $vehicle->id,
+                    'day_of_week' => $hours['day'],
+                    'is_open' => $hours['is_open'],
+                    'open_time' => $hours['is_open'] ? $hours['open_time'] : null,
+                    'close_time' => $hours['is_open'] ? $hours['close_time'] : null,
+                ]);
+            }
 
 
             // Save the selected plan details

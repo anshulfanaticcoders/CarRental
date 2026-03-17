@@ -9,6 +9,7 @@ use App\Models\VehicleImage;
 use App\Models\VehicleSpecification;
 use App\Models\BookingAddon;
 use App\Models\VendorVehicleAddon;
+use App\Models\VehicleOperatingHour;
 use App\Models\VendorVehiclePlan;
 use App\Helpers\ImageCompressionHelper;
 use Illuminate\Http\Request;
@@ -73,9 +74,7 @@ class VendorVehicleController extends Controller
 
     public function edit($locale, $id)
     {
-        $vehicle = Vehicle::with(['specifications', 'images', 'benefits', 'vendorPlans', 'addons'])->findOrFail($id);
-        // print_r($vehicle->all());
-        // die();
+        $vehicle = Vehicle::with(['specifications', 'images', 'benefits', 'vendorPlans', 'addons', 'operatingHours'])->findOrFail($id);
 
         // Check if the vehicle belongs to the authenticated vendor
         if ($vehicle->vendor_id !== auth()->id()) {
@@ -85,9 +84,7 @@ class VendorVehicleController extends Controller
 
         return Inertia::render('Vendor/Vehicles/Edit', [
             'vehicle' => $vehicle,
-            'categories' => DB::table('vehicle_categories')->select('id', 'name')->get(),
-            // Fetch features specific to the vehicle's category
-            'features' => VehicleFeature::where('category_id', $vehicle->category_id)->get(['id', 'feature_name as name', 'icon_url'])->toArray()
+            'categories' => DB::table('vehicle_categories')->select('id', 'name', 'image')->get(),
         ]);
     }
 
@@ -174,8 +171,14 @@ class VendorVehicleController extends Controller
             'benefits.minimum_driver_age' => 'required|integer|min:18',
             'guidelines' => 'nullable|string|max:50000',
             'terms_policy' => 'nullable|string|max:50000',
-            'pickup_times' => 'required|array',
-            'return_times' => 'required|array',
+            'pickup_times' => 'nullable|array',
+            'return_times' => 'nullable|array',
+
+            'operating_hours' => 'required|array|size:7',
+            'operating_hours.*.day' => 'required|integer|between:0,6',
+            'operating_hours.*.is_open' => 'required|boolean',
+            'operating_hours.*.open_time' => 'required_if:operating_hours.*.is_open,true|nullable|date_format:H:i',
+            'operating_hours.*.close_time' => 'required_if:operating_hours.*.is_open,true|nullable|date_format:H:i',
 
             'selected_plans' => 'nullable|array|max:3',
             'selected_plans.*.plan_type' => 'required|string|in:Basic,Essential,Premium,Premium Plus',
@@ -338,6 +341,21 @@ class VendorVehicleController extends Controller
                         'dealer_cost' => $request->dealer_cost,
                         'phone_number' => $request->phone_number,
                     ]);
+                }
+
+                // Upsert operating hours (7 days)
+                foreach ($request->input('operating_hours', []) as $hours) {
+                    VehicleOperatingHour::updateOrCreate(
+                        [
+                            'vehicle_id' => $vehicle->id,
+                            'day_of_week' => $hours['day'],
+                        ],
+                        [
+                            'is_open' => $hours['is_open'],
+                            'open_time' => $hours['is_open'] ? $hours['open_time'] : null,
+                            'close_time' => $hours['is_open'] ? $hours['close_time'] : null,
+                        ]
+                    );
                 }
 
                 VendorVehiclePlan::where('vehicle_id', $vehicle->id)->delete();

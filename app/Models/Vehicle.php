@@ -140,6 +140,40 @@ class Vehicle extends Model
         return $this->hasMany(BlockingDate::class, 'vehicle_id');
     }
 
+    public function operatingHours()
+    {
+        return $this->hasMany(VehicleOperatingHour::class)->orderBy('day_of_week');
+    }
+
+    /**
+     * Check if the vehicle is available for handover on the given day and time.
+     *
+     * @param int    $dayOfWeek 0=Monday ... 6=Sunday
+     * @param string $time      HH:MM format (24h)
+     */
+    public function isAvailableAt(int $dayOfWeek, string $time): bool
+    {
+        $hours = $this->operatingHours->firstWhere('day_of_week', $dayOfWeek);
+
+        // No hours record = treat as available (defensive fallback)
+        if (!$hours) {
+            return true;
+        }
+
+        if (!$hours->is_open) {
+            return false;
+        }
+
+        return $time >= $hours->open_time && $time <= $hours->close_time;
+    }
+
+    /**
+     * Get operating hours for a specific day.
+     */
+    public function getOperatingHoursForDay(int $dayOfWeek): ?VehicleOperatingHour
+    {
+        return $this->operatingHours->firstWhere('day_of_week', $dayOfWeek);
+    }
 
     // If using JSON columns, add casts
     protected $casts = [

@@ -158,7 +158,7 @@ class SearchController extends Controller
         }
 
         $internalVehiclesQuery = Vehicle::query()->whereIn('status', ['available', 'rented'])
-            ->with(['images', 'bookings', 'vendor.profile', 'vendorProfile', 'vendorProfileData', 'benefits', 'vendorPlans', 'addons']);
+            ->with(['images', 'bookings', 'vendor.profile', 'vendorProfile', 'vendorProfileData', 'benefits', 'vendorPlans', 'addons', 'operatingHours']);
 
         // Apply date filters to internal vehicles
         if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
@@ -182,6 +182,33 @@ class SearchController extends Controller
                                 ->where('blocking_end_date', '>=', $validated['date_to']);
                         });
                 });
+            });
+        }
+
+        // Filter by operating hours: exclude vehicles closed at pickup/return time
+        $startTime = $validated['start_time'] ?? null;
+        $endTime = $validated['end_time'] ?? null;
+        $dateFrom = $validated['date_from'] ?? null;
+        $dateTo = $validated['date_to'] ?? null;
+
+        if ($startTime && $dateFrom) {
+            // Carbon dayOfWeekIso: 1=Monday ... 7=Sunday → convert to 0=Monday ... 6=Sunday
+            $pickupDay = \Carbon\Carbon::parse($dateFrom)->dayOfWeekIso - 1;
+            $internalVehiclesQuery->whereHas('operatingHours', function ($q) use ($pickupDay, $startTime) {
+                $q->where('day_of_week', $pickupDay)
+                  ->where('is_open', true)
+                  ->where('open_time', '<=', $startTime)
+                  ->where('close_time', '>=', $startTime);
+            });
+        }
+
+        if ($endTime && $dateTo) {
+            $returnDay = \Carbon\Carbon::parse($dateTo)->dayOfWeekIso - 1;
+            $internalVehiclesQuery->whereHas('operatingHours', function ($q) use ($returnDay, $endTime) {
+                $q->where('day_of_week', $returnDay)
+                  ->where('is_open', true)
+                  ->where('open_time', '<=', $endTime)
+                  ->where('close_time', '>=', $endTime);
             });
         }
 
@@ -424,6 +451,15 @@ class SearchController extends Controller
             $data['currency'] = $currencyMap[$rawCurrency] ?? $rawCurrency;
             
             $data['total_price'] = (float) ($vehicle->price_per_day * $rentalDays);
+            $data['operating_hours'] = $vehicle->operatingHours->map(function ($h) {
+                return [
+                    'day' => $h->day_of_week,
+                    'day_name' => $h->dayName(),
+                    'is_open' => $h->is_open,
+                    'open_time' => $h->open_time,
+                    'close_time' => $h->close_time,
+                ];
+            })->values()->toArray();
             return $data;
         })->values()->all();
 

@@ -8,6 +8,8 @@ use App\Models\BookingExtra;
 use App\Models\Customer;
 use App\Models\PayableSetting;
 use App\Models\StripeCheckoutPayload;
+use App\Models\Vehicle;
+use App\Models\VehicleOperatingHour;
 use App\Services\AdobeCarService;
 use App\Services\PromoService;
 use App\Services\StripeBookingService;
@@ -289,6 +291,33 @@ class StripeCheckoutController extends Controller
 
             $vehicle = $validated['vehicle'] ?? [];
             $providerSource = strtolower((string) ($vehicle['source'] ?? ''));
+
+            // Validate operating hours for internal vehicles
+            if ($providerSource === 'internal' && !empty($vehicle['id'])) {
+                $internalVehicle = Vehicle::with('operatingHours')->find($vehicle['id']);
+                if ($internalVehicle && $internalVehicle->operatingHours->isNotEmpty()) {
+                    $pickupDay = \Carbon\Carbon::parse($validated['pickup_date'])->dayOfWeekIso - 1;
+                    $returnDay = \Carbon\Carbon::parse($validated['dropoff_date'])->dayOfWeekIso - 1;
+
+                    if (!$internalVehicle->isAvailableAt($pickupDay, $validated['pickup_time'])) {
+                        $hours = $internalVehicle->getOperatingHoursForDay($pickupDay);
+                        $dayName = VehicleOperatingHour::DAY_NAMES[$pickupDay] ?? 'this day';
+                        $msg = $hours && $hours->is_open
+                            ? "Pickup is not available on {$dayName} at {$validated['pickup_time']}. Operating hours: {$hours->open_time}–{$hours->close_time}."
+                            : "This vehicle is not available for pickup on {$dayName}s.";
+                        return response()->json(['error' => $msg], 422);
+                    }
+
+                    if (!$internalVehicle->isAvailableAt($returnDay, $validated['dropoff_time'])) {
+                        $hours = $internalVehicle->getOperatingHoursForDay($returnDay);
+                        $dayName = VehicleOperatingHour::DAY_NAMES[$returnDay] ?? 'this day';
+                        $msg = $hours && $hours->is_open
+                            ? "Return is not available on {$dayName} at {$validated['dropoff_time']}. Operating hours: {$hours->open_time}–{$hours->close_time}."
+                            : "This vehicle is not available for return on {$dayName}s.";
+                        return response()->json(['error' => $msg], 422);
+                    }
+                }
+            }
 
             if ($providerSource === 'sicily_by_car') {
                 $vehicleId = $vehicle['provider_vehicle_id'] ?? null;

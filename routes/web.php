@@ -882,7 +882,7 @@ Route::group([
     Route::middleware(['auth', 'role:vendor', 'vendor.status'])->group(function () {
         Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
         Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
-        Route::inertia('vehicle-listing', 'Auth/VehicleListing');
+        Route::inertia('vehicle-listing', 'Auth/VehicleListingNew');
     });
 
     // Message polling route

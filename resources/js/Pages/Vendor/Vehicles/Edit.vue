@@ -1,1377 +1,945 @@
 <template>
-    <!-- Loading Overlay -->
-    <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div
-            class="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center space-y-4 max-w-sm mx-4 border border-blue-100">
-            <div class="relative">
-                <div class="w-16 h-16 border-4 border-blue-100 rounded-full animate-pulse"></div>
-                <div
-                    class="absolute top-0 left-0 w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin">
-                </div>
-            </div>
-            <div class="text-center space-y-2">
-                <h3 class="text-lg font-semibold text-gray-900">{{ _t('vendorprofilepages', 'loader_updating_text') }}
-                </h3>
-                <p class="text-sm text-gray-500">{{ _t('vendorprofilepages', 'please_wait_message') }}</p>
-            </div>
-        </div>
+    <div v-if="isLoading" class="vln-loading-overlay">
+        <div class="vln-spinner"></div>
     </div>
 
+    <Head><title>Edit Vehicle</title></Head>
+
     <MyProfileLayout>
-        <div class="container mx-auto p-4 space-y-6 sm:p-6">
-            <div class="py-6 sm:py-12">
-                <div class="mx-auto">
-                    <div v-if="Object.keys(formErrors).length"
-                        class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                        <p class="font-semibold">Please fix the errors below:</p>
-                        <ul class="mt-2 list-disc pl-5">
-                            <li v-for="(messages, field) in formErrors" :key="field">
-                                {{ Array.isArray(messages) ? messages[0] : messages }}
-                            </li>
-                        </ul>
+        <nav class="vln-stepper">
+            <div class="vln-stepper-inner">
+                <button v-for="(step, i) in stepNames" :key="i" class="vln-step-tab"
+                    :class="{ active: currentStep === i, completed: i < highestStepReached && i !== currentStep, clickable: i <= highestStepReached }"
+                    @click="goToStep(i)">
+                    <span class="vln-step-num">
+                        <CheckCircle2 v-if="i < highestStepReached && i !== currentStep" :size="13" />
+                        <template v-else>{{ i + 1 }}</template>
+                    </span>
+                    <span class="vln-step-label">{{ step }}</span>
+                </button>
+            </div>
+        </nav>
+
+        <div v-if="Object.keys(formErrors).length" class="vln-form-errors">
+            <AlertCircle :size="16" />
+            <div>
+                <p class="font-semibold">Please fix the errors below:</p>
+                <ul>
+                    <li v-for="(messages, field) in formErrors" :key="field">
+                        {{ Array.isArray(messages) ? messages[0] : messages }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="vln-layout">
+            <div class="vln-form-col" ref="formCol">
+
+                <!-- STEP 0: Vehicle Type & Details -->
+                <section v-show="currentStep === 0" class="vln-step" key="step-0">
+                    <div class="vln-step-header">
+                        <h1>Vehicle type & details</h1>
+                        <p>Select your vehicle category and fill in the key specifications.</p>
                     </div>
-                    <form @submit.prevent="updateVehicle">
-                        <Tabs defaultValue="basic" class="w-full">
-                            <TabsList class="grid w-full grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                                <TabsTrigger value="basic" class="whitespace-normal text-xs leading-tight sm:text-sm">
-                                    {{ _t('vendorprofilepages', 'tab_basic_information') }}
-                                </TabsTrigger>
-                                <TabsTrigger value="specifications"
-                                    class="whitespace-normal text-xs leading-tight sm:text-sm">
-                                    {{ _t('vendorprofilepages', 'tab_specifications') }}
-                                </TabsTrigger>
-                                <TabsTrigger value="pricing" class="whitespace-normal text-xs leading-tight sm:text-sm">
-                                    {{ _t('vendorprofilepages', 'tab_pricing_features') }}
-                                </TabsTrigger>
-                                <TabsTrigger value="guidelines" class="whitespace-normal text-xs leading-tight sm:text-sm">
-                                    {{ _t('vendorprofilepages', 'tab_guidelines_timings') }}
-                                </TabsTrigger>
-                                <TabsTrigger value="images" class="whitespace-normal text-xs leading-tight sm:text-sm">
-                                    {{ _t('vendorprofilepages', 'tab_images') }}
-                                </TabsTrigger>
-                            </TabsList>
 
-                            <TabsContent value="basic">
-                                <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
-                                    <div>
-                                        <InputLabel for="category_id">{{ _t('vendorprofilepages',
-                                            'label_vehicle_category') }}</InputLabel>
-                                        <Select v-model="form.category_id" required>
-                                            <SelectTrigger id="category_id">
-                                                <SelectValue
-                                                    :placeholder="_t('vendorprofilepages', 'placeholder_select_category')" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    <SelectLabel>{{ _t('vendorprofilepages', 'select_label_categories')
-                                                    }}</SelectLabel>
-                                                    <SelectItem v-for="category in categories" :key="category.id"
-                                                        :value="category.id">
-                                                        {{ category.name }}
-                                                    </SelectItem>
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <InputLabel for="brand">{{ _t('vendorprofilepages', 'label_brand') }}
-                                        </InputLabel>
-                                        <Input type="text" v-model="form.brand" id="brand" required />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="model">{{ _t('vendorprofilepages', 'label_model') }}
-                                        </InputLabel>
-                                        <Input type="text" v-model="form.model" id="model" required />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="color">{{ _t('vendorprofilepages', 'label_color') }}
-                                        </InputLabel>
-                                        <Select v-model="form.color" required>
-                                            <SelectTrigger id="color">
-                                                <SelectValue
-                                                    :placeholder="_t('vendorprofilepages', 'placeholder_select_color')" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    <SelectLabel>{{ _t('vendorprofilepages', 'select_label_colors') }}
-                                                    </SelectLabel>
-                                                    <SelectItem v-for="color in colors" :key="color.value"
-                                                        :value="color.value">
-                                                        {{ color.name }}
-                                                    </SelectItem>
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <InputLabel for="mileage">{{ _t('vendorprofilepages', 'label_mileage') }}
-                                        </InputLabel>
-                                        <Input type="number" step="0.01" v-model.number="form.mileage" id="mileage"
-                                            required />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="transmission">{{ _t('vendorprofilepages',
-                                            'label_transmission_select') }}</InputLabel>
-                                        <Select v-model="form.transmission" required>
-                                            <SelectTrigger id="transmission">
-                                                <SelectValue
-                                                    :placeholder="_t('vendorprofilepages', 'placeholder_select_transmission')" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    <SelectLabel>{{ _t('vendorprofilepages',
-                                                        'select_label_transmission') }}</SelectLabel>
-                                                    <SelectItem value="manual">{{ _t('vendorprofilepages',
-                                                        'transmission_manual') }}</SelectItem>
-                                                    <SelectItem value="automatic">{{ _t('vendorprofilepages',
-                                                        'transmission_automatic') }}</SelectItem>
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <InputLabel for="fuel">{{ _t('vendorprofilepages', 'label_fuel_select') }}
-                                        </InputLabel>
-                                        <Select v-model="form.fuel" required>
-                                            <SelectTrigger id="fuel">
-                                                <SelectValue
-                                                    :placeholder="_t('vendorprofilepages', 'placeholder_select_fuel')" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    <SelectLabel>{{ _t('vendorprofilepages', 'select_label_fuel') }}
-                                                    </SelectLabel>
-                                                    <SelectItem value="petrol">{{ _t('vendorprofilepages',
-                                                        'fuel_petrol') }}</SelectItem>
-                                                    <SelectItem value="diesel">{{ _t('vendorprofilepages',
-                                                        'fuel_diesel') }}</SelectItem>
-                                                    <SelectItem value="electric">{{ _t('vendorprofilepages',
-                                                        'fuel_electric') }}</SelectItem>
-                                                    <SelectItem value="hybrid">{{ _t('vendorprofilepages',
-                                                        'fuel_hybrid') }}</SelectItem>
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <InputLabel for="status">{{ _t('vendorprofilepages', 'label_status_select') }}
-                                        </InputLabel>
-                                        <Select v-model="form.status" required>
-                                            <SelectTrigger id="status">
-                                                <SelectValue
-                                                    :placeholder="_t('vendorprofilepages', 'placeholder_select_status')" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    <SelectLabel>{{ _t('vendorprofilepages', 'select_label_status') }}
-                                                    </SelectLabel>
-                                                    <SelectItem value="available">{{ _t('vendorprofilepages',
-                                                        'status_available') }}</SelectItem>
-                                                    <SelectItem value="rented">{{ _t('vendorprofilepages',
-                                                        'status_rented') }}</SelectItem>
-                                                    <SelectItem value="maintenance">{{ _t('vendorprofilepages',
-                                                        'maintenance_vehicles_card_title') }}</SelectItem>
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div class="col-span-2 space-y-4">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <MapPin class="w-4 h-4 text-blue-600" />
-                                            <InputLabel for="location" class="text-gray-700 font-medium">{{
-                                                _t('vendorprofilepages', 'label_location') }}</InputLabel>
-                                        </div>
-
-                                        <div v-if="form.location"
-                                            class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl shadow-sm">
-                                            <div class="space-y-3">
-                                                <div class="flex items-center gap-2">
-                                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                                    <span class="font-medium text-gray-900">{{ _t('vendorprofilepages',
-                                                        'current_location_label') }}</span>
-                                                </div>
-                                                <div class="text-gray-700 font-medium break-words">{{ displayedFullAddress }}</div>
-                                                <div class="grid gap-4 text-sm [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="text-gray-500">{{ _t('vendorprofilepages',
-                                                            'label_city') }}:</span>
-                                                        <span class="font-medium">{{ form.city }}</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="text-gray-500">{{ _t('vendorprofilepages',
-                                                            'label_state') }}:</span>
-                                                        <span class="font-medium">{{ form.state || 'N/A' }}</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="text-gray-500">{{ _t('vendorprofilepages',
-                                                            'label_country') }}:</span>
-                                                        <span class="font-medium">{{ form.country }}</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="text-gray-500">{{ _t('vendorprofilepages',
-                                                            'label_coordinates') }}:</span>
-                                                        <span class="font-medium text-xs">{{ form.latitude }}, {{
-                                                            form.longitude }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <Button type="button" @click="toggleLocationPicker"
-                                            class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200 hover:shadow-md">
-                                            <MapPin class="w-4 h-4" />
-                                            {{ showLocationPicker ? _t('vendorprofilepages',
-                                                'button_hide_location_picker') : _t('vendorprofilepages',
-                                                    'button_change_location') }}
-                                        </Button>
-
-                                        <transition name="slide-fade"
-                                            enter-active-class="transition ease-out duration-200"
-                                            enter-from-class="transform opacity-0 -translate-y-4"
-                                            enter-to-class="transform opacity-100 translate-y-0"
-                                            leave-active-class="transition ease-in duration-150"
-                                            leave-from-class="transform opacity-100 translate-y-0"
-                                            leave-to-class="transform opacity-0 -translate-y-4">
-                                            <div v-show="showLocationPicker"
-                                                class="location-picker-container border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                                                <LocationPicker :onLocationSelect="handleLocationSelect" />
-                                            </div>
-                                        </transition>
-                                        <div class="mt-4">
-                                            <InputLabel for="location_type">{{ _t('vendorprofilepages',
-                                                'label_location_type') }}</InputLabel>
-                                            <Select v-model="form.location_type" required>
-                                                <SelectTrigger id="location_type">
-                                                    <SelectValue
-                                                        :placeholder="_t('vendorprofilepages', 'placeholder_enter_location_type')" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectGroup>
-                                                        <SelectItem value="Downtown">Downtown</SelectItem>
-                                                        <SelectItem value="Airport">Airport</SelectItem>
-                                                        <SelectItem value="Terminal">Terminal</SelectItem>
-                                                        <SelectItem value="Bus Stop">Bus Stop</SelectItem>
-                                                        <SelectItem value="Railway Station">Railway Station</SelectItem>
-                                                    </SelectGroup>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="specifications">
-                                <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
-                                    <div>
-                                        <InputLabel for="seating_capacity">{{ _t('vendorprofilepages',
-                                            'label_seating_capacity') }}</InputLabel>
-                                        <Select v-model.number="form.seating_capacity" required>
-                                            <SelectTrigger id="seating_capacity">
-                                                <SelectValue
-                                                    :placeholder="_t('vendorprofilepages', 'placeholder_select_seating_capacity')" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    <SelectLabel>{{ _t('vendorprofilepages',
-                                                        'select_label_seating_capacity') }}</SelectLabel>
-                                                    <SelectItem v-for="num in 8" :key="num" :value="num">{{ num }}
-                                                    </SelectItem>
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <InputLabel for="number_of_doors">{{ _t('vendorprofilepages',
-                                            'label_number_of_doors') }}</InputLabel>
-                                        <Select v-model.number="form.number_of_doors" required>
-                                            <SelectTrigger id="number_of_doors">
-                                                <SelectValue
-                                                    :placeholder="_t('vendorprofilepages', 'placeholder_select_number_of_doors')" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    <SelectLabel>{{ _t('vendorprofilepages',
-                                                        'select_label_number_of_doors') }}</SelectLabel>
-                                                    <SelectItem v-for="num in 8" :key="num" :value="num">{{ num }}
-                                                    </SelectItem>
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <InputLabel for="luggage_capacity">{{ _t('vendorprofilepages',
-                                            'label_luggage_capacity') }}</InputLabel>
-                                        <Input type="number" v-model.number="form.luggage_capacity"
-                                            id="luggage_capacity" required />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="horsepower">{{ _t('vendorprofilepages', 'label_horsepower') }}
-                                        </InputLabel>
-                                        <Input type="number" step="0.01" v-model.number="form.horsepower"
-                                            id="horsepower" required />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="co2">{{ _t('vendorprofilepages', 'label_co2_emissions') }}
-                                        </InputLabel>
-                                        <Input type="text" v-model="form.co2" id="co2" required />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="registration_number">{{ _t('vendorprofilepages',
-                                            'label_registration_number') }}</InputLabel>
-                                        <Input type="text" v-model="form.registration_number" id="registration_number"
-                                            required />
-                                    </div>
-                                    <div class="relative w-full">
-                                        <InputLabel class="text-black" for="registration_country">{{
-                                            _t('vendorprofilepages', 'label_registration_country') }}
-                                        </InputLabel>
-
-                                        <div class="relative">
-                                            <Select v-model="form.registration_country">
-                                                <SelectTrigger
-                                                    class="w-full p-[1.5rem] border-customLightGrayColor rounded-[12px]">
-                                                    <SelectValue
-                                                        :placeholder="_t('vendorprofilepages', 'placeholder_select_country')" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectGroup>
-                                                        <SelectLabel>{{ _t('vendorprofilepages',
-                                                            'select_label_countries') }}</SelectLabel>
-                                                        <SelectItem v-for="country in countries" :key="country.code"
-                                                            :value="country.code">
-                                                            {{ country.name }}
-                                                        </SelectItem>
-                                                    </SelectGroup>
-                                                </SelectContent>
-                                            </Select>
-
-                                            <!-- Dynamic Flag -->
-                                            <img v-if="form.registration_country"
-                                                :src="getFlagUrl(form.registration_country)"
-                                                :alt="_t('vendorprofilepages', 'alt_country_flag')"
-                                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-[2.1rem] h-[1.5rem] rounded" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <InputLabel class="text-black" for="registration_date">{{
-                                            _t('vendorprofilepages', 'label_registration_date') }}</InputLabel>
-                                        <VueDatePicker v-model="form.registration_date" :format="'yyyy-MM-dd'"
-                                            auto-apply
-                                            :placeholder="_t('vendorprofilepages', 'placeholder_select_registration_date')"
-                                            class="w-full" :clearable="false" :max-date="new Date()"
-                                            :input-class-name="'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 bg-white shadow-sm text-gray-700'"
-                                            @update:modelValue="formatDate" required />
-
-                                    </div>
-                                    <div>
-                                        <InputLabel for="gross_vehicle_mass">{{ _t('vendorprofilepages',
-                                            'label_gross_vehicle_mass') }}</InputLabel>
-                                        <Input type="number" v-model.number="form.gross_vehicle_mass"
-                                            id="gross_vehicle_mass" />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="vehicle_height">{{ _t('vendorprofilepages',
-                                            'label_vehicle_height') }}</InputLabel>
-                                        <Input type="number" v-model.number="form.vehicle_height" id="vehicle_height"
-                                            step="0.01" />
-                                    </div>
-                                    <div>
-                                        <InputLabel for="phone_number">{{ _t('vendorprofilepages',
-                                            'label_phone_number_vehicle') }}</InputLabel>
-                                        <Input type="text" v-model="form.phone_number" id="phone_number" required />
-                                    </div>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="pricing">
-                                <div class="space-y-6">
-                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
-                                        <div class="flex items-start justify-between gap-4">
-                                            <div>
-                                                <h3 class="text-lg font-semibold text-gray-900">Pricing</h3>
-                                                <p class="text-sm text-gray-500">All prices in <span
-                                                        class="inline-currency">{{ currencyCode }}</span></p>
-                                            </div>
-                                        </div>
-                                        <div class="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-                                            <div class="col-span-full">
-                                                <InputLabel for="price_per_day">{{ _t('vendorprofilepages',
-                                                    'label_price_per_day') }}</InputLabel>
-                                                <div class="input-with-suffix">
-                                                    <Input type="number" v-model.number="form.price_per_day"
-                                                        id="price_per_day" min="0" step="0.01"
-                                                        class="input-field" />
-                                                    <span class="input-suffix">{{ currencyCode }}</span>
-                                                </div>
-                                            </div>
-                                            <div class="col-span-full flex flex-wrap gap-4 sm:gap-6">
-                                                <label class="flex items-center gap-2">
-                                                    <input type="checkbox" v-model="selectedTypes.week" class="w-auto" />
-                                                    {{ _t('vendorprofilepages', 'label_price_per_week') }}
-                                                </label>
-                                                <label class="flex items-center gap-2">
-                                                    <input type="checkbox" v-model="selectedTypes.month" class="w-auto" />
-                                                    {{ _t('vendorprofilepages', 'label_price_per_month') }}
-                                                </label>
-                                            </div>
-                                            <template v-if="selectedTypes.week">
-                                                <div>
-                                                    <InputLabel for="price_per_week">{{ _t('vendorprofilepages',
-                                                        'label_price_per_week') }}</InputLabel>
-                                                    <div class="input-with-suffix">
-                                                        <Input type="number" v-model.number="form.price_per_week"
-                                                            id="price_per_week" min="0" step="0.01"
-                                                            class="input-field" />
-                                                        <span class="input-suffix">{{ currencyCode }}</span>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <InputLabel for="weekly_discount">{{ _t('vendorprofilepages',
-                                                        'label_weekly_discount') }}</InputLabel>
-                                                    <div class="input-with-suffix">
-                                                        <Input type="number" v-model.number="form.weekly_discount"
-                                                            id="weekly_discount" min="0" max="1000.00" step="0.01"
-                                                            class="input-field" />
-                                                        <span class="input-suffix">%</span>
-                                                    </div>
-                                                </div>
-                                            </template>
-                                            <template v-if="selectedTypes.month">
-                                                <div>
-                                                    <InputLabel for="price_per_month">{{ _t('vendorprofilepages',
-                                                        'label_price_per_month') }}</InputLabel>
-                                                    <div class="input-with-suffix">
-                                                        <Input type="number" v-model.number="form.price_per_month"
-                                                            id="price_per_month" min="0" step="0.01"
-                                                            class="input-field" />
-                                                        <span class="input-suffix">{{ currencyCode }}</span>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <InputLabel for="monthly_discount">{{ _t('vendorprofilepages',
-                                                        'label_monthly_discount') }}</InputLabel>
-                                                    <div class="input-with-suffix">
-                                                        <Input type="number" v-model.number="form.monthly_discount"
-                                                            id="monthly_discount" min="0" max="10000.00" step="0.01"
-                                                            class="input-field" />
-                                                        <span class="input-suffix">%</span>
-                                                    </div>
-                                                </div>
-                                            </template>
-                                            <div v-if="selectedTypes.week || selectedTypes.month" class="col-span-full">
-                                                <InputLabel class="text-black mb-2">Preferred price type</InputLabel>
-                                                <div class="flex flex-wrap gap-2 rounded-lg bg-gray-50 p-2">
-                                                    <label
-                                                        class="flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition"
-                                                        :class="form.preferred_price_type === 'day'
-                                                            ? 'bg-[#153B4F] text-white border-[#153B4F]'
-                                                            : 'bg-white text-gray-700 border-gray-200'">
-                                                        <input type="radio" value="day"
-                                                            v-model="form.preferred_price_type" class="hidden" />
-                                                        {{ _t('vendorprofilepages', 'label_price_per_day') }}
-                                                    </label>
-                                                    <label v-if="selectedTypes.week"
-                                                        class="flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition"
-                                                        :class="form.preferred_price_type === 'week'
-                                                            ? 'bg-[#153B4F] text-white border-[#153B4F]'
-                                                            : 'bg-white text-gray-700 border-gray-200'">
-                                                        <input type="radio" value="week"
-                                                            v-model="form.preferred_price_type" class="hidden" />
-                                                        {{ _t('vendorprofilepages', 'label_price_per_week') }}
-                                                    </label>
-                                                    <label v-if="selectedTypes.month"
-                                                        class="flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition"
-                                                        :class="form.preferred_price_type === 'month'
-                                                            ? 'bg-[#153B4F] text-white border-[#153B4F]'
-                                                            : 'bg-white text-gray-700 border-gray-200'">
-                                                        <input type="radio" value="month"
-                                                            v-model="form.preferred_price_type" class="hidden" />
-                                                        {{ _t('vendorprofilepages', 'label_price_per_month') }}
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
-                                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Deposits & Costs</h3>
-                                        <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-                                            <div>
-                                                <InputLabel for="security_deposit">{{ _t('vendorprofilepages',
-                                                    'label_security_deposit') }}</InputLabel>
-                                                <div class="input-with-suffix">
-                                                    <Input type="number" v-model.number="form.security_deposit"
-                                                        id="security_deposit" required min="0" step="0.01"
-                                                        class="input-field" />
-                                                    <span class="input-suffix">{{ currencyCode }}</span>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <InputLabel for="dealer_cost">{{ _t('vendorprofilepages',
-                                                    'label_dealer_cost') }}</InputLabel>
-                                                <div class="input-with-suffix">
-                                                    <Input type="number" v-model.number="form.dealer_cost"
-                                                        id="dealer_cost" step="0.01" class="input-field" />
-                                                    <span class="input-suffix">{{ currencyCode }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
-                                        <div class="flex items-center justify-between mb-4">
-                                            <h3 class="text-lg font-semibold text-gray-900">Protection Plans</h3>
-                                            <span class="text-xs text-gray-500">Optional</span>
-                                        </div>
-                                        <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(420px,1fr))]">
-                                            <div v-for="plan in protectionPlans" :key="plan.key"
-                                                class="rounded-[20px] border border-[#153B4F] bg-white p-5 flex flex-col gap-5"
-                                                :class="{
-                                                    'border-dashed bg-gray-50': !plan.selected,
-                                                    'ring-2 ring-green-500': plan.selected
-                                                }">
-                                                <div class="flex flex-col items-start justify-between gap-4 sm:flex-row">
-                                                    <div>
-                                                        <span class="text-[1.1rem] font-semibold text-gray-800">{{
-                                                            plan.plan_type }}</span>
-                                                    </div>
-                                                    <div class="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
-                                                        <label class="text-xs text-gray-500">Price per day</label>
-                                                        <div class="input-with-suffix w-full sm:w-auto">
-                                                            <Input type="number" step="0.01" v-model.number="plan.price"
-                                                                :min="pricePerDay" :disabled="!plan.selected"
-                                                                class="w-full px-2 py-1 border rounded-md text-right sm:w-28"
-                                                                :class="!plan.selected ? 'bg-gray-100' : ''" />
-                                                            <span class="input-suffix">{{ currencyCode }}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label class="text-xs text-gray-500">Coverage</label>
-                                                    <div class="mt-2 space-y-2">
-                                                        <input v-for="(feature, index) in plan.features"
-                                                            :key="`${plan.key}-feature-${index}`"
-                                                            v-model="plan.features[index]" type="text"
-                                                            :disabled="!plan.selected"
-                                                            class="w-full p-2 border rounded-md"
-                                                            :class="!plan.selected ? 'bg-gray-100' : ''"
-                                                            :placeholder="`Coverage option ${index + 1}`" />
-                                                    </div>
-                                                    <p v-if="planErrors[plan.key]" class="text-sm text-red-500 mt-2">
-                                                        {{ planErrors[plan.key] }}
-                                                    </p>
-                                                </div>
-                                                <button type="button" @click="togglePlanSelection(plan)"
-                                                    class="w-full py-2 rounded-lg font-semibold text-sm transition"
-                                                    :class="plan.selected
-                                                        ? 'bg-green-600 text-white hover:bg-green-700'
-                                                        : 'bg-[#153B4F] text-white hover:bg-[#102c3b]'">
-                                                    {{ plan.selected ? 'Selected' : 'Select Plan' }}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
-                                        <div class="flex items-center justify-between mb-4">
-                                            <h3 class="text-lg font-semibold text-gray-900">Add-ons</h3>
-                                            <span class="text-xs text-gray-500">Optional</span>
-                                        </div>
-                                        <p v-if="!addons.length" class="text-sm text-gray-500 mb-4">
-                                            No predefined addons yet. Add a custom addon below.
-                                        </p>
-                                        <div v-if="addons.length" class="space-y-4">
-                                            <div v-for="addon in addons" :key="addon.id"
-                                                class="border rounded-lg p-4 flex flex-col gap-4"
-                                                :class="{
-                                                    'border-dashed bg-gray-50': !isAddonSelected(addon.id),
-                                                    'ring-2 ring-green-500': isAddonSelected(addon.id)
-                                                }">
-                                                <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                                                    <div class="min-w-0 flex items-start gap-3">
-                                                        <div>
-                                                            <h3 class="font-semibold text-lg">{{ addon.extra_name }}</h3>
-                                                            <p class="text-gray-500 text-sm break-words">{{ addon.description }}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
-                                                        <div class="flex flex-col items-start">
-                                                            <label for="price" class="text-sm text-gray-500">{{
-                                                                _t('createvehicle', 'step6_price_per_day_label') }}</label>
-                                                            <div class="input-with-suffix">
-                                                                <input type="number" v-model="addonPrices[addon.id]"
-                                                                    :disabled="!isAddonSelected(addon.id)"
-                                                                    class="w-full px-2 py-1 border rounded sm:w-24"
-                                                                    :class="!isAddonSelected(addon.id) ? 'bg-gray-100' : ''" />
-                                                                <span class="input-suffix">{{ currencyCode }}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <p class="text-sm text-gray-500 mb-2">{{ _t('createvehicle',
-                                                                'step6_quantity_label') }}</p>
-                                                            <div class="flex items-center gap-2">
-                                                                <button @click="decrementQuantity(addon.id)" type="button"
-                                                                    :disabled="!isAddonSelected(addon.id)"
-                                                                    class="px-2 py-1 border rounded"
-                                                                    :class="!isAddonSelected(addon.id) ? 'opacity-50 cursor-not-allowed' : ''">-</button>
-                                                                <span class="px-3 py-1 bg-gray-100 rounded">{{
-                                                                    addonQuantities[addon.id] || '00'
-                                                                }}</span>
-                                                                <button @click="incrementQuantity(addon.id)" type="button"
-                                                                    :disabled="!isAddonSelected(addon.id)"
-                                                                    class="px-2 py-1 border rounded"
-                                                                    :class="!isAddonSelected(addon.id) ? 'opacity-50 cursor-not-allowed' : ''">+</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <button type="button" @click="toggleAddonSelection(addon.id)"
-                                                    class="w-full py-2 rounded-lg font-semibold text-sm transition"
-                                                    :class="isAddonSelected(addon.id)
-                                                        ? 'bg-green-600 text-white hover:bg-green-700'
-                                                        : 'bg-[#153B4F] text-white hover:bg-[#102c3b]'">
-                                                    {{ isAddonSelected(addon.id) ? 'Selected' : 'Select Addon' }}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="mt-6 border-t border-gray-200 pt-4">
-                                            <div class="flex items-center justify-between mb-3">
-                                                <h4 class="text-sm font-semibold text-gray-800">Custom add-ons</h4>
-                                                <button type="button" @click="addCustomAddon"
-                                                    class="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                                    Add custom addon
-                                                </button>
-                                            </div>
-                                            <div v-if="customAddons.length" class="space-y-4">
-                                                <div v-for="addon in customAddons" :key="addon.id"
-                                                    class="rounded-lg border border-gray-200 p-4">
-                                                <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-                                                    <div>
-                                                        <InputLabel>Addon name</InputLabel>
-                                                        <Input v-model="addon.extra_name" class="input-field"
-                                                            placeholder="e.g. Baby seat" />
-                                                    </div>
-                                                    <div>
-                                                        <InputLabel>Type</InputLabel>
-                                                        <Input v-model="addon.extra_type" class="input-field"
-                                                            placeholder="e.g. equipment" />
-                                                    </div>
-                                                    <div>
-                                                        <InputLabel>Price</InputLabel>
-                                                        <div class="input-with-suffix">
-                                                            <Input type="number" v-model.number="addon.price"
-                                                                min="0" step="0.01" class="input-field" />
-                                                            <span class="input-suffix">{{ currencyCode }}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <InputLabel>Qty</InputLabel>
-                                                        <Input type="number" v-model.number="addon.quantity" min="1"
-                                                            class="input-field" />
-                                                    </div>
-                                                    <div class="[grid-column:1/-1]">
-                                                        <InputLabel>Description</InputLabel>
-                                                        <Input v-model="addon.description" class="input-field"
-                                                            placeholder="Short description" />
-                                                    </div>
-                                                    <div class="flex items-end justify-start sm:justify-end">
-                                                        <button type="button" @click="removeCustomAddon(addon.id)"
-                                                            class="text-sm text-red-600 hover:underline">Remove</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                            <p v-else class="text-sm text-gray-500">No custom addons added.</p>
-                                        </div>
-                                    </div>
-
-                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-[1.2rem] font-medium">{{ _t('vendorprofilepages',
-                                                'section_rental_conditions_benefits') }}</span>
-                                            <span class="text-xs text-gray-500">Set per period</span>
-                                        </div>
-                                        <div class="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(460px,1fr))]">
-                                            <div class="rounded-lg border border-gray-200 p-4">
-                                                <div class="flex items-center justify-between mb-3">
-                                                    <h4 class="text-sm font-semibold text-gray-800">Per day</h4>
-                                                    <span class="text-xs text-gray-400">Day</span>
-                                                </div>
-                                                <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-                                                    <div class="flex flex-col gap-2">
-                                                        <div class="flex items-center gap-2">
-                                                            <input type="checkbox"
-                                                                v-model="form.benefits.limited_km_per_day"
-                                                                id="limited_km_per_day" class="w-auto" />
-                                                            <InputLabel for="limited_km_per_day" class="mb-0">{{
-                                                                _t('vendorprofilepages', 'label_limited_km_per_day') }}
-                                                            </InputLabel>
-                                                        </div>
-                                                        <InputLabel for="limited_km_per_day_range"
-                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
-                                                                'label_km_limit_per_day') }}</InputLabel>
-                                                        <Input type="number"
-                                                            v-model.number="form.benefits.limited_km_per_day_range"
-                                                            id="limited_km_per_day_range" class="input-field"
-                                                            :disabled="!form.benefits.limited_km_per_day"
-                                                            :class="!form.benefits.limited_km_per_day ? 'bg-gray-100' : ''" />
-                                                    </div>
-                                                    <div class="flex flex-col gap-2">
-                                                        <div class="flex items-center gap-2">
-                                                            <input type="checkbox"
-                                                                v-model="form.benefits.cancellation_available_per_day"
-                                                                id="cancellation_available_per_day" class="w-auto" />
-                                                            <InputLabel for="cancellation_available_per_day" class="mb-0">{{
-                                                                _t('vendorprofilepages', 'label_cancellation_available_per_day') }}
-                                                            </InputLabel>
-                                                        </div>
-                                                        <InputLabel for="cancellation_available_per_day_date"
-                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
-                                                                'label_cancellation_allowed_until_days') }}</InputLabel>
-                                                        <Input type="number"
-                                                            v-model.number="form.benefits.cancellation_available_per_day_date"
-                                                            id="cancellation_available_per_day_date" min="0"
-                                                            class="input-field"
-                                                            :disabled="!form.benefits.cancellation_available_per_day"
-                                                            :class="!form.benefits.cancellation_available_per_day ? 'bg-gray-100' : ''" />
-                                                    </div>
-                                                    <div class="flex flex-col gap-2">
-                                                        <InputLabel for="price_per_km_per_day" class="mb-0">{{
-                                                            _t('vendorprofilepages', 'label_price_per_km_per_day') }}</InputLabel>
-                                                        <div class="input-with-suffix">
-                                                            <Input type="number"
-                                                                v-model.number="form.benefits.price_per_km_per_day"
-                                                                id="price_per_km_per_day" min="0" step="0.01"
-                                                                class="input-field" />
-                                                            <span class="input-suffix">{{ currencyCode }}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="rounded-lg border border-gray-200 p-4">
-                                                <div class="flex items-center justify-between mb-3">
-                                                    <h4 class="text-sm font-semibold text-gray-800">Per week</h4>
-                                                    <span class="text-xs text-gray-400">Week</span>
-                                                </div>
-                                                <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-                                                    <div class="flex flex-col gap-2">
-                                                        <div class="flex items-center gap-2">
-                                                            <input type="checkbox"
-                                                                v-model="form.benefits.limited_km_per_week"
-                                                                id="limited_km_per_week" class="w-auto" />
-                                                            <InputLabel for="limited_km_per_week" class="mb-0">{{
-                                                                _t('vendorprofilepages', 'label_limited_km_per_week') }}
-                                                            </InputLabel>
-                                                        </div>
-                                                        <InputLabel for="limited_km_per_week_range"
-                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
-                                                                'label_km_limit_per_week') }}</InputLabel>
-                                                        <Input type="number"
-                                                            v-model.number="form.benefits.limited_km_per_week_range"
-                                                            id="limited_km_per_week_range" class="input-field"
-                                                            :disabled="!form.benefits.limited_km_per_week"
-                                                            :class="!form.benefits.limited_km_per_week ? 'bg-gray-100' : ''" />
-                                                    </div>
-                                                    <div class="flex flex-col gap-2">
-                                                        <div class="flex items-center gap-2">
-                                                            <input type="checkbox"
-                                                                v-model="form.benefits.cancellation_available_per_week"
-                                                                id="cancellation_available_per_week" class="w-auto" />
-                                                            <InputLabel for="cancellation_available_per_week" class="mb-0">{{
-                                                                _t('vendorprofilepages', 'label_cancellation_available_per_week') }}
-                                                            </InputLabel>
-                                                        </div>
-                                                        <InputLabel for="cancellation_available_per_week_date"
-                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
-                                                                'label_cancellation_allowed_until_weeks') }}</InputLabel>
-                                                        <Input type="number"
-                                                            v-model.number="form.benefits.cancellation_available_per_week_date"
-                                                            id="cancellation_available_per_week_date" min="0"
-                                                            class="input-field"
-                                                            :disabled="!form.benefits.cancellation_available_per_week"
-                                                            :class="!form.benefits.cancellation_available_per_week ? 'bg-gray-100' : ''" />
-                                                    </div>
-                                                    <div class="flex flex-col gap-2">
-                                                        <InputLabel for="price_per_km_per_week" class="mb-0">{{
-                                                            _t('vendorprofilepages', 'label_price_per_km_per_week') }}</InputLabel>
-                                                        <div class="input-with-suffix">
-                                                            <Input type="number"
-                                                                v-model.number="form.benefits.price_per_km_per_week"
-                                                                id="price_per_km_per_week" min="0" step="0.01"
-                                                                class="input-field" />
-                                                            <span class="input-suffix">{{ currencyCode }}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="rounded-lg border border-gray-200 p-4">
-                                                <div class="flex items-center justify-between mb-3">
-                                                    <h4 class="text-sm font-semibold text-gray-800">Per month</h4>
-                                                    <span class="text-xs text-gray-400">Month</span>
-                                                </div>
-                                                <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-                                                    <div class="flex flex-col gap-2">
-                                                        <div class="flex items-center gap-2">
-                                                            <input type="checkbox"
-                                                                v-model="form.benefits.limited_km_per_month"
-                                                                id="limited_km_per_month" class="w-auto" />
-                                                            <InputLabel for="limited_km_per_month" class="mb-0">{{
-                                                                _t('vendorprofilepages', 'label_limited_km_per_month') }}
-                                                            </InputLabel>
-                                                        </div>
-                                                        <InputLabel for="limited_km_per_month_range"
-                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
-                                                                'label_km_limit_per_month') }}</InputLabel>
-                                                        <Input type="number"
-                                                            v-model.number="form.benefits.limited_km_per_month_range"
-                                                            id="limited_km_per_month_range" class="input-field"
-                                                            :disabled="!form.benefits.limited_km_per_month"
-                                                            :class="!form.benefits.limited_km_per_month ? 'bg-gray-100' : ''" />
-                                                    </div>
-                                                    <div class="flex flex-col gap-2">
-                                                        <div class="flex items-center gap-2">
-                                                            <input type="checkbox"
-                                                                v-model="form.benefits.cancellation_available_per_month"
-                                                                id="cancellation_available_per_month" class="w-auto" />
-                                                            <InputLabel for="cancellation_available_per_month" class="mb-0">{{
-                                                                _t('vendorprofilepages', 'label_cancellation_available_per_month') }}
-                                                            </InputLabel>
-                                                        </div>
-                                                        <InputLabel for="cancellation_available_per_month_date"
-                                                            class="text-xs text-gray-500 mb-0">{{ _t('vendorprofilepages',
-                                                                'label_cancellation_allowed_until_months') }}</InputLabel>
-                                                        <Input type="number"
-                                                            v-model.number="form.benefits.cancellation_available_per_month_date"
-                                                            id="cancellation_available_per_month_date" min="0"
-                                                            class="input-field"
-                                                            :disabled="!form.benefits.cancellation_available_per_month"
-                                                            :class="!form.benefits.cancellation_available_per_month ? 'bg-gray-100' : ''" />
-                                                    </div>
-                                                    <div class="flex flex-col gap-2">
-                                                        <InputLabel for="price_per_km_per_month" class="mb-0">{{
-                                                            _t('vendorprofilepages', 'label_price_per_km_per_month') }}</InputLabel>
-                                                        <div class="input-with-suffix">
-                                                            <Input type="number"
-                                                                v-model.number="form.benefits.price_per_km_per_month"
-                                                                id="price_per_km_per_month" min="0" step="0.01"
-                                                                class="input-field" />
-                                                            <span class="input-suffix">{{ currencyCode }}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-                                            <div>
-                                                <InputLabel for="minimum_driver_age">{{ _t('vendorprofilepages',
-                                                    'label_minimum_driver_age') }}</InputLabel>
-                                                <Input type="number" v-model.number="form.benefits.minimum_driver_age"
-                                                    id="minimum_driver_age" min="18" required class="input-field" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
-                                        <InputLabel for="payment_method">{{ _t('vendorprofilepages',
-                                            'label_payment_methods') }}</InputLabel>
-                                        <div class="flex flex-wrap items-center gap-4 mt-3 sm:gap-6">
-                                            <label class="flex gap-2 items-center">
-                                                <input type="checkbox" v-model="form.payment_method" value="credit_card"
-                                                    class="w-auto" />
-                                                {{ _t('vendorprofilepages', 'payment_method_credit_card') }}
-                                            </label>
-                                            <label class="flex gap-1 items-center">
-                                                <input type="checkbox" v-model="form.payment_method" value="cheque"
-                                                    class="w-auto" />
-                                                {{ _t('vendorprofilepages', 'payment_method_cheque') }}
-                                            </label>
-                                            <label class="flex gap-1 items-center">
-                                                <input type="checkbox" v-model="form.payment_method" value="bank_wire"
-                                                    class="w-auto" />
-                                                {{ _t('vendorprofilepages', 'payment_method_bank_wire') }}
-                                            </label>
-                                            <label class="flex gap-1 items-center">
-                                                <input type="checkbox" v-model="form.payment_method"
-                                                    value="cryptocurrency" class="w-auto" />
-                                                {{ _t('vendorprofilepages', 'payment_method_cryptocurrency') }}
-                                            </label>
-                                            <label class="flex gap-1 items-center">
-                                                <input type="checkbox" v-model="form.payment_method" value="cash"
-                                                    class="w-auto" />
-                                                {{ _t('vendorprofilepages', 'payment_method_cash') }}
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="rounded-xl border border-gray-200 bg-white p-5">
-                                        <InputLabel for="features">{{ _t('vendorprofilepages', 'label_features') }}
-                                        </InputLabel>
-                                        <div class="flex flex-wrap gap-4 mt-3 sm:gap-6">
-                                            <label v-for="feature in availableFeatures" :key="feature.id"
-                                                class="flex items-center gap-2">
-                                                <input type="checkbox" v-model="form.features" :value="feature.name"
-                                                    class="w-auto" />
-                                                <img v-if="feature.icon_url" :src="feature.icon_url" :alt="feature.name"
-                                                    class="w-4 h-4 mr-1 inline-block object-contain" />
-                                                {{ feature.name }}
-                                            </label>
-                                        </div>
-                                        <div v-if="!availableFeatures.length && form.category_id">
-                                            <p class="text-gray-500">{{ _t('vendorprofilepages',
-                                                'text_no_features_for_category') }}</p>
-                                        </div>
-                                        <div v-if="!form.category_id">
-                                            <p class="text-gray-500">{{ _t('vendorprofilepages',
-                                                'text_select_category_for_features') }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="guidelines">
-                                <div>
-                                    <InputLabel for="guidelines">{{ _t('vendorprofilepages', 'label_guidelines') }}
-                                    </InputLabel>
-                                    <textarea type="text" v-model="form.guidelines" id="guidelines" required
-                                        class="border p-2 rounded-lg w-full" />
-                                </div>
-                                <div class="mt-4">
-                                    <InputLabel for="terms_policy">Terms &amp; Conditions</InputLabel>
-                                    <textarea
-                                        id="terms_policy"
-                                        v-model="form.terms_policy"
-                                        class="border p-2 rounded-lg w-full"
-                                        placeholder="Add vendor terms and policy for this vehicle."
-                                    />
-                                </div>
-                                <div class="time-selector p-6 bg-gray-50 rounded-xl shadow-lg w-full">
-                                    <p>{{ _t('vendorprofilepages', 'text_choose_pickup_return_time') }}</p>
-                                    <div class="grid gap-10 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-                                        <div>
-                                            <!-- Pickup Times Section -->
-                                            <label class="block text-lg font-semibold text-gray-800 mb-2">{{
-                                                _t('vendorprofilepages', 'label_pickup_times') }}</label>
-                                            <div v-for="(time, index) in form.pickup_times" :key="'pickup-' + index"
-                                                class="time-input-group flex items-center mb-3 gap-2">
-                                                <input type="time" v-model="form.pickup_times[index]"
-                                                    class="time-input max-[768px]:text-[0.75rem] flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-white shadow-sm" />
-                                                <Button type="button" @click="removePickupTime(index)"
-                                                    :title="_t('vendorprofilepages', 'title_remove_time')"
-                                                    variant="outline" size="sm"
-                                                    class="text-red-600 hover:text-red-700 hover:bg-red-50">
-                                                    <Trash2 class="w-4 h-4" />
-                                                </Button>
-                                            </div>
-
-                                            <Button type="button" @click="addPickupTime" class="w-full">
-                                                <Plus class="w-4 h-4 mr-2" />
-                                                {{ _t('vendorprofilepages', 'button_add_pickup_time') }}
-                                            </Button>
-                                        </div>
-                                        <div>
-                                            <!-- Return Times Section -->
-                                            <label class="block text-lg font-semibold text-gray-800 mb-2">{{
-                                                _t('vendorprofilepages', 'label_return_times') }}</label>
-                                            <div v-for="(time, index) in form.return_times" :key="'return-' + index"
-                                                class="time-input-group flex items-center mb-3 gap-2">
-                                                <input type="time" v-model="form.return_times[index]"
-                                                    class="time-input max-[768px]:text-[0.75rem] flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 bg-white shadow-sm" />
-                                                <Button type="button" @click="removeReturnTime(index)"
-                                                    :title="_t('vendorprofilepages', 'title_remove_time')"
-                                                    variant="outline" size="sm"
-                                                    class="text-red-600 hover:text-red-700 hover:bg-red-50">
-                                                    <Trash2 class="w-4 h-4" />
-                                                </Button>
-                                            </div>
-
-                                            <Button type="button" @click="addReturnTime" class="w-full">
-                                                <Plus class="w-4 h-4 mr-2" />
-                                                {{ _t('vendorprofilepages', 'button_add_return_time') }}
-                                            </Button>
-                                        </div>
-                                    </div>
-
-
-
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="images">
-                                <div class="grid gap-6">
-                                    <!-- Current Images -->
-                                    <div
-                                        v-if="props.vehicle && props.vehicle.images && props.vehicle.images.length > 0">
-                                        <h3 class="font-medium text-lg mb-3">{{ _t('vendorprofilepages',
-                                            'label_current_images') }}</h3>
-                                        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-                                            <div v-for="image in props.vehicle.images" :key="image.id"
-                                                class="relative group border rounded-lg overflow-hidden h-48">
-                                                <img :src="`${image.image_url}`"
-                                                    :alt="_t('vendorprofilepages', 'alt_vehicle_image')"
-                                                    class="w-full h-full object-cover" />
-                                                <div class="absolute top-0 right-0 p-1 flex gap-1">
-                                                    <Button v-if="image.image_type !== 'primary'" type="button"
-                                                        @click="setExistingImageAsPrimary(image.id)" size="sm"
-                                                        class="bg-white text-blue-600 hover:bg-blue-50 rounded-full p-1 w-8 h-8"
-                                                        :title="_t('vendorprofilepages', 'button_set_as_primary')">
-                                                        <Star class="w-4 h-4" />
-                                                    </Button>
-                                                    <Button type="button"
-                                                        @click="deleteImage(props.vehicle.id, image.id)" size="sm"
-                                                        class="bg-white text-red-600 hover:bg-red-50 rounded-full p-1 w-8 h-8"
-                                                        :title="_t('vendorprofilepages', 'title_delete_image')">
-                                                        <Trash2 class="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                                <div class="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-1 text-center text-xs"
-                                                    :class="{ 'bg-blue-600/90': image.image_type === 'primary' }">
-                                                    {{ image.image_type === 'primary' ? _t('vendorprofilepages',
-                                                        'text_image_type_primary') : _t('vendorprofilepages',
-                                                            'text_image_type_gallery') }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <p class="text-gray-500 mt-2">
-                                            {{ _t('vendorprofilepages', 'text_images_uploaded_count', {
-                                                count:
-                                                    props.vehicle.images.length
-                                            }) }}
-                                        </p>
-                                    </div>
-
-                                    <!-- Upload New Images -->
-                                    <div
-                                        v-if="!props.vehicle || !props.vehicle.images || props.vehicle.images.length < 20">
-                                        <h3 class="font-medium text-lg mb-3">{{ _t('vendorprofilepages',
-                                            'label_upload_new_images') }}</h3>
-                                        <div class="border-2 border-dashed border-gray-300 p-6 rounded-lg text-center">
-                                            <input type="file" ref="fileInput" multiple @change="handleFileUpload"
-                                                accept="image/jpeg,image/png,image/jpg,image/gif" class="hidden" />
-                                            <div @click="$refs.fileInput.click()" class="cursor-pointer">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                    stroke-width="1.5" stroke="currentColor"
-                                                    class="w-12 h-12 mx-auto text-gray-400">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                                </svg>
-                                                <p class="mt-2 text-sm text-gray-600">{{ _t('vendorprofilepages',
-                                                    'text_click_or_drag_images') }}</p>
-                                                <p class="text-xs text-gray-500 mt-1">{{ _t('vendorprofilepages',
-                                                    'text_image_format_hint') }}</p>
-                                                <p class="text-xs text-gray-500 mt-1">
-                                                    {{ _t('vendorprofilepages', 'text_files_selected_count', {
-                                                        count:
-                                                            selectedFiles.length
-                                                    }) }}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div v-if="selectedFiles.length > 0" class="mt-4">
-                                            <h4 class="font-medium text-sm mb-2">{{ _t('vendorprofilepages',
-                                                'label_selected_files') }}</h4>
-                                            <ul class="text-sm text-gray-600">
-                                                <li v-for="(file, index) in selectedFiles" :key="index"
-                                                    class="flex justify-between items-center py-1 border-b last:border-b-0">
-                                                    <span class="truncate max-w-[200px]">{{ file.name }}</span>
-                                                    <div class="flex items-center gap-2">
-                                                        <Button type="button" @click="setNewImageAsPrimary(index)"
-                                                            size="sm"
-                                                            :variant="form.primary_image_index === index ? 'default' : 'secondary'"
-                                                            :disabled="form.primary_image_index === index"
-                                                            :class="form.primary_image_index === index ? 'cursor-default' : ''">
-                                                            <Star class="w-3 h-3 mr-1" />
-                                                            {{ form.primary_image_index === index ?
-                                                                _t('vendorprofilepages', 'text_image_type_primary') :
-                                                                _t('vendorprofilepages', 'button_set_as_primary') }}
-                                                        </Button>
-                                                        <Button type="button" @click="removeFile(index)"
-                                                            variant="destructive" size="sm">
-                                                            <Trash2 class="w-3 h-3 mr-1" />
-                                                            {{ _t('vendorprofilepages', 'button_remove_file') }}
-                                                        </Button>
-                                                    </div>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                    <p v-else class="text-amber-600">
-                                        {{ _t('vendorprofilepages', 'text_max_images_reached') }}
-                                    </p>
-                                </div>
-                            </TabsContent>
-                        </Tabs>
-
-                        <div class="flex justify-between gap-4 mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
-                            <Button type="submit" :disabled="form.processing" class="flex items-center gap-2 px-6 py-3">
-                                <Loader2 v-if="form.processing" class="w-4 h-4 animate-spin" />
-                                <Save v-else class="w-4 h-4" />
-                                {{ _t('vendorprofilepages', 'update_vehicle_button') }}
-                            </Button>
-                            <Link :href="route('current-vendor-vehicles.index', { locale: usePage().props.locale })">
-                                <Button variant="outline" class="flex items-center gap-2 px-6 py-3">
-                                    <X class="w-4 h-4" />
-                                    {{ _t('vendorprofilepages', 'cancel_button') }}
-                                </Button>
-                            </Link>
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Car :size="18" /></div>
+                            <div><div class="vln-fg-title">Vehicle Category</div><div class="vln-fg-sub">Select one</div></div>
                         </div>
-                    </form>
+                        <div class="vln-category-grid">
+                            <div v-for="cat in categories" :key="cat.id" class="vln-cat-card"
+                                :class="{ selected: form.category_id === cat.id }"
+                                @click="form.category_id = cat.id">
+                                <div class="vln-cat-check"><CheckCircle2 :size="12" /></div>
+                                <div class="vln-cat-img-wrap">
+                                    <img v-if="cat.image" :src="cat.image" :alt="cat.name" />
+                                    <div v-else class="vln-cat-placeholder"><Car :size="24" /></div>
+                                </div>
+                                <div class="vln-cat-name">{{ cat.name }}</div>
+                            </div>
+                        </div>
+                        <span v-if="errors.category_id" class="vln-error"><AlertCircle :size="13" /> {{ errors.category_id }}</span>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Info :size="18" /></div>
+                            <div><div class="vln-fg-title">Basic Information</div><div class="vln-fg-sub">Brand, model, appearance</div></div>
+                        </div>
+                        <div class="vln-grid vln-grid-3">
+                            <div class="vln-field">
+                                <label class="vln-label">Brand <span class="req">*</span></label>
+                                <input class="vln-input" type="text" v-model="form.brand" placeholder="e.g. BMW" />
+                                <span v-if="errors.brand" class="vln-error"><AlertCircle :size="13" /> {{ errors.brand }}</span>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Model <span class="req">*</span></label>
+                                <input class="vln-input" type="text" v-model="form.model" placeholder="e.g. 3 Series" />
+                                <span v-if="errors.model" class="vln-error"><AlertCircle :size="13" /> {{ errors.model }}</span>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Color <span class="req">*</span></label>
+                                <Select v-model="form.color">
+                                    <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select color" /></SelectTrigger>
+                                    <SelectContent><SelectGroup><SelectLabel>Color</SelectLabel>
+                                        <SelectItem v-for="c in vehicleColors" :key="c.value" :value="c.value">{{ c.name }}</SelectItem>
+                                    </SelectGroup></SelectContent>
+                                </Select>
+                                <span v-if="errors.color" class="vln-error"><AlertCircle :size="13" /> {{ errors.color }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Wrench :size="18" /></div>
+                            <div><div class="vln-fg-title">Specifications</div><div class="vln-fg-sub">Performance and capacity</div></div>
+                        </div>
+                        <div class="vln-grid">
+                            <div class="vln-field">
+                                <label class="vln-label">Transmission</label>
+                                <Select v-model="form.transmission">
+                                    <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent><SelectGroup>
+                                        <SelectItem value="manual">Manual</SelectItem>
+                                        <SelectItem value="automatic">Automatic</SelectItem>
+                                    </SelectGroup></SelectContent>
+                                </Select>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Fuel Type</label>
+                                <Select v-model="form.fuel">
+                                    <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent><SelectGroup>
+                                        <SelectItem value="petrol">Petrol</SelectItem>
+                                        <SelectItem value="diesel">Diesel</SelectItem>
+                                        <SelectItem value="electric">Electric</SelectItem>
+                                        <SelectItem value="hybrid">Hybrid</SelectItem>
+                                    </SelectGroup></SelectContent>
+                                </Select>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Seats</label>
+                                <Select v-model="form.seating_capacity">
+                                    <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent><SelectGroup>
+                                        <SelectItem v-for="n in 8" :key="n" :value="n">{{ n }}</SelectItem>
+                                    </SelectGroup></SelectContent>
+                                </Select>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Doors</label>
+                                <Select v-model="form.number_of_doors">
+                                    <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent><SelectGroup>
+                                        <SelectItem v-for="n in 8" :key="n" :value="n">{{ n }}</SelectItem>
+                                    </SelectGroup></SelectContent>
+                                </Select>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Mileage</label>
+                                <div class="vln-input-suffix">
+                                    <input class="vln-input" type="number" v-model="form.mileage" placeholder="0" />
+                                    <span class="vln-suffix">km/l</span>
+                                </div>
+                                <span v-if="errors.mileage" class="vln-error"><AlertCircle :size="13" /> {{ errors.mileage }}</span>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Luggage</label>
+                                <Select v-model="form.luggage_capacity">
+                                    <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent><SelectGroup>
+                                        <SelectItem v-for="n in [0,1,2,3,4,5]" :key="n" :value="n">{{ n }}</SelectItem>
+                                    </SelectGroup></SelectContent>
+                                </Select>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Horsepower</label>
+                                <div class="vln-input-suffix">
+                                    <input class="vln-input" type="number" v-model="form.horsepower" placeholder="0" />
+                                    <span class="vln-suffix">hp</span>
+                                </div>
+                                <span v-if="errors.horsepower" class="vln-error"><AlertCircle :size="13" /> {{ errors.horsepower }}</span>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">CO2 Emissions</label>
+                                <div class="vln-input-suffix">
+                                    <input class="vln-input" type="text" v-model="form.co2" placeholder="0" />
+                                    <span class="vln-suffix">g/km</span>
+                                </div>
+                                <span v-if="errors.co2" class="vln-error"><AlertCircle :size="13" /> {{ errors.co2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Zap :size="18" /></div>
+                            <div><div class="vln-fg-title">Status</div></div>
+                        </div>
+                        <div class="vln-grid">
+                            <div class="vln-field">
+                                <label class="vln-label">Vehicle Status</label>
+                                <Select v-model="form.status">
+                                    <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent><SelectGroup>
+                                        <SelectItem value="available">Available</SelectItem>
+                                        <SelectItem value="rented">Rented</SelectItem>
+                                        <SelectItem value="maintenance">Maintenance</SelectItem>
+                                    </SelectGroup></SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Star :size="18" /></div>
+                            <div><div class="vln-fg-title">Features</div><div class="vln-fg-sub">Select all that apply to your vehicle</div></div>
+                        </div>
+                        <div class="vln-feature-grid">
+                            <button v-for="feature in allFeatures" :key="feature.name" type="button"
+                                class="vln-chip" :class="{ active: form.features.includes(feature.name) }"
+                                @click="toggleFeature(feature.name)">
+                                <component :is="feature.icon" :size="14" />
+                                {{ feature.name }}
+                            </button>
+                        </div>
+                        <div class="vln-custom-feature mt-3">
+                            <div class="flex gap-2">
+                                <input class="vln-input flex-1" type="text" v-model="customFeatureInput"
+                                    placeholder="Add a custom feature..." @keydown.enter.prevent="addCustomFeature" />
+                                <button type="button" class="vln-btn-add-feature" @click="addCustomFeature" :disabled="!customFeatureInput.trim()">
+                                    <Plus :size="16" /> Add
+                                </button>
+                            </div>
+                        </div>
+                        <span v-if="errors.features" class="vln-error"><AlertCircle :size="13" /> {{ errors.features }}</span>
+                    </div>
+                </section>
+
+                <!-- STEP 1: Registration -->
+                <section v-show="currentStep === 1" class="vln-step" key="step-1">
+                    <div class="vln-step-header">
+                        <h1>Registration & technical specs</h1>
+                        <p>Required for insurance and compliance. Never shown publicly.</p>
+                    </div>
+
+                    <div class="vln-tip">
+                        <Info :size="16" class="shrink-0 mt-0.5" />
+                        <p>Have your registration certificate ready -- you'll need the registration number, date, and country.</p>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><FileText :size="18" /></div>
+                            <div><div class="vln-fg-title">Registration</div><div class="vln-fg-sub">From your vehicle certificate</div></div>
+                        </div>
+                        <div class="vln-grid">
+                            <div class="vln-field full">
+                                <label class="vln-label">Registration Number <span class="req">*</span></label>
+                                <input class="vln-input uppercase" type="text" v-model="form.registration_number" placeholder="e.g. AB-123-CD" maxlength="10" />
+                                <span v-if="errors.registration_number" class="vln-error"><AlertCircle :size="13" /> {{ errors.registration_number }}</span>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Country <span class="req">*</span></label>
+                                <Select v-model="form.registration_country">
+                                    <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select country" /></SelectTrigger>
+                                    <SelectContent><SelectGroup><SelectLabel>Country</SelectLabel>
+                                        <SelectItem v-for="c in countries" :key="c.code" :value="c.code">
+                                            <div class="flex items-center gap-2">
+                                                <img :src="getFlagUrl(c.code)" :alt="c.name" class="w-5 h-3.5 rounded-sm" />
+                                                <span>{{ c.name }}</span>
+                                            </div>
+                                        </SelectItem>
+                                    </SelectGroup></SelectContent>
+                                </Select>
+                                <span v-if="errors.registration_country" class="vln-error"><AlertCircle :size="13" /> {{ errors.registration_country }}</span>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Registration Date <span class="req">*</span></label>
+                                <VueDatePicker v-model="form.registration_date" :format="'yyyy-MM-dd'" auto-apply :clearable="false"
+                                    :max-date="new Date()" @update:modelValue="formatDate"
+                                    :input-class-name="'vln-input w-full'" />
+                                <span v-if="errors.registration_date" class="vln-error"><AlertCircle :size="13" /> {{ errors.registration_date }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Wrench :size="18" /></div>
+                            <div><div class="vln-fg-title">Technical Details</div><div class="vln-fg-sub">Weight, dimensions, cost</div></div>
+                        </div>
+                        <div class="vln-grid">
+                            <div class="vln-field">
+                                <label class="vln-label">Gross Vehicle Mass</label>
+                                <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.gross_vehicle_mass" placeholder="0" /><span class="vln-suffix">kg</span></div>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Vehicle Height</label>
+                                <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.vehicle_height" placeholder="0" /><span class="vln-suffix">m</span></div>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Dealer Cost <span class="req">*</span></label>
+                                <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.dealer_cost" placeholder="0" /><span class="vln-suffix">{{ currencyCode }}</span></div>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Phone Number <span class="req">*</span></label>
+                                <input class="vln-input" type="tel" v-model="form.phone_number" placeholder="+31 6 1234 5678" />
+                                <span v-if="errors.phone_number" class="vln-error"><AlertCircle :size="13" /> {{ errors.phone_number }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- STEP 2: Location -->
+                <section v-show="currentStep === 2" class="vln-step" key="step-2">
+                    <div class="vln-step-header">
+                        <h1>Where is your vehicle parked?</h1>
+                        <p>Your exact address is only shared with confirmed renters.</p>
+                    </div>
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><MapPin :size="18" /></div>
+                            <div><div class="vln-fg-title">Parking Address</div><div class="vln-fg-sub">Search or enter manually</div></div>
+                        </div>
+
+                        <div v-if="form.location" class="vln-current-location mb-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span class="font-medium text-gray-900 text-sm">Current Location</span>
+                            </div>
+                            <div class="text-gray-700 font-medium text-sm break-words">{{ displayedFullAddress }}</div>
+                        </div>
+
+                        <div class="vln-field mb-4">
+                            <label class="vln-label">Search Address <span class="req">*</span></label>
+                            <LocationPicker :onLocationSelect="handleLocationSelect" />
+                            <span v-if="errors.location" class="vln-error"><AlertCircle :size="13" /> {{ errors.location }}</span>
+                        </div>
+                        <div class="vln-field">
+                            <label class="vln-label">Location Type <span class="req">*</span></label>
+                            <Select v-model="form.location_type">
+                                <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select type" /></SelectTrigger>
+                                <SelectContent><SelectGroup>
+                                    <SelectItem value="Downtown">Downtown</SelectItem>
+                                    <SelectItem value="Airport">Airport</SelectItem>
+                                    <SelectItem value="Terminal">Terminal</SelectItem>
+                                    <SelectItem value="Bus Stop">Bus Stop</SelectItem>
+                                    <SelectItem value="Railway Station">Railway Station</SelectItem>
+                                </SelectGroup></SelectContent>
+                            </Select>
+                            <span v-if="errors.location_type" class="vln-error"><AlertCircle :size="13" /> {{ errors.location_type }}</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- STEP 3: Pricing & Policies -->
+                <section v-show="currentStep === 3" class="vln-step" key="step-3">
+                    <div class="vln-step-header">
+                        <h1>Set your pricing</h1>
+                        <p>Daily rate is required. Add weekly/monthly rates to attract longer bookings.</p>
+                    </div>
+
+                    <div class="space-y-3 mb-4">
+                        <div class="vln-pricing-card active">
+                            <div class="vln-pc-header">
+                                <div class="vln-pc-label"><div class="vln-pc-toggle"></div><span class="vln-pc-period">Daily Rate</span></div>
+                                <span class="vln-pc-badge">Required</span>
+                            </div>
+                            <div class="vln-pc-body">
+                                <div class="vln-grid" style="margin-top:0.4rem">
+                                    <div class="vln-field">
+                                        <label class="vln-label">Price per day <span class="req">*</span></label>
+                                        <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_day" placeholder="0.00" /><span class="vln-suffix">{{ currencyCode }}</span></div>
+                                        <span v-if="errors.price_per_day" class="vln-error"><AlertCircle :size="13" /> {{ errors.price_per_day }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="vln-pricing-card" :class="{ active: selectedTypes.week }">
+                            <div class="vln-pc-header" @click="selectedTypes.week = !selectedTypes.week">
+                                <div class="vln-pc-label"><div class="vln-pc-toggle"></div><span class="vln-pc-period">Weekly Rate</span></div>
+                            </div>
+                            <div class="vln-pc-body" v-if="selectedTypes.week">
+                                <div class="vln-grid" style="margin-top:0.4rem">
+                                    <div class="vln-field"><label class="vln-label">Price per week</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_week" placeholder="0.00" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
+                                    <div class="vln-field"><label class="vln-label">Weekly discount</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.weekly_discount" placeholder="0" /><span class="vln-suffix">%</span></div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="vln-pricing-card" :class="{ active: selectedTypes.month }">
+                            <div class="vln-pc-header" @click="selectedTypes.month = !selectedTypes.month">
+                                <div class="vln-pc-label"><div class="vln-pc-toggle"></div><span class="vln-pc-period">Monthly Rate</span></div>
+                            </div>
+                            <div class="vln-pc-body" v-if="selectedTypes.month">
+                                <div class="vln-grid" style="margin-top:0.4rem">
+                                    <div class="vln-field"><label class="vln-label">Price per month</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_month" placeholder="0.00" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
+                                    <div class="vln-field"><label class="vln-label">Monthly discount</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.monthly_discount" placeholder="0" /><span class="vln-suffix">%</span></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><DollarSign :size="18" /></div>
+                            <div><div class="vln-fg-title">Deposit & Terms</div><div class="vln-fg-sub">Security deposit and rental rules</div></div>
+                        </div>
+                        <div class="vln-grid">
+                            <div class="vln-field">
+                                <label class="vln-label">Security Deposit <span class="req">*</span></label>
+                                <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.security_deposit" placeholder="0.00" /><span class="vln-suffix">{{ currencyCode }}</span></div>
+                                <span v-if="errors.security_deposit" class="vln-error"><AlertCircle :size="13" /> {{ errors.security_deposit }}</span>
+                            </div>
+                            <div class="vln-field">
+                                <label class="vln-label">Minimum Driver Age <span class="req">*</span></label>
+                                <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.benefits.minimum_driver_age" placeholder="21" /><span class="vln-suffix">yrs</span></div>
+                                <span v-if="errors.minimum_driver_age" class="vln-error"><AlertCircle :size="13" /> {{ errors.minimum_driver_age }}</span>
+                            </div>
+                            <div class="vln-field full">
+                                <label class="vln-label">Rental Guidelines</label>
+                                <textarea class="vln-textarea" v-model="form.guidelines" placeholder="Rules or instructions for renters..."></textarea>
+                            </div>
+                            <div class="vln-field full">
+                                <label class="vln-label">Terms & Conditions</label>
+                                <textarea class="vln-textarea" v-model="form.terms_policy" placeholder="Vendor terms and conditions..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><CalendarDays :size="18" /></div>
+                            <div><div class="vln-fg-title">Operating Hours</div><div class="vln-fg-sub">When your vehicle is available for handover</div></div>
+                        </div>
+                        <div class="flex justify-end mb-3">
+                            <button type="button" @click="applyHoursToAllDays" class="vln-link-btn"><Copy :size="14" /> Apply first day to all</button>
+                        </div>
+                        <div class="space-y-2">
+                            <div v-for="day in form.operating_hours" :key="day.day"
+                                class="vln-hour-row" :class="{ open: day.is_open }">
+                                <div class="vln-hour-left">
+                                    <button type="button" @click="day.is_open = !day.is_open"
+                                        class="vln-toggle" :class="{ on: day.is_open }">
+                                        <span class="vln-toggle-dot"></span>
+                                    </button>
+                                    <span class="vln-hour-day" :class="{ muted: !day.is_open }">{{ day.day_name }}</span>
+                                </div>
+                                <div v-if="day.is_open" class="vln-hour-right">
+                                    <Clock :size="14" class="text-gray-400 shrink-0" />
+                                    <input type="time" v-model="day.open_time" class="vln-time-input" />
+                                    <span class="text-gray-400 text-xs">to</span>
+                                    <input type="time" v-model="day.close_time" class="vln-time-input" />
+                                </div>
+                                <span v-else class="text-sm text-gray-400 italic ml-auto">Closed</span>
+                                <span v-if="day.is_open && day.open_time && day.close_time && day.close_time <= day.open_time" class="vln-error text-xs ml-2">
+                                    <AlertCircle :size="12" /> Close must be after open
+                                </span>
+                            </div>
+                        </div>
+                        <div v-if="operatingHoursError" class="vln-error mt-3"><AlertCircle :size="14" /> {{ operatingHoursError }}</div>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><CreditCard :size="18" /></div>
+                            <div><div class="vln-fg-title">Payment Methods</div><div class="vln-fg-sub">Select all you accept</div></div>
+                        </div>
+                        <div class="vln-payment-grid">
+                            <button type="button" v-for="method in paymentOptions" :key="method.value"
+                                class="vln-payment-pill" :class="{ active: form.payment_method.includes(method.value) }"
+                                @click="togglePaymentMethod(method.value)">
+                                <component :is="method.icon" :size="16" /> {{ method.label }}
+                            </button>
+                        </div>
+                        <span v-if="errors.payment_method" class="vln-error"><AlertCircle :size="13" /> {{ errors.payment_method }}</span>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Gauge :size="18" /></div>
+                            <div><div class="vln-fg-title">Kilometer Limits</div><div class="vln-fg-sub">Set mileage restrictions per rental period</div></div>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="vln-sub-card">
+                                <label class="vln-check-label"><input type="checkbox" v-model="form.benefits.limited_km_per_day" class="vln-checkbox" /> Limited KM per day</label>
+                                <div v-if="form.benefits.limited_km_per_day" class="vln-grid mt-3">
+                                    <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.benefits.limited_km_per_day_range" /></div>
+                                    <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.benefits.price_per_km_per_day" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
+                                </div>
+                            </div>
+                            <div v-if="selectedTypes.week" class="vln-sub-card">
+                                <label class="vln-check-label"><input type="checkbox" v-model="form.benefits.limited_km_per_week" class="vln-checkbox" /> Limited KM per week</label>
+                                <div v-if="form.benefits.limited_km_per_week" class="vln-grid mt-3">
+                                    <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.benefits.limited_km_per_week_range" /></div>
+                                    <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.benefits.price_per_km_per_week" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
+                                </div>
+                            </div>
+                            <div v-if="selectedTypes.month" class="vln-sub-card">
+                                <label class="vln-check-label"><input type="checkbox" v-model="form.benefits.limited_km_per_month" class="vln-checkbox" /> Limited KM per month</label>
+                                <div v-if="form.benefits.limited_km_per_month" class="vln-grid mt-3">
+                                    <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.benefits.limited_km_per_month_range" /></div>
+                                    <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.benefits.price_per_km_per_month" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><X :size="18" /></div>
+                            <div><div class="vln-fg-title">Cancellation Policy</div><div class="vln-fg-sub">Set notice periods for cancellation</div></div>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="vln-sub-card">
+                                <label class="vln-check-label"><input type="checkbox" v-model="form.benefits.cancellation_available_per_day" class="vln-checkbox" /> Allow daily cancellation</label>
+                                <div v-if="form.benefits.cancellation_available_per_day" class="vln-grid mt-3">
+                                    <div class="vln-field"><label class="vln-label">Days prior notice</label><input class="vln-input" type="number" v-model="form.benefits.cancellation_available_per_day_date" /></div>
+                                </div>
+                            </div>
+                            <div v-if="selectedTypes.week" class="vln-sub-card">
+                                <label class="vln-check-label"><input type="checkbox" v-model="form.benefits.cancellation_available_per_week" class="vln-checkbox" /> Allow weekly cancellation</label>
+                                <div v-if="form.benefits.cancellation_available_per_week" class="vln-grid mt-3">
+                                    <div class="vln-field"><label class="vln-label">Days prior notice</label><input class="vln-input" type="number" v-model="form.benefits.cancellation_available_per_week_date" /></div>
+                                </div>
+                            </div>
+                            <div v-if="selectedTypes.month" class="vln-sub-card">
+                                <label class="vln-check-label"><input type="checkbox" v-model="form.benefits.cancellation_available_per_month" class="vln-checkbox" /> Allow monthly cancellation</label>
+                                <div v-if="form.benefits.cancellation_available_per_month" class="vln-grid mt-3">
+                                    <div class="vln-field"><label class="vln-label">Days prior notice</label><input class="vln-input" type="number" v-model="form.benefits.cancellation_available_per_month_date" /></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- STEP 4: Protection Plans -->
+                <section v-show="currentStep === 4" class="vln-step" key="step-4">
+                    <div class="vln-step-header">
+                        <h1>Protection plans</h1>
+                        <p>Offer coverage options. Plans with protection sell <strong>3x more</strong>.</p>
+                    </div>
+                    <div class="vln-tip">
+                        <Info :size="16" class="shrink-0 mt-0.5" />
+                        <p>Prices must be equal to or higher than your daily rental rate ({{ pricePerDay }} {{ currencyCode }}).</p>
+                    </div>
+                    <div class="vln-plan-grid">
+                        <div v-for="plan in protectionPlans" :key="plan.key"
+                            class="vln-plan-card" :class="{ selected: plan.selected }">
+                            <div class="vln-plan-check" @click="togglePlanSelection(plan)">
+                                <CheckCircle2 v-if="plan.selected" :size="14" />
+                            </div>
+                            <span class="vln-plan-badge" :class="plan.key">{{ plan.plan_type }}</span>
+                            <div class="vln-field mt-3">
+                                <label class="vln-label">Price per day</label>
+                                <div class="vln-input-suffix">
+                                    <input class="vln-input" type="number" step="0.01" v-model.number="plan.price"
+                                        :disabled="!plan.selected" :class="{ 'bg-gray-50': !plan.selected }" />
+                                    <span class="vln-suffix">{{ currencyCode }}</span>
+                                </div>
+                            </div>
+                            <div class="mt-3 space-y-2">
+                                <label class="vln-label">Coverage options (max 5)</label>
+                                <input v-for="(_, idx) in plan.features" :key="idx" type="text"
+                                    v-model="plan.features[idx]" :disabled="!plan.selected"
+                                    class="vln-input text-sm" :class="{ 'bg-gray-50': !plan.selected }"
+                                    :placeholder="`Coverage option ${idx + 1}`" />
+                            </div>
+                            <p v-if="planErrors[plan.key]" class="vln-error mt-2"><AlertCircle :size="13" /> {{ planErrors[plan.key] }}</p>
+                            <button type="button" @click="togglePlanSelection(plan)"
+                                class="vln-plan-btn mt-4" :class="{ selected: plan.selected }">
+                                {{ plan.selected ? 'Selected' : 'Select Plan' }}
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- STEP 5: Add-ons -->
+                <section v-show="currentStep === 5" class="vln-step" key="step-5">
+                    <div class="vln-step-header">
+                        <h1>Optional add-ons</h1>
+                        <p>Offer extras like baby seats or GPS devices to boost your earnings.</p>
+                    </div>
+
+                    <div v-if="addons.length" class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Package :size="18" /></div>
+                            <div><div class="vln-fg-title">Predefined Add-ons</div><div class="vln-fg-sub">Select from available extras</div></div>
+                        </div>
+                        <div class="space-y-3">
+                            <div v-for="addon in addons" :key="addon.id" class="vln-sub-card"
+                                :class="{ 'border-cyan-200 bg-cyan-50/30': isAddonSelected(addon.id) }">
+                                <div class="flex items-center justify-between gap-3 mb-2">
+                                    <div>
+                                        <div class="font-semibold text-sm text-gray-900">{{ addon.extra_name }}</div>
+                                        <div class="text-xs text-gray-500">{{ addon.description }}</div>
+                                    </div>
+                                    <button type="button" @click="toggleAddonSelection(addon.id)"
+                                        class="vln-plan-btn text-xs px-3 py-1.5" :class="{ selected: isAddonSelected(addon.id) }"
+                                        style="width:auto; margin:0; font-size:0.75rem;">
+                                        {{ isAddonSelected(addon.id) ? 'Selected' : 'Select' }}
+                                    </button>
+                                </div>
+                                <div v-if="isAddonSelected(addon.id)" class="vln-grid mt-2">
+                                    <div class="vln-field">
+                                        <label class="vln-label">Price/day</label>
+                                        <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="addonPrices[addon.id]" /><span class="vln-suffix">{{ currencyCode }}</span></div>
+                                    </div>
+                                    <div class="vln-field">
+                                        <label class="vln-label">Quantity</label>
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" @click="decrementQuantity(addon.id)" class="vln-qty-btn">-</button>
+                                            <span class="vln-qty-display">{{ addonQuantities[addon.id] || 1 }}</span>
+                                            <button type="button" @click="incrementQuantity(addon.id)" class="vln-qty-btn">+</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Package :size="18" /></div>
+                            <div><div class="vln-fg-title">Custom Add-ons</div><div class="vln-fg-sub">Extras your renters can book</div></div>
+                        </div>
+                        <span v-if="errors.custom_addons" class="vln-error mb-3"><AlertCircle :size="13" /> {{ errors.custom_addons }}</span>
+                        <div v-for="(addon, index) in customAddons" :key="addon.id" class="vln-addon-row">
+                            <div class="vln-field"><label class="vln-label">Name</label><input class="vln-input" v-model="addon.extra_name" placeholder="e.g. Baby Seat" /></div>
+                            <div class="vln-field"><label class="vln-label">Type</label><input class="vln-input" v-model="addon.extra_type" placeholder="e.g. equipment" /></div>
+                            <div class="vln-field"><label class="vln-label">Price/day</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model.number="addon.price" min="0" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
+                            <div class="vln-field"><label class="vln-label">Qty</label><input class="vln-input" type="number" v-model.number="addon.quantity" min="1" /></div>
+                            <button type="button" class="vln-addon-remove" @click="removeCustomAddon(addon.id)"><X :size="14" /></button>
+                        </div>
+                        <button type="button" class="vln-addon-add" @click="addCustomAddon"><Plus :size="16" /> Add an extra</button>
+                    </div>
+                </section>
+
+                <!-- STEP 6: Photos -->
+                <section v-show="currentStep === 6" class="vln-step" key="step-6">
+                    <div class="vln-step-header">
+                        <h1>Show off your vehicle</h1>
+                        <p>Upload high-quality images. The first image is your cover photo.</p>
+                    </div>
+                    <div class="vln-tip">
+                        <Camera :size="16" class="shrink-0 mt-0.5" />
+                        <p>Use natural daylight, shoot all angles (front, back, sides, interior, trunk), and clean your car before photographing.</p>
+                    </div>
+
+                    <div v-if="props.vehicle && props.vehicle.images && props.vehicle.images.length > 0" class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Camera :size="18" /></div>
+                            <div><div class="vln-fg-title">Current Images</div><div class="vln-fg-sub">{{ props.vehicle.images.length }} image{{ props.vehicle.images.length === 1 ? '' : 's' }} uploaded</div></div>
+                        </div>
+                        <div class="vln-preview-grid">
+                            <div v-for="image in props.vehicle.images" :key="image.id" class="vln-preview"
+                                :class="{ primary: image.image_type === 'primary' }">
+                                <img :src="image.image_url" alt="Vehicle" />
+                                <div class="vln-preview-actions">
+                                    <button v-if="image.image_type !== 'primary'" type="button"
+                                        @click="setExistingImageAsPrimary(image.id)" title="Set as cover"
+                                        class="vln-preview-btn">
+                                        <Star :size="12" />
+                                    </button>
+                                    <button type="button" @click="deleteImage(props.vehicle.id, image.id)"
+                                        title="Delete" class="vln-preview-btn danger">
+                                        <X :size="12" />
+                                    </button>
+                                </div>
+                                <span v-if="image.image_type === 'primary'" class="vln-cover-badge">Cover</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="!props.vehicle || !props.vehicle.images || props.vehicle.images.length < 20" class="vln-field-group">
+                        <div class="vln-fg-header">
+                            <div class="vln-fg-icon"><Upload :size="18" /></div>
+                            <div><div class="vln-fg-title">Upload New Images</div><div class="vln-fg-sub">JPG, PNG up to 10MB each</div></div>
+                        </div>
+                        <div class="vln-upload-zone" @dragenter="onDragEnter" @dragleave="onDragLeave" @dragover="onDragOver" @drop="onDrop">
+                            <div class="vln-upload-icon"><Upload :size="22" /></div>
+                            <div class="vln-upload-title">Drag & drop or <label for="images-edit" class="vln-upload-browse">browse files</label></div>
+                            <div class="vln-upload-hint">JPG, PNG up to 10MB each.</div>
+                            <input type="file" id="images-edit" ref="fileInput" @change="handleFileUpload" multiple class="hidden" accept="image/*" />
+                        </div>
+                        <div v-if="selectedFiles.length" class="vln-preview-grid mt-3">
+                            <div v-for="(file, index) in selectedFiles" :key="index" class="vln-preview"
+                                :class="{ primary: form.primary_image_index === index }">
+                                <img :src="getNewImageUrl(file)" alt="New upload" />
+                                <div class="vln-preview-actions">
+                                    <button type="button" @click="setNewImageAsPrimary(index)" title="Set as cover"
+                                        class="vln-preview-btn" :class="{ active: form.primary_image_index === index }">
+                                        <Star :size="12" />
+                                    </button>
+                                    <button type="button" @click="removeFile(index)" title="Remove" class="vln-preview-btn danger"><X :size="12" /></button>
+                                </div>
+                                <span v-if="form.primary_image_index === index" class="vln-cover-badge">Cover</span>
+                            </div>
+                        </div>
+                        <span v-if="errors.images" class="vln-error mt-2"><AlertCircle :size="13" /> {{ errors.images }}</span>
+                    </div>
+                    <p v-else class="text-amber-600 text-sm">Maximum of 20 images reached. Delete an existing image to upload more.</p>
+                </section>
+            </div>
+
+        </div>
+
+        <div class="vln-action-bar">
+            <div class="vln-action-inner">
+                <div class="vln-action-info">Step <strong>{{ currentStep + 1 }}</strong> of <strong>{{ stepNames.length }}</strong> &middot; {{ stepNames[currentStep] }}</div>
+                <div class="vln-action-buttons">
+                    <button v-if="currentStep > 0" class="vln-btn-back" @click="prevStep"><ArrowLeft :size="16" /> Back</button>
+                    <button v-if="currentStep < stepNames.length - 1" class="vln-btn-next" @click="nextStep" :disabled="isLoading">
+                        Continue <ChevronRight :size="16" />
+                    </button>
+                    <button v-else class="vln-btn-submit" @click="updateVehicle" :disabled="isLoading">
+                        <span v-if="isLoading" class="vln-spinner-sm"></span>
+                        <template v-else><CheckCircle2 :size="16" /> Update Vehicle</template>
+                    </button>
                 </div>
+            </div>
+        </div>
+
+        <div v-if="showErrorDialog" class="vln-dialog-overlay" @click="closeErrorDialog">
+            <div class="vln-dialog" @click.stop>
+                <AlertCircle :size="24" class="text-red-500" />
+                <p>{{ errorMessage }}</p>
+                <button @click="closeErrorDialog" class="vln-btn-next mt-3">OK</button>
             </div>
         </div>
     </MyProfileLayout>
 </template>
 
-
 <script setup>
-import { ref, onMounted, computed, watch, nextTick, getCurrentInstance, reactive } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from "@inertiajs/vue3";
+import { computed, getCurrentInstance, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import MyProfileLayout from "@/Layouts/MyProfileLayout.vue";
+import LocationPicker from "@/Components/LocationPicker.vue";
+import axios from "axios";
 import { useToast } from 'vue-toastification';
+import Select from "@/Components/ui/select/Select.vue";
+import SelectItem from "@/Components/ui/select/SelectItem.vue";
+import { SelectContent, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import { usePage } from '@inertiajs/vue3';
-import InputLabel from '@/Components/InputLabel.vue';
-import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
-import axios from 'axios';
-import { Link } from '@inertiajs/vue3';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
+import VueDatePicker from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css';
+import vehicleColorsFromJson from '../../../data/colors.json';
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectTrigger,
-    SelectValue,
-} from '@/Components/ui/select';
-import loader from "../../../../assets/loader.gif";
-
-import { Input } from '@/Components/ui/input';
-import { Button } from '@/Components/ui/button';
-import { Badge } from '@/Components/ui/badge';
-import LocationPicker from '@/Components/LocationPicker.vue';
-import VueDatePicker from '@vuepic/vue-datepicker'
-import '@vuepic/vue-datepicker/dist/main.css'
-import predefinedColors from '../../../data/colors.json'
-import {
-    Edit,
-    X,
-    Loader2,
-    MapPin,
-    Save,
-    Plus,
-    Trash2,
-    Eye,
-    Star,
+    CalendarDays, Clock, Copy, AlertCircle, Car, Wrench, CheckCircle2,
+    MapPin, DollarSign, Shield, Package, Camera, ChevronRight, ArrowLeft,
+    HelpCircle, X, Upload, CreditCard, Banknote, FileText, Gauge, Star,
+    Info, Zap, Plus, Snowflake, Navigation, Bluetooth, Video, KeyRound,
+    Usb, Sun, Armchair, ParkingCircle, Gauge as CruiseIcon, Baby, Wifi,
+    CircleDot, Lock, Lightbulb, Music, Wind, ThermometerSun, Eye
 } from 'lucide-vue-next';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
 
+const page = usePage();
+const currencyCode = computed(() => page.props.auth?.user?.profile?.currency || page.props.currency || 'USD');
 const toast = useToast();
-const { props } = usePage();
+const customAddons = ref([]);
+const stepNames = ['Details', 'Registration', 'Location', 'Pricing', 'Protection', 'Add-ons', 'Photos'];
+const formCol = ref(null);
+
+const paymentOptions = [
+    { value: 'credit_card', label: 'Credit Card', icon: CreditCard },
+    { value: 'bank_wire', label: 'Bank Wire', icon: DollarSign },
+    { value: 'cash', label: 'Cash', icon: Banknote },
+    { value: 'cheque', label: 'Cheque', icon: FileText },
+];
+
+const props = defineProps({
+    vehicle: { type: Object, required: true },
+    categories: { type: Array, default: () => [] },
+});
+
+const defaultOperatingHours = [
+    { day: 0, day_name: 'Monday',    is_open: true, open_time: '08:00', close_time: '18:00' },
+    { day: 1, day_name: 'Tuesday',   is_open: true, open_time: '08:00', close_time: '18:00' },
+    { day: 2, day_name: 'Wednesday', is_open: true, open_time: '08:00', close_time: '18:00' },
+    { day: 3, day_name: 'Thursday',  is_open: true, open_time: '08:00', close_time: '18:00' },
+    { day: 4, day_name: 'Friday',    is_open: true, open_time: '08:00', close_time: '18:00' },
+    { day: 5, day_name: 'Saturday',  is_open: true, open_time: '09:00', close_time: '14:00' },
+    { day: 6, day_name: 'Sunday',    is_open: false, open_time: null, close_time: null },
+];
+
+const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const form = useForm({
+    category_id: null, brand: "", model: "", color: "", mileage: 0,
+    transmission: "manual", fuel: "petrol", seating_capacity: 1,
+    number_of_doors: 2, luggage_capacity: 0, horsepower: 0, co2: "",
+    location: "", location_type: "", latitude: null, longitude: null,
+    city: "", state: "", country: "", status: "available",
+    features: [], featured: false, security_deposit: 0,
+    payment_method: [], guidelines: "", terms_policy: "",
+    price_per_day: 0, price_per_week: null, price_per_month: null,
+    weekly_discount: null, monthly_discount: null, preferred_price_type: 'day',
+    registration_number: "", registration_country: "", registration_date: "",
+    gross_vehicle_mass: 0, vehicle_height: 0, dealer_cost: 0, phone_number: "",
+    images: [],
+    pickup_times: [], return_times: [],
+    operating_hours: defaultOperatingHours.map(d => ({ ...d })),
+    benefits: {
+        limited_km_per_day: false, limited_km_per_week: false, limited_km_per_month: false,
+        limited_km_per_day_range: null, limited_km_per_week_range: null, limited_km_per_month_range: null,
+        cancellation_available_per_day: false, cancellation_available_per_week: false, cancellation_available_per_month: false,
+        cancellation_available_per_day_date: null, cancellation_available_per_week_date: null, cancellation_available_per_month_date: null,
+        price_per_km_per_day: 0, price_per_km_per_week: 0, price_per_km_per_month: 0,
+        minimum_driver_age: 18
+    },
+    selected_plans: [], selected_addons: [],
+    addon_prices: {}, addon_quantities: {},
+    custom_addons: [],
+    primary_image_index: null,
+    existing_primary_image_id: null,
+    full_vehicle_address: '',
+});
+
+const selectedTypes = reactive({ day: true, week: false, month: false });
+
+const pricePerDay = computed(() => { const v = Number(form.price_per_day); return Number.isFinite(v) ? v : 0; });
+const operatingHoursError = computed(() => {
+    if (!form.operating_hours.some(d => d.is_open)) return 'At least one day must be open.';
+    for (const day of form.operating_hours) {
+        if (day.is_open && day.open_time && day.close_time && day.close_time <= day.open_time) return `${day.day_name}: Close time must be after open time.`;
+        if (day.is_open && (!day.open_time || !day.close_time)) return `${day.day_name}: Both open and close times are required.`;
+    }
+    return null;
+});
+const displayedFullAddress = computed(() => {
+    return [form.location, form.city, form.state, form.country].filter(p => p !== null && p !== '').join(', ');
+});
+
+const customFeatureInput = ref('');
+const allFeatures = ref([
+    { name: 'Air Conditioning', icon: Snowflake },
+    { name: 'GPS Navigation', icon: Navigation },
+    { name: 'Bluetooth', icon: Bluetooth },
+    { name: 'Backup Camera', icon: Video },
+    { name: 'Keyless Entry', icon: KeyRound },
+    { name: 'USB Charging', icon: Usb },
+    { name: 'Sunroof', icon: Sun },
+    { name: 'Heated Seats', icon: ThermometerSun },
+    { name: 'Parking Sensors', icon: ParkingCircle },
+    { name: 'Cruise Control', icon: CruiseIcon },
+    { name: 'Baby Seat', icon: Baby },
+    { name: 'Wi-Fi Hotspot', icon: Wifi },
+    { name: 'Apple CarPlay', icon: Music },
+    { name: 'Android Auto', icon: Music },
+    { name: 'Blind Spot Monitor', icon: Eye },
+    { name: 'Lane Assist', icon: CircleDot },
+    { name: 'Central Locking', icon: Lock },
+    { name: 'LED Headlights', icon: Lightbulb },
+    { name: 'Power Windows', icon: Wind },
+    { name: 'All-Wheel Drive', icon: Car },
+]);
+
+const addCustomFeature = () => {
+    const name = customFeatureInput.value.trim();
+    if (!name) return;
+    if (allFeatures.value.some(f => f.name.toLowerCase() === name.toLowerCase())) {
+        if (!form.features.includes(name)) toggleFeature(name);
+    } else {
+        allFeatures.value.push({ name, icon: Star });
+        form.features.push(name);
+    }
+    customFeatureInput.value = '';
+};
+
+const vehicleColors = ref(vehicleColorsFromJson);
+const countries = ref([]);
+const isLoading = ref(false);
+const currentStep = ref(0);
+const highestStepReached = ref(6);
+const errorMessage = ref('');
+const showErrorDialog = ref(false);
+const dragCounter = ref(0);
+const formErrors = ref({});
 const fileInput = ref(null);
 const selectedFiles = ref([]);
 const maxImages = 20;
-const isLoading = ref(false);
-const allowFormSubmit = ref(true); // Flag to control form submission
-const colors = ref(predefinedColors);
-const formErrors = ref({});
-const currencyCode = computed(() => props.auth?.user?.profile?.currency || props.currency || 'USD');
-
-const selectedTypes = reactive({
-    day: true,
-    week: false,
-    month: false
-});
-
-const createCoverageFields = () => Array.from({ length: 5 }, () => '');
-
-const protectionPlans = reactive([
-    { key: 'essential', plan_type: 'Essential', price: null, features: createCoverageFields(), selected: false },
-    { key: 'premium', plan_type: 'Premium', price: null, features: createCoverageFields(), selected: false },
-    { key: 'premium_plus', plan_type: 'Premium Plus', price: null, features: createCoverageFields(), selected: false }
-]);
-
-const planErrors = reactive({
-    essential: '',
-    premium: '',
-    premium_plus: ''
-});
 
 const addons = ref([]);
 const selectedAddons = ref([]);
 const addonPrices = ref({});
 const addonQuantities = ref({});
 const existingAddonSelections = ref({});
-const customAddons = ref([]);
 
-const formatDate = (value) => {
-    if (!value) {
-        form.registration_date = null
-        return
-    }
-    const date = new Date(value)
-    form.registration_date = date.toISOString().split('T')[0] // Sets to 'YYYY-MM-DD'
-}
+const createCoverageFields = () => Array.from({ length: 5 }, () => '');
+const protectionPlans = reactive([
+    { key: 'essential', plan_type: 'Essential', price: null, features: createCoverageFields(), selected: false },
+    { key: 'premium', plan_type: 'Premium', price: null, features: createCoverageFields(), selected: false },
+    { key: 'premium_plus', plan_type: 'Premium Plus', price: null, features: createCoverageFields(), selected: false },
+]);
+const planErrors = reactive({ essential: '', premium: '', premium_plus: '' });
 
-watch(isLoading, (newValue) => {
-    if (newValue) {
-        document.body.style.overflow = 'hidden';
-    } else {
-        document.body.style.overflow = '';
-    }
+const errors = reactive({
+    category_id: '', brand: '', model: '', color: '', mileage: '', horsepower: '', co2: '', features: '',
+    registration_number: '', registration_country: '', registration_date: '', phone_number: '',
+    location: '', location_type: '', latitude: '', longitude: '',
+    security_deposit: '', payment_method: '', terms_policy: '', minimum_driver_age: '',
+    price_per_day: '', price_per_week: '', price_per_month: '', custom_addons: '', images: '',
+    operating_hours: '',
 });
 
-const form = useForm({
-    category_id: null,
-    brand: '',
-    model: '',
-    color: '',
-    mileage: 0,
-    transmission: 'manual',
-    fuel: 'petrol',
-    seating_capacity: 1,
-    number_of_doors: 2,
-    luggage_capacity: 0,
-    horsepower: 0,
-    co2: '',
-    location: '',
-    location_type: '',
-    city: '',
-    state: '',
-    country: '',
-    latitude: null,
-    longitude: null,
-    status: 'available',
-    features: [],
-    featured: false,
-    security_deposit: 0.00,
-    payment_method: [],
-    guidelines: "",
-    terms_policy: "",
-    price_per_day: 0.00,
-    price_per_week: 0.00,
-    price_per_month: 0.00,
-    weekly_discount: 0.00,
-    monthly_discount: 0.00,
-    preferred_price_type: 'day',
-    registration_number: '',
-    registration_country: '',
-    registration_date: '',
-    gross_vehicle_mass: 0,
-    vehicle_height: 0.00,
-    dealer_cost: 0.00,
-    phone_number: '',
-    images: [],
-    pickup_times: [],
-    return_times: [],
-    benefits: {
-        limited_km_per_day: false,
-        limited_km_per_week: false,
-        limited_km_per_month: false,
-        limited_km_per_day_range: null,
-        limited_km_per_week_range: null,
-        limited_km_per_month_range: null,
-        cancellation_available_per_day: false,
-        cancellation_available_per_week: false,
-        cancellation_available_per_month: false,
-        cancellation_available_per_day_date: null,
-        cancellation_available_per_week_date: null,
-        cancellation_available_per_month_date: null,
-        price_per_km_per_day: 0.00,
-        price_per_km_per_week: 0.00,
-        price_per_km_per_month: 0.00,
-        minimum_driver_age: 18
-    },
-    selected_plans: [],
-    selected_addons: [],
-    addon_prices: {},
-    addon_quantities: {},
-    custom_addons: [],
-    primary_image_index: null, // For new uploads
-    existing_primary_image_id: null, // For existing images
-    full_vehicle_address: '', // Initialize new field
-})
+const toPrice = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.round(n * 100) / 100 : null; };
+const normalizeFeatures = (f) => f.map(x => x.trim()).filter(Boolean).slice(0, 5);
+const isPlanActive = (p) => p.selected;
 
-const remainingImageSlots = computed(() => {
-    if (!props.vehicle || !props.vehicle.images) return maxImages
-    return Math.max(0, maxImages - props.vehicle.images.length)
-})
-
-const pricePerDay = computed(() => {
-    const value = Number(form.price_per_day);
-    return Number.isFinite(value) ? value : 0;
-});
-
-const toPrice = (value) => {
-    const number = Number(value);
-    if (!Number.isFinite(number)) {
-        return null;
-    }
-    return Math.round(number * 100) / 100;
+const toggleFeature = (name) => {
+    const idx = form.features.indexOf(name);
+    idx === -1 ? form.features.push(name) : form.features.splice(idx, 1);
 };
 
-const normalizeFeatures = (features) => features
-    .map(feature => `${feature}`.trim())
-    .filter(Boolean)
-    .slice(0, 5);
+const togglePaymentMethod = (value) => {
+    const idx = form.payment_method.indexOf(value);
+    idx === -1 ? form.payment_method.push(value) : form.payment_method.splice(idx, 1);
+};
 
-const isPlanActive = (plan) => plan.selected;
+const applyHoursToAllDays = () => {
+    const f = form.operating_hours[0];
+    if (!f) return;
+    form.operating_hours.forEach((d, i) => { if (i > 0) { d.is_open = f.is_open; d.open_time = f.open_time; d.close_time = f.close_time; } });
+};
+
+const ensurePreferredPriceType = () => {
+    const types = ['day'];
+    if (selectedTypes.week) types.push('week');
+    if (selectedTypes.month) types.push('month');
+    if (!types.includes(form.preferred_price_type)) form.preferred_price_type = types[0];
+};
 
 const validateProtectionPlans = () => {
-    planErrors.essential = '';
-    planErrors.premium = '';
-    planErrors.premium_plus = '';
-
-    const minPrice = pricePerDay.value;
-    let isValid = true;
-
-    protectionPlans.forEach(plan => {
-        if (!isPlanActive(plan)) {
-            return;
-        }
-
-        const priceValue = Number(plan.price);
-        if (!Number.isFinite(priceValue) || priceValue <= 0) {
-            planErrors[plan.key] = 'Price is required.';
-            isValid = false;
-            return;
-        }
-
-        if (priceValue < minPrice) {
-            planErrors[plan.key] = `Price must be at least ${minPrice} ${currencyCode.value}.`;
-            isValid = false;
-        }
+    planErrors.essential = ''; planErrors.premium = ''; planErrors.premium_plus = '';
+    const min = pricePerDay.value; let ok = true;
+    protectionPlans.forEach(p => {
+        if (!isPlanActive(p)) return;
+        const v = Number(p.price);
+        if (!Number.isFinite(v) || v <= 0) { planErrors[p.key] = 'Price is required.'; ok = false; return; }
+        if (v < min) { planErrors[p.key] = `Price must be at least ${min} ${currencyCode.value}.`; ok = false; }
     });
-
-    return isValid;
+    return ok;
 };
 
 const togglePlanSelection = (plan) => {
     plan.selected = !plan.selected;
-
-    if (!plan.selected) {
-        plan.price = null;
-        plan.features = createCoverageFields();
-        planErrors[plan.key] = '';
-    }
+    if (!plan.selected) { plan.price = null; plan.features = createCoverageFields(); planErrors[plan.key] = ''; }
 };
 
 const buildSelectedPlans = () => {
-    let planId = 1;
-    return protectionPlans.reduce((plans, plan) => {
-        if (!isPlanActive(plan)) {
-            return plans;
-        }
-
-        plans.push({
-            plan_id: planId,
-            plan_type: plan.plan_type,
-            plan_value: Number(plan.price),
-            plan_description: null,
-            features: normalizeFeatures(plan.features)
-        });
-        planId += 1;
-        return plans;
+    let id = 1;
+    return protectionPlans.reduce((acc, p) => {
+        if (!isPlanActive(p)) return acc;
+        acc.push({ plan_id: id, plan_type: p.plan_type, plan_value: Number(p.price), plan_description: null, features: normalizeFeatures(p.features) });
+        id++; return acc;
     }, []);
 };
 
@@ -1383,31 +951,49 @@ const toggleAddonSelection = (addonId) => {
         selectedAddons.value.splice(index, 1);
     } else {
         selectedAddons.value.push(addonId);
-        if (!addonQuantities.value[addonId]) {
-            addonQuantities.value[addonId] = 1;
-        }
+        if (!addonQuantities.value[addonId]) addonQuantities.value[addonId] = 1;
     }
 };
 
 const incrementQuantity = (addonId) => {
-    if (!isAddonSelected(addonId)) {
-        return;
-    }
-    if (!addonQuantities.value[addonId]) {
-        addonQuantities.value[addonId] = 1;
-    }
+    if (!isAddonSelected(addonId)) return;
+    if (!addonQuantities.value[addonId]) addonQuantities.value[addonId] = 1;
     addonQuantities.value[addonId]++;
 };
 
 const decrementQuantity = (addonId) => {
-    if (!isAddonSelected(addonId)) {
-        return;
-    }
-    if (addonQuantities.value[addonId] > 1) {
-        addonQuantities.value[addonId]--;
-    }
+    if (!isAddonSelected(addonId)) return;
+    if (addonQuantities.value[addonId] > 1) addonQuantities.value[addonId]--;
 };
 
+const addCustomAddon = () => {
+    customAddons.value.push({ id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, extra_name: '', extra_type: '', description: '', price: 0, quantity: 1 });
+};
+const removeCustomAddon = (id) => { customAddons.value = customAddons.value.filter(a => a.id !== id); };
+
+const buildCustomAddons = () => {
+    return customAddons.value.map(a => ({
+        extra_name: `${a.extra_name || ''}`.trim(),
+        extra_type: `${a.extra_type || ''}`.trim() || 'custom',
+        description: `${a.description || ''}`.trim(),
+        price: a.price,
+        quantity: a.quantity || 1
+    })).filter(a => a.extra_name || a.description || Number(a.price) > 0);
+};
+
+const validateCustomAddons = (payload) => {
+    const errs = [];
+    payload.forEach((addon, index) => {
+        if (!addon.extra_name) errs.push(`Custom addon ${index + 1}: name is required.`);
+        const pv = Number(addon.price);
+        if (!Number.isFinite(pv) || pv < 0) errs.push(`Custom addon ${index + 1}: price must be 0 or more.`);
+        const qv = Number(addon.quantity);
+        if (!Number.isFinite(qv) || qv < 1) errs.push(`Custom addon ${index + 1}: quantity must be at least 1.`);
+    });
+    return errs;
+};
+
+const fetchCountries = async () => { try { countries.value = await (await fetch('/countries.json')).json(); } catch (e) { console.error(e); } };
 const fetchAddons = async () => {
     try {
         const response = await axios.get('/api/booking-addons');
@@ -1418,136 +1004,59 @@ const fetchAddons = async () => {
             addonQuantities.value[addon.id] = existing?.quantity ?? 1;
         });
         selectedAddons.value = Object.keys(existingAddonSelections.value).map(id => Number(id));
-    } catch (error) {
-        console.error('Error fetching addons:', error);
-    }
+    } catch (error) { console.error('Error fetching addons:', error); }
 };
 
-const addCustomAddon = () => {
-    customAddons.value.push({
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        extra_name: '',
-        extra_type: '',
-        description: '',
-        price: 0,
-        quantity: 1
-    });
+const handleLocationSelect = (loc) => {
+    form.location = loc.address || loc.formattedAddress || '';
+    form.latitude = Number.isFinite(Number(loc.latitude)) ? Number(loc.latitude) : null;
+    form.longitude = Number.isFinite(Number(loc.longitude)) ? Number(loc.longitude) : null;
+    form.city = loc.city || ''; form.state = loc.state || ''; form.country = loc.country || '';
 };
 
-const removeCustomAddon = (addonId) => {
-    customAddons.value = customAddons.value.filter(addon => addon.id !== addonId);
-};
+const getFlagUrl = (code) => `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
+const formatDate = (v) => { if (!v) { form.registration_date = null; return; } form.registration_date = new Date(v).toISOString().split('T')[0]; };
 
-const buildCustomAddons = () => {
-    return customAddons.value
-        .map(addon => ({
-            extra_name: `${addon.extra_name || ''}`.trim(),
-            extra_type: `${addon.extra_type || ''}`.trim() || 'custom',
-            description: `${addon.description || ''}`.trim(),
-            price: addon.price,
-            quantity: addon.quantity || 1
-        }))
-        .filter(addon => addon.extra_name || addon.description || Number(addon.price) > 0);
-};
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const VALID_FORMATS = ['image/jpeg', 'image/jpg', 'image/png'];
 
-const validateCustomAddons = (payload) => {
-    const errors = [];
-    payload.forEach((addon, index) => {
-        if (!addon.extra_name) {
-            errors.push(`Custom addon ${index + 1}: name is required.`);
-        }
-        const priceValue = Number(addon.price);
-        if (!Number.isFinite(priceValue) || priceValue < 0) {
-            errors.push(`Custom addon ${index + 1}: price must be 0 or more.`);
-        }
-        const quantityValue = Number(addon.quantity);
-        if (!Number.isFinite(quantityValue) || quantityValue < 1) {
-            errors.push(`Custom addon ${index + 1}: quantity must be at least 1.`);
-        }
-    });
-    return errors;
-};
-
-const categories = ref([]);
-const availableFeatures = ref([]); // Will hold category-specific features
-const addPickupTime = () => {
-    form.pickup_times.push(""); // Push empty value for a new time input
-};
-const addReturnTime = () => {
-    form.return_times.push(""); // Push empty value for a new time input
-};
-
-const removePickupTime = (index) => {
-    form.pickup_times.splice(index, 1);
-};
-const removeReturnTime = (index) => {
-    form.return_times.splice(index, 1);
-};
-
-
-const fetchCategories = async () => {
-    try {
-        const response = await axios.get('/api/vehicle-categories')
-        categories.value = response.data
-    } catch (error) {
-        console.error('Error fetching vehicle categories:', error)
-    }
-}
-
-const fetchFeaturesForCategory = async (categoryId) => {
-    if (!categoryId) {
-        availableFeatures.value = [];
-        // form.features = []; // Optionally clear selected features
-        return;
-    }
-    try {
-        const response = await axios.get(route('api.categories.features', categoryId));
-        availableFeatures.value = response.data.map(feature => ({
-            id: feature.id,
-            name: feature.feature_name, // Ensure this matches the structure used in the template
-            icon_url: feature.icon_url
-        }));
-    } catch (error) {
-        console.error(`Error fetching vehicle features for category ${categoryId}:`, error);
-        availableFeatures.value = [];
-    }
-};
-
-
-const handleFileUpload = (event) => {
-    const newFiles = Array.from(event.target.files);
+const handleFileUpload = (e) => {
+    const newFiles = Array.from(e.target.files);
     const currentImagesCount = props.vehicle?.images?.length || 0;
     const totalAfterAdding = currentImagesCount + selectedFiles.value.length + newFiles.length;
-
     if (totalAfterAdding > maxImages) {
-        toast.error(`Maximum of ${maxImages} images allowed.`, { position: 'top-right' });
+        errorMessage.value = `Maximum of ${maxImages} images allowed.`;
+        showErrorDialog.value = true;
         return;
     }
-
+    for (const f of newFiles) {
+        if (!VALID_FORMATS.includes(f.type)) { errorMessage.value = 'Please upload only JPG or PNG images.'; showErrorDialog.value = true; return; }
+        if (f.size > MAX_FILE_SIZE) { errorMessage.value = 'Image size must be under 10MB.'; showErrorDialog.value = true; return; }
+    }
     selectedFiles.value = [...selectedFiles.value, ...newFiles];
-    form.images = selectedFiles.value; // This form field is used for submitting NEW files
+    form.images = selectedFiles.value;
+    if (form.primary_image_index === null && selectedFiles.value.length > 0 && !form.existing_primary_image_id) {
+        form.primary_image_index = 0;
+    }
 };
+
+const getNewImageUrl = (file) => URL.createObjectURL(file);
 
 const removeFile = (index) => {
     selectedFiles.value.splice(index, 1);
     form.images = selectedFiles.value;
-    if (form.primary_image_index === index) {
-        form.primary_image_index = null; // Reset if primary was removed
-    } else if (form.primary_image_index > index) {
-        form.primary_image_index--; // Adjust index
-    }
+    if (form.primary_image_index === index) form.primary_image_index = null;
+    else if (form.primary_image_index > index) form.primary_image_index--;
 };
 
 const setNewImageAsPrimary = (index) => {
     form.primary_image_index = index;
-    form.existing_primary_image_id = null; // Clear existing primary if new one is chosen
+    form.existing_primary_image_id = null;
 };
 
 const setExistingImageAsPrimary = (imageId) => {
     form.existing_primary_image_id = imageId;
-    form.primary_image_index = null; // Clear new primary if existing one is chosen
-
-    // Update local props.vehicle.images to reflect primary status for UI
+    form.primary_image_index = null;
     if (props.vehicle && props.vehicle.images) {
         props.vehicle.images.forEach(img => {
             img.image_type = img.id === imageId ? 'primary' : 'gallery';
@@ -1558,318 +1067,95 @@ const setExistingImageAsPrimary = (imageId) => {
 const deleteImage = async (vehicleId, imageId) => {
     try {
         await axios.delete(route('current-vendor-vehicles.deleteImage', { vehicle: vehicleId, image: imageId }));
-
-        // Remove image from local state
         const index = props.vehicle.images.findIndex(img => img.id === imageId);
-        if (index !== -1) {
-            props.vehicle.images.splice(index, 1);
-        }
-
-        toast.success('Image deleted successfully', {
-            position: 'top-right',
-            timeout: 3000
-        });
+        if (index !== -1) props.vehicle.images.splice(index, 1);
+        toast.success('Image deleted successfully', { position: 'top-right', timeout: 3000 });
     } catch (error) {
         console.error('Error deleting image:', error);
-        toast.error('Failed to delete image', {
-            position: 'top-right',
-            timeout: 3000
-        });
+        toast.error('Failed to delete image', { position: 'top-right', timeout: 3000 });
     }
 };
 
-// Handle location selection from LocationPicker
-const handleLocationSelect = (locationData) => {
-    form.location = locationData.address || locationData.formattedAddress || '';
-    form.city = locationData.city || '';
-    form.state = locationData.state || '';
-    form.country = locationData.country || '';
-    const parsedLatitude = Number(locationData.latitude);
-    const parsedLongitude = Number(locationData.longitude);
-    if (Number.isFinite(parsedLatitude)) {
-        form.latitude = parsedLatitude;
-    }
-    if (Number.isFinite(parsedLongitude)) {
-        form.longitude = parsedLongitude;
-    }
-
-    showLocationPicker.value = false; // Hide the picker component instance
-    allowFormSubmit.value = true;    // Re-allow form submission
-};
-
-const ensurePreferredPriceType = () => {
-    const allowedTypes = ['day'];
-    if (selectedTypes.week) {
-        allowedTypes.push('week');
-    }
-    if (selectedTypes.month) {
-        allowedTypes.push('month');
-    }
-    if (!allowedTypes.includes(form.preferred_price_type)) {
-        form.preferred_price_type = allowedTypes[0];
+const closeErrorDialog = () => { showErrorDialog.value = false; errorMessage.value = ''; };
+const onDragEnter = (e) => { e.preventDefault(); e.stopPropagation(); dragCounter.value++; };
+const onDragLeave = (e) => { e.preventDefault(); e.stopPropagation(); dragCounter.value--; };
+const onDragOver = (e) => { e.preventDefault(); e.stopPropagation(); };
+const onDrop = (e) => {
+    e.preventDefault(); e.stopPropagation(); dragCounter.value = 0;
+    const f = Array.from(e.dataTransfer.files);
+    if (f.length) {
+        const currentImagesCount = props.vehicle?.images?.length || 0;
+        const totalAfterAdding = currentImagesCount + selectedFiles.value.length + f.length;
+        if (totalAfterAdding > maxImages) {
+            errorMessage.value = `Maximum of ${maxImages} images allowed.`;
+            showErrorDialog.value = true;
+            return;
+        }
+        for (const file of f) {
+            if (!VALID_FORMATS.includes(file.type)) { errorMessage.value = 'Please upload only JPG or PNG images.'; showErrorDialog.value = true; return; }
+            if (file.size > MAX_FILE_SIZE) { errorMessage.value = 'Image size must be under 10MB.'; showErrorDialog.value = true; return; }
+        }
+        selectedFiles.value = [...selectedFiles.value, ...f];
+        form.images = selectedFiles.value;
+        if (form.primary_image_index === null && selectedFiles.value.length > 0 && !form.existing_primary_image_id) {
+            form.primary_image_index = 0;
+        }
     }
 };
 
-watch(() => selectedTypes.week, (isEnabled) => {
-    if (isEnabled) {
-        if ((form.price_per_week === null || form.price_per_week === '') && form.price_per_day) {
-            form.price_per_week = toPrice(Number(form.price_per_day) * 7);
-        }
-    } else {
-        form.price_per_week = null;
-        form.weekly_discount = null;
-    }
-    ensurePreferredPriceType();
-});
+const goToStep = (s) => { if (s <= highestStepReached.value) { currentStep.value = s; window.scrollTo(0, 0); } };
 
-watch(() => selectedTypes.month, (isEnabled) => {
-    if (isEnabled) {
-        if ((form.price_per_month === null || form.price_per_month === '') && form.price_per_day) {
-            form.price_per_month = toPrice(Number(form.price_per_day) * 30);
-        }
-    } else {
-        form.price_per_month = null;
-        form.monthly_discount = null;
-    }
-    ensurePreferredPriceType();
-});
-
-watch(() => form.price_per_day, (newVal) => {
-    if (!newVal) {
-        return;
-    }
-    if (selectedTypes.week && (form.price_per_week === null || form.price_per_week === '')) {
-        form.price_per_week = toPrice(Number(newVal) * 7);
-    }
-    if (selectedTypes.month && (form.price_per_month === null || form.price_per_month === '')) {
-        form.price_per_month = toPrice(Number(newVal) * 30);
-    }
-});
-
-
-// Watch checkbox changes to nullify associated values when unchecked
-watch(() => form.benefits.limited_km_per_day, (newValue) => {
-    if (!newValue) form.benefits.limited_km_per_day_range = null;
-});
-watch(() => form.benefits.limited_km_per_week, (newValue) => {
-    if (!newValue) form.benefits.limited_km_per_week_range = null;
-});
-watch(() => form.benefits.limited_km_per_month, (newValue) => {
-    if (!newValue) form.benefits.limited_km_per_month_range = null;
-});
-watch(() => form.benefits.cancellation_available_per_day, (newValue) => {
-    if (!newValue) form.benefits.cancellation_available_per_day_date = null;
-});
-watch(() => form.benefits.cancellation_available_per_week, (newValue) => {
-    if (!newValue) form.benefits.cancellation_available_per_week_date = null;
-});
-watch(() => form.benefits.cancellation_available_per_month, (newValue) => {
-    if (!newValue) form.benefits.cancellation_available_per_month_date = null;
-});
-
-
-onMounted(() => {
-    fetchCategories(); // Fetch all categories
-    if (props.vehicle) {
-        form.category_id = props.vehicle.category_id;
-        if (form.category_id) {
-            fetchFeaturesForCategory(form.category_id); // Fetch features for current category
-        }
-        form.brand = props.vehicle.brand;
-        form.model = props.vehicle.model
-        form.color = props.vehicle.color
-        form.mileage = props.vehicle.mileage
-        form.transmission = props.vehicle.transmission
-        form.fuel = props.vehicle.fuel
-        form.seating_capacity = props.vehicle.seating_capacity
-        form.number_of_doors = props.vehicle.number_of_doors
-        form.luggage_capacity = props.vehicle.luggage_capacity
-        form.horsepower = props.vehicle.horsepower
-        form.co2 = props.vehicle.co2
-        form.location = props.vehicle.location || '';
-        form.location_type = props.vehicle.location_type || '';
-        form.city = props.vehicle.city || '';
-        form.state = props.vehicle.state; // Correctly assign null if props.vehicle.state is null
-        form.country = props.vehicle.country || '';
-        const initialLatitude = Number(props.vehicle.latitude);
-        const initialLongitude = Number(props.vehicle.longitude);
-        form.latitude = Number.isFinite(initialLatitude) ? initialLatitude : null;
-        form.longitude = Number.isFinite(initialLongitude) ? initialLongitude : null;
-        form.full_vehicle_address = props.vehicle.full_vehicle_address || ''; // Populate from props
-        form.status = props.vehicle.status;
-        try {
-            // Ensure features are parsed correctly, might be an array of names or empty
-            const parsedFeatures = JSON.parse(props.vehicle.features);
-            form.features = Array.isArray(parsedFeatures) ? parsedFeatures : [];
-        } catch (e) {
-            form.features = [];
-        }
-        form.featured = props.vehicle.featured;
-        form.security_deposit = parseFloat(props.vehicle.security_deposit);
-        try {
-            form.payment_method = JSON.parse(props.vehicle.payment_method)
-        } catch (e) {
-            form.payment_method = []
-        }
-        const rawDaily = parseFloat(props.vehicle.price_per_day);
-        const rawWeekly = parseFloat(props.vehicle.price_per_week);
-        const rawMonthly = parseFloat(props.vehicle.price_per_month);
-        const rawWeeklyDiscount = parseFloat(props.vehicle.weekly_discount);
-        const rawMonthlyDiscount = parseFloat(props.vehicle.monthly_discount);
-
-        form.price_per_day = Number.isFinite(rawDaily) ? rawDaily : 0.00
-        form.price_per_week = Number.isFinite(rawWeekly) ? rawWeekly : null
-        form.price_per_month = Number.isFinite(rawMonthly) ? rawMonthly : null
-        form.weekly_discount = Number.isFinite(rawWeeklyDiscount) ? rawWeeklyDiscount : null
-        form.monthly_discount = Number.isFinite(rawMonthlyDiscount) ? rawMonthlyDiscount : null
-        form.preferred_price_type = props.vehicle.preferred_price_type
-
-        selectedTypes.week = Number.isFinite(rawWeekly) && rawWeekly > 0;
-        selectedTypes.month = Number.isFinite(rawMonthly) && rawMonthly > 0;
-        if (!selectedTypes.week) {
-            form.price_per_week = null;
-            form.weekly_discount = null;
-        }
-        if (!selectedTypes.month) {
-            form.price_per_month = null;
-            form.monthly_discount = null;
-        }
-        ensurePreferredPriceType();
-        form.guidelines = props.vehicle.guidelines;
-        form.terms_policy = props.vehicle.terms_policy || '';
-
-        // Set existing primary image ID if one exists
-        const primaryExistingImage = props.vehicle.images?.find(img => img.image_type === 'primary');
-        if (primaryExistingImage) {
-            form.existing_primary_image_id = primaryExistingImage.id;
-        }
-
-
-        // Handle benefits
-        if (props.vehicle.benefits) {
-            form.benefits = {
-                limited_km_per_day: !!props.vehicle.benefits.limited_km_per_day,
-                limited_km_per_week: !!props.vehicle.benefits.limited_km_per_week,
-                limited_km_per_month: !!props.vehicle.benefits.limited_km_per_month,
-                limited_km_per_day_range: props.vehicle.benefits.limited_km_per_day_range || null,
-                limited_km_per_week_range: props.vehicle.benefits.limited_km_per_week_range || null,
-                limited_km_per_month_range: props.vehicle.benefits.limited_km_per_month_range || null,
-                cancellation_available_per_day: !!props.vehicle.benefits.cancellation_available_per_day,
-                cancellation_available_per_week: !!props.vehicle.benefits.cancellation_available_per_week,
-                cancellation_available_per_month: !!props.vehicle.benefits.cancellation_available_per_month,
-                cancellation_available_per_day_date: props.vehicle.benefits.cancellation_available_per_day_date || null,
-                cancellation_available_per_week_date: props.vehicle.benefits.cancellation_available_per_week_date || null,
-                cancellation_available_per_month_date: props.vehicle.benefits.cancellation_available_per_month_date || null,
-                price_per_km_per_day: parseFloat(props.vehicle.benefits.price_per_km_per_day) || 0.00,
-                price_per_km_per_week: parseFloat(props.vehicle.benefits.price_per_km_per_week) || 0.00,
-                price_per_km_per_month: parseFloat(props.vehicle.benefits.price_per_km_per_month) || 0.00,
-                minimum_driver_age: props.vehicle.benefits.minimum_driver_age || 18
-            };
-        }
-
-        if (props.vehicle.latitude && props.vehicle.longitude) {
-            handleLocationSelect({
-                address: props.vehicle.location,
-                city: props.vehicle.city,
-                state: props.vehicle.state,
-                country: props.vehicle.country,
-                latitude: props.vehicle.latitude,
-                longitude: props.vehicle.longitude,
-            });
-        }
-
-        if (props.vehicle.specifications) {
-            form.registration_number = props.vehicle.specifications.registration_number
-            form.registration_country = props.vehicle.specifications.registration_country
-            form.registration_date = props.vehicle.specifications.registration_date
-            form.gross_vehicle_mass = props.vehicle.specifications.gross_vehicle_mass
-            form.vehicle_height = parseFloat(props.vehicle.specifications.vehicle_height) || 0.00
-            form.dealer_cost = parseFloat(props.vehicle.specifications.dealer_cost) || 0.00
-            form.phone_number = props.vehicle.specifications.phone_number
-        }
-
-        const existingPlans = props.vehicle.vendorPlans || props.vehicle.vendor_plans || [];
-        existingPlans.forEach((plan) => {
-            const planType = `${plan.plan_type || ''}`.toLowerCase();
-            const match = protectionPlans.find(entry => entry.plan_type.toLowerCase() === planType);
-            if (!match) {
-                return;
-            }
-            match.selected = true;
-            match.price = parseFloat(plan.price) || 0;
-            let planFeatures = [];
-            if (Array.isArray(plan.features)) {
-                planFeatures = plan.features;
-            } else if (typeof plan.features === 'string') {
-                try {
-                    planFeatures = JSON.parse(plan.features || '[]');
-                } catch (error) {
-                    planFeatures = [];
-                }
-            }
-            match.features = Array.isArray(planFeatures) && planFeatures.length
-                ? [...planFeatures, ...createCoverageFields()].slice(0, 5)
-                : createCoverageFields();
-        });
-
-        const existingAddons = props.vehicle.addons || [];
-        existingAddons.forEach((addon) => {
-            const addonId = addon.addon_id ?? addon.addon?.id ?? addon.id;
-            if (!addonId) {
-                return;
-            }
-            existingAddonSelections.value[addonId] = {
-                price: parseFloat(addon.price) || 0,
-                quantity: parseInt(addon.quantity, 10) || 1
-            };
-        });
-        if (props.vehicle.pickup_times && typeof props.vehicle.pickup_times === 'string') {
-            form.pickup_times = props.vehicle.pickup_times.split(',').filter(Boolean);
-        } else if (Array.isArray(props.vehicle.pickup_times)) {
-            form.pickup_times = [...props.vehicle.pickup_times];
-        } else {
-            form.pickup_times = ["09:00"]; // Default time
-        }
-
-        // Handle return_times similarly
-        if (props.vehicle.return_times && typeof props.vehicle.return_times === 'string') {
-            form.return_times = props.vehicle.return_times.split(',').filter(Boolean);
-        } else if (Array.isArray(props.vehicle.return_times)) {
-            form.return_times = [...props.vehicle.return_times];
-        } else {
-            form.return_times = ["17:00"]; // Default time
+const nextStep = () => {
+    let ok = true;
+    Object.keys(errors).forEach(k => errors[k] = '');
+    switch (currentStep.value) {
+        case 0:
+            if (!form.category_id) { ok = false; errors.category_id = 'Please select a vehicle category'; }
+            if (!form.brand) { ok = false; errors.brand = 'Please enter the vehicle brand'; }
+            if (!form.model) { ok = false; errors.model = 'Please enter the vehicle model'; }
+            if (!form.color) { ok = false; errors.color = 'Please select a color'; }
+            break;
+        case 1:
+            if (!form.registration_number) { ok = false; errors.registration_number = 'Please enter registration number'; }
+            if (!form.registration_country) { ok = false; errors.registration_country = 'Please select country'; }
+            if (!form.registration_date) { ok = false; errors.registration_date = 'Please enter registration date'; }
+            if (!form.phone_number) { ok = false; errors.phone_number = 'Please enter phone number'; }
+            break;
+        case 2:
+            if (!form.location || form.latitude === null || form.longitude === null) { ok = false; errors.location = 'Please select a valid address'; }
+            if (!form.location_type) { ok = false; errors.location_type = 'Please select location type'; }
+            break;
+        case 3:
+            if (!form.price_per_day) { ok = false; errors.price_per_day = 'Please enter daily price'; }
+            if (!form.payment_method.length) { ok = false; errors.payment_method = 'Please select at least one payment method'; }
+            if (operatingHoursError.value) { ok = false; errors.operating_hours = operatingHoursError.value; }
+            break;
+        case 4:
+            if (!validateProtectionPlans()) ok = false;
+            break;
+        case 5: {
+            const norm = buildCustomAddons();
+            const addonErrs = validateCustomAddons(norm);
+            if (addonErrs.length) { ok = false; errors.custom_addons = addonErrs[0]; }
+            break;
         }
     }
-
-    fetchAddons();
-
-    // Log the form data to the console
-    console.log('Form Data:', form);
-})
-
-const displayedFullAddress = computed(() => {
-    const parts = [form.location, form.city, form.state, form.country];
-    return parts.filter(part => part !== null && part !== '').join(', ');
-});
-
-const getStatusBadgeVariant = (status) => {
-    switch (status) {
-        case 'available': return 'default';
-        case 'rented': return 'secondary';
-        case 'maintenance': return 'destructive';
-        default: return 'outline';
+    if (ok && currentStep.value < stepNames.length - 1) {
+        currentStep.value++;
+        if (currentStep.value > highestStepReached.value) highestStepReached.value = currentStep.value;
+        window.scrollTo(0, 0);
+    } else if (!ok) {
+        const el = document.querySelector('.vln-error');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 };
+
+const prevStep = () => { if (currentStep.value > 0) currentStep.value--; };
 
 const updateVehicle = () => {
-    if (!allowFormSubmit.value) {
-        // console.warn('Form submission blocked because LocationPicker is active or was just interacted with.');
-        return;
-    }
     isLoading.value = true;
     formErrors.value = {};
 
-    // Construct full_vehicle_address before getting form.data()
     const addressParts = [form.location, form.city, form.state, form.country];
     form.full_vehicle_address = addressParts.filter(Boolean).join(', ');
 
@@ -1894,46 +1180,32 @@ const updateVehicle = () => {
     form.addon_quantities = addonQuantities.value;
     form.custom_addons = customAddonsPayload;
 
-    // Get a plain JS object of the form data to modify for submission
     let submitData = form.data();
 
-    // Define numeric fields at the top level that should be null if their value is 0
     const numericFieldsToNullifyIfZero = [
         'mileage', 'luggage_capacity', 'horsepower', 'security_deposit',
         'price_per_day', 'price_per_week', 'price_per_month',
         'weekly_discount', 'monthly_discount', 'gross_vehicle_mass',
         'vehicle_height', 'dealer_cost'
     ];
-
     numericFieldsToNullifyIfZero.forEach(key => {
-        if (submitData.hasOwnProperty(key) && Number(submitData[key]) === 0) {
-            submitData[key] = null;
-        }
+        if (submitData.hasOwnProperty(key) && Number(submitData[key]) === 0) submitData[key] = null;
     });
 
-    // Define numeric fields within 'benefits' that should be null if their value is 0
-    // This also includes fields that are set to null by watch functions if their checkbox is false
-    const benefitNumericFieldsToNullifyIfZeroOrAlreadyNull = [
+    const benefitNumericFields = [
         'limited_km_per_day_range', 'limited_km_per_week_range', 'limited_km_per_month_range',
         'cancellation_available_per_day_date', 'cancellation_available_per_week_date', 'cancellation_available_per_month_date',
         'price_per_km_per_day', 'price_per_km_per_week', 'price_per_km_per_month'
     ];
-
     if (submitData.benefits) {
-        benefitNumericFieldsToNullifyIfZeroOrAlreadyNull.forEach(key => {
-            // If it's already null (e.g., from a watch function), keep it null.
-            // If it's 0 (e.g., from an empty v-model.number input), make it null.
+        benefitNumericFields.forEach(key => {
             if (submitData.benefits.hasOwnProperty(key)) {
-                if (submitData.benefits[key] === null) {
-                    // Already null, do nothing
-                } else if (Number(submitData.benefits[key]) === 0) {
-                    submitData.benefits[key] = null;
-                }
+                if (submitData.benefits[key] === null) { /* keep null */ }
+                else if (Number(submitData.benefits[key]) === 0) submitData.benefits[key] = null;
             }
         });
     }
 
-    // Ensure specific top-level fields are numbers if they are not null and not empty strings
     const fieldsToEnsureNumber = [
         'mileage', 'luggage_capacity', 'horsepower', 'security_deposit',
         'price_per_day', 'price_per_week', 'price_per_month',
@@ -1941,22 +1213,19 @@ const updateVehicle = () => {
         'vehicle_height', 'dealer_cost', 'seating_capacity', 'number_of_doors',
         'latitude', 'longitude'
     ];
-
     fieldsToEnsureNumber.forEach(key => {
         if (submitData.hasOwnProperty(key) && submitData[key] !== null && submitData[key] !== '') {
             submitData[key] = Number(submitData[key]);
         }
     });
 
-    // Ensure specific fields within 'benefits' are numbers if they are not null and not empty strings
     if (submitData.benefits) {
-        const benefitFieldsToEnsureNumber = [
+        const benefitEnsureNumber = [
             'limited_km_per_day_range', 'limited_km_per_week_range', 'limited_km_per_month_range',
             'cancellation_available_per_day_date', 'cancellation_available_per_week_date', 'cancellation_available_per_month_date',
-            'price_per_km_per_day', 'price_per_km_per_week', 'price_per_km_per_month',
-            'minimum_driver_age'
+            'price_per_km_per_day', 'price_per_km_per_week', 'price_per_km_per_month', 'minimum_driver_age'
         ];
-        benefitFieldsToEnsureNumber.forEach(key => {
+        benefitEnsureNumber.forEach(key => {
             if (submitData.benefits.hasOwnProperty(key) && submitData.benefits[key] !== null && submitData.benefits[key] !== '') {
                 submitData.benefits[key] = Number(submitData.benefits[key]);
             }
@@ -1965,68 +1234,55 @@ const updateVehicle = () => {
 
     let formData = new FormData();
 
-    // Append benefits data
     if (submitData.benefits) {
         Object.keys(submitData.benefits).forEach(key => {
             const value = submitData.benefits[key];
-            if (typeof value === 'boolean') {
-                formData.append(`benefits[${key}]`, value ? '1' : '0');
-            } else {
-                // Send empty string for null, otherwise send the value
-                formData.append(`benefits[${key}]`, value !== null ? value : '');
-            }
+            if (typeof value === 'boolean') formData.append(`benefits[${key}]`, value ? '1' : '0');
+            else formData.append(`benefits[${key}]`, value !== null ? value : '');
         });
     }
 
-    // Append other form data
     for (const key in submitData) {
-        // Ensure we only append actual data properties, not nested/grouped fields handled separately
-        if (!submitData.hasOwnProperty(key)) {
-            continue;
-        }
-        if (['benefits', 'images', 'selected_plans', 'selected_addons', 'addon_prices', 'addon_quantities', 'custom_addons'].includes(key)) {
-            continue;
-        }
+        if (!submitData.hasOwnProperty(key)) continue;
+        if (['benefits', 'images', 'selected_plans', 'selected_addons', 'addon_prices', 'addon_quantities', 'custom_addons', 'operating_hours'].includes(key)) continue;
         const value = submitData[key];
         if (Array.isArray(value)) {
             value.forEach(item => formData.append(`${key}[]`, item !== null ? item : ''));
         } else {
-            // Send empty string for null, otherwise send the value
             formData.append(key, value !== null ? value : '');
         }
+    }
+
+    if (Array.isArray(submitData.operating_hours)) {
+        submitData.operating_hours.forEach((hours, index) => {
+            formData.append(`operating_hours[${index}][day]`, hours.day);
+            formData.append(`operating_hours[${index}][is_open]`, hours.is_open ? '1' : '0');
+            formData.append(`operating_hours[${index}][open_time]`, hours.is_open && hours.open_time ? hours.open_time : '');
+            formData.append(`operating_hours[${index}][close_time]`, hours.is_open && hours.close_time ? hours.close_time : '');
+        });
     }
 
     if (Array.isArray(submitData.selected_plans)) {
         submitData.selected_plans.forEach((plan, index) => {
             formData.append(`selected_plans[${index}][plan_type]`, plan.plan_type ?? '');
             formData.append(`selected_plans[${index}][plan_value]`, plan.plan_value ?? '');
-            if (plan.plan_description) {
-                formData.append(`selected_plans[${index}][plan_description]`, plan.plan_description);
-            }
+            if (plan.plan_description) formData.append(`selected_plans[${index}][plan_description]`, plan.plan_description);
             if (Array.isArray(plan.features)) {
-                plan.features.forEach((feature, featureIndex) => {
-                    formData.append(`selected_plans[${index}][features][${featureIndex}]`, feature);
-                });
+                plan.features.forEach((feature, fi) => formData.append(`selected_plans[${index}][features][${fi}]`, feature));
             }
         });
     }
 
     if (Array.isArray(submitData.selected_addons)) {
-        submitData.selected_addons.forEach(addonId => {
-            formData.append('selected_addons[]', addonId);
-        });
+        submitData.selected_addons.forEach(addonId => formData.append('selected_addons[]', addonId));
     }
 
     if (submitData.addon_prices && typeof submitData.addon_prices === 'object') {
-        Object.entries(submitData.addon_prices).forEach(([addonId, price]) => {
-            formData.append(`addon_prices[${addonId}]`, price ?? '');
-        });
+        Object.entries(submitData.addon_prices).forEach(([addonId, price]) => formData.append(`addon_prices[${addonId}]`, price ?? ''));
     }
 
     if (submitData.addon_quantities && typeof submitData.addon_quantities === 'object') {
-        Object.entries(submitData.addon_quantities).forEach(([addonId, quantity]) => {
-            formData.append(`addon_quantities[${addonId}]`, quantity ?? '');
-        });
+        Object.entries(submitData.addon_quantities).forEach(([addonId, quantity]) => formData.append(`addon_quantities[${addonId}]`, quantity ?? ''));
     }
 
     if (Array.isArray(submitData.custom_addons)) {
@@ -2039,218 +1295,442 @@ const updateVehicle = () => {
         });
     }
 
-    // Append new image files
-    selectedFiles.value.forEach((file, index) => {
-        formData.append(`images[${index}]`, file);
-    });
+    selectedFiles.value.forEach((file, index) => formData.append(`images[${index}]`, file));
 
-    // For Laravel to treat POST as PUT when FormData is used
     formData.append('_method', 'PUT');
 
     axios.post(route('current-vendor-vehicles.update', props.vehicle.id), formData, {
         headers: { 'Content-Type': 'multipart/form-data', 'Accept': 'application/json' },
     })
-        .then((response) => {
-            isLoading.value = false;
-            selectedFiles.value = []; // Reset selected files after successful upload
-            const updatedVehicle = response?.data?.vehicle;
-            if (updatedVehicle && props.vehicle) {
-                Object.assign(props.vehicle, updatedVehicle);
-                props.vehicle.images = updatedVehicle.images || props.vehicle.images || [];
-                props.vehicle.benefits = updatedVehicle.benefits || props.vehicle.benefits || null;
-                props.vehicle.specifications = updatedVehicle.specifications || props.vehicle.specifications || null;
-                props.vehicle.vendorPlans = updatedVehicle.vendorPlans || updatedVehicle.vendor_plans || [];
-                props.vehicle.addons = updatedVehicle.addons || [];
-                existingAddonSelections.value = {};
-                (props.vehicle.addons || []).forEach((addon) => {
-                    const addonId = addon.addon_id ?? addon.addon?.id ?? addon.id;
-                    if (!addonId) {
-                        return;
-                    }
-                    existingAddonSelections.value[addonId] = {
-                        price: parseFloat(addon.price) || 0,
-                        quantity: parseInt(addon.quantity, 10) || 1
-                    };
-                });
-                customAddons.value = [];
-                fetchAddons();
+    .then((response) => {
+        isLoading.value = false;
+        selectedFiles.value = [];
+        const updatedVehicle = response?.data?.vehicle;
+        if (updatedVehicle && props.vehicle) {
+            Object.assign(props.vehicle, updatedVehicle);
+            props.vehicle.images = updatedVehicle.images || props.vehicle.images || [];
+            props.vehicle.benefits = updatedVehicle.benefits || props.vehicle.benefits || null;
+            props.vehicle.specifications = updatedVehicle.specifications || props.vehicle.specifications || null;
+            props.vehicle.vendorPlans = updatedVehicle.vendorPlans || updatedVehicle.vendor_plans || [];
+            props.vehicle.addons = updatedVehicle.addons || [];
+            existingAddonSelections.value = {};
+            (props.vehicle.addons || []).forEach((addon) => {
+                const addonId = addon.addon_id ?? addon.addon?.id ?? addon.id;
+                if (!addonId) return;
+                existingAddonSelections.value[addonId] = { price: parseFloat(addon.price) || 0, quantity: parseInt(addon.quantity, 10) || 1 };
+            });
+            customAddons.value = [];
+            fetchAddons();
+
+            if (updatedVehicle.operating_hours || updatedVehicle.operatingHours) {
+                const hours = updatedVehicle.operating_hours || updatedVehicle.operatingHours || [];
+                initOperatingHours(hours);
             }
-            toast.success('Vehicle updated successfully!', { position: 'top-right', timeout: 1000 });
-        })
-        .catch(error => {
-            isLoading.value = false;
-            const responseErrors = error?.response?.data?.errors;
-            if (responseErrors) {
-                formErrors.value = responseErrors;
-                const firstError = Object.values(responseErrors)[0];
-                const message = Array.isArray(firstError) ? firstError[0] : firstError;
-                toast.error(message || 'Please review the highlighted fields.', {
-                    position: 'top-right',
-                    timeout: 4000
-                });
-                return;
-            }
-            toast.error('Something went wrong.', { position: 'top-right', timeout: 3000 });
-            // console.error('Error updating vehicle:', error.response ? error.response.data : error);
-        });
-};
-
-const countries = ref([]);
-
-
-const fetchCountries = async () => {
-    try {
-        const response = await fetch('/countries.json'); // Ensure it's in /public
-        countries.value = await response.json();
-    } catch (error) {
-        console.error("Error loading countries:", error);
-    }
-};
-
-onMounted(fetchCountries);
-
-// Get flag URL
-const getFlagUrl = (countryCode) => {
-    return `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
-};
-
-
-const showLocationPicker = ref(false);
-
-// Add this method to force map resize
-const forceMapResize = () => {
-    nextTick(() => {
-        setTimeout(() => {
-            const mapElement = document.querySelector('.leaflet-container')
-            if (mapElement && window.L) {
-                // Trigger map resize
-                window.dispatchEvent(new Event('resize'))
-                // Get the map instance and invalidate its size
-                const map = window.L.map(mapElement)
-                map.invalidateSize()
-                // Reset the view to ensure it's properly centered
-                const currentCenter = map.getCenter()
-                map.setView(currentCenter, map.getZoom())
-            }
-        }, 300)
+        }
+        toast.success('Vehicle updated successfully!', { position: 'top-right', timeout: 1000 });
     })
-}
+    .catch(error => {
+        isLoading.value = false;
+        const responseErrors = error?.response?.data?.errors;
+        if (responseErrors) {
+            formErrors.value = responseErrors;
+            const firstError = Object.values(responseErrors)[0];
+            const message = Array.isArray(firstError) ? firstError[0] : firstError;
+            toast.error(message || 'Please review the highlighted fields.', { position: 'top-right', timeout: 4000 });
+            return;
+        }
+        toast.error('Something went wrong.', { position: 'top-right', timeout: 3000 });
+    });
+};
 
-// Watch for location picker visibility changes
-watch(showLocationPicker, (newVal) => {
-    if (newVal) {
-        forceMapResize()
-    }
-})
+const initOperatingHours = (hoursArray) => {
+    if (!hoursArray || !hoursArray.length) return;
+    form.operating_hours = defaultOperatingHours.map(def => {
+        const match = hoursArray.find(h => h.day_of_week === def.day || h.day === def.day);
+        if (match) {
+            return {
+                day: def.day,
+                day_name: def.day_name,
+                is_open: !!match.is_open,
+                open_time: match.open_time ? match.open_time.substring(0, 5) : null,
+                close_time: match.close_time ? match.close_time.substring(0, 5) : null,
+            };
+        }
+        return { ...def };
+    });
+};
 
-// Watch for category_id changes to fetch new features
-watch(() => form.category_id, (newCategoryId, oldCategoryId) => {
-    if (newCategoryId !== oldCategoryId) {
-        fetchFeaturesForCategory(newCategoryId);
-        // Optionally clear selected features if category changes,
-        // or backend should handle features not belonging to the new category.
-        // form.features = []; 
+watch(() => selectedTypes.week, (on) => { if (on) { if (!form.price_per_week && form.price_per_day) form.price_per_week = toPrice(Number(form.price_per_day) * 7); } else { form.price_per_week = null; form.weekly_discount = null; } ensurePreferredPriceType(); });
+watch(() => selectedTypes.month, (on) => { if (on) { if (!form.price_per_month && form.price_per_day) form.price_per_month = toPrice(Number(form.price_per_day) * 30); } else { form.price_per_month = null; form.monthly_discount = null; } ensurePreferredPriceType(); });
+watch(() => form.mileage, (v) => { if (v > 120) form.mileage = 120; });
+watch(() => form.vehicle_height, (v) => { if (v > 5) form.vehicle_height = 5; });
+watch(() => form.co2, (v) => { if (v > 100) form.co2 = 100; });
+watch(() => form.gross_vehicle_mass, (v) => { if (v > 20000) form.gross_vehicle_mass = 20000; });
+watch(() => form.price_per_day, (v) => { if (!v) return; if (selectedTypes.week && !form.price_per_week) form.price_per_week = toPrice(Number(v) * 7); if (selectedTypes.month && !form.price_per_month) form.price_per_month = toPrice(Number(v) * 30); });
+watch(() => form.registration_number, (v) => { if (v && v.length > 10) form.registration_number = v.slice(0, 10); });
+watch(() => form.benefits.limited_km_per_day, (v) => { if (!v) { form.benefits.limited_km_per_day_range = null; form.benefits.price_per_km_per_day = null; } });
+watch(() => form.benefits.limited_km_per_week, (v) => { if (!v) { form.benefits.limited_km_per_week_range = null; form.benefits.price_per_km_per_week = null; } });
+watch(() => form.benefits.limited_km_per_month, (v) => { if (!v) { form.benefits.limited_km_per_month_range = null; form.benefits.price_per_km_per_month = null; } });
+watch(() => form.benefits.cancellation_available_per_day, (v) => { if (!v) form.benefits.cancellation_available_per_day_date = null; });
+watch(() => form.benefits.cancellation_available_per_week, (v) => { if (!v) form.benefits.cancellation_available_per_week_date = null; });
+watch(() => form.benefits.cancellation_available_per_month, (v) => { if (!v) form.benefits.cancellation_available_per_month_date = null; });
+watch(isLoading, (v) => { document.body.style.overflow = v ? 'hidden' : ''; });
+watch(customAddons, () => { if (errors.custom_addons) errors.custom_addons = ''; }, { deep: true });
+
+onMounted(() => {
+    fetchCountries();
+
+    const v = props.vehicle;
+    if (!v) return;
+
+    form.category_id = v.category_id;
+    form.brand = v.brand;
+    form.model = v.model;
+    form.color = v.color;
+    form.mileage = v.mileage;
+    form.transmission = v.transmission;
+    form.fuel = v.fuel;
+    form.seating_capacity = v.seating_capacity;
+    form.number_of_doors = v.number_of_doors;
+    form.luggage_capacity = v.luggage_capacity;
+    form.horsepower = v.horsepower;
+    form.co2 = v.co2;
+    form.location = v.location || '';
+    form.location_type = v.location_type || '';
+    form.city = v.city || '';
+    form.state = v.state;
+    form.country = v.country || '';
+    const lat = Number(v.latitude);
+    const lng = Number(v.longitude);
+    form.latitude = Number.isFinite(lat) ? lat : null;
+    form.longitude = Number.isFinite(lng) ? lng : null;
+    form.full_vehicle_address = v.full_vehicle_address || '';
+    form.status = v.status;
+
+    try {
+        const parsed = JSON.parse(v.features);
+        form.features = Array.isArray(parsed) ? parsed : [];
+    } catch { form.features = []; }
+
+    form.features.forEach(name => {
+        if (!allFeatures.value.some(f => f.name === name)) {
+            allFeatures.value.push({ name, icon: Star });
+        }
+    });
+
+    form.featured = v.featured;
+    form.security_deposit = parseFloat(v.security_deposit);
+    try { form.payment_method = JSON.parse(v.payment_method); } catch { form.payment_method = []; }
+
+    const rawDaily = parseFloat(v.price_per_day);
+    const rawWeekly = parseFloat(v.price_per_week);
+    const rawMonthly = parseFloat(v.price_per_month);
+    const rawWeeklyDiscount = parseFloat(v.weekly_discount);
+    const rawMonthlyDiscount = parseFloat(v.monthly_discount);
+
+    form.price_per_day = Number.isFinite(rawDaily) ? rawDaily : 0;
+    form.price_per_week = Number.isFinite(rawWeekly) ? rawWeekly : null;
+    form.price_per_month = Number.isFinite(rawMonthly) ? rawMonthly : null;
+    form.weekly_discount = Number.isFinite(rawWeeklyDiscount) ? rawWeeklyDiscount : null;
+    form.monthly_discount = Number.isFinite(rawMonthlyDiscount) ? rawMonthlyDiscount : null;
+    form.preferred_price_type = v.preferred_price_type || 'day';
+
+    selectedTypes.week = Number.isFinite(rawWeekly) && rawWeekly > 0;
+    selectedTypes.month = Number.isFinite(rawMonthly) && rawMonthly > 0;
+    if (!selectedTypes.week) { form.price_per_week = null; form.weekly_discount = null; }
+    if (!selectedTypes.month) { form.price_per_month = null; form.monthly_discount = null; }
+    ensurePreferredPriceType();
+
+    form.guidelines = v.guidelines;
+    form.terms_policy = v.terms_policy || '';
+
+    const primaryExistingImage = v.images?.find(img => img.image_type === 'primary');
+    if (primaryExistingImage) form.existing_primary_image_id = primaryExistingImage.id;
+
+    if (v.benefits) {
+        form.benefits = {
+            limited_km_per_day: !!v.benefits.limited_km_per_day,
+            limited_km_per_week: !!v.benefits.limited_km_per_week,
+            limited_km_per_month: !!v.benefits.limited_km_per_month,
+            limited_km_per_day_range: v.benefits.limited_km_per_day_range || null,
+            limited_km_per_week_range: v.benefits.limited_km_per_week_range || null,
+            limited_km_per_month_range: v.benefits.limited_km_per_month_range || null,
+            cancellation_available_per_day: !!v.benefits.cancellation_available_per_day,
+            cancellation_available_per_week: !!v.benefits.cancellation_available_per_week,
+            cancellation_available_per_month: !!v.benefits.cancellation_available_per_month,
+            cancellation_available_per_day_date: v.benefits.cancellation_available_per_day_date || null,
+            cancellation_available_per_week_date: v.benefits.cancellation_available_per_week_date || null,
+            cancellation_available_per_month_date: v.benefits.cancellation_available_per_month_date || null,
+            price_per_km_per_day: parseFloat(v.benefits.price_per_km_per_day) || 0,
+            price_per_km_per_week: parseFloat(v.benefits.price_per_km_per_week) || 0,
+            price_per_km_per_month: parseFloat(v.benefits.price_per_km_per_month) || 0,
+            minimum_driver_age: v.benefits.minimum_driver_age || 18
+        };
     }
+
+    if (v.specifications) {
+        form.registration_number = v.specifications.registration_number;
+        form.registration_country = v.specifications.registration_country;
+        form.registration_date = v.specifications.registration_date;
+        form.gross_vehicle_mass = v.specifications.gross_vehicle_mass;
+        form.vehicle_height = parseFloat(v.specifications.vehicle_height) || 0;
+        form.dealer_cost = parseFloat(v.specifications.dealer_cost) || 0;
+        form.phone_number = v.specifications.phone_number;
+    }
+
+    const existingHours = v.operating_hours || v.operatingHours || [];
+    if (existingHours.length) initOperatingHours(existingHours);
+
+    const existingPlans = v.vendorPlans || v.vendor_plans || [];
+    existingPlans.forEach((plan) => {
+        const planType = `${plan.plan_type || ''}`.toLowerCase();
+        const match = protectionPlans.find(entry => entry.plan_type.toLowerCase() === planType);
+        if (!match) return;
+        match.selected = true;
+        match.price = parseFloat(plan.price) || 0;
+        let planFeatures = [];
+        if (Array.isArray(plan.features)) planFeatures = plan.features;
+        else if (typeof plan.features === 'string') { try { planFeatures = JSON.parse(plan.features || '[]'); } catch { planFeatures = []; } }
+        match.features = Array.isArray(planFeatures) && planFeatures.length
+            ? [...planFeatures, ...createCoverageFields()].slice(0, 5)
+            : createCoverageFields();
+    });
+
+    const existingAddons = v.addons || [];
+    existingAddons.forEach((addon) => {
+        const addonId = addon.addon_id ?? addon.addon?.id ?? addon.id;
+        if (!addonId) return;
+        existingAddonSelections.value[addonId] = { price: parseFloat(addon.price) || 0, quantity: parseInt(addon.quantity, 10) || 1 };
+    });
+
+    if (v.pickup_times && typeof v.pickup_times === 'string') form.pickup_times = v.pickup_times.split(',').filter(Boolean);
+    else if (Array.isArray(v.pickup_times)) form.pickup_times = [...v.pickup_times];
+
+    if (v.return_times && typeof v.return_times === 'string') form.return_times = v.return_times.split(',').filter(Boolean);
+    else if (Array.isArray(v.return_times)) form.return_times = [...v.return_times];
+
+    fetchAddons();
 });
 
-const toggleLocationPicker = () => {
-    showLocationPicker.value = !showLocationPicker.value;
-    if (showLocationPicker.value) {
-        allowFormSubmit.value = false; // Disallow form submission when picker is shown
-        forceMapResize();
-    } else {
-        allowFormSubmit.value = true; // Re-allow when picker is hidden by this toggle
-    }
-}
-
+onUnmounted(() => { document.body.style.overflow = ''; });
 </script>
 
 <style scoped>
-select {
-    width: 100%;
-}
+/* STEPPER */
+.vln-stepper { position: sticky; top: 0; z-index: 99; background: #fff; border-bottom: 1px solid #e2e8f0; overflow-x: auto; scrollbar-width: none; }
+.vln-stepper::-webkit-scrollbar { display: none; }
+.vln-stepper-inner { padding: 0 1rem; display: flex; width: 100%; }
+.vln-step-tab { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.8rem 0.5rem; cursor: pointer; border: none; background: none; font: inherit; font-size: 0.78rem; font-weight: 600; color: #94a3b8; white-space: nowrap; transition: color 0.3s; }
+.vln-step-tab::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2.5px; border-radius: 2px; background: transparent; transition: background 0.3s; }
+.vln-step-tab.active { color: #0891b2; }
+.vln-step-tab.active::after { background: #0891b2; }
+.vln-step-tab.completed { color: #22c55e; }
+.vln-step-tab.completed::after { background: #22c55e; }
+.vln-step-tab:not(.clickable) { cursor: not-allowed; opacity: 0.5; }
+.vln-step-tab.clickable:hover:not(.active) { color: #334155; }
+.vln-step-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; border: 1.5px solid #e2e8f0; color: #94a3b8; background: #fff; transition: all 0.3s; }
+.vln-step-tab.active .vln-step-num { background: #0891b2; border-color: #0891b2; color: #fff; animation: pulse 2s ease-in-out infinite; }
+.vln-step-tab.completed .vln-step-num { background: #22c55e; border-color: #22c55e; color: #fff; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(6,182,212,0.4); } 50% { box-shadow: 0 0 0 8px rgba(6,182,212,0); } }
+.vln-step-label { display: inline; }
 
-label {
-    margin-bottom: 0.5rem;
-}
+/* TWO-COL LAYOUT */
+.vln-layout { display: grid; grid-template-columns: 1fr; min-height: calc(100vh - 50px); }
+.vln-form-col { padding: 2rem 2.5rem 6rem; background: #fff; overflow-y: auto; width: 100%; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.vln-stat { flex: 1; padding: 0.85rem; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); text-align: center; }
 
-input {
-    width: 100%;
-    padding: 1rem;
-    border: 1px solid var(--custom-gray-color);
-    border: 1px solid var(--custom-light-gray);
-    border-radius: 8px;
-}
+/* STEP CONTENT */
+.vln-step { animation: fadeUp 0.35s ease both; }
+.vln-step-header { margin-bottom: 1.75rem; }
+.vln-step-header h1 { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; color: #0b1b26; }
+.vln-step-header p { margin-top: 0.4rem; font-size: 0.92rem; color: #64748b; line-height: 1.6; }
+.vln-tip { display: flex; gap: 0.65rem; padding: 0.75rem 1rem; border-radius: 10px; background: #fffbeb; border: 1px solid #fde68a; margin-bottom: 1rem; color: #92400e; font-size: 0.82rem; line-height: 1.5; }
 
-input[type="checkbox"] {
-    width: auto;
-    padding: 0;
-}
+/* FORM ERRORS */
+.vln-form-errors { display: flex; gap: 0.65rem; padding: 0.75rem 1rem; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; margin: 0.75rem 1.5rem; color: #991b1b; font-size: 0.82rem; line-height: 1.5; }
+.vln-form-errors ul { margin-top: 0.3rem; padding-left: 1.2rem; list-style: disc; }
 
-.input-field {
-    padding: 0.6rem 0.75rem;
-}
+/* FIELD GROUPS */
+.vln-field-group { border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; margin-bottom: 1rem; transition: border-color 0.2s; }
+.vln-field-group:hover { border-color: #cbd5e1; }
+.vln-fg-header { display: flex; align-items: center; gap: 0.65rem; margin-bottom: 1rem; }
+.vln-fg-icon { width: 34px; height: 34px; border-radius: 8px; background: #ecfeff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #0891b2; }
+.vln-fg-title { font-size: 0.95rem; font-weight: 700; color: #0b1b26; }
+.vln-fg-sub { font-size: 0.75rem; color: #64748b; }
 
-.input-with-suffix {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
+/* FIELDS */
+.vln-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+.vln-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+.vln-grid .full { grid-column: 1 / -1; }
+.vln-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.vln-label { font-size: 0.78rem; font-weight: 600; color: #334155; }
+.vln-label .req { color: #ef4444; }
+.vln-input { width: 100%; height: 42px; padding: 0 0.8rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font: inherit; font-size: 0.88rem; color: #0b1b26; background: #fff; outline: none; transition: all 0.2s; }
+.vln-input:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.08); }
+.vln-input::placeholder { color: #94a3b8; }
+.vln-input:disabled { background: #f1f5f9; color: #94a3b8; }
+.vln-input-suffix { position: relative; }
+.vln-input-suffix .vln-input { padding-right: 3rem; }
+.vln-suffix { position: absolute; right: 0.8rem; top: 50%; transform: translateY(-50%); font-size: 0.73rem; font-weight: 600; color: #94a3b8; pointer-events: none; }
+.vln-textarea { width: 100%; min-height: 80px; padding: 0.6rem 0.8rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font: inherit; font-size: 0.88rem; color: #0b1b26; resize: vertical; outline: none; transition: all 0.2s; }
+.vln-textarea:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.08); }
+.vln-select-trigger { height: 42px !important; border: 1.5px solid #e2e8f0 !important; border-radius: 8px !important; padding: 0 0.8rem !important; }
+.vln-error { display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: #ef4444; margin-top: 0.2rem; }
 
-.input-with-suffix input {
-    flex: 1 1 auto;
-    min-width: 0;
-}
+/* CATEGORIES */
+.vln-category-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+.vln-cat-card { position: relative; border: 2px solid #e2e8f0; border-radius: 14px; overflow: hidden; cursor: pointer; transition: all 0.3s; background: #fff; text-align: center; }
+.vln-cat-card:hover { border-color: #cbd5e1; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.07); }
+.vln-cat-card.selected { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.12), 0 8px 20px rgba(6,182,212,0.08); }
+.vln-cat-card.selected::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #0891b2, #22d3ee); }
+.vln-cat-img-wrap { width: 100%; aspect-ratio: 16/10; overflow: hidden; background: #f8fafc; display: flex; align-items: center; justify-content: center; }
+.vln-cat-img-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s; }
+.vln-cat-card:hover .vln-cat-img-wrap img { transform: scale(1.05); }
+.vln-cat-placeholder { color: #94a3b8; }
+.vln-cat-name { padding: 0.6rem 0.5rem; font-size: 0.82rem; font-weight: 700; color: #0b1b26; }
+.vln-cat-check { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: #06b6d4; display: none; align-items: center; justify-content: center; color: #fff; box-shadow: 0 2px 8px rgba(6,182,212,0.4); z-index: 2; }
+.vln-cat-card.selected .vln-cat-check { display: flex; }
 
-.input-suffix {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.1rem 0.5rem;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    color: #475569;
-    font-weight: 600;
-    background: #ffffff;
-    font-size: 0.7rem;
-    white-space: nowrap;
-}
+/* CHIPS */
+.vln-feature-grid { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.vln-chip { display: flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.75rem; border: 1.5px solid #e2e8f0; border-radius: 100px; font-size: 0.78rem; font-weight: 500; color: #334155; cursor: pointer; transition: all 0.2s; background: #fff; }
+.vln-chip:hover { border-color: #06b6d4; color: #0891b2; background: #ecfeff; }
+.vln-chip.active { background: #0891b2; border-color: #0891b2; color: #fff; transform: scale(1.02); }
+.vln-btn-add-feature { display: flex; align-items: center; gap: 0.3rem; padding: 0 1rem; height: 42px; border: 1.5px solid #0891b2; border-radius: 8px; background: #ecfeff; font: inherit; font-size: 0.82rem; font-weight: 600; color: #0891b2; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.vln-btn-add-feature:hover { background: #0891b2; color: #fff; }
+.vln-btn-add-feature:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.inline-currency {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.1rem 0.5rem;
-    margin-left: 0.25rem;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    color: #475569;
-    font-weight: 600;
-    background: #ffffff;
-    font-size: 0.7rem;
-    white-space: nowrap;
-}
+/* PRICING */
+.vln-pricing-card { border: 1.5px solid #e2e8f0; border-radius: 12px; overflow: hidden; transition: all 0.25s; }
+.vln-pricing-card.active { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.06); }
+.vln-pc-header { padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.2s; }
+.vln-pc-header:hover { background: #f8fafc; }
+.vln-pc-label { display: flex; align-items: center; gap: 0.6rem; }
+.vln-pc-toggle { width: 36px; height: 20px; border-radius: 10px; background: #e2e8f0; position: relative; transition: background 0.25s; flex-shrink: 0; }
+.vln-pc-toggle::after { content: ''; position: absolute; top: 2.5px; left: 2.5px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.15); transition: transform 0.25s; }
+.vln-pricing-card.active .vln-pc-toggle { background: #06b6d4; }
+.vln-pricing-card.active .vln-pc-toggle::after { transform: translateX(16px); }
+.vln-pc-period { font-weight: 700; font-size: 0.88rem; color: #0b1b26; }
+.vln-pc-badge { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.2rem 0.5rem; border-radius: 100px; background: #f0fdf4; color: #22c55e; }
+.vln-pc-body { padding: 0 1rem 1rem; }
 
-select {
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    padding: 1rem;
-    border: 1px solid #2b2b2b4a;
-    outline: none;
-    border-radius: 8px;
-}
+/* OPERATING HOURS */
+.vln-link-btn { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; font-weight: 600; color: #0891b2; background: none; border: none; cursor: pointer; transition: opacity 0.2s; }
+.vln-link-btn:hover { opacity: 0.7; }
+.vln-hour-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid #f1f5f9; background: #f8fafc; transition: all 0.2s; flex-wrap: wrap; }
+.vln-hour-row.open { background: #fff; border-color: #e2e8f0; }
+.vln-hour-left { display: flex; align-items: center; gap: 0.65rem; width: 140px; flex-shrink: 0; }
+.vln-hour-right { display: flex; align-items: center; gap: 0.5rem; flex: 1; }
+.vln-hour-day { font-size: 0.85rem; font-weight: 600; color: #0b1b26; }
+.vln-hour-day.muted { color: #94a3b8; }
+.vln-toggle { position: relative; width: 38px; height: 20px; border-radius: 10px; background: #cbd5e1; border: none; cursor: pointer; transition: background 0.25s; flex-shrink: 0; }
+.vln-toggle.on { background: #0891b2; }
+.vln-toggle-dot { position: absolute; top: 2.5px; left: 2.5px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.15); transition: transform 0.25s; display: block; }
+.vln-toggle.on .vln-toggle-dot { transform: translateX(18px); }
+.vln-time-input { width: 100px; height: 36px; padding: 0 0.5rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font: inherit; font-size: 0.82rem; outline: none; transition: all 0.2s; }
+.vln-time-input:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.08); }
 
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-    transition: all 0.3s ease;
-}
+/* PAYMENT */
+.vln-payment-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.vln-payment-pill { display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.85rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font: inherit; font-size: 0.82rem; font-weight: 500; color: #334155; cursor: pointer; transition: all 0.2s; background: #fff; }
+.vln-payment-pill:hover { border-color: #cbd5e1; }
+.vln-payment-pill.active { border-color: #06b6d4; background: #ecfeff; color: #0891b2; }
 
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-    transform: translateY(-10px);
-    opacity: 0;
-}
+/* SUB CARDS */
+.vln-sub-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.85rem; }
+.vln-check-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #334155; cursor: pointer; }
+.vln-checkbox { border-radius: 4px; border: 1.5px solid #cbd5e1; color: #0891b2; }
 
-.slide-fade-enter-to,
-.slide-fade-leave-from {
-    transform: translateY(0);
-    opacity: 1;
+/* PLANS */
+.vln-plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+.vln-plan-card { border: 2px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; position: relative; background: #fff; transition: all 0.3s; }
+.vln-plan-card:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+.vln-plan-card.selected { border-color: #06b6d4; background: #ecfeff; box-shadow: 0 0 0 3px rgba(6,182,212,0.08); }
+.vln-plan-check { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s; }
+.vln-plan-card.selected .vln-plan-check { background: #06b6d4; border-color: #06b6d4; color: #fff; }
+.vln-plan-badge { display: inline-block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 100px; }
+.vln-plan-badge.essential { background: #dbeafe; color: #2563eb; }
+.vln-plan-badge.premium { background: #fef3c7; color: #d97706; }
+.vln-plan-badge.premium_plus { background: #f0fdf4; color: #22c55e; }
+.vln-plan-btn { width: 100%; padding: 0.55rem; border-radius: 8px; font: inherit; font-size: 0.82rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; background: #0e1b26; color: #fff; }
+.vln-plan-btn.selected { background: #0891b2; }
+
+/* ADDONS */
+.vln-addon-row { display: grid; grid-template-columns: 2fr 1fr 1fr 80px 36px; gap: 0.6rem; align-items: end; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0; animation: fadeUp 0.3s ease; }
+.vln-addon-remove { width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid #e2e8f0; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; margin-bottom: 3px; color: #64748b; }
+.vln-addon-remove:hover { border-color: #ef4444; background: #fef2f2; color: #ef4444; }
+.vln-addon-add { display: flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%; padding: 0.7rem; border: 2px dashed #e2e8f0; border-radius: 12px; background: none; font: inherit; font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.2s; margin-top: 0.6rem; }
+.vln-addon-add:hover { border-color: #06b6d4; color: #0891b2; background: #ecfeff; }
+.vln-qty-btn { width: 30px; height: 30px; border-radius: 6px; border: 1.5px solid #e2e8f0; background: #fff; font: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.vln-qty-btn:hover { border-color: #0891b2; color: #0891b2; }
+.vln-qty-display { padding: 0.2rem 0.6rem; background: #f1f5f9; border-radius: 6px; font-size: 0.85rem; font-weight: 600; min-width: 32px; text-align: center; }
+
+/* UPLOAD */
+.vln-upload-zone { border: 2px dashed #e2e8f0; border-radius: 14px; padding: 2rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.25s; background: #f8fafc; }
+.vln-upload-zone:hover { border-color: #06b6d4; background: #ecfeff; }
+.vln-upload-icon { width: 48px; height: 48px; border-radius: 50%; background: #ecfeff; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; color: #0891b2; }
+.vln-upload-title { font-size: 0.92rem; font-weight: 700; color: #0b1b26; }
+.vln-upload-browse { color: #0891b2; text-decoration: underline; cursor: pointer; }
+.vln-upload-hint { font-size: 0.78rem; color: #64748b; margin-top: 0.2rem; }
+.vln-preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
+.vln-preview { position: relative; aspect-ratio: 4/3; border-radius: 10px; overflow: hidden; border: 2px solid #e2e8f0; }
+.vln-preview.primary { border-color: #06b6d4; }
+.vln-preview img { width: 100%; height: 100%; object-fit: cover; }
+.vln-preview-actions { position: absolute; top: 4px; right: 4px; display: flex; gap: 3px; opacity: 0; transition: opacity 0.2s; }
+.vln-preview:hover .vln-preview-actions { opacity: 1; }
+.vln-preview-btn { width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.5); border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.vln-preview-btn.active { background: #06b6d4; }
+.vln-preview-btn.danger:hover { background: #ef4444; }
+.vln-cover-badge { position: absolute; bottom: 4px; left: 4px; font-size: 0.6rem; font-weight: 700; background: #06b6d4; color: #fff; padding: 0.15rem 0.4rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* CURRENT LOCATION */
+.vln-current-location { padding: 0.85rem; border-radius: 10px; background: linear-gradient(135deg, #ecfeff, #ede9fe); border: 1px solid #a5f3fc; }
+
+/* ACTION BAR */
+.vln-action-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(16px); border-top: 1px solid #e2e8f0; }
+.vln-action-inner { padding: 0.75rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+.vln-action-info { font-size: 0.78rem; color: #64748b; }
+.vln-action-info strong { color: #0b1b26; }
+.vln-action-buttons { display: flex; gap: 0.6rem; }
+.vln-btn-back { height: 42px; padding: 0 1.25rem; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; font: inherit; font-size: 0.85rem; font-weight: 600; color: #334155; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.4rem; }
+.vln-btn-back:hover { border-color: #94a3b8; color: #0b1b26; }
+.vln-btn-next { height: 42px; padding: 0 1.5rem; border: none; border-radius: 8px; background: #0e1b26; font: inherit; font-size: 0.85rem; font-weight: 700; color: #fff; cursor: pointer; transition: all 0.25s; display: flex; align-items: center; gap: 0.4rem; }
+.vln-btn-next:hover { background: #153b4f; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(14,27,38,0.2); }
+.vln-btn-next:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+.vln-btn-submit { height: 42px; padding: 0 1.5rem; border: none; border-radius: 8px; background: linear-gradient(135deg, #0891b2, #0e7490); font: inherit; font-size: 0.85rem; font-weight: 700; color: #fff; cursor: pointer; transition: all 0.25s; display: flex; align-items: center; gap: 0.4rem; }
+.vln-btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(8,145,178,0.3); }
+.vln-btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* LOADING */
+.vln-loading-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; }
+.vln-spinner { width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: #0891b2; border-radius: 50%; animation: spin 0.7s linear infinite; }
+.vln-spinner-sm { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* DIALOG */
+.vln-dialog-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; }
+.vln-dialog { background: #fff; border-radius: 14px; padding: 2rem; max-width: 360px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+.vln-dialog p { font-size: 0.92rem; color: #334155; }
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .vln-layout { grid-template-columns: 1fr; }
+    .vln-form-col { padding: 1.5rem 1rem 5.5rem; }
+}
+@media (max-width: 768px) {
+    .vln-grid, .vln-grid-3 { grid-template-columns: 1fr; }
+    .vln-category-grid { grid-template-columns: 1fr 1fr 1fr; }
+    .vln-plan-grid { grid-template-columns: 1fr; }
+    .vln-addon-row { grid-template-columns: 1fr; }
+    .vln-preview-grid { grid-template-columns: 1fr 1fr; }
+    .vln-action-info { display: none; }
+    .vln-action-buttons { width: 100%; }
+    .vln-btn-back, .vln-btn-next, .vln-btn-submit { flex: 1; justify-content: center; }
+    .vln-step-label { display: none; }
+    .vln-hour-left { width: auto; }
+    .vln-hour-row { gap: 0.5rem; }
+    .vln-hour-right { width: 100%; }
+    .vln-time-input { flex: 1; min-width: 0; }
 }
 </style>
