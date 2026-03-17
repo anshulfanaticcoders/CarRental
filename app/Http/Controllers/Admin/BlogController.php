@@ -125,7 +125,7 @@ class BlogController extends Controller
 
             // Generate slug if missing (admin can still override).
             if ($slug === '' && $title !== '') {
-                $translationsData[$locale]['slug'] = Str::slug($title);
+                $translationsData[$locale]['slug'] = $this->unicodeSlug($title);
             }
         }
 
@@ -196,7 +196,7 @@ class BlogController extends Controller
             if ($title !== '' && $content !== '') {
                 $slugValue = isset($data['slug']) ? trim((string) $data['slug']) : '';
                 if ($slugValue === '') {
-                    $slugValue = Str::slug($title);
+                    $slugValue = $this->unicodeSlug($title);
                 }
                 if ($slugValue === '') {
                     $slugValue = strtolower($locale) . '-' . uniqid();
@@ -205,7 +205,7 @@ class BlogController extends Controller
                 $blog->translations()->create([
                     'locale' => $locale,
                     'title' => $title,
-                    'slug' => Str::slug($slugValue),
+                    'slug' => $this->unicodeSlug($slugValue) ?: $slugValue,
                     'content' => $content,
                     'excerpt' => $data['excerpt'] ?? null,
                 ]);
@@ -407,7 +407,7 @@ class BlogController extends Controller
             }
 
             if ($slug === '' && $title !== '') {
-                $translationsData[$locale]['slug'] = Str::slug($title);
+                $translationsData[$locale]['slug'] = $this->unicodeSlug($title);
             }
         }
 
@@ -494,7 +494,7 @@ class BlogController extends Controller
 
             $slugValue = isset($data['slug']) ? trim((string) $data['slug']) : '';
             if ($slugValue === '') {
-                $slugValue = Str::slug($title);
+                $slugValue = $this->unicodeSlug($title);
             }
             if ($slugValue === '') {
                 $slugValue = strtolower($locale) . '-' . uniqid();
@@ -504,7 +504,7 @@ class BlogController extends Controller
                 ['locale' => $locale],
                 [
                     'title' => $title,
-                    'slug' => Str::slug($slugValue),
+                    'slug' => $this->unicodeSlug($slugValue) ?: $slugValue,
                     'content' => $content,
                     'excerpt' => $data['excerpt'] ?? null,
                 ]
@@ -835,12 +835,12 @@ class BlogController extends Controller
         )->toArray();
 
         return Inertia::render('BlogPage', [
-            'blogs' => $blogs,
-            'pages' => $pages,
+            'blogs' => LocaleHelper::sanitizeUtf8($blogs),
+            'pages' => LocaleHelper::sanitizeUtf8($pages),
             'locale' => App::getLocale(),
             'country' => $country,
-            'seo' => $seo,
-            'tags' => $tags,
+            'seo' => LocaleHelper::sanitizeUtf8($seo),
+            'tags' => LocaleHelper::sanitizeUtf8($tags),
             'activeTag' => $request->input('tag', ''),
         ]);
     }
@@ -899,21 +899,24 @@ class BlogController extends Controller
 
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
+        // Get the translation for the current locale
+        $translation = $blog->getTranslation($locale);
+
         // Compute reading time and get related blogs
         $readingTime = $this->calculateReadingTime($translation->content ?? '');
         $relatedBlogs = $this->getRelatedBlogs($blog, $locale, $country);
 
         return Inertia::render('SingleBlog', [
-            'blog' => array_merge($blog->toArray(), [
+            'blog' => LocaleHelper::sanitizeUtf8(array_merge($blog->toArray(), [
                 'excerpt' => $translation->excerpt ?? null,
-            ]),
-            'schema' => $blogSchema,
-            'seo' => $seo,
+            ])),
+            'schema' => LocaleHelper::sanitizeUtf8($blogSchema),
+            'seo' => LocaleHelper::sanitizeUtf8($seo),
             'locale' => $locale,
             'country' => $country,
-            'pages' => $pages,
+            'pages' => LocaleHelper::sanitizeUtf8($pages),
             'tags' => $blog->tags->map(fn($t) => ['name' => $t->name, 'slug' => $t->slug]),
-            'relatedBlogs' => $relatedBlogs,
+            'relatedBlogs' => LocaleHelper::sanitizeUtf8($relatedBlogs),
             'readingTime' => $readingTime,
         ]);
     }
@@ -950,7 +953,27 @@ class BlogController extends Controller
 
         \Log::info('getRecentBlogs: Found ' . $recentBlogs->count() . ' recent blogs for country ' . $country);
 
-        return response()->json($recentBlogs);
+        return response()->json(LocaleHelper::sanitizeUtf8($recentBlogs));
+    }
+
+    /**
+     * Generate a URL-safe slug that preserves Unicode characters (Arabic, etc.).
+     * Falls back to Str::slug() for Latin text.
+     */
+    private function unicodeSlug(string $value): string
+    {
+        $ascii = Str::slug($value);
+        if ($ascii !== '') {
+            return $ascii;
+        }
+
+        // Preserve Unicode letters/numbers, replace spaces & special chars with hyphens
+        $slug = preg_replace('/\s+/u', '-', trim($value));
+        $slug = preg_replace('/[^\p{L}\p{N}\-]/u', '', $slug);
+        $slug = preg_replace('/-+/', '-', $slug);
+        $slug = trim($slug, '-');
+
+        return $slug !== '' ? mb_strtolower($slug, 'UTF-8') : '';
     }
 
     private function calculateReadingTime(string $content): int

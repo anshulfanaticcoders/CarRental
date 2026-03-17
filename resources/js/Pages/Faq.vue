@@ -18,7 +18,7 @@ defineProps({
     <AuthenticatedHeaderLayout />
 
      <section class="py-customVerticalSpacing">
-        <Faq/>
+        <Faq variant="light"/>
      </section>
 
     <Footer />

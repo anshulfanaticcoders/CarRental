@@ -22,6 +22,16 @@ const toggle = (id) => {
     activeId.value = activeId.value === id ? null : id;
 };
 
+const props = defineProps({
+    variant: {
+        type: String,
+        default: 'dark',
+        validator: (v) => ['dark', 'light'].includes(v),
+    },
+});
+
+const isLight = computed(() => props.variant === 'light');
+
 const isOpen = (id) => activeId.value === id;
 
 // Fetch FAQs from the backend
@@ -52,11 +62,13 @@ watch(() => page.props.locale, (newLocale, oldLocale) => {
 </script>
 
 <template>
-    <section class="fq-section" aria-label="Frequently asked questions">
-        <!-- Ambient orbs -->
-        <div class="fq-orb fq-orb--1"></div>
-        <div class="fq-orb fq-orb--2"></div>
-        <div class="fq-orb fq-orb--3"></div>
+    <section class="fq-section" :class="{ 'fq-light': isLight }" aria-label="Frequently asked questions">
+        <!-- Ambient orbs (dark variant only) -->
+        <template v-if="!isLight">
+            <div class="fq-orb fq-orb--1"></div>
+            <div class="fq-orb fq-orb--2"></div>
+            <div class="fq-orb fq-orb--3"></div>
+        </template>
 
         <div class="full-w-container fq-container">
 
@@ -434,5 +446,114 @@ watch(() => page.props.locale, (newLocale, oldLocale) => {
         height: 28px;
         font-size: 0.72rem;
     }
+}
+
+/* ════════════════════════════════════════
+   LIGHT VARIANT
+   ════════════════════════════════════════ */
+.fq-light {
+    background: linear-gradient(155deg, #f8fafc 0%, #eef4f8 40%, #f1f5f9 70%, #f8fafc 100%);
+}
+
+.fq-light::before {
+    background:
+        radial-gradient(ellipse 600px 500px at 12% 15%, rgba(6, 182, 212, 0.06), transparent),
+        radial-gradient(ellipse 500px 400px at 88% 80%, rgba(6, 182, 212, 0.04), transparent),
+        radial-gradient(ellipse 900px 350px at 50% 50%, rgba(226, 240, 248, 0.5), transparent);
+}
+
+.fq-light::after {
+    background-image:
+        linear-gradient(rgba(6, 182, 212, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(6, 182, 212, 0.04) 1px, transparent 1px);
+}
+
+.fq-light .fq-badge {
+    color: #0891b2;
+    background: rgba(6, 182, 212, 0.08);
+    border-color: rgba(6, 182, 212, 0.15);
+}
+
+.fq-light .fq-badge svg {
+    fill: #0891b2;
+}
+
+.fq-light .fq-heading {
+    color: #0f172a;
+}
+
+.fq-light .fq-lead {
+    color: #64748b;
+}
+
+.fq-light .fq-card {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(148, 163, 184, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.fq-light .fq-card:hover {
+    border-color: rgba(6, 182, 212, 0.25);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.fq-light .fq-card.is-open {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(6, 182, 212, 0.3);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(6, 182, 212, 0.1);
+}
+
+.fq-light .fq-number {
+    color: #64748b;
+    background: rgba(148, 163, 184, 0.1);
+    border-color: rgba(148, 163, 184, 0.15);
+}
+
+.fq-light .fq-card.is-open .fq-number {
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    color: white;
+}
+
+.fq-light .fq-question {
+    color: #334155;
+}
+
+.fq-light .fq-card.is-open .fq-question {
+    color: #0f172a;
+}
+
+.fq-light .fq-chevron {
+    background: rgba(148, 163, 184, 0.08);
+    border-color: rgba(148, 163, 184, 0.12);
+}
+
+.fq-light .fq-card.is-open .fq-chevron {
+    background: rgba(6, 182, 212, 0.1);
+    border-color: rgba(6, 182, 212, 0.2);
+}
+
+.fq-light .fq-chevron svg {
+    color: #94a3b8;
+}
+
+.fq-light .fq-card.is-open .fq-chevron svg {
+    color: #0891b2;
+}
+
+.fq-light .fq-divider {
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(148, 163, 184, 0.2) 20%,
+        rgba(148, 163, 184, 0.2) 80%,
+        transparent);
+}
+
+.fq-light .fq-answer {
+    color: #64748b;
+}
+
+.fq-light .fq-skeleton {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(148, 163, 184, 0.15);
 }
 </style>
