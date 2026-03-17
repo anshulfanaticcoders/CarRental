@@ -755,7 +755,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
             <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer"
               class="flex-1 min-w-0 flex items-center gap-3 rounded-lg border border-emerald-500 bg-emerald-500 px-3 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:border-emerald-600 hover:bg-emerald-600">
               <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5 filter brightness-0 invert">
-              Chat on WhatsApp
+              WhatsApp
             </a>
             <a v-if="callLink" :href="callLink"
               class="flex-1 min-w-0 flex items-center gap-3 rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-3 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:border-[#153b4fef] hover:bg-[#153b4fef]">

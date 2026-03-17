@@ -198,7 +198,14 @@ h4 {
 
 body {
     font-family: "IBM Plex Sans", serif;
+}
 
+/* Extend overlay to cover Safari iOS safe areas (notch + home indicator) */
+.sheet-overlay-safari {
+    top: calc(-1 * env(safe-area-inset-top, 0px)) !important;
+    right: calc(-1 * env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(-1 * env(safe-area-inset-bottom, 0px)) !important;
+    left: calc(-1 * env(safe-area-inset-left, 0px)) !important;
 }
 
 /* Add this to your app.css */

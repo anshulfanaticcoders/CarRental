@@ -420,8 +420,8 @@ defineProps({
 
 @media (max-width: 767px) {
     .hero {
-        padding-top: 5rem;
-        padding-bottom: 1.5rem;
+        padding-top: 8rem;
+        padding-bottom: 2.5rem;
     }
 
     .hero-left {
