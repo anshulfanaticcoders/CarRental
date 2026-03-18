@@ -1,5 +1,6 @@
 <template>
     <SeoHead :seo="seo" />
+    <SchemaInjector v-if="schema" :schema="schema" />
     <AuthenticatedHeaderLayout />
 
     <!-- ======================== -->
@@ -255,11 +256,13 @@ import Footer from '@/Components/Footer.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { Skeleton } from '@/Components/ui/skeleton';
 import SeoHead from '@/Components/SeoHead.vue';
+import SchemaInjector from '@/Components/SchemaInjector.vue';
 import blogbgimage from '../../assets/blogpagebgimage.jpg';
 import { ref, onMounted, nextTick, computed } from 'vue';
 
 const props = defineProps({
     blogs: Object,
+    schema: Object,
     seo: Object,
     locale: String,
     country: String,

@@ -6,7 +6,6 @@ use App\Services\LocautoRentService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
-use App\Helpers\SchemaBuilder;
 
 class LocautoRentController extends Controller
 {
@@ -63,13 +62,9 @@ class LocautoRentController extends Controller
 
             Log::info('Parsed ' . count($vehicles) . ' Locauto vehicles');
 
-            // Generate schema for SEO
-            $vehicleSchema = SchemaBuilder::vehicleList($vehicles, 'Locauto Rent Vehicles', $validated);
-
             return Inertia::render('LocautoRentCars', [
                 'vehicles' => $vehicles,
                 'filters' => $validated,
-                'schema' => $vehicleSchema,
             ]);
 
         } catch (\Exception $e) {

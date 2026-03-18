@@ -368,9 +368,6 @@ useScrollAnimation('.blogs-trigger', '.blog-cta', {
             :schema="individualSchema" />
     </template>
 
-    <!-- Schema for Organization (globally shared, if it exists) -->
-    <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
-
     <AuthenticatedHeaderLayout />
 
     <div v-if="$page.props.flash?.success" class="newsletter-flash">

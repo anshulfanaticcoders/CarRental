@@ -676,25 +676,11 @@ class BlogController extends Controller
             $pageSchemas[] = $testimonialListSchema;
         }
 
-        // Fetch vehicle categories (e.g., all active ones, or a specific number)
-        $categories = VehicleCategory::where('status', true)->get(); // Assuming 'status' field indicates active
-        $categoryListSchema = [];
-        if ($categories->isNotEmpty()) {
-            $categoryListSchema = SchemaBuilder::vehicleCategoryList($categories, 'Our Vehicle Categories');
-            if (!empty($categoryListSchema)) {
-                $pageSchemas[] = $categoryListSchema;
-            }
-        }
+        // Fetch vehicle categories (still used for homepage content)
+        $categories = VehicleCategory::where('status', true)->get();
 
-        // Fetch popular places (e.g., all of them, or a specific number)
-        $popularPlaces = PopularPlace::all(); // You might want to limit this, e.g., ->take(10)->get()
-        $popularPlaceListSchema = [];
-        if ($popularPlaces->isNotEmpty()) {
-            $popularPlaceListSchema = SchemaBuilder::popularPlaceList($popularPlaces, 'Popular Destinations');
-            if (!empty($popularPlaceListSchema)) {
-                $pageSchemas[] = $popularPlaceListSchema;
-            }
-        }
+        // Fetch popular places (still used for homepage content)
+        $popularPlaces = PopularPlace::all();
 
         // Fetch FAQs (e.g., all of them, or a limited number for the homepage)
         $faqs = Faq::with('translations')->get(); // Fetches all FAQs with their translations
@@ -834,8 +820,14 @@ class BlogController extends Controller
             url("/{$locale}/{$country}/blog")
         )->toArray();
 
+        $blogListSchema = [];
+        if (!empty($blogs->items())) {
+            $blogListSchema = SchemaBuilder::blogList(collect($blogs->items()), 'Latest Blog Posts', $country);
+        }
+
         return Inertia::render('BlogPage', [
             'blogs' => LocaleHelper::sanitizeUtf8($blogs),
+            'schema' => LocaleHelper::sanitizeUtf8($blogListSchema),
             'pages' => LocaleHelper::sanitizeUtf8($pages),
             'locale' => App::getLocale(),
             'country' => $country,

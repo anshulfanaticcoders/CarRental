@@ -2326,7 +2326,6 @@ watch(
             <div class="search-form-card">
                 <SearchBar class="searchbar-in-header !w-full" :prefill="searchQuery" :simple="true"
                     @update-search-params="handleSearchUpdate" />
-                <SchemaInjector v-if="$page.props.organizationSchema" :schema="$page.props.organizationSchema" />
             </div>
         </div>
     </section>

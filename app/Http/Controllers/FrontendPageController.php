@@ -18,8 +18,8 @@ class FrontendPageController extends Controller
     public static function getOrganizationSchema(): array
     {
         return SchemaBuilder::organization(
-            name: 'vrooem',
-            url: 'www.vrooem.com',
+            name: 'Vrooem',
+            url: config('app.url', 'https://vrooem.com'),
             logoUrl: 'https://my-public-bucket.4tcl8.upcloudobjects.com/my_media/vroeemlogo-1749185393-oqJNr.png',
             telephone: '+32493000000',
             email: 'info@vrooem.com',

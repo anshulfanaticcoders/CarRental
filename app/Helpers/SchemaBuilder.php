@@ -166,7 +166,7 @@ class SchemaBuilder
     /**
      * Generate ItemList schema for a collection of blog posts.
      *
-     * @param \Illuminate\Database\Eloquent\Collection $blogs Collection of Blog models.
+     * @param \Illuminate\Support\Collection $blogs Collection of Blog models.
      * @param string $pageTitle The title of the page listing the blogs.
      * @return array
      */
@@ -203,7 +203,7 @@ class SchemaBuilder
     //         // 'description' => 'A list of the latest blog posts.',
     //     ];
     // }
-    public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs, string $pageTitle = 'Blog Posts', ?string $country = null): array
+    public static function blogList(Collection $blogs, string $pageTitle = 'Blog Posts', ?string $country = null): array
     {
         $locale = app()->getLocale();
         $items = [];

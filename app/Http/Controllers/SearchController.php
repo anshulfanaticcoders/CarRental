@@ -7,7 +7,6 @@ use App\Models\Vehicle;
 use App\Models\VehicleCategory;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use App\Helpers\SchemaBuilder;
 use App\Services\LocationSearchService; // Import LocationSearchService
 use App\Services\Search\GatewaySearchService;
 use App\Services\Search\LegacyProviderSearchService;
@@ -426,7 +425,7 @@ class SearchController extends Controller
         }
 
         $internalVehiclesEloquent = $internalVehiclesQuery->with('category')->get();
-        $vehicleListSchema = SchemaBuilder::vehicleList($internalVehiclesEloquent, 'Vehicle Search Results', $validated);
+        $vehicleListSchema = null;
         $internalVehiclesData = $internalVehiclesEloquent->map(function ($vehicle) use ($rentalDays) {
             $reviews = Review::where('vehicle_id', $vehicle->id)
                 ->where('status', 'approved')
