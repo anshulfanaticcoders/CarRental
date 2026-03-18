@@ -15,9 +15,11 @@ class PopularPlace extends Model
     protected $fillable = [
         'place_name',
         'city',
+        'state',
         'country',
         'latitude',
         'longitude',
+        'unified_location_id',
         'image',
     ];
 }

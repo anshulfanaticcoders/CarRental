@@ -99,23 +99,15 @@ onBeforeUnmount(() => { if (timer) clearTimeout(timer); });
     <AuthenticatedHeaderLayout />
 
     <main class="overflow-x-hidden">
-        <!--
-            SECTION ORDER (Dark/Light alternation):
-            1. Hero + TrustBar  = DARK
-            2. Destinations     = LIGHT  (new component)
-            3. WhyChooseUs      = DARK   (new component)
-            4. eSIM             = LIGHT  (banner card)
-            5. HowItWorks       = DARK   (updated)
-            6. Testimonials     = LIGHT  (new, card grid)
-            7. Blog             = DARK   (new component)
-            8. FAQ              = LIGHT  (new, dynamic from API)
-            9. Newsletter       = DARK   (new component)
-        -->
 
         <WelcomeHero :hero-badge="heroBadge" :animated-tagline="animatedTagline" :hero-subtitle="heroSubtitle" :displayed-text="displayedText" :hero-image="heroImageSource" :trust-items="heroTrustItems" />
+        
         <TopDestinations :popular-places="popularPlaces" />
+        
         <WhyChooseUs />
+        
         <EsimSection />
+        
         <HowItWorks />
 
         <!-- 6. TESTIMONIALS (LIGHT) -->

@@ -1,26 +1,21 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
+import axios from 'axios';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
 import { useToast } from 'vue-toastification';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/Components/ui/alert-dialog';
 import { Toaster } from '@/Components/ui/toast';
-import loaderVariant from '../../../../assets/loader-variant.svg';
 
 const toast = useToast();
-const autocompleteInputRefEdit = ref(null);
-let googleAutocompleteInstanceEdit = null;
+const locationSearchContainer = ref(null);
+const locationSearch = ref('');
+const locationResults = ref([]);
+const showLocationResults = ref(false);
+const searchingLocations = ref(false);
+const selectedLocationHint = ref('');
+let searchTimeout = null;
 
 const props = defineProps({
     place: {
@@ -36,19 +31,74 @@ const form = useForm({
     country: props.place.country || '',
     latitude: props.place.latitude || null,
     longitude: props.place.longitude || null,
+    unified_location_id: props.place.unified_location_id || null,
     image: null,
     _method: 'PUT',
-});
-
-const locationSearchPlaceholder = computed(() => {
-    return `Current: ${form.place_name || 'Enter a location'}`;
 });
 
 const isDragging = ref(false);
 const imagePreview = ref(null);
 const selectedFileName = ref('');
 
-// Drag and drop handlers
+const formatLocationLabel = (location) => {
+    const name = location.name || 'Unnamed location';
+    const city = location.city || '';
+    const country = location.country || '';
+    const parts = [city, country].filter(Boolean).join(', ');
+    return parts ? `${name} (${parts})` : name;
+};
+
+const searchSystemLocations = async () => {
+    const term = locationSearch.value.trim();
+    if (term.length < 2) {
+        locationResults.value = [];
+        showLocationResults.value = false;
+        return;
+    }
+
+    searchingLocations.value = true;
+    try {
+        const response = await axios.get('/api/unified-locations', {
+            params: { search_term: term, limit: 20 },
+        });
+        locationResults.value = Array.isArray(response.data) ? response.data : [];
+        showLocationResults.value = true;
+    } catch (error) {
+        locationResults.value = [];
+        showLocationResults.value = false;
+    } finally {
+        searchingLocations.value = false;
+    }
+};
+
+const handleLocationInput = () => {
+    form.unified_location_id = null;
+    selectedLocationHint.value = 'Select a location from the dropdown to update.';
+
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(searchSystemLocations, 250);
+};
+
+const selectSystemLocation = (location) => {
+    form.unified_location_id = location.unified_location_id;
+    form.place_name = location.name || '';
+    form.city = location.city || '';
+    form.state = location.state || '';
+    form.country = location.country || '';
+    form.latitude = location.latitude ?? null;
+    form.longitude = location.longitude ?? null;
+
+    locationSearch.value = formatLocationLabel(location);
+    selectedLocationHint.value = `Selected: ${location.name} (ID: ${location.unified_location_id})`;
+    showLocationResults.value = false;
+};
+
+const closeLocationDropdown = (event) => {
+    if (locationSearchContainer.value && !locationSearchContainer.value.contains(event.target)) {
+        showLocationResults.value = false;
+    }
+};
+
 const handleDragOver = (event) => {
     event.preventDefault();
     isDragging.value = true;
@@ -69,7 +119,6 @@ const handleDrop = (event) => {
     }
 };
 
-// File upload handler
 const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -77,9 +126,8 @@ const handleFileUpload = (event) => {
     }
 };
 
-// Handle image file
 const handleImageFile = (file) => {
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+    if (file.size > 10 * 1024 * 1024) {
         toast.error('Image size should not exceed 10MB');
         return;
     }
@@ -92,7 +140,6 @@ const handleImageFile = (file) => {
     form.image = file;
     selectedFileName.value = file.name;
 
-    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
         imagePreview.value = e.target.result;
@@ -100,126 +147,43 @@ const handleImageFile = (file) => {
     reader.readAsDataURL(file);
 };
 
-// Remove image
 const removeImage = () => {
     form.image = null;
     imagePreview.value = null;
     selectedFileName.value = '';
-    // Reset file input
     if (document.querySelector('input[type="file"]')) {
         document.querySelector('input[type="file"]').value = '';
     }
 };
 
-const initAutocompleteEdit = async (inputElement) => {
-    if (!(inputElement instanceof HTMLInputElement)) {
-        console.error("Edit: Provided element is not an HTMLInputElement:", inputElement);
-        toast.error("Edit: Could not initialize location search: Invalid input element.");
-        return;
-    }
-    if (typeof window.google === 'undefined' || typeof window.google.maps === 'undefined') {
-        console.error("Edit: Google Maps API script not loaded.");
-        toast.error("Edit: Mapping service not available.");
+const hydrateCurrentSystemLocation = async () => {
+    if (!form.unified_location_id) {
+        selectedLocationHint.value = 'Select a location from our provider-backed system list.';
         return;
     }
 
     try {
-        const placesLibrary = await google.maps.importLibrary("places");
-        if (!placesLibrary || !placesLibrary.Autocomplete) {
-            console.error("Edit: Failed to import Google Maps Places Autocomplete.");
-            toast.error("Edit: Could not initialize location search (Places library missing).");
-            return;
-        }
-
-        googleAutocompleteInstanceEdit = new placesLibrary.Autocomplete(inputElement, {
-            fields: ["address_components", "geometry", "name", "formatted_address"],
-            types: ["geocode", "establishment"],
+        const response = await axios.get('/api/unified-locations', {
+            params: { unified_location_id: form.unified_location_id },
         });
-        googleAutocompleteInstanceEdit.addListener("place_changed", fillInAddressEdit);
-        console.log("Edit: Google Places Autocomplete initialized.");
+        const location = Array.isArray(response.data) ? response.data[0] : null;
+        if (location) {
+            locationSearch.value = formatLocationLabel(location);
+            selectedLocationHint.value = `Current: ${location.name} (ID: ${location.unified_location_id})`;
+        } else {
+            selectedLocationHint.value = 'Current unified location is not found in system data.';
+        }
     } catch (error) {
-        console.error("Edit: Error initializing Google Places Autocomplete:", error);
-        toast.error("Edit: Could not initialize location search. See console.");
+        selectedLocationHint.value = 'Unable to load current unified location details.';
     }
 };
 
-const fillInAddressEdit = () => {
-    if (!googleAutocompleteInstanceEdit) return;
-    const place = googleAutocompleteInstanceEdit.getPlace();
-
-    if (!place || !place.geometry || !place.geometry.location) {
-        toast.warning("Edit: Could not get details for the selected location.");
+const submit = () => {
+    if (!form.unified_location_id) {
+        toast.error('Please select a location from system locations.');
         return;
     }
 
-    let placeName = place.name || '';
-    let city = '';
-    let state = '';
-    let country = '';
-
-    if (place.address_components) {
-        for (const component of place.address_components) {
-            const componentType = component.types && component.types[0];
-            const longName = component.long_name;
-            if (!componentType || !longName) continue;
-
-            switch (componentType) {
-                case "locality":
-                    city = longName;
-                    break;
-                case "administrative_area_level_1":
-                    state = longName;
-                    break;
-                case "country":
-                    country = longName;
-                    break;
-                case "postal_town":
-                    if (!city) city = longName;
-                    break;
-            }
-        }
-    }
-
-    if (placeName === city && place.formatted_address) {
-        const firstPartOfAddress = place.formatted_address.split(',')[0];
-        if (firstPartOfAddress && firstPartOfAddress.toLowerCase() !== city.toLowerCase()) {
-            placeName = firstPartOfAddress;
-        }
-    }
-    if (!placeName && place.formatted_address) {
-        placeName = place.formatted_address.split(',')[0];
-    }
-
-    form.place_name = placeName;
-    form.city = city;
-    form.state = state;
-    form.country = country;
-    form.latitude = place.geometry.location.lat();
-    form.longitude = place.geometry.location.lng();
-};
-
-onMounted(async () => {
-    if (autocompleteInputRefEdit.value) {
-        const actualInputElement =
-            autocompleteInputRefEdit.value.$el ||
-            (autocompleteInputRefEdit.value instanceof HTMLInputElement
-                ? autocompleteInputRefEdit.value
-                : autocompleteInputRefEdit.value.$refs?.input);
-
-        if (actualInputElement instanceof HTMLInputElement) {
-            await initAutocompleteEdit(actualInputElement);
-        } else {
-            console.error("Edit: Could not get HTMLInputElement from ref 'autocompleteInputRefEdit'. Value:", autocompleteInputRefEdit.value);
-            toast.error("Edit: Location search input element not found. Autocomplete disabled.");
-        }
-    } else {
-        console.error("Edit: autocompleteInputRefEdit is null in onMounted.");
-        toast.error("Edit: Location search input ref missing. Autocomplete disabled.");
-    }
-});
-
-
-const submit = () => {
     form.post(route('popular-places.update', props.place.id), {
         forceFormData: true,
         preserveScroll: true,
@@ -234,12 +198,6 @@ const submit = () => {
             form.image = null;
             imagePreview.value = null;
             selectedFileName.value = '';
-            if (autocompleteInputRefEdit.value) {
-                const inputEl = autocompleteInputRefEdit.value.$el || autocompleteInputRefEdit.value.$refs?.input;
-                if (inputEl instanceof HTMLInputElement) {
-                    inputEl.value = '';
-                }
-            }
         },
         onError: (errors) => {
             toast.error('Error updating popular place: ' + Object.values(errors).join(', '), {
@@ -250,7 +208,16 @@ const submit = () => {
     });
 };
 
-// Watch for form errors to log for debugging
+onMounted(async () => {
+    document.addEventListener('click', closeLocationDropdown);
+    await hydrateCurrentSystemLocation();
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', closeLocationDropdown);
+    if (searchTimeout) clearTimeout(searchTimeout);
+});
+
 watch(() => form.errors, (newErrors) => {
     if (Object.keys(newErrors).length > 0) {
         console.error('Form errors:', newErrors);
@@ -277,48 +244,79 @@ watch(() => form.errors, (newErrors) => {
             </div>
 
             <form @submit.prevent="submit" class="space-y-6">
-              <div>
-                <label for="locationSearchEdit" class="text-sm font-medium text-gray-700 mb-2 block">Search New Location to Update Details</label>
+              <div ref="locationSearchContainer" class="relative">
+                <label for="locationSearchEdit" class="text-sm font-medium text-gray-700 mb-2 block">Search System Location <span class="text-red-600">*</span></label>
                 <Input
                   id="locationSearchEdit"
-                  ref="autocompleteInputRefEdit"
+                  v-model="locationSearch"
                   type="text"
-                  :placeholder="locationSearchPlaceholder"
+                  placeholder="Search from unified/provider locations"
+                  autocomplete="off"
+                  @input="handleLocationInput"
+                  @focus="handleLocationInput"
                 />
-                <p class="text-xs text-gray-500 mt-1">Selecting a new location will auto-fill the fields below. You can then edit them.</p>
+                <p class="text-xs text-gray-500 mt-1">{{ selectedLocationHint }}</p>
+
+                <div
+                  v-if="showLocationResults"
+                  class="absolute z-20 mt-2 w-full rounded-lg border border-gray-200 bg-white shadow-xl max-h-64 overflow-y-auto"
+                >
+                  <div v-if="searchingLocations" class="p-3 text-sm text-gray-500">Searching...</div>
+                  <button
+                    v-for="location in locationResults"
+                    :key="location.unified_location_id"
+                    type="button"
+                    class="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                    @click="selectSystemLocation(location)"
+                  >
+                    <div class="text-sm font-medium text-gray-900">{{ location.name }}</div>
+                    <div class="text-xs text-gray-500">
+                      {{ [location.city, location.country].filter(Boolean).join(', ') }}
+                      <span class="ml-1">• ID {{ location.unified_location_id }}</span>
+                    </div>
+                  </button>
+                  <div v-if="!searchingLocations && !locationResults.length" class="p-3 text-sm text-gray-500">
+                    No system locations found.
+                  </div>
+                </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label for="place_name" class="text-sm font-medium text-gray-700 mb-1 block">Place Name <span class="text-red-600">*</span></label>
-                  <Input id="place_name" type="text" v-model="form.place_name" required />
+                  <Input id="place_name" type="text" v-model="form.place_name" readonly />
                 </div>
                 <div>
                   <label for="city" class="text-sm font-medium text-gray-700 mb-1 block">City <span class="text-red-600">*</span></label>
-                  <Input id="city" type="text" v-model="form.city" required />
+                  <Input id="city" type="text" v-model="form.city" readonly />
                 </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label for="state" class="text-sm font-medium text-gray-700 mb-1 block">State <span class="text-red-600">*</span></label>
-                  <Input id="state" type="text" v-model="form.state" required />
+                  <Input id="state" type="text" v-model="form.state" readonly />
                 </div>
                 <div>
                   <label for="country" class="text-sm font-medium text-gray-700 mb-1 block">Country <span class="text-red-600">*</span></label>
-                  <Input id="country" type="text" v-model="form.country" required />
+                  <Input id="country" type="text" v-model="form.country" readonly />
                 </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label for="latitude" class="text-sm font-medium text-gray-700 mb-1 block">Latitude <span class="text-red-600">*</span></label>
-                  <Input id="latitude" type="number" step="any" v-model="form.latitude" required />
+                  <Input id="latitude" type="number" step="any" v-model="form.latitude" readonly />
                 </div>
                 <div>
                   <label for="longitude" class="text-sm font-medium text-gray-700 mb-1 block">Longitude <span class="text-red-600">*</span></label>
-                  <Input id="longitude" type="number" step="any" v-model="form.longitude" required />
+                  <Input id="longitude" type="number" step="any" v-model="form.longitude" readonly />
                 </div>
+              </div>
+              <div>
+                <label for="unified_location_id" class="text-sm font-medium text-gray-700 mb-1 block">Unified Location ID</label>
+                <Input id="unified_location_id" type="number" min="1" v-model="form.unified_location_id" readonly />
+                <p class="text-xs text-gray-500 mt-1">This comes from your system/provider locations only.</p>
               </div>
 
               <div>
@@ -385,7 +383,7 @@ watch(() => form.errors, (newErrors) => {
 
               <div class="flex items-center justify-between pt-6 border-t border-gray-200">
                 <div class="flex items-center gap-4">
-                  <Button type="submit" :disabled="form.processing">
+                  <Button type="submit" :disabled="form.processing || !form.unified_location_id">
                     {{ form.processing ? 'Updating...' : 'Update Place' }}
                   </Button>
                   <Link :href="route('popular-places.index')">
@@ -415,4 +413,3 @@ watch(() => form.errors, (newErrors) => {
     <Toaster />
   </AdminDashboardLayout>
 </template>
-

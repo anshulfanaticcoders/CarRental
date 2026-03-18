@@ -29,6 +29,7 @@
                             <TableHead>State</TableHead>
                             <TableHead>Country</TableHead>
                             <TableHead>Location</TableHead>
+                            <TableHead>Unified ID</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -46,6 +47,7 @@
                             <TableCell>{{ place.state }}</TableCell>
                             <TableCell>{{ place.country }}</TableCell>
                             <TableCell class="text-sm text-gray-600">{{ place.latitude }}, {{ place.longitude }}</TableCell>
+                            <TableCell class="text-sm text-gray-600">{{ place.unified_location_id || '—' }}</TableCell>
                             <TableCell class="text-right">
                                 <div class="flex justify-end gap-2">
                                     <Button size="sm" variant="outline" @click="openEditDialog(place.id)">

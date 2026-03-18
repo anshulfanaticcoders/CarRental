@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FooterSetting;
 use App\Models\PopularPlace;
+use App\Services\LocationSearchService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +13,13 @@ use App\Helpers\ImageCompressionHelper;
 
 class PopularPlacesController extends Controller
 {
+    protected LocationSearchService $locationSearchService;
+
+    public function __construct(LocationSearchService $locationSearchService)
+    {
+        $this->locationSearchService = $locationSearchService;
+    }
+
     public function index(Request $request)
     {
         $search = $request->query('search');
@@ -41,31 +49,34 @@ class PopularPlacesController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'place_name' => 'required|string|max:255',
-            'city' => 'required|string|max:255',
-            'state' => 'required|string|max:255',
-            'country' => 'required|string|max:255',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'unified_location_id' => 'required|integer|min:1',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
+        $location = $this->locationSearchService->getLocationByUnifiedId((int) $request->unified_location_id);
+        if (!$location) {
+            return back()->withErrors([
+                'unified_location_id' => 'Selected location was not found in system locations.',
+            ])->withInput();
+        }
+
         $place = new PopularPlace();
-        $place->place_name = $request->place_name;
-        $place->city = $request->city;
-        $place->state = $request->state;
-        $place->country = $request->country;
-        $place->latitude = $request->latitude;
-        $place->longitude = $request->longitude;
+        $place->place_name = $location['name'] ?? $request->place_name ?? '';
+        $place->city = $location['city'] ?? $request->city ?? '';
+        $place->state = $location['state'] ?? $request->state ?? '';
+        $place->country = $location['country'] ?? $request->country ?? '';
+        $place->latitude = $location['latitude'] ?? $request->latitude ?? null;
+        $place->longitude = $location['longitude'] ?? $request->longitude ?? null;
+        $place->unified_location_id = $request->unified_location_id;
 
         if ($request->hasFile('image')) {
             $folderName = 'popularPlaces';
             $compressedImageUrl = ImageCompressionHelper::compressImage(
                 $request->file('image'),
                 $folderName,
-                quality: 80, // Adjust quality as needed (0-100)
-                maxWidth: 800, // Optional: Set max width
-                maxHeight: 600 // Optional: Set max height
+                80, // Adjust quality as needed (0-100)
+                800, // Optional: Set max width
+                600 // Optional: Set max height
             );
 
             if ($compressedImageUrl) {
@@ -93,21 +104,24 @@ class PopularPlacesController extends Controller
     public function update(Request $request, PopularPlace $popularPlace)
     {
         $request->validate([
-            'place_name' => 'required|string|max:255',
-            'city' => 'required|string|max:255',
-            'state' => 'required|string|max:255',
-            'country' => 'required|string|max:255',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'unified_location_id' => 'required|integer|min:1',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        $popularPlace->place_name = $request->place_name;
-        $popularPlace->city = $request->city;
-        $popularPlace->state = $request->state;
-        $popularPlace->country = $request->country;
-        $popularPlace->latitude = $request->latitude;
-        $popularPlace->longitude = $request->longitude;
+        $location = $this->locationSearchService->getLocationByUnifiedId((int) $request->unified_location_id);
+        if (!$location) {
+            return back()->withErrors([
+                'unified_location_id' => 'Selected location was not found in system locations.',
+            ])->withInput();
+        }
+
+        $popularPlace->place_name = $location['name'] ?? $request->place_name ?? $popularPlace->place_name;
+        $popularPlace->city = $location['city'] ?? $request->city ?? $popularPlace->city;
+        $popularPlace->state = $location['state'] ?? $request->state ?? $popularPlace->state;
+        $popularPlace->country = $location['country'] ?? $request->country ?? $popularPlace->country;
+        $popularPlace->latitude = $location['latitude'] ?? $request->latitude ?? $popularPlace->latitude;
+        $popularPlace->longitude = $location['longitude'] ?? $request->longitude ?? $popularPlace->longitude;
+        $popularPlace->unified_location_id = $request->unified_location_id;
 
         if ($request->hasFile('image')) {
             // Delete old image from UpCloud
@@ -122,9 +136,9 @@ class PopularPlacesController extends Controller
             $compressedImageUrl = ImageCompressionHelper::compressImage(
                 $request->file('image'),
                 $folderName,
-                quality: 80, // Adjust quality as needed (0-100)
-                maxWidth: 800, // Optional: Set max width
-                maxHeight: 600 // Optional: Set max height
+                80, // Adjust quality as needed (0-100)
+                800, // Optional: Set max width
+                600 // Optional: Set max height
             );
 
             if ($compressedImageUrl) {

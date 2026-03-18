@@ -1,9 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { usePage } from '@inertiajs/vue3';
-import { Skeleton } from '@/Components/ui/skeleton';
 import axios from 'axios';
 import { useScrollAnimation } from '@/composables/useScrollAnimation';
+import { buildPopularPlaceSearchUrl } from '@/utils/popularPlaceSearch';
 
 const props = defineProps({
     popularPlaces: { type: Array, default: null },
@@ -25,25 +25,21 @@ onMounted(async () => {
 });
 
 const navigateToSearch = (place) => {
-    updateSearchUrl(place);
-    const url = sessionStorage.getItem('searchurl');
-    if (url) window.location.href = `/${page.props.locale}${url}`;
+    const searchUrl = buildPopularPlaceSearchUrl(place, unifiedLocations.value);
+
+    if (searchUrl) {
+        sessionStorage.setItem('searchurl', searchUrl);
+        window.location.href = `/${page.props.locale}${searchUrl}`;
+        return;
+    }
+
+    // Graceful fallback: keep user on locale home if we cannot resolve a searchable location.
+    window.location.href = `/${page.props.locale}`;
 };
 
-const updateSearchUrl = (place) => {
-    const location = unifiedLocations.value.find(l => l.name === place.place_name);
-    const today = new Date();
-    const pickup = new Date(today); pickup.setDate(today.getDate() + 1);
-    const ret = new Date(pickup); ret.setDate(pickup.getDate() + 1);
-    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const params = { date_from: fmt(pickup), date_to: fmt(ret), start_time: '09:00', end_time: '09:00', age: 35 };
-    if (location?.providers?.length) {
-        const p = location.providers[0];
-        Object.assign(params, { where: location.name, latitude: location.latitude, longitude: location.longitude, city: location.city, country: location.country, provider: p.provider, provider_pickup_id: p.pickup_id, dropoff_location_id: p.pickup_id, dropoff_where: location.name });
-    } else {
-        Object.assign(params, { where: place.place_name, dropoff_where: place.place_name });
-    }
-    sessionStorage.setItem('searchurl', `/s?${new URLSearchParams(params).toString()}`);
+const getDestinationHref = (place) => {
+    const searchUrl = buildPopularPlaceSearchUrl(place, unifiedLocations.value);
+    return searchUrl ? `/${page.props.locale}${searchUrl}` : `/${page.props.locale}`;
 };
 
 // Static fallback destinations
@@ -79,7 +75,7 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-card', {
 
             <div class="dest-grid">
                 <a v-for="p in places" :key="p.id"
-                    :href="`/${page.props.locale}/s?where=${encodeURIComponent(p.place_name)}`"
+                    :href="getDestinationHref(p)"
                     @click.prevent="navigateToSearch(p)"
                     class="dest-card sr-reveal">
                     <img :src="p.image" :alt="p.place_name" loading="lazy" />

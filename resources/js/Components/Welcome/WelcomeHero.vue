@@ -68,7 +68,7 @@ const trustStats = [
             </div>
         </div>
 
-        <div class="full-w-container hero-search hero-fade hd5 hero-z">
+        <div class="hero-search hero-fade hd5 hero-z">
             <SearchBar class="hero-searchbar" :simple="true" />
         </div>
     </section>
