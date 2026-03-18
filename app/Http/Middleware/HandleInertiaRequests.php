@@ -4,12 +4,45 @@ namespace App\Http\Middleware;
 
 use App\Models\VendorProfile;
 use App\Services\PromoService;
+use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Middleware;
 use App\Models\UserDocument;
+use Tighten\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
 {
+    protected function shouldUseSsr(Request $request): bool
+    {
+        $route = $request->route();
+
+        if (!$route) {
+            return false;
+        }
+
+        $routeName = (string) $route->getName();
+        $middlewares = $route->gatherMiddleware();
+
+        $hasAuthMiddleware = collect($middlewares)->contains(function ($middleware) {
+            return $middleware === 'auth' || Str::startsWith($middleware, 'auth:');
+        });
+
+        if ($hasAuthMiddleware) {
+            return false;
+        }
+
+        return !Str::startsWith($routeName, 'admin.');
+    }
+
+    public function handle(Request $request, Closure $next)
+    {
+        $ssrEnabled = (bool) config('inertia.ssr.enabled', false);
+        config(['inertia.ssr.enabled' => $ssrEnabled && $this->shouldUseSsr($request)]);
+
+        return parent::handle($request, $next);
+    }
+
     /**
      * The root template that is loaded on the first page visit.
      *
@@ -119,6 +152,14 @@ class HandleInertiaRequests extends Middleware
                 'status' => $request->session()->get('status'),
             ];
         };
+
+        if ($this->shouldUseSsr($request)) {
+            $sharedData['ziggy'] = function () use ($request) {
+                return array_merge((new Ziggy())->toArray(), [
+                    'location' => $request->url(),
+                ]);
+            };
+        }
 
         return $sharedData;
     }
