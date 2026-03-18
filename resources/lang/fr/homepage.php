@@ -52,7 +52,7 @@ return [
   'latest_articles' => 'Derniers Articles',
   'blogs_heading' => 'Restez informé et inspiré pour votre prochain voyage',
   'read_story' => 'Lire l\'Article',
-  'more_blogs' => 'Plus',
+  'more_blogs' => 'Voir tous les articles',
 
   'how_it_works_title' => 'Comment ça fonctionne',
   'how_it_works_subtitle' => 'Processus simplifiés pour une expérience sans tracas',

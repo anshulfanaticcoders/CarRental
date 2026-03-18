@@ -52,7 +52,7 @@ return [
     'latest_articles' => 'Laatste Artikelen',
     'blogs_heading' => 'Blijf geïnformeerd en geïnspireerd voor uw volgende reis',
     'read_story' => 'Lees Verhaal',
-    'more_blogs' => 'Meer',
+    'more_blogs' => 'Bekijk alle artikelen',
 
     // HowItWorks translations
     'how_it_works_title' => 'Hoe het werkt',

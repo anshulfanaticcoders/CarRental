@@ -29,6 +29,7 @@
                     stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
                 <input type="text" v-model="form.where" @input="handleSearchInput" @click="handleInputClick"
+                  @focus="handleInputFocus"
                   :placeholder="isSearching ? _t('homepage', 'searching_placeholder') : _t('homepage', 'pickup_location_placeholder')"
                   class="bg-transparent border-none p-0 w-full text-customDarkBlackColor placeholder-gray-400 focus:ring-0 focus:border-none focus:outline-none text-sm font-medium"
                   required />
@@ -633,13 +634,24 @@ const clearError = () => {
   showDropoffSearchBox.value = false;
 };
 
-const handleInputClick = () => {
+const handleInputClick = (event) => {
   if (isMobile.value) {
+    event?.target?.blur?.();
     openMobileLocationPicker();
     return;
   }
   showSearchBox.value = !showSearchBox.value;
   showDropoffSearchBox.value = false; // Close other dropdown
+};
+
+const handleInputFocus = (event) => {
+  if (!isMobile.value) {
+    return;
+  }
+  event?.target?.blur?.();
+  if (!showMobileLocationPicker.value) {
+    openMobileLocationPicker();
+  }
 };
 
 const handleDropoffInputClick = () => {

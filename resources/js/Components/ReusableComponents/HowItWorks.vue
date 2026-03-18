@@ -2,71 +2,47 @@
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 
-// Access page props
 const page = usePage();
-
-// Translation helpers
-const __ = (key, replacements = {}) => {
-    const translations = page.props.translations?.messages || {};
-    let translation = translations[key] || key;
-    
-    // Replace placeholders if any
-    Object.keys(replacements).forEach(k => {
-        translation = translation.replace(`:${k}`, replacements[k]);
-    });
-    
-    return translation;
+const _p = (key, fallback = '') => {
+    const t = page.props.translations?.homepage || {};
+    return t[key] || fallback || key;
 };
 
-const _p = (key, replacements = {}) => {
-    const translations = page.props.translations?.homepage || {};
-    let translation = translations[key] || key;
-    
-    // Replace placeholders if any
-    Object.keys(replacements).forEach(k => {
-        translation = translation.replace(`:${k}`, replacements[k]);
-    });
-    
-    return translation;
-};
-
-const accordionItems = computed(() => [
+const steps = computed(() => [
     {
-        value: "item-1",
-        title: _p('how_it_works_step_1_title'), // Use translation key
-        content: _p('how_it_works_step_1_content'),
+        value: 'item-1',
+        title: _p('how_it_works_step_1_title', 'Search & Compare'),
+        content: _p('how_it_works_step_1_content', 'Enter your destination and dates. We compare 800+ providers to find your perfect match.'),
     },
     {
-        value: "item-2",
-        title: _p('how_it_works_step_2_title'),
-        content: _p('how_it_works_step_2_content'),
+        value: 'item-2',
+        title: _p('how_it_works_step_2_title', 'Book Instantly'),
+        content: _p('how_it_works_step_2_content', 'Reserve your vehicle in seconds with transparent pricing and no hidden fees.'),
     },
     {
-        value: "item-3",
-        title: _p('how_it_works_step_3_title'),
-        content: _p('how_it_works_step_3_content'),
+        value: 'item-3',
+        title: _p('how_it_works_step_3_title', 'Pick Up & Drive'),
+        content: _p('how_it_works_step_3_content', 'Show your booking confirmation, collect your keys, and hit the road.'),
     },
 ]);
 </script>
 
 <template>
-    <section
-        class="how-it-works home-section home-section--light"
-    >
-        <div class="full-w-container how-it-works-inner">
-            <div class="how-it-works-header">
-                <span class="how-it-works-tag">{{ _p('how_it_works_title') }}</span>
-                <h3 class="how-it-works-title">{{ _p('how_it_works_subtitle') }}</h3>
-                <p class="how-it-works-description">
-                    {{ _p('how_it_works_description') }}
-                </p>
+    <section class="how-section">
+        <div class="how-glow"></div>
+        <div class="full-w-container how-z">
+            <div class="how-header">
+                <span class="how-label">{{ _p('how_it_works_title', 'How It Works') }}</span>
+                <h3 class="how-title">{{ _p('how_it_works_subtitle', 'Three steps to the open road.') }}</h3>
+                <p class="how-desc">{{ _p('how_it_works_description', 'From search to steering wheel in minutes.') }}</p>
             </div>
-
-            <div class="how-it-works-steps">
-                <div v-for="(item, index) in accordionItems" :key="item.value" class="how-it-works-card">
-                    <div class="how-it-works-index">0{{ index + 1 }}</div>
-                    <h4>{{ item.title }}</h4>
-                    <p>{{ item.content }}</p>
+            <div class="steps-grid">
+                <div v-for="(s, i) in steps" :key="s.value" class="step-card">
+                    <div class="step-number">{{ String(i + 1).padStart(2, '0') }}</div>
+                    <div>
+                        <h4>{{ s.title }}</h4>
+                        <p>{{ s.content }}</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -74,121 +50,153 @@ const accordionItems = computed(() => [
 </template>
 
 <style scoped>
-.how-it-works-inner {
-    display: flex;
-    flex-direction: column;
-    gap: 3rem;
-}
-
-.how-it-works-header {
-    text-align: center;
-    max-width: 720px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.how-it-works-tag {
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    color: #2ea7ad;
-}
-
-.how-it-works-title {
-    font-size: clamp(2.1rem, 4vw, 3.2rem);
-    color: #0f172a;
-    margin: 0;
-}
-
-.how-it-works-description {
-    font-size: 1.1rem;
-    color: #64748b;
-    margin: 0;
-}
-
-.how-it-works-steps {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2rem;
+.how-section {
+    padding: clamp(4rem, 8vw, 7rem) 0;
+    background: linear-gradient(160deg, #0a1d28 0%, #153b4f 45%, #0c2535 100%);
+    color: #fff;
     position: relative;
+    overflow: hidden;
 }
 
-.how-it-works-steps::before {
-    content: "";
+.how-glow {
     position: absolute;
-    top: 52px;
-    left: 10%;
-    right: 10%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(46, 167, 173, 0.4), transparent);
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 18% 12%, rgba(34, 211, 238, 0.08), transparent 45%),
+                radial-gradient(circle at 80% 78%, rgba(10, 29, 40, 0.3), transparent 55%);
 }
 
-.how-it-works-card {
-    background: #ffffff;
-    border-radius: 24px;
-    padding: 2rem;
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    position: relative;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.how-it-works-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
-}
-
-.how-it-works-index {
-    width: 48px;
-    height: 48px;
-    border-radius: 16px;
-    background: rgba(46, 167, 173, 0.12);
-    color: #153b4f;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1rem;
-    letter-spacing: 0.08em;
+.how-z {
     position: relative;
     z-index: 1;
 }
 
-.how-it-works-card h4 {
-    margin: 0;
-    font-size: 1.4rem;
-    color: #0f172a;
+.how-header {
+    text-align: center;
+    margin-bottom: 4rem;
 }
 
-.how-it-works-card p {
-    margin: 0;
-    color: #64748b;
-    line-height: 1.6;
+.how-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #22d3ee;
 }
 
-@media screen and (max-width: 1024px) {
-    .how-it-works-steps {
+.how-label::before {
+    content: "";
+    display: block;
+    width: 24px;
+    height: 1.5px;
+    background: #22d3ee;
+}
+
+.how-title {
+    font-size: clamp(2rem, 3.5vw, 3rem);
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin-top: 0.75rem;
+}
+
+.how-desc {
+    margin-top: 1rem;
+    color: rgba(255, 255, 255, 0.5);
+    max-width: 480px;
+    margin-inline: auto;
+}
+
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    position: relative;
+}
+
+.steps-grid::before {
+    content: "";
+    position: absolute;
+    top: 3.25rem;
+    left: calc(16.67% + 1rem);
+    right: calc(16.67% + 1rem);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.15), transparent);
+}
+
+.step-card {
+    text-align: center;
+    padding: 2rem 1.5rem;
+    position: relative;
+}
+
+.step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: rgba(34, 211, 238, 0.1);
+    border: 2px solid rgba(34, 211, 238, 0.2);
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #22d3ee;
+    margin: 0 auto 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.step-card h4 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.6rem;
+}
+
+.step-card p {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.65;
+    max-width: 280px;
+    margin-inline: auto;
+}
+
+@media (max-width: 1024px) {
+    .steps-grid {
         grid-template-columns: 1fr;
+        gap: 0;
     }
 
-    .how-it-works-steps::before {
-        top: 0;
-        left: 24px;
-        right: auto;
-        bottom: 10px;
-        width: 1px;
-        height: calc(100% - 20px);
-        background: linear-gradient(180deg, transparent, rgba(46, 167, 173, 0.4), transparent);
+    .steps-grid::before {
+        display: none;
     }
-}
-@media screen and (max-width: 768px) {
-    .how-it-works {
-        background-image: none !important;
+
+    .step-card {
+        text-align: left;
+        display: grid;
+        grid-template-columns: 52px 1fr;
+        gap: 1rem;
+        align-items: start;
+        padding: 1.25rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .step-card:last-child {
+        border-bottom: none;
+    }
+
+    .step-number {
+        margin: 0;
+    }
+
+    .step-card p {
+        max-width: none;
+        margin: 0;
     }
 }
 </style>

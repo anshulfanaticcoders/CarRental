@@ -51,9 +51,9 @@ return [
 
     // Blogs Section
     'latest_articles' => 'Latest Articles',
-    'blogs_heading' => 'Stay informed and inspired for your next journey',
+    'blogs_heading' => 'Road Stories. Smart Deals.',
     'read_story' => 'Read Story',
-    'more_blogs' => 'More',
+    'more_blogs' => 'View All Articles',
 
     // HowItWorks translations
     'how_it_works_title' => 'How It Works',
@@ -75,7 +75,7 @@ return [
 
     // Blogs translations
     'blogs_title' => 'Latest Articles',
-    'blogs_subtitle' => 'Stay informed and inspired for your next journey',
+    'blogs_subtitle' => 'Road Stories. Smart Deals.',
 
     // Search Bar translations
     'search_bar_header' => 'Do you need a rental car?',

@@ -1,86 +1,51 @@
 <script setup>
-import { usePage } from '@inertiajs/vue3'
-import { Button } from '@/Components/ui/button'
-import { Card, CardContent } from '@/Components/ui/card'
+import { usePage } from '@inertiajs/vue3';
+import { Button } from '@/Components/ui/button';
 
-// Translation helper
 const _t = (key, fallback = '') => {
     const { props } = usePage();
-    if (props.translations && props.translations.esim && props.translations.esim[key]) {
-        return props.translations.esim[key];
-    }
-    return fallback || key;
-}
+    return props.translations?.esim?.[key] || fallback || key;
+};
 
-// Redirect to partner portal
 const redirectToPartnerPortal = () => {
-    window.open('https://vrooem.esimqr.link/', '_blank')
-}
+    window.open('https://vrooem.esimqr.link/', '_blank');
+};
 </script>
 
 <template>
-    <section class="home-section home-section--light relative esim-section">
-        <div class="full-w-container relative z-10">
-            <div class="esim-grid">
-                <div class="esim-content">
-                    <span class="text-[1.1rem] text-customPrimaryColor tracking-[0.2em] uppercase">{{ _t('tagline') }}</span>
-                    <h2 class="esim-title">
-                        {{ _t('title') }}
-                    </h2>
-                    <p class="esim-subtitle">
-                        {{ _t('subtitle') }}
-                    </p>
-
-                    <div class="esim-cta-row">
-                        <Button @click="redirectToPartnerPortal" size="lg"
-                            class="esim-cta-button">
-                            {{ _t('get_esim') }}
+    <section class="esim-section">
+        <div class="full-w-container">
+            <div class="esim-banner">
+                <div class="esim-left">
+                    <span class="esim-label">{{ _t('tagline', 'Stay Connected') }}</span>
+                    <h2 class="esim-title">{{ _t('title', 'Travel eSIM included free.') }}</h2>
+                    <p class="esim-text">{{ _t('subtitle', 'No SIM swaps, no roaming fees. Activate in seconds and stay connected from arrival to drop-off.') }}</p>
+                    <div class="esim-features">
+                        <div class="esim-feat"><span class="esim-dot"></span>200+ Countries</div>
+                        <div class="esim-feat"><span class="esim-dot"></span>Instant Activation</div>
+                        <div class="esim-feat"><span class="esim-dot"></span>Unlimited Data Plans</div>
+                        <div class="esim-feat"><span class="esim-dot"></span>Works on Any eSIM Phone</div>
+                    </div>
+                    <div class="esim-cta">
+                        <Button @click="redirectToPartnerPortal" size="lg" class="esim-btn">
+                            {{ _t('get_esim', 'Get Your eSIM') }}
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                         </Button>
                         <div class="esim-support">
-                            <span class="esim-support-label">Support</span>
-                            <span class="esim-support-text">{{ _t('support_info') }}</span>
+                            <span class="esim-sup-label">24/7 Support</span>
+                            <span class="esim-sup-val">{{ _t('support_info', 'Worldwide Coverage') }}</span>
                         </div>
                     </div>
                 </div>
-
-                <div class="esim-visual">
-                    <div class="esim-card-visual">
-                        <div class="esim-chip">
-                            <span class="chip-line"></span>
-                            <span class="chip-line"></span>
-                            <span class="chip-line"></span>
-                        </div>
-                        <div class="esim-signal">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </div>
+                <div class="esim-right">
+                    <div class="esim-ghost"></div>
+                    <div class="esim-card">
+                        <div class="esim-signal"><span></span><span></span><span></span><span></span></div>
+                        <div class="esim-chip"><span></span><span></span><span></span></div>
                         <div class="esim-mark">eSIM</div>
                         <div class="esim-brand">VROOEM</div>
                     </div>
-
-                    <div class="esim-badge badge-top">
-                        <span class="badge-icon">∞</span>
-                        <div>
-                            <p>{{ _t('unlimited_data') }}</p>
-                            <span>Always-on connectivity</span>
-                        </div>
-                    </div>
-                    <div class="esim-badge badge-right">
-                        <span class="badge-icon">🌍</span>
-                        <div>
-                            <p>{{ _t('destinations') }}</p>
-                            <span>150+ countries</span>
-                        </div>
-                    </div>
-                    <div class="esim-badge badge-bottom">
-                        <span class="badge-icon">⚡</span>
-                        <div>
-                            <p>{{ _t('instant_setup') }}</p>
-                            <span>Activate in minutes</span>
-                        </div>
-                    </div>
+                    <div class="esim-dots"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
                 </div>
             </div>
         </div>
@@ -88,321 +53,100 @@ const redirectToPartnerPortal = () => {
 </template>
 
 <style scoped>
-.esim-section::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 14% 18%, rgba(46, 167, 173, 0.12), transparent 55%),
-        radial-gradient(circle at 86% 6%, rgba(15, 23, 42, 0.08), transparent 60%);
-    opacity: 0.7;
+.esim-section {
+    padding: clamp(3rem, 6vw, 5rem) 0;
+    background: linear-gradient(180deg, #f8fafc 0%, #fff 45%, #f8fafc 100%);
+}
+.esim-banner {
+    display: grid; grid-template-columns: 1fr 1fr;
+    background: linear-gradient(135deg, #0a1d28, #153b4f);
+    border-radius: 28px; overflow: hidden; position: relative; min-height: 380px;
+}
+.esim-banner::before {
+    content: ""; position: absolute; top: -30%; right: -10%;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(34,211,238,0.1), transparent 65%);
     pointer-events: none;
 }
-
-.esim-grid {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 3rem;
+.esim-left {
+    padding: clamp(2rem, 4vw, 3.5rem); display: flex; flex-direction: column;
+    justify-content: center; position: relative; z-index: 1;
 }
-
-.esim-content {
-    flex: 1 1 55%;
-    display: flex;
-    flex-direction: column;
-    gap: 1.6rem;
+.esim-label {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.8rem; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #22d3ee; margin-bottom: 0.75rem;
 }
+.esim-label::before { content: ""; display: block; width: 24px; height: 1.5px; background: #22d3ee; }
+.esim-title { font-size: clamp(1.75rem, 3vw, 2.5rem); font-weight: 800; color: #fff; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 0.75rem; }
+.esim-text { color: rgba(255,255,255,0.55); font-size: 0.92rem; line-height: 1.6; margin-bottom: 1.5rem; max-width: 360px; }
+.esim-features { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.75rem; }
+.esim-feat { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 500; color: rgba(255,255,255,0.75); }
+.esim-dot { width: 6px; height: 6px; border-radius: 50%; background: #22d3ee; flex-shrink: 0; }
+.esim-cta { display: flex; align-items: center; gap: 1.25rem; }
+.esim-btn { background: #06b6d4 !important; color: #0a1d28 !important; font-weight: 700 !important; border-radius: 14px !important; display: inline-flex !important; align-items: center !important; gap: 0.5rem !important; }
+.esim-btn:hover { background: #22d3ee !important; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(6,182,212,0.3); }
+.esim-support { display: flex; flex-direction: column; }
+.esim-sup-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.35); }
+.esim-sup-val { font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.8); }
 
-.esim-title {
-    font-size: clamp(2.3rem, 4.4vw, 3.6rem);
-    line-height: 1.05;
-    font-weight: 700;
-    color: #0f172a;
-    letter-spacing: -0.02em;
-    margin: 0;
+.esim-right { display: flex; align-items: center; justify-content: center; position: relative; padding: 3rem 2rem; overflow: hidden; }
+.esim-right::before { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 280px; height: 280px; background: radial-gradient(circle, rgba(34,211,238,0.12), transparent 65%); pointer-events: none; }
+
+.esim-card {
+    width: 300px; height: 185px; border-radius: 20px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03));
+    border: 1px solid rgba(255,255,255,0.12); padding: 1.75rem;
+    position: relative; z-index: 2; overflow: hidden;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.3);
+    transform: perspective(600px) rotateY(-6deg) rotateX(2deg);
+    transition: transform 0.5s cubic-bezier(0.22,1,0.36,1);
+    backdrop-filter: blur(8px);
 }
+.esim-card:hover { transform: perspective(600px) rotateY(0) rotateX(0); }
+.esim-card::before { content: ""; position: absolute; top: -40%; right: -25%; width: 250px; height: 250px; background: radial-gradient(circle, rgba(34,211,238,0.12), transparent 65%); }
 
-.esim-subtitle {
-    font-size: 1.1rem;
-    color: #64748b;
-    max-width: 32rem;
-    line-height: 1.7;
-    margin: 0;
-}
-
-.esim-cta-row {
-    display: flex;
-    align-items: center;
-    gap: 1.8rem;
-    flex-wrap: wrap;
-}
-
-.esim-cta-button {
-    background: linear-gradient(135deg, #153b4f, #2ea7ad);
-    color: #ffffff;
-    font-weight: 600;
-    padding: 1rem 2.5rem;
-    border-radius: 999px;
-    box-shadow: 0 16px 30px rgba(21, 59, 79, 0.2);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.esim-cta-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 22px 40px rgba(21, 59, 79, 0.28);
-}
-
-.esim-support {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    color: #64748b;
-    font-size: 0.95rem;
-}
-
-.esim-support-label {
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    font-size: 0.75rem;
-    color: #94a3b8;
-}
-
-.esim-visual {
-    flex: 1 1 45%;
-    position: relative;
-    min-height: 360px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.esim-card-visual {
-    width: 320px;
-    height: 210px;
-    border-radius: 28px;
-    background: linear-gradient(140deg, #ffffff 0%, #edf2f7 60%, #dbe7f0 100%);
-    border: 1px solid rgba(148, 163, 184, 0.45);
-    box-shadow: 0 26px 50px rgba(15, 23, 42, 0.18);
-    position: relative;
-    overflow: hidden;
-    animation: floatCard 6s ease-in-out infinite;
-}
-
-.esim-card-visual::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 18% 12%, rgba(46, 167, 173, 0.28), transparent 45%),
-        radial-gradient(circle at 80% 80%, rgba(21, 59, 79, 0.18), transparent 55%);
-    opacity: 0.8;
-}
-
-.esim-chip {
-    position: absolute;
-    top: 32px;
-    left: 28px;
-    width: 72px;
-    height: 56px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #f8d48a, #d9b56f);
-    border: 1px solid rgba(120, 81, 34, 0.2);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 6px;
-    padding: 10px;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
-    animation: chipGlow 4s ease-in-out infinite;
-}
-
-.chip-line {
-    height: 3px;
-    border-radius: 999px;
-    background: rgba(120, 81, 34, 0.4);
-}
-
-.chip-line:nth-child(2) {
-    width: 80%;
-}
-
-.chip-line:nth-child(3) {
-    width: 65%;
-}
-
-.esim-signal {
-    position: absolute;
-    top: 28px;
-    right: 28px;
-    display: flex;
-    align-items: flex-end;
-    gap: 4px;
-}
-
-.esim-signal span {
-    width: 8px;
-    border-radius: 4px 4px 0 0;
-    background: rgba(21, 59, 79, 0.4);
-}
-
-.esim-signal span:nth-child(1) {
-    height: 10px;
-}
-
-.esim-signal span:nth-child(2) {
-    height: 16px;
-}
-
-.esim-signal span:nth-child(3) {
-    height: 22px;
-}
-
-.esim-signal span:nth-child(4) {
-    height: 28px;
-    background: rgba(46, 167, 173, 0.7);
-}
-
+.esim-chip { display: flex; gap: 3px; margin-bottom: 2rem; }
+.esim-chip span { width: 20px; height: 14px; border-radius: 3px; background: rgba(212,162,86,0.45); border: 1px solid rgba(212,162,86,0.25); }
 .esim-mark {
-    position: absolute;
-    bottom: 40px;
-    left: 28px;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #153b4f;
-    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.45);
+    position: relative;
+    z-index: 2;
 }
 
 .esim-brand {
-    position: absolute;
-    bottom: 22px;
-    left: 28px;
-    font-size: 0.75rem;
-    letter-spacing: 0.3em;
-    color: rgba(21, 59, 79, 0.6);
-}
-
-.esim-badge {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    background: #ffffff;
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    border-radius: 16px;
-    padding: 0.75rem 1rem;
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
-    font-size: 0.9rem;
-    color: #0f172a;
-    animation: floatBadge 5.5s ease-in-out infinite;
-}
-
-.esim-badge p {
-    margin: 0;
-    font-weight: 600;
-}
-
-.esim-badge span {
-    font-size: 0.75rem;
-    color: #64748b;
-    display: block;
-}
-
-.badge-icon {
     font-size: 1.35rem;
-    color: #2ea7ad;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.02em;
+    margin-top: 0.15rem;
+    position: relative;
+    z-index: 2;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
+.esim-signal { position: absolute; top: 1.75rem; right: 1.75rem; display: flex; align-items: flex-end; gap: 3px; }
+.esim-signal span { display: block; width: 4px; border-radius: 2px; background: #22d3ee; opacity: 0.6; }
+.esim-signal span:nth-child(1){height:5px} .esim-signal span:nth-child(2){height:9px} .esim-signal span:nth-child(3){height:13px} .esim-signal span:nth-child(4){height:17px;opacity:1}
 
-.badge-top {
-    top: 12%;
-    left: 6%;
+.esim-ghost { position: absolute; width: 280px; height: 170px; border-radius: 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); top: 50%; left: 50%; transform: translate(-40%,-55%) rotate(6deg); z-index: 1; }
+.esim-dots { position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 3; }
+.esim-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+.esim-dots span:nth-child(1),.esim-dots span:nth-child(4),.esim-dots span:nth-child(7) { background: #22d3ee; opacity: 0.6; }
+
+@media (max-width: 768px) {
+    .esim-banner { grid-template-columns: 1fr; }
+    .esim-right { min-height: 220px; }
+    .esim-card { width: 260px; height: 160px; transform: none; }
+    .esim-ghost { width: 240px; height: 150px; }
+    .esim-features { grid-template-columns: 1fr; }
+    .esim-cta { flex-direction: column; align-items: flex-start; }
 }
-
-.badge-right {
-    top: 48%;
-    right: -8%;
-    animation-delay: 0.8s;
-}
-
-.badge-bottom {
-    bottom: 6%;
-    left: 18%;
-    animation-delay: 1.4s;
-}
-
-@keyframes floatCard {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-10px);
-    }
-}
-
-@keyframes floatBadge {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(8px);
-    }
-}
-
-@keyframes chipGlow {
-    0%,
-    100% {
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4), 0 0 0 rgba(46, 167, 173, 0.2);
-    }
-
-    50% {
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4), 0 0 18px rgba(46, 167, 173, 0.35);
-    }
-}
-
-@media (max-width: 1024px) {
-    .esim-grid {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .esim-content {
-        align-items: center;
-    }
-
-    .esim-subtitle {
-        max-width: 100%;
-    }
-
-    .esim-cta-row {
-        justify-content: center;
-    }
-
-    .esim-visual {
-        width: 100%;
-        margin-top: 2.5rem;
-    }
-
-    .badge-right {
-        right: 4%;
-    }
-}
-
-@media (max-width: 640px) {
-    .esim-card-visual {
-        width: 260px;
-        height: 175px;
-    }
-
-    .esim-badge {
-        position: static;
-        margin-top: 0.8rem;
-        width: 100%;
-        justify-content: center;
-    }
-
-    .esim-visual {
-        flex-direction: column;
-    }
+@media (max-width: 480px) {
+    .esim-card { width: 100%; max-width: 240px; height: 150px; padding: 1.25rem; }
+    .esim-ghost { display: none; }
 }
 </style>
