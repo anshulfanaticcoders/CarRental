@@ -83,7 +83,7 @@ onUnmounted(() => {
 <template>
     <section v-if="currentAd"
         class="w-full ad-section-trigger overflow-hidden home-section home-section--light">
-        <div class="full-w-container ad-content-wrapper">
+        <div class="full-w-container ad-content-wrapper sr-reveal">
             <!-- Section Header -->
             <div class="mb-6 sm:mb-8 lg:mb-10">
                 <span class="text-[1rem] sm:text-[1.15rem] text-customPrimaryColor tracking-[0.2em] uppercase">Exclusive Offers</span>
@@ -196,6 +196,8 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.sr-reveal { visibility: hidden; }
+
 /* ─── Main Showcase Container ─── */
 .ad-showcase {
     position: relative;

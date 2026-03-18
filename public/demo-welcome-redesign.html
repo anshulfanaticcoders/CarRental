@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
     <style>
         /* ============================================
            VROOEM DESIGN SYSTEM — REDESIGN DEMO v2
@@ -392,7 +393,7 @@
             height: 100%;
             object-fit: cover;
             object-position: center 40%;
-            filter: saturate(1.05) brightness(0.5);
+            filter: saturate(1.02) brightness(0.62);
             animation: hero-zoom 20s var(--ease) forwards;
         }
 
@@ -401,8 +402,8 @@
             position: absolute;
             inset: 0;
             background:
-                linear-gradient(100deg, rgba(10, 29, 40, 0.92) 0%, rgba(10, 29, 40, 0.65) 30%, rgba(10, 29, 40, 0.25) 55%, rgba(10, 29, 40, 0.1) 100%),
-                linear-gradient(to bottom, rgba(10, 29, 40, 0.35) 0%, transparent 25%, transparent 75%, rgba(10, 29, 40, 0.6) 100%);
+                linear-gradient(100deg, rgba(10, 29, 40, 0.74) 0%, rgba(10, 29, 40, 0.5) 30%, rgba(10, 29, 40, 0.18) 55%, rgba(10, 29, 40, 0.06) 100%),
+                linear-gradient(to bottom, rgba(10, 29, 40, 0.22) 0%, transparent 25%, transparent 75%, rgba(10, 29, 40, 0.42) 100%);
         }
 
         @keyframes hero-zoom {
@@ -447,6 +448,7 @@
         }
 
         .hero-title {
+            font-family: 'Sora', var(--font);
             font-size: clamp(2.8rem, 4.5vw, 4.2rem);
             font-weight: 800;
             line-height: 1.06;
@@ -460,7 +462,7 @@
 
         .hero-subtitle {
             font-size: 1.05rem;
-            color: rgba(255, 255, 255, 0.65);
+            color: rgba(255, 255, 255, 0.78);
             max-width: 440px;
             line-height: 1.7;
             margin-bottom: 2rem;
@@ -611,6 +613,239 @@
 
         @keyframes hero-enter {
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============================================
+           HERO VARIANT B (style-only, same content)
+           ============================================ */
+        .hero--variant-a .hero-title .accent {
+            color: var(--accent-400);
+        }
+
+        .hero--variant-b .hero-bg img {
+            object-position: center 30%;
+            filter: saturate(0.88) brightness(0.52) contrast(1.06);
+        }
+
+        .hero--variant-b .hero-bg::after {
+            background: rgba(7, 18, 26, 0.54);
+        }
+
+        .hero--variant-b .hero-content {
+            max-width: 760px;
+        }
+
+        .hero--variant-b .hero-badge {
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.35);
+            color: rgba(255, 255, 255, 0.88);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .hero--variant-b .hero-title {
+            font-size: clamp(2.7rem, 4.8vw, 4.3rem);
+            line-height: 1.02;
+            letter-spacing: -0.018em;
+            margin-bottom: 1.15rem;
+            text-transform: uppercase;
+            text-shadow: 0 8px 36px rgba(0, 0, 0, 0.45);
+        }
+
+        .hero--variant-b .hero-title .accent {
+            color: var(--warm-400);
+        }
+
+        .hero--variant-b .hero-subtitle {
+            max-width: 620px;
+            color: rgba(255, 255, 255, 0.82);
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
+        }
+
+        .hero--variant-b .hero-typewriter {
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.74);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+            backdrop-filter: none;
+        }
+
+        .hero--variant-b .typewriter-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--warm-400);
+        }
+
+        .hero--variant-b .hero-trust {
+            gap: 1.15rem;
+            align-items: center;
+        }
+
+        .hero--variant-b .hero-trust-chip {
+            padding: 0.15rem 0;
+            border-radius: 0;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.24);
+            background: transparent;
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 0.8rem;
+        }
+
+        .hero--variant-b .hero-trust-chip:hover {
+            color: #fff;
+            border-bottom-color: rgba(255, 255, 255, 0.75);
+        }
+
+        .hero--variant-b .hero-search {
+            margin-top: 3.2rem;
+        }
+
+        .hero--variant-b .search-bar {
+            border-radius: 12px;
+            background: #fff;
+            border: 2px solid rgba(176, 212, 230, 0.95);
+            box-shadow: 0 18px 54px rgba(6, 18, 26, 0.4);
+        }
+
+        .hero--variant-b .search-field {
+            background: #fff;
+            border-right: 1px solid var(--gray-200);
+        }
+
+        .hero--variant-b .search-field:last-of-type {
+            border-right: none;
+        }
+
+        .hero--variant-b .search-field:hover {
+            background: var(--gray-50);
+        }
+
+        .hero--variant-b .search-field-label {
+            color: var(--primary-700);
+        }
+
+        .hero--variant-b .search-field-value {
+            color: var(--primary-950);
+        }
+
+        .hero--variant-b .search-submit {
+            background: var(--primary-900);
+            color: #fff;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .hero--variant-b .search-submit:hover {
+            background: var(--primary-800);
+        }
+
+        /* ============================================
+           HERO VARIANT C (style-only, same content)
+           ============================================ */
+        .hero--variant-c .hero-bg img {
+            object-position: center 38%;
+            filter: saturate(1.02) brightness(0.6) contrast(1.02);
+        }
+
+        .hero--variant-c .hero-bg::after {
+            background: rgba(6, 18, 26, 0.46);
+        }
+
+        .hero--variant-c .hero-content {
+            max-width: 660px;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            backdrop-filter: none;
+        }
+
+        .hero--variant-c .hero-badge {
+            background: rgba(176, 212, 230, 0.1);
+            border-color: rgba(176, 212, 230, 0.45);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .hero--variant-c .hero-title {
+            font-size: clamp(2.55rem, 4.2vw, 3.95rem);
+            letter-spacing: -0.026em;
+            line-height: 1.07;
+            margin-bottom: 1.15rem;
+        }
+
+        .hero--variant-c .hero-title .accent {
+            color: var(--accent-300);
+        }
+
+        .hero--variant-c .hero-subtitle {
+            max-width: 520px;
+            color: rgba(255, 255, 255, 0.88);
+        }
+
+        .hero--variant-c .hero-typewriter {
+            background: rgba(6, 18, 26, 0.58);
+            border-color: rgba(176, 212, 230, 0.25);
+            box-shadow: inset 0 0 0 1px rgba(176, 212, 230, 0.09);
+        }
+
+        .hero--variant-c .hero-trust {
+            gap: 0.58rem;
+        }
+
+        .hero--variant-c .hero-trust-chip {
+            background: rgba(176, 212, 230, 0.1);
+            border-color: rgba(176, 212, 230, 0.26);
+            color: rgba(255, 255, 255, 0.86);
+        }
+
+        .hero--variant-c .hero-trust-chip:hover {
+            border-color: rgba(176, 212, 230, 0.48);
+            background: rgba(176, 212, 230, 0.16);
+            color: #fff;
+        }
+
+        .hero--variant-c .hero-search {
+            margin-top: 2.8rem;
+        }
+
+        .hero--variant-c .search-bar {
+            background: rgba(6, 18, 26, 0.58);
+            border: 1px solid rgba(176, 212, 230, 0.25);
+            box-shadow: 0 24px 72px rgba(6, 18, 26, 0.5);
+        }
+
+        .hero--variant-c .search-field {
+            background: rgba(10, 29, 40, 0.66);
+            border-right: 1px solid rgba(176, 212, 230, 0.15);
+        }
+
+        .hero--variant-c .search-field:hover {
+            background: rgba(10, 29, 40, 0.78);
+        }
+
+        .hero--variant-c .search-field-label {
+            color: rgba(176, 212, 230, 0.82);
+        }
+
+        .hero--variant-c .search-field-value {
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .hero--variant-c .search-submit {
+            background: var(--accent-500);
+            color: var(--primary-950);
+            font-weight: 800;
+        }
+
+        .hero--variant-c .search-submit:hover {
+            background: var(--accent-400);
         }
 
         /* ============================================
@@ -1827,9 +2062,86 @@
             border: 1px solid rgba(34, 211, 238, 0.2);
             box-shadow: 0 12px 32px rgba(10, 29, 40, 0.4);
         }
+
+        .hero-style-switcher {
+            position: fixed;
+            top: 1.2rem;
+            left: 1.2rem;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.38rem;
+            border-radius: 999px;
+            background: rgba(6, 18, 26, 0.86);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 16px 32px rgba(6, 18, 26, 0.4);
+        }
+
+        .hero-style-label {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0 0.45rem 0 0.5rem;
+        }
+
+        .hero-style-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.86);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            transition: all 0.24s var(--ease);
+        }
+
+        .hero-style-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .hero-style-btn.active {
+            background: var(--accent-400);
+            border-color: var(--accent-400);
+            color: #07202d;
+            box-shadow: 0 8px 20px rgba(34, 211, 238, 0.35);
+        }
+
+        @media (max-width: 768px) {
+            .hero-style-switcher {
+                top: 0.8rem;
+                left: 0.8rem;
+                padding: 0.28rem;
+                gap: 0.25rem;
+            }
+
+            .hero-style-label {
+                display: none;
+            }
+
+            .hero-style-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 0.72rem;
+            }
+        }
     </style>
 </head>
 <body>
+
+    <div class="hero-style-switcher" role="group" aria-label="Hero style variants">
+        <span class="hero-style-label">Hero</span>
+        <button class="hero-style-btn active" type="button" data-hero-variant="a">A</button>
+        <button class="hero-style-btn" type="button" data-hero-variant="b">B</button>
+        <button class="hero-style-btn" type="button" data-hero-variant="c">C</button>
+    </div>
 
     <div class="demo-notice">DESIGN DEMO v2 — For Review Only</div>
 
@@ -1853,7 +2165,7 @@
     </header>
 
     <!-- ========== 1. HERO (DARK) ========== -->
-    <section class="hero">
+    <section class="hero hero--variant-a">
         <div class="hero-bg">
             <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1920&q=80" alt="">
         </div>
@@ -2481,6 +2793,31 @@
                 header.classList.remove('scrolled');
             }
         }, { passive: true });
+
+        // --- Hero style variants (A/B/C) ---
+        const hero = document.querySelector('.hero');
+        const variantButtons = document.querySelectorAll('[data-hero-variant]');
+        const variantClassPrefix = 'hero--variant-';
+        const storedVariant = localStorage.getItem('demo-hero-variant');
+
+        const setHeroVariant = (variant) => {
+            hero.classList.remove('hero--variant-a', 'hero--variant-b', 'hero--variant-c');
+            hero.classList.add(`${variantClassPrefix}${variant}`);
+            variantButtons.forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.heroVariant === variant);
+            });
+            localStorage.setItem('demo-hero-variant', variant);
+        };
+
+        if (storedVariant && ['a', 'b', 'c'].includes(storedVariant)) {
+            setHeroVariant(storedVariant);
+        }
+
+        variantButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                setHeroVariant(btn.dataset.heroVariant);
+            });
+        });
     </script>
 </body>
 </html>

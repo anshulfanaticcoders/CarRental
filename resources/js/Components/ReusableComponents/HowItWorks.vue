@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
+import { useScrollAnimation } from '@/composables/useScrollAnimation';
 
 const page = usePage();
 const _p = (key, fallback = '') => {
@@ -25,19 +26,25 @@ const steps = computed(() => [
         content: _p('how_it_works_step_3_content', 'Show your booking confirmation, collect your keys, and hit the road.'),
     },
 ]);
+
+useScrollAnimation('.how-section', '.how-header, .step-card', {
+    y: 52,
+    duration: 0.9,
+    stagger: 0.12,
+});
 </script>
 
 <template>
     <section class="how-section">
         <div class="how-glow"></div>
         <div class="full-w-container how-z">
-            <div class="how-header">
+            <div class="how-header sr-reveal">
                 <span class="how-label">{{ _p('how_it_works_title', 'How It Works') }}</span>
                 <h3 class="how-title">{{ _p('how_it_works_subtitle', 'Three steps to the open road.') }}</h3>
                 <p class="how-desc">{{ _p('how_it_works_description', 'From search to steering wheel in minutes.') }}</p>
             </div>
             <div class="steps-grid">
-                <div v-for="(s, i) in steps" :key="s.value" class="step-card">
+                <div v-for="(s, i) in steps" :key="s.value" class="step-card sr-reveal">
                     <div class="step-number">{{ String(i + 1).padStart(2, '0') }}</div>
                     <div>
                         <h4>{{ s.title }}</h4>
@@ -50,6 +57,8 @@ const steps = computed(() => [
 </template>
 
 <style scoped>
+.sr-reveal { visibility: hidden; }
+
 .how-section {
     padding: clamp(4rem, 8vw, 7rem) 0;
     background: linear-gradient(160deg, #0a1d28 0%, #153b4f 45%, #0c2535 100%);

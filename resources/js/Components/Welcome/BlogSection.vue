@@ -1,5 +1,6 @@
 <script setup>
 import { Link, usePage } from '@inertiajs/vue3';
+import { useScrollAnimation } from '@/composables/useScrollAnimation';
 const props = defineProps({ blogs: { type: Array, default: () => [] } });
 
 const page = usePage();
@@ -11,13 +12,19 @@ const excerptText = (blog, max = 120) => {
     if (!base) return 'Read the full story and discover practical tips for your next trip.';
     return base.length > max ? `${base.slice(0, max).trimEnd()}...` : base;
 };
+
+useScrollAnimation('.blog-section', '.blog-header, .blog-feat, .blog-card, .blog-cta', {
+    y: 52,
+    duration: 0.95,
+    stagger: 0.1,
+});
 </script>
 
 <template>
     <section v-if="blogs && blogs.length" class="blog-section blog-trigger">
         <div class="blog-glow"></div>
         <div class="full-w-container blog-z">
-            <div class="blog-header">
+            <div class="blog-header sr-reveal">
                 <div>
                     <span class="blog-label">{{ _p('blogs_title', 'From The Journal') }}</span>
                     <h3 class="blog-heading">{{ _p('blogs_subtitle', 'Travel stories & guides.') }}</h3>
@@ -25,7 +32,7 @@ const excerptText = (blog, max = 120) => {
                 <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })" class="blog-btn">{{ _p('more_blogs', 'View All Articles') }}</Link>
             </div>
             <div class="blog-grid">
-                <Link :href="route('blog.show', { locale: page.props.locale, country: blogs[0].canonical_country || (page.props.country || 'us'), blog: blogs[0].translated_slug })" class="blog-feat">
+                <Link :href="route('blog.show', { locale: page.props.locale, country: blogs[0].canonical_country || (page.props.country || 'us'), blog: blogs[0].translated_slug })" class="blog-feat sr-reveal">
                     <div class="blog-feat-img"><img :src="blogs[0].image" :alt="blogs[0].title" /></div>
                     <div class="blog-feat-content">
                         <span class="blog-date"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>{{ formatDate(blogs[0].created_at) }}</span>
@@ -35,7 +42,7 @@ const excerptText = (blog, max = 120) => {
                     </div>
                 </Link>
                 <div class="blog-stack">
-                    <Link v-for="i in Math.min(3, blogs.length - 1)" :key="i" :href="route('blog.show', { locale: page.props.locale, country: blogs[i].canonical_country || (page.props.country || 'us'), blog: blogs[i].translated_slug })" class="blog-card">
+                    <Link v-for="i in Math.min(3, blogs.length - 1)" :key="i" :href="route('blog.show', { locale: page.props.locale, country: blogs[i].canonical_country || (page.props.country || 'us'), blog: blogs[i].translated_slug })" class="blog-card sr-reveal">
                         <div class="blog-card-img"><img :src="blogs[i].image" :alt="blogs[i].title" /></div>
                         <div>
                             <span class="blog-date blog-date-dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>{{ formatDate(blogs[i].created_at) }}</span>
@@ -46,7 +53,7 @@ const excerptText = (blog, max = 120) => {
                     </Link>
                 </div>
             </div>
-            <div class="blog-cta">
+            <div class="blog-cta sr-reveal">
                 <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })" class="blog-btn">{{ _p('more_blogs', 'View All Articles') }}</Link>
             </div>
         </div>
@@ -54,6 +61,8 @@ const excerptText = (blog, max = 120) => {
 </template>
 
 <style scoped>
+.sr-reveal { visibility: hidden; }
+
 .blog-section { padding: clamp(4rem, 8vw, 7rem) 0; background: linear-gradient(160deg, #0a1d28 0%, #153b4f 45%, #0c2535 100%); color: #fff; position: relative; overflow: hidden; }
 .blog-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 18% 12%, rgba(34,211,238,0.08), transparent 45%), radial-gradient(circle at 80% 78%, rgba(10,29,40,0.3), transparent 55%); }
 .blog-z { position: relative; z-index: 1; }

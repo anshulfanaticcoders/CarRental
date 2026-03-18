@@ -1,6 +1,7 @@
 <script setup>
 import { usePage } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
+import { useScrollAnimation } from '@/composables/useScrollAnimation';
 
 const _t = (key, fallback = '') => {
     const { props } = usePage();
@@ -10,13 +11,19 @@ const _t = (key, fallback = '') => {
 const redirectToPartnerPortal = () => {
     window.open('https://vrooem.esimqr.link/', '_blank');
 };
+
+useScrollAnimation('.esim-section', '.esim-left, .esim-right', {
+    y: 50,
+    duration: 0.95,
+    stagger: 0.18,
+});
 </script>
 
 <template>
     <section class="esim-section">
         <div class="full-w-container">
             <div class="esim-banner">
-                <div class="esim-left">
+                <div class="esim-left sr-reveal">
                     <span class="esim-label">{{ _t('tagline', 'Stay Connected') }}</span>
                     <h2 class="esim-title">{{ _t('title', 'Travel eSIM included free.') }}</h2>
                     <p class="esim-text">{{ _t('subtitle', 'No SIM swaps, no roaming fees. Activate in seconds and stay connected from arrival to drop-off.') }}</p>
@@ -37,7 +44,7 @@ const redirectToPartnerPortal = () => {
                         </div>
                     </div>
                 </div>
-                <div class="esim-right">
+                <div class="esim-right sr-reveal">
                     <div class="esim-ghost"></div>
                     <div class="esim-card">
                         <div class="esim-signal"><span></span><span></span><span></span><span></span></div>
@@ -53,6 +60,8 @@ const redirectToPartnerPortal = () => {
 </template>
 
 <style scoped>
+.sr-reveal { visibility: hidden; }
+
 .esim-section {
     padding: clamp(3rem, 6vw, 5rem) 0;
     background: linear-gradient(180deg, #f8fafc 0%, #fff 45%, #f8fafc 100%);

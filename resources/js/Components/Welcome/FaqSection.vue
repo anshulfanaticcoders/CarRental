@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { usePage } from '@inertiajs/vue3';
+import { useScrollAnimation } from '@/composables/useScrollAnimation';
 
 const page = usePage();
 const _p = (key, fallback = '') => (page.props.translations?.homepage?.[key] || fallback || key);
@@ -29,13 +30,19 @@ watch(() => page.props.locale, async (newL, oldL) => {
         catch(e) { /* silent */ } finally { loading.value = false; }
     }
 });
+
+useScrollAnimation('.faq-section', '.faq-left, .faq-item', {
+    y: 48,
+    duration: 0.9,
+    stagger: 0.08,
+});
 </script>
 
 <template>
     <section class="faq-section">
         <div class="full-w-container">
             <div class="faq-layout">
-                <div class="faq-left">
+                <div class="faq-left sr-reveal">
                     <span class="faq-label">{{ _p('faqs_badge', 'FAQ') }}</span>
                     <h3 class="faq-title">{{ _p('faqs_title', 'Questions we hear most.') }}</h3>
                     <p class="faq-lead">Can't find what you're looking for? Our support team is available 24/7.</p>
@@ -62,6 +69,8 @@ watch(() => page.props.locale, async (newL, oldL) => {
 </template>
 
 <style scoped>
+.sr-reveal { visibility: hidden; }
+
 .faq-section {
     padding: clamp(4rem, 8vw, 7rem) 0;
     background: linear-gradient(180deg, #f8fafc 0%, #fff 45%, #f8fafc 100%);

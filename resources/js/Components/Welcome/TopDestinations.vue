@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { Skeleton } from '@/Components/ui/skeleton';
 import axios from 'axios';
+import { useScrollAnimation } from '@/composables/useScrollAnimation';
 
 const props = defineProps({
     popularPlaces: { type: Array, default: null },
@@ -56,12 +57,18 @@ const staticPlaces = [
 
 const places = computed(() => props.popularPlaces?.length ? props.popularPlaces.slice(0, 5) : staticPlaces);
 
+useScrollAnimation('.dest-section', '.dest-header, .dest-card', {
+    y: 48,
+    duration: 0.9,
+    stagger: 0.12,
+});
+
 </script>
 
 <template>
     <section class="dest-section">
         <div class="full-w-container">
-            <div class="dest-header">
+            <div class="dest-header sr-reveal">
                 <div class="dest-header-text">
                     <span class="dest-label">{{ _p('top_destinations', 'Top Destinations') }}</span>
                     <h3 class="dest-title">{{ _p('popular_places', 'Where will you drive next?') }}</h3>
@@ -74,7 +81,7 @@ const places = computed(() => props.popularPlaces?.length ? props.popularPlaces.
                 <a v-for="p in places" :key="p.id"
                     :href="`/${page.props.locale}/s?where=${encodeURIComponent(p.place_name)}`"
                     @click.prevent="navigateToSearch(p)"
-                    class="dest-card">
+                    class="dest-card sr-reveal">
                     <img :src="p.image" :alt="p.place_name" loading="lazy" />
                     <div class="dest-info">
                         <div class="dest-name">{{ p.place_name }}</div>
@@ -87,6 +94,8 @@ const places = computed(() => props.popularPlaces?.length ? props.popularPlaces.
 </template>
 
 <style scoped>
+.sr-reveal { visibility: hidden; }
+
 .dest-section {
     padding: clamp(4rem, 8vw, 7rem) 0;
     background: linear-gradient(180deg, #f8fafc 0%, #fff 45%, #f8fafc 100%);

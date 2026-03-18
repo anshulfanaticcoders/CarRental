@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
+import { useScrollAnimation } from '@/composables/useScrollAnimation';
 
 const page = usePage();
 const email = ref('');
@@ -24,13 +25,18 @@ const subscribe = async () => {
         else error.value = 'Unable to subscribe right now. Please try again.';
     } finally { loading.value = false; }
 };
+
+useScrollAnimation('.nl-section', '.nl-card', {
+    y: 50,
+    duration: 0.95,
+});
 </script>
 
 <template>
     <section class="nl-section">
         <div class="nl-glow"></div>
         <div class="full-w-container nl-z">
-            <div class="nl-card">
+            <div class="nl-card sr-reveal">
                 <span class="nl-label">Stay Updated</span>
                 <h2 class="nl-title">Deals. Routes. Inspiration.</h2>
                 <p class="nl-text">Join 40,000+ travelers getting exclusive deals and curated road trip guides every week.</p>
@@ -47,6 +53,8 @@ const subscribe = async () => {
 </template>
 
 <style scoped>
+.sr-reveal { visibility: hidden; }
+
 .nl-section {
     padding: clamp(4rem, 8vw, 7rem) 0;
     background: linear-gradient(160deg, #0a1d28 0%, #153b4f 45%, #0c2535 100%);

@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import axios from 'axios';
 import { usePage } from '@inertiajs/vue3';
+import { useScrollAnimation } from '@/composables/useScrollAnimation';
 import {
     Carousel,
     CarouselContent,
@@ -112,18 +113,24 @@ onBeforeUnmount(() => {
     emblaApi.value.off('select', updateCarouselState);
     emblaApi.value.off('reInit', updateCarouselState);
 });
+
+useScrollAnimation('.testi-section', '.testi-header, .testi-carousel, .testi-dots', {
+    y: 46,
+    duration: 0.9,
+    stagger: 0.14,
+});
 </script>
 
 <template>
     <section class="testi-section">
         <div class="full-w-container">
-            <div class="testi-header">
+            <div class="testi-header sr-reveal">
                 <span class="testi-label">{{ _p('testimonials_title', 'What Travelers Say') }}</span>
                 <h3 class="testi-title">{{ _p('testimonials_subtitle', 'Stories from the road.') }}</h3>
             </div>
 
             <Carousel
-                class="testi-carousel"
+                class="testi-carousel sr-reveal"
                 :opts="{ align: 'start', loop: cards.length > 3 }"
                 @init-api="onInitApi"
             >
@@ -170,6 +177,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.sr-reveal { visibility: hidden; }
+
 .testi-section {
     padding: clamp(4rem, 8vw, 7rem) 0;
     background: linear-gradient(180deg, #f8fafc 0%, #fff 45%, #f8fafc 100%);
