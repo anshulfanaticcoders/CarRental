@@ -16,6 +16,7 @@ import flagNl from '../../assets/flag-nl.svg';
 import flagEs from '../../assets/flag-es.svg';
 import flagAr from '../../assets/flag-ar.svg';
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
+import { getGeoPreferredLocale } from '@/utils/geoLanguage';
 
 import FloatingSocialIcons from '@/Components/FloatingSocialIcons.vue';
 
@@ -54,6 +55,7 @@ onMounted(() => {
     fetchNotifications();
   }
   fetchContactInfo();
+  syncLanguageWithCountry();
 
   document.addEventListener('click', closeNotificationDropdownOnOutsideClick);
 });
@@ -280,72 +282,121 @@ const availableLocales = {
   ar: { name: 'Ar', flag: flagAr },
 };
 
-const changeLanguage = (newLocale) => {
-  // Trigger flag animation
-  animatedFlagUrl.value = availableLocales[newLocale].flag;
+const AUTO_LANGUAGE_COUNTRY_KEY = 'auto_language_country_code';
+const normalizedCountryCode = computed(() => String(page.props.country || '').trim().toUpperCase());
+const supportedLocaleCodes = Object.keys(availableLocales);
+const preferredGeoLocale = computed(() => getGeoPreferredLocale(normalizedCountryCode.value, supportedLocaleCodes));
 
-  const animationDuration = 1500; // 1.5 seconds for animation and delay
+const performLanguageNavigation = (newLocale) => {
+  const currentUrl = new URL(window.location.href);
+  const pathParts = currentUrl.pathname.split('/');
 
-  setTimeout(() => {
-    animatedFlagUrl.value = null; // Hide flag after animation
+  // Handle page translations
+  if (pathParts.length > 2 && pathParts[2] === 'page') {
+    const currentSlug = pathParts[3];
+    const pages = page.props.pages;
+    const currentPage = Object.values(pages).find(p => {
+      return p.translations.some(t => t.slug === currentSlug);
+    });
 
-    const currentUrl = new URL(window.location.href);
-    const pathParts = currentUrl.pathname.split('/');
-
-    // Handle page translations
-    if (pathParts.length > 2 && pathParts[2] === 'page') {
-      const currentSlug = pathParts[3];
-      const pages = page.props.pages;
-      const currentPage = Object.values(pages).find(p => {
-        return p.translations.some(t => t.slug === currentSlug);
-      });
-
-      if (currentPage) {
-        const newTranslation = currentPage.translations.find(t => t.locale === newLocale);
-        if (newTranslation) {
-          router.visit(route('pages.show', { locale: newLocale, slug: newTranslation.slug }));
-          return;
-        }
-      }
-    }
-
-    // Handle blog post translations
-    if (pathParts.length > 3 && pathParts[3] === 'blog' && page.props.blog) {
-      const blog = page.props.blog;
-      const newTranslation = blog.translations.find(t => t.locale === newLocale);
-      if (newTranslation && newTranslation.slug) {
-        router.visit(route('blog.show', { locale: newLocale, country: page.props.country, blog: newTranslation.slug }));
-        return;
-      } else {
-        // If no translation, redirect to the blog index page for the new locale
-        router.visit(route('blog', { locale: newLocale, country: page.props.country }));
+    if (currentPage) {
+      const newTranslation = currentPage.translations.find(t => t.locale === newLocale);
+      if (newTranslation) {
+        router.visit(route('pages.show', { locale: newLocale, slug: newTranslation.slug }));
         return;
       }
     }
+  }
 
-    // Handle contact page
-    if (page.props.contactPage) {
-      router.visit(`/${newLocale}/contact-us`);
+  // Handle blog post translations
+  if (pathParts.length > 3 && pathParts[3] === 'blog' && page.props.blog) {
+    const blog = page.props.blog;
+    const newTranslation = blog.translations.find(t => t.locale === newLocale);
+    if (newTranslation && newTranslation.slug) {
+      router.visit(route('blog.show', { locale: newLocale, country: page.props.country, blog: newTranslation.slug }));
       return;
     }
 
-    // Fallback for other pages or if translation not found
-    pathParts[1] = newLocale;
-    const newPath = pathParts.join('/');
+    // If no translation, redirect to the blog index page for the new locale
+    router.visit(route('blog', { locale: newLocale, country: page.props.country }));
+    return;
+  }
 
-    router.visit(newPath + currentUrl.search, {
-      onSuccess: () => {
-        router.post(route('language.change'), {
-          locale: newLocale,
-          _method: 'POST'
-        }, {
-          onSuccess: () => {
-            window.location.reload();
-          }
-        });
-      }
-    });
-  }, animationDuration); // Delay navigation until animation is complete
+  // Handle contact page
+  if (page.props.contactPage) {
+    router.visit(`/${newLocale}/contact-us`);
+    return;
+  }
+
+  // Fallback for other pages or if translation not found
+  pathParts[1] = newLocale;
+  const newPath = pathParts.join('/');
+
+  router.visit(newPath + currentUrl.search, {
+    onSuccess: () => {
+      router.post(route('language.change'), {
+        locale: newLocale,
+        _method: 'POST'
+      }, {
+        onSuccess: () => {
+          window.location.reload();
+        }
+      });
+    }
+  });
+};
+
+const changeLanguage = (newLocale, options = {}) => {
+  const { auto = false } = options;
+  if (!availableLocales[newLocale] || currentLocale.value === newLocale) {
+    return;
+  }
+
+  if (typeof window !== 'undefined' && normalizedCountryCode.value && !auto) {
+    sessionStorage.setItem(AUTO_LANGUAGE_COUNTRY_KEY, normalizedCountryCode.value);
+  }
+
+  if (auto) {
+    animatedFlagUrl.value = null;
+    performLanguageNavigation(newLocale);
+    return;
+  }
+
+  // Trigger flag animation
+  animatedFlagUrl.value = availableLocales[newLocale].flag;
+  const animationDuration = 1500; // 1.5 seconds for animation and delay
+
+  setTimeout(() => {
+    animatedFlagUrl.value = null;
+    performLanguageNavigation(newLocale);
+  }, animationDuration);
+};
+
+const syncLanguageWithCountry = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const countryCode = normalizedCountryCode.value;
+  if (!countryCode) {
+    return;
+  }
+
+  const targetLocale = preferredGeoLocale.value;
+  if (!availableLocales[targetLocale]) {
+    return;
+  }
+
+  const lastAutoCountry = sessionStorage.getItem(AUTO_LANGUAGE_COUNTRY_KEY);
+  if (lastAutoCountry === countryCode) {
+    return;
+  }
+
+  sessionStorage.setItem(AUTO_LANGUAGE_COUNTRY_KEY, countryCode);
+
+  if (currentLocale.value !== targetLocale) {
+    changeLanguage(targetLocale, { auto: true });
+  }
 };
 
 const getTranslatedSlug = (pageSlug) => {
@@ -453,6 +504,10 @@ const toggleMobileNav = () => {
 watch(() => url.value, () => {
   showingNavigationDropdown.value = false;
   showingAccountDropdown.value = false;
+});
+
+watch(() => page.props.country, () => {
+  syncLanguageWithCountry();
 });
 
 watch(() => showingNavigationDropdown.value, (isOpen) => {
