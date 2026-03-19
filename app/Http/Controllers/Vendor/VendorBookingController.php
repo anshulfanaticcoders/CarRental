@@ -122,10 +122,15 @@ class VendorBookingController extends Controller
             }
         }
 
-        // Notify Company
+        // Notify Company (find user for DB storage)
         if ($vendorProfile && $vendorProfile->company_email) {
-            Notification::route('mail', $vendorProfile->company_email)
-                ->notify(new BookingStatusUpdatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+            $companyUser = User::where('email', $vendorProfile->company_email)->first();
+            if ($companyUser) {
+                $companyUser->notify(new BookingStatusUpdatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+            } else {
+                Notification::route('mail', $vendorProfile->company_email)
+                    ->notify(new BookingStatusUpdatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+            }
         }
 
         return response()->json([
@@ -178,10 +183,15 @@ class VendorBookingController extends Controller
             }
         }
 
-        // Notify Company
+        // Notify Company (find user for DB storage)
         if ($vendorProfile && $vendorProfile->company_email) {
-            Notification::route('mail', $vendorProfile->company_email)
-                ->notify(new BookingStatusUpdatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+            $companyUser = User::where('email', $vendorProfile->company_email)->first();
+            if ($companyUser) {
+                $companyUser->notify(new BookingStatusUpdatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+            } else {
+                Notification::route('mail', $vendorProfile->company_email)
+                    ->notify(new BookingStatusUpdatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+            }
         }
 
         return back()->with('success', 'Booking cancelled successfully.');

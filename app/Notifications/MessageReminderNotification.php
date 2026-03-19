@@ -79,8 +79,12 @@ class MessageReminderNotification extends Notification implements ShouldQueue
         // Ensure booking is loaded for the booking_reference
         $this->message->loadMissing('booking');
 
+        $receiver = $this->message->receiver;
+        $role = $receiver && $receiver->role ? $receiver->role : 'customer';
+
         return [
             'title' => 'Message Reminder',
+            'role' => $role,
             'message_id' => $this->message->id,
             'booking_id' => $this->message->booking_id,
             'sender_id' => $this->message->sender_id,

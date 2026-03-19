@@ -30,7 +30,7 @@ class VendorVehicleCreateCompanyNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail']; // Notify via email only
+        return ['mail', 'database'];
     }
 
     /**
@@ -39,13 +39,14 @@ class VendorVehicleCreateCompanyNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New Vehicle Listing Submitted by Vendor')
+            ->subject('New Vehicle Listing by Vendor - ' . config('app.name'))
             ->greeting('Hello,')
-            ->line('A vendor associated with your company has added a new vehicle to the platform.')
+            ->line('A vendor associated with your company has added a new vehicle on ' . config('app.name') . '.')
             ->line('**Vehicle Details:**')
-            ->line('**Brand:** ' . $this->vehicle->brand)
-            ->line('**Model:** ' . $this->vehicle->model)
-            ->line('**Vendor Name:** ' . $this->user->first_name . ' ' . $this->user->last_name)
+            ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
+            ->line('**Location:** ' . ($this->vehicle->location ?? 'N/A'))
+            ->line('**Vendor:** ' . $this->user->first_name . ' ' . $this->user->last_name)
+            ->action('View Vehicles', route('current-vendor-vehicles.index', ['locale' => app()->getLocale()]))
             ->line('Please review the new vehicle listing.');
     }
 
@@ -57,6 +58,8 @@ class VendorVehicleCreateCompanyNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'New Vehicle Listed',
+            'role' => 'vendor',
             'vehicle_id' => $this->vehicle->id,
             'brand' => $this->vehicle->brand,
             'model' => $this->vehicle->model,

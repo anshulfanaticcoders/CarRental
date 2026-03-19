@@ -48,23 +48,32 @@ class ReviewController extends Controller
         $vehicle = Vehicle::find($validated['vehicle_id']);
         $vendorProfile = VendorProfile::where('id', $validated['vendor_profile_id'])->first();
 
-        // Notify the admin
-        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
-        $admin = User::where('email', $adminEmail)->first();
-        if ($admin) {
-            $admin->notify(new ReviewSubmittedAdminNotification($review, $vehicle));
-        }
+        try {
+            // Notify the admin
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = User::where('email', $adminEmail)->first();
+            if ($admin) {
+                $admin->notify(new ReviewSubmittedAdminNotification($review, $vehicle));
+            }
 
-        // Notify the company
-        if ($vendorProfile && $vendorProfile->company_email) {
-            Notification::route('mail', $vendorProfile->company_email)
-                ->notify(new ReviewSubmittedCompanyNotification($review, $vehicle));
-        }
+            // Notify the company (find user for DB storage)
+            if ($vendorProfile && $vendorProfile->company_email) {
+                $companyUser = User::where('email', $vendorProfile->company_email)->first();
+                if ($companyUser) {
+                    $companyUser->notify(new ReviewSubmittedCompanyNotification($review, $vehicle));
+                } else {
+                    Notification::route('mail', $vendorProfile->company_email)
+                        ->notify(new ReviewSubmittedCompanyNotification($review, $vehicle));
+                }
+            }
 
-        // Notify the vendor
-        $vendor = User::find($vehicle->vendor_id);
-        if ($vendor) {
-            $vendor->notify(new ReviewSubmittedVendorNotification($review, $vehicle));
+            // Notify the vendor
+            $vendor = User::find($vehicle->vendor_id);
+            if ($vendor) {
+                $vendor->notify(new ReviewSubmittedVendorNotification($review, $vehicle));
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to send review notifications: ' . $e->getMessage());
         }
 
         return redirect()->route('profile.bookings.completed')->with('success', 'Review submitted successfully!');

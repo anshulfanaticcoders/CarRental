@@ -28,14 +28,15 @@ class ReviewSubmittedVendorNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New Review Submitted for Your Vehicle')
+            ->subject('New Review for Your Vehicle - ' . config('app.name'))
             ->greeting('Hello ' . $notifiable->first_name . ',')
-            ->line('A new review has been submitted for your vehicle.')
+            ->line('A customer has submitted a new review for your vehicle on ' . config('app.name') . '.')
             ->line('**Review Details:**')
             ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
             ->line('**Rating:** ' . $this->review->rating . '/5')
-            ->line('**Review Text:** ' . $this->review->review_text)
-            ->line('Please review the submission and approve or reject it.');
+            ->line('**Review:** ' . $this->review->review_text)
+            ->action('View Your Reviews', url('/vendor/reviews'))
+            ->line('Thank you for providing great service!');
     }
 
     public function toArray(object $notifiable): array

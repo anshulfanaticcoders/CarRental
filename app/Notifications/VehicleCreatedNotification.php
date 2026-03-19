@@ -28,7 +28,7 @@ class VehicleCreatedNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail']; // Notify via email only, do not store in database
+        return ['mail', 'database'];
     }
 
     /**
@@ -36,19 +36,22 @@ class VehicleCreatedNotification extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
+        $addressParts = array_filter([
+            $this->vehicle->city,
+            $this->vehicle->state,
+            $this->vehicle->country,
+        ]);
+
         return (new MailMessage)
-            ->subject('New Vehicle Listed')
+            ->subject('New Vehicle Listed - ' . config('app.name'))
             ->greeting('Hello Admin,')
-            ->line('A new vehicle has been listed by a vendor.')
-            ->line('**Brand:** ' . $this->vehicle->brand)
-            ->line('**Model:** ' . $this->vehicle->model)
-            ->line('**Vendor ID:** ' . $this->vehicle->vendor_id)
-            ->line('**Location:** ' . $this->vehicle->location)
-            ->line('**City:** ' . $this->vehicle->city)
-            ->line('**State:** ' . $this->vehicle->state)
-            ->line('**Country:** ' . $this->vehicle->country)
-            ->line('**Price per Day:** ' . ($this->vehicle->price_per_day ? '$' . number_format($this->vehicle->price_per_day, 2) : 'Not set'))
-            // ->action('View Vehicle', url('/vehicles/' . $this->vehicle->id)) // Optional: Add a link to view the vehicle
+            ->line('A new vehicle has been listed on ' . config('app.name') . '.')
+            ->line('**Vehicle Details:**')
+            ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
+            ->line('**Location:** ' . ($this->vehicle->location ?? 'N/A'))
+            ->line('**Address:** ' . (!empty($addressParts) ? implode(', ', $addressParts) : 'N/A'))
+            ->line('**Price per Day:** ' . ($this->vehicle->price_per_day ? number_format($this->vehicle->price_per_day, 2) . ' EUR' : 'Not set'))
+            ->action('Review Vehicles', url('/admin/vehicles'))
             ->line('Please review the listing if necessary.');
     }
 
@@ -60,6 +63,8 @@ class VehicleCreatedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'New Vehicle Listed',
+            'role' => 'admin',
             'vehicle_id' => $this->vehicle->id,
             'brand' => $this->vehicle->brand,
             'model' => $this->vehicle->model,

@@ -28,7 +28,7 @@ class AccountCreatedUserConfirmation extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail','database']; // Notify via email only
+        return ['mail', 'database'];
     }
 
     /**
@@ -36,15 +36,19 @@ class AccountCreatedUserConfirmation extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
+        $appName = config('app.name');
+
         return (new MailMessage)
-            ->subject('Welcome to Our Platform!')
+            ->subject('Welcome to ' . $appName . '!')
             ->greeting('Hello ' . $this->user->first_name . ',')
-            ->line('Thank you for registering with us!')
+            ->line('Thank you for creating your account on ' . $appName . '!')
             ->line('Your account has been successfully created.')
+            ->line('**Your Account Details:**')
             ->line('**Email:** ' . $this->user->email)
-            ->line('**Phone:** ' . $this->user->phone_code . ' ' . $this->user->phone)
-            ->line('You can now log in and explore our services.')
-            ->line('We’re excited to have you on board!');
+            ->line('**Phone:** ' . ($this->user->phone_code ?? '') . ' ' . ($this->user->phone ?? 'Not provided'))
+            ->line('You can now browse vehicles, make bookings, and manage your reservations.')
+            ->action('Start Exploring', url('/' . app()->getLocale()))
+            ->line('We are excited to have you on board!');
     }
 
     /**

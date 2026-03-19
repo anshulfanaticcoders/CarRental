@@ -22,7 +22,7 @@ class ReviewSubmittedAdminNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -42,6 +42,8 @@ class ReviewSubmittedAdminNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'New Review Submitted',
+            'role' => 'admin',
             'review_id' => $this->review->id,
             'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
             'rating' => $this->review->rating,

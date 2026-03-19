@@ -26,7 +26,7 @@ class BookingStatusUpdatedAdminNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -58,6 +58,7 @@ class BookingStatusUpdatedAdminNotification extends Notification
             ->line('**Customer Details:**')
             ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
             ->line('**Email:** ' . $this->customer->email)
+            ->action('View Booking', url('/admin/customer-bookings'))
             ->line('Please review the updated booking details.');
     }
 
@@ -71,6 +72,8 @@ class BookingStatusUpdatedAdminNotification extends Notification
         // $formattedAddress = implode(', ', $addressParts);
 
         return [
+            'title' => 'Booking Status Updated #' . $this->booking->booking_number,
+            'role' => 'admin',
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,

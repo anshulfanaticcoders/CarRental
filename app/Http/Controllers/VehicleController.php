@@ -427,15 +427,19 @@ class VehicleController extends Controller
             \Log::error('Failed to send vendor notification for vehicle creation: ' . $e->getMessage());
         }
 
-        // Notify the company
+        // Notify the company (find user for DB storage)
         try {
             $vendorProfile = VendorProfile::where('user_id', $request->user()->id)->first();
             if ($vendorProfile && $vendorProfile->company_email) {
-                Notification::route('mail', $vendorProfile->company_email)
-                    ->notify(new VendorVehicleCreateCompanyNotification($vehicle, $request->user()));
+                $companyUser = User::where('email', $vendorProfile->company_email)->first();
+                if ($companyUser) {
+                    $companyUser->notify(new VendorVehicleCreateCompanyNotification($vehicle, $request->user()));
+                } else {
+                    Notification::route('mail', $vendorProfile->company_email)
+                        ->notify(new VendorVehicleCreateCompanyNotification($vehicle, $request->user()));
+                }
             }
         } catch (\Exception $e) {
-            // Log the error but don't expose it to the user
             \Log::error('Failed to send company notification for vehicle creation: ' . $e->getMessage());
         }
 

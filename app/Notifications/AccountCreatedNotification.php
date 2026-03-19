@@ -37,15 +37,15 @@ class AccountCreatedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New Account Created')
+            ->subject('New Account Created - ' . config('app.name'))
             ->greeting('Hello Admin,')
-            ->line('A new user account has been created.')
+            ->line('A new user account has been created on ' . config('app.name') . '.')
+            ->line('**User Details:**')
             ->line('**Name:** ' . $this->user->first_name . ' ' . $this->user->last_name)
             ->line('**Email:** ' . $this->user->email)
-            ->line('**Phone:** ' . $this->user->phone_code . ' ' . $this->user->phone)
-            ->line('Please review the account details if necessary.')
-            // ->action('View User', url('/admin/users/' . $this->user->id)) // Optional: Add a link
-            ->line('Thank you!');
+            ->line('**Phone:** ' . ($this->user->phone_code ?? '') . ' ' . ($this->user->phone ?? 'Not provided'))
+            ->action('View Users', url('/admin/users'))
+            ->line('Please review the account details if necessary.');
     }
 
     /**

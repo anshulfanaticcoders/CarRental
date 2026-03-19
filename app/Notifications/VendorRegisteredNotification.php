@@ -39,14 +39,16 @@ class VendorRegisteredNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New Vendor Registration')
+            ->subject('New Vendor Registration - ' . config('app.name'))
             ->greeting('Hello Admin,')
-            ->line('A new vendor has registered and is awaiting approval.')
+            ->line('A new vendor has registered on ' . config('app.name') . ' and is awaiting approval.')
+            ->line('**Vendor Details:**')
             ->line('**Company Name:** ' . $this->vendorProfile->company_name)
+            ->line('**Contact Name:** ' . $this->user->first_name . ' ' . $this->user->last_name)
             ->line('**Email:** ' . $this->user->email)
-            ->line('**Company Phone:** ' . $this->vendorProfile->company_phone_number)
+            ->line('**Company Phone:** ' . ($this->vendorProfile->company_phone_number ?? 'Not provided'))
             ->line('**Status:** ' . ucfirst($this->vendorProfile->status))
-            // ->action('Review Vendor', url('/admin/vendors/' . $this->user->id)) // Optional: Add a link
+            ->action('Review Vendors', url('/admin/vendors'))
             ->line('Please review the vendor details and approve or reject the registration.');
     }
 

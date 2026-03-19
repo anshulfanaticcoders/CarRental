@@ -55,6 +55,7 @@ class BookingStatusUpdatedCustomerNotification extends Notification
             ->line('**Vendor Details:**')
             ->line('**Name:** ' . $this->vendor->first_name . ' ' . $this->vendor->last_name)
             ->line('**Email:** ' . $this->vendor->email)
+            ->action('View Your Booking', url('/' . app()->getLocale() . '/booking/' . $this->booking->id))
             ->line('Please contact the vendor if you have any questions.');
     }
 

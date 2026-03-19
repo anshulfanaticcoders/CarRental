@@ -66,7 +66,7 @@ class BulkVehicleUploadNotification extends Notification implements ShouldQueue
             }
         }
 
-        $mailMessage->line('Thank you for using our application!');
+        $mailMessage->line('Thank you for using ' . config('app.name') . '.');
 
         return $mailMessage;
     }

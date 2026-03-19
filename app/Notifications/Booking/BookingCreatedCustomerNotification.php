@@ -58,6 +58,7 @@ class BookingCreatedCustomerNotification extends Notification
             ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
             ->line('**Amount Paid:** ' . $this->formatCurrencyAmount($amounts['paid'], $amounts['currency']))
             ->line('**Pending Amount:** ' . $this->formatCurrencyAmount($amounts['pending'], $amounts['currency']))
+            ->action('View Your Booking', url('/' . app()->getLocale() . '/booking/' . $this->booking->id))
             ->line('You will be notified once the booking is confirmed by the vendor.');
     }
 

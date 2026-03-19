@@ -255,24 +255,32 @@ class BookingController extends Controller
                 $admin->notify(new BookingCreatedAdminNotification($booking, $customer, $vehicle));
             }
 
-            // Notify Vendor
+            // Notify Vendor (use $vendor->notify to store in DB for notification bell)
             $vendor = User::find($vehicle->vendor_id);
             if ($vendor) {
-                Notification::route('mail', $vendor->email)
-                    ->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
+                $vendor->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
             }
 
-
-            // Notify Company (VendorProfile)
+            // Notify Company (VendorProfile) - find company user for DB storage
             $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
             if ($vendorProfile && $vendorProfile->company_email) {
-                Notification::route('mail', $vendorProfile->company_email)
-                    ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+                $companyUser = User::where('email', $vendorProfile->company_email)->first();
+                if ($companyUser) {
+                    $companyUser->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+                } else {
+                    Notification::route('mail', $vendorProfile->company_email)
+                        ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
+                }
             }
 
-            // Notify Customer
-            Notification::route('mail', $customer->email)
-                ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+            // Notify Customer (use user->notify for DB storage when user account exists)
+            $customerUser = $customer->user_id ? User::find($customer->user_id) : null;
+            if ($customerUser) {
+                $customerUser->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+            } else {
+                Notification::route('mail', $customer->email)
+                    ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
+            }
 
             // Create welcome chat message from vendor to customer
             try {

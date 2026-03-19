@@ -26,7 +26,7 @@ class BookingStatusUpdatedCompanyNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -35,9 +35,7 @@ class BookingStatusUpdatedCompanyNotification extends Notification
             ->subject('Booking Status Update - #' . $this->booking->booking_number)
             ->greeting('Hello ' . $this->vendorProfile->company_name . ',')
             ->line('The status of a booking for one of your company vehicles has been updated.')
-            ->line('**Booking Details:**
-
-')
+            ->line('**Booking Details:**')
             ->line('**Booking Number:** ' . $this->booking->booking_number)
             ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
             ->line('**Location:** ' . $this->vehicle->location)
@@ -47,18 +45,19 @@ class BookingStatusUpdatedCompanyNotification extends Notification
             ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
             ->line('**Return Time:** ' . $this->booking->return_time)
             ->line('**New Status:** ' . ucfirst($this->booking->booking_status))
-            ->line('**Customer Details:**
-
-')
+            ->line('**Customer Details:**')
             ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
             ->line('**Email:** ' . $this->customer->email)
             ->line('**Phone:** ' . ($this->customer->phone ?: 'Not provided'))
+            ->action('View Bookings', url('/vendor/bookings'))
             ->line('Please review the booking and coordinate with your vendor as needed.');
     }
 
     public function toArray(object $notifiable): array
     {
         return [
+            'title' => 'Booking Status Updated #' . $this->booking->booking_number,
+            'role' => 'vendor',
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,

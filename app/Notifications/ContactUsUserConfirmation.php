@@ -35,11 +35,13 @@ class ContactUsUserConfirmation extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('We Received Your Message')
-            ->greeting('Hi ' . $this->contactData['name'])
-            ->line('Thank you for contacting us. We have received your message:')
-            ->line($this->contactData['message'])
-            ->line('We will get back to you soon.');
+            ->subject('We Received Your Message - ' . config('app.name'))
+            ->greeting('Hello ' . $this->contactData['name'] . ',')
+            ->line('Thank you for reaching out to ' . config('app.name') . '. We have received your message:')
+            ->line('> ' . $this->contactData['message'])
+            ->line('Our team will review your message and get back to you as soon as possible.')
+            ->action('Visit Our Website', url('/' . app()->getLocale()))
+            ->line('Thank you for choosing ' . config('app.name') . '.');
     }
 
     /**

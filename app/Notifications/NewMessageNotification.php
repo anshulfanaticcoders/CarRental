@@ -63,8 +63,8 @@ class NewMessageNotification extends Notification implements ShouldQueue
             // Add more booking details as needed, e.g., $booking->return_location
         }
 
-        $mailMessage->action('View Message & Booking', url('/bookings/' . $this->message->booking_id . '/chat')) // Adjusted URL
-                    ->line('Thank you for using our application!');
+        $mailMessage->action('View Message & Booking', url('/bookings/' . $this->message->booking_id . '/chat'))
+                    ->line('Thank you for using ' . config('app.name') . '.');
 
         return $mailMessage;
     }
@@ -76,8 +76,12 @@ class NewMessageNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
+        $receiver = $this->message->receiver;
+        $role = $receiver && $receiver->role ? $receiver->role : 'customer';
+
         return [
             'title' => 'New Message',
+            'role' => $role,
             'message_id' => $this->message->id,
             'booking_id' => $this->message->booking_id,
             'sender_id' => $this->message->sender_id,

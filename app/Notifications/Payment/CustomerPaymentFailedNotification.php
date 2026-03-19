@@ -26,7 +26,7 @@ class CustomerPaymentFailedNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -55,6 +55,8 @@ class CustomerPaymentFailedNotification extends Notification
     {
         $amounts = $this->getCustomerAmounts($this->booking);
         return [
+            'title' => 'Payment Failed #' . $this->booking->booking_number,
+            'role' => 'customer',
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,

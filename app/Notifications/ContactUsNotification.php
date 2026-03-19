@@ -35,14 +35,15 @@ class ContactUsNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New Contact Form Submission')
+            ->subject('New Contact Form Submission - ' . config('app.name'))
             ->greeting('Hello Admin,')
-            ->line('A new contact form has been submitted.')
+            ->line('A new contact form has been submitted on ' . config('app.name') . '.')
+            ->line('**Contact Details:**')
             ->line('**Name:** ' . $this->contactData['name'])
             ->line('**Email:** ' . $this->contactData['email'])
-            ->line('**Message:** ' . $this->contactData['message'])
-            // ->action('View Messages', url('/admin/contact-messages'))
-            ->line('Please respond as soon as possible.');
+            ->line('**Message:**')
+            ->line($this->contactData['message'])
+            ->line('Please respond to this inquiry as soon as possible.');
     }
 
     /**
