@@ -439,6 +439,8 @@ const trustStats = [
     }
 
     .trust-bar-inner {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
         gap: 1.5rem;
     }
 
@@ -447,7 +449,7 @@ const trustStats = [
     }
 
     .trust-divider {
-        height: 24px;
+        display: none;
     }
 }
 
@@ -466,11 +468,17 @@ const trustStats = [
     }
 
     .trust-bar-inner {
-        gap: 1rem;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
     }
 
     .trust-divider {
         display: none;
+    }
+
+    .trust-stat {
+        text-align: center;
     }
 
     .trust-stat-number {

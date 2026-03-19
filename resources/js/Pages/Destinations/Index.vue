@@ -1,15 +1,23 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import SeoHead from '@/Components/SeoHead.vue';
 import SchemaInjector from '@/Components/SchemaInjector.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import Footer from '@/Components/Footer.vue';
 import { buildPopularPlaceSearchUrl } from '@/utils/popularPlaceSearch';
+import { useScrollAnimation } from '@/composables/useScrollAnimation';
 
 const props = defineProps({
-    popularPlaces: { type: Array, default: () => [] },
+    popularPlaces: {
+        type: Object,
+        default: () => ({
+            data: [],
+            links: [],
+            last_page: 1,
+        }),
+    },
     schema: { type: Array, default: () => [] },
     seo: { type: Object, required: true },
 });
@@ -30,7 +38,29 @@ const staticPlaces = [
     { id: 5, place_name: 'London', city: 'London', country: 'UK', image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=900&q=80' },
 ];
 
-const places = computed(() => props.popularPlaces?.length ? props.popularPlaces : staticPlaces);
+const places = computed(() => props.popularPlaces?.data?.length ? props.popularPlaces.data : staticPlaces);
+const paginationLinks = computed(() => {
+    if ((props.popularPlaces?.last_page ?? 1) <= 1) return [];
+    return Array.isArray(props.popularPlaces?.links) ? props.popularPlaces.links : [];
+});
+
+const normalizePageLabel = (label) => String(label ?? '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&laquo;/g, '«')
+    .replace(/&raquo;/g, '»')
+    .trim();
+
+const goToPage = (url) => {
+    if (!url) return;
+
+    router.visit(url, {
+        preserveState: false,
+        preserveScroll: true,
+        onSuccess: () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+    });
+};
 
 onMounted(async () => {
     try {
@@ -57,6 +87,12 @@ const getDestinationHref = (place) => {
     const searchUrl = buildPopularPlaceSearchUrl(place, unifiedLocations.value);
     return searchUrl ? `/${page.props.locale}${searchUrl}` : `/${page.props.locale}`;
 };
+
+useScrollAnimation('.destinations-grid-section', '.destination-card, .destinations-pagination', {
+    y: 44,
+    duration: 0.9,
+    stagger: 0.08,
+});
 </script>
 
 <template>
@@ -85,7 +121,7 @@ const getDestinationHref = (place) => {
                         v-for="place in places"
                         :key="place.id"
                         :href="getDestinationHref(place)"
-                        class="destination-card"
+                        class="destination-card sr-reveal"
                         @click.prevent="navigateToSearch(place)"
                     >
                         <img :src="place.image" :alt="place.place_name" loading="lazy" />
@@ -95,6 +131,22 @@ const getDestinationHref = (place) => {
                         </div>
                     </a>
                 </div>
+
+                <nav v-if="paginationLinks.length > 1" class="destinations-pagination sr-reveal" aria-label="Destinations pagination">
+                    <button
+                        v-for="(link, index) in paginationLinks"
+                        :key="`destination-page-${index}`"
+                        type="button"
+                        :class="[
+                            'destination-page-link',
+                            { 'is-active': link.active, 'is-disabled': !link.url },
+                        ]"
+                        :disabled="!link.url"
+                        @click="goToPage(link.url)"
+                    >
+                        {{ normalizePageLabel(link.label) }}
+                    </button>
+                </nav>
             </div>
         </section>
     </main>
@@ -103,6 +155,10 @@ const getDestinationHref = (place) => {
 </template>
 
 <style scoped>
+.sr-reveal {
+    visibility: hidden;
+}
+
 .destinations-page {
     background: #f8fafc;
     color: #0f172a;
@@ -208,6 +264,47 @@ const getDestinationHref = (place) => {
     margin-top: 0.2rem;
     font-size: 0.83rem;
     color: rgba(255, 255, 255, 0.78);
+}
+
+.destinations-pagination {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 2rem;
+}
+
+.destination-page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.3rem;
+    height: 2.3rem;
+    padding: 0 0.8rem;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    color: #153b4f;
+    background: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.25s ease;
+    text-decoration: none;
+}
+
+.destination-page-link:hover {
+    border-color: #153b4f;
+    transform: translateY(-1px);
+}
+
+.destination-page-link.is-active {
+    background: #153b4f;
+    color: #fff;
+    border-color: #153b4f;
+}
+
+.destination-page-link.is-disabled {
+    opacity: 0.5;
+    pointer-events: none;
 }
 
 @media (max-width: 1200px) {

@@ -6,7 +6,6 @@ import axios from "axios";
 
 import Dropdown from "@/Components/Dropdown.vue";
 import { useCurrency } from '@/composables/useCurrency';
-// import { hideTawk, showTawk } from '@/lib/tawk';
 import { setScrollLock } from '@/lib/scrollLock';
 import whatsappIcon from '../../assets/whatsapp.svg';
 import callIcon from '../../assets/call.svg';
@@ -17,10 +16,9 @@ import flagEs from '../../assets/flag-es.svg';
 import flagAr from '../../assets/flag-ar.svg';
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
 import FloatingSocialIcons from '@/Components/FloatingSocialIcons.vue';
-// hamburgerIcon is not used from assets anymore, using SVG directly
 
 const page = usePage();
-const { url } = page; // for watch
+const { url } = page;
 
 const { selectedCurrency, supportedCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
 
@@ -30,8 +28,6 @@ const isLoginPage = computed(() => page.url.includes('/login'));
 const isRegisterPage = computed(() => page.url.includes('/register'));
 const contactInfo = ref(null);
 const pages = computed(() => page.props.pages);
-
-
 
 const fetchContactInfo = async () => {
     try {
@@ -84,14 +80,6 @@ const getTranslatedSlug = (pageSlug) => {
     return translation ? translation.slug : pageSlug;
 };
 
-const middleNavItems = [
-    { label: 'How it works', id: 'how-it-works' },
-    { label: 'Blogs', id: 'blogs' },
-    { label: 'Testimonials', id: 'testimonials' },
-    { label: 'FAQ', id: 'faq' },
-    { label: 'eSIM', id: 'esim' },
-];
-
 const whatsappLink = computed(() => {
     const phone = contactInfo.value?.phone_number || '+32493000000';
     const digits = phone.replace(/[^\d]/g, '');
@@ -109,131 +97,51 @@ const changeLanguage = (newLocale) => {
     const currentUrl = new URL(window.location.href);
     const pathParts = currentUrl.pathname.split('/');
     pathParts[1] = newLocale;
-    const newPath = pathParts.join('/');
-
-    router.visit(newPath + currentUrl.search, {
-        onSuccess: () => {
-            router.post(route('language.change'), {
-                locale: newLocale,
-                _method: 'POST'
-            }, {
-                onSuccess: () => {
-                    window.location.reload();
-                }
-            });
-        }
-    });
+    router.visit(pathParts.join('/') + currentUrl.search);
 };
 
 // Currency names mapping for better display
 const currencyNames = {
-    'USD': 'United States Dollar',
-    'EUR': 'Euro',
-    'GBP': 'British Pound Sterling',
-    'JPY': 'Japanese Yen',
-    'AUD': 'Australian Dollar',
-    'CAD': 'Canadian Dollar',
-    'CHF': 'Swiss Franc',
-    'CNH': 'Chinese Yuan',
-    'HKD': 'Hong Kong Dollar',
-    'SGD': 'Singapore Dollar',
-    'SEK': 'Swedish Krona',
-    'KRW': 'South Korean Won',
-    'NOK': 'Norwegian Krone',
-    'NZD': 'New Zealand Dollar',
-    'INR': 'Indian Rupee',
-    'MXN': 'Mexican Peso',
-    'BRL': 'Brazilian Real',
-    'RUB': 'Russian Ruble',
-    'ZAR': 'South African Rand',
-    'AED': 'United Arab Emirates Dirham',
-    'MAD': 'Moroccan Dirham',
-    'TRY': 'Turkish Lira',
-    'JOD': 'Jordanian Dinar',
-    'ISK': 'Iceland Krona',
-    'AZN': 'Azerbaijanian Manat',
-    'MYR': 'Malaysian Ringgit',
-    'OMR': 'Rial Omani',
-    'UGX': 'Uganda Shilling',
-    'NIO': 'Nicaragua Cordoba Oro'
+    'USD': 'United States Dollar', 'EUR': 'Euro', 'GBP': 'British Pound Sterling',
+    'JPY': 'Japanese Yen', 'AUD': 'Australian Dollar', 'CAD': 'Canadian Dollar',
+    'CHF': 'Swiss Franc', 'CNH': 'Chinese Yuan', 'HKD': 'Hong Kong Dollar',
+    'SGD': 'Singapore Dollar', 'SEK': 'Swedish Krona', 'KRW': 'South Korean Won',
+    'NOK': 'Norwegian Krone', 'NZD': 'New Zealand Dollar', 'INR': 'Indian Rupee',
+    'MXN': 'Mexican Peso', 'BRL': 'Brazilian Real', 'RUB': 'Russian Ruble',
+    'ZAR': 'South African Rand', 'AED': 'United Arab Emirates Dirham',
+    'MAD': 'Moroccan Dirham', 'TRY': 'Turkish Lira', 'JOD': 'Jordanian Dinar',
+    'ISK': 'Iceland Krona', 'AZN': 'Azerbaijanian Manat', 'MYR': 'Malaysian Ringgit',
+    'OMR': 'Rial Omani', 'UGX': 'Uganda Shilling', 'NIO': 'Nicaragua Cordoba Oro'
 };
 
-// Currency symbols mapping
 const currencySymbols = {
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥',
-    'AUD': 'A$',
-    'CAD': 'C$',
-    'CHF': 'Fr',
-    'CNH': '¥',
-    'HKD': 'HK$',
-    'SGD': 'S$',
-    'SEK': 'kr',
-    'KRW': '₩',
-    'NOK': 'kr',
-    'NZD': 'NZ$',
-    'INR': '₹',
-    'MXN': '$',
-    'BRL': 'R$',
-    'RUB': '₽',
-    'ZAR': 'R',
-    'AED': 'د.إ',
-    'MAD': 'د.م.‏',
-    'TRY': '₺',
-    'JOD': 'د.ا.‏',
-    'ISK': 'kr.',
-    'AZN': '₼',
-    'MYR': 'RM',
-    'OMR': '﷼',
-    'UGX': 'USh',
-    'NIO': 'C$'
+    'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'AUD': 'A$', 'CAD': 'C$',
+    'CHF': 'Fr', 'CNH': '¥', 'HKD': 'HK$', 'SGD': 'S$', 'SEK': 'kr', 'KRW': '₩',
+    'NOK': 'kr', 'NZD': 'NZ$', 'INR': '₹', 'MXN': '$', 'BRL': 'R$', 'RUB': '₽',
+    'ZAR': 'R', 'AED': 'د.إ', 'MAD': 'د.م.‏', 'TRY': '₺', 'JOD': 'د.ا.‏',
+    'ISK': 'kr.', 'AZN': '₼', 'MYR': 'RM', 'OMR': '﷼', 'UGX': 'USh', 'NIO': 'C$'
 };
 
-// Function to format currency display
 const formatCurrencyDisplay = (currency) => {
     const name = currencyNames[currency] || currency;
     const symbol = currencySymbols[currency] || '';
     return `${currency}(${name})${symbol}`;
 };
 
-// Function to format currency display for the trigger
 const formatCurrencyTriggerDisplay = (currency) => {
     const symbol = currencySymbols[currency] || '';
     return `${currency}(${symbol})`;
-};
-
-const isWelcomeRoute = computed(() => {
-    if (typeof window === 'undefined') return false;
-    const path = window.location.pathname;
-    return path === `/${currentLocale.value}` || path === `/${currentLocale.value}/` || path === '/';
-});
-
-const handleNavClick = (event, targetId) => {
-    if (!isWelcomeRoute.value) return;
-    event.preventDefault();
-    const section = document.getElementById(targetId);
-    if (section) {
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
 };
 
 const toggleMobileNav = () => {
     showingNavigationDropdown.value = !showingNavigationDropdown.value;
 };
 
-// Watch for route changes to close mobile menu
 watch(() => url.value, () => {
     showingNavigationDropdown.value = false;
 });
 
 watch(() => showingNavigationDropdown.value, (isOpen) => {
-    // if (isOpen) {
-    //     hideTawk();
-    // } else {
-    //     showTawk();
-    // }
     setScrollLock(isOpen);
 });
 
@@ -243,44 +151,29 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <header class="border-b border-gray-200 shadow-sm bg-white relative z-40">
-        <div class="full-w-container mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16 md:h-20 gap-4">
-                <div class="flex-shrink-0">
-                    <Link :href="route('welcome', { locale: page.props.locale })"
-                        class="block w-32 md:w-40 transition-transform hover:opacity-80">
-                        <ApplicationLogo class="w-full h-auto" />
-                    </Link>
-                </div>
+    <header class="hdr is-light z-40 relative">
+        <div class="full-w-container mx-auto">
+            <div class="hdr-inner">
+                <!-- Logo -->
+                <Link :href="route('welcome', { locale: page.props.locale })" class="hdr-logo">
+                    <ApplicationLogo class="w-full h-auto" />
+                </Link>
 
-                <nav v-if="isWelcomeRoute" class="hidden lg:flex items-center gap-8 font-medium text-gray-700">
-                    <button v-for="item in middleNavItems" :key="item.id" type="button" class="header-nav-link"
-                        @click="handleNavClick($event, item.id)">
-                        {{ item.label }}
-                    </button>
-                </nav>
-
-                <div class="flex items-center gap-3">
-                    <div class="hidden lg:flex items-center gap-2">
+                <!-- Right Actions -->
+                <div class="hdr-actions">
+                    <!-- Currency & Language (desktop) -->
+                    <div class="hidden lg:flex items-center gap-1.5">
                         <Dropdown align="right" width="max">
                             <template #trigger>
-                                <button type="button" class="header-icon-trigger is-labeled" :disabled="currencyLoading"
-                                    aria-label="Change currency">
-                                    <img :src="moneyExchangeSymbol" alt="" class="w-5 h-5"
-                                        :class="{ 'opacity-60': currencyLoading }">
-                                    <span class="header-trigger-label" :class="{ 'opacity-60': currencyLoading }">
-                                        {{ formatCurrencyTriggerDisplay(selectedCurrency) }}
-                                    </span>
+                                <button type="button" class="hdr-trigger" :disabled="currencyLoading" aria-label="Change currency">
+                                    <img :src="moneyExchangeSymbol" alt="" class="w-5 h-5" :class="{ 'opacity-60': currencyLoading }">
+                                    <span :class="{ 'opacity-60': currencyLoading }">{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
                                 </button>
                             </template>
                             <template #content>
                                 <div class="max-h-64 overflow-y-auto currency-scrollbar">
-                                    <div v-for="currency in supportedCurrencies" :key="currency"
-                                        @click="changeCurrency(currency)"
-                                        class="flex items-center min-w-max px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                                        :class="{ 'bg-white !text-[#153B4F]': selectedCurrency === currency }">
-                                        <span v-if="selectedCurrency === currency"
-                                            class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                    <div v-for="currency in supportedCurrencies" :key="currency" @click="changeCurrency(currency)" class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer" :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }">
+                                        <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                                         {{ formatCurrencyDisplay(currency) }}
                                     </div>
                                 </div>
@@ -289,429 +182,211 @@ onUnmounted(() => {
 
                         <Dropdown align="right" width="48">
                             <template #trigger>
-                                <button type="button" class="header-icon-trigger is-labeled" aria-label="Change language">
-                                    <img :src="availableLocales[currentLocale].flag" alt=""
-                                        class="w-5 h-5 rounded-full">
-                                    <span class="header-trigger-label">{{ availableLocales[currentLocale].name }}</span>
+                                <button type="button" class="hdr-trigger" aria-label="Change language">
+                                    <img :src="availableLocales[currentLocale].flag" alt="" class="w-5 h-5 rounded-full">
+                                    <span>{{ availableLocales[currentLocale].name }}</span>
                                 </button>
                             </template>
                             <template #content>
-                                <div v-for="(language, code) in availableLocales" :key="code"
-                                    @click="changeLanguage(code)"
-                                    class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                                    :class="{ 'bg-gray-500': currentLocale === code }">
-                                    <img :src="language.flag" :alt="language.name + ' Flag'"
-                                        class="w-5 h-5 mr-2 rounded-full">
+                                <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)" class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer" :class="{ 'bg-gray-500': currentLocale === code }">
+                                    <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
                                     {{ language.name }}
                                 </div>
                             </template>
                         </Dropdown>
                     </div>
 
-                    <button @click="toggleMobileNav" type="button" class="menu-toggle"
-                        :class="{ 'is-open': showingNavigationDropdown }" aria-controls="offcanvas-menu"
-                        aria-expanded="false">
+                    <!-- Login -->
+                    <Link v-if="!isLoginPage" :href="route('login', { locale: page.props.locale })" class="hdr-btn primary">Log in</Link>
+
+                    <!-- Hamburger -->
+                    <button @click="toggleMobileNav" type="button" class="hdr-hamburger" :class="{ 'is-open': showingNavigationDropdown }">
                         <span class="sr-only">{{ showingNavigationDropdown ? 'Close menu' : 'Open menu' }}</span>
-                        <span class="menu-bar bar-top"></span>
-                        <span class="menu-bar bar-mid"></span>
-                        <span class="menu-bar bar-bottom"></span>
+                        <span class="bar bar-1"></span>
+                        <span class="bar bar-2"></span>
+                        <span class="bar bar-3"></span>
                     </button>
                 </div>
             </div>
         </div>
 
-        <div class="offcanvas-overlay" :class="{ 'is-open': showingNavigationDropdown }"
-            @click="showingNavigationDropdown = false" aria-hidden="true"></div>
-        <aside class="offcanvas-panel" :class="{ 'is-open': showingNavigationDropdown }" role="dialog"
-            aria-modal="true" :aria-hidden="!showingNavigationDropdown">
+        <!-- Offcanvas -->
+        <div class="oc-overlay" :class="{ 'is-open': showingNavigationDropdown }" @click="showingNavigationDropdown = false"></div>
+        <aside class="oc-panel" :class="{ 'is-open': showingNavigationDropdown }" role="dialog" aria-modal="true" :aria-hidden="!showingNavigationDropdown">
             <div class="flex h-full flex-col">
-                <div class="flex items-center justify-between px-6 py-5 border-b">
+                <!-- Head -->
+                <div class="oc-head">
                     <Link :href="route('welcome', { locale: page.props.locale })" class="w-28">
                         <ApplicationLogo class="w-full h-auto" />
                     </Link>
-                    <button type="button" class="offcanvas-close" @click="showingNavigationDropdown = false">
-                        <span class="sr-only">Close menu</span>
-                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                    <button type="button" class="oc-close" @click="showingNavigationDropdown = false">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto px-6 py-5">
-                    <div class="flex min-h-full flex-col gap-6">
-                    <div class="space-y-3">
-                        <div class="text-xs uppercase tracking-widest text-gray-400">Account</div>
-                        <div class="flex flex-wrap gap-2">
-                            <Link v-if="!isLoginPage" :href="route('login', { locale: page.props.locale })"
-                                class="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-4 py-3 text-sm font-medium text-white hover:bg-[#153b4fef]">
-                                Log in
-                            </Link>
-                            <Link v-if="!isRegisterPage" :href="route('register', { locale: page.props.locale })"
-                                class="flex-1 min-w-[140px] flex items-center justify-between rounded-lg border border-customPrimaryColor px-4 py-3 text-sm font-medium text-customPrimaryColor hover:bg-blue-50">
-                                Create Account
-                            </Link>
+                <!-- Body -->
+                <div class="oc-body">
+                    <!-- Account -->
+                    <div class="oc-section">
+                        <div class="oc-label">Account</div>
+                        <div class="oc-auth-btns">
+                            <Link v-if="!isLoginPage" :href="route('login', { locale: page.props.locale })" class="oc-btn-login">Log in</Link>
+                            <Link v-if="!isRegisterPage" :href="route('register', { locale: page.props.locale })" class="oc-btn-signup">Create Account</Link>
                         </div>
                     </div>
 
-                    <div class="space-y-3">
-                        <div class="text-xs uppercase tracking-widest text-gray-400">Currency</div>
+                    <!-- Settings -->
+                    <div class="oc-section">
+                        <div class="oc-label">Settings</div>
                         <Dropdown align="right" width="max">
                             <template #trigger>
-                                <button type="button"
-                                    class="inline-flex w-full items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:border-customPrimaryColor"
-                                    :disabled="currencyLoading">
-                                    <span class="flex items-center">
-                                        <img :src="moneyExchangeSymbol" alt="Currency" class="w-5 h-5 mr-2">
+                                <button type="button" class="oc-item w-full" :disabled="currencyLoading">
+                                    <span class="flex items-center gap-2">
+                                        <img :src="moneyExchangeSymbol" alt="Currency" class="w-5 h-5" :class="{ 'opacity-60': currencyLoading }">
                                         {{ formatCurrencyTriggerDisplay(selectedCurrency) }}
                                     </span>
-                                    <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 9l-7 7-7-7" />
-                                    </svg>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                                 </button>
                             </template>
                             <template #content>
                                 <div class="max-h-64 overflow-y-auto currency-scrollbar">
-                                    <div v-for="currency in supportedCurrencies" :key="currency"
-                                        @click="changeCurrency(currency)"
-                                        class="flex items-center min-w-max px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer"
-                                        :class="{ 'bg-white !text-[#153B4F]': selectedCurrency === currency }">
-                                        <span v-if="selectedCurrency === currency"
-                                            class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                    <div v-for="currency in supportedCurrencies" :key="currency" @click="changeCurrency(currency)" class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer" :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }">
+                                        <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                                         {{ formatCurrencyDisplay(currency) }}
                                     </div>
                                 </div>
                             </template>
                         </Dropdown>
-                    </div>
-
-                    <div class="space-y-3">
-                        <div class="text-xs uppercase tracking-widest text-gray-400">Language</div>
                         <Dropdown align="right" width="48">
                             <template #trigger>
-                                <button type="button"
-                                    class="inline-flex w-full items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:border-customPrimaryColor">
-                                    <span class="flex items-center">
-                                        <img :src="availableLocales[currentLocale].flag"
-                                            :alt="availableLocales[currentLocale].name + ' Flag'"
-                                            class="w-5 h-5 mr-2 rounded-full">
+                                <button type="button" class="oc-item w-full">
+                                    <span class="flex items-center gap-2">
+                                        <img :src="availableLocales[currentLocale].flag" :alt="availableLocales[currentLocale].name + ' Flag'" class="w-5 h-5 rounded-full">
                                         {{ availableLocales[currentLocale].name }}
                                     </span>
-                                    <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 9l-7 7-7-7" />
-                                    </svg>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                                 </button>
                             </template>
                             <template #content>
-                                <div v-for="(language, code) in availableLocales" :key="code"
-                                    @click="changeLanguage(code)"
-                                    class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                                    :class="{ 'bg-gray-500': currentLocale === code }">
-                                    <img :src="language.flag" :alt="language.name + ' Flag'"
-                                        class="w-5 h-5 mr-2 rounded-full">
+                                <div v-for="(language, code) in availableLocales" :key="code" @click="changeLanguage(code)" class="flex items-center w-full px-4 py-2 text-left text-sm leading-5 text-white hover:text-[#153B4F] hover:bg-gray-100 transition duration-150 ease-in-out cursor-pointer" :class="{ 'bg-gray-500': currentLocale === code }">
+                                    <img :src="language.flag" :alt="language.name + ' Flag'" class="w-5 h-5 mr-2 rounded-full">
                                     {{ language.name }}
                                 </div>
                             </template>
                         </Dropdown>
                     </div>
 
-                    <div class="space-y-3">
-                        <div class="text-xs uppercase tracking-widest text-gray-400">Pages</div>
-                        <div class="space-y-2">
-                            <Link
-                                :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })"
-                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
-                                About Us
-                            </Link>
-                            <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })"
-                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
-                                Blogs
-                            </Link>
-                            <Link :href="route('faq.show', { locale: page.props.locale })"
-                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
-                                FAQ
-                            </Link>
-                            <a href="https://vrooem.esimqr.link/" target="_blank" rel="noopener noreferrer"
-                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
-                                eSIM
-                            </a>
-                            <Link :href="`/${page.props.locale}/contact-us`"
-                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
-                                Contact Us
-                            </Link>
-                            <Link :href="`/${page.props.locale}/business/register`"
-                                class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-800 hover:border-customPrimaryColor hover:text-customPrimaryColor">
-                                Business
-                            </Link>
-                        </div>
+                    <!-- Pages -->
+                    <div class="oc-section">
+                        <div class="oc-label">Explore</div>
+                        <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })" class="oc-item">About Us</Link>
+                        <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })" class="oc-item">Blogs</Link>
+                        <Link :href="route('faq.show', { locale: page.props.locale })" class="oc-item">FAQ</Link>
+                        <a href="https://vrooem.esimqr.link/" target="_blank" rel="noopener noreferrer" class="oc-item">eSIM</a>
+                        <Link :href="`/${page.props.locale}/contact-us`" class="oc-item">Contact Us</Link>
+                        <Link :href="`/${page.props.locale}/business/register`" class="oc-item">Business</Link>
                     </div>
+                </div>
 
-                    <div v-if="whatsappLink || callLink" class="mt-auto space-y-3 border-t border-gray-200 pt-6">
-                        <div class="text-xs uppercase tracking-widest text-gray-400">Contact</div>
-                        <div class="flex flex-wrap gap-2">
-                            <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer"
-                                class="flex-1 min-w-[160px] flex items-center gap-3 rounded-lg border border-emerald-500 bg-emerald-500 px-4 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:border-emerald-600 hover:bg-emerald-600">
-                                <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5 filter brightness-0 invert">
-                                WhatsApp
-                            </a>
-                            <a v-if="callLink" :href="callLink"
-                                class="flex-1 min-w-[160px] flex items-center gap-3 rounded-lg border border-customPrimaryColor bg-customPrimaryColor px-4 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:border-[#153b4fef] hover:bg-[#153b4fef]">
-                                <img :src="callIcon" alt="Call" class="w-5 h-5 filter brightness-0 invert">
-                                Call Now
-                            </a>
-                        </div>
-                    </div>
-                    </div>
+                <!-- Footer -->
+                <div v-if="whatsappLink || callLink" class="oc-footer">
+                    <a v-if="whatsappLink" :href="whatsappLink" target="_blank" rel="noopener noreferrer" class="oc-footer-btn wa">
+                        <img :src="whatsappIcon" alt="WhatsApp" class="w-5 h-5 brightness-0 invert"> WhatsApp
+                    </a>
+                    <a v-if="callLink" :href="callLink" class="oc-footer-btn call">
+                        <img :src="callIcon" alt="Call" class="w-5 h-5 brightness-0 invert"> Call Now
+                    </a>
                 </div>
             </div>
         </aside>
 
-        <div v-if="currencyLoading"
-            class="fixed inset-0 z-[100] flex items-center justify-center bg-white bg-opacity-70">
-            <img :src="moneyExchangeSymbol" alt="Loading..." class="w-16 h-16 animate-spin" />
+        <!-- Currency loading -->
+        <div v-if="currencyLoading" class="currency-overlay">
+            <div class="currency-loader"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
         </div>
+
         <FloatingSocialIcons />
     </header>
 </template>
 
-<style>
-.offcanvasList a {
-    padding: 1rem;
-    background-color: var(--custom-primary);
-    color: white;
-    border-radius: 12px;
-}
+<style scoped>
+/* Uses same class names as AuthenticatedHeaderLayout for visual consistency */
+.hdr { --ease: cubic-bezier(0.22, 1, 0.36, 1); --duration: 0.3s; }
+.oc-overlay, .oc-panel { --ease: cubic-bezier(0.22, 1, 0.36, 1); --duration: 0.3s; }
 
-/* Custom scrollbar for currency dropdown */
-.currency-scrollbar::-webkit-scrollbar {
-    width: 6px;
-}
+/* Header */
+.hdr-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 12px; }
+@media (min-width: 768px) { .hdr-inner { height: 72px; gap: 20px; } }
+.hdr-logo { display: block; width: 8rem; flex-shrink: 0; transition: opacity var(--duration) var(--ease); }
+.hdr-logo:hover { opacity: 0.8; }
+@media (min-width: 768px) { .hdr-logo { width: 10rem; } }
+.hdr-actions { display: flex; align-items: center; gap: 6px; }
 
-.currency-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
+/* Light mode */
+.hdr.is-light { background: #fff; border-bottom: 1px solid rgba(226, 232, 240, 0.6); box-shadow: 0 1px 3px rgba(21, 59, 79, 0.03), 0 4px 16px rgba(21, 59, 79, 0.02); }
+.hdr-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 12px; font-size: 0.84rem; font-weight: 600; cursor: pointer; background: #f8fafc; border: 1px solid #e2e8f0; color: #334155; transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease), color var(--duration) var(--ease), transform var(--duration) var(--ease); }
+.hdr-trigger:hover { background: #f0f8fc; border-color: #153b4f; color: #153b4f; transform: translateY(-1px); }
+.hdr-trigger[disabled] { cursor: not-allowed; opacity: 0.7; }
+.hdr-btn { display: inline-flex; align-items: center; padding: 9px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease), color var(--duration) var(--ease), box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease); }
+.hdr-btn:hover { transform: translateY(-2px); }
+.hdr-btn.ghost { background: transparent; border: 1px solid #e2e8f0; color: #334155; }
+.hdr-btn.ghost:hover { border-color: #153b4f; color: #153b4f; background: #f8fafc; }
+.hdr-btn.primary { background: linear-gradient(135deg, #153b4f, #1c4d66); color: #fff; border: none; box-shadow: 0 2px 8px rgba(21, 59, 79, 0.15); }
+.hdr-btn.primary:hover { box-shadow: 0 8px 24px rgba(21, 59, 79, 0.2); }
 
-.currency-scrollbar::-webkit-scrollbar-thumb {
-    background: #d1d5db;
-    border-radius: 3px;
-}
+/* Hamburger */
+.hdr-hamburger { width: 40px; height: 40px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 5px; padding: 0 11px; border-radius: 12px; cursor: pointer; background: #f8fafc; border: 1px solid #e2e8f0; transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease); }
+.hdr-hamburger:hover { background: #f0f8fc; border-color: #153b4f; box-shadow: 0 4px 16px rgba(21, 59, 79, 0.06); transform: translateY(-1px); }
+.bar { height: 2px; border-radius: 2px; background: #334155; transition: transform 0.35s var(--ease), opacity 0.35s var(--ease), width 0.35s var(--ease); }
+.bar-1 { width: 100%; } .bar-2 { width: 60%; } .bar-3 { width: 80%; }
+.hdr-hamburger:hover .bar-2 { width: 80%; } .hdr-hamburger:hover .bar-3 { width: 100%; }
+.hdr-hamburger.is-open .bar-1 { transform: translateY(7px) rotate(45deg); width: 100%; }
+.hdr-hamburger.is-open .bar-2 { opacity: 0; transform: scaleX(0.2); }
+.hdr-hamburger.is-open .bar-3 { transform: translateY(-7px) rotate(-45deg); width: 100%; }
 
-.currency-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af;
-}
+/* Offcanvas */
+.oc-overlay { position: fixed; inset: 0; z-index: 100000; background: rgba(10, 22, 32, 0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.5s var(--ease); }
+.oc-overlay.is-open { opacity: 1; pointer-events: auto; }
+.oc-panel { position: fixed; top: 0; right: 0; height: 100vh; height: 100dvh; width: min(400px, 88vw); z-index: 100001; background: linear-gradient(180deg, #fff, #fafbfc); box-shadow: -24px 0 80px rgba(10, 22, 32, 0.12); transform: translateX(100%); transition: transform 0.5s var(--ease); display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); }
+.oc-panel.is-open { transform: translateX(0); }
 
-.header-nav-link {
-    position: relative;
-    font-size: 1.05rem;
-    color: #334155;
-    background: transparent;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    transition: color 200ms ease;
-}
+/* OC Head */
+.oc-head { display: flex; align-items: center; justify-content: space-between; padding: 24px 28px; border-bottom: 1px solid rgba(226, 232, 240, 0.5); }
+.oc-close { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease), color var(--duration) var(--ease); }
+.oc-close:hover { background: #f0f8fc; border-color: #153b4f; color: #153b4f; }
 
-.header-nav-link::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: 0;
-    width: 0;
-    height: 2px;
-    background: #153b4f;
-    transform: translateX(-50%);
-    transition: width 220ms ease;
-}
+/* OC Body */
+.oc-body { flex: 1; overflow-y: auto; padding: 8px 28px 28px; }
+.oc-section { margin-bottom: 8px; }
+.oc-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700; margin-bottom: 10px; padding-top: 20px; color: #94a3b8; }
+.oc-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; border-radius: 14px; font-size: 0.9rem; font-weight: 500; cursor: pointer; text-decoration: none; color: #334155; background: #fff; border: 1px solid rgba(226, 232, 240, 0.6); margin-bottom: 6px; box-shadow: 0 1px 2px rgba(21, 59, 79, 0.02); transition: border-color var(--duration) var(--ease), color var(--duration) var(--ease), background var(--duration) var(--ease), transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease); }
+.oc-item:hover { border-color: #153b4f; color: #153b4f; background: #f0f8fc; transform: translateX(4px); box-shadow: 0 4px 12px rgba(21, 59, 79, 0.04); }
 
-.header-nav-link:hover,
-.header-nav-link:focus-visible {
-    color: #153b4f;
-}
+/* OC Auth buttons */
+.oc-auth-btns { display: flex; gap: 10px; }
+.oc-btn-login, .oc-btn-signup { flex: 1; padding: 14px; border-radius: 14px; text-align: center; font-size: 0.9rem; font-weight: 600; text-decoration: none; transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease), background var(--duration) var(--ease); }
+.oc-btn-login { background: linear-gradient(135deg, #153b4f, #1c4d66); color: #fff; box-shadow: 0 4px 16px rgba(21, 59, 79, 0.2); }
+.oc-btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(21, 59, 79, 0.25); }
+.oc-btn-signup { background: #fff; border: 1.5px solid #153b4f; color: #153b4f; }
+.oc-btn-signup:hover { background: #f0f8fc; transform: translateY(-2px); }
 
-.header-nav-link:hover::after,
-.header-nav-link:focus-visible::after {
-    width: 100%;
-}
+/* OC Footer */
+.oc-footer { padding: 20px 28px calc(20px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(226, 232, 240, 0.5); display: flex; gap: 10px; background: rgba(248, 250, 252, 0.8); }
+.oc-footer-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border-radius: 14px; font-size: 0.85rem; font-weight: 600; text-decoration: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease); }
+.oc-footer-btn.wa { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+.oc-footer-btn.wa:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25); }
+.oc-footer-btn.call { background: linear-gradient(135deg, #153b4f, #1c4d66); color: #fff; }
+.oc-footer-btn.call:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(21, 59, 79, 0.25); }
 
-.header-icon-trigger {
-    width: 40px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: linear-gradient(145deg, #ffffff, #f8fafc);
-    color: #475569;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease,
-        background 160ms ease, color 160ms ease;
-}
-
-.header-icon-trigger.is-labeled {
-    width: auto;
-    padding: 0 12px;
-    gap: 8px;
-}
-
-.header-trigger-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #334155;
-    line-height: 1;
-}
-
-.header-icon-trigger:hover {
-    background: #ffffff;
-    border-color: rgba(46, 167, 173, 0.45);
-    color: #0f172a;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
-    transform: translateY(-1px);
-}
-
-.header-icon-trigger:active {
-    transform: translateY(0);
-    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
-}
-
-.header-icon-trigger:focus-visible {
-    outline: 2px solid rgba(59, 130, 246, 0.5);
-    outline-offset: 2px;
-}
-
-.header-icon-trigger[disabled] {
-    cursor: not-allowed;
-    opacity: 0.75;
-    box-shadow: none;
-}
-
-.menu-toggle {
-    width: 46px;
-    height: 46px;
-    padding: 0 11px;
-    display: inline-flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 6px;
-    border-radius: 14px;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: linear-gradient(145deg, #ffffff, #f8fafc);
-    color: #334155;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease,
-        background 160ms ease;
-}
-
-.menu-toggle:hover {
-    border-color: rgba(46, 167, 173, 0.45);
-    background: #ffffff;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
-    transform: translateY(-1px);
-}
-
-.menu-toggle:focus-visible {
-    outline: 2px solid rgba(59, 130, 246, 0.5);
-    outline-offset: 2px;
-}
-
-.menu-bar {
-    height: 2px;
-    background: #334155;
-    border-radius: 999px;
-    align-self: flex-start;
-    transition: transform 200ms ease, opacity 200ms ease, width 200ms ease;
-}
-
-.bar-top {
-    width: 100%;
-}
-
-.bar-mid {
-    width: 70%;
-}
-
-.bar-bottom {
-    width: 85%;
-}
-
-.menu-toggle:hover .bar-mid {
-    width: 85%;
-}
-
-.menu-toggle:hover .bar-bottom {
-    width: 100%;
-}
-
-.menu-toggle.is-open .bar-top {
-    transform: translateY(8px) rotate(45deg);
-    width: 100%;
-}
-
-.menu-toggle.is-open .bar-mid {
-    opacity: 0;
-    transform: scaleX(0.2);
-}
-
-.menu-toggle.is-open .bar-bottom {
-    transform: translateY(-8px) rotate(-45deg);
-    width: 100%;
-}
-
-.offcanvas-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 240ms ease;
-    z-index: 100000;
-}
-
-.offcanvas-overlay.is-open {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.offcanvas-panel {
-    position: fixed;
-    top: 0;
-    right: 0;
-    height: 100vh;
-    width: 320px;
-    max-width: 92vw;
-    background: #ffffff;
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
-    transform: translateX(100%);
-    transition: transform 320ms ease;
-    z-index: 100001;
-}
-
-.offcanvas-panel.is-open {
-    transform: translateX(0);
-}
-
-.offcanvas-close {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 999px;
-    color: #4b5563;
-    background: rgba(15, 23, 42, 0.05);
-    transition: color 150ms ease, background 150ms ease;
-}
-
-.offcanvas-close:hover {
-    color: #111827;
-    background: rgba(15, 23, 42, 0.12);
-}
-
-@media (min-width: 640px) {
-    .offcanvas-panel {
-        width: 380px;
-    }
-}
+/* Utilities */
+.currency-scrollbar::-webkit-scrollbar { width: 6px; }
+.currency-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.currency-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+.currency-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+.currency-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.32); backdrop-filter: blur(6px); }
+.currency-loader { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2); }
+.currency-loader .dot { width: 10px; height: 10px; border-radius: 999px; background: #f8fafc; animation: currencyDots 1.1s ease-in-out infinite; }
+.currency-loader .dot:nth-child(2) { animation-delay: 0.2s; }
+.currency-loader .dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes currencyDots { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-6px); opacity: 1; } }
 </style>

@@ -13,7 +13,8 @@ import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
 import BlogSection from '@/Components/Welcome/BlogSection.vue';
 import TestimonialsSection from '@/Components/Welcome/TestimonialsSection.vue';
 import FaqSection from '@/Components/Welcome/FaqSection.vue';
-import NewsletterSection from '@/Components/Welcome/NewsletterSection.vue';
+// Newsletter moved to Footer component
+// import NewsletterSection from '@/Components/Welcome/NewsletterSection.vue';
 
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { usePage } from '@inertiajs/vue3';
@@ -119,7 +120,6 @@ onBeforeUnmount(() => { if (timer) clearTimeout(timer); });
         <!-- 9. FAQ (LIGHT — dynamic from API) -->
         <FaqSection />
 
-        <NewsletterSection />
     </main>
 
     <Footer />

@@ -1,9 +1,16 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onBeforeUnmount, onMounted } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { useScrollAnimation } from '@/composables/useScrollAnimation';
 import { buildPopularPlaceSearchUrl } from '@/utils/popularPlaceSearch';
+import {
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+    CarouselNext,
+    CarouselPrevious,
+} from '@/Components/ui/carousel';
 
 const props = defineProps({
     popularPlaces: { type: Array, default: null },
@@ -16,6 +23,9 @@ const _p = (key, fallback = '') => {
 };
 
 const unifiedLocations = ref([]);
+const emblaApi = ref(null);
+const selectedIndex = ref(0);
+const snapCount = ref(0);
 
 onMounted(async () => {
     try {
@@ -49,11 +59,38 @@ const staticPlaces = [
     { id: 3, place_name: 'Paris', city: 'Paris', country: 'France', image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&q=80' },
     { id: 4, place_name: 'Rome', city: 'Rome', country: 'Italy', image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=600&q=80' },
     { id: 5, place_name: 'London', city: 'London', country: 'UK', image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&q=80' },
+    { id: 6, place_name: 'Marrakesh', city: 'Marrakesh', country: 'Morocco', image: 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=600&q=80' },
+    { id: 7, place_name: 'Amsterdam', city: 'Amsterdam', country: 'Netherlands', image: 'https://images.unsplash.com/photo-1512470876302-972faa2aa9a4?w=600&q=80' },
+    { id: 8, place_name: 'Lisbon', city: 'Lisbon', country: 'Portugal', image: 'https://images.unsplash.com/photo-1558370781-d6196949e317?w=600&q=80' },
+    { id: 9, place_name: 'Abu Dhabi', city: 'Abu Dhabi', country: 'UAE', image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=600&q=80' },
+    { id: 10, place_name: 'Milan', city: 'Milan', country: 'Italy', image: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=600&q=80' },
 ];
 
-const places = computed(() => props.popularPlaces?.length ? props.popularPlaces.slice(0, 5) : staticPlaces);
+const places = computed(() => props.popularPlaces?.length ? props.popularPlaces.slice(0, 10) : staticPlaces.slice(0, 10));
+const showCarouselControls = computed(() => places.value.length > 5);
 
-useScrollAnimation('.dest-section', '.dest-header, .dest-card', {
+const updateCarouselState = (api = emblaApi.value) => {
+    if (!api) return;
+    selectedIndex.value = api.selectedScrollSnap();
+    snapCount.value = api.scrollSnapList().length;
+};
+
+const onInitApi = (api) => {
+    emblaApi.value = api;
+    updateCarouselState(api);
+    api.on('select', updateCarouselState);
+    api.on('reInit', updateCarouselState);
+};
+
+const scrollTo = (index) => emblaApi.value?.scrollTo(index);
+
+onBeforeUnmount(() => {
+    if (!emblaApi.value) return;
+    emblaApi.value.off('select', updateCarouselState);
+    emblaApi.value.off('reInit', updateCarouselState);
+});
+
+useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', {
     y: 48,
     duration: 0.9,
     stagger: 0.12,
@@ -75,17 +112,44 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-card', {
                 </a>
             </div>
 
-            <div class="dest-grid">
-                <a v-for="p in places" :key="p.id"
-                    :href="getDestinationHref(p)"
-                    @click.prevent="navigateToSearch(p)"
-                    class="dest-card sr-reveal">
-                    <img :src="p.image" :alt="p.place_name" loading="lazy" />
-                    <div class="dest-info">
-                        <div class="dest-name">{{ p.place_name }}</div>
-                        <div class="dest-loc">{{ p.city }}, {{ p.country }}</div>
-                    </div>
-                </a>
+            <Carousel
+                class="dest-carousel sr-reveal"
+                :opts="{ align: 'start', loop: showCarouselControls }"
+                @init-api="onInitApi"
+            >
+                <CarouselContent>
+                    <CarouselItem
+                        v-for="p in places"
+                        :key="p.id"
+                        class="md:basis-1/2 lg:basis-1/4"
+                    >
+                        <a
+                            :href="getDestinationHref(p)"
+                            @click.prevent="navigateToSearch(p)"
+                            class="dest-card"
+                        >
+                            <img :src="p.image" :alt="p.place_name" loading="lazy" />
+                            <div class="dest-info">
+                                <div class="dest-name">{{ p.place_name }}</div>
+                                <div class="dest-loc">{{ p.city }}, {{ p.country }}</div>
+                            </div>
+                        </a>
+                    </CarouselItem>
+                </CarouselContent>
+                <CarouselPrevious v-if="showCarouselControls" class="dest-nav dest-prev" />
+                <CarouselNext v-if="showCarouselControls" class="dest-nav dest-next" />
+            </Carousel>
+
+            <div v-if="showCarouselControls" class="dest-dots">
+                <button
+                    v-for="(_, i) in snapCount"
+                    :key="`dest-dot-${i}`"
+                    type="button"
+                    class="dest-dot"
+                    :class="{ 'is-active': i === selectedIndex }"
+                    @click="scrollTo(i)"
+                    :aria-label="`Go to destination slide ${i + 1}`"
+                ></button>
             </div>
         </div>
     </section>
@@ -142,13 +206,35 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-card', {
     transform: translateY(-2px);
 }
 
-.dest-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; }
+.dest-carousel {
+    position: relative;
+    padding-inline: 1.25rem;
+}
+
+.dest-carousel :deep(.dest-prev) {
+    left: -0.85rem !important;
+}
+
+.dest-carousel :deep(.dest-next) {
+    right: -0.85rem !important;
+}
+
+.dest-carousel :deep(.dest-nav) {
+    border: 1px solid #b0d4e6 !important;
+    background: #fff !important;
+    box-shadow: 0 8px 24px rgba(10, 29, 40, 0.15);
+}
+
+.dest-carousel :deep(.dest-nav svg) {
+    color: #153b4f !important;
+}
 
 .dest-card {
     position: relative; border-radius: 20px; overflow: hidden;
     aspect-ratio: 3/4; cursor: pointer; display: block;
     box-shadow: 0 4px 24px rgba(10,29,40,0.06);
     transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1);
+    height: 100%;
 }
 .dest-card:hover { transform: translateY(-6px); box-shadow: 0 16px 48px rgba(10,29,40,0.12); }
 .dest-card img { width:100%; height:100%; object-fit:cover; transition: transform 0.6s cubic-bezier(0.22,1,0.36,1); }
@@ -161,19 +247,49 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-card', {
 .dest-name { font-size: 1.05rem; font-weight: 700; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.4); }
 .dest-loc { font-size: 0.78rem; color: rgba(255,255,255,0.7); text-shadow: 0 1px 4px rgba(0,0,0,0.3); }
 
-@media (max-width: 1024px) {
-    .dest-grid { grid-template-columns: repeat(3, 1fr); }
-    .dest-grid .dest-card:nth-child(n+4) { display: none; }
+.dest-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.6rem;
 }
+
+.dest-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    border: none;
+    background: #cbd5e1;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dest-dot.is-active {
+    width: 22px;
+    background: #153b4f;
+}
+
+@media (max-width: 1280px) {
+    .dest-card {
+        aspect-ratio: 16/10;
+    }
+}
+
 @media (max-width: 768px) {
     .dest-header { flex-direction: column; align-items: flex-start; }
-    .dest-grid { grid-template-columns: repeat(2, 1fr); }
-    .dest-grid .dest-card:nth-child(n+3) { display: none; }
+
+    .dest-carousel {
+        padding-inline: 0.6rem;
+    }
+
+    .dest-carousel :deep(.dest-prev),
+    .dest-carousel :deep(.dest-next) {
+        display: none !important;
+    }
 }
+
 @media (max-width: 480px) {
-    .dest-grid { grid-template-columns: 1fr; }
-    .dest-grid .dest-card:nth-child(n+3) { display: block; }
-    .dest-grid .dest-card:nth-child(n+4) { display: none; }
     .dest-card { aspect-ratio: 16/9; }
 }
 </style>

@@ -23,11 +23,12 @@ class PopularPlacesController extends Controller
     {
         $places = PopularPlace::query()
             ->orderBy('place_name')
-            ->get();
+            ->paginate(12)
+            ->withQueryString();
 
         $schemas = [];
-        if ($places->isNotEmpty()) {
-            $schemas[] = SchemaBuilder::popularPlaceList($places, __('homepage.top_destinations'));
+        if ($places->getCollection()->isNotEmpty()) {
+            $schemas[] = SchemaBuilder::popularPlaceList($places->getCollection(), __('homepage.top_destinations'));
         }
 
         $seo = app(SeoMetaResolver::class)->resolveForRoute(

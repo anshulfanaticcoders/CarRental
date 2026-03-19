@@ -103,11 +103,18 @@ class SocialAuthController extends Controller
         $resolvedCountry = $this->resolveCountryFromRequest($request);
         $resolvedPhoneCode = $this->resolvePhoneCodeFromCountry($resolvedCountry);
 
+        $user->load('profile');
+
         if (!$user->profile) {
+            $avatarUrl = $socialUser->getAvatar();
+            if ($avatarUrl && strlen($avatarUrl) > 2048) {
+                $avatarUrl = null;
+            }
+
             UserProfile::create([
                 'user_id' => $user->id,
                 'country' => $resolvedCountry,
-                'avatar' => $socialUser->getAvatar(),
+                'avatar' => $avatarUrl,
                 'currency' => $defaultCurrency,
             ]);
         } else {
@@ -180,10 +187,15 @@ class SocialAuthController extends Controller
             'last_login_at' => now(),
         ]);
 
+        $avatarUrl = $socialUser->getAvatar();
+        if ($avatarUrl && strlen($avatarUrl) > 2048) {
+            $avatarUrl = null;
+        }
+
         UserProfile::create([
             'user_id' => $user->id,
             'country' => $this->resolveCountryFromRequest(request()),
-            'avatar' => $socialUser->getAvatar(),
+            'avatar' => $avatarUrl,
             'currency' => 'EUR',
         ]);
 
@@ -198,8 +210,7 @@ class SocialAuthController extends Controller
                 $admin->notify(new AccountCreatedNotification($user));
             }
 
-            Notification::route('mail', $user->email)
-                ->notify(new AccountCreatedUserConfirmation($user));
+            $user->notify(new AccountCreatedUserConfirmation($user));
         } catch (\Exception $exception) {
             Log::error('Social registration notification failed: ' . $exception->getMessage(), [
                 'user_id' => $user->id,

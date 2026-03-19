@@ -110,9 +110,8 @@ class RegisteredUserController extends Controller
                 $admin->notify(new AccountCreatedNotification($user));
             }
 
-            // Notify the user - wrapped in try-catch to prevent errors on screen
-            Notification::route('mail', $user->email)
-                ->notify(new AccountCreatedUserConfirmation($user));
+            // Notify the user (use $user->notify for DB storage)
+            $user->notify(new AccountCreatedUserConfirmation($user));
         } catch (\Exception $e) {
             // Log the notification error but don't show it to user
             Log::error('Registration notification failed: ' . $e->getMessage(), [

@@ -105,6 +105,7 @@ Invoke the MATCHING skill based on the file type you're about to edit:
 
 - If editing MULTIPLE file types, invoke ALL matching skills
 - If no domain skill matches, proceed without one
+- **For ANY frontend UI work**, ALWAYS read `resources/js/design-system.md` first for brand colors, typography, buttons, spacing, shadows, and component patterns. Every new page MUST follow this design system.
 
 **Step 6b - Security Review (for sensitive code)**
 ```
