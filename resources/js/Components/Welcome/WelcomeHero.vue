@@ -101,7 +101,6 @@ const trustStats = [
     flex-direction: column;
     justify-content: center;
     background: #0a1d28;
-    overflow: hidden;
 }
 
 .hero-z {
