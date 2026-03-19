@@ -5,7 +5,6 @@ const ARAB_COUNTRY_CODES = new Set([
 ]);
 
 const DEFAULT_LOCALE = 'en';
-const NON_ARAB_LOCALE = 'fr';
 
 const normalizeCountryCode = (countryCode) => String(countryCode ?? '').trim().toUpperCase();
 
@@ -37,11 +36,7 @@ export const getLocaleFromCountryCode = (countryCode, knownCountryCodes = null) 
     return 'ar';
   }
 
-  if (knownCountryCodes instanceof Set && knownCountryCodes.size > 0) {
-    return knownCountryCodes.has(normalized) ? NON_ARAB_LOCALE : DEFAULT_LOCALE;
-  }
-
-  return NON_ARAB_LOCALE;
+  return DEFAULT_LOCALE;
 };
 
 export const getGeoPreferredLocale = (countryCode, supportedLocales = ['en', 'fr', 'nl', 'es', 'ar'], knownCountryCodes = null) => {
