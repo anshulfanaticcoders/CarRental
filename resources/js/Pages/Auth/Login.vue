@@ -5,7 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import loginBg from '../../../assets/loginpageImage.jpg'
-import GuestHeader from '@/Layouts/GuestHeader.vue';
+import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { ref, computed } from 'vue';
 import { toast } from 'vue-sonner';
 import { Toaster } from "@/Components/ui/sonner";
@@ -68,588 +68,205 @@ watch(() => props.status, (newStatus) => {
 </script>
 
 <template>
+    <Head>
+        <meta name="robots" content="noindex, nofollow">
+        <title inertia>{{ _t('login', 'log_in') }}</title>
+    </Head>
+
+    <Toaster position="bottom-right" :toastOptions="{ style: { background: 'black', color: 'white', border: '1px solid #333' } }" />
+
     <main class="login-page">
+        <!-- Form Side -->
+        <div class="login-form-side">
+            <div class="logo-bar">
+                <Link :href="route('welcome', { locale: page.props.locale })" class="logo-link">
+                    <ApplicationLogo class="logo" />
+                </Link>
+            </div>
 
-        <Head>
-            <meta name="robots" content="noindex, nofollow">
-            <title inertia>{{ _t('login', 'log_in') }}</title>
-            <meta name="description" :content="seoDescription" />
-            <meta name="keywords" :content="seoKeywords" />
-            <link rel="canonical" :href="canonicalUrl" />
-            <meta property="og:title" :content="seoTitle" />
-            <meta property="og:description" :content="seoDescription" />
-            <meta property="og:image" :content="seoImageUrl" />
-            <meta property="og:url" :content="currentUrl" />
-            <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:title" :content="seoTitle" />
-            <meta name="twitter:description" :content="seoDescription" />
-            <meta name="twitter:image" :content="seoImageUrl" />
-        </Head>
+            <div class="form-center">
+                <div class="form-card">
+                    <h1 class="form-title">{{ _t('login', 'sign_in') }}</h1>
+                    <p class="form-sub">{{ _t('login', 'login_description') }}</p>
 
-        <GuestHeader />
+                    <div v-if="oauthError" class="oauth-error">{{ oauthError }}</div>
 
-        <Toaster position="bottom-right" :toastOptions="{
-            style: { background: 'black', color: 'white', border: '1px solid #333' }
-        }" />
+                    <form @submit.prevent="submit">
+                        <!-- Email -->
+                        <div class="field">
+                            <InputLabel for="email" :value="_t('login', 'email_address')" class="field-label" />
+                            <TextInput id="email" type="email" class="field-input" v-model="form.email" required autofocus autocomplete="username" placeholder="name@example.com" />
+                            <InputError class="field-error" :message="form.errors.email" />
+                        </div>
 
-        <div class="ml-[10%] flex justify-between items-center gap-16 h-[91vh] sign_in
-        max-[768px]:flex-col max-[768px]:ml-0 max-[768px]:px-[1.5rem] max-[768px]:justify-center relative
-        ">            <div class="column w-[40%] max-[768px]:w-full form-column">
-                <div class="form-panel">
-                <div class="text-center mb-[4rem] text-[#111111] form-header">
-                    <h3 class="font-medium text-[3rem] max-[768px]:text-[1.5rem] max-[768px]:text-white form-title">{{ _t('login',
-                        'sign_in') }}</h3>
-                    <p
-                        class='text-customLightGrayColor max-[768px]:text-white max-[768px]:text-[1rem] max-[768px]:mt-2 form-subtitle'>
-                        {{ _t('login', 'login_description') }}</p>
-                </div>
-                <div v-if="oauthError" class="oauth-error">
-                    {{ oauthError }}
-                </div>
-                <form @submit.prevent="submit" class="form-body">
-                    <div class="form-field">
-                        <InputLabel for="email" :value="_t('login', 'email_address')" class="max-[768px]:!text-white form-label" />
+                        <!-- Password -->
+                        <div class="field">
+                            <InputLabel for="password" :value="_t('login', 'password')" class="field-label" />
+                            <div class="pw-wrap">
+                                <TextInput :type="showPassword ? 'text' : 'password'" id="password" class="field-input" v-model="form.password" required autocomplete="current-password" placeholder="Enter your password" />
+                                <button type="button" @click="showPassword = !showPassword" class="pw-toggle">
+                                    {{ showPassword ? _t('registerUser', 'hide_password') : _t('registerUser', 'show_password') }}
+                                </button>
+                            </div>
+                            <InputError class="field-error" :message="form.errors.password" />
+                        </div>
 
-                        <TextInput id="email" type="email" class="mt-1 block w-full form-input" v-model="form.email" required
-                            autofocus autocomplete="username" />
+                        <!-- Remember + Forgot -->
+                        <div class="field-row">
+                            <label class="remember" for="remember">
+                                <Checkbox name="remember" id="remember" v-model:checked="form.remember" />
+                                <span>{{ _t('login', 'remember_me') }}</span>
+                            </label>
+                            <Link v-if="canResetPassword" :href="route('password.request')" class="forgot">{{ _t('login', 'forgot_password') }}</Link>
+                        </div>
 
-                        <InputError class="mt-2 input-error" :message="form.errors.email" />
-                    </div>
-
-                    <div class="mt-4 relative password-field form-field">
-                        <InputLabel for="password" :value="_t('login', 'password')" class="max-[768px]:!text-white form-label" />
-
-                        <TextInput :type="showPassword ? 'text' : 'password'" id="password"
-                            class="mt-1 block w-full pr-12 form-input" v-model="form.password" required
-                            autocomplete="current-password" />
-
-                        <button type="button" @click="showPassword = !showPassword"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 font-medium text-customDarkBlackColor text-sm password-toggle">
-                            {{ showPassword ? _t('registerUser', 'hide_password') : _t('registerUser', 'show_password')
-                            }}
-                        </button>
-
-                        <InputError class="mt-2 input-error" :message="form.errors.password" />
-                    </div>
-
-
-                    <div class="flex mt-4 justify-between items-center remember-section form-field">
-                        <label class="flex items-center remember-group" for="remember">
-                            <Checkbox name="remember" id="remember" v-model:checked="form.remember" />
-                            <span class="ms-2 text-lg text-gray-600 max-[768px]:text-white max-[768px]:text-[1rem] remember-label">{{
-                                _t('login', 'remember_me') }}</span>
-                        </label>
-                        <Link v-if="canResetPassword" :href="route('password.request')"
-                            class="underline max-[768px]:text-[1rem] max-[768px]:text-white text-lg text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 forgot-link">
-                            {{ _t('login', 'forgot_password') }}
-                        </Link>
-
-                    </div>
-
-                    <div class="flex flex-col gap-4 justify-end mt-4">
-                        <button
-                            class="button-primary w-full p-4 text-[1.15rem] max-[768px]:text-[1rem] max-[768px]:mt-5"
-                            :class="{ 'opacity-25': form.processing || isLoggingIn, 'is-loading': isLoggingIn }"
-                            :disabled="form.processing || isLoggingIn">
-                            <span v-if="isLoggingIn" class="flex items-center justify-center gap-2">
-                                <span class="button-spinner"></span>
-                                Signing in...
-                            </span>
+                        <!-- Submit -->
+                        <button type="submit" class="submit-btn" :class="{ 'is-loading': isLoggingIn }" :disabled="form.processing || isLoggingIn">
+                            <span v-if="isLoggingIn" class="btn-loading"><span class="spinner"></span> Signing in...</span>
                             <span v-else>{{ _t('login', 'sign_in_button') }}</span>
                         </button>
-                    </div>
+                    </form>
 
-                    <div class="social-divider">
-                        <span>{{ _t('login', 'social_divider') }}</span>
-                    </div>
-
-                    <div class="social-buttons">
-                        <a :href="route('oauth.redirect.global', { locale: page.props.locale, provider: 'google' })"
-                            class="social-button">
-                            <span class="social-icon" aria-hidden="true">
-                                <svg viewBox="0 0 48 48" class="social-svg">
-                                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.73 1.22 9.25 3.6l6.9-6.9C35.7 2.57 30.23 0 24 0 14.62 0 6.53 5.38 2.55 13.22l8.06 6.26C12.5 13.04 17.8 9.5 24 9.5z"/>
-                                    <path fill="#4285F4" d="M46.98 24.55c0-1.64-.15-3.22-.43-4.75H24v9.02h12.98c-.56 3.02-2.25 5.58-4.77 7.3l7.32 5.68c4.28-3.95 6.45-9.77 6.45-17.25z"/>
-                                    <path fill="#FBBC05" d="M10.61 28.74c-.48-1.45-.76-2.99-.76-4.74 0-1.75.27-3.29.76-4.74l-8.06-6.26C.92 16.24 0 19.9 0 24c0 4.1.92 7.76 2.55 11l8.06-6.26z"/>
-                                    <path fill="#34A853" d="M24 48c6.23 0 11.45-2.06 15.27-5.6l-7.32-5.68c-2.02 1.36-4.6 2.16-7.95 2.16-6.2 0-11.5-3.54-13.39-8.29l-8.06 6.26C6.53 42.62 14.62 48 24 48z"/>
-                                    <path fill="none" d="M0 0h48v48H0z"/>
-                                </svg>
-                            </span>
-                            Continue with Google
+                    <!-- Social -->
+                    <div class="divider"><span>{{ _t('login', 'social_divider') }}</span></div>
+                    <div class="social-btns">
+                        <a :href="route('oauth.redirect.global', { locale: page.props.locale, provider: 'google' })" class="social-btn">
+                            <svg viewBox="0 0 48 48" width="22" height="22"><path fill="#EA4335" d="M24 9.5c3.54 0 6.73 1.22 9.25 3.6l6.9-6.9C35.7 2.57 30.23 0 24 0 14.62 0 6.53 5.38 2.55 13.22l8.06 6.26C12.5 13.04 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.64-.15-3.22-.43-4.75H24v9.02h12.98c-.56 3.02-2.25 5.58-4.77 7.3l7.32 5.68c4.28-3.95 6.45-9.77 6.45-17.25z"/><path fill="#FBBC05" d="M10.61 28.74c-.48-1.45-.76-2.99-.76-4.74 0-1.75.27-3.29.76-4.74l-8.06-6.26C.92 16.24 0 19.9 0 24c0 4.1.92 7.76 2.55 11l8.06-6.26z"/><path fill="#34A853" d="M24 48c6.23 0 11.45-2.06 15.27-5.6l-7.32-5.68c-2.02 1.36-4.6 2.16-7.95 2.16-6.2 0-11.5-3.54-13.39-8.29l-8.06 6.26C6.53 42.62 14.62 48 24 48z"/></svg>
+                            Google
                         </a>
-                        <a :href="route('oauth.redirect.global', { locale: page.props.locale, provider: 'facebook' })"
-                            class="social-button">
-                            <span class="social-icon" aria-hidden="true">
-                                <svg viewBox="0 0 48 48" class="social-svg">
-                                    <path fill="#1877F2" d="M48 24c0 13.26-10.74 24-24 24S0 37.26 0 24 10.74 0 24 0s24 10.74 24 24z"/>
-                                    <path fill="#fff" d="M26.67 24.98h5.15l.81-5.3h-5.96v-3.44c0-1.53.75-3.02 3.17-3.02h2.45V8.7s-2.22-.38-4.35-.38c-4.44 0-7.34 2.69-7.34 7.56v3.8h-4.94v5.3h4.94V40h6.07V24.98z"/>
-                                </svg>
-                            </span>
-                            Continue with Facebook
+                        <a :href="route('oauth.redirect.global', { locale: page.props.locale, provider: 'facebook' })" class="social-btn">
+                            <svg viewBox="0 0 48 48" width="22" height="22"><path fill="#1877F2" d="M48 24c0 13.26-10.74 24-24 24S0 37.26 0 24 10.74 0 24 0s24 10.74 24 24z"/><path fill="#fff" d="M26.67 24.98h5.15l.81-5.3h-5.96v-3.44c0-1.53.75-3.02 3.17-3.02h2.45V8.7s-2.22-.38-4.35-.38c-4.44 0-7.34 2.69-7.34 7.56v3.8h-4.94v5.3h4.94V40h6.07V24.98z"/></svg>
+                            Facebook
                         </a>
                     </div>
-                </form>
+
+                    <!-- Create Account -->
+                    <p class="create-link">{{ _t('login', 'no_account') }} <Link :href="route('register', { locale: page.props.locale })" class="create-link-a">{{ _t('login', 'create_account') }}</Link></p>
                 </div>
             </div>
-
-            <div
-                class="column image-column overflow-hidden h-full w-[50%] max-[768px]:w-full max-[768px]:absolute max-[768px]:top-0 max-[768px]:-z-10">
-                <img :src=loginBg alt=""
-                    class="w-full h-full brightness-90 object-cover repeat-0 max-[768px]:brightness-50">
-            </div>
         </div>
 
-        <!-- Loader Overlay -->
-        <div v-if="isLoggingIn" class="loader-overlay">
-            <div class="loader-content">
-                <div class="loader-animation"></div>
-                <p>Signing you in...</p>
+        <!-- Image Side -->
+        <div class="login-image-side">
+            <img :src="loginBg" alt="Car rental" />
+            <div class="image-overlay"></div>
+            <div class="image-content">
+                <h2>Your journey starts with the perfect car.</h2>
+                <p>Compare prices from 200+ trusted providers across Europe. Best prices, free cancellation, 24/7 support.</p>
+                <div class="image-trust">
+                    <span><i class="trust-dot"></i> Free cancellation</span>
+                    <span><i class="trust-dot"></i> Best price guarantee</span>
+                    <span><i class="trust-dot"></i> 24/7 support</span>
+                </div>
             </div>
         </div>
-
     </main>
 
+    <!-- Loader -->
+    <div v-if="isLoggingIn" class="loader-overlay">
+        <div class="loader-content"><div class="loader-spinner"></div><p>Signing you in...</p></div>
+    </div>
 </template>
 
 
 <style scoped>
-.login-page {
-    background: radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.025), transparent 60%),
-        radial-gradient(circle at 85% 10%, rgba(124, 179, 204, 0.05), transparent 70%),
-        linear-gradient(160deg, #f9fcfe, #ffffff 70%);
+/* Layout */
+.login-page { display: flex; min-height: 100vh; --ease: cubic-bezier(0.22, 1, 0.36, 1); --dur: 0.3s; }
+
+/* Form Side */
+.login-form-side { flex: 1; display: flex; flex-direction: column; background: linear-gradient(160deg, #f9fcfe, #f0f6fa 40%, #f8fafc); position: relative; overflow: hidden; }
+.login-form-side::before { content: ''; position: absolute; top: -200px; left: -200px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(34,211,238,0.05), transparent 65%); pointer-events: none; }
+.logo-bar { padding: 24px 40px; position: relative; z-index: 1; }
+.logo-link { display: inline-block; width: 10rem; transition: opacity 0.3s var(--ease); }
+.logo-link:hover { opacity: 0.8; }
+.logo { width: 100%; height: auto; }
+
+.login-form-side::after { content: ''; position: absolute; bottom: -150px; right: -100px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(21,59,79,0.03), transparent 65%); pointer-events: none; }
+
+/* Form Card */
+.form-center { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px; position: relative; z-index: 1; }
+.form-card { width: 75%; background: rgba(255,255,255,0.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(176,212,230,0.45); border-radius: 28px; padding: 44px 40px; box-shadow: 0 16px 48px rgba(21,59,79,0.1), 0 0 0 1px rgba(255,255,255,0.6) inset; position: relative; overflow: hidden; }
+.form-card::before { content: ''; position: absolute; top: -60%; right: -40%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(34,211,238,0.06), transparent 70%); pointer-events: none; }
+
+/* Title */
+.form-title { font-size: 2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; margin-bottom: 6px; position: relative; z-index: 1; }
+.form-sub { font-size: 0.95rem; color: #64748b; margin-bottom: 36px; line-height: 1.5; position: relative; z-index: 1; }
+
+/* Fields */
+.field { margin-bottom: 20px; position: relative; z-index: 1; }
+.field-label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; margin-bottom: 8px; }
+.field-input { width: 100%; padding: 14px 16px; border: 1.5px solid #e2e8f0; border-radius: 14px; font-size: 0.95rem; font-family: inherit; color: #0f172a; background: #fff; outline: none; transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+.field-input:focus { border-color: #22d3ee; box-shadow: 0 0 0 4px rgba(34,211,238,0.12); }
+.field-input::placeholder { color: #94a3b8; }
+.field-error { margin-top: 6px; color: #ef4444; font-size: 0.78rem; font-weight: 500; }
+
+/* Password */
+.pw-wrap { position: relative; }
+.pw-wrap .field-input { padding-right: 80px; }
+.pw-toggle { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; font-weight: 600; color: #153b4f; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.2); padding: 4px 10px; border-radius: 999px; cursor: pointer; transition: background var(--dur) var(--ease); }
+.pw-toggle:hover { background: rgba(34,211,238,0.15); }
+
+/* Remember + Forgot */
+.field-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; position: relative; z-index: 1; }
+.remember { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: #475569; cursor: pointer; }
+.remember input { width: 16px; height: 16px; accent-color: #153b4f; }
+.forgot { font-size: 0.88rem; font-weight: 600; color: #153b4f; transition: color var(--dur) var(--ease); text-decoration: none; }
+.forgot:hover { color: #22d3ee; }
+
+/* Submit */
+.submit-btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 1rem; font-weight: 700; font-family: inherit; color: #fff; background: linear-gradient(135deg, #153b4f, #1c4d66); cursor: pointer; box-shadow: 0 8px 24px rgba(21,59,79,0.2); position: relative; overflow: hidden; z-index: 1; transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+.submit-btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(120deg, rgba(255,255,255,0.2), transparent 50%); opacity: 0; transition: opacity var(--dur); }
+.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(21,59,79,0.25); }
+.submit-btn:hover:not(:disabled)::after { opacity: 1; }
+.submit-btn.is-loading { opacity: 0.85; cursor: wait; }
+.btn-loading { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+/* Divider */
+.divider { display: flex; align-items: center; gap: 14px; margin: 28px 0; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; position: relative; z-index: 1; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, #e2e8f0, transparent); }
+
+/* Social */
+.social-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; position: relative; z-index: 1; }
+.social-btn { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; border-radius: 14px; border: 1.5px solid #e2e8f0; background: #fff; font-size: 0.88rem; font-weight: 600; color: #0f172a; text-decoration: none; transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+.social-btn:hover { border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(21,59,79,0.06); }
+
+/* Create Account */
+.create-link { text-align: center; margin-top: 28px; font-size: 0.9rem; color: #64748b; position: relative; z-index: 1; }
+.create-link-a { color: #153b4f; font-weight: 700; margin-left: 4px; transition: color var(--dur) var(--ease); }
+.create-link-a:hover { color: #22d3ee; }
+
+/* OAuth Error */
+.oauth-error { margin-bottom: 20px; padding: 12px 16px; border-radius: 12px; background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); color: #dc2626; font-size: 0.88rem; font-weight: 600; text-align: center; position: relative; z-index: 1; }
+
+/* Image Side */
+.login-image-side { flex: 0 0 50%; position: relative; overflow: hidden; }
+.login-image-side img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.image-overlay { position: absolute; inset: 0; background: linear-gradient(160deg, rgba(10,29,40,0.25), rgba(10,29,40,0.6) 60%, rgba(10,29,40,0.85)); }
+.image-content { position: absolute; bottom: 48px; left: 48px; right: 48px; z-index: 1; color: #fff; }
+.image-content h2 { font-size: 2.2rem; font-weight: 800; line-height: 1.15; margin-bottom: 10px; }
+.image-content p { font-size: 0.95rem; color: rgba(255,255,255,0.7); line-height: 1.6; }
+.image-trust { display: flex; gap: 20px; margin-top: 24px; }
+.image-trust span { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: rgba(255,255,255,0.6); font-weight: 500; }
+.trust-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 8px rgba(34,211,238,0.4); }
+
+/* Loader */
+.loader-overlay { position: fixed; inset: 0; background: rgba(10,22,32,0.55); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.loader-content { text-align: center; color: #fff; }
+.loader-spinner { width: 48px; height: 48px; margin: 0 auto 1rem; border-radius: 50%; border: 3px solid rgba(255,255,255,0.2); border-top-color: #22d3ee; animation: spin 0.8s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .login-image-side { display: none; }
 }
-
-.sign_in {
-    position: relative;
-}
-
-.sign_in::before {
-    content: '';
-    position: absolute;
-    width: 420px;
-    height: 420px;
-    left: -140px;
-    top: 60px;
-    background: radial-gradient(circle, rgba(34, 211, 238, 0.25), transparent 70%);
-    filter: blur(10px);
-    z-index: 0;
-}
-
-.sign_in::after {
-    content: '';
-    position: absolute;
-    width: 300px;
-    height: 300px;
-    right: 10%;
-    bottom: 40px;
-    background: radial-gradient(circle, rgba(36, 95, 125, 0.2), transparent 65%);
-    z-index: 0;
-}
-
-.form-panel {
-    position: relative;
-    z-index: 2;
-    padding: 3.5rem 3rem;
-    border-radius: 24px;
-    background: rgba(255, 255, 255, 0.86);
-    border: 1px solid rgba(176, 212, 230, 0.6);
-    box-shadow: 0 12px 32px rgba(21, 59, 79, 0.12);
-    backdrop-filter: blur(12px);
-    overflow: hidden;
-}
-
-.form-column {
-    width: 40%;
-}
-
-.form-panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(140deg, rgba(255, 255, 255, 0.5), transparent 65%);
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-.form-header {
-    margin-bottom: 3rem;
-    position: relative;
-    z-index: 1;
-}
-
-.form-title {
-    font-family: "IBM Plex Sans", sans-serif;
-    color: #0f2936;
-    font-weight: 600;
-}
-
-.form-subtitle {
-    color: #475569;
-}
-
-.oauth-error {
-    margin-bottom: 1.5rem;
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    color: #b91c1c;
-    font-weight: 600;
-    text-align: center;
-}
-
-.form-label {
-    color: #1c4d66;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.form-body {
-    position: relative;
-    z-index: 1;
-}
-
-.sign_in input.form-input {
-    border: 1px solid rgba(21, 59, 79, 0.18);
-    border-radius: 14px;
-    padding: 1rem 1.1rem;
-    background: rgba(255, 255, 255, 0.9);
-    transition: all 150ms ease;
-}
-
-.sign_in input.form-input:focus {
-    outline: none;
-    border-color: #06b6d4;
-    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.2);
-    background: #ffffff;
-}
-
-.password-toggle {
-    background: rgba(6, 182, 212, 0.08);
-    border: 1px solid rgba(6, 182, 212, 0.2);
-    color: #1c4d66;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.35rem 0.6rem;
-    border-radius: 999px;
-    transition: all 150ms ease;
-    top: calc(50% + 0.6rem);
-}
-
-.password-toggle:hover {
-    color: #0f2936;
-    background: rgba(6, 182, 212, 0.18);
-}
-
-.remember-section {
-    gap: 1rem;
-}
-
-.remember-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    line-height: 1;
-}
-
-.remember-label {
-    color: #1c4d66;
-}
-
-.forgot-link {
-    color: #1c4d66 !important;
-    text-decoration: none !important;
-}
-
-.forgot-link:hover {
-    color: #0f2936 !important;
-}
-
-.button-primary {
-    width: 100%;
-    padding: 1rem;
-    background: linear-gradient(135deg, #153b4f, #245f7d);
-    border: none;
-    border-radius: 14px;
-    color: #ffffff;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 150ms ease;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 12px 24px rgba(21, 59, 79, 0.2);
-}
-
-.button-primary::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(120deg, rgba(255, 255, 255, 0.3), transparent 60%);
-    opacity: 0;
-    transition: opacity 150ms ease;
-}
-
-.button-primary:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 18px 32px rgba(21, 59, 79, 0.25);
-}
-
-.button-primary:hover:not(:disabled)::after {
-    opacity: 1;
-}
-
-.button-primary.is-loading {
-    opacity: 0.85;
-    cursor: wait;
-}
-
-.image-column {
-    position: relative;
-}
-
-.image-column::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(140deg, rgba(15, 41, 54, 0.18), rgba(6, 182, 212, 0.16));
-}
-
-.form-field {
-    opacity: 0;
-    transform: translateY(18px);
-    animation: slideInUp 0.6s ease-out forwards;
-}
-
-.form-body .form-field:nth-child(1) {
-    animation-delay: 0.1s;
-}
-
-.form-body .form-field:nth-child(2) {
-    animation-delay: 0.2s;
-}
-
-.form-body .form-field:nth-child(3) {
-    animation-delay: 0.3s;
-}
-
-.form-body .form-field:nth-child(4) {
-    animation-delay: 0.4s;
-}
-
-.input-error {
-    color: #ef4444;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.social-divider {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 2rem 0 1.25rem;
-    color: #64748b;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-}
-
-.social-divider::before,
-.social-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(148, 163, 184, 0.4);
-}
-
-.social-buttons {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.9rem;
-}
-
-.social-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.6rem;
-    padding: 0.85rem 1rem;
-    border-radius: 14px;
-    border: 1px solid rgba(148, 163, 184, 0.45);
-    background: #ffffff;
-    font-weight: 600;
-    color: #0f172a;
-    transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
-}
-
-.social-button:hover {
-    transform: translateY(-1px);
-    border-color: rgba(15, 23, 42, 0.3);
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
-}
-
-.social-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: #ffffff;
-    border: 1px solid rgba(148, 163, 184, 0.3);
-}
-
-.social-svg {
-    width: 18px;
-    height: 18px;
-    display: block;
-}
-
-@keyframes slideInUp {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.button-primary .button-spinner {
-    width: 1rem;
-    height: 1rem;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top: 2px solid #ffffff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-.loader-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
-
-.loader-content {
-    text-align: center;
-    color: #ffffff;
-}
-
-.loader-animation {
-    width: 48px;
-    height: 48px;
-    margin: 0 auto 1rem;
-    border-radius: 50%;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #ffffff;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-@media (max-width: 1240px) {
-    .login-page {
-        background: #0f2936;
-    }
-
-    .sign_in {
-        min-height: calc(100vh - 72px);
-        justify-content: center;
-        margin-left: 0;
-        padding: 0 2rem;
-    }
-
-    .form-column {
-        width: 100%;
-        display: flex;
-        justify-content: center;
-    }
-
-    .form-panel {
-        width: min(640px, 100%);
-        margin: 0 auto;
-        padding: 3rem 3rem;
-        background: rgba(15, 41, 54, 0.75);
-        border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .form-title {
-        color: #ffffff;
-        font-size: 2.4rem;
-        line-height: 1.2;
-    }
-
-    .form-subtitle {
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 1.05rem;
-    }
-
-    .form-label {
-        color: rgba(255, 255, 255, 0.8);
-    }
-
-    .sign_in input.form-input {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.3);
-        color: #ffffff;
-    }
-
-    .remember-label {
-        color: #ffffff;
-    }
-
-    .forgot-link {
-        color: #ffffff !important;
-    }
-
-    .image-column {
-        display: none;
-    }
-}
-
-@media (max-width: 768px) {
-    .sign_in {
-        height: auto !important;
-        min-height: calc(100vh - 72px);
-        align-items: flex-start;
-        padding: 2rem 1.5rem 2.5rem;
-        gap: 2rem;
-    }
-
-    .form-panel {
-        width: 100%;
-        padding: 2rem 1.5rem;
-    }
-
-    .form-title {
-        font-size: 1.8rem;
-    }
-
-    .form-header {
-        margin-bottom: 2rem;
-    }
-
-    .remember-section {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
-    }
-
-    .social-buttons {
-        grid-template-columns: 1fr;
-    }
+@media (max-width: 640px) {
+    .form-center { padding: 24px 20px; }
+    .form-card { width: 100%; padding: 32px 24px; border-radius: 20px; }
+    .form-title { font-size: 1.6rem; }
+    .social-btns { grid-template-columns: 1fr; }
+    .field-row { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .image-trust { flex-wrap: wrap; }
 }
 </style>

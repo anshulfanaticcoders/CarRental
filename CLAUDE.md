@@ -553,3 +553,89 @@ git log --oneline -10
 - **Gateway Codebase:** `/mnt/c/laragon/www/vrooem-gateway/`
 - **Skills Marketplace:** https://skills.sh/ (browse & install new skills)
 - **Skill Creator 2.0:** Use `superpowers:writing-skills` to create, eval, improve, and benchmark custom skills
+- **Design System:** `resources/js/design-system.md` (colors, typography, spacing, components)
+
+---
+
+## FRONTEND CO-PILOT RULES
+
+> **You are my rapid frontend prototyping co-pilot.** Every UI output must match my established design standard. No generic UI. No Bootstrap aesthetics. No placeholder styling. Ship-ready from the first render.
+
+### Stack (Non-Negotiable)
+- **Vue 3** with `<script setup>` Composition API - ALWAYS
+- **Inertia.js** for Laravel-Vue bridge - use `Link`, `router`, `usePage()`
+- **Tailwind CSS** for utility classes + scoped `<style>` for complex CSS
+- **Shadcn-Vue / Radix Vue** for UI primitives (`Components/ui/`)
+- **Lucide Vue Next** for icons - NEVER use img-based icons for standard UI
+- **CSS custom properties** for theming (`--ease`, `--duration`, `--custom-primary`)
+
+### Design DNA - Match This Exactly
+
+**Brand Identity:**
+- Primary: `#153b4f` (dark teal). Accent: `#22d3ee` (cyan). NEVER use generic blue.
+- Shadows use brand color at low opacity: `rgba(21, 59, 79, 0.08)` - NOT gray shadows.
+- Gradients: `linear-gradient(135deg, #153b4f, #1c4d66)` for buttons. `linear-gradient(135deg, #0b2230, #153b4f 45%, #0b1b26)` for dark sections.
+
+**Typography:**
+- Headings: Plus Jakarta Sans, weight 600-800
+- Body: IBM Plex Sans, weight 400-500
+- Section labels: `0.66rem`, uppercase, `letter-spacing: 0.16em`, color `#94a3b8`
+
+**Spacing & Layout:**
+- Container: `full-w-container` class (`width: min(92%, 1440px); margin-inline: auto`)
+- Section padding: `clamp(3rem, 6vw, 6rem)`
+- Card padding: `2rem`. Card radius: `14px-20px`
+- Consistent gap system: `6px` between header actions, `8-10px` between offcanvas items
+
+**Interactions (MANDATORY on every interactive element):**
+- Easing: `cubic-bezier(0.22, 1, 0.36, 1)` - NEVER use `ease` or `ease-in-out`
+- Duration: `0.3s` for hovers, `0.35s` for hamburger bars, `0.5s` for offcanvas slide
+- Hover lift: `transform: translateY(-1px)` to `translateY(-6px)` with shadow increase
+- NEVER use `transition: all` - always target specific properties
+- Store easing/duration in CSS variables on the component root element (scoped styles can't access `:root`)
+
+**Dark Sections (Hero, Footer):**
+- Glassmorphism: `backdrop-filter: blur(20px) saturate(1.4)` with gradient overlay
+- Glass elements: `background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1)`
+- Text: white at 70-85% opacity for body, 100% for headings, cyan `#22d3ee` for accents
+- Hover: increase bg opacity to 0.12, border to 0.2, add brand shadow
+
+**Light Sections (Inner pages):**
+- Background: `#fff` with `border-bottom: 1px solid rgba(226,232,240,0.6)`
+- Elements: `background: #f8fafc; border: 1px solid #e2e8f0`
+- Hover: `background: #f0f8fc; border-color: #153b4f`
+
+### Component Patterns
+
+**Header:** Two modes via single class toggle (`.is-hero` / `.is-light`). Logo left, nav center (hero only, hidden <1024px), actions right. Hamburger always visible. One "Log in" button on all screens - signup is offcanvas only. Height 60px mobile, 72px desktop.
+
+**Offcanvas:** Slide from right with `transform: translateX(100%)` → `translateX(0)` at `0.5s`. Blurred overlay. Sections: Account → Settings → Explore → Footer (WhatsApp/Call). Items are white cards with 14px radius, slide-right 4px on hover.
+
+**Footer:** Dark bg `#0e2a3a` with subtle cyan radial glow. Logo + description + social (lucide icons) on left, 4-column link grid on right. Newsletter horizontal strip between links and bottom bar. Cyan subscribe button. 2-column grid on all mobile breakpoints.
+
+**Cards:** 20px radius, brand-tinted shadow, lift on hover. Dark section cards use glassmorphism. Admin cards use Shadcn `rounded-xl border bg-card shadow`.
+
+**Buttons:** 12px radius for header/UI, pill (999px) for marketing CTAs. Gradient for primary (`#153b4f → #1c4d66`). Ghost: transparent with border. Always lift + shadow on hover.
+
+### Code Style Rules
+
+1. **Scoped styles** with CSS custom properties on the component root (NOT `:root`)
+2. **One-line CSS** for simple properties, multi-line for complex selectors
+3. **BEM-lite naming**: `.hdr-icon`, `.hdr-trigger`, `.oc-panel`, `.oc-item` - short, flat, no nesting
+4. **No `transition: all`** - always list specific properties
+5. **No unused imports** - clean up what you remove
+6. **Minimize lines** - compress maps/objects, use ternaries, avoid verbose multi-line when one line is clear
+7. **Every interactive element** gets: transition, hover state, and focus-visible outline
+8. **Mobile-first responsive** - base styles for mobile, `@media (min-width)` for larger
+9. **`full-w-container`** for page-width consistency - never create custom containers
+10. **Inertia `Link`** for internal navigation - never use `<a href>` for internal routes
+
+### When Creating New Pages/Components
+
+1. Read `resources/js/design-system.md` FIRST
+2. Use `full-w-container` for layout
+3. Match the dark/light section pattern from Welcome page
+4. Include hover transitions on ALL interactive elements
+5. Test at 375px, 768px, 1024px, 1440px
+6. Use existing Shadcn components from `Components/ui/` before creating custom ones
+7. Logo: `<ApplicationLogo :logoColor="dark ? '#ffffff' : '#153b4f'" />`

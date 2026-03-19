@@ -4,9 +4,9 @@ return [
         // Page Title
         'log_in' => 'Se connecter',
         // Header
-        'sign_in' => 'Connexion',
+        'sign_in' => 'Bon retour',
         // Description
-        'login_description' => 'Connectez-vous gratuitement pour accéder à tous nos produits',
+        'login_description' => 'Connectez-vous pour gérer vos réservations et profiter d\'offres exclusives.',
         // Labels
         'email_address' => 'Adresse e-mail',
         'password' => 'Mot de passe',
@@ -17,5 +17,8 @@ return [
         // Button
         'sign_in_button' => 'Connexion',
         // Social
-        'social_divider' => 'ou s\'inscrire avec',
+        'social_divider' => 'ou continuer avec',
+        // Create Account
+        'no_account' => 'Vous n\'avez pas de compte ?',
+        'create_account' => 'Créer un compte',
 ];

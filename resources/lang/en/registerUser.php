@@ -46,6 +46,29 @@ return [
     'select_country_placeholder' => 'Select Country',
     'select_code_placeholder' => 'Select Code',
 
+    // Step indicator
+    'step_label' => 'Step',
+    'register_title' => 'Create Account',
+    'social_divider' => 'or sign up with',
+    'create_account' => 'Create Account',
+    'validating' => 'Validating...',
+    'creating' => 'Creating...',
+
+    // Placeholders
+    'first_name_placeholder' => 'John',
+    'last_name_placeholder' => 'Doe',
+    'date_of_birth_placeholder' => 'Select your date of birth',
+    'phone_placeholder' => '612 345 678',
+    'email_placeholder' => 'name@example.com',
+    'address_placeholder' => '123 Main Street',
+    'postcode_placeholder' => '1012 AB',
+    'city_placeholder' => 'Amsterdam',
+    'country_placeholder' => 'Select country',
+    'currency_placeholder' => 'Select currency',
+    'password_placeholder' => 'At least 8 characters',
+    'confirm_password_placeholder' => 'Re-enter password',
+    'phone_code' => 'Code',
+
     // Register Right Panel
     'register_divider_or' => 'OR',
     'register_social_eyebrow' => 'Express signup',

@@ -3,9 +3,9 @@ return [
         // Page Title
         'log_in' => 'Inloggen',
         // Header
-        'sign_in' => 'Inloggen',
+        'sign_in' => 'Welkom terug',
         // Description
-        'login_description' => 'Log gratis in om toegang te krijgen tot al onze producten',
+        'login_description' => 'Log in om uw boekingen te beheren en exclusieve aanbiedingen te ontgrendelen.',
         // Labels
         'email_address' => 'E-mailadres',
         'password' => 'Wachtwoord',
@@ -16,5 +16,8 @@ return [
         // Button
         'sign_in_button' => 'Inloggen',
         // Social
-        'social_divider' => 'of aanmelden met',
+        'social_divider' => 'of doorgaan met',
+        // Create Account
+        'no_account' => 'Heeft u nog geen account?',
+        'create_account' => 'Maak er nu een aan',
 ];

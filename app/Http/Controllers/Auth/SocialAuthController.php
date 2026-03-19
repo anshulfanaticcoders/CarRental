@@ -15,9 +15,9 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -76,68 +76,60 @@ class SocialAuthController extends Controller
                 ->withErrors(['email' => 'No email returned from provider.']);
         }
 
-        $account = SocialAccount::where('provider', $provider)
-            ->where('provider_id', $socialUser->getId())
-            ->first();
-        $wasCreated = false;
-
-        if ($account) {
-            $user = $account->user;
-        } else {
-            $user = User::where('email', $email)->first();
-
-            if (!$user) {
-                $user = $this->createUserFromProvider($socialUser);
-                $wasCreated = true;
-            }
-
-            SocialAccount::create([
-                'user_id' => $user->id,
-                'provider' => $provider,
-                'provider_id' => $socialUser->getId(),
-                'provider_email' => $email,
-            ]);
-        }
-
         $defaultCurrency = 'EUR';
         $resolvedCountry = $this->resolveCountryFromRequest($request);
         $resolvedPhoneCode = $this->resolvePhoneCodeFromCountry($resolvedCountry);
+        [$user, $wasCreated] = DB::transaction(function () use (
+            $provider,
+            $socialUser,
+            $email,
+            $resolvedCountry,
+            $resolvedPhoneCode,
+            $defaultCurrency
+        ) {
+            $account = SocialAccount::where('provider', $provider)
+                ->where('provider_id', $socialUser->getId())
+                ->lockForUpdate()
+                ->first();
 
-        $user->load('profile');
+            $wasCreated = false;
 
-        if (!$user->profile) {
-            $avatarUrl = $socialUser->getAvatar();
-            if ($avatarUrl && strlen($avatarUrl) > 2048) {
-                $avatarUrl = null;
+            if ($account) {
+                $user = User::whereKey($account->user_id)->lockForUpdate()->firstOrFail();
+            } else {
+                $user = User::where('email', $email)->lockForUpdate()->first();
+
+                if (!$user) {
+                    $user = $this->createUserFromProvider($socialUser, $resolvedPhoneCode);
+                    $wasCreated = true;
+                }
+
+                SocialAccount::firstOrCreate(
+                    [
+                        'provider' => $provider,
+                        'provider_id' => $socialUser->getId(),
+                    ],
+                    [
+                        'user_id' => $user->id,
+                        'provider_email' => $email,
+                    ]
+                );
             }
 
-            UserProfile::create([
-                'user_id' => $user->id,
-                'country' => $resolvedCountry,
-                'avatar' => $avatarUrl,
-                'currency' => $defaultCurrency,
-            ]);
-        } else {
-            $profileNeedsUpdate = false;
+            $this->upsertSocialProfile($user, $resolvedCountry, $defaultCurrency, $socialUser->getAvatar());
 
-            if (!$user->profile->currency) {
-                $user->profile->currency = $defaultCurrency;
-                $profileNeedsUpdate = true;
+            if (!$user->phone_code && $resolvedPhoneCode) {
+                $user->phone_code = $resolvedPhoneCode;
+                $user->save();
             }
 
-            if ($user->profile->country === null || $user->profile->country === '' || $user->profile->country === 'Unknown') {
-                $user->profile->country = $resolvedCountry;
-                $profileNeedsUpdate = true;
-            }
+            return [$user, $wasCreated];
+        });
 
-            if ($profileNeedsUpdate) {
-                $user->profile->save();
-            }
-        }
-
-        if (!$user->phone_code && $resolvedPhoneCode) {
-            $user->phone_code = $resolvedPhoneCode;
-            $user->save();
+        if ($wasCreated) {
+            event(new Registered($user));
+            ActivityLogHelper::logActivity('create', 'New User Created (Social)', $user, $request);
+            $this->sendAccountCreationNotifications($user);
         }
 
         Auth::login($user);
@@ -156,7 +148,7 @@ class SocialAuthController extends Controller
             ->with('status', $statusMessage);
     }
 
-    private function createUserFromProvider($socialUser): User
+    private function createUserFromProvider($socialUser, ?string $resolvedPhoneCode): User
     {
         $name = trim((string) $socialUser->getName());
         $email = (string) $socialUser->getEmail();
@@ -178,7 +170,7 @@ class SocialAuthController extends Controller
             'last_name' => $lastName ?: 'User',
             'email' => $email,
             'phone' => $this->generateUniquePhone(),
-            'phone_code' => null,
+            'phone_code' => $resolvedPhoneCode,
             'password' => Hash::make(Str::random(32)),
             'role' => 'customer',
             'status' => 'active',
@@ -187,27 +179,101 @@ class SocialAuthController extends Controller
             'last_login_at' => now(),
         ]);
 
-        $avatarUrl = $socialUser->getAvatar();
-        if ($avatarUrl && strlen($avatarUrl) > 2048) {
-            $avatarUrl = null;
+        return $user;
+    }
+
+    private function upsertSocialProfile(User $user, string $country, string $currency, ?string $avatarUrl): void
+    {
+        $safeCountry = trim((string) $country);
+        if ($safeCountry === '') {
+            $safeCountry = 'Unknown';
         }
 
-        UserProfile::create([
-            'user_id' => $user->id,
-            'country' => $this->resolveCountryFromRequest(request()),
-            'avatar' => $avatarUrl,
-            'currency' => 'EUR',
-        ]);
+        $profileDefaults = [
+            'country' => $safeCountry,
+            'currency' => $currency,
+            'avatar' => $this->sanitizeAvatarUrl($avatarUrl),
+            // Keep non-null string fields safe for strict DB schemas in social signup flow.
+            'address_line1' => '',
+            'address_line2' => '',
+            'city' => '',
+            'state' => '',
+            'postal_code' => '',
+        ];
 
-        event(new Registered($user));
+        $profile = $user->profile;
 
-        ActivityLogHelper::logActivity('create', 'New User Created (Social)', $user, request());
+        if (!$profile) {
+            UserProfile::create(array_merge(['user_id' => $user->id], $profileDefaults));
+            return;
+        }
 
+        $updates = [];
+
+        if (!$profile->currency) {
+            $updates['currency'] = $currency;
+        }
+
+        if ($profile->country === null || $profile->country === '' || $profile->country === 'Unknown') {
+            $updates['country'] = $safeCountry;
+        }
+
+        if (!$profile->avatar) {
+            $updates['avatar'] = $profileDefaults['avatar'];
+        }
+
+        foreach (['address_line1', 'address_line2', 'city', 'state', 'postal_code'] as $field) {
+            if ($profile->{$field} === null) {
+                $updates[$field] = '';
+            }
+        }
+
+        if (!empty($updates)) {
+            $profile->fill($updates);
+            $profile->save();
+        }
+    }
+
+    private function sanitizeAvatarUrl(?string $avatarUrl): ?string
+    {
+        if (!$avatarUrl) {
+            return null;
+        }
+
+        $avatarUrl = trim((string) $avatarUrl);
+        if ($avatarUrl === '') {
+            return null;
+        }
+
+        // Backward compatibility for environments where avatar is still varchar(255).
+        if (strlen($avatarUrl) > 255) {
+            return null;
+        }
+
+        return $avatarUrl;
+    }
+
+    private function sendAccountCreationNotifications(User $user): void
+    {
         try {
-            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
-            $admin = User::where('email', $adminEmail)->first();
+            $admin = null;
+            $adminEmail = env('VITE_ADMIN_EMAIL');
+
+            if ($adminEmail) {
+                $admin = User::where('email', $adminEmail)->first();
+            }
+
+            if (!$admin) {
+                $admin = User::where('role', 'admin')->orderBy('id')->first();
+            }
+
             if ($admin) {
                 $admin->notify(new AccountCreatedNotification($user));
+            } else {
+                Log::warning('No admin user found for social registration notification.', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                ]);
             }
 
             $user->notify(new AccountCreatedUserConfirmation($user));
@@ -217,8 +283,6 @@ class SocialAuthController extends Controller
                 'email' => $user->email,
             ]);
         }
-
-        return $user;
     }
 
     private function generateUniquePhone(): string

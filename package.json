@@ -51,6 +51,7 @@
         "leaflet": "^1.9.4",
         "leaflet.locatecontrol": "^0.83.1",
         "leaflet.markercluster": "^1.5.3",
+        "libphonenumber-js": "^1.11.5",
         "lodash": "^4.17.21",
         "lottie-web": "^5.12.2",
         "lucide-vue-next": "^0.469.0",
@@ -59,7 +60,7 @@
         "primeicons": "^7.0.0",
         "pusher-js": "^8.4.0",
         "radix-vue": "^1.9.12",
-        "reka-ui": "^2.3.1",
+        "reka-ui": "^2.9.2",
         "tailwind-merge": "^2.6.0",
         "tailwindcss-animate": "^1.0.7",
         "v-calendar": "^3.1.2",
@@ -71,7 +72,6 @@
         "vue-toastification": "^2.0.0-rc.5",
         "vue3-lottie": "^3.3.1",
         "vue3-timepicker": "^1.0.0-beta.2",
-        "libphonenumber-js": "^1.11.5",
         "xlsx": "^0.18.5",
         "ziggy-js": "^2.6.0"
     }

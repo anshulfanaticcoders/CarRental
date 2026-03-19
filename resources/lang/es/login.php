@@ -3,9 +3,9 @@ return [
         // Page Title
         'log_in' => 'Iniciar Sesión',
         // Header
-        'sign_in' => 'Iniciar Sesión',
+        'sign_in' => 'Bienvenido de nuevo',
         // Description
-        'login_description' => 'Inicia sesión gratis para acceder a cualquiera de nuestros productos',
+        'login_description' => 'Inicia sesión para gestionar tus reservas y acceder a ofertas exclusivas.',
         // Labels
         'email_address' => 'Dirección de correo electrónico',
         'password' => 'Contraseña',
@@ -16,5 +16,8 @@ return [
         // Button
         'sign_in_button' => 'Iniciar Sesión',
         // Social
-        'social_divider' => 'o registrarte con',
+        'social_divider' => 'o continuar con',
+        // Create Account
+        'no_account' => '¿No tienes una cuenta?',
+        'create_account' => 'Crea una ahora',
 ];
