@@ -34,7 +34,12 @@
       "Bash(python3:*)",
       "Bash(export:*)",
       "Bash(/mnt/c/laragon/bin/php/php-8.3.29-Win32-vs16-x64/php.exe:*)",
-      "Bash(grep -r \"class.*{\" app/Services/*.php | grep -oP \"class \\\\K\\\\w+\" | head -20)"
+      "Bash(grep -r \"class.*{\" app/Services/*.php | grep -oP \"class \\\\K\\\\w+\" | head -20)",
+      "Bash(npx skills:*)",
+      "WebFetch(domain:publicapi.dev)",
+      "WebFetch(domain:docs.mailtrap.io)",
+      "WebFetch(domain:mailtrap.docs.apiary.io)",
+      "mcp__exa__web_search_exa"
     ]
   },
   "enableAllProjectMcpServers": true,

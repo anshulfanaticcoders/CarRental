@@ -21,6 +21,9 @@ return [
     // Popular Places Section
     'top_destinations' => 'Principales Destinos',
     'popular_places' => 'Lugares Populares',
+    'view_all_destinations' => 'Ver todos los destinos',
+    'all_destinations_title' => 'Todos los destinos',
+    'all_destinations_subtitle' => 'Elige un destino y consulta al instante los vehículos disponibles para tus fechas.',
 
     // Why Choose Us Section
     'why_choose_us' => 'Por Qué Elegirnos',

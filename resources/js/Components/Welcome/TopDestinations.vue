@@ -70,7 +70,9 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-card', {
                     <h3 class="dest-title">{{ _p('popular_places', 'Where will you drive next?') }}</h3>
                     <p class="dest-sub">Most-booked locations by travelers this month.</p>
                 </div>
-                <a :href="`/${page.props.locale}/s`" class="dest-btn">View All Destinations</a>
+                <a :href="`/${page.props.locale}/destinations`" class="dest-btn">
+                    {{ _p('view_all_destinations', 'View All Destinations') }}
+                </a>
             </div>
 
             <div class="dest-grid">

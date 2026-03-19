@@ -16,7 +16,7 @@ import flagNl from '../../assets/flag-nl.svg';
 import flagEs from '../../assets/flag-es.svg';
 import flagAr from '../../assets/flag-ar.svg';
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
-import { getGeoPreferredLocale } from '@/utils/geoLanguage';
+import { getGeoPreferredLocale, toCountryCodeSet } from '@/utils/geoLanguage';
 
 import FloatingSocialIcons from '@/Components/FloatingSocialIcons.vue';
 
@@ -50,11 +50,12 @@ const closeNotificationDropdownOnOutsideClick = (event) => {
 };
 
 // Add click event listeners on mount
-onMounted(() => {
+onMounted(async () => {
   if (page.props.auth?.user) {
     fetchNotifications();
   }
   fetchContactInfo();
+  await loadCountryCodeSet();
   syncLanguageWithCountry();
 
   document.addEventListener('click', closeNotificationDropdownOnOutsideClick);
@@ -285,7 +286,30 @@ const availableLocales = {
 const AUTO_LANGUAGE_COUNTRY_KEY = 'auto_language_country_code';
 const normalizedCountryCode = computed(() => String(page.props.country || '').trim().toUpperCase());
 const supportedLocaleCodes = Object.keys(availableLocales);
-const preferredGeoLocale = computed(() => getGeoPreferredLocale(normalizedCountryCode.value, supportedLocaleCodes));
+const countryCodeSet = ref(new Set());
+const preferredGeoLocale = computed(() => getGeoPreferredLocale(
+  normalizedCountryCode.value,
+  supportedLocaleCodes,
+  countryCodeSet.value,
+));
+
+const loadCountryCodeSet = async () => {
+  if (countryCodeSet.value.size > 0 || typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    const response = await fetch('/countries.json', { cache: 'force-cache' });
+    if (!response.ok) {
+      return;
+    }
+
+    const countries = await response.json();
+    countryCodeSet.value = toCountryCodeSet(countries);
+  } catch (error) {
+    // Keep fallback behavior if countries.json loading fails
+  }
+};
 
 const performLanguageNavigation = (newLocale) => {
   const currentUrl = new URL(window.location.href);
@@ -506,7 +530,8 @@ watch(() => url.value, () => {
   showingAccountDropdown.value = false;
 });
 
-watch(() => page.props.country, () => {
+watch(() => page.props.country, async () => {
+  await loadCountryCodeSet();
   syncLanguageWithCountry();
 });
 

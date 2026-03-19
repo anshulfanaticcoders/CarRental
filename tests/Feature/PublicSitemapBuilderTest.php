@@ -29,6 +29,7 @@ class PublicSitemapBuilderTest extends TestCase
         }
 
         $this->assertStringContainsString('https://example.com/en', $combined);
+        $this->assertStringContainsString('https://example.com/en/destinations', $combined);
         $this->assertStringContainsString('https://example.com/en/faq', $combined);
         $this->assertStringContainsString('https://example.com/en/contact-us', $combined);
         $this->assertStringContainsString('https://example.com/en/business/register', $combined);

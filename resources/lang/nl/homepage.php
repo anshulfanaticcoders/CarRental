@@ -21,6 +21,9 @@ return [
     // Popular Places Section
     'top_destinations' => 'Top Bestemmingen',
     'popular_places' => 'Populaire plaatsen',
+    'view_all_destinations' => 'Bekijk alle bestemmingen',
+    'all_destinations_title' => 'Alle bestemmingen',
+    'all_destinations_subtitle' => 'Kies een bestemming en bekijk direct beschikbare voertuigen voor jouw datums.',
 
     // Why Choose Us Section
     'why_choose_us' => 'Waarom Ons Kiezen',

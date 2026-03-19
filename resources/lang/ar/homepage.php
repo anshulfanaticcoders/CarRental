@@ -21,6 +21,9 @@ return [
     // Popular Places Section
     'top_destinations' => 'أهم الوجهات',
     'popular_places' => 'أماكن شعبية',
+    'view_all_destinations' => 'عرض جميع الوجهات',
+    'all_destinations_title' => 'جميع الوجهات',
+    'all_destinations_subtitle' => 'اختر وجهة وشاهد فورًا المركبات المتاحة لتواريخك.',
 
     // Why Choose Us Section
     'why_choose_us' => 'لماذا تختارنا',

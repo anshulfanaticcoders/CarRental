@@ -580,8 +580,18 @@ class SchemaBuilder
      */
     public static function popularPlaceList(Collection $places, string $pageTitle = 'Popular Destinations'): array
     {
+        $searchRoute = route('search', ['locale' => app()->getLocale()]);
         $items = [];
         foreach ($places as $index => $place) {
+            $searchParams = array_filter([
+                'where' => trim(implode(', ', array_filter([$place->place_name, $place->city]))),
+                'city' => $place->city,
+                'country' => $place->country,
+                'latitude' => $place->latitude,
+                'longitude' => $place->longitude,
+                'unified_location_id' => $place->unified_location_id,
+            ], fn ($value) => $value !== null && $value !== '');
+
             $placeSchema = [
                 '@type' => 'Place',
                 'name' => $place->place_name,
@@ -590,9 +600,7 @@ class SchemaBuilder
                     'addressLocality' => $place->city,
                     'addressCountry' => $place->country,
                 ],
-                // Construct a URL to a page showing vehicles in/near this place
-                // This assumes you have a search route that can filter by location name or coordinates
-                'url' => url('/s?where=' . urlencode($place->place_name . ', ' . $place->city . ', ' . $place->country) . '&latitude=' . $place->latitude . '&longitude=' . $place->longitude),
+                'url' => $searchRoute . '?' . http_build_query($searchParams),
             ];
 
             if (!empty($place->image)) {

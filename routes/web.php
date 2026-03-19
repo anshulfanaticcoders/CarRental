@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PaymentDashboardController;
 use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
+use App\Http\Controllers\PopularPlacesController as PublicPopularPlacesController;
 use App\Http\Controllers\Admin\RadiusController;
 use App\Http\Controllers\Admin\SchemaController;
 use App\Http\Controllers\Admin\TestimonialController;
@@ -409,6 +410,7 @@ Route::group([
 
 
     Route::get('/s', [SearchController::class, 'search'])->name('search');
+    Route::get('/destinations', [PublicPopularPlacesController::class, 'destinations'])->name('destinations.index');
     Route::post('/store-search', [SearchController::class, 'storeSearchData'])->name('search.store');
     Route::get('/api/geocoding/autocomplete', [GeocodingController::class, 'autocomplete']);
     Route::get('/api/geocoding/reverse', [GeocodingController::class, 'reverse']);

@@ -96,6 +96,7 @@ class PublicSitemapBuilder
         $entries = [];
         $staticPaths = [
             "{$locale}",
+            "{$locale}/destinations",
             "{$locale}/faq",
             "{$locale}/contact-us",
             "{$locale}/business/register",
