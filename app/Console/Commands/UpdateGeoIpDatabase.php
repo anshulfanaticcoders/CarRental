@@ -44,25 +44,30 @@ class UpdateGeoIpDatabase extends Command
 
             $this->info('Extracting database...');
 
-            $phar = new \PharData($tarPath);
-            $phar->decompress();
+            // Use shell tar command (works reliably on Linux servers)
+            $exitCode = 0;
+            $output = [];
+            exec("tar -xzf {$tarPath} -C {$dbDir} 2>&1", $output, $exitCode);
 
-            $tarFile = str_replace('.tar.gz', '.tar', $tarPath);
-            $pharTar = new \PharData($tarFile);
-
-            foreach ($pharTar as $file) {
-                if ($file->isDir()) {
-                    foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($file->getPathname())) as $innerFile) {
-                        if (str_ends_with($innerFile->getFilename(), '.mmdb')) {
-                            copy($innerFile->getPathname(), $dbPath);
-                            break 2;
-                        }
-                    }
+            if ($exitCode !== 0) {
+                $this->error('tar extraction failed: ' . implode("\n", $output));
+                // Fallback to PharData
+                $this->info('Trying PharData fallback...');
+                $this->extractWithPhar($tarPath, $dbDir, $dbPath);
+            } else {
+                // Find and move the .mmdb file
+                $mmdbFiles = glob($dbDir . '/GeoLite2-City_*/*.mmdb');
+                if (!empty($mmdbFiles)) {
+                    rename($mmdbFiles[0], $dbPath);
+                }
+                // Clean up extracted directory
+                $extractedDirs = glob($dbDir . '/GeoLite2-City_*');
+                foreach ($extractedDirs as $dir) {
+                    $this->removeDirectory($dir);
                 }
             }
 
             @unlink($tarPath);
-            @unlink($tarFile);
 
             if (file_exists($dbPath)) {
                 $this->info('GeoLite2-City database updated successfully (' . round(filesize($dbPath) / 1024 / 1024, 1) . ' MB)');
@@ -77,5 +82,40 @@ class UpdateGeoIpDatabase extends Command
             @unlink($tarPath);
             return self::FAILURE;
         }
+    }
+
+    private function extractWithPhar(string $tarPath, string $dbDir, string $dbPath): void
+    {
+        $phar = new \PharData($tarPath);
+        $phar->decompress();
+
+        $tarFile = str_replace('.tar.gz', '.tar', $tarPath);
+        $pharTar = new \PharData($tarFile);
+
+        foreach ($pharTar as $file) {
+            if ($file->isDir()) {
+                foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($file->getPathname())) as $innerFile) {
+                    if (str_ends_with($innerFile->getFilename(), '.mmdb')) {
+                        copy($innerFile->getPathname(), $dbPath);
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        @unlink($tarFile);
+    }
+
+    private function removeDirectory(string $dir): void
+    {
+        if (!is_dir($dir)) return;
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $file) {
+            $file->isDir() ? rmdir($file->getRealPath()) : unlink($file->getRealPath());
+        }
+        rmdir($dir);
     }
 }
