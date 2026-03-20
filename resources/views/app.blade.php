@@ -100,6 +100,10 @@
 </head>
 
 <body class="antialiased">
+    <style>
+        #app[data-page] { opacity: 0; }
+        #app.hydrated { opacity: 1; transition: opacity 0.15s ease; }
+    </style>
     @inertia
 
     {{-- Injected Footer Scripts --}}

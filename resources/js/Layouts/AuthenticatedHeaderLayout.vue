@@ -28,6 +28,16 @@ const showingNavigationDropdown = ref(false);
 const showingNotificationDropdown = ref(false);
 const animatedFlagUrl = ref(null); // New ref for animated flag URL
 const showingAccountDropdown = ref(false);
+const showingDesktopDropdown = ref(false);
+const desktopDropdownRef = ref(null);
+
+const closeDesktopDropdown = (e) => {
+  if (desktopDropdownRef.value && !desktopDropdownRef.value.contains(e.target)) {
+    showingDesktopDropdown.value = false;
+  }
+};
+onMounted(() => document.addEventListener('click', closeDesktopDropdown));
+onUnmounted(() => document.removeEventListener('click', closeDesktopDropdown));
 
 // Notifications
 const notifications = ref([]);
@@ -598,8 +608,20 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
           <!-- Login (guest only) -->
           <Link v-if="!isAuthenticated" :href="route('login', { locale: props.locale })" class="hdr-btn primary">Log in</Link>
 
-          <!-- Avatar (authenticated, desktop only) -->
-          <div v-if="isAuthenticated" class="hdr-avatar hidden lg:inline-flex">{{ userInitials }}</div>
+          <!-- User dropdown (authenticated, desktop only) -->
+          <div v-if="isAuthenticated" ref="desktopDropdownRef" class="hdr-user-wrap hidden lg:inline-flex">
+            <button type="button" class="hdr-avatar" @click="showingDesktopDropdown = !showingDesktopDropdown">{{ userInitials }}</button>
+            <div v-if="showingDesktopDropdown" class="hdr-user-menu">
+              <Link v-if="!isAdmin" :href="route('profile.edit', { locale: props.locale })" class="hdr-user-item" @click="showingDesktopDropdown = false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Profile
+              </Link>
+              <Link :href="route('logout', { locale: props.locale })" method="post" as="button" class="hdr-user-item" @click="showingDesktopDropdown = false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Log Out
+              </Link>
+            </div>
+          </div>
 
           <!-- Hamburger -->
           <button @click="toggleMobileNav" type="button" class="hdr-hamburger" :class="{ 'is-open': showingNavigationDropdown }">
@@ -764,8 +786,13 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
 .hdr-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 12px; font-size: 0.84rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease), color var(--duration) var(--ease), transform var(--duration) var(--ease); }
 .hdr-trigger:hover { transform: translateY(-1px); }
 .hdr-trigger[disabled] { cursor: not-allowed; opacity: 0.7; }
-.hdr-avatar { width: 38px; height: 38px; border-radius: 50%; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; cursor: pointer; border: 2px solid transparent; transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease); }
+.hdr-user-wrap { position: relative; }
+.hdr-avatar { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; cursor: pointer; border: 2px solid transparent; transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease); }
 .hdr-avatar:hover { transform: translateY(-1px); }
+.hdr-user-menu { position: absolute; top: calc(100% + 10px); right: 0; min-width: 180px; padding: 8px; border-radius: 14px; background: #fff; border: 1px solid rgba(148, 163, 184, 0.3); box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12); z-index: 50; }
+.hdr-user-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; font-size: 0.92rem; font-weight: 500; color: #111827; transition: background var(--duration) var(--ease), transform var(--duration) var(--ease); }
+.hdr-user-item:hover { background: rgba(15, 23, 42, 0.06); transform: translateX(4px); }
+.hdr-user-item svg { width: 18px; height: 18px; color: #64748b; flex-shrink: 0; }
 .hdr-btn { display: inline-flex; align-items: center; padding: 9px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease), color var(--duration) var(--ease), box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease); }
 .hdr-btn:hover { transform: translateY(-2px); }
 

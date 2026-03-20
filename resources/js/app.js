@@ -30,6 +30,7 @@ createInertiaApp({
 
         // Mount the main App component
         vueApp.mount(el);
+        el.classList.add('hydrated');
 
         // const updateTawkForPage = (page) => {
         //     if (page?.component === 'Welcome') {
