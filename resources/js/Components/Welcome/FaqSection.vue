@@ -39,7 +39,7 @@ useScrollAnimation('.faq-section', '.faq-left, .faq-item', {
 </script>
 
 <template>
-    <section class="faq-section">
+    <section id="faq" class="faq-section">
         <div class="full-w-container">
             <div class="faq-layout">
                 <div class="faq-left sr-reveal">

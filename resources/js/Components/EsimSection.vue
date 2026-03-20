@@ -20,7 +20,7 @@ useScrollAnimation('.esim-section', '.esim-left, .esim-right', {
 </script>
 
 <template>
-    <section class="esim-section">
+    <section id="esim" class="esim-section">
         <div class="full-w-container">
             <div class="esim-banner">
                 <div class="esim-left sr-reveal">

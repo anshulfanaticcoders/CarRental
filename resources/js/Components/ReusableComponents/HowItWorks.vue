@@ -35,7 +35,7 @@ useScrollAnimation('.how-section', '.how-header, .step-card', {
 </script>
 
 <template>
-    <section class="how-section">
+    <section id="how-it-works" class="how-section">
         <div class="how-glow"></div>
         <div class="full-w-container how-z">
             <div class="how-header sr-reveal">

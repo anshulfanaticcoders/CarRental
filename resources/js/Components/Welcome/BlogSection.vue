@@ -21,7 +21,7 @@ useScrollAnimation('.blog-section', '.blog-header, .blog-feat, .blog-card, .blog
 </script>
 
 <template>
-    <section v-if="blogs && blogs.length" class="blog-section blog-trigger">
+    <section id="blogs" v-if="blogs && blogs.length" class="blog-section blog-trigger">
         <div class="blog-glow"></div>
         <div class="full-w-container blog-z">
             <div class="blog-header sr-reveal">

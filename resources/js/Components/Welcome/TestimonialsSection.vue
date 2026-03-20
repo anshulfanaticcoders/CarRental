@@ -122,7 +122,7 @@ useScrollAnimation('.testi-section', '.testi-header, .testi-carousel, .testi-dot
 </script>
 
 <template>
-    <section class="testi-section">
+    <section id="testimonials" class="testi-section">
         <div class="full-w-container">
             <div class="testi-header sr-reveal">
                 <span class="testi-label">{{ _p('testimonials_title', 'What Travelers Say') }}</span>
