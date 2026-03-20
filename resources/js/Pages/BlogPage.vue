@@ -103,7 +103,7 @@
                         :key="blog.id"
                         class="blog-card bg-white rounded-2xl border border-gray-100 overflow-hidden cursor-pointer group"
                     >
-                        <Link :href="route('blog.show', { locale: currentLocale, country: blog.canonical_country || currentCountry, blog: blog.translated_slug })">
+                        <Link :href="route('blog.show', { locale: currentLocale, country: currentCountry, blog: blog.translated_slug })">
                             <div class="card-image aspect-[16/10] overflow-hidden">
                                 <img
                                     :src="blog.image"
