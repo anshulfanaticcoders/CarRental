@@ -86,7 +86,6 @@ use App\Http\Controllers\RenteonCarController; // Import the RenteonCarControlle
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
 use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
 use App\Http\Controllers\Affiliate\AffiliateQrCodeController; // Import the AffiliateQrCodeController
-use Stevebauman\Location\Facades\Location;
 
 /*
 |--------------------------------------------------------------------------
@@ -613,31 +612,6 @@ Route::group([
     });
 
     // Debug route to test geolocation
-    Route::get('/test-location', function () {
-        $request = request();
-
-        // Test our new GeoLocationService
-        $detectedCountry = \App\Services\GeoLocationService::detectCountry($request);
-
-        // Test old Stevebauman Location
-        try {
-            $oldPosition = \Stevebauman\Location\Facades\Location::get();
-            $oldCountry = strtolower($oldPosition->countryCode ?? 'NULL');
-        } catch (\Exception $e) {
-            $oldCountry = 'ERROR: ' . $e->getMessage();
-        }
-
-        return response()->json([
-            'real_ip' => \App\Services\GeoLocationService::getUserRealIp($request),
-            'new_service_country' => $detectedCountry,
-            'old_stevebauman_country' => $oldCountry,
-            'session_country' => session('country'),
-            'all_session_data' => session()->all(),
-            'testing_info' => 'This shows if our new dynamic detection works vs old hardcoded system'
-        ]);
-    });
-
-    // Debug route to test geolocation
     Route::get('/debug-location', function () {
         $request = request();
 
@@ -697,41 +671,13 @@ Route::group([
     });
 
     Route::get('/blog', function ($locale) {
-        try {
-            $position = Location::get();
-            if ($position && $position->countryCode) {
-                $country = strtolower($position->countryCode);
-                return redirect("/{$locale}/{$country}/blog");
-            }
-        } catch (\Exception $e) {
-            \Log::error('Location detection failed in blog redirect: ' . $e->getMessage());
-        }
-        // Fallback to session country if available
-        $country = session('country');
-        if ($country) {
-            return redirect("/{$locale}/{$country}/blog");
-        }
-        // If no country detected, show error page or handle appropriately
-        return redirect("/{$locale}")->with('error', 'Could not detect your location for blog content');
+        $country = session('country', 'us');
+        return redirect("/{$locale}/{$country}/blog");
     });
 
     Route::get('/blog/{slug}', function ($locale, $slug) {
-        try {
-            $position = Location::get();
-            if ($position && $position->countryCode) {
-                $country = strtolower($position->countryCode);
-                return redirect("/{$locale}/{$country}/blog/{$slug}");
-            }
-        } catch (\Exception $e) {
-            \Log::error('Location detection failed in blog slug redirect: ' . $e->getMessage());
-        }
-        // Fallback to session country if available
-        $country = session('country');
-        if ($country) {
-            return redirect("/{$locale}/{$country}/blog/{$slug}");
-        }
-        // If no country detected, show error page or handle appropriately
-        return redirect("/{$locale}")->with('error', 'Could not detect your location for blog content');
+        $country = session('country', 'us');
+        return redirect("/{$locale}/{$country}/blog/{$slug}");
     });
 
     Route::middleware(['redirect.country'])->group(function () {

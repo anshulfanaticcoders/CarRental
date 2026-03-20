@@ -11,7 +11,7 @@ return [
     |
     */
 
-    'driver' => Stevebauman\Location\Drivers\IpInfo::class,
+    'driver' => Stevebauman\Location\Drivers\MaxMind::class,
 
     /*
     |--------------------------------------------------------------------------
@@ -26,10 +26,7 @@ return [
     */
 
     'fallbacks' => [
-        Stevebauman\Location\Drivers\IpInfo::class,    // Primary - uses your API key
-        Stevebauman\Location\Drivers\GeoPlugin::class,  // Fallback - no API key required
-        Stevebauman\Location\Drivers\Ip2locationio::class, // Additional fallback
-        Stevebauman\Location\Drivers\MaxMind::class,   // Last resort
+        Stevebauman\Location\Drivers\GeoPlugin::class,
     ],
 
     /*
@@ -74,8 +71,8 @@ return [
     */
 
     'testing' => [
-        'ip' => '66.102.0.0',
-        'enabled' => env('LOCATION_TESTING', false), // Disabled - use real IPs
+        'ip' => env('LOCATION_TESTING_IP', '66.102.0.0'),
+        'enabled' => env('LOCATION_TESTING', false),
     ],
 
     /*

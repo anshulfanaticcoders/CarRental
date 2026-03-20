@@ -2,48 +2,17 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Stevebauman\Location\Facades\Location;
 use Exception;
 
 class CurrencyDetectionService
 {
-    private array $ipGeolocationProviders;
-    private int $requestTimeout;
     private array $countryCurrencyMap;
-    private array $fallbackCurrencies;
 
     public function __construct()
     {
-        // Enhanced geolocation providers with IPWHOIS.IO as primary
-        $this->ipGeolocationProviders = [
-            'primary' => [
-                'name' => 'IPWHOIS.IO',
-                'url' => 'https://ipwho.is/{ip}?objects=currency',
-                'timeout' => 5,
-                'rate_limit' => 10000, // generous free tier
-                'provides_currency' => true // Direct currency information
-            ],
-            'secondary' => [
-                'name' => 'apip.cc',
-                'url' => 'https://apip.cc/json/{ip}',
-                'timeout' => 5,
-                'rate_limit' => 1000,
-                'provides_currency' => true // Direct currency information
-            ],
-            'fallback' => [
-                'name' => 'ipapi.co',
-                'url' => 'https://ipapi.co/{ip}/json/',
-                'timeout' => 5,
-                'rate_limit' => 1000,
-                'provides_currency' => false // Requires country-to-currency mapping
-            ]
-        ];
-
-        $this->requestTimeout = config('currency.request_timeout', 5);
-
-        // Country to currency mapping
         $this->countryCurrencyMap = [
             'US' => 'USD', 'CA' => 'CAD', 'GB' => 'GBP', 'DE' => 'EUR', 'FR' => 'EUR',
             'IT' => 'EUR', 'ES' => 'EUR', 'NL' => 'EUR', 'BE' => 'EUR', 'AT' => 'EUR',
@@ -51,58 +20,60 @@ class CurrencyDetectionService
             'NO' => 'NOK', 'DK' => 'DKK', 'SG' => 'SGD', 'HK' => 'HKD', 'IN' => 'INR',
             'CN' => 'CNY', 'KR' => 'KRW', 'MX' => 'MXN', 'BR' => 'BRL', 'RU' => 'RUB',
             'ZA' => 'ZAR', 'AE' => 'AED', 'SA' => 'SAR', 'IL' => 'ILS', 'TH' => 'THB',
-            'MY' => 'MYR', 'PH' => 'PHP', 'ID' => 'IDR', 'VN' => 'VND', 'EG' => 'EGP'
+            'MY' => 'MYR', 'PH' => 'PHP', 'ID' => 'IDR', 'VN' => 'VND', 'EG' => 'EGP',
+            'QA' => 'QAR', 'KW' => 'KWD', 'BH' => 'BHD', 'OM' => 'OMR', 'JO' => 'JOD',
+            'PL' => 'PLN', 'CZ' => 'CZK', 'HU' => 'HUF', 'RO' => 'RON', 'BG' => 'BGN',
+            'TR' => 'TRY', 'UA' => 'UAH',
         ];
-
-        $this->fallbackCurrencies = config('currency.fallback_currencies', ['USD', 'EUR', 'GBP']);
     }
 
-    /**
-     * Detect currency based on user's IP address
-     */
     public function detectCurrencyByIp(?string $ipAddress = null): array
     {
         try {
-            $ip = $ipAddress ?? $this->getClientIp();
+            $ip = $ipAddress ?? request()->ip();
 
-            if (!$this->isValidIp($ip)) {
-                return $this->buildFallbackResponse('Invalid IP address');
-            }
-
-            // Check cache first
             $cacheKey = "currency_detection_{$ip}";
             if (Cache::has($cacheKey)) {
                 return Cache::get($cacheKey);
             }
 
-            // Try each geolocation provider
-            $result = $this->tryGeolocationProviders($ip);
+            $location = Location::get($ip);
 
-            // Cache the result for 1 hour
-            Cache::put($cacheKey, $result, 3600);
+            if ($location && $location->countryCode) {
+                $countryCode = strtoupper($location->countryCode);
+                $currency = $this->countryCurrencyMap[$countryCode] ?? 'USD';
 
-            return $result;
+                $result = [
+                    'success' => true,
+                    'currency' => $currency,
+                    'country_code' => $countryCode,
+                    'country' => $location->countryName ?? null,
+                    'city' => $location->cityName ?? null,
+                    'detection_method' => 'maxmind_local',
+                    'confidence' => 'high',
+                ];
+
+                Cache::put($cacheKey, $result, 3600);
+                return $result;
+            }
+
+            return $this->buildFallbackResponse('Location detection returned no data');
 
         } catch (Exception $e) {
             Log::warning('Currency detection failed', [
                 'error' => $e->getMessage(),
                 'ip' => $ipAddress ?? 'unknown'
             ]);
-
-            return $this->buildFallbackResponse('Geolocation service unavailable');
+            return $this->buildFallbackResponse('Detection failed: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Detect currency from browser locale
-     */
     public function detectCurrencyFromLocale(string $locale): array
     {
         try {
             $localeParts = explode('-', $locale);
             $countryCode = strtoupper(end($localeParts));
-
-            $currency = $this->getCurrencyByCountry($countryCode);
+            $currency = $this->countryCurrencyMap[$countryCode] ?? null;
 
             if ($currency) {
                 return [
@@ -115,20 +86,11 @@ class CurrencyDetectionService
             }
 
             return $this->buildFallbackResponse('Unknown locale country');
-
         } catch (Exception $e) {
-            Log::warning('Locale currency detection failed', [
-                'error' => $e->getMessage(),
-                'locale' => $locale
-            ]);
-
             return $this->buildFallbackResponse('Locale detection failed');
         }
     }
 
-    /**
-     * Get supported currencies with metadata
-     */
     public function getSupportedCurrencies(): array
     {
         return Cache::remember('supported_currencies', 86400, function () {
@@ -151,244 +113,19 @@ class CurrencyDetectionService
                 'BRL' => ['symbol' => 'R$', 'name' => 'Brazilian Real', 'code' => 'BRL'],
                 'RUB' => ['symbol' => '₽', 'name' => 'Russian Ruble', 'code' => 'RUB'],
                 'ZAR' => ['symbol' => 'R', 'name' => 'South African Rand', 'code' => 'ZAR'],
-                'AED' => ['symbol' => 'AED', 'name' => 'UAE Dirham', 'code' => 'AED']
+                'AED' => ['symbol' => 'AED', 'name' => 'UAE Dirham', 'code' => 'AED'],
             ];
         });
     }
 
-    /**
-     * Try geolocation providers in order of preference
-     */
-    private function tryGeolocationProviders(string $ip): array
+    public function clearDetectionCache(?string $ipAddress = null): void
     {
-        $providers = ['primary', 'secondary', 'fallback'];
-
-        foreach ($providers as $provider) {
-            try {
-                $result = $this->callGeolocationProvider($ip, $provider);
-                if ($result['success']) {
-                    return $result;
-                }
-            } catch (Exception $e) {
-                Log::info("Geolocation provider {$provider} failed", [
-                    'error' => $e->getMessage(),
-                    'ip' => $ip
-                ]);
-                continue;
-            }
-        }
-
-        return $this->buildFallbackResponse('All geolocation providers failed');
-    }
-
-    /**
-     * Call specific geolocation provider
-     */
-    private function callGeolocationProvider(string $ip, string $provider): array
-    {
-        $config = $this->ipGeolocationProviders[$provider];
-        $url = str_replace('{ip}', $ip, $config['url']);
-
-        $response = Http::timeout($config['timeout'])
-            ->withHeaders([
-                'User-Agent' => 'CarRental/1.0 Currency Detection',
-                'Accept' => 'application/json'
-            ])
-            ->get($url);
-
-        if (!$response->successful()) {
-            throw new Exception("HTTP {$response->status()}: {$response->reason()}");
-        }
-
-        $data = $response->json();
-
-        if (!$data || !is_array($data)) {
-            throw new Exception('Invalid response format');
-        }
-
-        return $this->parseGeolocationResponse($data, $provider);
-    }
-
-    /**
-     * Parse geolocation response from different providers
-     */
-    private function parseGeolocationResponse(array $data, string $provider): array
-    {
-        $config = $this->ipGeolocationProviders[$provider];
-        $providerName = $config['name'];
-        $providesCurrency = $config['provides_currency'] ?? false;
-
-        try {
-            switch ($provider) {
-                case 'primary': // IPWHOIS.IO - Direct currency support
-                    return $this->parseIpWhoIsResponse($data);
-
-                case 'secondary': // apip.cc - Direct currency support
-                    return $this->parseApipCcResponse($data);
-
-                case 'fallback': // ipapi.co - Requires country mapping
-                    return $this->parseIpapiCoResponse($data);
-
-                default:
-                    throw new Exception("Unknown provider: {$provider}");
-            }
-        } catch (Exception $e) {
-            Log::warning("Failed to parse response from {$providerName}", [
-                'error' => $e->getMessage(),
-                'provider' => $providerName,
-                'data_keys' => array_keys($data)
-            ]);
-            throw $e;
+        $ip = $ipAddress ?? request()->ip();
+        if ($ip) {
+            Cache::forget("currency_detection_{$ip}");
         }
     }
 
-    /**
-     * Parse IPWHOIS.IO response with direct currency information
-     */
-    private function parseIpWhoIsResponse(array $data): array
-    {
-        if (!isset($data['success']) || !$data['success']) {
-            throw new Exception($data['message'] ?? 'IPWHOIS.IO API error');
-        }
-
-        if (!isset($data['currency']['code'])) {
-            throw new Exception('Currency information not available in IPWHOIS.IO response');
-        }
-
-        $currency = $data['currency']['code'];
-        $countryCode = $data['country_code'] ?? null;
-
-        return [
-            'success' => true,
-            'currency' => $currency,
-            'country_code' => $countryCode,
-            'country' => $data['country'] ?? null,
-            'city' => $data['city'] ?? null,
-            'detection_method' => 'ipwhois.io',
-            'confidence' => 'high',
-            'currency_info' => [
-                'name' => $data['currency']['name'] ?? null,
-                'symbol' => $data['currency']['symbol'] ?? null,
-                'exchange_rate' => $data['currency']['exchange_rate'] ?? 1.0
-            ],
-            'raw_response' => $data
-        ];
-    }
-
-    /**
-     * Parse apip.cc response with direct currency information
-     */
-    private function parseApipCcResponse(array $data): array
-    {
-        if (!isset($data['currency_code'])) {
-            throw new Exception('Currency information not available in apip.cc response');
-        }
-
-        $currency = $data['currency_code'];
-        $countryCode = $data['country_code'] ?? null;
-
-        return [
-            'success' => true,
-            'currency' => $currency,
-            'country_code' => $countryCode,
-            'country' => $data['country_name'] ?? null,
-            'city' => $data['city'] ?? null,
-            'detection_method' => 'apip.cc',
-            'confidence' => 'high',
-            'currency_info' => [
-                'name' => $data['currency_name'] ?? null,
-                'symbol' => $data['currency_symbol'] ?? null
-            ],
-            'raw_response' => $data
-        ];
-    }
-
-    /**
-     * Parse ipapi.co response (fallback - requires country mapping)
-     */
-    private function parseIpapiCoResponse(array $data): array
-    {
-        $countryCode = $data['country_code'] ?? null;
-
-        if (!$countryCode || strlen($countryCode) !== 2) {
-            throw new Exception('Invalid country code in ipapi.co response');
-        }
-
-        $currency = $this->getCurrencyByCountry($countryCode);
-
-        if (!$currency) {
-            throw new Exception("Country {$countryCode} not supported in currency mapping");
-        }
-
-        return [
-            'success' => true,
-            'currency' => $currency,
-            'country_code' => $countryCode,
-            'country' => $data['country'] ?? null,
-            'city' => $data['city'] ?? null,
-            'detection_method' => 'ipapi.co',
-            'confidence' => 'medium',
-            'raw_response' => $data
-        ];
-    }
-
-    /**
-     * Get currency by country code
-     */
-    private function getCurrencyByCountry(string $countryCode): ?string
-    {
-        return $this->countryCurrencyMap[strtoupper($countryCode)] ?? null;
-    }
-
-    /**
-     * Get client IP address
-     */
-    private function getClientIp(): ?string
-    {
-        $headers = [
-            'HTTP_CF_CONNECTING_IP',
-            'HTTP_CLIENT_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_FORWARDED',
-            'HTTP_FORWARDED_FOR',
-            'HTTP_FORWARDED',
-            'REMOTE_ADDR'
-        ];
-
-        foreach ($headers as $header) {
-            if (!empty($_SERVER[$header])) {
-                $ips = explode(',', $_SERVER[$header]);
-                $ip = trim($ips[0]);
-
-                if ($this->isValidIp($ip)) {
-                    return $ip;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Validate IP address
-     */
-    private function isValidIp(?string $ip): bool
-    {
-        if (!$ip) {
-            return false;
-        }
-
-        // Filter out private and reserved IPs
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-            return false;
-        }
-
-        return filter_var($ip, FILTER_VALIDATE_IP) !== false;
-    }
-
-    /**
-     * Build fallback response
-     */
     private function buildFallbackResponse(string $reason): array
     {
         return [
@@ -398,32 +135,6 @@ class CurrencyDetectionService
             'detection_method' => 'fallback',
             'confidence' => 'low',
             'error' => $reason,
-            'fallback_reason' => $reason
-        ];
-    }
-
-    /**
-     * Clear detection cache for specific IP
-     */
-    public function clearDetectionCache(?string $ipAddress = null): void
-    {
-        $ip = $ipAddress ?? $this->getClientIp();
-        if ($ip) {
-            Cache::forget("currency_detection_{$ip}");
-        }
-    }
-
-    /**
-     * Get detection statistics
-     */
-    public function getDetectionStats(): array
-    {
-        return [
-            'providers_configured' => count($this->ipGeolocationProviders),
-            'countries_supported' => count($this->countryCurrencyMap),
-            'fallback_currencies' => $this->fallbackCurrencies,
-            'cache_ttl' => 3600,
-            'request_timeout' => $this->requestTimeout
         ];
     }
 }

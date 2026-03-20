@@ -29,3 +29,6 @@ yarn-error.log
 .opencode
 .agents
 docs
+database/maxmind/*.mmdb
+database/maxmind/*.tar.gz
+database/maxmind/*.tar

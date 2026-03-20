@@ -39,7 +39,8 @@
       "WebFetch(domain:publicapi.dev)",
       "WebFetch(domain:docs.mailtrap.io)",
       "WebFetch(domain:mailtrap.docs.apiary.io)",
-      "mcp__exa__web_search_exa"
+      "mcp__exa__web_search_exa",
+      "mcp__claude_ai_ref__ref_read_url"
     ]
   },
   "enableAllProjectMcpServers": true,

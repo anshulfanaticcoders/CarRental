@@ -10,7 +10,6 @@ use App\Models\UserProfile;
 use App\Notifications\AccountCreatedNotification;
 use App\Notifications\AccountCreatedUserConfirmation;
 use App\Services\Affiliate\AffiliateQrCodeService;
-use App\Services\GeoLocationService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -303,9 +302,9 @@ class SocialAuthController extends Controller
                 return $normalized !== '' ? $normalized : 'Unknown';
             }
 
-            $detectedCountry = GeoLocationService::detectCountry($request);
-            if ($detectedCountry) {
-                return strtoupper(trim((string) $detectedCountry));
+            $location = \Stevebauman\Location\Facades\Location::get($request->ip());
+            if ($location && $location->countryCode) {
+                return strtoupper($location->countryCode);
             }
         } catch (\Exception $exception) {
             Log::warning('Social login country detection failed', [

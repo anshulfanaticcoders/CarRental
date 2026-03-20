@@ -631,28 +631,13 @@ class BlogController extends Controller
 
     public function homeBlogs()
     {
-        // Always get country from session (set by middleware)
         $currentCountry = session('country');
-        \Log::info('homeBlogs: Session country - ' . ($currentCountry ?: 'NULL') . ' | Full session: ' . json_encode(session()->all()));
 
-        // If no country detected, don't show any blogs (this will show the problem)
-        if (!$currentCountry) {
-            \Log::error('homeBlogs: No country detected - cannot filter blogs');
-            $blogs = collect(); // Empty collection
-        } else {
-            // Filter blogs by country
-            $blogs = Blog::with('translations')
-                ->where('is_published', true)
-                ->where(function ($query) use ($currentCountry) {
-                    $query->whereJsonContains('countries', $currentCountry)
-                        ->orWhereNull('countries');
-                })
-                ->latest()
-                ->take(4)
-                ->get();
-
-            \Log::info('homeBlogs: Found ' . $blogs->count() . ' blogs for country ' . $currentCountry);
-        }
+        $blogs = Blog::with('translations')
+            ->where('is_published', true)
+            ->latest()
+            ->take(4)
+            ->get();
 
         $blogListSchema = [];
         if ($blogs->isNotEmpty()) {
@@ -784,14 +769,9 @@ class BlogController extends Controller
 
         // Store the country in session for future use
         session(['country' => $country]);
-        \Log::info('showBlogPage: Country stored in session - ' . $country);
 
         $blogsQuery = Blog::with(['translations', 'tags:id,name,slug'])
-            ->where('is_published', true)
-            ->where(function ($q) use ($country) {
-                $q->whereJsonContains('countries', $country)
-                    ->orWhereNull('countries');
-            });
+            ->where('is_published', true);
 
         // Filter by tag if provided
         if ($request->filled('tag')) {
@@ -803,12 +783,8 @@ class BlogController extends Controller
         $blogs = $blogsQuery->latest()->paginate(9)->withQueryString();
 
         // Get all tags that have at least one published blog
-        $tags = BlogTag::whereHas('blogs', function ($q) use ($country) {
-            $q->where('is_published', true)
-                ->where(function ($sq) use ($country) {
-                    $sq->whereJsonContains('countries', $country)
-                        ->orWhereNull('countries');
-                });
+        $tags = BlogTag::whereHas('blogs', function ($q) {
+            $q->where('is_published', true);
         })->orderBy('name')->get(['id', 'name', 'slug']);
 
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
@@ -844,14 +820,8 @@ class BlogController extends Controller
 
         // Store the country in session for future use
         session(['country' => $country]);
-        \Log::info('SingleBlog show: Country stored in session - ' . $country);
 
-        // Fetch blog with country filter in query
         $blog = \App\Models\Blog::with('translations')
-            ->where(function ($q) use ($country) {
-                $q->whereJsonContains('countries', $country)
-                    ->orWhereNull('countries');
-            })
             ->whereHas('translations', function ($q) use ($slug, $locale) {
                 $q->where('slug', $slug)
                     ->where('locale', $locale);
@@ -865,28 +835,13 @@ class BlogController extends Controller
 
         $blog->load('translations');
 
-        $canonicalCountry = $blog->canonical_country;
-        if (!is_string($canonicalCountry) || trim($canonicalCountry) === '') {
-            $canonicalCountry = is_array($blog->countries) && !empty($blog->countries) ? strtolower((string) $blog->countries[0]) : 'us';
-        }
-        $canonicalCountry = strtolower((string) $canonicalCountry);
-
-        if (is_array($blog->countries) && !empty($blog->countries) && !in_array($canonicalCountry, array_map('strtolower', $blog->countries), true)) {
-            $canonicalCountry = strtolower((string) $blog->countries[0]);
-        }
-
-        // Single-canonical policy: redirect non-canonical country URLs to canonical.
-        if ($canonicalCountry !== $country) {
-            return redirect()->to("/{$locale}/{$canonicalCountry}/blog/{$slug}", 301);
-        }
-
         // Generate schema
         $blogSchema = SchemaBuilder::blog($blog);
 
         $seo = app(SeoMetaResolver::class)->resolveForModel(
             $blog,
             $locale,
-            url("/{$locale}/{$canonicalCountry}/blog/{$slug}")
+            url("/{$locale}/{$country}/blog/{$slug}")
         )->toArray();
 
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');

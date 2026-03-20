@@ -10,6 +10,7 @@ use App\Console\Commands\MigrateSeoTargets;
 use App\Console\Commands\UpdateUnifiedLocationsCommand;
 use App\Console\Commands\RefreshCurrencyRates;
 use App\Console\Commands\SendScheduledNewsletterCampaigns;
+use App\Console\Commands\UpdateGeoIpDatabase;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -28,6 +29,7 @@ class Kernel extends ConsoleKernel
         $schedule->command(RefreshCurrencyRates::class)->everyTwoHours();
         $schedule->command(GeneratePublicSitemaps::class)->daily()->withoutOverlapping();
         $schedule->command(SendScheduledNewsletterCampaigns::class)->everyMinute()->withoutOverlapping();
+        $schedule->command(UpdateGeoIpDatabase::class)->weekly()->withoutOverlapping();
     }
 
     /**
