@@ -3,6 +3,19 @@ import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 import { resolveProviderMarkupRate, grossUpAmount } from '@/utils/platformPricing';
+import { resolveVehicleImageSource } from '@/utils/vehicleImageFallback';
+import {
+    getSearchVehicleLegacyPayload,
+    resolveSearchVehicleCurrency,
+    resolveSearchVehicleDisplayName,
+    resolveSearchVehicleFeatureFlags,
+    resolveSearchVehicleImage,
+    resolveSearchVehicleProviderLabel,
+    resolveSearchVehicleSpecs,
+} from '@/features/search/utils/searchVehiclePresentation';
+import { buildSearchCardSelection } from '@/features/search/utils/searchCardSelection';
+import { resolveSearchCardDisplayPrice } from '@/features/search/utils/searchCardDisplayPrice';
+import { normalizeProtectionPlans } from '@/features/search/utils/normalizeProtectionPlans';
 
 // Icons
 import carIcon from "../../assets/carIcon.svg";
@@ -25,55 +38,8 @@ const isAdobeCars = computed(() => {
     return props.vehicle?.source === 'adobe';
 });
 
-// Check if vehicle is Renteon
-const isRenteon = computed(() => {
-    return props.vehicle?.source === 'renteon';
-});
-
-// Check if vehicle is OK Mobility
-const isOkMobility = computed(() => {
-    return props.vehicle?.source === 'okmobility';
-});
-
-const isLikelyCode = (value) => {
-    const text = `${value || ''}`.trim();
-    if (!text) return false;
-    return /^[A-Z0-9]{3,5}$/.test(text);
-};
-
 const displayVehicleName = computed(() => {
-    if (isOkMobility.value) {
-        const displayName = props.vehicle?.display_name;
-        const model = props.vehicle?.model;
-        const description = props.vehicle?.group_description;
-
-        if (displayName && !isLikelyCode(displayName)) return displayName;
-        if (model && !isLikelyCode(model)) return model;
-        if (description && !isLikelyCode(description)) return description;
-        return displayName || model || description || '';
-    }
-    const parts = [props.vehicle?.brand, props.vehicle?.model].filter(Boolean);
-    return parts.join(' ');
-});
-
-const isFavrica = computed(() => {
-    return props.vehicle?.source === 'favrica';
-});
-
-const isXDrive = computed(() => {
-    return props.vehicle?.source === 'xdrive';
-});
-
-const isSicilyByCar = computed(() => {
-    return props.vehicle?.source === 'sicily_by_car';
-});
-
-const isRecordGo = computed(() => {
-    return props.vehicle?.source === 'recordgo';
-});
-
-const isSurprice = computed(() => {
-    return props.vehicle?.source === 'surprice';
+    return resolveSearchVehicleDisplayName(props.vehicle);
 });
 
 // Helper for highlighting benefits
@@ -253,22 +219,30 @@ const adobeProducts = computed(() => {
 const internalVendorPlans = computed(() => {
     if (props.vehicle.source !== 'internal') return [];
 
-    // Laravel returns relationship as camelCase 'vendorPlans' not 'vendor_plans'
-    const vendorPlans = props.vehicle?.vendorPlans || props.vehicle?.vendor_plans || [];
+    const legacyPayload = getSearchVehicleLegacyPayload(props.vehicle);
+    const vendorPlans = legacyPayload?.vendorPlans || legacyPayload?.vendor_plans || [];
     const products = [];
+    const currency = resolveSearchVehicleCurrency(props.vehicle, 'USD');
+    const basePrice = parseFloat(props.vehicle?.pricing?.price_per_day ?? 0) || 0;
+    const securityDeposit = parseFloat(
+        props.vehicle?.pricing?.deposit_amount
+        ?? legacyPayload?.benefits?.deposit_amount
+        ?? legacyPayload?.security_deposit
+        ?? 0
+    ) || 0;
 
     // Always add Basic package (base price_per_day)
     products.push({
         type: 'BAS',
         name: 'Basic Rental',
         subtitle: 'Standard Package',
-        total: (parseFloat(props.vehicle?.price_per_day) || 0) * numberOfRentalDays.value,
-        price_per_day: parseFloat(props.vehicle?.price_per_day) || 0,
-        deposit: parseFloat(props.vehicle?.security_deposit) || 0,
+        total: basePrice * numberOfRentalDays.value,
+        price_per_day: basePrice,
+        deposit: securityDeposit,
         benefits: ['Base rental rate', 'Standard coverage'],
         is_basic: true,
         isSelected: !selectedInternalPlan.value,
-        currency: props.vehicle?.currency || 'USD'
+        currency,
     });
 
     // Add vendor plans if any exist
@@ -280,12 +254,12 @@ const internalVendorPlans = computed(() => {
             subtitle: plan.plan_description || 'Vendor Package',
             total: (parseFloat(plan.price) || 0) * numberOfRentalDays.value,
             price_per_day: parseFloat(plan.price) || 0,
-            deposit: parseFloat(props.vehicle?.security_deposit) || 0,
+            deposit: securityDeposit,
             benefits: features.length > 0 ? features : ['Custom vendor package'],
             is_basic: false,
             isSelected: selectedInternalPlan.value?.id === plan.id,
             vendorPlanId: plan.id,
-            currency: props.vehicle?.currency || 'USD'
+            currency,
         });
     });
 
@@ -334,17 +308,6 @@ const sortedProducts = computed(() => {
     return order.map(type => products.find(p => p.type === type)).filter(Boolean);
 });
 
-// Get daily price for selected package
-const dailyPrice = computed(() => {
-    if (!isGreenMotionOrUSave.value) return null;
-    const product = sortedProducts.value.find(p => p.type === selectedPackage.value);
-    if (!product) return '0.00';
-    const originalPrice = parseFloat(product.total) / numberOfRentalDays.value;
-    const originalCurrency = product.currency || props.vehicle.currency || 'USD';
-    if (!canConvertFrom(originalCurrency)) return null;
-    return convertRentalPrice(originalPrice, originalCurrency).toFixed(2);
-});
-
 // Get Premium Plus daily price for display
 const premiumPlusDailyPrice = computed(() => {
     if (!isGreenMotionOrUSave.value) return null;
@@ -356,35 +319,15 @@ const premiumPlusDailyPrice = computed(() => {
     return convertRentalPrice(originalPrice, originalCurrency).toFixed(2);
 });
 
-// Get LocautoRent converted daily price
-const locautoDailyPrice = computed(() => {
-    if (!isLocautoRent.value) return '0.00';
-    const basePrice = parseFloat(props.vehicle.price_per_day) || 0;
-    const protectionPrice = selectedLocautoProtection.value ? parseFloat(selectedLocautoProtection.value.amount) : 0;
-    const originalPrice = basePrice + protectionPrice;
-    const originalCurrency = props.vehicle.currency || 'EUR';
-    if (!canConvertFrom(originalCurrency)) return null;
-    return convertRentalPrice(originalPrice, originalCurrency).toFixed(2);
-});
-
-// Get Adobe converted daily price
-const adobeDailyPrice = computed(() => {
-    if (!isAdobeCars.value) return '0.00';
-    const baseTotal = adobeBaseRate.value;
-    const protectionTotal = selectedAdobeProtection.value ? parseFloat(selectedAdobeProtection.value.amount) : 0;
-    const originalPrice = (baseTotal + protectionTotal) / numberOfRentalDays.value;
-    if (!canConvertFrom('USD')) return null;
-    return convertRentalPrice(originalPrice, 'USD').toFixed(2);
-});
-
-// Get Renteon converted daily price
-const renteonDailyPrice = computed(() => {
-    if (!isRenteon.value) return '0.00';
-    const originalPrice = parseFloat(props.vehicle?.price_per_day || 0);
-    const originalCurrency = props.vehicle?.currency || 'EUR';
-    if (!canConvertFrom(originalCurrency)) return null;
-    return convertRentalPrice(originalPrice, originalCurrency).toFixed(2);
-});
+const providerCardDailyPrice = computed(() => resolveSearchCardDisplayPrice({
+    vehicle: props.vehicle,
+    rentalDays: numberOfRentalDays.value,
+    selectedPackage: selectedPackage.value,
+    selectedProtection: isLocautoRent.value ? selectedLocautoProtection.value : selectedAdobeProtection.value,
+    baseTotal: adobeBaseRate.value,
+    canConvertFrom,
+    convertRentalPrice,
+}));
 
 // Get package name from type
 const getPackageName = (type) => {
@@ -475,83 +418,34 @@ const formatPrice = (price, currency) => {
 const selectPackage = (type) => {
     selectedPackage.value = type;
     showAllPlans.value = false;
-    emit('select-package', { vehicle: props.vehicle, package: type });
+    emit('select-package', buildSearchCardSelection({
+        vehicle: props.vehicle,
+        selectedPackage: type,
+    }));
 };
 
-const selectRenteonPackage = () => {
-    emit('select-package', {
+const selectCardDeal = () => {
+    emit('select-package', buildSearchCardSelection({
         vehicle: props.vehicle,
-        package: 'BAS',
-    });
-};
-
-const selectOkMobilityPackage = () => {
-    emit('select-package', {
-        vehicle: props.vehicle,
-        package: 'BAS'
-    });
-};
-
-const selectFavricaPackage = () => {
-    emit('select-package', {
-        vehicle: props.vehicle,
-        package: 'BAS'
-    });
-};
-
-const selectXDrivePackage = () => {
-    emit('select-package', {
-        vehicle: props.vehicle,
-        package: 'BAS'
-    });
-};
-
-const selectSicilyByCarPackage = () => {
-    emit('select-package', {
-        vehicle: props.vehicle,
-        package: 'BAS'
-    });
-};
-
-const selectRecordGoPackage = () => {
-    emit('select-package', {
-        vehicle: props.vehicle,
-        package: 'BAS'
-    });
-};
-
-const selectSurpricePackage = () => {
-    emit('select-package', {
-        vehicle: props.vehicle,
-        package: 'BAS'
-    });
+        selectedPackage: selectedPackage.value,
+        selectedProtection: isLocautoRent.value ? selectedLocautoProtection.value : selectedAdobeProtection.value,
+        selectedInternalPlan: selectedInternalPlan.value,
+        baseTotal: adobeBaseRate.value,
+    }));
 };
 
 // Select LocautoRent protection plan (null = Basic, no extra protection)
 const selectLocautoProtection = (protection) => {
     selectedLocautoProtection.value = protection;
     showAllPlans.value = false;
-    emit('select-package', {
-        vehicle: props.vehicle,
-        package: protection ? 'POA' : 'BAS',
-        protection_code: protection?.code || null,
-        protection_amount: protection?.amount || 0
-    });
+    selectCardDeal();
 };
 
 // Select Adobe Cars protection plan (null = Basic rate only, no additional protection)
 const selectAdobeProtection = (protection) => {
     selectedAdobeProtection.value = protection;
     showAllPlans.value = false;
-    // Calculate total: base rate (Total) + selected protection amount (Total)
-    const totalAmount = adobeBaseRate.value + (protection?.amount || 0);
-    emit('select-package', {
-        vehicle: props.vehicle,
-        package: protection ? protection.code : 'BAS',
-        protection_code: protection?.code || null,
-        protection_amount: protection?.amount || 0,
-        total_price: totalAmount
-    });
+    selectCardDeal();
 };
 
 // Close modal
@@ -561,17 +455,7 @@ const closeModal = () => {
 
 // Select Internal Vehicle Package (emits for inline BookingExtrasStep)
 const selectInternalPackage = () => {
-    const selectedPlan = selectedInternalPlan.value;
-    emit('select-package', {
-        vehicle: props.vehicle,
-        package: selectedPlan?.plan_type || 'BAS',
-        protection_code: selectedPlan?.id?.toString() || null,
-        protection_amount: selectedPlan?.price || 0,
-        vendor_plan_id: selectedPlan?.id || null,
-        // Pass vendorPlans and addons for BookingExtrasStep to use
-        vendorPlans: props.vehicle.vendor_plans || [],
-        addons: props.vehicle.addons || []
-    });
+    selectCardDeal();
 };
 
 // Select internal plan from modal
@@ -589,19 +473,56 @@ const selectInternalVendorPlan = (product) => {
     selectInternalPackage();
 };
 
+// Normalized plans for the modal (one canonical format for all providers)
+const selectedPlanId = computed(() => {
+    if (isGreenMotionOrUSave.value) return selectedPackage.value;
+    if (isLocautoRent.value) return selectedLocautoProtection.value?.code ?? null;
+    if (isAdobeCars.value) return selectedAdobeProtection.value?.code ?? null;
+    if (props.vehicle?.source === 'internal') return selectedInternalPlan.value?.id != null ? `${selectedInternalPlan.value.id}` : null;
+    return null;
+});
+
+const normalizedPlans = computed(() => normalizeProtectionPlans({
+    vehicle: props.vehicle,
+    rentalDays: numberOfRentalDays.value,
+    selectedId: selectedPlanId.value,
+    convertPrice: convertRentalPrice,
+}));
+
+const selectNormalizedPlan = (plan) => {
+    const source = props.vehicle?.source;
+    if (source === 'greenmotion' || source === 'usave') {
+        selectPackage(plan.id);
+    } else if (source === 'locauto_rent') {
+        if (plan.isBasic) {
+            selectLocautoProtection(null);
+        } else {
+            const protection = locautoProtectionPlans.value.find(p => p.code === plan.id);
+            selectLocautoProtection(protection || null);
+        }
+    } else if (source === 'adobe') {
+        if (plan.isBasic) {
+            selectAdobeProtection(null);
+        } else {
+            const protection = adobeProtectionPlans.value.find(p => p.code === plan.id);
+            selectAdobeProtection(protection || null);
+        }
+    } else if (source === 'internal') {
+        if (plan.isBasic) {
+            selectInternalVendorPlan({ is_basic: true });
+        } else {
+            const vendorPlan = internalVendorPlans.value.find(p => p.type === plan.name);
+            if (vendorPlan) selectInternalVendorPlan(vendorPlan);
+        }
+    }
+};
+
 // Image Handling
 const getImageSource = (vehicle) => {
-    if (vehicle.source === 'internal') {
-        return vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png';
-    }
-    if (vehicle.image) return vehicle.image;
-    if (vehicle.image_url) return vehicle.image_url;
-    if (vehicle.image_path) return vehicle.image_path;
-    if (Array.isArray(vehicle.images)) {
-        return vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png';
-    }
-    if (vehicle.source === 'wheelsys') return '/wheelsys-placeholder.jpg';
-    return '/images/dummyCarImaage.png';
+    return resolveVehicleImageSource({
+        ...vehicle,
+        image: resolveSearchVehicleImage(vehicle),
+    });
 };
 
 const handleImageError = (event) => {
@@ -614,82 +535,17 @@ const handleImageError = (event) => {
     event.target.onerror = null;
 };
 
-// Route Generation
-const getProviderRoute = (vehicle) => {
-    const routes = {
-        'greenmotion': 'green-motion-car.show',
-        'okmobility': 'ok-mobility-car.show',
-        'wheelsys': 'wheelsys-car.show',
-        'adobe': 'adobe-car.show',
-        'locauto_rent': 'locauto-rent-car.show'
-    };
-    return routes[vehicle.source] || 'green-motion-car.show';
-};
-
-// Build route params with selected package for GM/USave
-const getRouteParams = (vehicle) => {
-    const baseParams = {
-        locale: page.props.locale,
-        id: vehicle.id,
-        provider: vehicle.source,
-        location_id: vehicle.provider_pickup_id,
-        start_date: props.form.date_from,
-        end_date: props.form.date_to,
-        start_time: props.form.start_time,
-        end_time: props.form.end_time,
-        dropoff_location_id: props.form.dropoff_location_id,
-        rentalCode: props.form.rentalCode
-    };
-
-    // Add selected package for GM/USave
-    if (isGreenMotionOrUSave.value) {
-        baseParams.package = selectedPackage.value;
-    }
-
-    // Add selected protection for LocautoRent
-    if (isLocautoRent.value && selectedLocautoProtection.value) {
-        baseParams.protection_code = selectedLocautoProtection.value.code;
-    }
-
-    return baseParams;
-};
-
 // --- Specs & Features Logic ---
 
 const vehicleSpecs = computed(() => {
-    const v = props.vehicle;
     return {
-        passengers: v.seating_capacity || v.passengers || v.adults,
-        doors: v.doors,
-        transmission: v.transmission, // 'Manual', 'Automatic'
-        fuel: v.fuel, // 'Petrol', 'Diesel', etc.
-        bagDisplay: (() => {
-            // GreenMotion / USave: Return formatted string ONLY if non-zero total
-            if (v.luggageLarge !== undefined || v.luggageMed !== undefined || v.luggageSmall !== undefined) {
-                const small = parseInt(v.luggageSmall || 0);
-                const med = parseInt(v.luggageMed || 0);
-                const large = parseInt(v.luggageLarge || 0);
-                if (small + med + large === 0) return null; // Don't show if all are 0
-                return `S:${small} M:${med} L:${large}`;
-            }
-            // Wheelsys / External: Sum of bags
-            if (v.bags !== undefined || v.suitcases !== undefined) {
-                const total = (parseInt(v.bags) || 0) + (parseInt(v.suitcases) || 0);
-                return total > 0 ? total : null;
-            }
-            // Locauto / Internal / Adobe -> Return count if valid
-            if (v.luggage || v.luggage_capacity) {
-                return v.luggage || v.luggage_capacity;
-            }
-            return null;
-        })(),
-
-        mpg: v.mpg,
-        co2: v.co2,
-        acriss: v.sipp_code || v.acriss_code || v.group_code || v.category,
-        airConditioning: v.airConditioning === 'true' || v.airConditioning === true || (v.features && v.features.includes('Air Conditioning')),
+        ...resolveSearchVehicleSpecs(props.vehicle),
+        mpg: props.vehicle?.mpg,
+        co2: props.vehicle?.co2,
     };
 });
+
+const vehicleFeatureFlags = computed(() => resolveSearchVehicleFeatureFlags(props.vehicle));
 // --- Image Slider Logic (Internal Vehicles Only) ---
 const currentImageIndex = ref(0);
 const isHovered = ref(false);
@@ -698,8 +554,9 @@ let sliderInterval = null;
 const allImages = computed(() => {
     if (props.vehicle.source !== 'internal') return [];
 
-    const primary = props.vehicle.images?.find(img => img.image_type === 'primary');
-    const gallery = props.vehicle.images?.filter(img => img.image_type === 'gallery') || [];
+    const legacyPayload = getSearchVehicleLegacyPayload(props.vehicle);
+    const primary = legacyPayload.images?.find(img => img.image_type === 'primary');
+    const gallery = legacyPayload.images?.filter(img => img.image_type === 'gallery') || [];
 
     const images = [];
     if (primary) images.push(primary.image_url);
@@ -826,9 +683,9 @@ onUnmounted(() => {
             <!-- Specs -->
             <div class="car-specs">
                 <!-- Transmission -->
-                <div class="spec-tag">
+                <div class="spec-tag" v-if="vehicleSpecs.transmission">
                     <img :src="transmissionIcon" class="w-3.5 h-3.5 opacity-60" alt="" />
-                    <span>{{ vehicleSpecs.transmission || 'Auto' }}</span>
+                    <span>{{ vehicleSpecs.transmission }}</span>
                 </div>
 
                 <!-- Fuel Type -->
@@ -875,14 +732,14 @@ onUnmounted(() => {
                 </span>
 
                 <!-- Free Cancellation -->
-                <span v-if="vehicle.benefits?.cancellation_available_per_day || vehicle.source === 'wheelsys'"
+                <span v-if="vehicleFeatureFlags.freeCancellation"
                     class="feature-tag included">
                     <img :src="check" class="w-3 h-3 text-green-600" alt="" />
                     Free Cancellation
                 </span>
 
                 <!-- Unlimited Mileage -->
-                <span v-if="vehicle.mileage === 'Unlimited' || vehicle.benefits?.limited_km_per_day === false"
+                <span v-if="vehicleFeatureFlags.unlimitedMileage"
                     class="feature-tag included">
                     <img :src="check" class="w-3 h-3 text-green-600" alt="" />
                     Unlimited km
@@ -894,9 +751,8 @@ onUnmounted(() => {
                 </span>
             </div>
 
-            <!-- GreenMotion/USave/Locauto/Adobe/Internal View Plans Actions -->
-            <div v-if="(isGreenMotionOrUSave && sortedProducts.length > 0) || (isLocautoRent && locautoProtectionPlans.length > 0) || (isAdobeCars && adobeProtectionPlans.length > 0) || (vehicle.source === 'internal' && internalVendorPlans.length > 0)"
-                class="mb-4">
+            <!-- View Protection Plans (any provider with plans) -->
+            <div v-if="normalizedPlans.length > 1" class="mb-4">
                 <button @click="showAllPlans = true"
                     class="w-full text-center text-xs font-semibold py-2.5 border border-dashed border-primary-200 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-all flex items-center justify-center gap-2">
                     <span>View Protection Plans</span>
@@ -912,35 +768,10 @@ onUnmounted(() => {
                 <div class="car-pricing">
                     <div class="car-total">
                         <!-- GreenMotion/USave Price -->
-                        <template v-if="isGreenMotionOrUSave">
-                            <span class="car-price" v-if="dailyPrice !== null">
-                                {{ getSelectedCurrencySymbol() }}{{ dailyPrice }}
+                        <template v-if="providerCardDailyPrice !== null">
+                            <span class="car-price">
+                                {{ getSelectedCurrencySymbol() }}{{ providerCardDailyPrice }}
                             </span>
-                            <span class="price-skeleton" v-else></span>
-                        </template>
-
-                        <!-- Locauto Price -->
-                        <template v-else-if="isLocautoRent">
-                            <span class="car-price" v-if="locautoDailyPrice !== null">
-                                {{ getSelectedCurrencySymbol() }}{{ locautoDailyPrice }}
-                            </span>
-                            <span class="price-skeleton" v-else></span>
-                        </template>
-
-                        <!-- Adobe Price -->
-                        <template v-else-if="isAdobeCars">
-                            <span class="car-price" v-if="adobeDailyPrice !== null">
-                                {{ getSelectedCurrencySymbol() }}{{ adobeDailyPrice }}
-                            </span>
-                            <span class="price-skeleton" v-else></span>
-                        </template>
-
-                        <!-- Renteon Price -->
-                        <template v-else-if="isRenteon">
-                            <span class="car-price" v-if="renteonDailyPrice !== null">
-                                {{ getSelectedCurrencySymbol() }}{{ renteonDailyPrice }}
-                            </span>
-                            <span class="price-skeleton" v-else></span>
                         </template>
 
                         <!-- Standard Price (Slot) -->
@@ -954,9 +785,8 @@ onUnmounted(() => {
                     <span class="car-currency">per day</span>
                 </div>
 
-                <!-- Book Buttons -->
-                <!-- GreenMotion -->
-                <button v-if="isGreenMotionOrUSave" @click="selectPackage(selectedPackage)" class="header-btn primary"
+                <!-- Book Button -->
+                <button @click="selectCardDeal" class="header-btn primary"
                     :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
                     Book Deal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -964,110 +794,6 @@ onUnmounted(() => {
                             d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </button>
-
-                <!-- Locauto -->
-                <button v-else-if="isLocautoRent" @click="selectLocautoProtection(selectedLocautoProtection)"
-                    class="header-btn primary" :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </button>
-
-                <!-- Adobe -->
-                <button v-else-if="isAdobeCars" @click="selectAdobeProtection(selectedAdobeProtection)"
-                    class="header-btn primary" :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </button>
-
-                <!-- Internal Vehicle: Emit select-package for inline BookingExtrasStep -->
-                <button v-else-if="vehicle.source === 'internal'" @click="selectInternalPackage"
-                    class="header-btn primary" :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </button>
-
-                <button v-else-if="isRenteon" @click="selectRenteonPackage" class="header-btn primary"
-                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </button>
-
-                <button v-else-if="isOkMobility" @click="selectOkMobilityPackage" class="header-btn primary"
-                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </button>
-
-                <button v-else-if="isFavrica" @click="selectFavricaPackage" class="header-btn primary"
-                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </button>
-
-                <button v-else-if="isXDrive" @click="selectXDrivePackage" class="header-btn primary"
-                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </button>
-
-                <button v-else-if="isSicilyByCar" @click="selectSicilyByCarPackage" class="header-btn primary"
-                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </button>
-
-                <button v-else-if="isRecordGo" @click="selectRecordGoPackage" class="header-btn primary"
-                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </button>
-
-                <button v-else-if="isSurprice" @click="selectSurpricePackage" class="header-btn primary"
-                    :disabled="!ratesReady" :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </button>
-
-                <!-- Standard Link for other external providers -->
-                <Link v-else :href="route(getProviderRoute(vehicle), getRouteParams(vehicle))"
-                    class="header-btn primary" @click="(event) => { if (!ratesReady) { event.preventDefault(); return; } $emit('saveSearchUrl'); }"
-                    :class="{ 'is-loading': !ratesReady }">
-                    Book Deal
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </Link>
             </div>
         </div>
     </div>
@@ -1083,212 +809,46 @@ onUnmounted(() => {
                     <p class="text-gray-500 mt-1">Choose the best coverage option for your trip</p>
                 </div>
 
-                <!-- Plans Grid -->
+                <!-- Unified Plans Grid -->
                 <div class="plans-grid">
-                    <!-- GreenMotion/USave Plans -->
-                    <template v-if="isGreenMotionOrUSave">
-                        <div v-for="product in sortedProducts" :key="product.type" class="plan-card"
-                            :class="{ 'selected': selectedPackage === product.type }"
-                            @click="selectPackage(product.type)">
-                            <div class="plan-header">
-                                <div>
-                                    <h3 class="plan-name">{{ getPackageName(product.type) }}</h3>
-                                    <p class="plan-type">{{ product.type }}</p>
-                                </div>
-                                <div class="plan-check" v-if="selectedPackage === product.type">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                        class="w-4 h-4 text-white">
-                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                                    </svg>
-                                </div>
+                    <div v-for="plan in normalizedPlans" :key="plan.id" class="plan-card"
+                        :class="{ 'selected': plan.isSelected }"
+                        @click="selectNormalizedPlan(plan)">
+                        <div class="plan-header">
+                            <div>
+                                <h3 class="plan-name">{{ plan.name }}</h3>
+                                <p class="plan-type">{{ plan.subtitle }}</p>
                             </div>
-
-                            <div class="plan-price-box">
-                                <div class="plan-daily-price">
-                                    {{ getSelectedCurrencySymbol() }}{{ convertRentalPrice(parseFloat(product.total) /
-                                        numberOfRentalDays, product.currency || props.vehicle.currency || 'USD').toFixed(2)
-                                    }}
-                                    <span>/day</span>
-                                </div>
-                                <div class="plan-total-price">
-                                    Total: {{ getSelectedCurrencySymbol() }}{{
-                                        convertRentalPrice(parseFloat(product.total), product.currency || props.vehicle.currency
-                                            || 'USD').toFixed(2) }}
-                                </div>
+                            <div class="plan-check" v-if="plan.isSelected">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    class="w-4 h-4 text-white">
+                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                </svg>
                             </div>
-
-                            <ul class="plan-features">
-                                <li v-for="benefit in getBenefits(product)" :key="benefit">
-                                    <img :src="check" class="w-4 h-4 opacity-100" />
-                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit
-                                        }}</span>
-                                </li>
-                                <li v-if="product.deposit">
-                                    <img :src="check" class="w-4 h-4 opacity-100" />
-                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit('Deposit') }">Deposit:
-                                        {{
-                                            getSelectedCurrencySymbol() }}{{ convertPrice(parseFloat(product.deposit),
-                                            product.currency || props.vehicle.currency || 'USD').toFixed(2)
-                                        }}</span>
-                                </li>
-                            </ul>
-
-                            <button class="plan-select-btn">
-                                {{ selectedPackage === product.type ? 'Selected' : 'Select Package' }}
-                            </button>
                         </div>
-                    </template>
-
-                    <!-- LocautoRent Protection Plans -->
-                    <template v-else-if="isLocautoRent">
-                        <!-- Basic Plan item -->
-                        <div class="plan-card" :class="{ 'selected': !selectedLocautoProtection }"
-                            @click="selectLocautoProtection(null)">
-                            <div class="plan-header">
-                                <div>
-                                    <h3 class="plan-name">Basic Coverage</h3>
-                                    <p class="plan-type">Standard</p>
-                                </div>
-                                <div class="plan-check" v-if="!selectedLocautoProtection"><svg
-                                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                        class="w-4 h-4 text-white">
-                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                                    </svg></div>
+                        <div class="plan-price-box">
+                            <div class="plan-daily-price">
+                                {{ getSelectedCurrencySymbol() }}{{ plan.dailyPrice.toFixed(2) }}
+                                <span>/day</span>
                             </div>
-                            <div class="plan-price-box">
-                                <div class="plan-daily-price">{{ getSelectedCurrencySymbol() }}{{
-                                    convertRentalPrice(parseFloat(vehicle.price_per_day), vehicle.currency ||
-                                        'EUR').toFixed(2) }} <span>/day</span></div>
-                                <div class="plan-total-price">Total: {{ getSelectedCurrencySymbol() }}{{
-                                    convertRentalPrice(parseFloat(vehicle.total_price), vehicle.currency || 'EUR').toFixed(2)
-                                }}</div>
+                            <div class="plan-total-price">
+                                Total: {{ getSelectedCurrencySymbol() }}{{ plan.totalPrice.toFixed(2) }}
                             </div>
-                            <ul class="plan-features">
-                                <li><img :src="check" class="w-4 h-4" /> <span>Standard protection included</span></li>
-                            </ul>
-                            <button class="plan-select-btn">{{ !selectedLocautoProtection ? 'Selected' : 'SelectPackage'
-                            }}</button>
                         </div>
-                        <!-- Other items -->
-                        <div v-for="protection in locautoProtectionPlans" :key="protection.code" class="plan-card"
-                            :class="{ 'selected': selectedLocautoProtection?.code === protection.code }"
-                            @click="selectLocautoProtection(protection)">
-                            <div class="plan-header">
-                                <div>
-                                    <h3 class="plan-name">{{ getShortProtectionName(protection.description) }}</h3>
-                                    <p class="plan-type">{{ protection.code }}</p>
-                                </div>
-                                <div class="plan-check" v-if="selectedLocautoProtection?.code === protection.code"><svg
-                                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                        class="w-4 h-4 text-white">
-                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                                    </svg></div>
-                            </div>
-                            <div class="plan-price-box">
-                                <div class="plan-daily-price">{{ getSelectedCurrencySymbol() }}{{
-                                    convertRentalPrice(parseFloat(vehicle.price_per_day) + parseFloat(protection.amount),
-                                        vehicle.currency || 'EUR').toFixed(2) }}
-                                    <span>/day</span>
-                                </div>
-                                <div class="plan-total-price">Total: {{ getSelectedCurrencySymbol() }}{{
-                                    convertRentalPrice(parseFloat(vehicle.total_price) + (parseFloat(protection.amount) *
-                                        numberOfRentalDays), vehicle.currency || 'EUR').toFixed(2) }}</div>
-                            </div>
-                            <ul class="plan-features">
-                                <li><img :src="check" class="w-4 h-4" /> <span>{{ protection.description }}</span></li>
-                            </ul>
-                            <button class="plan-select-btn">{{ selectedLocautoProtection?.code === protection.code ?
-                                'Selected' : 'Select Package' }}</button>
-                        </div>
-                    </template>
-
-                    <!-- Adobe Cars Protection Plans -->
-                    <template v-else-if="isAdobeCars">
-                        <div v-for="product in adobeProducts" :key="product.code" class="plan-card"
-                            :class="{ 'selected': product.isSelected }" @click="handleAdobeSelection(product)">
-                            <div class="plan-header">
-                                <div>
-                                    <h3 class="plan-name">{{ product.name }}</h3>
-                                    <p class="plan-type">{{ product.code }}</p>
-                                </div>
-                                <div class="plan-check" v-if="product.isSelected">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                        class="w-4 h-4 text-white">
-                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="plan-price-box">
-                                <div class="plan-daily-price">
-                                    {{ getSelectedCurrencySymbol() }}{{ convertRentalPrice(product.total / numberOfRentalDays,
-                                        'USD').toFixed(2) }}
-                                    <span>/day</span>
-                                </div>
-                                <div class="plan-total-price">
-                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertRentalPrice(product.total,
-                                        'USD').toFixed(2) }}
-                                </div>
-                            </div>
-                            <ul class="plan-features">
-                                <li v-for="benefit in product.benefits" :key="benefit">
-                                    <img :src="check" class="w-4 h-4 opacity-100" />
-                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit
-                                    }}</span>
-                                </li>
-                            </ul>
-                            <button class="plan-select-btn">
-                                {{ product.isSelected ? 'Selected' : 'Select Package' }}
-                            </button>
-                        </div>
-
-                    </template>
-
-                    <!-- Internal Vehicles Vendor Plans -->
-                    <template v-if="vehicle.source === 'internal'">
-                        <div v-for="product in internalVendorPlans" :key="product.type" class="plan-card"
-                            :class="{ 'selected': product.isSelected }" @click="selectInternalVendorPlan(product)">
-                            <div class="plan-header">
-                                <div>
-                                    <h3 class="plan-name">{{ product.name }}</h3>
-                                    <p class="plan-type">{{ product.subtitle }}</p>
-                                </div>
-                                <div class="plan-check" v-if="product.isSelected">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                        class="w-4 h-4 text-white">
-                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="plan-price-box">
-                                <div class="plan-daily-price">
-                                    {{ getSelectedCurrencySymbol() }}{{ convertRentalPrice(product.price_per_day,
-                                        product.currency).toFixed(2) }}
-                                    <span>/day</span>
-                                </div>
-                                <div class="plan-total-price">
-                                    Total: {{ getSelectedCurrencySymbol() }}{{ convertRentalPrice(product.total,
-                                        product.currency).toFixed(2) }}
-                                </div>
-                            </div>
-                            <ul class="plan-features">
-                                <li v-for="benefit in product.benefits" :key="benefit">
-                                    <img :src="check" class="w-4 h-4 opacity-100" />
-                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit
-                                    }}</span>
-                                </li>
-                                <li v-if="product.deposit">
-                                    <img :src="check" class="w-4 h-4 opacity-100" />
-                                    <span :class="{ 'font-semibold text-gray-900': isKeyBenefit('Deposit') }">Deposit:
-                                        {{ getSelectedCurrencySymbol() }}{{ convertPrice(product.deposit,
-                                            product.currency).toFixed(2) }}
-                                    </span>
-                                </li>
-                            </ul>
-                            <button class="plan-select-btn">
-                                {{ product.isSelected ? 'Selected' : 'Select Package' }}
-                            </button>
-                        </div>
-                    </template>
+                        <ul class="plan-features">
+                            <li v-for="benefit in plan.benefits" :key="benefit">
+                                <img :src="check" class="w-4 h-4 opacity-100" />
+                                <span :class="{ 'font-semibold text-gray-900': isKeyBenefit(benefit) }">{{ benefit }}</span>
+                            </li>
+                            <li v-if="plan.deposit">
+                                <img :src="check" class="w-4 h-4 opacity-100" />
+                                <span :class="{ 'font-semibold text-gray-900': true }">Deposit: {{ getSelectedCurrencySymbol() }}{{ plan.deposit.toFixed(2) }}</span>
+                            </li>
+                        </ul>
+                        <button class="plan-select-btn">
+                            {{ plan.isSelected ? 'Selected' : 'Select Package' }}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

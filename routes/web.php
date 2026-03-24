@@ -66,8 +66,6 @@ use App\Http\Controllers\VendorController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\VendorsDashboardController;
 use App\Http\Controllers\Admin\PayableSettingController;
-use App\Http\Controllers\WheelsysCarController;
-use App\Http\Controllers\WheelsysBookingController;
 use App\Models\Booking;
 use App\Models\Advertisement;
 use App\Models\Message;
@@ -77,12 +75,6 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
-use App\Http\Controllers\GreenMotionController;
-use App\Http\Controllers\OkMobilityController; // Import the OkMobilityController
-use App\Http\Controllers\AdobeCarController; // Import the AdobeCarController
-use App\Http\Controllers\AdobeBookingController; // Import the AdobeBookingController
-use App\Http\Controllers\LocautoRentController; // Import the LocautoRentController
-use App\Http\Controllers\RenteonCarController; // Import the RenteonCarController
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
 use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
 use App\Http\Controllers\Affiliate\AffiliateQrCodeController; // Import the AffiliateQrCodeController
@@ -416,36 +408,21 @@ Route::group([
     Route::get('/api/esim/countries', [EsimAccessController::class, 'countries'])->name('api.esim.countries');
     Route::get('/api/esim/plans/{countryCode}', [EsimAccessController::class, 'plans'])->name('api.esim.plans');
     Route::post('/api/esim/order', [EsimAccessController::class, 'order'])->name('api.esim.order');
-    // Route::get('/blog', [BlogController::class, 'showBlogPage'])->name('blog');
     Route::get('/page/{slug}', [PageController::class, 'showPublic'])->name('pages.show');
     Route::get('/faq', [FaqController::class, 'showPublicFaqPage'])->name('faq.show');
     Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->name('validate-email');
     Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->name('validate-contact');
-    // Migrated to unified page system with custom slugs
-    // Route::get('/contact-us', [ContactUsPageController::class, 'show'])->name('contact-us');
 
     // Dynamic page custom slugs (managed via admin Pages > custom_slug field)
     Route::get('/{customSlug}', [\App\Http\Controllers\Admin\PageController::class, 'showByCustomSlug'])
         ->name('pages.custom')
         ->where('customSlug', 'contact-us|about-us|privacy-policy|terms-and-conditions');
 
-    Route::post('/contact', [ContactFormController::class, 'store'])->name('contact.submit');
+    Route::post('/contact', [ContactFormController::class, 'store'])->name('contact.submit')->middleware('throttle:5,1');
     Route::get('/vendor/{vendorProfileId}/reviews', [ReviewController::class, 'vendorAllReviews'])->name('vendor.reviews.all');
-
-    // Wheelsys Single Car Page (Open Route)
-    Route::get('/wheelsys-car/{id}', [WheelsysCarController::class, 'show'])->name('wheelsys-car.show');
-
-    // Wheelsys Booking Routes (Open - Accessible by both guests and authenticated users)
-    Route::get('/wheelsys-booking/create/{groupCode}', [WheelsysBookingController::class, 'create'])->name('wheelsys.booking.create');
-    Route::post('/wheelsys-booking', [WheelsysBookingController::class, 'store'])->name('wheelsys.booking.store');
-    Route::get('/wheelsys-booking/payment/{booking}', [WheelsysBookingController::class, 'payment'])->name('wheelsys.booking.payment');
-    Route::post('/wheelsys-booking/process-payment/{booking}', [WheelsysBookingController::class, 'processPayment'])->name('wheelsys.booking.process-payment');
-    Route::get('/wheelsys-booking/success/{booking}', [WheelsysBookingController::class, 'success'])->name('wheelsys.booking.success');
-    Route::get('/wheelsys-booking/{booking}', [WheelsysBookingController::class, 'show'])->name('wheelsys.booking.show');
 
     // Show Blogs on Home page
     Route::get('/', [BlogController::class, 'homeBlogs'])->name('welcome');
-    // Route::get('/blog/{blog:slug}', [BlogController::class, 'show'])->name('blog.show');
     Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
     Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
     Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFooterCategories']);
@@ -778,9 +755,6 @@ Route::group([
         Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
         Route::get('/profile/reviews', [ReviewController::class, 'userReviews'])->name('profile.reviews');
 
-        // Old booking status routes - DEPRECATED (continued)
-        // Route::get('/profile/bookings/cancelled', [BookingController::class, 'getCancelledBookings'])->name('profile.bookings.cancelled');
-
         // Apply for vendor
         Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendor.store');
         Route::get('/vendor/register', [VendorController::class, 'create'])->name('vendor.register');
@@ -791,8 +765,6 @@ Route::group([
         Route::post('/booking/allow-access', [BookingController::class, 'allowAccess'])->name('booking.allow_access');
         Route::post('/booking/cancel', [BookingController::class, 'cancelBooking'])->name('booking.cancel');
         Route::inertia('/booking-unsuccess', 'Booking/Unsuccess');
-        // Duplicate route removed - booking.show is defined at line 475 pointing to BookingController@show
-        // Route::get('/booking/{id}', [VehicleController::class, 'booking'])->name('booking.show');
         Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
         Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
         Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
@@ -802,27 +774,12 @@ Route::group([
         // Unified booking route (replaces fragmented status routes)
         Route::get('/profile/bookings', [BookingController::class, 'getAllCustomerBookings'])->name('profile.bookings.all');
 
-        // Old booking status routes - DEPRECATED, kept for any existing links/backward compatibility
-        // TODO: Remove in future release after verifying no external dependencies
-        // Route::get('/profile/bookings/pending', [BookingController::class, 'getPendingBookings'])->name('profile.bookings.pending');
-        // Route::get('/profile/bookings/confirmed', [BookingController::class, 'getConfirmedBookings'])->name('profile.bookings.confirmed');
-        // Route::get('/profile/bookings/completed', [BookingController::class, 'getCompletedBookings'])->name('profile.bookings.completed');
-        // Route::get('/profile/bookings/green-motion', ...); // Removed: GreenMotionBookingController deleted
-        // Route::get('/profile/bookings/adobe', [AdobeBookingController::class, 'getCustomerAdobeBookings'])->name('profile.bookings.adobe');
-        // Route::get('/profile/bookings/ok-mobility', ...); // Removed: OkMobilityBookingController deleted
-
         // Favourite vehicles
         Route::post('/vehicles/{vehicle}/favourite', [FavoriteController::class, 'favourite'])->name('vehicles.favourite');
         Route::post('/vehicles/{vehicle}/unfavourite', [FavoriteController::class, 'unfavourite'])->name('vehicles.unfavourite');
         Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
         Route::get('/favorites/status', [FavoriteController::class, 'getFavoriteStatus'])->name('favorites.status');
         Route::post('/favorites/provider/toggle', [FavoriteController::class, 'toggleProviderFavourite'])->name('favorites.provider.toggle');
-
-        // Adobe Booking Routes
-        Route::get('/adobe-booking/create/{id}', [AdobeBookingController::class, 'create'])->name('adobe-booking.create');
-        Route::post('/adobe-booking/charge', [AdobeBookingController::class, 'processAdobeBookingPayment'])->name('adobe.booking.charge');
-        Route::get('/adobe-booking-success', [AdobeBookingController::class, 'adobeBookingSuccess'])->name('adobe.booking.success');
-        Route::get('/adobe-booking-cancel', [AdobeBookingController::class, 'adobeBookingCancel'])->name('adobe.booking.cancel');
 
     });
 
@@ -872,83 +829,8 @@ Route::group([
             'messages' => $messages
         ]);
     });
-    // GreenMotion Cars Page
-    Route::get('/green-motion-cars', [GreenMotionController::class, 'showGreenMotionCars'])->name('green-motion-cars');
-
-    // OK Mobility Cars Page
-
-    // GreenMotion Booking Page
-    Route::get('/green-motion-booking/{id}/checkout', [GreenMotionController::class, 'showGreenMotionBookingPage'])
-        ->where('id', '[0-9]+') // Ensure ID is numeric
-        ->name('green-motion-booking.checkout');
-
-    // Route::get('/{slug}', [ContactUsPageController::class, 'show'])->name('contact.show');
-
-    // GreenMotion Single Car Page
-    Route::get('/green-motion-car/{id}', [GreenMotionController::class, 'showGreenMotionCar'])
-        ->name('green-motion-car.show');
-    Route::post('/green-motion-car/check-availability', [GreenMotionController::class, 'checkAvailability'])->name('green-motion-car.check-availability');
-
-    // Adobe Car Single Car Page
-    Route::get('/adobe-car/{id}', [AdobeCarController::class, 'show'])
-        ->name('adobe-car.show');
-
-    // Renteon Single Car Page
-    Route::get('/renteon-car/{id}', [RenteonCarController::class, 'show'])
-        ->name('renteon-car.show');
-
-    // OK Mobility Single Car Page
-    Route::get('/ok-mobility-car/{id}', [OkMobilityController::class, 'showOkMobilityCar'])
-        ->name('ok-mobility-car.show');
-
-    // OK Mobility Booking Page
-    Route::get('/ok-mobility-booking/{id}/checkout', [OkMobilityController::class, 'showOkMobilityBookingPage'])
-        ->name('ok-mobility-booking.checkout');
-
-    // OK Mobility Check Availability
-    Route::post('/ok-mobility-car/check-availability', [OkMobilityController::class, 'checkAvailability'])->name('ok-mobility-car.check-availability');
-
-    // Locauto Rent Cars Page
-    Route::get('/locauto-rent-cars', [LocautoRentController::class, 'showVehicles'])->name('locauto-rent-cars');
-
-    // Locauto Rent Single Car Page
-    Route::get('/locauto-rent-car/{id}', [LocautoRentController::class, 'showVehicle'])
-        ->name('locauto-rent-car.show');
-
-    // Locauto Rent Booking Page
-    Route::get('/locauto-rent-booking/{id}/checkout', [LocautoRentController::class, 'showBookingPage'])
-        ->where('id', '[A-Za-z0-9]+') // Allow alphanumeric SIPP codes
-        ->name('locauto-rent-booking.checkout');
-
-    // Locauto Rent Booking Success Page
-    Route::get('/locauto-rent-booking-success/{confirmation}', [LocautoRentController::class, 'bookingSuccess'])
-        ->name('locauto-rent-booking-success');
-
-    // Locauto Rent API Routes
-    Route::post('/locauto-rent-booking', [LocautoRentController::class, 'processBooking'])->name('locauto-rent-booking');
-    Route::post('/locauto-rent-car/check-availability', [LocautoRentController::class, 'checkAvailability'])->name('locauto-rent-car.check-availability');
-    Route::get('/api/locauto-rent/vehicles', [LocautoRentController::class, 'getVehicles'])->name('api.locauto-rent.vehicles');
-
-    // Locauto Rent Stripe Payment Routes
-    Route::post('/locauto-rent-booking/charge', [LocautoRentController::class, 'processStripePayment'])->name('locauto-rent-booking.charge');
-    Route::get('/locauto-rent-booking/success', [LocautoRentController::class, 'handlePaymentSuccess'])->name('locauto-rent-booking.success');
-    Route::get('/locauto-rent-booking/cancel', [LocautoRentController::class, 'handlePaymentCancel'])->name('locauto-rent-booking-cancel');
-
 }); // End of locale group
 
-Route::get('/green-motion-vehicles', [GreenMotionController::class, 'getGreenMotionVehicles'])->name('green-motion-vehicles');
-Route::get('/green-motion-countries', [GreenMotionController::class, 'getGreenMotionCountries'])->name('green-motion-countries');
-Route::get('/green-motion-locations', [GreenMotionController::class, 'getGreenMotionLocations'])->name('green-motion-locations');
-Route::get('/green-motion-terms-and-conditions', [GreenMotionController::class, 'getGreenMotionTermsAndConditions'])->name('green-motion-terms-and-conditions');
-Route::get('/green-motion-regions', [GreenMotionController::class, 'getGreenMotionRegions'])->name('green-motion-regions');
-Route::get('/green-motion-service-areas', [GreenMotionController::class, 'getGreenMotionServiceAreas'])->name('green-motion-service-areas');
-Route::post('/green-motion-booking', [GreenMotionController::class, 'makeGreenMotionBooking'])->name('green-motion-booking');
-
-Route::get('/fetch-ok-mobility-stations', function () {
-    $okMobilityService = app(\App\Services\OkMobilityService::class);
-    $stationsXml = $okMobilityService->getStations();
-    return response($stationsXml, 200, ['Content-Type' => 'application/xml']);
-});
 
 // Simple test route to verify routes are working
 Route::get('/test-business-debug/{token}', function ($token) {
@@ -977,6 +859,9 @@ Route::get('/sitemaps/{filename}', function ($filename) {
     }
     return response()->file($sitemapPath, ['Content-Type' => 'application/xml']);
 })->where('filename', '.*\.xml$')->name('sitemaps.file');
+
+// 410/301 redirects are handled by HandleSeoRedirects middleware + seo_redirects DB table.
+// Run: php artisan seo:seed-legacy-redirects (one time after migration)
 
 Route::fallback(function () {
     return inertia('Error', ['status' => 404]);
