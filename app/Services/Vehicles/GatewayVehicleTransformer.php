@@ -51,41 +51,7 @@ class GatewayVehicleTransformer
             $features[] = 'Air Conditioning';
         }
 
-        $extras = collect($gv['extras'] ?? [])->map(function ($extra) {
-            $dailyRate = (float) ($extra['daily_rate'] ?? 0);
-            $totalPrice = (float) ($extra['total_price'] ?? 0);
-            $extCurrency = $extra['currency'] ?? 'EUR';
-            $maxQty = $extra['max_quantity'] ?? 1;
-            $name = $extra['name'] ?? '';
-            $description = $extra['description'] ?? $name;
-            $extId = $extra['id'] ?? '';
-
-            return [
-                'id' => $extId,
-                'name' => $name,
-                'description' => $description,
-                'daily_rate' => $dailyRate,
-                'Daily_rate' => $dailyRate,
-                'total_for_booking' => $totalPrice,
-                'Total_for_this_booking' => $totalPrice,
-                'total_for_booking_currency' => $extCurrency,
-                'Total_for_this_booking_currency' => $extCurrency,
-                'option_id' => $extId,
-                'optionID' => $extId,
-                'price' => $dailyRate,
-                'amount' => $dailyRate,
-                'total_price' => $totalPrice,
-                'price_per_day' => $dailyRate,
-                'service_id' => $extId,
-                'currency' => $extCurrency,
-                'max_quantity' => $maxQty,
-                'numberAllowed' => $maxQty,
-                'mandatory' => $extra['mandatory'] ?? false,
-                'required' => $extra['mandatory'] ?? false,
-                'type' => $extra['type'] ?? 'equipment',
-                'code' => $extId,
-            ];
-        })->all();
+        $extras = $this->mapExtras($gv['extras'] ?? [], $rawSupplierId);
         $options = $extras;
 
         $insuranceOptions = collect($gv['insurance_options'] ?? [])->map(function ($ins) {
@@ -100,133 +66,6 @@ class GatewayVehicleTransformer
                 'included' => $ins['included'] ?? false,
             ];
         })->all();
-
-        $sbcExtras = $extras;
-        if ($rawSupplierId === 'sicily_by_car') {
-            $sbcExtras = collect($gv['extras'] ?? [])->map(function ($extra) {
-                $sd = $extra['supplier_data'] ?? [];
-                return [
-                    'id' => $sd['id'] ?? ($extra['id'] ?? ''),
-                    'description' => $sd['description'] ?? ($extra['name'] ?? ''),
-                    'isMandatory' => $sd['isMandatory'] ?? ($extra['mandatory'] ?? false),
-                    'total' => $sd['total'] ?? ($extra['total_price'] ?? 0),
-                    'excess' => $sd['excess'] ?? null,
-                    'excessAmount' => $sd['excessAmount'] ?? null,
-                    'payment' => $sd['payment'] ?? null,
-                    'price' => (float) ($extra['daily_rate'] ?? 0),
-                    'daily_rate' => (float) ($extra['daily_rate'] ?? 0),
-                    'total_price' => (float) ($extra['total_price'] ?? 0),
-                    'total_for_booking' => (float) ($extra['total_price'] ?? 0),
-                    'name' => $sd['description'] ?? ($extra['name'] ?? ''),
-                    'mandatory' => $sd['isMandatory'] ?? ($extra['mandatory'] ?? false),
-                ];
-            })->all();
-        }
-
-        $okMobilityExtras = $extras;
-        if ($rawSupplierId === 'ok_mobility') {
-            $okMobilityExtras = collect($gv['extras'] ?? [])->map(function ($extra) {
-                $sd = $extra['supplier_data'] ?? [];
-                return [
-                    'extraID' => $sd['extraID'] ?? ($extra['id'] ?? ''),
-                    'code' => $sd['code'] ?? ($sd['extraID'] ?? ($extra['id'] ?? '')),
-                    'extra' => $sd['extra'] ?? ($extra['name'] ?? ''),
-                    'name' => $extra['name'] ?? '',
-                    'description' => $extra['description'] ?? '',
-                    'value' => $sd['value'] ?? (string) ($extra['daily_rate'] ?? 0),
-                    'valueWithTax' => $sd['valueWithTax'] ?? (string) ($extra['daily_rate'] ?? 0),
-                    'pricePerContract' => $sd['pricePerContract'] ?? 'false',
-                    'extra_Included' => $sd['extra_Included'] ?? 'false',
-                    'extra_Required' => $sd['extra_Required'] ?? 'false',
-                    'price' => (float) ($extra['daily_rate'] ?? 0),
-                    'daily_rate' => (float) ($extra['daily_rate'] ?? 0),
-                    'total_price' => (float) ($extra['total_price'] ?? 0),
-                    'amount' => (float) ($extra['daily_rate'] ?? 0),
-                    'mandatory' => $extra['mandatory'] ?? false,
-                    'required' => $extra['mandatory'] ?? false,
-                    'type' => $extra['type'] ?? 'equipment',
-                    'id' => $extra['id'] ?? '',
-                ];
-            })->all();
-        }
-
-        $renteonExtras = $extras;
-        if ($rawSupplierId === 'renteon') {
-            $renteonExtras = collect($gv['extras'] ?? [])->map(function ($extra) {
-                $sd = $extra['supplier_data'] ?? [];
-                $code = $sd['code'] ?? ($extra['id'] ?? '');
-                return [
-                    'id' => $extra['id'] ?? '',
-                    'name' => $extra['name'] ?? '',
-                    'description' => $extra['description'] ?? ($extra['name'] ?? ''),
-                    'code' => $code,
-                    'service_id' => $code,
-                    'service_group' => $sd['service_group'] ?? '',
-                    'service_type' => $sd['service_type'] ?? '',
-                    'price' => (float) ($extra['daily_rate'] ?? 0),
-                    'amount' => (float) ($extra['daily_rate'] ?? 0),
-                    'daily_rate' => (float) ($extra['daily_rate'] ?? 0),
-                    'total_price' => (float) ($extra['total_price'] ?? 0),
-                    'price_per_day' => (float) ($extra['daily_rate'] ?? 0),
-                    'currency' => $extra['currency'] ?? 'EUR',
-                    'max_quantity' => $extra['max_quantity'] ?? 1,
-                    'mandatory' => $extra['mandatory'] ?? false,
-                    'required' => $extra['mandatory'] ?? false,
-                    'type' => $extra['type'] ?? 'equipment',
-                    'included' => ($sd['free_of_charge'] ?? false) || ($sd['included_in_price'] ?? false) || ($sd['included_in_price_limited'] ?? false),
-                    'free_of_charge' => $sd['free_of_charge'] ?? false,
-                    'included_in_price' => $sd['included_in_price'] ?? false,
-                    'included_in_price_limited' => $sd['included_in_price_limited'] ?? false,
-                    'is_one_time' => $sd['is_one_time'] ?? false,
-                    'quantity_included' => $sd['quantity_included'] ?? 0,
-                ];
-            })->all();
-        }
-
-        $locautoExtras = $extras;
-        if ($rawSupplierId === 'locauto_rent') {
-            $locautoExtras = collect($gv['extras'] ?? [])->map(function ($extra) {
-                $sd = $extra['supplier_data'] ?? [];
-                return [
-                    'id' => $extra['id'] ?? '',
-                    'name' => $extra['name'] ?? '',
-                    'description' => $extra['description'] ?? ($extra['name'] ?? ''),
-                    'code' => $sd['code'] ?? ($extra['id'] ?? ''),
-                    'amount' => (float) ($sd['amount'] ?? ($extra['total_price'] ?? 0)),
-                    'price' => (float) ($extra['daily_rate'] ?? 0),
-                    'daily_rate' => (float) ($extra['daily_rate'] ?? 0),
-                    'total_price' => (float) ($extra['total_price'] ?? 0),
-                    'total_for_booking' => (float) ($extra['total_price'] ?? 0),
-                    'currency' => $extra['currency'] ?? 'EUR',
-                    'mandatory' => $extra['mandatory'] ?? false,
-                    'included_in_rate' => $sd['included_in_rate'] ?? false,
-                    'type' => $extra['type'] ?? 'equipment',
-                ];
-            })->all();
-        }
-
-        $surpriceExtras = $extras;
-        if ($rawSupplierId === 'surprice') {
-            $surpriceExtras = collect($gv['extras'] ?? [])->map(function ($extra) {
-                $sd = $extra['supplier_data'] ?? [];
-                return [
-                    'id' => $extra['id'] ?? '',
-                    'name' => $extra['name'] ?? '',
-                    'description' => $extra['description'] ?? ($extra['name'] ?? ''),
-                    'code' => $sd['code'] ?? ($extra['id'] ?? ''),
-                    'price' => (float) ($extra['total_price'] ?? 0),
-                    'daily_rate' => (float) ($extra['daily_rate'] ?? 0),
-                    'total_price' => (float) ($extra['total_price'] ?? 0),
-                    'price_per_day' => (float) ($sd['unit_charge'] ?? ($extra['daily_rate'] ?? 0)),
-                    'per_day' => $sd['per_day'] ?? false,
-                    'allow_quantity' => $sd['allow_quantity'] ?? 1,
-                    'purpose' => $sd['purpose'] ?? null,
-                    'currency' => $extra['currency'] ?? 'EUR',
-                    'mandatory' => $extra['mandatory'] ?? false,
-                    'type' => $extra['type'] ?? 'equipment',
-                ];
-            })->all();
-        }
 
         $protections = [];
         if ($rawSupplierId === 'adobe_car') {
@@ -315,15 +154,8 @@ class GatewayVehicleTransformer
             'tdr' => $supplierData['tdr'] ?? $totalPrice,
             'quoteid' => $supplierData['quote_id'] ?? null,
             'rentalCode' => null,
-            'options' => ($rawSupplierId === 'ok_mobility') ? $okMobilityExtras : $options,
-            'extras' => match ($rawSupplierId) {
-                'sicily_by_car' => $sbcExtras,
-                'ok_mobility' => $okMobilityExtras,
-                'locauto_rent' => $locautoExtras,
-                'surprice' => $surpriceExtras,
-                'renteon' => $renteonExtras,
-                default => $extras,
-            },
+            'options' => $options,
+            'extras' => $extras,
             'insurance_options' => $insuranceOptions,
             'supplier_data' => $gv['supplier_data'] ?? [],
             'pickup_office' => $supplierData['pickup_office'] ?? null,
@@ -677,6 +509,76 @@ class GatewayVehicleTransformer
                 'benefits' => $product['benefits'] ?? [],
             ];
         })->values()->all();
+    }
+
+    private function mapExtras(array $rawExtras, string $supplierId): array
+    {
+        return collect($rawExtras)->map(function (array $extra) use ($supplierId) {
+            $sd = $extra['supplier_data'] ?? [];
+            $extId = $extra['id'] ?? '';
+            $name = $extra['name'] ?? '';
+            $description = $extra['description'] ?? $name;
+            $code = $sd['code'] ?? $extId;
+            $dailyRate = (float) ($extra['daily_rate'] ?? 0);
+            $totalPrice = (float) ($extra['total_price'] ?? 0);
+            $extCurrency = $extra['currency'] ?? 'EUR';
+            $maxQty = $extra['max_quantity'] ?? 1;
+            $mandatory = $extra['mandatory'] ?? false;
+            $type = $extra['type'] ?? 'equipment';
+            $perDay = $sd['per_day'] ?? false;
+            $pricePerDay = (float) ($sd['unit_charge'] ?? $dailyRate);
+
+            // Canonical fields — every extra has these regardless of provider.
+            $canonical = [
+                'id' => $extId,
+                'name' => $name,
+                'description' => $description,
+                'code' => $code,
+                'price' => $dailyRate,
+                'daily_rate' => $dailyRate,
+                'total_price' => $totalPrice,
+                'price_per_day' => $pricePerDay,
+                'currency' => $extCurrency,
+                'mandatory' => $mandatory,
+                'type' => $type,
+                'max_quantity' => $maxQty,
+                'per_day' => $perDay,
+                // Legacy aliases for backward compatibility with frontend code.
+                'Daily_rate' => $dailyRate,
+                'total_for_booking' => $totalPrice,
+                'Total_for_this_booking' => $totalPrice,
+                'total_for_booking_currency' => $extCurrency,
+                'Total_for_this_booking_currency' => $extCurrency,
+                'option_id' => $extId,
+                'optionID' => $extId,
+                'amount' => $dailyRate,
+                'service_id' => $extId,
+                'numberAllowed' => $maxQty,
+                'required' => $mandatory,
+            ];
+
+            // Provider-specific enrichment from supplier_data.
+            $enrichment = $this->enrichExtra($supplierId, $extra, $sd);
+
+            // Merge: canonical first, then supplier_data raw fields, then enrichment.
+            // Enrichment wins over raw supplier_data when keys overlap (computed values).
+            return array_merge($canonical, $sd, $enrichment);
+        })->all();
+    }
+
+    private function enrichExtra(string $supplierId, array $extra, array $sd): array
+    {
+        return match ($supplierId) {
+            'renteon' => [
+                'included' => ($sd['free_of_charge'] ?? false)
+                    || ($sd['included_in_price'] ?? false)
+                    || ($sd['included_in_price_limited'] ?? false),
+            ],
+            'locauto_rent' => [
+                'amount' => (float) ($sd['amount'] ?? ($extra['total_price'] ?? 0)),
+            ],
+            default => [],
+        };
     }
 
     private function mapCanonicalExtrasPreview(array $extrasPreview): array
