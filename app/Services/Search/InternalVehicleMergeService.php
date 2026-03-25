@@ -28,9 +28,28 @@ class InternalVehicleMergeService
                 ->values();
         }
 
-        // Fallback: no our_location_id — return all internal vehicles found by the
-        // coordinate/city query in SearchController. They're already geo-filtered.
-        return $internalVehicles->values();
+        // Fallback: no our_location_id — filter by city match against the search location.
+        $searchCity = strtolower(trim($matchedLocation['city'] ?? ($validated['city'] ?? '')));
+        $searchCountry = strtolower(trim($matchedLocation['country'] ?? ($validated['country'] ?? '')));
+
+        if (!$searchCity && !$searchCountry) {
+            return $internalVehicles->values();
+        }
+
+        return $internalVehicles->filter(function ($vehicle) use ($searchCity, $searchCountry) {
+            $v = (array) $vehicle;
+            $legacyPayload = $v['booking_context']['provider_payload'] ?? [];
+            $vCity = strtolower(trim($v['city'] ?? ($legacyPayload['city'] ?? '')));
+            $vCountry = strtolower(trim($v['country'] ?? ($legacyPayload['country'] ?? '')));
+
+            if ($searchCity && $vCity) {
+                return $vCity === $searchCity;
+            }
+            if ($searchCountry && $vCountry) {
+                return $vCountry === $searchCountry;
+            }
+            return false;
+        })->values();
     }
 
     private function extractInternalLocationHash(?array $matchedLocation): ?string
