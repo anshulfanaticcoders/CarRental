@@ -72,6 +72,7 @@ class Kernel extends HttpKernel
         'set_locale' => \App\Http\Middleware\SetLocale::class,
          'redirect.country' => \App\Http\Middleware\RedirectCountry::class,
          'share.country' => \App\Http\Middleware\ShareCountryFromUrl::class,
+         'gateway.token' => \App\Http\Middleware\VerifyGatewayToken::class,
     ];
 
     protected $routeMiddleware = [

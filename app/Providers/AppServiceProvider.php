@@ -33,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
         Blog::observe(BlogObserver::class);
         BlogTranslation::observe(BlogTranslationObserver::class);
         PageTranslation::observe(PageTranslationObserver::class);
+        \App\Models\Vehicle::observe(\App\Observers\VehicleObserver::class);
 
         if (env('APP_ENV') !== 'local') {
             URL::forceScheme('https'); // Force HTTPS for all routes

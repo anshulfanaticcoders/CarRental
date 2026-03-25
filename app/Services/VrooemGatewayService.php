@@ -160,4 +160,18 @@ class VrooemGatewayService
             return null;
         }
     }
+
+    /**
+     * Trigger a location sync in the gateway (runs in background on gateway side).
+     * Call this when a vendor adds/updates a vehicle location.
+     */
+    public function triggerLocationSync(): void
+    {
+        try {
+            $this->request('POST', '/api/v1/locations/sync');
+            Log::info('VrooemGateway: Location sync triggered');
+        } catch (\Exception $e) {
+            Log::warning('VrooemGateway: Location sync trigger failed', ['error' => $e->getMessage()]);
+        }
+    }
 }

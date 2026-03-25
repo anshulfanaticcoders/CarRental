@@ -22,13 +22,15 @@ class InternalVehicleMergeService
         }
 
         $locationHash = $this->extractInternalLocationHash($matchedLocation);
-        if ($locationHash === null) {
-            return collect();
+        if ($locationHash !== null) {
+            return $internalVehicles
+                ->filter(fn ($vehicle) => $this->vehicleLocationHash((array) $vehicle) === $locationHash)
+                ->values();
         }
 
-        return $internalVehicles
-            ->filter(fn ($vehicle) => $this->vehicleLocationHash((array) $vehicle) === $locationHash)
-            ->values();
+        // Fallback: no our_location_id — return all internal vehicles found by the
+        // coordinate/city query in SearchController. They're already geo-filtered.
+        return $internalVehicles->values();
     }
 
     private function extractInternalLocationHash(?array $matchedLocation): ?string

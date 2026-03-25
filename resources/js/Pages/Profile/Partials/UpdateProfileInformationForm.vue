@@ -85,7 +85,6 @@ const handleSubmit = () => {
         onError: (errors) => {
             toast.error('Failed to update profile. Please check the form.');
             // Log errors for debugging
-            console.log('Validation errors:', errors);
 
             // Get the first error field
             const firstErrorField = Object.keys(errors)[0];

@@ -106,7 +106,9 @@ export function createInternalAdapter(props, { formatPrice }) {
 
   const locationData = computed(() => {
     const v = props.vehicle;
-    const address = v?.full_vehicle_address || v?.location || legacyPayload.value?.location || null;
+    const rawLocation = typeof v?.location === 'string' ? v.location : null;
+    const pickupName = v?.location?.pickup?.name || null;
+    const address = v?.full_vehicle_address || pickupName || rawLocation || legacyPayload.value?.location || null;
     const vendorProfile = legacyPayload.value?.vendorProfileData || legacyPayload.value?.vendor_profile_data || legacyPayload.value?.vendorProfile || {};
     return {
       pickupStation: address,

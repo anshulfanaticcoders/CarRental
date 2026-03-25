@@ -282,7 +282,8 @@ const vehicleSpecs = computed(() => {
 const vehicleLocationText = computed(() => {
     if (!props.vehicle) return '';
     if (props.vehicle.full_vehicle_address) return props.vehicle.full_vehicle_address;
-    const parts = [props.vehicle.location, props.vehicle.city, props.vehicle.state, props.vehicle.country].filter(Boolean).map(p => `${p}`.trim()).filter(p => p.length > 0);
+    const loc = typeof props.vehicle.location === 'string' ? props.vehicle.location : (props.vehicle.location?.pickup?.name || null);
+    const parts = [loc, props.vehicle.city, props.vehicle.state, props.vehicle.country].filter(v => v && typeof v === 'string').map(p => p.trim()).filter(p => p.length > 0);
     return parts.join(', ') || props.pickupLocation || props.locationName || '';
 });
 const locationDetailLines = computed(() => {

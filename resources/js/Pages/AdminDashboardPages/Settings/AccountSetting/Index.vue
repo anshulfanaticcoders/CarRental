@@ -49,7 +49,6 @@ const handleSubmit = () => {
             }, 1500);
         },
         onError: (errors) => {
-            console.log('Validation errors:', errors);
             const firstErrorField = Object.keys(errors)[0];
             if (firstErrorField) {
                 const inputElement = document.getElementById(firstErrorField);

@@ -56,6 +56,10 @@ Route::middleware('auth:sanctum')->get('/user-documents', [UserDocumentControlle
 
 
 
+// Internal API for Vrooem Gateway (authenticated via bearer token)
+Route::get('/internal/locations', [\App\Http\Controllers\Api\InternalLocationController::class, 'index'])
+    ->middleware('gateway.token');
+
 // Booking API's
 
 Route::get('/plans', [PlanController::class, 'index']);

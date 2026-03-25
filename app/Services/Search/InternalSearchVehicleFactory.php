@@ -51,10 +51,20 @@ class InternalSearchVehicleFactory
             ],
             'products' => $this->buildProducts($legacyPayload, $rentalDays, $currency, $benefits),
             'extras_preview' => $this->buildExtrasPreview($legacyPayload, $rentalDays, $currency),
+            'latitude' => $this->toFloat($vehicle['latitude'] ?? null),
+            'longitude' => $this->toFloat($vehicle['longitude'] ?? null),
+            'full_vehicle_address' => $this->nullableString($vehicle['full_vehicle_address'] ?? null),
+            // Top-level aliases for filters and card display
+            'seating_capacity' => $this->toFloat($vehicle['seating_capacity'] ?? null),
+            'doors' => $this->toFloat($vehicle['number_of_doors'] ?? ($vehicle['doors'] ?? null)),
+            'transmission' => $this->normalizeTransmission($vehicle['transmission'] ?? null),
+            'fuel' => $this->normalizeFuel($vehicle['fuel'] ?? null),
+            'city' => $this->nullableString($vehicle['city'] ?? null),
+            'country' => $this->nullableString($vehicle['country'] ?? null),
             'location' => [
                 'pickup' => [
                     'provider_location_id' => $this->nullableString($searchContext['pickup_location_id'] ?? null),
-                    'name' => $this->nullableString($vehicle['location'] ?? null),
+                    'name' => $this->nullableString($vehicle['full_vehicle_address'] ?? ($vehicle['location'] ?? null)),
                     'latitude' => $this->toFloat($vehicle['latitude'] ?? null),
                     'longitude' => $this->toFloat($vehicle['longitude'] ?? null),
                 ],

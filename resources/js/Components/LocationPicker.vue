@@ -89,7 +89,7 @@ onMounted(async () => {
       return;
     }
     await window.googleMapsReady;
-    console.log("Google Maps SDK is ready.");
+    
 
     if (typeof google === 'undefined' || !google.maps || !google.maps.importLibrary) {
       console.error("Google Maps 'google' object or 'importLibrary' is not available.");
@@ -97,7 +97,7 @@ onMounted(async () => {
     }
     
     await google.maps.importLibrary("places");
-    console.log("Google Maps Places library imported.");
+    
 
     if (autocompleteInputRef.value) {
       const options = {
@@ -111,7 +111,6 @@ onMounted(async () => {
         const place = autocompleteInstance.getPlace();
 
         if (!place.geometry || !place.geometry.location) {
-          console.log("Autocomplete's returned place contains no geometry", place);
           isLoadingDetails.value = false;
           // Optionally clear fields or show a message
           window.alert("No details available for input: '" + place.name + "'. Please select a valid location from the suggestions.");

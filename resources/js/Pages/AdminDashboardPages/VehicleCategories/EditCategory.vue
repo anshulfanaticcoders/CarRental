@@ -164,11 +164,9 @@ watch(() => editForm.value.name, (newName) => {
 });
 
 // Debug: Log the user data to see what we're getting
-console.log('EditCategory - user data:', props.user);
 
 // Watch for changes in props.user
 watch(() => props.user, (newUser) => {
-    console.log('EditCategory - newUser in watch:', newUser);
     if (newUser) {
         editForm.value = {
             id: newUser.id,
@@ -180,7 +178,6 @@ watch(() => props.user, (newUser) => {
             existing_image: newUser.image || null,
             image: null
         };
-        console.log('EditCategory - editForm after update:', editForm.value);
         // Reset preview states
         imagePreview.value = null;
         selectedFileName.value = '';

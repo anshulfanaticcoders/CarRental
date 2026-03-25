@@ -120,17 +120,21 @@ export const buildVehiclePlaceholderDataUri = (vehicle = {}) => {
 };
 
 export const resolveVehicleImageSource = (vehicle = {}) => {
-    if (sanitizeText(vehicle?.source).toLowerCase() === 'internal') {
-        const primaryImage = vehicle?.images?.find?.((image) => image?.image_type === 'primary')?.image_url;
-        return primaryImage || buildVehiclePlaceholderDataUri(vehicle);
-    }
-
+    // Top-level image field (set by transformer or factory)
     if (sanitizeText(vehicle?.image)) return vehicle.image;
     if (sanitizeText(vehicle?.image_url)) return vehicle.image_url;
     if (sanitizeText(vehicle?.image_path)) return vehicle.image_path;
 
+    // Images array (internal vehicles via legacy payload)
     if (Array.isArray(vehicle?.images)) {
         const primaryImage = vehicle.images.find((image) => image?.image_type === 'primary')?.image_url;
+        if (sanitizeText(primaryImage)) return primaryImage;
+    }
+
+    // Booking context images (internal canonical path)
+    const providerImages = vehicle?.booking_context?.provider_payload?.images;
+    if (Array.isArray(providerImages)) {
+        const primaryImage = providerImages.find((image) => image?.image_type === 'primary')?.image_url;
         if (sanitizeText(primaryImage)) return primaryImage;
     }
 
