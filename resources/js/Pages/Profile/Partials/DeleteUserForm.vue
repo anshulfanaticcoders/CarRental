@@ -11,6 +11,10 @@ import { nextTick, ref, getCurrentInstance } from 'vue';
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
 
+const props = defineProps({
+    hasSocialAccount: { type: Boolean, default: false },
+});
+
 const confirmingUserDeletion = ref(false);
 const passwordInput = ref(null);
 
@@ -21,21 +25,22 @@ const form = useForm({
 const confirmUserDeletion = () => {
     confirmingUserDeletion.value = true;
 
-    nextTick(() => passwordInput.value.focus());
+    if (!props.hasSocialAccount) {
+        nextTick(() => passwordInput.value?.focus());
+    }
 };
 
 const deleteUser = () => {
     form.delete(route('profile.destroy'), {
         preserveScroll: true,
         onSuccess: () => closeModal(),
-        onError: () => passwordInput.value.focus(),
+        onError: () => { if (!props.hasSocialAccount) passwordInput.value?.focus(); },
         onFinish: () => form.reset(),
     });
 };
 
 const closeModal = () => {
     confirmingUserDeletion.value = false;
-
     form.reset();
 };
 </script>
@@ -62,7 +67,8 @@ const closeModal = () => {
                     {{ _t('customerprofilepages', 'confirm_delete_modal_subheader') }}
                 </p>
 
-                <div class="mt-6">
+                <!-- Password field only for non-social users -->
+                <div v-if="!hasSocialAccount" class="mt-6">
                     <InputLabel for="password" :value="_t('customerprofilepages', 'password_label')" class="sr-only" />
 
                     <TextInput
@@ -76,6 +82,13 @@ const closeModal = () => {
                     />
 
                     <InputError :message="form.errors.password" class="mt-2" />
+                </div>
+
+                <!-- Social users see a confirmation message instead -->
+                <div v-else class="mt-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p class="text-sm text-amber-700">
+                        You signed in with Google. Click "Delete Account" below to confirm.
+                    </p>
                 </div>
 
                 <div class="mt-6 flex justify-end">

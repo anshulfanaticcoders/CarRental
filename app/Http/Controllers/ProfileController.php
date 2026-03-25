@@ -34,6 +34,7 @@ class ProfileController extends Controller
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
             'user' => $user,
+            'hasSocialAccount' => \App\Models\SocialAccount::where('user_id', $user->id)->exists(),
         ]);
     }
 
@@ -128,11 +129,15 @@ class ProfileController extends Controller
         try {
             DB::beginTransaction();
 
-            $request->validate([
-                'password' => ['required', 'current_password'],
-            ]);
-
             $user = Auth::user();
+
+            // Social auth users (Google, etc.) don't have a known password — skip password check
+            $hasSocialAccount = \App\Models\SocialAccount::where('user_id', $user->id)->exists();
+            if (!$hasSocialAccount) {
+                $request->validate([
+                    'password' => ['required', 'current_password'],
+                ]);
+            }
             // Or alternatively:
             // $user = $request->user();
 

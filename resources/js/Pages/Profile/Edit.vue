@@ -15,6 +15,10 @@ const props = defineProps({
     status: {
         type: String,
     },
+    hasSocialAccount: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const showStatusToast = (message) => {
@@ -70,7 +74,7 @@ watch(() => props.status, (newStatus) => {
                     <CardDescription>Delete your account and all data permanently.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <DeleteUserForm class="w-full" />
+                    <DeleteUserForm class="w-full" :has-social-account="hasSocialAccount" />
                 </CardContent>
             </Card>
         </div>
