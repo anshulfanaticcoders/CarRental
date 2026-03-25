@@ -107,6 +107,7 @@ export function useBookingData(booking, vehicle, payment) {
       const bookingPaid = parseFloat(amounts.booking_paid_amount || 0);
       const bookingPending = parseFloat(amounts.booking_pending_amount || 0);
       const paymentPercentage = bookingTotal > 0 ? (bookingPaid / bookingTotal) * 100 : 0;
+      const customerPricing = meta?.customer_pricing || {};
 
       // Get vendor pricing from amounts or fallback to metadata
       const vendorVehicleTotal = amounts.vendor_total_amount && amounts.vendor_extra_amount
@@ -137,8 +138,8 @@ export function useBookingData(booking, vehicle, payment) {
         },
         // Customer pricing - what customer sees/pays
         booking: {
-          vehicleTotal: parseFloat(booking?.base_price || 0) || (bookingTotal - parseFloat(amounts.booking_extra_amount || 0)),
-          extrasTotal: parseFloat(amounts.booking_extra_amount || booking?.extra_charges || 0),
+          vehicleTotal: parseFloat(customerPricing?.vehicle_total || booking?.base_price || 0),
+          extrasTotal: parseFloat(customerPricing?.extras_total || booking?.extra_charges || 0),
           taxTotal: parseFloat(booking?.tax_amount || 0),
           discountTotal: parseFloat(booking?.discount_amount || 0),
           grandTotal: bookingTotal,

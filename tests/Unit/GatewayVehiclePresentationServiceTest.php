@@ -185,7 +185,267 @@ class GatewayVehiclePresentationServiceTest extends TestCase
 
         $collapsed = $service->collapseEquivalentRenteonVehicles($vehicles);
 
-        $this->assertCount(2, $collapsed);
-        $this->assertSame(['gw_df8681dfb808457f', 'gw_distinct_price'], $collapsed->pluck('id')->all());
+        $this->assertCount(1, $collapsed);
+        $vehicle = $collapsed->first();
+
+        $this->assertSame('gw_df8681dfb808457f', $vehicle['id']);
+        $this->assertCount(2, $vehicle['products']);
+        $this->assertSame(['gw_df8681dfb808457f', 'gw_distinct_price'], array_column($vehicle['products'], 'gateway_vehicle_id'));
+        $this->assertSame([337.01, 347.01], array_column($vehicle['products'], 'total'));
+    }
+
+    public function test_it_groups_renteon_rate_variants_into_a_single_semantic_vehicle_with_products(): void
+    {
+        $service = new \App\Services\GatewayVehiclePresentationService();
+
+        $vehicles = new Collection([
+            [
+                'id' => 'gw_mid',
+                'gateway_vehicle_id' => 'gw_mid',
+                'source' => 'renteon',
+                'provider_code' => 'Alquicoche',
+                'provider_pickup_id' => 'ES-MAL-AGP',
+                'provider_return_id' => 'ES-MAL-AGP',
+                'provider_pickup_office_id' => 490,
+                'provider_dropoff_office_id' => 490,
+                'connector_id' => 51,
+                'provider_vehicle_id' => '51',
+                'brand' => 'Fiat',
+                'model' => '500',
+                'sipp_code' => 'MBMV',
+                'currency' => 'EUR',
+                'total_price' => 188.03,
+                'price_per_day' => 37.61,
+                'benefits' => [
+                    'deposit_amount' => 500.0,
+                    'deposit_currency' => 'EUR',
+                    'excess_amount' => 500.0,
+                    'excess_theft_amount' => 500.0,
+                ],
+                'products' => [[
+                    'type' => 'BAS',
+                    'name' => 'Basic Package',
+                    'total' => 188.03,
+                    'currency' => 'EUR',
+                    'deposit' => 500.0,
+                    'excess' => 500.0,
+                ]],
+                'extras' => [
+                    ['id' => 'ext_driver', 'code' => 'ADR', 'daily_rate' => 9.0, 'total_price' => 45.0],
+                    ['id' => 'ext_wifi', 'code' => 'WIFI', 'daily_rate' => 5.0, 'total_price' => 25.0],
+                ],
+                'pricelist_id' => 729,
+                'pricelist_code' => 'BRKPOSM',
+                'price_date' => '2026-03-23T00:00:00',
+                'prepaid' => false,
+                'is_on_request' => false,
+            ],
+            [
+                'id' => 'gw_high',
+                'gateway_vehicle_id' => 'gw_high',
+                'source' => 'renteon',
+                'provider_code' => 'Alquicoche',
+                'provider_pickup_id' => 'ES-MAL-AGP',
+                'provider_return_id' => 'ES-MAL-AGP',
+                'provider_pickup_office_id' => 490,
+                'provider_dropoff_office_id' => 490,
+                'connector_id' => 51,
+                'provider_vehicle_id' => '51',
+                'brand' => 'Fiat',
+                'model' => '500',
+                'sipp_code' => 'MBMV',
+                'currency' => 'EUR',
+                'total_price' => 235.53,
+                'price_per_day' => 47.11,
+                'benefits' => [
+                    'deposit_amount' => 242.0,
+                    'deposit_currency' => 'EUR',
+                    'excess_amount' => null,
+                    'excess_theft_amount' => 0.0,
+                ],
+                'products' => [[
+                    'type' => 'BAS',
+                    'name' => 'Basic Package',
+                    'total' => 235.53,
+                    'currency' => 'EUR',
+                    'deposit' => 242.0,
+                    'excess' => null,
+                ]],
+                'extras' => [
+                    ['id' => 'ext_driver', 'code' => 'ADR', 'daily_rate' => 9.0, 'total_price' => 45.0],
+                    ['id' => 'ext_wifi', 'code' => 'WIFI', 'daily_rate' => 5.0, 'total_price' => 25.0],
+                ],
+                'pricelist_id' => 740,
+                'pricelist_code' => 'BRKPOSH',
+                'price_date' => '2026-03-23T00:00:00',
+                'prepaid' => false,
+                'is_on_request' => false,
+            ],
+            [
+                'id' => 'gw_low',
+                'gateway_vehicle_id' => 'gw_low',
+                'source' => 'renteon',
+                'provider_code' => 'Alquicoche',
+                'provider_pickup_id' => 'ES-MAL-AGP',
+                'provider_return_id' => 'ES-MAL-AGP',
+                'provider_pickup_office_id' => 490,
+                'provider_dropoff_office_id' => 490,
+                'connector_id' => 51,
+                'provider_vehicle_id' => '51',
+                'brand' => 'Fiat',
+                'model' => '500',
+                'sipp_code' => 'MBMV',
+                'currency' => 'EUR',
+                'total_price' => 151.98,
+                'price_per_day' => 30.40,
+                'benefits' => [
+                    'deposit_amount' => 1100.0,
+                    'deposit_currency' => 'EUR',
+                    'excess_amount' => 1100.0,
+                    'excess_theft_amount' => 1100.0,
+                ],
+                'products' => [[
+                    'type' => 'BAS',
+                    'name' => 'Basic Package',
+                    'total' => 151.98,
+                    'currency' => 'EUR',
+                    'deposit' => 1100.0,
+                    'excess' => 1100.0,
+                ]],
+                'extras' => [
+                    ['id' => 'ext_driver', 'code' => 'ADR', 'daily_rate' => 9.0, 'total_price' => 45.0],
+                    ['id' => 'ext_wifi', 'code' => 'WIFI', 'daily_rate' => 5.0, 'total_price' => 25.0],
+                ],
+                'pricelist_id' => 797,
+                'pricelist_code' => 'BRKPOSL',
+                'price_date' => '2026-03-23T00:00:00',
+                'prepaid' => false,
+                'is_on_request' => false,
+            ],
+        ]);
+
+        $collapsed = $service->collapseEquivalentRenteonVehicles($vehicles);
+
+        $this->assertCount(1, $collapsed);
+
+        $vehicle = $collapsed->first();
+        $this->assertSame('gw_low', $vehicle['id']);
+        $this->assertSame(151.98, $vehicle['total_price']);
+        $this->assertSame(30.40, $vehicle['price_per_day']);
+        $this->assertCount(3, $vehicle['products']);
+        $this->assertSame(['REN_797', 'REN_729', 'REN_740'], array_column($vehicle['products'], 'type'));
+        $this->assertSame(['gw_low', 'gw_mid', 'gw_high'], array_column($vehicle['products'], 'gateway_vehicle_id'));
+        $this->assertSame([151.98, 188.03, 235.53], array_column($vehicle['products'], 'total'));
+        $this->assertSame([1100.0, 500.0, 242.0], array_column($vehicle['products'], 'deposit'));
+        $this->assertSame([1100.0, 500.0, null], array_column($vehicle['products'], 'excess'));
+    }
+
+    public function test_it_groups_renteon_cards_when_only_the_raw_sipp_code_differs_but_the_display_signature_matches(): void
+    {
+        $service = new \App\Services\GatewayVehiclePresentationService();
+
+        $vehicles = new Collection([
+            [
+                'id' => 'gw_mbv',
+                'gateway_vehicle_id' => 'gw_mbv',
+                'source' => 'renteon',
+                'provider_code' => 'Alquicoche',
+                'provider_pickup_id' => 'ES-MAL-AGP',
+                'provider_return_id' => 'ES-MAL-AGP',
+                'provider_pickup_office_id' => 490,
+                'provider_dropoff_office_id' => 490,
+                'connector_id' => 51,
+                'provider_vehicle_id' => '51',
+                'brand' => 'Fiat',
+                'model' => '500',
+                'category' => 'mini',
+                'sipp_code' => 'MBMV',
+                'currency' => 'EUR',
+                'transmission' => 'manual',
+                'fuel' => 'Petrol',
+                'seating_capacity' => 4,
+                'doors' => 3,
+                'luggageSmall' => '2',
+                'luggageLarge' => '0',
+                'airConditioning' => true,
+                'total_price' => 151.98,
+                'price_per_day' => 30.40,
+                'benefits' => [
+                    'deposit_amount' => 1100.0,
+                    'deposit_currency' => 'EUR',
+                    'excess_amount' => 1100.0,
+                    'excess_theft_amount' => 1100.0,
+                ],
+                'products' => [[
+                    'type' => 'REN_797',
+                    'name' => 'Rate Option 1',
+                    'total' => 151.98,
+                    'currency' => 'EUR',
+                    'deposit' => 1100.0,
+                    'excess' => 1100.0,
+                ]],
+                'extras' => [
+                    ['id' => 'ext_driver', 'code' => 'ADR', 'daily_rate' => 9.0, 'total_price' => 45.0],
+                ],
+                'pricelist_id' => 797,
+                'pricelist_code' => 'BRKPOSL',
+                'price_date' => '2026-03-23T00:00:00',
+                'prepaid' => false,
+                'is_on_request' => false,
+            ],
+            [
+                'id' => 'gw_mbr',
+                'gateway_vehicle_id' => 'gw_mbr',
+                'source' => 'renteon',
+                'provider_code' => 'Alquicoche',
+                'provider_pickup_id' => 'ES-MAL-AGP',
+                'provider_return_id' => 'ES-MAL-AGP',
+                'provider_pickup_office_id' => 490,
+                'provider_dropoff_office_id' => 490,
+                'connector_id' => 51,
+                'provider_vehicle_id' => '51',
+                'brand' => 'Fiat',
+                'model' => '500',
+                'category' => 'mini',
+                'sipp_code' => 'MBMR',
+                'currency' => 'EUR',
+                'transmission' => 'manual',
+                'fuel' => 'Petrol',
+                'seating_capacity' => 4,
+                'doors' => 3,
+                'luggageSmall' => '2',
+                'luggageLarge' => '0',
+                'airConditioning' => true,
+                'total_price' => 151.98,
+                'price_per_day' => 30.40,
+                'benefits' => [
+                    'deposit_amount' => 1100.0,
+                    'deposit_currency' => 'EUR',
+                    'excess_amount' => 1100.0,
+                    'excess_theft_amount' => 1100.0,
+                ],
+                'products' => [[
+                    'type' => 'REN_797',
+                    'name' => 'Rate Option 1',
+                    'total' => 151.98,
+                    'currency' => 'EUR',
+                    'deposit' => 1100.0,
+                    'excess' => 1100.0,
+                ]],
+                'extras' => [
+                    ['id' => 'ext_driver', 'code' => 'ADR', 'daily_rate' => 9.0, 'total_price' => 45.0],
+                ],
+                'pricelist_id' => 797,
+                'pricelist_code' => 'BRKPOSL',
+                'price_date' => '2026-03-23T00:00:00',
+                'prepaid' => false,
+                'is_on_request' => false,
+            ],
+        ]);
+
+        $collapsed = $service->collapseEquivalentRenteonVehicles($vehicles);
+
+        $this->assertCount(1, $collapsed);
+        $this->assertSame('gw_mbv', $collapsed->first()['id']);
     }
 }

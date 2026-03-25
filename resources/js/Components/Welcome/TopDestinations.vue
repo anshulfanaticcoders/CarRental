@@ -1,9 +1,7 @@
 <script setup>
-import { ref, computed, onBeforeUnmount, onMounted } from 'vue';
+import { ref, computed, onBeforeUnmount } from 'vue';
 import { usePage } from '@inertiajs/vue3';
-import axios from 'axios';
 import { useScrollAnimation } from '@/composables/useScrollAnimation';
-import { buildPopularPlaceSearchUrl } from '@/utils/popularPlaceSearch';
 import {
     Carousel,
     CarouselContent,
@@ -22,20 +20,12 @@ const _p = (key, fallback = '') => {
     return t[key] || fallback || key;
 };
 
-const unifiedLocations = ref([]);
 const emblaApi = ref(null);
 const selectedIndex = ref(0);
 const snapCount = ref(0);
 
-onMounted(async () => {
-    try {
-        const r = await axios.get('/unified_locations.json');
-        unifiedLocations.value = r.data;
-    } catch (e) { /* silent */ }
-});
-
 const navigateToSearch = (place) => {
-    const searchUrl = buildPopularPlaceSearchUrl(place, unifiedLocations.value);
+    const searchUrl = place?.search_url;
 
     if (searchUrl) {
         sessionStorage.setItem('searchurl', searchUrl);
@@ -48,7 +38,7 @@ const navigateToSearch = (place) => {
 };
 
 const getDestinationHref = (place) => {
-    const searchUrl = buildPopularPlaceSearchUrl(place, unifiedLocations.value);
+    const searchUrl = place?.search_url;
     return searchUrl ? `/${page.props.locale}${searchUrl}` : `/${page.props.locale}`;
 };
 

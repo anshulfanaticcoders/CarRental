@@ -48,11 +48,13 @@ class InternalVehicleMergeService
 
     private function vehicleLocationHash(array $vehicle): string
     {
+        $legacyPayload = $vehicle['booking_context']['provider_payload'] ?? [];
+
         return md5(
-            (string) ($vehicle['city'] ?? '')
-            . (string) ($vehicle['state'] ?? '')
-            . (string) ($vehicle['country'] ?? '')
-            . (string) ($vehicle['location'] ?? '')
+            (string) ($vehicle['city'] ?? ($legacyPayload['city'] ?? ''))
+            . (string) ($vehicle['state'] ?? ($legacyPayload['state'] ?? ''))
+            . (string) ($vehicle['country'] ?? ($legacyPayload['country'] ?? ''))
+            . (string) ($vehicle['location'] ?? ($legacyPayload['location'] ?? ''))
         );
     }
 }

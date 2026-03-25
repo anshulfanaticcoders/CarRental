@@ -3,7 +3,7 @@ import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import SeoHead from '@/Components/SeoHead.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { computed, watch, ref, onMounted } from 'vue';
 
 const props = defineProps({
   contactPage: {
@@ -28,6 +28,7 @@ const form = useForm({
   email: '',
   message: '',
   admin_email: import.meta.env.VITE_ADMIN_EMAIL,
+  cf_turnstile_response: '',
 });
 
 const page = usePage();
@@ -35,12 +36,36 @@ const flashSuccess = computed(() => page.props.flash?.success || null);
 
 const currentLocale = computed(() => page.props.locale || 'en');
 
+// Turnstile
+const turnstileContainer = ref(null);
+let turnstileWidgetId = null;
+
+onMounted(() => {
+  if (document.querySelector('script[src*="turnstile"]')) return;
+  const script = document.createElement('script');
+  script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit';
+  script.async = true;
+  window.onTurnstileLoad = () => {
+    if (turnstileContainer.value) {
+      turnstileWidgetId = window.turnstile.render(turnstileContainer.value, {
+        sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
+        callback: (token) => { form.cf_turnstile_response = token; },
+        'expired-callback': () => { form.cf_turnstile_response = ''; },
+      });
+    }
+  };
+  document.head.appendChild(script);
+});
+
 const submitForm = () => {
   form.post(route('contact.submit'), {
     preserveScroll: true,
     onSuccess: () => {
       form.reset();
-    }
+      if (window.turnstile && turnstileWidgetId !== null) {
+        window.turnstile.reset(turnstileWidgetId);
+      }
+    },
   });
 };
 
@@ -160,8 +185,9 @@ const LocationIcon = `
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ _t('contactus','message') }}</label>
                 <textarea v-model="form.message" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-customPrimaryColor focus:border-customPrimaryColor sm:text-sm" rows="4" :placeholder="_t('contactus','your_message')" required></textarea>
               </div>
+              <div ref="turnstileContainer" class="flex justify-center"></div>
               <div class="text-center pt-2">
-                <button type="submit" :disabled="form.processing" class="w-full bg-customPrimaryColor hover:bg-opacity-80 text-white font-semibold py-3 px-4 rounded-md shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <button type="submit" :disabled="form.processing || !form.cf_turnstile_response" class="w-full bg-customPrimaryColor hover:bg-opacity-80 text-white font-semibold py-3 px-4 rounded-md shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   {{ form.processing ? _t('contactus','sending_message_button') : _t('contactus','send_message_button') }}
                 </button>
               </div>

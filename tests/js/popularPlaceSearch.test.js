@@ -1,70 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
-import {
-    buildPopularPlaceSearchUrl,
-    resolveUnifiedLocationForPopularPlace,
-} from '../../resources/js/utils/popularPlaceSearch.js';
+const repoRoot = path.resolve(process.cwd());
+const topDestinationsPath = path.join(repoRoot, 'resources/js/Components/Welcome/TopDestinations.vue');
+const destinationsPagePath = path.join(repoRoot, 'resources/js/Pages/Destinations/Index.vue');
+const footerPath = path.join(repoRoot, 'resources/js/Components/Footer.vue');
 
-test('buildPopularPlaceSearchUrl includes required unified IDs for gateway search', () => {
-    const place = {
-        place_name: 'Dubai',
-        city: 'Dubai',
-        country: 'United Arab Emirates',
-        latitude: 25.2048,
-        longitude: 55.2708,
-    };
+test('popular place UI uses backend-provided search URLs instead of loading unified_locations.json', () => {
+    const topDestinationsSource = readFileSync(topDestinationsPath, 'utf8');
+    const destinationsPageSource = readFileSync(destinationsPagePath, 'utf8');
+    const footerSource = readFileSync(footerPath, 'utf8');
 
-    const unifiedLocations = [
-        {
-            unified_location_id: 3272373056,
-            name: 'Dubai Airport',
-            city: 'Dubai',
-            country: 'United Arab Emirates',
-            latitude: 25.24,
-            longitude: 55.35,
-            providers: [
-                { provider: 'okmobility', pickup_id: '641' },
-            ],
-        },
-    ];
+    assert.doesNotMatch(topDestinationsSource, /unified_locations\.json/);
+    assert.doesNotMatch(destinationsPageSource, /unified_locations\.json/);
+    assert.doesNotMatch(footerSource, /unified_locations\.json/);
 
-    const url = buildPopularPlaceSearchUrl(place, unifiedLocations, {
-        now: new Date('2026-03-18T00:00:00Z'),
-    });
+    assert.doesNotMatch(topDestinationsSource, /buildPopularPlaceSearchUrl/);
+    assert.doesNotMatch(destinationsPageSource, /buildPopularPlaceSearchUrl/);
 
-    assert.ok(url?.startsWith('/s?'));
-
-    const query = new URLSearchParams(url.replace('/s?', ''));
-    assert.equal(query.get('unified_location_id'), '3272373056');
-    assert.equal(query.get('dropoff_unified_location_id'), '3272373056');
-    assert.equal(query.get('provider'), 'mixed');
-    assert.equal(query.get('where'), 'Dubai Airport');
-    assert.equal(query.get('date_from'), '2026-03-19');
-    assert.equal(query.get('date_to'), '2026-03-20');
+    assert.match(topDestinationsSource, /search_url/);
+    assert.match(destinationsPageSource, /search_url/);
+    assert.match(footerSource, /search_url/);
 });
 
-test('resolveUnifiedLocationForPopularPlace uses stored unified_location_id first when available', () => {
-    const place = {
-        place_name: 'Barcelona',
-        city: 'Barcelona',
-        country: 'Spain',
-        unified_location_id: 4247078518,
-    };
+test('popular place UI no longer keeps a client-side unifiedLocations cache', () => {
+    const topDestinationsSource = readFileSync(topDestinationsPath, 'utf8');
+    const destinationsPageSource = readFileSync(destinationsPagePath, 'utf8');
+    const footerSource = readFileSync(footerPath, 'utf8');
 
-    const unifiedLocations = [
-        {
-            unified_location_id: 4247078518,
-            name: 'Mallorca Airport',
-            city: 'Palma',
-            country: 'Spain',
-            latitude: 39.55,
-            longitude: 2.73,
-            providers: [{ provider: 'okmobility', pickup_id: '01' }],
-        },
-    ];
-
-    const resolved = resolveUnifiedLocationForPopularPlace(place, unifiedLocations);
-    assert.equal(resolved?.unified_location_id, 4247078518);
+    assert.doesNotMatch(topDestinationsSource, /const\s+unifiedLocations\s*=\s*ref/);
+    assert.doesNotMatch(destinationsPageSource, /const\s+unifiedLocations\s*=\s*ref/);
+    assert.doesNotMatch(footerSource, /const\s+unifiedLocations\s*=\s*ref/);
 });
-

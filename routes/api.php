@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\FaqController;
-use App\Http\Controllers\AdobeController;
 use App\Http\Controllers\Api\CategoryFeaturesController;
 use App\Http\Controllers\Api\FooterController;
 use App\Http\Controllers\BookingAddonController;
@@ -18,7 +17,7 @@ use App\Http\Controllers\VehicleCategoryController;
 use App\Http\Controllers\PopularPlacesController;
 use App\Http\Controllers\Api\SeoMetaController; // Added for SEO Meta
 use App\Http\Controllers\Admin\PayableSettingController; // Import PayableSettingController
-use App\Http\Controllers\GreenMotionController; // Import GreenMotionController
+use App\Http\Controllers\ProviderLocationController;
 use App\Http\Controllers\Vendor\VendorOverviewController; // Import VendorOverviewController
 use App\Http\Controllers\Admin\ContactUsPageController;
 use App\Http\Controllers\NewsletterSubscriptionController;
@@ -99,14 +98,7 @@ Route::get('/admin/profile', [App\Http\Controllers\AdminProfileController::class
 // Public API for fetching payment percentage
 Route::get('/payment-percentage', [PayableSettingController::class, 'getPercentage'])->name('api.payment-percentage');
 
-// Adobe API routes (must come before generic provider routes)
-Route::get('/adobe/vehicles', [AdobeController::class, 'getVehicles'])->name('api.adobe.vehicles');
-Route::get('/adobe/vehicle-details', [AdobeController::class, 'getVehicleDetails'])->name('api.adobe.vehicle-details');
-Route::get('/adobe/dropoff-locations/{location_id}', [AdobeController::class, 'getDropoffLocationsForProvider'])->name('api.adobe.dropoff-locations');
-
-// GreenMotion API routes
-Route::get('/greenmotion/locations-autocomplete', [GreenMotionController::class, 'getGreenMotionLocationsForAutocomplete'])->name('api.greenmotion.locations-autocomplete');
-Route::get('/{provider}/dropoff-locations/{location_id}', [GreenMotionController::class, 'getDropoffLocationsForProvider'])->name('api.provider.dropoff-locations');
+Route::get('/{provider}/dropoff-locations/{location_id}', [ProviderLocationController::class, 'getDropoffLocationsForProvider'])->name('api.provider.dropoff-locations');
 
 // Route for unified location search
 Route::get('/unified-locations', [App\Http\Controllers\SearchController::class, 'searchUnifiedLocations'])->name('api.unified-locations.search');

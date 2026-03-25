@@ -10,6 +10,7 @@ use App\Models\Vehicle;
 use App\Models\VendorProfile;
 use App\Notifications\Booking\BookingCancelledNotification;
 use App\Notifications\Booking\BookingCancelledCustomerNotification;
+use App\Services\VrooemGatewayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -91,122 +92,52 @@ class BookingDashboardController extends Controller
      */
     private function cancelWithProvider(Booking $booking, ?string $providerSource, string $reason): ?string
     {
-        if (!$providerSource) {
-            return null; // Internal booking, no provider API to call
+        if (!$providerSource || $providerSource === 'internal') {
+            return null;
         }
 
         $bookingRef = $booking->provider_booking_ref;
         $providerMetadata = $booking->provider_metadata ?? [];
+        $gatewayBookingId = (string) ($providerMetadata['gateway_booking_id'] ?? '');
+        $gatewaySupplierId = (string) ($providerMetadata['gateway_supplier_id'] ?? $this->mapProviderSourceToGatewaySupplierId($providerSource));
+
+        if ($gatewayBookingId === '' || $gatewaySupplierId === '' || empty($bookingRef)) {
+            return 'Provider gateway cancellation metadata is missing.';
+        }
 
         try {
-            switch ($providerSource) {
-                case 'greenmotion':
-                case 'usave':
-                    if (!$bookingRef) {
-                        return 'Provider booking reference is missing.';
-                    }
-                    $locationId = $providerMetadata['pickup_location_id']
-                        ?? $providerMetadata['dropoff_location_id']
-                        ?? null;
-                    if (!$locationId) {
-                        return 'Provider location ID is missing.';
-                    }
-                    $service = app(\App\Services\GreenMotionService::class)->setProvider($providerSource);
-                    $xmlResponse = $service->cancelReservation($locationId, $bookingRef, $reason);
-                    if (empty($xmlResponse)) {
-                        return 'Failed to cancel reservation with GreenMotion provider.';
-                    }
-                    // Parse XML response for success/failure
-                    $xmlObject = @simplexml_load_string($xmlResponse);
-                    if ($xmlObject !== false) {
-                        $responseNode = $xmlObject->response ?? $xmlObject->Response ?? $xmlObject;
-                        $status = strtolower(trim((string) ($responseNode->status ?? $responseNode->result ?? '')));
-                        if (in_array($status, ['failed', 'fail', 'error', 'invalid', 'denied', 'false', '0'], true)) {
-                            return 'GreenMotion cancellation failed: ' . trim((string) ($responseNode->message ?? $responseNode->notes ?? 'Unknown error'));
-                        }
-                    }
-                    break;
+            $service = app(VrooemGatewayService::class);
+            $response = $service->cancelBooking($gatewayBookingId, $gatewaySupplierId, (string) $bookingRef, $reason);
 
-                case 'favrica':
-                    if (!$bookingRef) {
-                        return 'Provider booking reference is missing.';
-                    }
-                    $service = app(\App\Services\FavricaService::class);
-                    $response = $service->cancelReservation($bookingRef);
-                    if (empty($response) || !is_array($response)) {
-                        return 'Failed to cancel reservation with Favrica provider.';
-                    }
-                    $payload = $response[0] ?? null;
-                    $statusValue = strtolower(trim((string) ($payload['success'] ?? $payload['Status'] ?? '')));
-                    if ($statusValue !== 'true' && $statusValue !== '1') {
-                        return 'Favrica cancellation failed: ' . ($payload['error'] ?? 'Unknown error');
-                    }
-                    break;
-
-                case 'xdrive':
-                    if (!$bookingRef) {
-                        return 'Provider booking reference is missing.';
-                    }
-                    $service = app(\App\Services\XDriveService::class);
-                    $response = $service->cancelReservation($bookingRef);
-                    if (empty($response) || !is_array($response)) {
-                        return 'Failed to cancel reservation with XDrive provider.';
-                    }
-                    $payload = $response[0] ?? null;
-                    $statusValue = strtolower(trim((string) ($payload['success'] ?? $payload['Status'] ?? '')));
-                    if ($statusValue !== 'true' && $statusValue !== '1') {
-                        return 'XDrive cancellation failed: ' . ($payload['error'] ?? 'Unknown error');
-                    }
-                    break;
-
-                case 'surprice':
-                    if (!$bookingRef) {
-                        return 'Provider booking reference is missing.';
-                    }
-                    $service = app(\App\Services\SurpriceService::class);
-                    $response = $service->cancelReservation($bookingRef, $reason);
-                    if ($response === null) {
-                        return 'Failed to cancel reservation with Surprice provider.';
-                    }
-                    break;
-
-                case 'renteon':
-                    if (!$bookingRef) {
-                        return 'Provider booking reference is missing.';
-                    }
-                    $service = app(\App\Services\RenteonService::class);
-                    $response = $service->cancelBooking($bookingRef);
-                    if ($response === null) {
-                        return 'Failed to cancel reservation with Renteon provider.';
-                    }
-                    break;
-
-                case 'sicilybycar':
-                    if (!$bookingRef) {
-                        return 'Provider booking reference is missing.';
-                    }
-                    $service = app(\App\Services\SicilyByCarService::class);
-                    $response = $service->cancelReservation($bookingRef);
-                    if (!($response['ok'] ?? false)) {
-                        return 'SicilyByCar cancellation failed: ' . ($response['error'] ?? 'Unknown error');
-                    }
-                    break;
-
-                default:
-                    // Provider without cancellation API (RecordGo, AdobeCar, OkMobility, LocautoRent, Wheelsys)
-                    // Only local status update, no provider API call
-                    break;
+            if ($response === null) {
+                return 'Failed to cancel reservation with provider gateway.';
             }
+
+            $booking->notes = trim(($booking->notes ? $booking->notes . "\n" : '') . 'Gateway Cancel: cancellation requested.');
         } catch (\Exception $e) {
             Log::error('Admin cancel - provider cancellation failed', [
                 'booking_id' => $booking->id,
                 'provider' => $providerSource,
+                'gateway_booking_id' => $gatewayBookingId,
+                'gateway_supplier_id' => $gatewaySupplierId,
                 'error' => $e->getMessage(),
             ]);
             return 'Provider cancellation failed: ' . $e->getMessage();
         }
 
         return null;
+    }
+
+    private function mapProviderSourceToGatewaySupplierId(?string $providerSource): string
+    {
+        return match ($providerSource) {
+            'greenmotion' => 'green_motion',
+            'usave' => 'u_save',
+            'adobe' => 'adobe_car',
+            'okmobility' => 'ok_mobility',
+            'recordgo' => 'record_go',
+            default => (string) ($providerSource ?? ''),
+        };
     }
 
     /**

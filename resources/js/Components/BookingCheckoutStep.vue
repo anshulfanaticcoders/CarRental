@@ -3,6 +3,11 @@ import { ref, computed, onMounted, unref, watch } from 'vue';
 import StripeCheckoutButton from './StripeCheckoutButton.vue';
 import { usePage } from '@inertiajs/vue3';
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
+import {
+    getSearchVehicleLegacyPayload,
+    resolveSearchVehicleDisplayName,
+    resolveSearchVehicleImage,
+} from '@/features/search/utils/searchVehiclePresentation';
 
 const props = defineProps({
     vehicle: Object,
@@ -194,11 +199,7 @@ const isInternal = computed(() => {
 });
 
 const displayVehicleName = computed(() => {
-    if (isOkMobility.value) {
-        return props.vehicle?.display_name || props.vehicle?.group_description || props.vehicle?.model || '';
-    }
-    const parts = [props.vehicle?.brand, props.vehicle?.model].filter(Boolean);
-    return parts.join(' ');
+    return resolveSearchVehicleDisplayName(props.vehicle);
 });
 
 const normalizeCurrencyCode = (currency) => {
@@ -238,9 +239,13 @@ const resolvePackageCurrency = () => {
 const resolveVehicleCurrency = () => {
     return normalizeCurrencyCode(
         resolvePackageCurrency()
+        || props.vehicle?.pricing?.currency
         || props.vehicle?.currency
         || props.vehicle?.vendor_profile?.currency
         || props.vehicle?.vendorProfile?.currency
+        || props.vehicle?.booking_context?.provider_payload?.vendorProfileData?.currency
+        || props.vehicle?.booking_context?.provider_payload?.vendor_profile_data?.currency
+        || props.vehicle?.booking_context?.provider_payload?.benefits?.deposit_currency
         || props.vehicle?.benefits?.deposit_currency
         || 'EUR'
     );
@@ -276,16 +281,7 @@ onMounted(() => {
 
 // Get vehicle image (handles internal vehicles which use images array)
 const vehicleImage = computed(() => {
-    // Internal vehicles: find primary image from images array
-    if (isInternal.value && props.vehicle?.images) {
-        const primaryImg = props.vehicle.images.find(img => img.image_type === 'primary');
-        if (primaryImg) return primaryImg.image_url;
-        // Fallback to first gallery image
-        const galleryImg = props.vehicle.images.find(img => img.image_type === 'gallery');
-        if (galleryImg) return galleryImg.image_url;
-    }
-    // Other providers: use direct image property
-    return props.vehicle?.image || props.vehicle?.largeImage || '/images/dummyCarImaage.png';
+    return resolveSearchVehicleImage(props.vehicle) || '/images/dummyCarImaage.png';
 });
 
 const bookingData = computed(() => {

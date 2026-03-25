@@ -8,7 +8,14 @@ use Illuminate\Support\Facades\Log;
 
 class BookingAmountService
 {
-    public function createForBooking(Booking $booking, array $amounts, ?string $bookingCurrency, ?string $vendorCurrency = null, ?array $providerAmounts = null): ?BookingAmount
+    public function createForBooking(
+        Booking $booking,
+        array $amounts,
+        ?string $bookingCurrency,
+        ?string $vendorCurrency = null,
+        ?array $providerAmounts = null,
+        ?array $adminAmounts = null
+    ): ?BookingAmount
     {
         $existing = BookingAmount::where('booking_id', $booking->id)->first();
         if ($existing) {
@@ -20,12 +27,13 @@ class BookingAmountService
         $vendorCurrency = $vendorCurrency ? $this->normalizeCurrency($vendorCurrency) : null;
 
         $normalized = $this->normalizeAmounts($amounts);
+        $adminNormalized = $this->normalizeAmounts($adminAmounts ?? $amounts);
         $conversionService = app(CurrencyConversionService::class);
 
         // Convert to admin currency (EUR)
         $adminAmounts = $this->convertAmounts(
             $conversionService,
-            $normalized,
+            $adminNormalized,
             $bookingCurrency,
             $adminCurrency,
             'admin',

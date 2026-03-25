@@ -7,6 +7,7 @@ use App\Models\ContactSubmission;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use App\Notifications\ContactUsNotification;
 use App\Notifications\ContactUsUserConfirmation;
@@ -22,13 +23,29 @@ class ContactFormController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
-            'message' => 'required|string|max:2000'
+            'message' => 'required|string|max:2000',
+            'cf_turnstile_response' => 'required|string',
+        ], [
+            'cf_turnstile_response.required' => 'Please complete the security check.',
         ]);
 
         // If validation fails, return back with errors
         if ($validator->fails()) {
             return back()
                 ->withErrors($validator)
+                ->withInput();
+        }
+
+        // Verify Cloudflare Turnstile token
+        $turnstileResponse = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+            'secret' => env('TURNSTILE_SECRET_KEY'),
+            'response' => $request->input('cf_turnstile_response'),
+            'remoteip' => $request->ip(),
+        ]);
+
+        if (!$turnstileResponse->json('success')) {
+            return back()
+                ->withErrors(['cf_turnstile_response' => 'Security verification failed. Please try again.'])
                 ->withInput();
         }
 

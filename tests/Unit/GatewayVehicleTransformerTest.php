@@ -89,7 +89,11 @@ class GatewayVehicleTransformerTest extends TestCase
         $result = $this->transformer->transform($gv, 5);
 
         $extra = $result['extras'][0];
-        // supplier_data 'id' overrides canonical id for SBC (adapter reads service.id for protection code matching)
+        // WHY 'id' is overridden here: Sicily by Car's supplier_data.id carries the protection-plan
+        // code (e.g. 'CDW') that the frontend SBC adapter reads to match protection plans. The
+        // canonical extra id ('sbc_ext_1') is the gateway's internal ID; the supplier_data id is the
+        // supplier's own code. mapExtras() intentionally allows supplier_data.id to override the
+        // canonical id for this reason — all other canonical keys are protected from $sd collisions.
         $this->assertSame('CDW', $extra['id']);
         $this->assertSame('CDW Insurance', $extra['name']);
         $this->assertSame(8.0, $extra['daily_rate']);

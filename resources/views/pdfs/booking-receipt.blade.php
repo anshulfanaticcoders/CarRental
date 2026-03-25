@@ -384,6 +384,8 @@
     $policies = $providerMetadata['benefits'] ?? $providerMetadata['policies'] ?? [];
     $amounts = $booking->amounts ?? null;
     $currency = $booking->booking_currency ?? 'EUR';
+    $displayVehicleRental = (float) ($customerPricing['vehicle_total'] ?? $booking->base_price ?? 0);
+    $displayExtrasTotal = (float) ($customerPricing['extras_total'] ?? $booking->extra_charges ?? 0);
 
     $paidPercentage = $booking->total_amount > 0 ? round(($booking->amount_paid / $booking->total_amount) * 100) : 0;
     $isPOA = $paidPercentage > 0 && $paidPercentage < 100;
@@ -552,7 +554,7 @@
                     <tr>
                         <td>Vehicle Rental</td>
                         <td style="color:#94a3b8;">{{ $booking->total_days }} {{ $booking->total_days == 1 ? 'day' : 'days' }}</td>
-                        <td>{{ $currency }} {{ number_format($booking->base_price ?? 0, 2) }}</td>
+                        <td>{{ $currency }} {{ number_format($displayVehicleRental, 2) }}</td>
                     </tr>
 
                     @if($booking->extras && $booking->extras->count() > 0)
@@ -563,11 +565,11 @@
                                 <td>{{ $currency }} {{ number_format(($extra->price ?? 0) * ($extra->quantity ?? 1), 2) }}</td>
                             </tr>
                         @endforeach
-                    @elseif($booking->extra_charges > 0)
+                    @elseif($displayExtrasTotal > 0)
                         <tr>
                             <td>Extras & Add-ons</td>
                             <td style="color:#94a3b8;">&mdash;</td>
-                            <td>{{ $currency }} {{ number_format($booking->extra_charges, 2) }}</td>
+                            <td>{{ $currency }} {{ number_format($displayExtrasTotal, 2) }}</td>
                         </tr>
                     @endif
 

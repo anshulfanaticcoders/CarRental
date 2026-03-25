@@ -62,14 +62,18 @@ class PublicSitemapBuilder
 
         $countryBlogData = [];
         $countryLastMods = [];
+        $countriesWithBlogs = [];
         foreach ($countries as $country) {
             $visibleBlogs = $this->filterBlogsByCountry($blogs, $country);
             $countryBlogData[$country] = $visibleBlogs;
             $countryLastMods[$country] = $this->maxBlogLastModified($visibleBlogs);
+            if (! empty($visibleBlogs)) {
+                $countriesWithBlogs[] = $country;
+            }
         }
 
         foreach ($locales as $locale) {
-            $blogListingsFile = $this->buildBlogListingsSitemap((string) $locale, $locales, $countries, $countryLastMods);
+            $blogListingsFile = $this->buildBlogListingsSitemap((string) $locale, $locales, $countriesWithBlogs, $countryLastMods);
             if ($blogListingsFile) {
                 $files[] = $blogListingsFile;
             }
@@ -247,6 +251,12 @@ class PublicSitemapBuilder
         foreach ($alternates as $locale => $alternateUrl) {
             $this->urlPolicy->assertAllowed($alternateUrl);
             $tag->addAlternate($alternateUrl, (string) $locale);
+        }
+
+        // Add x-default pointing to the English version (or first alternate)
+        if (! empty($alternates)) {
+            $xDefaultUrl = $alternates['en'] ?? reset($alternates);
+            $tag->addAlternate($xDefaultUrl, 'x-default');
         }
 
         if ($imageUrl) {

@@ -3,16 +3,52 @@
 namespace Tests\Unit;
 
 use App\Services\LocationSearchService;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class LocationSearchServiceTest extends TestCase
 {
-    public function test_it_uses_gateway_search_results_when_location_search_is_enabled(): void
+    public function test_it_prefers_gateway_location_search_when_gateway_is_enabled(): void
     {
         config([
-            'vrooem.location_search_enabled' => true,
+            'vrooem.enabled' => true,
+            'vrooem.url' => 'http://gateway.test',
+            'vrooem.api_key' => 'test-key',
+        ]);
+
+        Http::fake([
+            'http://gateway.test/api/v1/locations/search*' => Http::response([
+                'query' => 'dubai',
+                'results' => [
+                    [
+                        'location' => [
+                            'unified_location_id' => 2701212940,
+                            'name' => 'Dubai Airport',
+                            'city' => 'Dubai',
+                            'country' => 'United Arab Emirates',
+                            'location_type' => 'airport',
+                            'providers' => [
+                                ['provider' => 'greenmotion', 'pickup_id' => '59610'],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $service = app(LocationSearchService::class);
+
+        $results = $service->searchLocations('dubai');
+
+        $this->assertCount(1, $results);
+        $this->assertSame('Dubai Airport', $results[0]['name']);
+        $this->assertSame(2701212940, $results[0]['unified_location_id']);
+    }
+
+    public function test_it_uses_gateway_search_results_when_gateway_is_enabled(): void
+    {
+        config([
+            'vrooem.enabled' => true,
             'vrooem.url' => 'http://gateway.test',
             'vrooem.api_key' => 'test-key',
         ]);
@@ -49,10 +85,226 @@ class LocationSearchServiceTest extends TestCase
         $this->assertSame('internal_1', $results[0]['our_location_id']);
     }
 
-    public function test_it_fetches_gateway_location_by_unified_id_when_enabled(): void
+    public function test_it_collapses_same_iata_gateway_search_results_and_merges_providers(): void
     {
         config([
-            'vrooem.location_search_enabled' => true,
+            'vrooem.enabled' => true,
+            'vrooem.url' => 'http://gateway.test',
+            'vrooem.api_key' => 'test-key',
+        ]);
+
+        Http::fake([
+            'http://gateway.test/api/v1/locations/search*' => Http::response([
+                'query' => 'casablanca airport',
+                'results' => [
+                    [
+                        'location' => [
+                            'unified_location_id' => 2962361044,
+                            'name' => 'Casablanca Airport',
+                            'city' => 'Casablanca',
+                            'country' => 'Morocco',
+                            'location_type' => 'airport',
+                            'iata' => 'CMN',
+                            'providers' => [
+                                ['provider' => 'greenmotion', 'pickup_id' => '354'],
+                                ['provider' => 'usave', 'pickup_id' => '354'],
+                            ],
+                        ],
+                    ],
+                    [
+                        'location' => [
+                            'unified_location_id' => 4103471891,
+                            'name' => 'Nouaceur Airport',
+                            'city' => 'Nouaceur',
+                            'country' => 'Morocco',
+                            'location_type' => 'airport',
+                            'iata' => 'CMN',
+                            'providers' => [
+                                ['provider' => 'surprice', 'pickup_id' => 'CMN'],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $service = app(LocationSearchService::class);
+
+        $results = $service->searchLocations('casablanca airport');
+
+        $this->assertCount(1, $results);
+        $this->assertSame('Casablanca Airport', $results[0]['name']);
+        $this->assertSame('CMN', $results[0]['iata']);
+        $this->assertSame([
+            'greenmotion',
+            'usave',
+            'surprice',
+        ], collect($results[0]['providers'])->pluck('provider')->all());
+        $this->assertSame(3, $results[0]['provider_count']);
+    }
+
+
+    public function test_it_collapses_equivalent_airport_results_when_aliases_overlap_without_iata(): void
+    {
+        config([
+            'vrooem.enabled' => true,
+            'vrooem.url' => 'http://gateway.test',
+            'vrooem.api_key' => 'test-key',
+        ]);
+
+        Http::fake([
+            'http://gateway.test/api/v1/locations/search*' => Http::response([
+                'query' => 'fiumicino',
+                'results' => [
+                    [
+                        'location' => [
+                            'unified_location_id' => 1191543869,
+                            'name' => 'Fiumicino Airport (FCO)',
+                            'city' => 'Fiumicino',
+                            'country' => 'Italy',
+                            'location_type' => 'airport',
+                            'iata' => 'FCO',
+                            'aliases' => ['Rome Fiumicino Airport'],
+                            'providers' => [
+                                ['provider' => 'greenmotion', 'pickup_id' => '157'],
+                                ['provider' => 'locauto_rent', 'pickup_id' => 'FCO'],
+                            ],
+                        ],
+                    ],
+                    [
+                        'location' => [
+                            'unified_location_id' => 957477491,
+                            'name' => 'Rome Fiumicino Airport',
+                            'city' => 'Rome Fiumicino',
+                            'country' => 'Italy',
+                            'location_type' => 'airport',
+                            'aliases' => ['Rome Fiumicino'],
+                            'providers' => [
+                                ['provider' => 'recordgo', 'pickup_id' => '39005'],
+                            ],
+                        ],
+                    ],
+                    [
+                        'location' => [
+                            'unified_location_id' => 1496605060,
+                            'name' => 'Roma Airport',
+                            'city' => 'Roma',
+                            'country' => 'Italy',
+                            'location_type' => 'airport',
+                            'aliases' => ['Rome Fiumicino Airport'],
+                            'providers' => [
+                                ['provider' => 'sicily_by_car', 'pickup_id' => 'IT011'],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $service = app(LocationSearchService::class);
+
+        $results = $service->searchLocations('fiumicino');
+
+        $this->assertCount(1, $results);
+        $this->assertSame('Fiumicino Airport (FCO)', $results[0]['name']);
+        $this->assertSame([
+            'greenmotion',
+            'locauto_rent',
+            'recordgo',
+            'sicily_by_car',
+        ], collect($results[0]['providers'])->pluck('provider')->all());
+        $this->assertSame(4, $results[0]['provider_count']);
+    }
+
+    public function test_it_augments_gateway_location_by_unified_id_with_alias_matched_airport_provider_rows(): void
+    {
+        config([
+            'vrooem.enabled' => true,
+            'vrooem.url' => 'http://gateway.test',
+            'vrooem.api_key' => 'test-key',
+        ]);
+
+        Http::fake([
+            'http://gateway.test/api/v1/locations/1191543869' => Http::response([
+                'unified_location_id' => 1191543869,
+                'name' => 'Fiumicino Airport (FCO)',
+                'city' => 'Fiumicino',
+                'country' => 'Italy',
+                'location_type' => 'airport',
+                'iata' => 'FCO',
+                'aliases' => ['Rome Fiumicino Airport'],
+                'providers' => [
+                    ['provider' => 'greenmotion', 'pickup_id' => '157'],
+                    ['provider' => 'locauto_rent', 'pickup_id' => 'FCO'],
+                ],
+            ], 200),
+            'http://gateway.test/api/v1/locations/search*' => Http::response([
+                'query' => 'FCO',
+                'results' => [
+                    [
+                        'location' => [
+                            'unified_location_id' => 1191543869,
+                            'name' => 'Fiumicino Airport (FCO)',
+                            'city' => 'Fiumicino',
+                            'country' => 'Italy',
+                            'location_type' => 'airport',
+                            'iata' => 'FCO',
+                            'aliases' => ['Rome Fiumicino Airport'],
+                            'providers' => [
+                                ['provider' => 'greenmotion', 'pickup_id' => '157'],
+                                ['provider' => 'locauto_rent', 'pickup_id' => 'FCO'],
+                            ],
+                        ],
+                    ],
+                    [
+                        'location' => [
+                            'unified_location_id' => 957477491,
+                            'name' => 'Rome Fiumicino Airport',
+                            'city' => 'Rome Fiumicino',
+                            'country' => 'Italy',
+                            'location_type' => 'airport',
+                            'aliases' => ['Rome Fiumicino'],
+                            'providers' => [
+                                ['provider' => 'recordgo', 'pickup_id' => '39005'],
+                            ],
+                        ],
+                    ],
+                    [
+                        'location' => [
+                            'unified_location_id' => 1496605060,
+                            'name' => 'Roma Airport',
+                            'city' => 'Roma',
+                            'country' => 'Italy',
+                            'location_type' => 'airport',
+                            'aliases' => ['Rome Fiumicino Airport'],
+                            'providers' => [
+                                ['provider' => 'sicily_by_car', 'pickup_id' => 'IT011'],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $service = app(LocationSearchService::class);
+
+        $location = $service->getLocationByUnifiedId(1191543869);
+
+        $this->assertNotNull($location);
+        $this->assertSame('Fiumicino Airport (FCO)', $location['name']);
+        $this->assertSame([
+            'greenmotion',
+            'locauto_rent',
+            'recordgo',
+            'sicily_by_car',
+        ], collect($location['providers'])->pluck('provider')->all());
+        $this->assertSame(4, $location['provider_count']);
+    }
+
+    public function test_it_fetches_gateway_location_by_unified_id(): void
+    {
+        config([
+            'vrooem.enabled' => true,
             'vrooem.url' => 'http://gateway.test',
             'vrooem.api_key' => 'test-key',
         ]);
@@ -80,10 +332,79 @@ class LocationSearchServiceTest extends TestCase
         $this->assertSame('internal_1', $location['our_location_id']);
     }
 
-    public function test_it_fetches_gateway_location_by_provider_id_when_enabled(): void
+    public function test_it_augments_gateway_location_by_unified_id_with_same_iata_provider_aliases(): void
     {
         config([
-            'vrooem.location_search_enabled' => true,
+            'vrooem.enabled' => true,
+            'vrooem.url' => 'http://gateway.test',
+            'vrooem.api_key' => 'test-key',
+        ]);
+
+        Http::fake([
+            'http://gateway.test/api/v1/locations/2962361044' => Http::response([
+                'unified_location_id' => 2962361044,
+                'name' => 'Casablanca Airport',
+                'city' => 'Casablanca',
+                'country' => 'Morocco',
+                'location_type' => 'airport',
+                'iata' => 'CMN',
+                'providers' => [
+                    ['provider' => 'greenmotion', 'pickup_id' => '354'],
+                    ['provider' => 'usave', 'pickup_id' => '354'],
+                ],
+            ], 200),
+            'http://gateway.test/api/v1/locations/search*' => Http::response([
+                'query' => 'CMN',
+                'results' => [
+                    [
+                        'location' => [
+                            'unified_location_id' => 2962361044,
+                            'name' => 'Casablanca Airport',
+                            'city' => 'Casablanca',
+                            'country' => 'Morocco',
+                            'location_type' => 'airport',
+                            'iata' => 'CMN',
+                            'providers' => [
+                                ['provider' => 'greenmotion', 'pickup_id' => '354'],
+                                ['provider' => 'usave', 'pickup_id' => '354'],
+                            ],
+                        ],
+                    ],
+                    [
+                        'location' => [
+                            'unified_location_id' => 4103471891,
+                            'name' => 'Nouaceur Airport',
+                            'city' => 'Nouaceur',
+                            'country' => 'Morocco',
+                            'location_type' => 'airport',
+                            'iata' => 'CMN',
+                            'providers' => [
+                                ['provider' => 'surprice', 'pickup_id' => 'CMN'],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $service = app(LocationSearchService::class);
+
+        $location = $service->getLocationByUnifiedId(2962361044);
+
+        $this->assertNotNull($location);
+        $this->assertSame('Casablanca Airport', $location['name']);
+        $this->assertSame([
+            'greenmotion',
+            'usave',
+            'surprice',
+        ], collect($location['providers'])->pluck('provider')->all());
+        $this->assertSame(3, $location['provider_count']);
+    }
+
+    public function test_it_fetches_gateway_location_by_provider_id(): void
+    {
+        config([
+            'vrooem.enabled' => true,
             'vrooem.url' => 'http://gateway.test',
             'vrooem.api_key' => 'test-key',
         ]);
@@ -111,16 +432,13 @@ class LocationSearchServiceTest extends TestCase
         $this->assertSame('internal_1', $location['our_location_id']);
     }
 
-    public function test_it_does_not_fallback_to_json_when_gateway_search_is_enabled(): void
+    public function test_it_returns_empty_results_when_gateway_search_fails(): void
     {
         config([
-            'vrooem.location_search_enabled' => true,
+            'vrooem.enabled' => true,
             'vrooem.url' => 'http://gateway.test',
             'vrooem.api_key' => 'test-key',
         ]);
-
-        File::shouldReceive('exists')->never();
-        File::shouldReceive('get')->never();
 
         Http::fake([
             'http://gateway.test/api/v1/locations/search*' => Http::response(['detail' => 'Gateway unavailable'], 503),
@@ -133,21 +451,16 @@ class LocationSearchServiceTest extends TestCase
         $this->assertSame([], $results);
     }
 
-    public function test_it_resolves_a_stale_unified_id_from_json_using_the_provider_pickup_id(): void
+    public function test_it_uses_gateway_list_locations_for_full_location_listing(): void
     {
         config([
-            'vrooem.location_search_enabled' => false,
+            'vrooem.enabled' => true,
             'vrooem.url' => 'http://gateway.test',
             'vrooem.api_key' => 'test-key',
         ]);
 
-        File::shouldReceive('exists')
-            ->twice()
-            ->andReturn(true);
-
-        File::shouldReceive('get')
-            ->twice()
-            ->andReturn(json_encode([
+        Http::fake([
+            'http://gateway.test/api/v1/locations*' => Http::response([
                 [
                     'unified_location_id' => 3385755165,
                     'name' => 'Dubai Airport (DXB)',
@@ -160,133 +473,27 @@ class LocationSearchServiceTest extends TestCase
                             'pickup_id' => '59610',
                             'original_name' => 'Dubai Airport Terminal 1',
                         ],
-                        [
-                            'provider' => 'surprice',
-                            'pickup_id' => 'DXB',
-                            'original_name' => 'Dubai Airport',
-                        ],
                     ],
                 ],
-            ], JSON_THROW_ON_ERROR));
+            ], 200),
+        ]);
 
         $service = app(LocationSearchService::class);
 
-        $location = $service->resolveSearchLocation([
-            'unified_location_id' => 2701212940,
-            'provider' => 'mixed',
-            'provider_pickup_id' => '59610',
-        ]);
+        $locations = $service->getAllLocations();
 
-        $this->assertNotNull($location);
-        $this->assertSame(3385755165, $location['unified_location_id']);
-        $this->assertSame('Dubai Airport (DXB)', $location['name']);
+        $this->assertCount(1, $locations);
+        $this->assertSame(3385755165, $locations[0]['unified_location_id']);
+        $this->assertSame('Dubai Airport (DXB)', $locations[0]['name']);
     }
 
-    public function test_it_consolidates_duplicate_json_search_results_for_the_dropdown(): void
+    public function test_location_search_service_source_is_gateway_only(): void
     {
-        config([
-            'vrooem.location_search_enabled' => false,
-            'vrooem.url' => 'http://gateway.test',
-            'vrooem.api_key' => 'test-key',
-        ]);
+        $source = file_get_contents(app_path('Services/LocationSearchService.php'));
 
-        File::shouldReceive('exists')
-            ->once()
-            ->andReturn(true);
-
-        File::shouldReceive('get')
-            ->once()
-            ->andReturn(json_encode([
-                [
-                    'unified_location_id' => 1,
-                    'name' => 'Dubai',
-                    'city' => 'Dubai',
-                    'country' => 'United Arab Emirates',
-                    'country_code' => 'AE',
-                    'location_type' => 'unknown',
-                    'providers' => [],
-                ],
-                [
-                    'unified_location_id' => 2,
-                    'name' => 'Dubai',
-                    'city' => 'Dubai',
-                    'country' => 'Verenigde Arabische Emiraten',
-                    'country_code' => 'AE',
-                    'location_type' => 'unknown',
-                    'providers' => [],
-                ],
-                [
-                    'unified_location_id' => 3,
-                    'name' => 'Dubai Airport',
-                    'city' => 'Dubai',
-                    'country' => 'United Arab Emirates',
-                    'country_code' => 'AE',
-                    'location_type' => 'airport',
-                    'providers' => [],
-                ],
-                [
-                    'unified_location_id' => 4,
-                    'name' => 'Dubai Airport',
-                    'city' => 'Dubai',
-                    'country' => 'United Arab Emirates',
-                    'country_code' => 'AE',
-                    'location_type' => 'airport',
-                    'iata' => 'DXB',
-                    'providers' => [
-                        ['provider' => 'surprice', 'pickup_id' => 'DXB'],
-                    ],
-                ],
-                [
-                    'unified_location_id' => 5,
-                    'name' => 'Dubai Airport',
-                    'city' => 'Dubai',
-                    'country' => 'United Arab Emirates',
-                    'country_code' => 'AE',
-                    'location_type' => 'airport',
-                    'iata' => 'DWC',
-                    'providers' => [
-                        ['provider' => 'surprice', 'pickup_id' => 'DWC'],
-                    ],
-                ],
-                [
-                    'unified_location_id' => 6,
-                    'name' => 'Dubai Port',
-                    'city' => 'Dubai',
-                    'country' => 'United Arab Emirates',
-                    'country_code' => 'AE',
-                    'location_type' => 'port',
-                    'providers' => [],
-                ],
-                [
-                    'unified_location_id' => 7,
-                    'name' => 'Dubai Train',
-                    'city' => 'Dubai',
-                    'country' => 'United Arab Emirates',
-                    'country_code' => 'AE',
-                    'location_type' => 'train',
-                    'providers' => [],
-                ],
-                [
-                    'unified_location_id' => 8,
-                    'name' => 'Dubai Downtown',
-                    'city' => 'Dubai',
-                    'country' => 'United Arab Emirates',
-                    'country_code' => 'AE',
-                    'location_type' => 'downtown',
-                    'providers' => [],
-                ],
-            ], JSON_THROW_ON_ERROR));
-
-        $service = app(LocationSearchService::class);
-
-        $results = $service->searchLocations('dubai', 10);
-
-        $this->assertCount(6, $results);
-        $this->assertSame('United Arab Emirates', $results[0]['country']);
-        $this->assertCount(1, array_values(array_filter($results, fn ($location) => $location['name'] === 'Dubai' && empty($location['iata']))));
-        $airportResults = array_values(array_filter($results, fn ($location) => $location['name'] === 'Dubai Airport'));
-        $this->assertCount(2, $airportResults);
-        $this->assertSame(['DWC', 'DXB'], collect($airportResults)->pluck('iata')->sort()->values()->all());
+        $this->assertStringNotContainsString('unified_locations.json', $source);
+        $this->assertStringNotContainsString('location_search_enabled', $source);
+        $this->assertStringNotContainsString('shouldUseGateway', $source);
     }
 
     public function test_it_normalizes_location_records_to_the_canonical_contract_shape(): void

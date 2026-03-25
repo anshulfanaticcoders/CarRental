@@ -26,6 +26,16 @@ class GeneratePublicSitemaps extends Command
 
             $result = $builder->build();
 
+            // Clean up stale sitemap files before writing new ones
+            $sitemapsDir = public_path('sitemaps');
+            if (is_dir($sitemapsDir)) {
+                $staleFiles = glob($sitemapsDir . '/*.xml');
+                foreach ($staleFiles as $staleFile) {
+                    @unlink($staleFile);
+                }
+                $this->line('Cleaned ' . count($staleFiles) . ' old sitemap files.');
+            }
+
             foreach ($result->files as $file) {
                 $writer->write($file->sitemap, public_path($file->path));
             }

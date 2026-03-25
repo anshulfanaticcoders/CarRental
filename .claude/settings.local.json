@@ -40,7 +40,17 @@
       "WebFetch(domain:docs.mailtrap.io)",
       "WebFetch(domain:mailtrap.docs.apiary.io)",
       "mcp__exa__web_search_exa",
-      "mcp__claude_ai_ref__ref_read_url"
+      "mcp__claude_ai_ref__ref_read_url",
+      "Bash(/mnt/c/laragon/www/vrooem-gateway/.venv/bin/python -m pytest --version)",
+      "Bash(/mnt/c/laragon/www/vrooem-gateway/.venv/bin/pip install:*)",
+      "Read(//mnt/c/laragon/www/vrooem-gateway/**)",
+      "Bash(/home/anshul/.local/bin/uv pip:*)",
+      "Bash(/home/anshul/.local/bin/uv run:*)",
+      "Bash(/home/anshul/.local/bin/uv sync:*)",
+      "Bash(/mnt/c/laragon/www/vrooem-gateway/.venv/bin/python3.11 -m pip install pytest pytest-asyncio)",
+      "Bash(/home/anshul/.local/bin/uv add:*)",
+      "Bash(PYTHONPATH=/mnt/c/laragon/www/vrooem-gateway /tmp/testenv/bin/python3.11 -m pytest -v)",
+      "Bash(agent-browser:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

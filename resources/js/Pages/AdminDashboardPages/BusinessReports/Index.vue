@@ -5,7 +5,7 @@
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
                         <h2 class="text-2xl font-bold tracking-tight text-gray-900">Business Reports</h2>
-                        <p class="text-sm text-muted-foreground mt-1">Revenue, bookings, and fleet metrics in {{ adminCurrency }}</p>
+                        <p class="text-sm text-muted-foreground mt-1">Commission revenue, bookings, and fleet metrics in {{ adminCurrency }}</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <DropdownMenu>
@@ -67,7 +67,7 @@
                 <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <Card class="border-l-4 border-l-emerald-500">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle class="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+                            <CardTitle class="text-sm font-medium text-muted-foreground">Total Commission Revenue</CardTitle>
                             <DollarSign class="h-4 w-4 text-emerald-500" />
                         </CardHeader>
                         <CardContent>
@@ -107,7 +107,7 @@
                 <div class="grid gap-4 xl:grid-cols-2">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Revenue & Bookings</CardTitle>
+                            <CardTitle>Commission & Bookings</CardTitle>
                             <CardDescription>{{ selectedReport.charAt(0).toUpperCase() + selectedReport.slice(1) }} breakdown for selected period</CardDescription>
                         </CardHeader>
                         <CardContent class="pl-2">
@@ -142,8 +142,8 @@
                 <!-- Location breakdown -->
                 <Card v-if="locationData && locationData.length > 0">
                     <CardHeader>
-                        <CardTitle>Revenue by Location</CardTitle>
-                        <CardDescription>Top pickup locations by revenue ({{ adminCurrency }})</CardDescription>
+                        <CardTitle>Commission by Location</CardTitle>
+                        <CardDescription>Top pickup locations by commission revenue ({{ adminCurrency }})</CardDescription>
                     </CardHeader>
                     <CardContent class="pl-2">
                         <BarChart
@@ -160,7 +160,7 @@
                 <Card>
                     <CardHeader>
                         <CardTitle>Booking Details</CardTitle>
-                        <CardDescription>All bookings in the selected period with admin-level pricing</CardDescription>
+                        <CardDescription>All bookings in the selected period with admin commission pricing</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Table>
@@ -170,7 +170,7 @@
                                     <TableHead>Customer</TableHead>
                                     <TableHead>Vendor</TableHead>
                                     <TableHead>Vehicle</TableHead>
-                                    <TableHead class="text-right">Amount</TableHead>
+                                    <TableHead class="text-right">Commission</TableHead>
                                     <TableHead>Payment</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Date</TableHead>

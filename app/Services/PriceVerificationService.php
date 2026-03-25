@@ -39,12 +39,12 @@ class PriceVerificationService
                 'vehicle_id' => $vehicleId,
                 'provider' => $vehicle['source'] ?? 'unknown',
                 // Gateway vehicles use total_price/price_per_day while legacy uses total/daily_rate.
-                'original_total' => $vehicle['total'] ?? ($vehicle['total_price'] ?? null),
-                'original_daily_rate' => $vehicle['daily_rate'] ?? ($vehicle['price_per_day'] ?? null),
+                'original_total' => $vehicle['total'] ?? ($vehicle['total_price'] ?? ($vehicle['pricing']['total_price'] ?? null)),
+                'original_daily_rate' => $vehicle['daily_rate'] ?? ($vehicle['price_per_day'] ?? ($vehicle['pricing']['price_per_day'] ?? null)),
                 'products' => $vehicle['products'] ?? [],
-                'extras' => $vehicle['extras'] ?? ($vehicle['options'] ?? []),
-                'price_per_day' => $vehicle['price_per_day'] ?? null,
-                'currency' => $vehicle['currency'] ?? 'EUR',
+                'extras' => $vehicle['extras'] ?? ($vehicle['options'] ?? ($vehicle['extras_preview'] ?? [])),
+                'price_per_day' => $vehicle['price_per_day'] ?? ($vehicle['pricing']['price_per_day'] ?? null),
+                'currency' => $vehicle['currency'] ?? ($vehicle['pricing']['currency'] ?? 'EUR'),
                 'stored_at' => now()->toIso8601String(),
                 'search_session' => $searchSessionId,
                 'promo_id' => $activePromo?->id,
@@ -130,7 +130,7 @@ class PriceVerificationService
         }
 
         // Verify total price matches (with small tolerance for rounding)
-        $clientTotal = $vehicleData['total'] ?? ($vehicleData['total_price'] ?? null);
+        $clientTotal = $vehicleData['total'] ?? ($vehicleData['total_price'] ?? ($vehicleData['pricing']['total_price'] ?? null));
         $storedTotal = $storedData['original_total'];
 
         if ($clientTotal !== null && $storedTotal !== null) {

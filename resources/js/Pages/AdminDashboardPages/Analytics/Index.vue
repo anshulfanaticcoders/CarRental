@@ -92,7 +92,7 @@ watch([range, startDate, endDate], () => {
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 class="text-2xl font-semibold text-slate-900">Analytics Overview</h2>
-          <p class="text-sm text-slate-500">Bookings and payments trends using admin currency snapshots.</p>
+          <p class="text-sm text-slate-500">Bookings and payments trends using admin commission snapshots.</p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
           <Select v-model="range">
@@ -134,7 +134,7 @@ watch([range, startDate, endDate], () => {
         </Card>
         <Card class="border-l-4 border-l-emerald-500">
           <CardHeader class="flex flex-row items-center justify-between space-y-0">
-            <CardTitle class="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+            <CardTitle class="text-sm font-medium text-muted-foreground">Total Commission Revenue</CardTitle>
             <Wallet class="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
@@ -144,12 +144,12 @@ watch([range, startDate, endDate], () => {
         </Card>
         <Card class="border-l-4 border-l-teal-500">
           <CardHeader class="flex flex-row items-center justify-between space-y-0">
-            <CardTitle class="text-sm font-medium text-muted-foreground">Paid Revenue</CardTitle>
+            <CardTitle class="text-sm font-medium text-muted-foreground">Commission Collected</CardTitle>
             <BadgeCheck class="h-4 w-4 text-teal-500" />
           </CardHeader>
           <CardContent>
             <div class="text-2xl font-bold">{{ formatCurrency(metrics.paid_revenue) }}</div>
-            <p class="text-xs text-muted-foreground">Pending {{ formatCurrency(metrics.pending_revenue) }}</p>
+            <p class="text-xs text-muted-foreground">Pending commission {{ formatCurrency(metrics.pending_revenue) }}</p>
           </CardContent>
         </Card>
         <Card class="border-l-4 border-l-violet-500">
@@ -164,17 +164,17 @@ watch([range, startDate, endDate], () => {
         </Card>
         <Card class="border-l-4 border-l-amber-500">
           <CardHeader class="flex flex-row items-center justify-between space-y-0">
-            <CardTitle class="text-sm font-medium text-muted-foreground">Pending Revenue</CardTitle>
+            <CardTitle class="text-sm font-medium text-muted-foreground">Pending Commission</CardTitle>
             <AlertTriangle class="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
             <div class="text-2xl font-bold">{{ formatCurrency(metrics.pending_revenue) }}</div>
-            <p class="text-xs text-muted-foreground">Awaiting payment</p>
+            <p class="text-xs text-muted-foreground">Awaiting collection</p>
           </CardContent>
         </Card>
         <Card class="border-l-4 border-l-indigo-500">
           <CardHeader class="flex flex-row items-center justify-between space-y-0">
-            <CardTitle class="text-sm font-medium text-muted-foreground">Revenue Momentum</CardTitle>
+            <CardTitle class="text-sm font-medium text-muted-foreground">Commission Momentum</CardTitle>
             <TrendingUp class="h-4 w-4 text-indigo-500" />
           </CardHeader>
           <CardContent>
@@ -201,8 +201,8 @@ watch([range, startDate, endDate], () => {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Revenue Breakdown</CardTitle>
-            <CardDescription>Total vs paid vs pending revenue.</CardDescription>
+            <CardTitle>Commission Breakdown</CardTitle>
+            <CardDescription>Total vs collected vs pending commission.</CardDescription>
           </CardHeader>
           <CardContent class="pl-2">
             <BarChart

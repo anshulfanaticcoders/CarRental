@@ -1,11 +1,12 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import axios from 'axios';
-import { usePage } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { useScrollAnimation } from '@/composables/useScrollAnimation';
 
 const page = usePage();
 const _p = (key, fallback = '') => (page.props.translations?.homepage?.[key] || fallback || key);
+const contactSupportHref = computed(() => `/${page.props.locale || 'en'}/contact-us`);
 
 const faqs = ref([]);
 const activeId = ref(null);
@@ -46,7 +47,7 @@ useScrollAnimation('.faq-section', '.faq-left, .faq-item', {
                     <span class="faq-label">{{ _p('faqs_badge', 'FAQ') }}</span>
                     <h3 class="faq-title">{{ _p('faqs_title', 'Questions we hear most.') }}</h3>
                     <p class="faq-lead">Can't find what you're looking for? Our support team is available 24/7.</p>
-                    <a href="/contact-us" class="faq-btn">Contact Support</a>
+                    <Link :href="contactSupportHref" class="faq-btn">Contact Support</Link>
                 </div>
                 <div class="faq-list">
                     <div v-for="faq in faqs" :key="faq.id" class="faq-item" :class="{ active: activeId === faq.id }">

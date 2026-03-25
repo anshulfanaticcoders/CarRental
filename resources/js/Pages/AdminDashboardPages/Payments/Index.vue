@@ -40,7 +40,7 @@
                                 <span v-if="stats.currency_symbol === 'Mixed'">{{ formatNumber(stats.total_amount) }} (Mixed)</span>
                                 <span v-else>{{ formatCurrency(stats.total_amount, stats.currency_symbol) }}</span>
                             </p>
-                            <p class="text-xs text-blue-600 mt-1">Total Amount</p>
+                            <p class="text-xs text-blue-600 mt-1">Total Commission</p>
                         </div>
                     </div>
                 </div>
@@ -143,9 +143,9 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Transaction ID</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Currency</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Admin Total</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Admin Paid</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Admin Pending</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission Total</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission Collected</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission Pending</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Payment Method</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Date</TableHead>

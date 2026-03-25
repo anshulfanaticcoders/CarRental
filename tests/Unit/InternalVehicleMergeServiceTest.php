@@ -85,6 +85,50 @@ class InternalVehicleMergeServiceTest extends TestCase
         $this->assertCount(0, $result);
     }
 
+    public function test_it_supports_canonical_internal_search_vehicle_payloads(): void
+    {
+        $service = new InternalVehicleMergeService();
+
+        $targetHash = 'internal_' . md5('Dubai' . '' . 'United Arab Emirates' . 'downtown office');
+        $vehicles = collect([
+            [
+                'source' => 'internal',
+                'booking_context' => [
+                    'provider_payload' => [
+                        'location' => 'downtown office',
+                        'city' => 'Dubai',
+                        'state' => null,
+                        'country' => 'United Arab Emirates',
+                    ],
+                ],
+            ],
+            [
+                'source' => 'internal',
+                'booking_context' => [
+                    'provider_payload' => [
+                        'location' => 'airport st',
+                        'city' => 'Dubai',
+                        'state' => null,
+                        'country' => 'United Arab Emirates',
+                    ],
+                ],
+            ],
+        ]);
+
+        $result = $service->forGatewayMerge(
+            $vehicles,
+            ['provider' => 'mixed'],
+            ['name' => 'Dubai Downtown', 'our_location_id' => $targetHash],
+            false
+        );
+
+        $this->assertCount(1, $result);
+        $this->assertSame(
+            'downtown office',
+            $result->first()['booking_context']['provider_payload']['location']
+        );
+    }
+
     private function makeInternalVehicle(string $location, string $city, ?string $state, string $country): array
     {
         return [

@@ -10,7 +10,6 @@ use App\Models\PayableSetting;
 use App\Models\StripeCheckoutPayload;
 use App\Models\Vehicle;
 use App\Models\VehicleOperatingHour;
-use App\Services\AdobeCarService;
 use App\Services\PromoService;
 use App\Services\StripeBookingService;
 use App\Services\CurrencyConversionService;
@@ -615,7 +614,7 @@ class StripeCheckoutController extends Controller
             $extrasPayloadId = null;
 
             // Extract vehicle benefits/policies for storage in provider_metadata
-            $vehicleBenefits = $validated['vehicle']['benefits'] ?? [];
+            $vehicleBenefits = $this->resolveVehicleBenefitsForCheckout($validated['vehicle'] ?? []);
             if (is_object($vehicleBenefits)) {
                 $vehicleBenefits = (array) $vehicleBenefits;
             }
@@ -624,15 +623,16 @@ class StripeCheckoutController extends Controller
 
             // Resolve vehicle image early so it's available for fullMetadata and Stripe
             $vehicleImage = null;
-            if ($validated['vehicle']['source'] === 'internal' && !empty($validated['vehicle']['images'])) {
-                foreach ($validated['vehicle']['images'] as $img) {
+            $checkoutVehicleImages = $this->resolveVehicleImagesForCheckout($validated['vehicle'] ?? []);
+            if (($validated['vehicle']['source'] ?? null) === 'internal' && !empty($checkoutVehicleImages)) {
+                foreach ($checkoutVehicleImages as $img) {
                     if (isset($img['image_type']) && $img['image_type'] === 'primary') {
                         $vehicleImage = $img['image_url'] ?? null;
                         break;
                     }
                 }
                 if (!$vehicleImage) {
-                    foreach ($validated['vehicle']['images'] as $img) {
+                    foreach ($checkoutVehicleImages as $img) {
                         if (isset($img['image_type']) && $img['image_type'] === 'gallery') {
                             $vehicleImage = $img['image_url'] ?? null;
                             break;
@@ -643,12 +643,17 @@ class StripeCheckoutController extends Controller
                 $vehicleImage = $validated['vehicle']['image'] ?? null;
             }
 
+            $selectedVehicleContext = $this->resolveSelectedVehicleContext(
+                $validated['vehicle'] ?? [],
+                $validated['package'] ?? null
+            );
+
             // Build the FULL metadata (no Stripe key limit here — stored in our DB)
             $fullMetadata = [
                 // Core
                 'user_id' => $request->user()?->id,
                 'vehicle_id' => $validated['vehicle']['id'] ?? '',
-                'gateway_vehicle_id' => $validated['vehicle']['gateway_vehicle_id'] ?? null,
+                'gateway_vehicle_id' => $selectedVehicleContext['gateway_vehicle_id'] ?? ($validated['vehicle']['gateway_vehicle_id'] ?? null),
                 'gateway_search_id' => $validated['gateway_search_id'] ?? null,
                 'vehicle_source' => $vehicleSource,
                 'vehicle_brand' => $validated['vehicle']['brand'] ?? '',
@@ -678,10 +683,10 @@ class StripeCheckoutController extends Controller
                 'provider_commission_rate' => $commissionRate,
                 'commission_amount' => $commissionAmount,
                 'deposit_percentage' => $paymentPercentage,
-                'deposit_amount' => $validated['vehicle']['benefits']['deposit_amount'] ?? $validated['vehicle']['security_deposit'] ?? null,
-                'excess_amount' => $validated['vehicle']['benefits']['excess_amount'] ?? null,
-                'excess_theft_amount' => $validated['vehicle']['benefits']['excess_theft_amount'] ?? null,
-                'deposit_currency' => $validated['vehicle']['benefits']['deposit_currency'] ?? $providerCurrency,
+                'deposit_amount' => $selectedVehicleContext['deposit_amount'] ?? null,
+                'excess_amount' => $selectedVehicleContext['excess_amount'] ?? null,
+                'excess_theft_amount' => $selectedVehicleContext['excess_theft_amount'] ?? null,
+                'deposit_currency' => $selectedVehicleContext['deposit_currency'] ?? $providerCurrency,
                 'exchange_rate_provider_to_booking' => $this->calculateExchangeRate($providerCurrency, $currencyCode, $computedTotals['provider_grand_total'] ?? null),
                 'exchange_rate_booking_to_admin' => $this->calculateExchangeRate($currencyCode, config('currency.base_currency', 'EUR'), $totalAmount),
                 'customer_name' => $validated['customer']['name'] ?? '',
@@ -707,12 +712,12 @@ class StripeCheckoutController extends Controller
                 'driver_license_number' => $validated['customer']['driver_license_number'] ?? null,
                 'notes' => $validated['customer']['notes'] ?? null,
                 // Provider-specific
-                'renteon_connector_id' => $validated['vehicle']['connector_id'] ?? null,
-                'renteon_pickup_office_id' => $validated['vehicle']['provider_pickup_office_id'] ?? null,
-                'renteon_dropoff_office_id' => $validated['vehicle']['provider_dropoff_office_id'] ?? null,
-                'renteon_pricelist_id' => $validated['vehicle']['pricelist_id'] ?? null,
-                'renteon_price_date' => $validated['vehicle']['price_date'] ?? null,
-                'renteon_prepaid' => $validated['vehicle']['prepaid']
+                'renteon_connector_id' => $selectedVehicleContext['connector_id'] ?? null,
+                'renteon_pickup_office_id' => $selectedVehicleContext['provider_pickup_office_id'] ?? null,
+                'renteon_dropoff_office_id' => $selectedVehicleContext['provider_dropoff_office_id'] ?? null,
+                'renteon_pricelist_id' => $selectedVehicleContext['pricelist_id'] ?? null,
+                'renteon_price_date' => $selectedVehicleContext['price_date'] ?? null,
+                'renteon_prepaid' => $selectedVehicleContext['prepaid']
                     ?? (($validated['vehicle']['source'] ?? '') === 'renteon' ? false : true),
                 'sbc_vehicle_id' => $validated['vehicle']['provider_vehicle_id'] ?? null,
                 'sbc_rate_id' => $validated['vehicle']['rate_id'] ?? null,
@@ -720,7 +725,7 @@ class StripeCheckoutController extends Controller
                 'sbc_payment_type' => $validated['vehicle']['payment_type'] ?? null,
                 'sbc_currency' => $validated['vehicle']['currency'] ?? null,
                 'recordgo_country' => $validated['vehicle']['recordgo_country'] ?? ($validated['country'] ?? null),
-                'recordgo_sell_code' => app(\App\Services\RecordGoService::class)->resolveSellCode($validated['country'] ?? null),
+                'recordgo_sell_code' => $this->resolveRecordGoSellCode($validated['country'] ?? null),
                 'recordgo_sellcode_ver' => $validated['vehicle']['recordgo_sellcode_ver'] ?? null,
                 'recordgo_acriss_code' => $validated['vehicle']['sipp_code'] ?? null,
                 'recordgo_product_id' => $validated['vehicle']['recordgo_selected_product']['product_id'] ?? null,
@@ -780,12 +785,12 @@ class StripeCheckoutController extends Controller
                 'terms' => $validated['terms'] ?? null,
                 // Vehicle benefits, policies, and deposit/excess info
                 'vehicle_benefits' => $vehicleBenefits,
-                'security_deposit' => $validated['vehicle']['security_deposit'] ?? null,
-                'deposit_payment_method' => $validated['vehicle']['payment_method'] ?? null,
+                'security_deposit' => $this->resolveVehicleSecurityDepositForCheckout($validated['vehicle'] ?? []),
+                'deposit_payment_method' => $this->resolveVehicleDepositPaymentMethodForCheckout($validated['vehicle'] ?? []),
                 'selected_deposit_type' => $validated['selected_deposit_type'] ?? null,
-                'fuel_type' => $validated['vehicle']['fuel_type'] ?? $validated['vehicle']['fuel'] ?? null,
-                'mileage' => $validated['vehicle']['mileage'] ?? null,
-                'transmission' => $validated['vehicle']['transmission'] ?? null,
+                'fuel_type' => $validated['vehicle']['fuel_type'] ?? $validated['vehicle']['fuel'] ?? ($validated['vehicle']['specs']['fuel'] ?? null),
+                'mileage' => $validated['vehicle']['mileage'] ?? ($validated['vehicle']['policies']['mileage_limit_km'] ?? null),
+                'transmission' => $validated['vehicle']['transmission'] ?? ($validated['vehicle']['specs']['transmission'] ?? null),
                 // Store full metadata here — StripeBookingService merges this back
                 'full_metadata' => array_filter($fullMetadata, fn($v) => $v !== null && $v !== ''),
             ];
@@ -957,15 +962,7 @@ class StripeCheckoutController extends Controller
     {
         $vehicle = $validated['vehicle'] ?? [];
         $package = $validated['package'] ?? null;
-        $product = null;
-        if (!empty($vehicle['products']) && is_array($vehicle['products'])) {
-            foreach ($vehicle['products'] as $entry) {
-                if (($entry['type'] ?? null) === $package) {
-                    $product = $entry;
-                    break;
-                }
-            }
-        }
+        $product = $this->resolveSelectedProduct($vehicle, $package);
 
         return [
             'provider' => $vehicle['source'] ?? null,
@@ -984,20 +981,92 @@ class StripeCheckoutController extends Controller
                 'total' => $product['total'] ?? ($validated['vehicle_total'] ?? null),
                 'currency' => $product['currency'] ?? ($validated['currency'] ?? null),
                 'deposit' => $product['deposit'] ?? null,
+                'deposit_currency' => $product['deposit_currency'] ?? null,
                 'excess' => $product['excess'] ?? null,
+                'excess_theft_amount' => $product['excess_theft_amount'] ?? null,
                 'mileage' => $product['mileage'] ?? null,
                 'costperextradistance' => $product['costperextradistance'] ?? null,
                 'fuelpolicy' => $product['fuelpolicy'] ?? null,
                 'minage' => $product['minage'] ?? null,
+                'gateway_vehicle_id' => $product['gateway_vehicle_id'] ?? null,
+                'connector_id' => $product['connector_id'] ?? null,
+                'provider_pickup_office_id' => $product['provider_pickup_office_id'] ?? null,
+                'provider_dropoff_office_id' => $product['provider_dropoff_office_id'] ?? null,
+                'pricelist_id' => $product['pricelist_id'] ?? null,
+                'pricelist_code' => $product['pricelist_code'] ?? null,
+                'price_date' => $product['price_date'] ?? null,
+                'prepaid' => $product['prepaid'] ?? null,
             ],
             'extras_selected' => $validated['detailed_extras'] ?? [],
+        ];
+    }
+
+    private function resolveSelectedProduct(array $vehicle, ?string $package): ?array
+    {
+        if (empty($vehicle['products']) || !is_array($vehicle['products'])) {
+            return null;
+        }
+
+        foreach ($vehicle['products'] as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            if (($entry['type'] ?? null) === $package) {
+                return $entry;
+            }
+        }
+
+        return collect($vehicle['products'])->first(fn ($entry) => is_array($entry)) ?: null;
+    }
+
+    private function resolveSelectedVehicleContext(array $vehicle, ?string $package): array
+    {
+        $selectedProduct = $this->resolveSelectedProduct($vehicle, $package);
+        $benefits = $this->resolveVehicleBenefitsForCheckout($vehicle);
+        $defaultCurrency = $benefits['deposit_currency']
+            ?? ($vehicle['pricing']['deposit_currency'] ?? null)
+            ?? ($vehicle['pricing']['currency'] ?? null)
+            ?? ($vehicle['currency'] ?? null);
+
+        $context = [
+            'gateway_vehicle_id' => $vehicle['gateway_vehicle_id'] ?? null,
+            'connector_id' => $vehicle['connector_id'] ?? null,
+            'provider_pickup_office_id' => $vehicle['provider_pickup_office_id'] ?? null,
+            'provider_dropoff_office_id' => $vehicle['provider_dropoff_office_id'] ?? null,
+            'pricelist_id' => $vehicle['pricelist_id'] ?? null,
+            'price_date' => $vehicle['price_date'] ?? null,
+            'prepaid' => $vehicle['prepaid'] ?? (($vehicle['source'] ?? '') === 'renteon' ? false : true),
+            'deposit_amount' => $benefits['deposit_amount']
+                ?? ($vehicle['pricing']['deposit_amount'] ?? null)
+                ?? ($vehicle['security_deposit'] ?? $this->resolveVehicleSecurityDepositForCheckout($vehicle)),
+            'deposit_currency' => $defaultCurrency,
+            'excess_amount' => $benefits['excess_amount'] ?? ($vehicle['pricing']['excess_amount'] ?? null),
+            'excess_theft_amount' => $benefits['excess_theft_amount'] ?? ($vehicle['pricing']['excess_theft_amount'] ?? null),
+        ];
+
+        if (($vehicle['source'] ?? null) !== 'renteon' || !$selectedProduct) {
+            return $context;
+        }
+
+        return [
+            'gateway_vehicle_id' => $selectedProduct['gateway_vehicle_id'] ?? $context['gateway_vehicle_id'],
+            'connector_id' => $selectedProduct['connector_id'] ?? $context['connector_id'],
+            'provider_pickup_office_id' => $selectedProduct['provider_pickup_office_id'] ?? $context['provider_pickup_office_id'],
+            'provider_dropoff_office_id' => $selectedProduct['provider_dropoff_office_id'] ?? $context['provider_dropoff_office_id'],
+            'pricelist_id' => $selectedProduct['pricelist_id'] ?? $context['pricelist_id'],
+            'price_date' => $selectedProduct['price_date'] ?? $context['price_date'],
+            'prepaid' => $selectedProduct['prepaid'] ?? $context['prepaid'],
+            'deposit_amount' => $selectedProduct['deposit'] ?? $context['deposit_amount'],
+            'deposit_currency' => $selectedProduct['deposit_currency'] ?? $context['deposit_currency'],
+            'excess_amount' => array_key_exists('excess', $selectedProduct) ? $selectedProduct['excess'] : $context['excess_amount'],
+            'excess_theft_amount' => $selectedProduct['excess_theft_amount'] ?? $context['excess_theft_amount'],
         ];
     }
 
     private function resolveProviderCurrency(array $validated, string $fallback): string
     {
         $vehicle = $validated['vehicle'] ?? [];
-        $providerCurrency = $vehicle['currency'] ?? null;
+        $providerCurrency = $vehicle['currency'] ?? ($vehicle['pricing']['currency'] ?? null);
 
         if (!$providerCurrency && !empty($vehicle['products']) && is_array($vehicle['products'])) {
             $package = $validated['package'] ?? null;
@@ -1354,14 +1423,15 @@ class StripeCheckoutController extends Controller
             }
 
             // Fallback if vehicle not found
-            $pricePerDay = $vehicle['price_per_day'] ?? null;
+            $pricePerDay = $vehicle['price_per_day'] ?? ($vehicle['pricing']['price_per_day'] ?? null);
             if ($pricePerDay !== null) {
                 return (float) $pricePerDay * $days;
             }
         }
 
-        if (isset($vehicle['total_price'])) {
-            return (float) $vehicle['total_price'];
+        if (isset($vehicle['total_price']) || isset($vehicle['pricing']['total_price'])) {
+            $vehicleTotal = $vehicle['total_price'] ?? ($vehicle['pricing']['total_price'] ?? null);
+            return (float) $vehicleTotal;
         }
 
         if (isset($validated['vehicle_total'])) {
@@ -1373,6 +1443,38 @@ class StripeCheckoutController extends Controller
         }
 
         return null;
+    }
+
+    private function resolveVehicleLegacyPayload(array $vehicle): array
+    {
+        $payload = $vehicle['booking_context']['provider_payload'] ?? [];
+        return is_array($payload) ? $payload : [];
+    }
+
+    private function resolveVehicleBenefitsForCheckout(array $vehicle): array
+    {
+        $benefits = $vehicle['benefits'] ?? $this->resolveVehicleLegacyPayload($vehicle)['benefits'] ?? [];
+        return is_array($benefits) ? $benefits : [];
+    }
+
+    private function resolveVehicleSecurityDepositForCheckout(array $vehicle): mixed
+    {
+        return $vehicle['security_deposit']
+            ?? ($vehicle['pricing']['deposit_amount'] ?? null)
+            ?? ($this->resolveVehicleLegacyPayload($vehicle)['security_deposit'] ?? null)
+            ?? ($this->resolveVehicleBenefitsForCheckout($vehicle)['deposit_amount'] ?? null);
+    }
+
+    private function resolveVehicleDepositPaymentMethodForCheckout(array $vehicle): mixed
+    {
+        return $vehicle['payment_method']
+            ?? ($this->resolveVehicleLegacyPayload($vehicle)['payment_method'] ?? null);
+    }
+
+    private function resolveVehicleImagesForCheckout(array $vehicle): array
+    {
+        $images = $vehicle['images'] ?? ($this->resolveVehicleLegacyPayload($vehicle)['images'] ?? []);
+        return is_array($images) ? $images : [];
     }
 
     private function resolveExtrasTotal(array $extras, int $days): float
@@ -1576,6 +1678,18 @@ class StripeCheckoutController extends Controller
     /**
      * Cancel redirect page
      */
+    private function resolveRecordGoSellCode(?string $country): ?string
+    {
+        $country = strtoupper(trim((string) $country));
+        $sellCodes = (array) config('services.recordgo.sellcodes', []);
+
+        if ($country === '') {
+            return $sellCodes['default'] ?? null;
+        }
+
+        return $sellCodes[$country] ?? ($sellCodes['default'] ?? null);
+    }
+
     public function cancel()
     {
         return inertia('Booking/Cancel', [

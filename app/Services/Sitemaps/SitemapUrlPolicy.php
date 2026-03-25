@@ -31,15 +31,13 @@ class SitemapUrlPolicy
             return false;
         }
 
-        if (preg_match('#/(vehicle|wheelsys-car|adobe-car|renteon-car|locauto-rent-car)(/|$)#', $path)) {
+        if (preg_match('#/vehicle(/|$)#', $path)) {
             return false;
         }
 
         if (
             str_contains($path, 'ok-mobility-booking')
-            || str_contains($path, 'green-motion-booking')
             || str_contains($path, 'adobe-booking')
-            || str_contains($path, 'locauto-rent-booking')
             || str_contains($path, 'wheelsys-booking')
         ) {
             return false;

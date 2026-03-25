@@ -127,8 +127,12 @@ const isGreenMotionOrUSave = computed(() => {
     return props.vehicle.source === 'greenmotion' || props.vehicle.source === 'usave';
 });
 
-// (Moved above)
-
+const fuelPolicyLabel = computed(() => {
+    const raw = props.vehicle.fuel_policy;
+    if (!raw || raw === 'unknown') return null;
+    const labels = { FF: 'Full to Full', SL: 'Same Level', FP: 'Free Fuel', PP: 'Prepaid' };
+    return labels[raw] || raw;
+});
 
 // Get Adobe Cars base daily rate (tdr)
 const adobeBaseRate = computed(() => {
@@ -746,21 +750,9 @@ onUnmounted(() => {
                 </span>
 
                 <!-- Fuel Policy -->
-                <span v-if="vehicle.fuel_policy" class="feature-tag info">
-                    {{ vehicle.fuel_policy }}
+                <span v-if="fuelPolicyLabel" class="feature-tag info">
+                    Fuel: {{ fuelPolicyLabel }}
                 </span>
-            </div>
-
-            <!-- View Protection Plans (any provider with plans) -->
-            <div v-if="normalizedPlans.length > 1" class="mb-4">
-                <button @click="showAllPlans = true"
-                    class="w-full text-center text-xs font-semibold py-2.5 border border-dashed border-primary-200 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-all flex items-center justify-center gap-2">
-                    <span>View Protection Plans</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                </button>
             </div>
 
             <!-- Footer -->

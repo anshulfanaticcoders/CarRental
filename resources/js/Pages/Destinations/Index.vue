@@ -1,12 +1,10 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
-import axios from 'axios';
 import SeoHead from '@/Components/SeoHead.vue';
 import SchemaInjector from '@/Components/SchemaInjector.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import Footer from '@/Components/Footer.vue';
-import { buildPopularPlaceSearchUrl } from '@/utils/popularPlaceSearch';
 import { useScrollAnimation } from '@/composables/useScrollAnimation';
 
 const props = defineProps({
@@ -23,7 +21,6 @@ const props = defineProps({
 });
 
 const page = usePage();
-const unifiedLocations = ref([]);
 
 const _p = (key, fallback = '') => {
     const t = page.props.translations?.homepage || {};
@@ -62,17 +59,8 @@ const goToPage = (url) => {
     });
 };
 
-onMounted(async () => {
-    try {
-        const response = await axios.get('/unified_locations.json');
-        unifiedLocations.value = response.data;
-    } catch (error) {
-        // Keep page functional with fallback URLs when unified locations cannot be loaded.
-    }
-});
-
 const navigateToSearch = (place) => {
-    const searchUrl = buildPopularPlaceSearchUrl(place, unifiedLocations.value);
+    const searchUrl = place?.search_url;
 
     if (searchUrl) {
         sessionStorage.setItem('searchurl', searchUrl);
@@ -84,7 +72,7 @@ const navigateToSearch = (place) => {
 };
 
 const getDestinationHref = (place) => {
-    const searchUrl = buildPopularPlaceSearchUrl(place, unifiedLocations.value);
+    const searchUrl = place?.search_url;
     return searchUrl ? `/${page.props.locale}${searchUrl}` : `/${page.props.locale}`;
 };
 

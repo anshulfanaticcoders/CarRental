@@ -560,9 +560,16 @@ class GatewayVehicleTransformer
             // Provider-specific enrichment from supplier_data.
             $enrichment = $this->enrichExtra($supplierId, $extra, $sd);
 
-            // Merge: canonical first, then supplier_data raw fields, then enrichment.
+            // Protect canonical keys from accidental $sd collision.
+            // Exception: 'id' is intentionally overridable (SBC adapter reads supplier_data.id
+            // as the protection-plan code for protection matching, e.g. 'CDW').
+            $protectedKeys = ['name', 'description', 'code', 'price', 'daily_rate', 'total_price',
+                'price_per_day', 'currency', 'mandatory', 'type', 'max_quantity', 'per_day'];
+            $sdSafe = array_diff_key($sd, array_flip($protectedKeys));
+
+            // Merge: canonical first, then safe supplier_data raw fields, then enrichment.
             // Enrichment wins over raw supplier_data when keys overlap (computed values).
-            return array_merge($canonical, $sd, $enrichment);
+            return array_merge($canonical, $sdSafe, $enrichment);
         })->all();
     }
 

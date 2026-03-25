@@ -23,7 +23,6 @@ use App\Models\VehicleOperatingHour;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 use App\Services\BookingAmountService;
-use App\Services\GreenMotionService;
 use App\Services\VrooemGatewayService;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
@@ -766,20 +765,6 @@ class BookingController extends Controller
             $booking->notes = ($existingNotes ? $existingNotes . "\n" : '') . $note;
         };
 
-        $stripGreenMotionCancelFailures = static function (?string $notes): string {
-            if (!$notes) {
-                return '';
-            }
-
-            $lines = preg_split("/\r?\n/", $notes);
-            $filtered = array_values(array_filter($lines, static function ($line) {
-                $trimmed = trim((string) $line);
-                return $trimmed !== '' && stripos($trimmed, 'GreenMotion Cancel failed:') !== 0;
-            }));
-
-            return implode("\n", $filtered);
-        };
-
         // Validate the request
         $validatedData = $request->validate([
             'booking_id' => 'required|exists:bookings,id',
@@ -821,18 +806,22 @@ class BookingController extends Controller
         }
 
         $providerSource = $booking->provider_source ? strtolower($booking->provider_source) : null;
-        $isGreenMotion = in_array($providerSource, ['greenmotion', 'usave'], true);
-        $isFavrica = $providerSource === 'favrica';
-        $isXDrive = $providerSource === 'xdrive';
+        $isExternalProvider = $providerSource !== null && $providerSource !== 'internal';
 
         $gatewayBookingId = (string) ($providerMetadata['gateway_booking_id'] ?? '');
         $gatewaySupplierId = (string) ($providerMetadata['gateway_supplier_id'] ?? $this->mapProviderSourceToGatewaySupplierId($providerSource));
-        $canUseGatewayCancellation = (bool) config('vrooem.enabled')
-            && $providerSource !== null
-            && $providerSource !== 'internal'
+        $canUseGatewayCancellation = $isExternalProvider
             && $gatewayBookingId !== ''
             && $gatewaySupplierId !== ''
             && !empty($booking->provider_booking_ref);
+
+        if ($isExternalProvider && !$canUseGatewayCancellation) {
+            $message = 'Provider gateway cancellation metadata is missing.';
+            if ($request->wantsJson()) {
+                return response()->json(['message' => $message], 422);
+            }
+            return redirect()->back()->with('error', $message);
+        }
 
         if ($canUseGatewayCancellation) {
             try {
@@ -868,368 +857,6 @@ class BookingController extends Controller
                 $booking->save();
 
                 $message = 'Failed to cancel reservation with provider gateway.';
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => $message], 502);
-                }
-                return redirect()->back()->with('error', $message);
-            }
-        } elseif ($isGreenMotion) {
-            try {
-                $bookingRef = $booking->provider_booking_ref;
-                $providerMetadata = $booking->provider_metadata ?? [];
-                $locationId = $providerMetadata['pickup_location_id']
-                    ?? $providerMetadata['dropoff_location_id']
-                    ?? null;
-
-                if (!$bookingRef || !$locationId) {
-                    $message = 'Provider booking reference or location is missing.';
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 422);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $greenMotionService = app(GreenMotionService::class)->setProvider($providerSource);
-                $xmlResponse = $greenMotionService->cancelReservation(
-                    $locationId,
-                    $bookingRef,
-                    $validatedData['cancellation_reason']
-                );
-
-                if (empty($xmlResponse)) {
-                    $message = 'Failed to cancel reservation with provider.';
-                    $appendBookingNote($booking, 'GreenMotion Cancel failed: empty response.');
-                    $booking->save();
-
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 502);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                libxml_use_internal_errors(true);
-                $xmlObject = simplexml_load_string($xmlResponse);
-                $xmlErrors = libxml_get_errors();
-                libxml_clear_errors();
-
-                $extractTagValue = static function (string $xml, array $tags): string {
-                    foreach ($tags as $tag) {
-                        $pattern = '/<\s*' . preg_quote($tag, '/') . '\b[^>]*>(.*?)<\/\s*' . preg_quote($tag, '/') . '\s*>/is';
-                        if (preg_match($pattern, $xml, $matches)) {
-                            $value = trim(strip_tags($matches[1] ?? ''));
-                            if ($value !== '') {
-                                return $value;
-                            }
-                        }
-                    }
-
-                    return '';
-                };
-
-                $responseNode = $xmlObject ? ($xmlObject->response ?? $xmlObject->Response ?? $xmlObject) : null;
-                $providerRef = $responseNode ? trim((string) ($responseNode->booking_ref ?? $responseNode->bookingref ?? $responseNode->bookingRef ?? '')) : '';
-                $providerNotes = $responseNode ? trim((string) ($responseNode->booking_notes ?? $responseNode->bookingnotes ?? $responseNode->bookingNotes ?? $responseNode->notes ?? $responseNode->note ?? $responseNode->message ?? '')) : '';
-                $statusValue = $responseNode ? strtolower(trim((string) ($responseNode->status ?? $responseNode->result ?? $responseNode->response ?? $responseNode->status_message ?? $responseNode->response_status ?? ''))) : '';
-
-                if ($providerRef === '') {
-                    $providerRef = $extractTagValue($xmlResponse, ['booking_ref', 'bookingref', 'bookingRef']);
-                }
-
-                if ($providerNotes === '') {
-                    $providerNotes = $extractTagValue($xmlResponse, ['booking_notes', 'bookingnotes', 'bookingNotes', 'notes', 'note', 'message', 'response_message', 'status_message']);
-                }
-
-                if ($statusValue === '') {
-                    $statusValue = strtolower($extractTagValue($xmlResponse, ['status', 'result', 'response', 'response_status', 'status_message']));
-                }
-
-                if ($xmlObject === false && !empty($xmlErrors)) {
-                    Log::warning('GreenMotion cancel response parsing failed', [
-                        'booking_id' => $booking->id,
-                        'errors' => array_map(static fn ($error) => trim($error->message), $xmlErrors),
-                    ]);
-                }
-
-                $successStatuses = ['success', 'successful', 'ok', 'cancelled', 'canceled', 'true', '1'];
-                $failureStatuses = ['failed', 'fail', 'error', 'invalid', 'denied', 'false', '0'];
-                $hasSuccessStatus = $statusValue !== '' && in_array($statusValue, $successStatuses, true);
-                $hasFailureStatus = $statusValue !== '' && in_array($statusValue, $failureStatuses, true);
-
-                if ($hasFailureStatus || (!$hasSuccessStatus && $providerRef === '')) {
-                    Log::warning('GreenMotion cancel response missing success indicator', [
-                        'booking_id' => $booking->id,
-                        'provider_ref' => $providerRef,
-                        'status' => $statusValue,
-                    ]);
-
-                    $message = $providerNotes !== ''
-                        ? 'Provider cancellation failed: ' . $providerNotes
-                        : ($xmlObject === false ? 'Provider cancellation failed: invalid response.' : 'Provider cancellation failed.');
-                    $appendBookingNote(
-                        $booking,
-                        'GreenMotion Cancel failed: '
-                        . ($providerNotes !== '' ? $providerNotes : ($xmlObject === false ? 'Invalid response format.' : 'Missing success confirmation in response.'))
-                    );
-                    $booking->save();
-
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 502);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $booking->notes = $stripGreenMotionCancelFailures($booking->notes);
-                $appendBookingNote(
-                    $booking,
-                    'GreenMotion Cancel: ' . ($providerNotes !== '' ? $providerNotes : 'Cancellation requested.')
-                );
-            } catch (\Exception $e) {
-                Log::error('GreenMotion cancel failed', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
-
-                $appendBookingNote($booking, 'GreenMotion Cancel failed: ' . $e->getMessage());
-                $booking->save();
-
-                $message = 'Failed to cancel reservation with provider.';
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => $message], 502);
-                }
-                return redirect()->back()->with('error', $message);
-            }
-        } elseif ($isFavrica) {
-            try {
-                $bookingRef = $booking->provider_booking_ref;
-
-                if (!$bookingRef) {
-                    $message = 'Provider booking reference is missing.';
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 422);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $favricaService = app(\App\Services\FavricaService::class);
-                $response = $favricaService->cancelReservation($bookingRef);
-
-                if (empty($response) || !is_array($response)) {
-                    $message = 'Failed to cancel reservation with provider.';
-                    $appendBookingNote($booking, 'Favrica Cancel failed: empty response.');
-                    $booking->save();
-
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 502);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $payload = $response[0] ?? null;
-                $statusValue = strtolower(trim((string) (($payload['success'] ?? $payload['Status'] ?? ''))));
-                $success = $statusValue === 'true' || $statusValue === '1';
-
-                if (!$success) {
-                    $errorMessage = $payload['error'] ?? 'Provider cancellation failed.';
-                    $appendBookingNote($booking, 'Favrica Cancel failed: ' . $errorMessage);
-                    $booking->save();
-
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $errorMessage], 502);
-                    }
-                    return redirect()->back()->with('error', $errorMessage);
-                }
-
-                $appendBookingNote($booking, 'Favrica Cancel: cancellation requested.');
-            } catch (\Exception $e) {
-                Log::error('Favrica cancel failed', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
-
-                $appendBookingNote($booking, 'Favrica Cancel failed: ' . $e->getMessage());
-                $booking->save();
-
-                $message = 'Failed to cancel reservation with provider.';
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => $message], 502);
-                }
-                return redirect()->back()->with('error', $message);
-            }
-        } elseif ($isXDrive) {
-            try {
-                $bookingRef = $booking->provider_booking_ref;
-
-                if (!$bookingRef) {
-                    $message = 'Provider booking reference is missing.';
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 422);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $xdriveService = app(\App\Services\XDriveService::class);
-                $response = $xdriveService->cancelReservation($bookingRef);
-
-                if (empty($response) || !is_array($response)) {
-                    $message = 'Failed to cancel reservation with provider.';
-                    $appendBookingNote($booking, 'XDrive Cancel failed: empty response.');
-                    $booking->save();
-
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 502);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $payload = $response[0] ?? null;
-                $statusValue = strtolower(trim((string) (($payload['success'] ?? $payload['Status'] ?? ''))));
-                $success = $statusValue === 'true' || $statusValue === '1';
-
-                if (!$success) {
-                    $errorMessage = $payload['error'] ?? 'Provider cancellation failed.';
-                    $appendBookingNote($booking, 'XDrive Cancel failed: ' . $errorMessage);
-                    $booking->save();
-
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $errorMessage], 502);
-                    }
-                    return redirect()->back()->with('error', $errorMessage);
-                }
-
-                $appendBookingNote($booking, 'XDrive Cancel: cancellation requested.');
-            } catch (\Exception $e) {
-                Log::error('XDrive cancel failed', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
-
-                $appendBookingNote($booking, 'XDrive Cancel failed: ' . $e->getMessage());
-                $booking->save();
-
-                $message = 'Failed to cancel reservation with provider.';
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => $message], 502);
-                }
-                return redirect()->back()->with('error', $message);
-            }
-        } elseif ($providerSource === 'surprice') {
-            try {
-                $bookingRef = $booking->provider_booking_ref;
-                if (!$bookingRef) {
-                    $message = 'Provider booking reference is missing.';
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 422);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $surpriceService = app(\App\Services\SurpriceService::class);
-                $response = $surpriceService->cancelReservation($bookingRef, $validatedData['cancellation_reason']);
-
-                if ($response === null) {
-                    $message = 'Failed to cancel reservation with provider.';
-                    $appendBookingNote($booking, 'Surprice Cancel failed: empty response.');
-                    $booking->save();
-
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 502);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $appendBookingNote($booking, 'Surprice Cancel: cancellation requested.');
-            } catch (\Exception $e) {
-                Log::error('Surprice cancel failed', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
-
-                $appendBookingNote($booking, 'Surprice Cancel failed: ' . $e->getMessage());
-                $booking->save();
-
-                $message = 'Failed to cancel reservation with provider.';
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => $message], 502);
-                }
-                return redirect()->back()->with('error', $message);
-            }
-        } elseif ($providerSource === 'renteon') {
-            try {
-                $bookingRef = $booking->provider_booking_ref;
-                if (!$bookingRef) {
-                    $message = 'Provider booking reference is missing.';
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 422);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $renteonService = app(\App\Services\RenteonService::class);
-                $response = $renteonService->cancelBooking($bookingRef);
-
-                if ($response === null) {
-                    $message = 'Failed to cancel reservation with provider.';
-                    $appendBookingNote($booking, 'Renteon Cancel failed: empty response.');
-                    $booking->save();
-
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 502);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $appendBookingNote($booking, 'Renteon Cancel: cancellation requested.');
-            } catch (\Exception $e) {
-                Log::error('Renteon cancel failed', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
-
-                $appendBookingNote($booking, 'Renteon Cancel failed: ' . $e->getMessage());
-                $booking->save();
-
-                $message = 'Failed to cancel reservation with provider.';
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => $message], 502);
-                }
-                return redirect()->back()->with('error', $message);
-            }
-        } elseif (in_array($providerSource, ['sicilybycar', 'sicily_by_car'], true)) {
-            try {
-                $bookingRef = $booking->provider_booking_ref;
-                if (!$bookingRef) {
-                    $message = 'Provider booking reference is missing.';
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 422);
-                    }
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $sicilyByCarService = app(\App\Services\SicilyByCarService::class);
-                $response = $sicilyByCarService->cancelReservation($bookingRef);
-
-                if (!($response['ok'] ?? false)) {
-                    $errorMessage = $response['error'] ?? 'Provider cancellation failed.';
-                    $appendBookingNote($booking, 'SicilyByCar Cancel failed: ' . $errorMessage);
-                    $booking->save();
-
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $errorMessage], 502);
-                    }
-                    return redirect()->back()->with('error', $errorMessage);
-                }
-
-                $appendBookingNote($booking, 'SicilyByCar Cancel: cancellation requested.');
-            } catch (\Exception $e) {
-                Log::error('SicilyByCar cancel failed', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
-
-                $appendBookingNote($booking, 'SicilyByCar Cancel failed: ' . $e->getMessage());
-                $booking->save();
-
-                $message = 'Failed to cancel reservation with provider.';
                 if ($request->wantsJson()) {
                     return response()->json(['message' => $message], 502);
                 }

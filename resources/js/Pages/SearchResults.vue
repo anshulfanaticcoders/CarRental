@@ -30,7 +30,7 @@ import filterIcon from "../../assets/filterIcon.svg";
 import SearchBar from "@/Components/SearchBar.vue";
 import { Filter, DollarSign, Car, Cog, Fuel, Users, ChevronDown, X } from 'lucide-vue-next';
 import CarListingCard from "@/Components/CarListingCard.vue"; // Import CarListingCard
-import BookingExtrasStep from "@/Components/BookingExtrasStepUnified.vue"; // Import BookingExtrasStep (unified)
+import BookingExtrasStep from "@/Components/BookingExtras/BookingExtrasStep.vue"; // Import BookingExtrasStep (refactored)
 import BookingCheckoutStep from '@/Components/BookingCheckoutStep.vue'; // Import BookingExtrasStep
 import { Label } from "@/Components/ui/label";
 import { Switch } from "@/Components/ui/switch";
@@ -38,8 +38,6 @@ import CaretDown from "../../assets/CaretDown.svg";
 import fullStar from "../../assets/fullstar.svg";
 import halfStar from "../../assets/halfstar.svg";
 import blankStar from "../../assets/blankstar.svg";
-import VueSlider from 'vue-slider-component';
-import 'vue-slider-component/theme/default.css';
 import Dropdown from "@/Components/Dropdown.vue";
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
 
@@ -48,6 +46,14 @@ import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 import { resolveProviderMarkupRate } from '@/utils/platformPricing';
 import { resolveSearchCurrency } from '@/utils/searchCurrency';
 import { computeVehicleDisplayDailyPrice } from '@/utils/vehicleSearchPricing';
+import { resolveVehicleImageSource } from '@/utils/vehicleImageFallback';
+import {
+    resolveSearchVehicleCurrency,
+    resolveSearchVehicleDisplayName,
+    resolveSearchVehicleImage,
+    resolveSearchVehiclePricePerDay,
+    resolveSearchVehicleRating,
+} from '@/features/search/utils/searchVehiclePresentation';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -176,8 +182,6 @@ const props = defineProps({
     schema: Object, // Add schema prop
     seo: Object,
     locale: String, // Added locale prop
-    okMobilityVehicles: Object, // New: OK Mobility vehicles data
-    renteonVehicles: Object, // New: Renteon vehicles data
     providerStatus: Array,
     searchError: String,
     optionalExtras: Array, // GreenMotion optional extras
@@ -222,89 +226,8 @@ const locationInstructions = ref(null);
 const locationDetails = ref(null);
 const driverRequirements = ref(null);
 const termsData = ref(null);
-const greenMotionCountries = ref(null);
-const termsCountryId = ref(null);
 // Initialize with 15% as default to prevent "Pay 0" bug - will be updated from API
 const paymentPercentage = ref(15);
-
-let locationFetchId = 0; // Guard against stale async responses
-const fetchLocationDetails = async (locationId, provider = 'greenmotion') => {
-    if (!locationId) return;
-    const fetchId = ++locationFetchId;
-    try {
-        const response = await axios.get(route('green-motion-locations'), {
-            params: { location_id: locationId, provider }
-        });
-        if (fetchId !== locationFetchId) return; // Stale response, discard
-        if (response.data) {
-            locationDetails.value = response.data;
-            locationInstructions.value = response.data.collection_details || null;
-        } else {
-            locationDetails.value = null;
-            locationInstructions.value = null;
-        }
-    } catch (error) {
-        if (fetchId !== locationFetchId) return;
-        console.error("Error fetching location details:", error);
-        locationInstructions.value = null;
-        locationDetails.value = null;
-    }
-};
-
-const fetchGreenMotionCountries = async () => {
-    if (greenMotionCountries.value) return greenMotionCountries.value;
-    try {
-        const response = await axios.get(route('green-motion-countries'));
-        greenMotionCountries.value = Array.isArray(response.data) ? response.data : [];
-        return greenMotionCountries.value;
-    } catch (error) {
-        console.error('Error fetching Green Motion countries:', error);
-        greenMotionCountries.value = [];
-        return [];
-    }
-};
-
-const fetchGreenMotionTerms = async (countryId) => {
-    if (!countryId) {
-        termsData.value = null;
-        return;
-    }
-    try {
-        const response = await axios.get(route('green-motion-terms-and-conditions'), {
-            params: { country_id: countryId, language: form.language || 'en' }
-        });
-        termsData.value = Array.isArray(response.data) ? response.data : null;
-    } catch (error) {
-        console.error('Error fetching Green Motion terms:', error);
-        termsData.value = null;
-    }
-};
-
-const resolveGreenMotionRequirements = async () => {
-    const countryName = form.country || '';
-    if (!countryName) {
-        driverRequirements.value = null;
-        termsData.value = null;
-        termsCountryId.value = null;
-        return;
-    }
-
-    const countries = await fetchGreenMotionCountries();
-    const match = countries.find(country =>
-        `${country.countryName || ''}`.toLowerCase() === countryName.toLowerCase()
-    );
-
-    if (!match) {
-        driverRequirements.value = null;
-        termsData.value = null;
-        termsCountryId.value = null;
-        return;
-    }
-
-    driverRequirements.value = match.driver_requirements || null;
-    termsCountryId.value = match.countryID || null;
-    await fetchGreenMotionTerms(termsCountryId.value);
-};
 
 const scrollToSection = async (id) => {
     await nextTick();
@@ -329,27 +252,23 @@ const handlePackageSelection = (event) => {
     selectedPackage.value = event.package;
     selectedProtectionCode.value = event.protection_code || null;
     bookingStep.value = 'extras';
+    pushStepHistory('extras');
 
     // Clear previous location state immediately to prevent leaking across providers
     locationInstructions.value = null;
     locationDetails.value = null;
     driverRequirements.value = null;
     termsData.value = null;
-    termsCountryId.value = null;
-
-    // Fetch location details if GreenMotion/USave
-    if (event.vehicle.source === 'greenmotion' || event.vehicle.source === 'usave') {
-        const locId = event.vehicle.location_id;
-        if (locId) {
-            fetchLocationDetails(locId, event.vehicle.source);
-        }
-        resolveGreenMotionRequirements();
-    } else if (event.vehicle.location_details) {
+    if (event.vehicle.location_details) {
         locationDetails.value = event.vehicle.location_details;
         locationInstructions.value = event.vehicle.location_instructions
             || event.vehicle.location_details.collection_details
             || null;
+    } else {
+        locationInstructions.value = event.vehicle.location_instructions || null;
     }
+    driverRequirements.value = event.vehicle.driver_requirements || null;
+    termsData.value = Array.isArray(event.vehicle.terms) ? event.vehicle.terms : null;
 
     window.scrollTo({ top: 0, behavior: 'instant' });
     nextTick(() => window.scrollTo({ top: 0, behavior: 'instant' }));
@@ -360,7 +279,6 @@ const handleBackToResults = () => {
     selectedVehicle.value = null;
     selectedPackage.value = null;
     selectedProtectionCode.value = null;
-    locationFetchId++; // Cancel any in-flight location fetch
     locationDetails.value = null;
     locationInstructions.value = null;
     nextTick(() => window.scrollTo({ top: savedScrollPosition, behavior: 'instant' }));
@@ -375,6 +293,7 @@ const handleProceedToCheckout = (data) => {
         vehicle_total: vehicleTotal
     };
     bookingStep.value = 'checkout';
+    pushStepHistory('checkout');
     window.scrollTo({ top: 0, behavior: 'instant' });
     nextTick(() => window.scrollTo({ top: 0, behavior: 'instant' }));
 };
@@ -384,6 +303,29 @@ const handleBackToExtras = () => {
     window.scrollTo({ top: 0, behavior: 'instant' });
     nextTick(() => window.scrollTo({ top: 0, behavior: 'instant' }));
 };
+
+// ── Browser back button support ─────────────────────────────────────
+// Push history entries when stepping forward so the browser back button
+// navigates within the booking flow instead of leaving the page.
+const pushStepHistory = (step) => {
+    history.pushState({ bookingStep: step }, '', '');
+};
+const onPopState = (event) => {
+    const target = event.state?.bookingStep;
+    if (target === 'extras' && bookingStep.value === 'checkout') {
+        bookingStep.value = 'extras';
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    } else if (target === 'results' && (bookingStep.value === 'extras' || bookingStep.value === 'checkout')) {
+        handleBackToResults();
+    } else if (!target && bookingStep.value !== 'results') {
+        // User pressed back past all our pushed states → go to results
+        handleBackToResults();
+    }
+};
+// Replace the initial history entry so we can detect "back to results"
+history.replaceState({ bookingStep: 'results' }, '', '');
+window.addEventListener('popstate', onPopState);
+onUnmounted(() => window.removeEventListener('popstate', onPopState));
 
 // Moved to consolidated onMounted at the bottom
 
@@ -757,11 +699,10 @@ let markers = [];
 
 const allVehiclesForMap = computed(() => {
     // Source of truth: backend already returns a combined list in props.vehicles.
-    // Still defensively de-dupe by id so UI pagination never hides vehicles.
+    // Defensively de-dupe by id so client-side filtering never hides duplicated records.
     const base = props.vehicles?.data || [];
-    const merged = [...base, ...(props.okMobilityVehicles?.data || []), ...(props.renteonVehicles?.data || [])];
     const byId = new Map();
-    merged.forEach(v => {
+    base.forEach(v => {
         if (!v || !v.id) return;
         if (!byId.has(v.id)) byId.set(v.id, v);
     });
@@ -1271,13 +1212,12 @@ const resetFilters = () => {
     submitFilters();
 };
 
-const createPopupContent = (vehicle, primaryImage, popupPrice, detailRoute) => {
-    const popupName = vehicle?.source === 'okmobility'
-        ? (vehicle.display_name || vehicle.group_description || vehicle.model || '')
-        : `${vehicle.brand || ''} ${vehicle.model || ''}`.trim();
+const createPopupContent = (vehicle, primaryImage, popupPrice) => {
+    const popupName = resolveSearchVehicleDisplayName(vehicle);
 
-    const ratingHtml = vehicle.source === 'internal' && vehicle.average_rating
-        ? `<div class="popup-bnb-rating"><span class="popup-bnb-star">&#9733;</span> ${vehicle.average_rating.toFixed(1)} (${vehicle.review_count} reviews)</div>`
+    const rating = resolveSearchVehicleRating(vehicle);
+    const ratingHtml = vehicle.source === 'internal' && rating.average
+        ? `<div class="popup-bnb-rating"><span class="popup-bnb-star">&#9733;</span> ${rating.average.toFixed(1)} (${rating.count ?? 0} reviews)</div>`
         : '';
 
     const locationText = vehicle.station
@@ -1345,11 +1285,7 @@ const addMarkers = () => {
             displayLng = lng + effectiveRadius * Math.cos(angle);
         }
 
-        const primaryImage = vehicle.image || (vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png');
-        const detailRoute = vehicle.source !== 'internal'
-            ? route(getProviderRoute(vehicle), { locale: page.props.locale, id: vehicle.id, provider: vehicle.source, location_id: vehicle.provider_pickup_id, start_date: form.date_from, end_date: form.date_to, start_time: form.start_time, end_time: form.end_time, dropoff_location_id: form.dropoff_location_id, rentalCode: form.rentalCode })
-            : route('vehicle.show', { locale: page.props.locale, id: vehicle.id, package: form.package_type, pickup_date: form.date_from, return_date: form.date_to });
-
+        const primaryImage = resolveVehicleImageSource(vehicle);
         let popupPrice = "N/A";
         let popupCurrencySymbol = getCurrencySymbol(selectedCurrency.value);
         const popupPriceValue = getVehiclePriceConverted(vehicle);
@@ -1361,7 +1297,7 @@ const addMarkers = () => {
         const marker = L.marker([displayLat, displayLng], {
             icon: createCustomIcon(vehicle),
             pane: "markers",
-        }).bindPopup(createPopupContent(vehicle, primaryImage, popupPrice, detailRoute));
+        }).bindPopup(createPopupContent(vehicle, primaryImage, popupPrice));
 
         map.addLayer(marker);
         markers.push(marker);
@@ -1509,8 +1445,7 @@ const popEffect = ref({});
 
 const getFavoriteImage = (vehicle) => {
     if (!vehicle) return null;
-    if (vehicle.image) return vehicle.image;
-    return vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || null;
+    return resolveSearchVehicleImage(vehicle);
 };
 
 const buildProviderFavoritePayload = (vehicle) => {
@@ -1520,8 +1455,8 @@ const buildProviderFavoritePayload = (vehicle) => {
         brand: vehicle.brand || null,
         model: vehicle.model || null,
         image: getFavoriteImage(vehicle),
-        price_per_day: vehicle.price_per_day ?? null,
-        currency: vehicle.currency ?? null,
+        price_per_day: resolveSearchVehiclePricePerDay(vehicle),
+        currency: resolveSearchVehicleCurrency(vehicle, null),
         provider_pickup_id: vehicle.provider_pickup_id ?? null,
         search: {
             where: form.where,
@@ -1799,44 +1734,25 @@ const getStarAltText = (rating, starNumber) => {
     }
 };
 
-const getProviderRoute = (vehicle) => {
-    if (vehicle.source === 'greenmotion') {
-        return 'green-motion-car.show';
-    }
-    if (vehicle.source === 'okmobility') {
-        return 'ok-mobility-car.show';
-    }
-    if (vehicle.source === 'wheelsys') {
-        return 'wheelsys-car.show';
-    }
-    if (vehicle.source === 'adobe') {
-        return 'adobe-car.show';
-    }
-    if (vehicle.source === 'locauto_rent') {
-        return 'locauto-rent-car.show';
-    }
-    if (vehicle.source === 'renteon') {
-        return 'renteon-car.show';
-    }
-    // Add other providers here as needed
-    // if (vehicle.source === 'usave') {
-    //     return 'usave-car.show';
-    // }
-    return 'green-motion-car.show'; // Default for now
-};
-
 const showPriceSlider = ref(false);
 // These will be initialized dynamically based on vehicle prices
 const priceRangeValues = ref([0, 1000]);
 const tempPriceRangeValues = ref([0, 1000]);
 
+
 // Initialize price range based on dynamic values when vehicles are loaded
 watch(() => dynamicPriceRange.value, (newRange) => {
     if (newRange) {
+        // Clamp current values to new range to prevent "value > max" slider error
+        const clampedMin = Math.max(newRange.min, Math.min(tempPriceRangeValues.value[0], newRange.max));
+        const clampedMax = Math.min(newRange.max, Math.max(tempPriceRangeValues.value[1], newRange.min));
         // Always update to dynamic range when it changes (vehicles loaded)
         if (!form.price_range || priceRangeValues.value[1] === 1000) {
             priceRangeValues.value = [newRange.min, newRange.max];
             tempPriceRangeValues.value = [newRange.min, newRange.max];
+        } else {
+            tempPriceRangeValues.value = [clampedMin, clampedMax];
+            priceRangeValues.value = [clampedMin, clampedMax];
         }
     }
 }, { immediate: true });
@@ -1971,9 +1887,9 @@ onMounted(() => {
 
     setupIntersectionObserver(); // Initialize Intersection Observer
 
-    // Initialize map immediately for fast loading
+    // Initialize map only when container exists
     setTimeout(() => {
-        initMap();
+        if (document.getElementById('map')) initMap();
     }, 50);
 
     // Load currency data in background
@@ -2035,21 +1951,7 @@ const handleImageLoad = (event) => {
 };
 
 const getImageSource = (vehicle) => {
-    if (vehicle.source === 'internal') {
-        return vehicle.images?.find((image) => image.image_type === 'primary')?.image_url || '/default-image.png';
-    }
-
-    // For external providers (Wheelsys, GreenMotion, etc.)
-    if (vehicle.image) {
-        return vehicle.image;
-    }
-
-    // Fallback for providers without images
-    if (vehicle.source === 'wheelsys') {
-        return '/wheelsys-placeholder.jpg';
-    }
-
-    return '/images/dummyCarImaage.png';
+    return resolveVehicleImageSource(vehicle);
 };
 
 watch(
@@ -2108,16 +2010,27 @@ watch(
                                 <ChevronDown :size="14" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.price }" />
                             </div>
                             <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.price }">
-                                <div class="fp-section-body fpm-section-body">
-                                    <div class="fp-price-display">
-                                        <strong>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}</strong>
-                                        <strong>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}</strong>
+                                <div class="fp-section-body fpm-section-body" style="margin-left: 0;">
+                                    <div class="flex items-end gap-3">
+                                        <div class="flex-1 min-w-0">
+                                            <label class="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Min</label>
+                                            <div class="relative">
+                                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">{{ getCurrencySymbol(selectedCurrency) }}</span>
+                                                <input type="number" v-model.number="tempPriceRangeValues[0]" :min="dynamicPriceRange.min" :max="tempPriceRangeValues[1]" :placeholder="String(dynamicPriceRange.min)"
+                                                    class="w-full pl-6 pr-2 py-2.5 text-sm border border-gray-200 rounded-lg focus:border-[#245f7d] focus:ring-1 focus:ring-[#245f7d] outline-none price-range-input" />
+                                            </div>
+                                        </div>
+                                        <span class="text-gray-300 pb-2.5">–</span>
+                                        <div class="flex-1 min-w-0">
+                                            <label class="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Max</label>
+                                            <div class="relative">
+                                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">{{ getCurrencySymbol(selectedCurrency) }}</span>
+                                                <input type="number" v-model.number="tempPriceRangeValues[1]" :min="tempPriceRangeValues[0]" :max="dynamicPriceRange.max" :placeholder="String(dynamicPriceRange.max)"
+                                                    class="w-full pl-6 pr-2 py-2.5 text-sm border border-gray-200 rounded-lg focus:border-[#245f7d] focus:ring-1 focus:ring-[#245f7d] outline-none price-range-input" />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min"
-                                        :max="dynamicPriceRange.max" :enable-cross="false" :lazy="true"
-                                        @change="applyPriceRange" :tooltip="'none'"
-                                        :process-style="{ backgroundColor: '#245f7d' }"
-                                        :bg-style="{ backgroundColor: '#e2e8f0' }"></VueSlider>
+                                    <button @click="applyPriceRange" class="w-full mt-3 py-2.5 bg-[#153b4f] text-white text-sm font-semibold rounded-lg hover:bg-[#1e3a5f] transition-colors">Apply Price Range</button>
                                 </div>
                             </div>
                         </div>
@@ -2386,15 +2299,27 @@ watch(
                             <ChevronDown :size="16" class="fp-chevron" :class="{ 'fp-chevron-collapsed': !expandedFilters.price }" />
                         </div>
                         <div class="fp-collapse" :class="{ 'fp-collapse-open': expandedFilters.price }">
-                            <div class="fp-section-body">
-                                <div class="fp-price-display">
-                                    <strong>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[0] }}</strong>
-                                    <strong>{{ getCurrencySymbol(selectedCurrency) }}{{ tempPriceRangeValues[1] }}</strong>
+                            <div class="fp-section-body" style="margin-left: 0;">
+                                <div class="flex items-end gap-3">
+                                    <div class="flex-1 min-w-0">
+                                        <label class="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Min</label>
+                                        <div class="relative">
+                                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">{{ getCurrencySymbol(selectedCurrency) }}</span>
+                                            <input type="number" v-model.number="tempPriceRangeValues[0]" :min="dynamicPriceRange.min" :max="tempPriceRangeValues[1]" :placeholder="String(dynamicPriceRange.min)"
+                                                class="w-full pl-6 pr-2 py-2.5 text-sm border border-gray-200 rounded-lg focus:border-[#245f7d] focus:ring-1 focus:ring-[#245f7d] outline-none price-range-input" />
+                                        </div>
+                                    </div>
+                                    <span class="text-gray-300 pb-2.5">–</span>
+                                    <div class="flex-1 min-w-0">
+                                        <label class="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Max</label>
+                                        <div class="relative">
+                                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">{{ getCurrencySymbol(selectedCurrency) }}</span>
+                                            <input type="number" v-model.number="tempPriceRangeValues[1]" :min="tempPriceRangeValues[0]" :max="dynamicPriceRange.max" :placeholder="String(dynamicPriceRange.max)"
+                                                class="w-full pl-6 pr-2 py-2.5 text-sm border border-gray-200 rounded-lg focus:border-[#245f7d] focus:ring-1 focus:ring-[#245f7d] outline-none price-range-input" />
+                                        </div>
+                                    </div>
                                 </div>
-                                <VueSlider v-model="tempPriceRangeValues" :min="dynamicPriceRange.min" :max="dynamicPriceRange.max"
-                                    :enable-cross="false" :lazy="true" @change="applyPriceRange" :tooltip="'none'"
-                                    :process-style="{ backgroundColor: '#245f7d' }" :bg-style="{ backgroundColor: '#e2e8f0' }">
-                                </VueSlider>
+                                <button @click="applyPriceRange" class="w-full mt-3 py-2.5 bg-[#153b4f] text-white text-sm font-semibold rounded-lg hover:bg-[#1e3a5f] transition-colors">Apply Price Range</button>
                             </div>
                         </div>
                     </div>
@@ -2702,6 +2627,11 @@ watch(
 <style>
 @import "leaflet/dist/leaflet.css";
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap');
+
+/* Hide number input spin buttons */
+.price-range-input::-webkit-outer-spin-button,
+.price-range-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.price-range-input { -moz-appearance: textfield; }
 
 /* Airbnb-Style Marker Styles */
 .marker-bnb {

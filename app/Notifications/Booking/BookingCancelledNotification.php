@@ -53,6 +53,8 @@ class BookingCancelledNotification extends Notification
         $pickupTime = $this->booking->pickup_time ?? 'N/A';
         $returnTime = $this->booking->return_time ?? 'N/A';
 
+        $amountLabel = $this->recipientType === 'admin' ? '**Commission Total:** ' : '**Total Amount:** ';
+
         $mailMessage = (new MailMessage)
             ->subject('Booking Cancelled - #' . $this->booking->booking_number)
             ->line('**Booking Details:**')
@@ -64,7 +66,7 @@ class BookingCancelledNotification extends Notification
             ->line('**Pickup Time:** ' . $pickupTime)
             ->line('**Return Date:** ' . $returnDate)
             ->line('**Return Time:** ' . $returnTime)
-            ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
+            ->line($amountLabel . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
             ->line('**Cancellation Reason:** ' . $this->booking->cancellation_reason)
             ->line('**Customer Details:**')
             ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)

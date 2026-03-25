@@ -145,7 +145,7 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Vehicle</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Dates</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Total Days</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Amount</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Payment</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Actions</TableHead>
@@ -187,10 +187,10 @@
                                             {{ formatCurrency(getAdminAmounts(booking).total, getAdminAmounts(booking).currency) }}
                                         </div>
                                         <div class="text-green-600 text-xs">
-                                            Paid: {{ formatCurrency(getAdminAmounts(booking).paid, getAdminAmounts(booking).currency) }}
+                                            Commission Collected: {{ formatCurrency(getAdminAmounts(booking).paid, getAdminAmounts(booking).currency) }}
                                         </div>
                                         <div class="text-yellow-600 text-xs">
-                                            Pending: {{ formatCurrency(getAdminAmounts(booking).pending, getAdminAmounts(booking).currency) }}
+                                            Pending Commission: {{ formatCurrency(getAdminAmounts(booking).pending, getAdminAmounts(booking).currency) }}
                                         </div>
                                     </div>
                                 </TableCell>

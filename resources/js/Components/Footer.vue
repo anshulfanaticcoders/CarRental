@@ -2,6 +2,7 @@
 import ApplicationLogo from "./ApplicationLogo.vue";
 import { Link } from "@inertiajs/vue3";
 import paypalLogos from "../../assets/paymentIcons.svg";
+import axios from 'axios';
 import { onMounted, ref, computed } from "vue";
 import { usePage } from '@inertiajs/vue3';
 import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, Linkedin } from 'lucide-vue-next';
@@ -67,55 +68,32 @@ const footerContactInfo = ref({
     address: ''
 });
 
-import { defineExpose } from 'vue';
-
-
-const unifiedLocations = ref([]);
-
 const navigateToSearch = (place) => {
-    updateSearchUrl(place);
-    const searchUrl = sessionStorage.getItem('searchurl');
+    const searchUrl = updateSearchUrl(place);
+
     if (searchUrl) {
         window.location.href = `/${page.props.locale}${searchUrl}`;
+        return;
     }
+
+    window.location.href = `/${page.props.locale}`;
 };
 
 const updateSearchUrl = (place) => {
-    const location = unifiedLocations.value.find(l => l.name === place.place_name);
+    const searchUrl = place?.search_url || null;
 
-    if (location && location.providers && location.providers.length > 0) {
-        const provider = location.providers[0];
-
-        const today = new Date();
-        const pickupDate = new Date(today);
-        pickupDate.setDate(today.getDate() + 1);
-        const returnDate = new Date(pickupDate);
-        returnDate.setDate(pickupDate.getDate() + 1);
-
-        const formatDate = (date) => date.toISOString().split('T')[0];
-
-        const params = {
-            where: location.name,
-            latitude: location.latitude,
-            longitude: location.longitude,
-            city: location.city,
-            country: location.country,
-            provider: provider.provider,
-            provider_pickup_id: provider.pickup_id,
-            date_from: formatDate(pickupDate),
-            date_to: formatDate(returnDate),
-            start_time: '09:00',
-            end_time: '09:00',
-            age: 35,
-        };
-        const urlParams = new URLSearchParams(params).toString();
-        sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+    if (searchUrl) {
+        sessionStorage.setItem('searchurl', searchUrl);
     } else {
-        const urlParams = new URLSearchParams({
-            where: place.place_name,
-        }).toString();
-        sessionStorage.setItem('searchurl', `/s?${urlParams}`);
+        sessionStorage.removeItem('searchurl');
     }
+
+    return searchUrl;
+};
+
+const getPlaceHref = (place) => {
+    const searchUrl = place?.search_url || null;
+    return searchUrl ? `/${page.props.locale}${searchUrl}` : `/${page.props.locale}`;
 };
 
 const submitNewsletter = async () => {
@@ -151,26 +129,15 @@ const submitNewsletter = async () => {
         newsletterLoading.value = false;
     }
 };
-
-
-
-defineExpose({
-    updateSearchUrl,
-
-    navigateToSearch
-});
-
 onMounted(async () => {
     try {
-        const [placesResponse, locationsResponse, contactInfoResponse] = await Promise.all([
+        const [placesResponse, contactInfoResponse] = await Promise.all([
             axios.get(`/${page.props.locale}/api/footer-places`),
-            axios.get('/unified_locations.json'),
             axios.get('/api/footer-contact-info')
         ]);
 
         footerPlaces.value = placesResponse.data;
         footerContactInfo.value = contactInfoResponse.data;
-        unifiedLocations.value = locationsResponse.data;
     } catch (error) {
         console.error('Failed to fetch footer data:', error);
     }
@@ -224,7 +191,7 @@ onMounted(async () => {
                         <div class="footer-col-title">Locations</div>
                         <ul>
                             <li v-for="place in footerPlaces" :key="place.id">
-                                <a :href="`/${page.props.locale}/s?where=${encodeURIComponent(place.place_name)}`"
+                                <a :href="getPlaceHref(place)"
                                     @click.prevent="navigateToSearch(place)" class="footer-link">{{ place.place_name }}</a>
                             </li>
                             <li v-if="footerPlaces.length === 0">

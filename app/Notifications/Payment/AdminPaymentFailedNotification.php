@@ -45,7 +45,7 @@ class AdminPaymentFailedNotification extends Notification
             ->line('**Pickup Time:** ' . $this->booking->pickup_time)
             ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
             ->line('**Return Time:** ' . $this->booking->return_time)
-            ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
+            ->line('**Commission Total:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
             ->line('**Customer Details:**')
             ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
             ->line('**Email:** ' . $this->customer->email)

@@ -95,10 +95,10 @@
                                     </div>
                                 </CardContent>
                             </Card>
-                            <!-- Total Revenue -->
+                            <!-- Total Commission Revenue -->
                             <Card class="border-l-4 border-l-emerald-500">
                                 <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle class="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+                                    <CardTitle class="text-sm font-medium text-muted-foreground">Total Commission Revenue</CardTitle>
                                     <Banknote class="h-4 w-4 text-emerald-500" />
                                 </CardHeader>
                                 <CardContent>
@@ -121,7 +121,7 @@
                             </Card>
                             <Card class="lg:col-span-3 max-h-[440px] overflow-auto">
                                 <CardHeader>
-                                    <CardTitle class="text-base">Recent Sales</CardTitle>
+                                    <CardTitle class="text-base">Recent Commission Earnings</CardTitle>
                                     <CardDescription>{{ currentMonthSales }} bookings this period</CardDescription>
                                 </CardHeader>
                                 <CardContent class="space-y-4">
@@ -138,7 +138,7 @@
                                         </div>
                                     </div>
                                     <div v-if="!recentSales || recentSales.length === 0" class="text-center py-8 text-muted-foreground text-sm">
-                                        No sales in this period
+                                        No commission earnings in this period
                                     </div>
                                 </CardContent>
                             </Card>
@@ -159,7 +159,7 @@
                                                 <TableHead class="font-semibold">Vendor</TableHead>
                                                 <TableHead class="font-semibold">Vehicle</TableHead>
                                                 <TableHead class="font-semibold">Dates</TableHead>
-                                                <TableHead class="font-semibold text-right">Amount</TableHead>
+                                                <TableHead class="font-semibold text-right">Commission</TableHead>
                                                 <TableHead class="font-semibold text-center">Status</TableHead>
                                             </TableRow>
                                         </TableHeader>

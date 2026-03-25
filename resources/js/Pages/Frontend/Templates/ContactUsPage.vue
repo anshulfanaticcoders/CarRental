@@ -3,7 +3,7 @@ import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import SeoHead from '@/Components/SeoHead.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { computed, watch, onMounted, onUnmounted } from 'vue';
+import { computed, watch, ref, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
     page: Object,
@@ -26,16 +26,34 @@ const form = useForm({
     email: '',
     message: '',
     admin_email: import.meta.env.VITE_ADMIN_EMAIL,
+    cf_turnstile_response: '',
 });
 
 const inertiaPage = usePage();
 const flashSuccess = computed(() => inertiaPage.props.flash?.success || null);
+
+// Turnstile
+const turnstileContainer = ref(null);
+let turnstileWidgetId = null;
+
+const initTurnstile = () => {
+    if (turnstileContainer.value && window.turnstile) {
+        turnstileWidgetId = window.turnstile.render(turnstileContainer.value, {
+            sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
+            callback: (token) => { form.cf_turnstile_response = token; },
+            'expired-callback': () => { form.cf_turnstile_response = ''; },
+        });
+    }
+};
 
 const submitForm = () => {
     form.post(route('contact.submit'), {
         preserveScroll: true,
         onSuccess: () => {
             form.reset();
+            if (window.turnstile && turnstileWidgetId !== null) {
+                window.turnstile.reset(turnstileWidgetId);
+            }
         },
     });
 };
@@ -61,6 +79,7 @@ const contactPoints = computed(() => {
 let observer = null;
 
 onMounted(() => {
+    // Scroll-reveal observer
     const observerOptions = {
         threshold: 0.12,
         rootMargin: '0px 0px -40px 0px',
@@ -76,6 +95,17 @@ onMounted(() => {
     }, observerOptions);
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Load Turnstile
+    if (!document.querySelector('script[src*="turnstile"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit';
+        script.async = true;
+        window.onTurnstileLoad = () => initTurnstile();
+        document.head.appendChild(script);
+    } else if (window.turnstile) {
+        initTurnstile();
+    }
 });
 
 onUnmounted(() => {
@@ -234,9 +264,10 @@ const LocationIcon = `<svg class="w-[22px] h-[22px]" fill="none" stroke="current
                                           :placeholder="_t('contactus', 'your_message')"
                                           required></textarea>
                             </div>
+                            <div ref="turnstileContainer" class="flex justify-center"></div>
                             <div class="pt-2">
                                 <button type="submit"
-                                        :disabled="form.processing"
+                                        :disabled="form.processing || !form.cf_turnstile_response"
                                         class="submit-btn w-full py-3.5 bg-customPrimaryColor text-white font-semibold text-[15px] rounded-[10px] transition-all duration-250 hover:bg-[#0f2d3d] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(21,59,79,0.3)] disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden">
                                     {{ form.processing ? _t('contactus', 'sending_message_button') : _t('contactus', 'send_message_button') }}
                                 </button>

@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Services\LocationSearchService; // Import LocationSearchService
 use App\Services\Search\GatewaySearchService;
-use App\Services\Search\LegacyProviderSearchService;
+use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\GatewayVehicleTransformer;
 use Illuminate\Support\Facades\Log; // Import Log facade
 use App\Services\Seo\SeoMetaResolver;
@@ -20,18 +20,18 @@ class SearchController extends Controller
     protected $locationSearchService;
     protected $gatewaySearchService;
     protected $gatewayVehicleTransformer;
-    protected $legacyProviderSearchService;
+    protected $internalSearchVehicleFactory;
 
     public function __construct(
         LocationSearchService $locationSearchService,
         GatewaySearchService $gatewaySearchService,
         GatewayVehicleTransformer $gatewayVehicleTransformer,
-        LegacyProviderSearchService $legacyProviderSearchService
+        InternalSearchVehicleFactory $internalSearchVehicleFactory
     ) {
         $this->locationSearchService = $locationSearchService;
         $this->gatewaySearchService = $gatewaySearchService;
         $this->gatewayVehicleTransformer = $gatewayVehicleTransformer;
-        $this->legacyProviderSearchService = $legacyProviderSearchService;
+        $this->internalSearchVehicleFactory = $internalSearchVehicleFactory;
     }
 
     public function search(Request $request)
@@ -130,8 +130,6 @@ class SearchController extends Controller
 
             return Inertia::render('SearchResults', [
                 'vehicles' => $emptyVehicles,
-                'okMobilityVehicles' => $emptyVehicles,
-                'renteonVehicles' => $emptyVehicles,
                 'providerStatus' => [],
                 'searchError' => $searchError,
                 'filters' => $validated,
@@ -432,24 +430,10 @@ class SearchController extends Controller
                 ->get();
             $vehicle->review_count = $reviews->count();
             $vehicle->average_rating = $reviews->avg('rating') ?? 0;
-            $vehicle->source = 'internal';
-
             $data = $vehicle->toArray();
-            $data['category'] = $vehicle->category->name ?? 'Unknown';
-            // Normalize pricing and currency for internal vehicles
-            $rawCurrency = $vehicle->vendorProfile->currency ?? 'USD';
-            $currencyMap = [
-                '€' => 'EUR',
-                '€' => 'EUR', // Handling potential different encodings if necessary
-                '$' => 'USD',
-                '₹' => 'INR',
-                '₽' => 'RUB',
-                'A$' => 'AUD',
-                '£' => 'GBP',
-            ];
-            $data['currency'] = $currencyMap[$rawCurrency] ?? $rawCurrency;
-            
-            $data['total_price'] = (float) ($vehicle->price_per_day * $rentalDays);
+            $data['category_name'] = $vehicle->category->name ?? null;
+            $data['average_rating'] = $vehicle->average_rating;
+            $data['review_count'] = $vehicle->review_count;
             $data['operating_hours'] = $vehicle->operatingHours->map(function ($h) {
                 return [
                     'day' => $h->day_of_week,
@@ -459,47 +443,29 @@ class SearchController extends Controller
                     'close_time' => $h->close_time,
                 ];
             })->values()->toArray();
-            return $data;
+
+            return $this->internalSearchVehicleFactory->make($data, $rentalDays, [
+                'pickup_location_id' => isset($data['id']) ? (string) $data['id'] : null,
+                'dropoff_location_id' => isset($data['id']) ? (string) $data['id'] : null,
+            ]);
         })->values()->all();
 
         $internalVehiclesCollection = collect($internalVehiclesData);
 
-        $legacySeo = app(SeoMetaResolver::class)->resolveForRoute(
-            'search',
-            [],
-            App::getLocale(),
-            route('search', ['locale' => App::getLocale()]),
-            'noindex,follow'
-        )->toArray();
-
-        // --- Gateway-based provider search (replaces all provider-specific code below) ---
-        if (config('vrooem.enabled')) {
-            return $this->searchViaGateway(
-                $request, $validated, $rentalDays,
-                $internalVehiclesCollection,
-                $brands, $colors, $seatingCapacities, $transmissions, $fuels, $mileages,
-                $categoriesFromOptions, $vehicleListSchema
-            );
-        }
-
-        return Inertia::render('SearchResults', $this->legacyProviderSearchService->buildPageProps(
+        return $this->searchViaGateway(
             $request,
             $validated,
             $rentalDays,
             $internalVehiclesCollection,
-            [
-                'brands' => $brands,
-                'colors' => $colors,
-                'seatingCapacities' => $seatingCapacities,
-                'transmissions' => $transmissions,
-                'fuels' => $fuels,
-                'mileages' => $mileages,
-                'categories' => $categoriesFromOptions,
-                'schema' => $vehicleListSchema,
-                'seo' => $legacySeo,
-                'locale' => App::getLocale(),
-            ]
-        ));
+            $brands,
+            $colors,
+            $seatingCapacities,
+            $transmissions,
+            $fuels,
+            $mileages,
+            $categoriesFromOptions,
+            $vehicleListSchema
+        );
     }
 
 

@@ -214,37 +214,15 @@ class GatewaySearchService
             ['path' => $vehicles->path()]
         );
 
-        $okMobilityVehicles = $providerVehicles->filter(fn ($vehicle) => ($vehicle['source'] ?? '') === 'okmobility');
-        $renteonVehicles = $providerVehicles->filter(fn ($vehicle) => ($vehicle['source'] ?? '') === 'renteon');
-
-        $okMobilityVehiclesPaginated = new LengthAwarePaginator(
-            $okMobilityVehicles->values(),
-            $okMobilityVehicles->count(),
-            $perPage,
-            $currentPage,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-        $renteonVehiclesPaginated = new LengthAwarePaginator(
-            $renteonVehicles->values(),
-            $renteonVehicles->count(),
-            $perPage,
-            $currentPage,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
         $vehicleSources = $vehicles->getCollection()->map(fn ($vehicle) => is_array($vehicle) ? ($vehicle['source'] ?? 'unknown') : ($vehicle->source ?? 'unknown'));
         Log::info('VrooemGateway: FINAL Inertia render', [
             'total_vehicles_in_paginator' => $vehicles->total(),
             'paginator_page_items' => $vehicles->getCollection()->count(),
             'sources_breakdown' => $vehicleSources->countBy()->all(),
-            'okMobility_count' => $okMobilityVehicles->count(),
-            'renteon_count' => $renteonVehicles->count(),
         ]);
 
         return [
             'vehicles' => $vehicles,
-            'okMobilityVehicles' => $okMobilityVehiclesPaginated,
-            'renteonVehicles' => $renteonVehiclesPaginated,
             'providerStatus' => $providerStatus,
             'searchError' => null,
             'filters' => $validated,
