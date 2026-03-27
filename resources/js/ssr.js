@@ -7,6 +7,7 @@ import { renderToString } from '@vue/server-renderer';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import TranslationPlugin from '../js/plugins/translation';
+import * as Sentry from '@sentry/vue';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -21,6 +22,14 @@ createServer((page) =>
             const app = createSSRApp({
                 render: () => h(App, props),
             });
+
+            if (import.meta.env.VITE_SENTRY_DSN) {
+                Sentry.init({
+                    app,
+                    dsn: import.meta.env.VITE_SENTRY_DSN,
+                    environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'production',
+                });
+            }
 
             app.use(plugin).use(TranslationPlugin);
 

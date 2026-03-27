@@ -38,6 +38,11 @@ class CountryCodeResolver
         if (self::$nameToCode !== null) return;
 
         $path = public_path('countries.json');
+        if (!file_exists($path)) {
+            self::$countries = [];
+            self::$nameToCode = [];
+            return;
+        }
         $data = json_decode(file_get_contents($path), true) ?: [];
 
         self::$countries = $data;

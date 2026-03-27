@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import { useStandardPackages, useEmptyLocationData, defaultComputeNetTotal, emptyAdapterDefaults } from './shared.js';
+import { useStandardPackages, defaultComputeNetTotal, emptyAdapterDefaults } from './shared.js';
 
 /**
  * @param {{ vehicle: Object, numberOfDays: number, optionalExtras: Array }} props
@@ -82,7 +82,24 @@ export function createGreenMotionAdapter(props) {
     const packages = useStandardPackages(props);
     const optionalExtras = greenMotionExtras;
     const allExtras = computed(() => [...greenMotionExtras.value]);
-    const locationData = useEmptyLocationData();
+    const locationData = computed(() => {
+        const sd = props.vehicle?.supplier_data || {};
+        return {
+            pickupStation: sd.pickup_station_name || null,
+            pickupAddress: sd.pickup_address || null,
+            pickupLines: [],
+            pickupPhone: sd.office_phone || null,
+            pickupEmail: sd.office_email || null,
+            dropoffStation: null, dropoffAddress: null, dropoffLines: [],
+            dropoffPhone: null, dropoffEmail: null,
+            sameLocation: true,
+            fuelPolicy: sd.fuel_policy || null,
+            cancellation: null,
+            officeHours: sd.office_opening_hours || null,
+            pickupInstructions: sd.pickup_instructions || null,
+            dropoffInstructions: null,
+        };
+    });
 
     return {
         packages, optionalExtras, allExtras,

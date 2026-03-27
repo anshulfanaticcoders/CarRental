@@ -2,7 +2,7 @@ import './bootstrap';
 import '../css/app.css';
 import Toast from "vue-toastification";
 import "vue-toastification/dist/index.css";
-
+import * as Sentry from '@sentry/vue';
 
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
@@ -22,6 +22,30 @@ createInertiaApp({
         const vueApp = createApp({
             render: () => h(App, props),
         });
+
+        if (import.meta.env.VITE_SENTRY_DSN) {
+            Sentry.init({
+                app: vueApp,
+                dsn: import.meta.env.VITE_SENTRY_DSN,
+                environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'production',
+                integrations: [
+                    Sentry.browserTracingIntegration(),
+                    Sentry.replayIntegration(),
+                ],
+                tracesSampleRate: 0.2,
+                replaysSessionSampleRate: 0.1,
+                replaysOnErrorSampleRate: 1.0,
+            });
+
+            const page = props.initialPage;
+            if (page?.props?.auth?.user) {
+                Sentry.setUser({
+                    id: page.props.auth.user.id,
+                    email: page.props.auth.user.email,
+                    username: page.props.auth.user.name,
+                });
+            }
+        }
 
         vueApp.use(plugin)
             .use(Toast)

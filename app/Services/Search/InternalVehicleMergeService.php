@@ -22,39 +22,21 @@ class InternalVehicleMergeService
         }
 
         $locationHash = $this->extractInternalLocationHash($matchedLocation);
-        if ($locationHash !== null) {
-            return $internalVehicles
-                ->filter(fn ($vehicle) => $this->vehicleLocationHash((array) $vehicle) === $locationHash)
-                ->values();
+        if ($locationHash === null) {
+            return collect();
         }
 
-        // Fallback: no our_location_id — filter by city match against the search location.
-        $searchCity = strtolower(trim($matchedLocation['city'] ?? ($validated['city'] ?? '')));
-        $searchCountry = strtolower(trim($matchedLocation['country'] ?? ($validated['country'] ?? '')));
-
-        if (!$searchCity && !$searchCountry) {
-            return $internalVehicles->values();
-        }
-
-        return $internalVehicles->filter(function ($vehicle) use ($searchCity, $searchCountry) {
-            $v = (array) $vehicle;
-            $legacyPayload = $v['booking_context']['provider_payload'] ?? [];
-            $vCity = strtolower(trim($v['city'] ?? ($legacyPayload['city'] ?? '')));
-            $vCountry = strtolower(trim($v['country'] ?? ($legacyPayload['country'] ?? '')));
-
-            if ($searchCity && $vCity) {
-                return $vCity === $searchCity;
-            }
-            if ($searchCountry && $vCountry) {
-                return $vCountry === $searchCountry;
-            }
-            return false;
-        })->values();
+        return $internalVehicles
+            ->filter(fn ($vehicle) => $this->vehicleLocationHash((array) $vehicle) === $locationHash)
+            ->values();
     }
 
     private function extractInternalLocationHash(?array $matchedLocation): ?string
     {
-        $internalLocationId = (string) ($matchedLocation['our_location_id'] ?? '');
+        $internalLocationId = $this->normalizeTextValue(
+            $matchedLocation['our_location_id'] ?? '',
+            ['our_location_id', 'id', 'value']
+        );
         if ($internalLocationId === '') {
             return null;
         }
@@ -72,10 +54,41 @@ class InternalVehicleMergeService
         $legacyPayload = $vehicle['booking_context']['provider_payload'] ?? [];
 
         return md5(
-            (string) ($vehicle['city'] ?? ($legacyPayload['city'] ?? ''))
-            . (string) ($vehicle['state'] ?? ($legacyPayload['state'] ?? ''))
-            . (string) ($vehicle['country'] ?? ($legacyPayload['country'] ?? ''))
-            . (string) ($vehicle['location'] ?? ($legacyPayload['location'] ?? ''))
+            $this->normalizeTextValue($vehicle['city'] ?? ($legacyPayload['city'] ?? ''), ['city', 'name', 'label', 'value'])
+            . $this->normalizeTextValue($vehicle['state'] ?? ($legacyPayload['state'] ?? ''), ['state', 'name', 'label', 'value'])
+            . $this->normalizeTextValue($vehicle['country'] ?? ($legacyPayload['country'] ?? ''), ['country', 'name', 'label', 'value', 'code'])
+            . $this->normalizeTextValue($vehicle['location'] ?? ($legacyPayload['location'] ?? ''), ['location', 'name', 'address', 'formatted_address', 'label', 'value'])
         );
+    }
+
+    private function normalizeTextValue(mixed $value, array $preferredKeys = []): string
+    {
+        if (is_string($value) || is_numeric($value)) {
+            return trim((string) $value);
+        }
+
+        if (!is_array($value)) {
+            return '';
+        }
+
+        foreach ($preferredKeys as $key) {
+            if (!array_key_exists($key, $value)) {
+                continue;
+            }
+
+            $normalized = $this->normalizeTextValue($value[$key], $preferredKeys);
+            if ($normalized !== '') {
+                return $normalized;
+            }
+        }
+
+        foreach ($value as $item) {
+            $normalized = $this->normalizeTextValue($item, $preferredKeys);
+            if ($normalized !== '') {
+                return $normalized;
+            }
+        }
+
+        return '';
     }
 }

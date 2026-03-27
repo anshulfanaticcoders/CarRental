@@ -210,6 +210,25 @@ const providerStatusErrorLabels = computed(() => {
     const labels = providerStatusErrors.value.map((item) => formatProviderLabel(item.provider));
     return Array.from(new Set(labels)).filter(Boolean);
 });
+const formatProviderError = (item) => {
+    const label = formatProviderLabel(item?.provider);
+    const error = Array.isArray(item?.errors)
+        ? item.errors.find((value) => `${value || ''}`.trim() !== '')
+        : null;
+
+    if (error) {
+        return `${label}: ${error}`;
+    }
+
+    return `${label} could not return results.`;
+};
+const providerErrorMessages = computed(() =>
+    Array.from(new Set(
+        providerStatusErrors.value
+            .map((item) => formatProviderError(item))
+            .filter((value) => `${value || ''}`.trim() !== '')
+    ))
+);
 const hasProviderErrors = computed(() => providerStatusErrorLabels.value.length > 0);
 const searchErrorMessage = computed(() => `${props.searchError || ''}`.trim());
 const hasSearchError = computed(() => searchErrorMessage.value.length > 0);
@@ -2255,6 +2274,27 @@ watch(
             <div>
                 <div class="font-semibold">Search is unavailable right now.</div>
                 <div class="text-rose-800">{{ searchErrorMessage }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="bookingStep === 'results' && hasProviderErrors"
+        class="main-container mx-auto px-4 pb-2">
+        <div
+            class="rounded-xl border border-amber-200 bg-amber-50 text-amber-950 px-4 py-3 text-sm flex items-start gap-3 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 8v4m0 4h.01M10.29 3.86l-7.09 12.27A2 2 0 0 0 4.91 19h14.18a2 2 0 0 0 1.72-2.87L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            </svg>
+            <div>
+                <div class="font-semibold">Some providers could not return results for this search.</div>
+                <div class="text-amber-800">The results below only include providers that responded successfully.</div>
+                <ul class="mt-2 space-y-1">
+                    <li v-for="message in providerErrorMessages" :key="message" class="text-amber-900">
+                        {{ message }}
+                    </li>
+                </ul>
             </div>
         </div>
     </div>

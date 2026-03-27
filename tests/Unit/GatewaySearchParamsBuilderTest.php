@@ -75,6 +75,10 @@ class GatewaySearchParamsBuilderTest extends TestCase
                         'provider' => 'greenmotion',
                         'pickup_id' => '59610',
                         'original_name' => 'Dubai Airport Terminal 1',
+                        'dropoffs' => ['59610', '59611'],
+                        'supports_one_way' => true,
+                        'extended_location_code' => 'DXB-T1',
+                        'extended_dropoff_code' => 'SHJ-T1',
                     ],
                     [
                         'provider' => 'surprice',
@@ -95,6 +99,10 @@ class GatewaySearchParamsBuilderTest extends TestCase
         $this->assertSame('AE', $params['country_code']);
         $this->assertCount(2, $params['provider_locations']);
         $this->assertSame('59610', $params['provider_locations'][0]['pickup_id']);
+        $this->assertSame(['59610', '59611'], $params['provider_locations'][0]['dropoffs']);
+        $this->assertTrue($params['provider_locations'][0]['supports_one_way']);
+        $this->assertSame('DXB-T1', $params['provider_locations'][0]['extended_location_code']);
+        $this->assertSame('SHJ-T1', $params['provider_locations'][0]['extended_dropoff_code']);
     }
 
     public function test_it_filters_provider_locations_for_provider_specific_gateway_searches(): void

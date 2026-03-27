@@ -30,11 +30,11 @@ class InternalLocationController extends Controller
                 'city',
                 'state',
                 'country',
-                DB::raw('ROUND(latitude, 4) as latitude'),
-                DB::raw('ROUND(longitude, 4) as longitude'),
+                DB::raw('ROUND(latitude, 6) as latitude'),
+                DB::raw('ROUND(longitude, 6) as longitude'),
             ])
             ->groupBy('full_vehicle_address', 'location', 'location_type', 'city', 'state', 'country',
-                DB::raw('ROUND(latitude, 4)'), DB::raw('ROUND(longitude, 4)'))
+                DB::raw('ROUND(latitude, 6)'), DB::raw('ROUND(longitude, 6)'))
             ->get()
             ->map(function ($loc) {
                 return [

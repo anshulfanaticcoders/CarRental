@@ -832,24 +832,26 @@ const selectLocation = (result) => {
   }
 
   if (hasProviders) {
+    const preferredProvider = getPreferredProviderEntry(result.providers);
+
     // Has external providers - always use 'mixed' to fetch from ALL providers
     // (including internal if hasInternalLocation is true)
     form.value.provider = 'mixed';
 
-    // Use first provider's pickup_id as the reference (backend will find all)
-    form.value.provider_pickup_id = result.providers[0].pickup_id;
-    dropoffProvider.value = result.providers[0].provider;
+    // Keep a deterministic provider reference only for provider-specific dropoff UI.
+    form.value.provider_pickup_id = preferredProvider?.pickup_id || null;
+    dropoffProvider.value = preferredProvider?.provider || null;
 
     // Set default dropoff to be same as pickup while keeping mixed provider
     form.value.dropoff_where = form.value.where;
-    form.value.dropoff_location_id = form.value.provider_pickup_id;
+    form.value.dropoff_location_id = preferredProvider?.pickup_id || null;
     form.value.dropoff_unified_location_id = result.unified_location_id || null;
     form.value.dropoff_latitude = result.latitude || null;
     form.value.dropoff_longitude = result.longitude || null;
 
-    // Fetch dropoff locations for the first provider without overriding mixed
-    if (providerSupportsDropoffList(result.providers[0].provider)) {
-      fetchDropoffLocations(result.providers[0].provider, result.providers[0].pickup_id);
+    // Fetch dropoff locations from the best available provider without overriding mixed.
+    if (preferredProvider && providerSupportsDropoffList(preferredProvider.provider)) {
+      fetchDropoffLocations(preferredProvider.provider, preferredProvider.pickup_id);
     }
   } else {
     // No providers and not an internal location, reset
@@ -863,6 +865,38 @@ const selectLocation = (result) => {
 
 const providersWithDropoffList = new Set(['greenmotion', 'usave', 'locauto_rent', 'renteon', 'sicily_by_car', 'recordgo']);
 const providerSupportsDropoffList = (provider) => providersWithDropoffList.has(provider);
+const providerHasDropoffs = (provider) => Array.isArray(provider?.dropoffs) && provider.dropoffs.length > 0;
+const providerSupportsOneWay = (provider) => provider?.supports_one_way === true;
+
+const getPreferredProviderEntry = (providers = []) => {
+  return [...providers]
+    .filter((provider) => provider?.provider && provider?.pickup_id)
+    .sort((left, right) => {
+      const leftScore = [
+        providerHasDropoffs(left) ? 1 : 0,
+        providerSupportsOneWay(left) ? 1 : 0,
+        providerSupportsDropoffList(left.provider) ? 1 : 0,
+      ];
+      const rightScore = [
+        providerHasDropoffs(right) ? 1 : 0,
+        providerSupportsOneWay(right) ? 1 : 0,
+        providerSupportsDropoffList(right.provider) ? 1 : 0,
+      ];
+
+      for (let index = 0; index < leftScore.length; index += 1) {
+        if (leftScore[index] !== rightScore[index]) {
+          return rightScore[index] - leftScore[index];
+        }
+      }
+
+      const providerComparison = String(left.provider).localeCompare(String(right.provider));
+      if (providerComparison !== 0) {
+        return providerComparison;
+      }
+
+      return String(left.pickup_id).localeCompare(String(right.pickup_id));
+    })[0] ?? null;
+};
 
 const selectProvider = async (provider) => {
   form.value.provider = provider.provider;
@@ -1061,11 +1095,11 @@ onMounted(async () => {
           });
           const locationData = res.data?.[0];
           if (locationData?.providers?.length) {
-            const firstDropoffProvider = locationData.providers.find(p => providerSupportsDropoffList(p.provider));
-            if (firstDropoffProvider) {
-              providerForDropoff = firstDropoffProvider.provider;
-              pickupIdForDropoff = firstDropoffProvider.pickup_id;
-              dropoffProvider.value = firstDropoffProvider.provider;
+            const preferredProvider = getPreferredProviderEntry(locationData.providers);
+            if (preferredProvider) {
+              providerForDropoff = preferredProvider.provider;
+              pickupIdForDropoff = preferredProvider.pickup_id;
+              dropoffProvider.value = preferredProvider.provider;
             }
           }
         } catch (e) {

@@ -170,12 +170,32 @@ class LocationSearchService
         $location['providers'] = collect($location['providers'] ?? [])
             ->filter(fn ($provider) => is_array($provider) && !empty($provider['provider']) && array_key_exists('pickup_id', $provider))
             ->map(function (array $provider): array {
+                $providerCountryCode = strtoupper(trim((string) ($provider['country_code'] ?? '')));
+                $providerIata = strtoupper(trim((string) ($provider['iata'] ?? '')));
+
                 return [
                     'provider' => strtolower(trim((string) $provider['provider'])),
                     'pickup_id' => (string) $provider['pickup_id'],
                     'original_name' => $provider['original_name'] ?? null,
+                    'dropoffs' => collect($provider['dropoffs'] ?? [])
+                        ->map(fn ($dropoffId) => trim((string) $dropoffId))
+                        ->filter()
+                        ->values()
+                        ->all(),
                     'latitude' => isset($provider['latitude']) ? (float) $provider['latitude'] : null,
                     'longitude' => isset($provider['longitude']) ? (float) $provider['longitude'] : null,
+                    'supports_one_way' => (bool) ($provider['supports_one_way'] ?? false),
+                    'extended_location_code' => filled($provider['extended_location_code'] ?? null)
+                        ? (string) $provider['extended_location_code']
+                        : null,
+                    'extended_dropoff_code' => filled($provider['extended_dropoff_code'] ?? null)
+                        ? (string) $provider['extended_dropoff_code']
+                        : null,
+                    'country_code' => $providerCountryCode !== '' ? $providerCountryCode : null,
+                    'iata' => $providerIata !== '' ? $providerIata : null,
+                    'provider_code' => filled($provider['provider_code'] ?? null)
+                        ? (string) $provider['provider_code']
+                        : null,
                 ];
             })
             ->values()
@@ -301,6 +321,10 @@ class LocationSearchService
         $secondaryKey = $this->equivalentAirportKey($secondary);
         if ($primaryKey !== null && $primaryKey === $secondaryKey) {
             return true;
+        }
+
+        if ($primaryKey !== null && $secondaryKey !== null && $primaryKey !== $secondaryKey) {
+            return false;
         }
 
         return !empty(array_intersect(

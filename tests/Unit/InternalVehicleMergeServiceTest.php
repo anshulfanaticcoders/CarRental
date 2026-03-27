@@ -129,6 +129,95 @@ class InternalVehicleMergeServiceTest extends TestCase
         );
     }
 
+    public function test_it_matches_internal_vehicles_when_exact_location_fields_are_nested_arrays(): void
+    {
+        $service = new InternalVehicleMergeService();
+
+        $targetHash = 'internal_' . md5('Dubai' . '' . 'United Arab Emirates' . 'downtown office');
+        $vehicles = collect([
+            [
+                'source' => 'internal',
+                'booking_context' => [
+                    'provider_payload' => [
+                        'location' => ['name' => 'downtown office'],
+                        'city' => ['name' => 'Dubai'],
+                        'state' => ['value' => ''],
+                        'country' => ['name' => 'United Arab Emirates'],
+                    ],
+                ],
+            ],
+            [
+                'source' => 'internal',
+                'booking_context' => [
+                    'provider_payload' => [
+                        'location' => ['name' => 'airport st'],
+                        'city' => ['name' => 'Dubai'],
+                        'state' => ['value' => ''],
+                        'country' => ['name' => 'United Arab Emirates'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $result = $service->forGatewayMerge(
+            $vehicles,
+            ['provider' => 'mixed'],
+            [
+                'name' => 'Dubai Downtown',
+                'our_location_id' => ['value' => $targetHash],
+            ],
+            false
+        );
+
+        $this->assertCount(1, $result);
+        $this->assertSame(
+            ['name' => 'downtown office'],
+            $result->first()['booking_context']['provider_payload']['location']
+        );
+    }
+
+    public function test_it_excludes_internal_vehicles_when_only_nested_city_and_country_are_available(): void
+    {
+        $service = new InternalVehicleMergeService();
+
+        $vehicles = collect([
+            [
+                'source' => 'internal',
+                'booking_context' => [
+                    'provider_payload' => [
+                        'location' => ['name' => 'downtown office'],
+                        'city' => ['name' => 'Dubai'],
+                        'country' => ['name' => 'United Arab Emirates'],
+                    ],
+                ],
+            ],
+            [
+                'source' => 'internal',
+                'booking_context' => [
+                    'provider_payload' => [
+                        'location' => ['name' => 'doha office'],
+                        'city' => ['name' => 'Doha'],
+                        'country' => ['name' => 'Qatar'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $result = $service->forGatewayMerge(
+            $vehicles,
+            ['provider' => 'mixed'],
+            [
+                'name' => 'Dubai Downtown',
+                'our_location_id' => null,
+                'city' => ['name' => 'Dubai'],
+                'country' => ['name' => 'United Arab Emirates'],
+            ],
+            false
+        );
+
+        $this->assertCount(0, $result);
+    }
+
     private function makeInternalVehicle(string $location, string $city, ?string $state, string $country): array
     {
         return [

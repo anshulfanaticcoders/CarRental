@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { useScrollAnimation } from '@/composables/useScrollAnimation';
+import { Search, CreditCard, CarFront } from 'lucide-vue-next';
 
 const page = usePage();
 const _p = (key, fallback = '') => {
@@ -12,18 +13,21 @@ const _p = (key, fallback = '') => {
 const steps = computed(() => [
     {
         value: 'item-1',
+        icon: Search,
         title: _p('how_it_works_step_1_title', 'Search & Compare'),
-        content: _p('how_it_works_step_1_content', 'Enter your destination and dates. We compare 800+ providers to find your perfect match.'),
+        content: _p('how_it_works_step_1_content', 'Pick your destination and dates. We search across multiple trusted providers so you can compare prices and features side by side.'),
     },
     {
         value: 'item-2',
-        title: _p('how_it_works_step_2_title', 'Book Instantly'),
-        content: _p('how_it_works_step_2_content', 'Reserve your vehicle in seconds with transparent pricing and no hidden fees.'),
+        icon: CreditCard,
+        title: _p('how_it_works_step_2_title', 'Review & Book'),
+        content: _p('how_it_works_step_2_content', 'Choose your extras, review full pricing upfront with no hidden fees, and pay securely — all on one page.'),
     },
     {
         value: 'item-3',
+        icon: CarFront,
         title: _p('how_it_works_step_3_title', 'Pick Up & Drive'),
-        content: _p('how_it_works_step_3_content', 'Show your booking confirmation, collect your keys, and hit the road.'),
+        content: _p('how_it_works_step_3_content', 'Show your booking confirmation at the desk, collect your keys, and hit the road.'),
     },
 ]);
 
@@ -45,8 +49,11 @@ useScrollAnimation('.how-section', '.how-header, .step-card', {
             </div>
             <div class="steps-grid">
                 <div v-for="(s, i) in steps" :key="s.value" class="step-card sr-reveal">
-                    <div class="step-number">{{ String(i + 1).padStart(2, '0') }}</div>
-                    <div>
+                    <span class="step-backdrop" aria-hidden="true">{{ i + 1 }}</span>
+                    <div class="step-icon-circle">
+                        <component :is="s.icon" stroke-width="1.5" />
+                    </div>
+                    <div class="step-text">
                         <h4>{{ s.title }}</h4>
                         <p>{{ s.content }}</p>
                     </div>
@@ -58,6 +65,43 @@ useScrollAnimation('.how-section', '.how-header, .step-card', {
 
 <style scoped>
 .sr-reveal { visibility: hidden; }
+
+.step-backdrop {
+    position: absolute;
+    left: -0.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: clamp(7rem, 10vw, 10rem);
+    font-weight: 900;
+    line-height: 1;
+    color: rgba(34, 211, 238, 0.06);
+    filter: blur(1.5px);
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    letter-spacing: -0.04em;
+}
+
+.step-icon-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(34, 211, 238, 0.08);
+    border: 1.5px solid rgba(34, 211, 238, 0.15);
+    margin: 0 auto 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.step-icon-circle svg {
+    width: 28px;
+    height: 28px;
+    color: #22d3ee;
+}
 
 .how-section {
     padding: clamp(4rem, 8vw, 7rem) 0;
@@ -130,7 +174,7 @@ useScrollAnimation('.how-section', '.how-header, .step-card', {
 .steps-grid::before {
     content: "";
     position: absolute;
-    top: 3.25rem;
+    top: calc(2.5rem + 32px);
     left: calc(16.67% + 1rem);
     right: calc(16.67% + 1rem);
     height: 1px;
@@ -139,23 +183,28 @@ useScrollAnimation('.how-section', '.how-header, .step-card', {
 
 .step-card {
     text-align: center;
-    padding: 2rem 1.5rem;
+    padding: 2.5rem 2rem;
     position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 20px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                background 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.step-number {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
-    background: rgba(34, 211, 238, 0.1);
-    border: 2px solid rgba(34, 211, 238, 0.2);
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: #22d3ee;
-    margin: 0 auto 1.5rem;
+.step-card:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 12px 32px rgba(21, 59, 79, 0.12), 0 4px 8px rgba(21, 59, 79, 0.06);
+}
+
+.step-text {
     position: relative;
     z-index: 1;
 }
@@ -178,7 +227,7 @@ useScrollAnimation('.how-section', '.how-header, .step-card', {
 @media (max-width: 1024px) {
     .steps-grid {
         grid-template-columns: 1fr;
-        gap: 0;
+        gap: 1rem;
     }
 
     .steps-grid::before {
@@ -189,23 +238,50 @@ useScrollAnimation('.how-section', '.how-header, .step-card', {
         text-align: left;
         display: grid;
         grid-template-columns: 52px 1fr;
+        gap: 0 1rem;
+        align-items: center;
+        padding: 1.5rem;
+    }
+
+    .step-backdrop {
+        display: none;
+    }
+
+    .step-card {
+        text-align: left;
+        display: flex;
         gap: 1rem;
-        align-items: start;
-        padding: 1.25rem 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        align-items: center;
+        padding: 1.25rem 1.5rem;
     }
 
-    .step-card:last-child {
-        border-bottom: none;
-    }
-
-    .step-number {
+    .step-icon-circle {
+        width: 44px;
+        height: 44px;
         margin: 0;
+        flex-shrink: 0;
+    }
+
+    .step-icon-circle svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .step-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .step-card h4 {
+        margin-bottom: 0.25rem;
+        font-size: 1rem;
     }
 
     .step-card p {
         max-width: none;
         margin: 0;
+        font-size: 0.82rem;
+        line-height: 1.5;
     }
 }
 </style>
