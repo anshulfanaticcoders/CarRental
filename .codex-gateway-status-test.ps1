@@ -1,0 +1,1 @@
+$ErrorActionPreference = "Stop"; Set-Location "C:\laragon\www\carrental"; & "C:\laragon\bin\php\php-8.3.29-Win32-vs16-x64\php.exe" artisan test --filter="GatewaySearchServiceTest::it_prefers_structured_gateway_provider_status_when_present"

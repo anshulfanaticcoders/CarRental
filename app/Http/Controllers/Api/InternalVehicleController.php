@@ -31,7 +31,7 @@ class InternalVehicleController extends Controller
 
         $referenceVehicle = Vehicle::query()
             ->whereKey($validated['location_id'])
-            ->whereIn('status', ['active', 'available', 'rented'])
+            ->whereIn('status', Vehicle::searchableStatuses())
             ->first();
 
         if (!$referenceVehicle) {
@@ -42,7 +42,7 @@ class InternalVehicleController extends Controller
         $dropoffDayOfWeek = Carbon::parse($validated['dropoff_date'])->dayOfWeekIso - 1;
 
         $vehicles = Vehicle::query()
-            ->whereIn('status', ['active', 'available', 'rented'])
+            ->whereIn('status', Vehicle::searchableStatuses())
             ->where('full_vehicle_address', $referenceVehicle->full_vehicle_address)
             ->where('location', $referenceVehicle->location)
             ->where('location_type', $referenceVehicle->location_type)
@@ -87,7 +87,7 @@ class InternalVehicleController extends Controller
                     ->where('open_time', '<=', $validated['dropoff_time'])
                     ->where('close_time', '>=', $validated['dropoff_time']);
             })
-            ->with(['vendor.profile', 'benefits', 'images'])
+            ->with(['vendor.profile', 'vendor.vendorProfile', 'vendorProfileData', 'benefits', 'images'])
             ->get()
             ->map(fn (Vehicle $vehicle) => $this->transformVehicle($vehicle));
 
@@ -97,6 +97,7 @@ class InternalVehicleController extends Controller
     private function transformVehicle(Vehicle $vehicle): array
     {
         $profile = $vehicle->vendor?->profile;
+        $vendorProfileData = $vehicle->vendorProfileData ?: $vehicle->vendor?->vendorProfile;
         $benefits = $vehicle->benefits;
 
         $cancellation = '';
@@ -118,6 +119,14 @@ class InternalVehicleController extends Controller
             $decoded = json_decode($paymentMethods, true);
             $paymentMethods = is_array($decoded) ? $decoded : [$paymentMethods];
         }
+
+        $vendorProfilePayload = [
+            'company_name' => $vendorProfileData?->company_name,
+            'company_email' => $vendorProfileData?->company_email,
+            'company_phone_number' => $vendorProfileData?->company_phone_number,
+            'company_address' => $vendorProfileData?->company_address,
+            'currency' => $profile?->currency,
+        ];
 
         return [
             'id' => $vehicle->id,
@@ -142,8 +151,11 @@ class InternalVehicleController extends Controller
                 'profile' => [
                     'city' => $profile?->city ?: $vehicle->city,
                     'country_code' => CountryCodeResolver::resolve($profile?->country ?: $vehicle->country),
+                    'company_name' => $vendorProfileData?->company_name,
                 ],
             ],
+            'vendorProfileData' => $vendorProfilePayload,
+            'vendor_profile_data' => $vendorProfilePayload,
             'benefits' => [
                 'km_per_day' => $benefits && (int) ($benefits->limited_km_per_day ?? 0) === 1
                     ? (int) ($benefits->limited_km_per_day_range ?? 0)

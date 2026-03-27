@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Models\VendorProfile;
 use App\Models\Vehicle;
 use App\Models\VehicleBenefit;
 use App\Models\VehicleCategory;
@@ -38,6 +39,15 @@ class InternalVehicleApiTest extends TestCase
             'country' => 'United Arab Emirates',
         ]);
 
+        VendorProfile::create([
+            'user_id' => $vendor->id,
+            'company_name' => 'Airport Fleet Co',
+            'company_email' => 'fleet@example.com',
+            'company_phone_number' => '+971500000000',
+            'company_address' => 'Terminal 1',
+            'status' => 'approved',
+        ]);
+
         $referenceVehicle = $this->createVehicleAtAirport($vendor->id, $category->id, [
             'brand' => 'Toyota',
             'model' => 'Yaris',
@@ -70,9 +80,58 @@ class InternalVehicleApiTest extends TestCase
         $payload = $response->json('data.0');
         $this->assertSame('Dubai', $payload['vendor']['profile']['city']);
         $this->assertSame('AE', $payload['vendor']['profile']['country_code']);
+        $this->assertSame('Airport Fleet Co', $payload['vendorProfileData']['company_name']);
+        $this->assertSame('Airport Fleet Co', $payload['vendor_profile_data']['company_name']);
+        $this->assertSame('https://example.com/internal/' . $referenceVehicle->id . '.jpg', $payload['images'][0]['image_url']);
         $this->assertSame(250, $payload['benefits']['km_per_day']);
         $this->assertSame(25, $payload['benefits']['min_driver_age']);
         $this->assertStringContainsString('2', $payload['benefits']['cancellation']);
+    }
+
+    public function test_gateway_can_authenticate_with_x_gateway_token_header(): void
+    {
+        config(['vrooem.internal_api_token' => 'gateway-test-token']);
+
+        $category = VehicleCategory::create([
+            'name' => 'Economy',
+            'slug' => 'economy',
+            'description' => 'Economy vehicles',
+            'status' => true,
+        ]);
+
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+
+        UserProfile::create([
+            'user_id' => $vendor->id,
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+        ]);
+
+        VendorProfile::create([
+            'user_id' => $vendor->id,
+            'company_name' => 'Airport Fleet Co',
+            'status' => 'approved',
+        ]);
+
+        $referenceVehicle = $this->createVehicleAtAirport($vendor->id, $category->id, [
+            'brand' => 'Toyota',
+            'model' => 'Yaris',
+        ]);
+
+        $response = $this
+            ->withHeader('X-Gateway-Token', 'gateway-test-token')
+            ->getJson('/api/internal/vehicles?location_id=' . $referenceVehicle->id . '&pickup_date=2026-06-15&dropoff_date=2026-06-18&pickup_time=09:00&dropoff_time=09:00');
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonFragment([
+            'id' => $referenceVehicle->id,
+            'brand' => 'Toyota',
+            'model' => 'Yaris',
+        ]);
     }
 
     private function createVehicleAtAirport(int $vendorId, int $categoryId, array $overrides = []): Vehicle

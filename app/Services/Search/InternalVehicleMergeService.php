@@ -57,7 +57,7 @@ class InternalVehicleMergeService
             $this->normalizeTextValue($vehicle['city'] ?? ($legacyPayload['city'] ?? ''), ['city', 'name', 'label', 'value'])
             . $this->normalizeTextValue($vehicle['state'] ?? ($legacyPayload['state'] ?? ''), ['state', 'name', 'label', 'value'])
             . $this->normalizeTextValue($vehicle['country'] ?? ($legacyPayload['country'] ?? ''), ['country', 'name', 'label', 'value', 'code'])
-            . $this->normalizeTextValue($vehicle['location'] ?? ($legacyPayload['location'] ?? ''), ['location', 'name', 'address', 'formatted_address', 'label', 'value'])
+            . $this->normalizeTextValue($legacyPayload['location'] ?? ($vehicle['location'] ?? ''), ['location', 'name', 'address', 'formatted_address', 'label', 'value'])
         );
     }
 

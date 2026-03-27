@@ -11,6 +11,8 @@ class Vehicle extends Model
 
     use HasFactory;
 
+    public const SEARCHABLE_STATUSES = ['active', 'available', 'rented'];
+
     protected $fillable = [
         'vendor_id',
         'category_id',
@@ -173,6 +175,11 @@ class Vehicle extends Model
     public function getOperatingHoursForDay(int $dayOfWeek): ?VehicleOperatingHour
     {
         return $this->operatingHours->firstWhere('day_of_week', $dayOfWeek);
+    }
+
+    public static function searchableStatuses(): array
+    {
+        return self::SEARCHABLE_STATUSES;
     }
 
     // If using JSON columns, add casts

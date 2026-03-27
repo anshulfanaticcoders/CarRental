@@ -47,7 +47,7 @@ class GatewaySearchService
         if (empty($gatewayResult) || empty($gatewayResult['vehicles'])) {
             Log::info('VrooemGateway: No vehicles returned or gateway error');
             $providerVehicles = collect();
-            $providerStatus = [];
+            $providerStatus = $this->mapGatewayProviderStatus($gatewayResult ?? [], $normalizeSupplierId);
         } else {
             Log::info('VrooemGateway: Raw vehicle count from gateway', ['count' => count($gatewayResult['vehicles'])]);
 
@@ -65,8 +65,18 @@ class GatewaySearchService
                 Log::warning('VrooemGateway: Transform errors', ['errors' => $transformErrors]);
             }
 
-            $fallbackLatitude = $matchedLocation['latitude'] ?? ($validated['latitude'] ?? null);
-            $fallbackLongitude = $matchedLocation['longitude'] ?? ($validated['longitude'] ?? null);
+            $matchedLatitude = $matchedLocation['latitude'] ?? null;
+            $matchedLongitude = $matchedLocation['longitude'] ?? null;
+            $validatedLatitude = $validated['latitude'] ?? null;
+            $validatedLongitude = $validated['longitude'] ?? null;
+
+            if ($this->isUsableCoordinatePair($matchedLatitude, $matchedLongitude)) {
+                $fallbackLatitude = $matchedLatitude;
+                $fallbackLongitude = $matchedLongitude;
+            } else {
+                $fallbackLatitude = $validatedLatitude;
+                $fallbackLongitude = $validatedLongitude;
+            }
             $fallbackAppliedCount = 0;
 
             $transformedVehicles = $transformedVehicles->map(function ($vehicle) use ($fallbackLatitude, $fallbackLongitude, &$fallbackAppliedCount) {
@@ -103,16 +113,7 @@ class GatewaySearchService
                 'provider' => $validated['provider'] ?? 'mixed',
             ]);
 
-            $providerStatus = collect($gatewayResult['supplier_results'] ?? [])->map(function ($supplierResult) use ($normalizeSupplierId) {
-                $providerId = $normalizeSupplierId((string) ($supplierResult['supplier_id'] ?? 'unknown'));
-                return [
-                    'provider' => $providerId,
-                    'status' => empty($supplierResult['error']) ? 'ok' : 'error',
-                    'vehicles' => $supplierResult['vehicle_count'] ?? 0,
-                    'ms' => $supplierResult['response_time_ms'] ?? null,
-                    'errors' => !empty($supplierResult['error']) ? [$supplierResult['error']] : [],
-                ];
-            })->values()->all();
+            $providerStatus = $this->mapGatewayProviderStatus($gatewayResult, $normalizeSupplierId);
         }
 
         $filteredProviderVehicles = $providerVehicles->filter(function ($vehicle) use ($validated) {
@@ -148,7 +149,9 @@ class GatewaySearchService
             $isOneWay
         );
 
-        $combinedVehicles = $internalForMerge->merge($filteredProviderVehicles);
+        $combinedVehicles = $this->deduplicateVehicles(
+            $internalForMerge->merge($filteredProviderVehicles)
+        );
         Log::info('VrooemGateway: Combined vehicles', [
             'internal' => $internalForMerge->count(),
             'provider' => $filteredProviderVehicles->count(),
@@ -271,11 +274,67 @@ class GatewaySearchService
         $lat = (float) $lat;
         $lng = (float) $lng;
 
-        return $lat >= -90.0 && $lat <= 90.0 && $lng >= -180.0 && $lng <= 180.0;
+        if ($lat < -90.0 || $lat > 90.0 || $lng < -180.0 || $lng > 180.0) {
+            return false;
+        }
+
+        return !(abs($lat) < 0.000001 && abs($lng) < 0.000001);
     }
 
     private function isNumericCoordinate(mixed $value): bool
     {
         return is_numeric($value);
+    }
+
+    private function deduplicateVehicles(Collection $vehicles): Collection
+    {
+        return $vehicles
+            ->unique(function ($vehicle) {
+                $v = is_array($vehicle) ? $vehicle : (array) $vehicle;
+
+                $source = strtolower((string) ($v['source'] ?? 'unknown'));
+                $identity = $v['gateway_vehicle_id']
+                    ?? $v['id']
+                    ?? $v['provider_vehicle_id']
+                    ?? md5(json_encode($v));
+
+                return $source . '|' . (string) $identity;
+            })
+            ->values();
+    }
+
+    private function mapGatewayProviderStatus(array $gatewayResult, callable $normalizeSupplierId): array
+    {
+        $structured = collect($gatewayResult['provider_status'] ?? [])->filter(fn ($item) => is_array($item));
+        if ($structured->isNotEmpty()) {
+            return $structured->map(function (array $item) use ($normalizeSupplierId) {
+                $providerId = $normalizeSupplierId((string) ($item['provider'] ?? 'unknown'));
+                $message = trim((string) ($item['message'] ?? ''));
+
+                return [
+                    'provider' => $providerId,
+                    'status' => $message === '' ? 'ok' : 'error',
+                    'vehicles' => 0,
+                    'ms' => null,
+                    'errors' => $message !== '' ? [$message] : [],
+                    'failure_type' => $item['failure_type'] ?? null,
+                    'stage' => $item['stage'] ?? null,
+                    'http_status' => $item['http_status'] ?? null,
+                    'provider_code' => $item['provider_code'] ?? null,
+                    'retryable' => $item['retryable'] ?? false,
+                ];
+            })->values()->all();
+        }
+
+        return collect($gatewayResult['supplier_results'] ?? [])->map(function ($supplierResult) use ($normalizeSupplierId) {
+            $providerId = $normalizeSupplierId((string) ($supplierResult['supplier_id'] ?? 'unknown'));
+            return [
+                'provider' => $providerId,
+                'status' => empty($supplierResult['error']) ? 'ok' : 'error',
+                'vehicles' => $supplierResult['vehicle_count'] ?? 0,
+                'ms' => $supplierResult['response_time_ms'] ?? null,
+                'errors' => !empty($supplierResult['error']) ? [$supplierResult['error']] : [],
+            ];
+        })->values()->all();
     }
 }

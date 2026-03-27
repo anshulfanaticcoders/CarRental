@@ -13,7 +13,9 @@ class VerifyGatewayToken
 {
     public function handle(Request $request, Closure $next)
     {
-        $token = $request->bearerToken();
+        $token = $request->bearerToken()
+            ?: $request->header('X-Gateway-Token')
+            ?: $request->header('X-Internal-Token');
         $expected = config('vrooem.internal_api_token');
 
         if (!$token || !$expected || $token !== $expected) {

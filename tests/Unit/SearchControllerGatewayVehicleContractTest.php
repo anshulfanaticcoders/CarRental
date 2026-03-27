@@ -345,6 +345,76 @@ class SearchControllerGatewayVehicleContractTest extends TestCase
         $this->assertSame('359', $vehicle['provider_pickup_id']);
     }
 
+    public function test_it_preserves_canonical_product_rate_and_availability_fields(): void
+    {
+        $transformer = new GatewayVehicleTransformer();
+
+        $vehicle = $transformer->transform([
+            'id' => 'gw_sbc_1',
+            'gateway_vehicle_id' => 'gw_sbc_1',
+            'provider_vehicle_id' => 'sbc_vehicle_1',
+            'provider_product_id' => 'sbc_product_1',
+            'provider_rate_id' => 'BASIC-PRE',
+            'availability_status' => 'Immediate',
+            'source' => 'sicily_by_car',
+            'provider_code' => 'sicily_by_car',
+            'display_name' => 'Fiat Panda or similar',
+            'brand' => 'Fiat',
+            'model' => 'Panda',
+            'category' => 'mini',
+            'image' => 'https://example.com/panda.png',
+            'specs' => [
+                'transmission' => 'manual',
+                'fuel' => 'petrol',
+                'seating_capacity' => 4,
+                'doors' => 5,
+                'luggage_small' => 1,
+                'luggage_medium' => null,
+                'luggage_large' => 1,
+                'air_conditioning' => true,
+                'sipp_code' => 'MDMR',
+            ],
+            'pricing' => [
+                'total_price' => 120.0,
+                'price_per_day' => 40.0,
+                'currency' => 'EUR',
+            ],
+            'policies' => [
+                'mileage_policy' => null,
+                'mileage_limit_km' => null,
+                'fuel_policy' => null,
+                'cancellation' => null,
+            ],
+            'products' => [],
+            'extras_preview' => [],
+            'location' => [
+                'pickup' => [
+                    'provider_location_id' => 'CTA',
+                    'name' => 'Catania Airport',
+                    'latitude' => 37.4667,
+                    'longitude' => 15.0664,
+                ],
+                'dropoff' => [
+                    'provider_location_id' => 'CTA',
+                    'name' => 'Catania Airport',
+                    'latitude' => 37.4667,
+                    'longitude' => 15.0664,
+                ],
+            ],
+            'data_quality_flags' => [],
+            'pricing_transparency_flags' => [],
+            'ui_placeholders' => ['image' => false],
+            'booking_context' => [
+                'version' => 1,
+                'provider_payload' => [],
+            ],
+        ], 3);
+
+        $this->assertSame('sbc_product_1', $vehicle['provider_product_id']);
+        $this->assertSame('BASIC-PRE', $vehicle['provider_rate_id']);
+        $this->assertSame('Immediate', $vehicle['availability_status']);
+    }
+
     public function test_it_does_not_invent_missing_specs_for_legacy_gateway_payloads(): void
     {
         $transformer = new GatewayVehicleTransformer();

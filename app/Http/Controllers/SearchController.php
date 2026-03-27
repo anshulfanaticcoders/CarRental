@@ -154,7 +154,7 @@ class SearchController extends Controller
             return $emptyResultsResponse();
         }
 
-        $internalVehiclesQuery = Vehicle::query()->whereIn('status', ['available', 'rented'])
+        $internalVehiclesQuery = Vehicle::query()->whereIn('status', Vehicle::searchableStatuses())
             ->with(['images', 'bookings', 'vendor.profile', 'vendorProfile', 'vendorProfileData', 'benefits', 'vendorPlans', 'addons', 'operatingHours']);
 
         // Apply date filters to internal vehicles
@@ -227,7 +227,16 @@ class SearchController extends Controller
             }
         } elseif (!empty($validated['provider'])) {
             if ($validated['provider'] === 'internal') {
-                if (!empty($validated['matched_field'])) {
+                $appliedExactInternalLocationFilter = false;
+
+                if (!empty($validated['provider_pickup_id'])) {
+                    $appliedExactInternalLocationFilter = $this->applyInternalGroupedLocationFilter(
+                        $internalVehiclesQuery,
+                        $validated['provider_pickup_id']
+                    );
+                }
+
+                if (!$appliedExactInternalLocationFilter && !empty($validated['matched_field'])) {
                     $fieldToQuery = null;
                     $valueToQuery = null;
 
@@ -260,7 +269,7 @@ class SearchController extends Controller
                     if ($fieldToQuery && $valueToQuery) {
                         $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
                     }
-                } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+                } elseif (!$appliedExactInternalLocationFilter && !empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
                     $lat = $validated['latitude'];
                     $lon = $validated['longitude'];
                     $radius = $validated['radius'] / 1000;
@@ -271,7 +280,7 @@ class SearchController extends Controller
                             sin(radians(?)) * sin(radians(latitude))
                         ) <= ?
                     ", [$lat, $lon, $lat, $radius]);
-                } elseif (!empty($validated['where'])) {
+                } elseif (!$appliedExactInternalLocationFilter && !empty($validated['where'])) {
                     $searchTerm = $validated['where'];
                     $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
                         $q->where('location', 'LIKE', "%{$searchTerm}%")
@@ -517,6 +526,35 @@ class SearchController extends Controller
         );
 
         return Inertia::render('SearchResults', $props);
+    }
+
+    private function applyInternalGroupedLocationFilter($query, mixed $referenceVehicleId): bool
+    {
+        if (blank($referenceVehicleId)) {
+            return false;
+        }
+
+        $referenceVehicle = Vehicle::query()
+            ->whereKey($referenceVehicleId)
+            ->select(['id', 'location', 'location_type', 'city', 'state', 'country'])
+            ->first();
+
+        if (!$referenceVehicle) {
+            return false;
+        }
+
+        $query
+            ->where('location', $referenceVehicle->location)
+            ->where('location_type', $referenceVehicle->location_type)
+            ->where('city', $referenceVehicle->city)
+            ->where('country', $referenceVehicle->country)
+            ->when(
+                $referenceVehicle->state === null,
+                fn ($builder) => $builder->whereNull('state'),
+                fn ($builder) => $builder->where('state', $referenceVehicle->state)
+            );
+
+        return true;
     }
 
     public function searchUnifiedLocations(Request $request)
