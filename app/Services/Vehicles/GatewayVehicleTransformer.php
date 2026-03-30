@@ -205,6 +205,8 @@ class GatewayVehicleTransformer
             'recordgo_acriss_id' => $supplierData['acriss_id'] ?? null,
             'recordgo_sellcode_ver' => $supplierData['sell_code_ver'] ?? null,
             'recordgo_country' => $supplierData['country'] ?? null,
+            'terms' => $this->extractTerms($rawSupplierId, $supplierData),
+            'driver_requirements' => $this->extractDriverRequirements($rawSupplierId, $supplierData, $gv),
             'bags' => array_key_exists('bags_large', $gv) || array_key_exists('bags_small', $gv)
                 ? (($gv['bags_large'] ?? 0) + ($gv['bags_small'] ?? 0))
                 : null,
@@ -309,6 +311,50 @@ class GatewayVehicleTransformer
         }
 
         return [];
+    }
+
+    private function extractTerms(string $supplierId, array $supplierData): ?array
+    {
+        // RecordGo: product T&Cs from productTTCC
+        if (in_array($supplierId, ['record_go', 'recordgo'], true)) {
+            $productData = $supplierData['product_data'] ?? ($supplierData['products'][0] ?? null);
+            $ttcc = $productData['terms'] ?? '';
+            if ($ttcc && is_string($ttcc) && trim($ttcc) !== '') {
+                return [['name' => 'Rental Terms & Conditions', 'conditions' => [strip_tags($ttcc)]]];
+            }
+        }
+
+        return null;
+    }
+
+    private function extractDriverRequirements(string $supplierId, array $supplierData, array $gv): ?array
+    {
+        $requirements = [];
+
+        $productData = $supplierData['product_data'] ?? [];
+        $minAge = $gv['min_driver_age'] ?? ($productData['min_age'] ?? null);
+        $maxAge = $gv['max_driver_age'] ?? ($productData['max_age'] ?? null);
+        $minLicense = $productData['min_driver_license'] ?? null;
+
+        // Keys become display labels via key.replace(/_/g, ' ') in frontend
+        // Values must be '1' to pass the boolean filter
+        if ($minAge) {
+            $requirements["Minimum_driver_age:_{$minAge}_years"] = '1';
+        }
+        if ($maxAge) {
+            $requirements["Maximum_driver_age:_{$maxAge}_years"] = '1';
+        }
+        if ($minLicense) {
+            $requirements["Driving_licence_held_for_at_least_{$minLicense}_year(s)"] = '1';
+        }
+
+        // Mileage — special key, excluded from items list, shown as label
+        $mileagePolicy = $gv['mileage_policy'] ?? null;
+        if ($mileagePolicy) {
+            $requirements['mileage_type'] = $mileagePolicy;
+        }
+
+        return !empty($requirements) ? $requirements : null;
     }
 
     private function resolveProviderVehicleId(string $rawSupplierId, array $gv, array $supplierData, mixed $supplierVehicleId): ?string
@@ -474,10 +520,12 @@ class GatewayVehicleTransformer
             'rate_id' => $providerPayload['rate_id'] ?? null,
             'rate_name' => $providerPayload['rate_description'] ?? null,
             'payment_type' => $providerPayload['rate_payment'] ?? null,
-            'recordgo_products' => [],
+            'recordgo_products' => $this->extractRecordGoProducts($source, $providerPayload),
             'recordgo_acriss_id' => $providerPayload['acriss_id'] ?? null,
             'recordgo_sellcode_ver' => $providerPayload['sell_code_ver'] ?? null,
             'recordgo_country' => $providerPayload['country'] ?? null,
+            'terms' => $this->extractTerms($source, $providerPayload),
+            'driver_requirements' => $this->extractDriverRequirements($source, $providerPayload, $gv),
             'bags' => (($specs['luggage_small'] ?? 0) + ($specs['luggage_medium'] ?? 0) + ($specs['luggage_large'] ?? 0)) ?: null,
             'suitcases' => $specs['luggage_large'] ?? null,
             'security_deposit' => $pricing['deposit_amount'] ?? null,

@@ -976,7 +976,7 @@ class StripeBookingService
                     'provider_metadata' => array_merge(
                         $booking->provider_metadata ?? [],
                         [
-                            'gateway_booking_id' => $result['gateway_booking_id'] ?? null,
+                            'gateway_booking_id' => $result['id'] ?? $result['gateway_booking_id'] ?? null,
                             'gateway_status' => $result['status'] ?? 'confirmed',
                             'gateway_supplier_id' => $result['supplier_id'] ?? null,
                         ]

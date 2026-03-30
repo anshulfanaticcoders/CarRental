@@ -90,23 +90,42 @@ export function createRecordGoAdapter(props, { currentPackage, stripHtml }) {
 
     // ── Optional Extras ─────────────────────────────────────────────────
     const optionalExtras = computed(() => {
-        return recordGoAssociatedComplements.value.map((extra, index) => {
-            const id = `recordgo_extra_${extra.complementId ?? index}`;
-            return {
-                id,
-                code: extra.complementId,
-                name: extra.complementName ? stripHtml(extra.complementName) : 'Extra',
-                description: extra.complementDescription ? stripHtml(extra.complementDescription)
-                    : (extra.complementSubtitle ? stripHtml(extra.complementSubtitle) : null),
-                required: false,
-                numberAllowed: extra.maxUnits || extra.complementUnits || null,
-                daily_rate: extra.priceTaxIncDayDiscount ?? extra.priceTaxIncDay ?? null,
-                total_for_booking: extra.priceTaxIncComplementDiscount ?? extra.priceTaxIncComplement ?? null,
-                price: extra.priceTaxIncComplementDiscount ?? extra.priceTaxIncComplement ?? null,
-                type: 'optional',
-                recordgo_payload: extra,
-            };
-        });
+        // Primary: complements_associated from selected RecordGo product
+        const complements = recordGoAssociatedComplements.value;
+        if (complements.length > 0) {
+            return complements.map((extra, index) => {
+                const id = extra.id || `ext_recordgo_${extra.complementId ?? index}`;
+                return {
+                    id,
+                    code: extra.complementId,
+                    name: extra.complementName ? stripHtml(extra.complementName) : 'Extra',
+                    description: extra.complementDescription ? stripHtml(extra.complementDescription)
+                        : (extra.complementSubtitle ? stripHtml(extra.complementSubtitle) : null),
+                    required: false,
+                    numberAllowed: extra.maxUnits || extra.complementUnits || null,
+                    daily_rate: extra.priceTaxIncDayDiscount ?? extra.priceTaxIncDay ?? null,
+                    total_for_booking: extra.priceTaxIncComplementDiscount ?? extra.priceTaxIncComplement ?? null,
+                    price: extra.priceTaxIncComplementDiscount ?? extra.priceTaxIncComplement ?? null,
+                    type: 'optional',
+                    recordgo_payload: extra,
+                };
+            });
+        }
+
+        // Fallback: gateway extras (from vehicle.extras merged by adapter)
+        const extras = props.vehicle?.extras || [];
+        return extras.filter(e => !e.mandatory).map(extra => ({
+            id: extra.id || extra.code,
+            code: extra.code || extra.id,
+            name: extra.name || extra.description || 'Extra',
+            description: extra.description || null,
+            required: false,
+            numberAllowed: extra.max_quantity || extra.numberAllowed || null,
+            daily_rate: parseFloat(extra.daily_rate || extra.Daily_rate || 0),
+            total_for_booking: extra.total_price ?? extra.total_for_booking ?? extra.Total_for_this_booking ?? null,
+            price: extra.total_price ?? extra.total_for_booking ?? null,
+            type: 'optional',
+        }));
     });
 
     const protectionPlans = computed(() => []);

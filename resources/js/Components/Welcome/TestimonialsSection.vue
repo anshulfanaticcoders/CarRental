@@ -138,7 +138,7 @@ useScrollAnimation('.testi-section', '.testi-header, .testi-carousel, .testi-dot
                     <CarouselItem
                         v-for="card in cards"
                         :key="card.id"
-                        class="md:basis-1/2 lg:basis-1/3"
+                        class="md:basis-1/2 lg:basis-1/4"
                     >
                         <div class="testi-card">
                             <div class="testi-stars">

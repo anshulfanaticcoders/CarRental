@@ -710,50 +710,7 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
                     @show-location-hours="showLocationHoursModal = true"
                 />
 
-                <!-- ═══ 4. WHAT'S INCLUDED ═══ -->
-                <IncludedItems
-                    v-if="unifiedIncludedItems.length > 0"
-                    :items="unifiedIncludedItems"
-                />
-
-                <!-- ═══ 5. DEPOSIT & EXCESS ═══ -->
-                <DepositExcess
-                    v-if="(isInternal && (vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount)) || (isRenteon && (currentProduct?.deposit || currentProduct?.excess || currentProduct?.excess_theft_amount || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount))"
-                    :vehicle="vehicle"
-                    :current-product="currentProduct"
-                    :format-price="formatPrice"
-                    :format-payment-method="formatPaymentMethod"
-                    v-model:selected-deposit-type="selectedDepositType"
-                    :available-deposit-types="availableDepositTypes"
-                />
-
-                <!-- ═══ 6. PROVIDER HIGHLIGHTS (Taxes, Policies, Included Services) ═══ -->
-                <ProviderHighlights
-                    :unified-tax-breakdown="unifiedTaxBreakdown"
-                    :is-ok-mobility="isOkMobility"
-                    :is-renteon="isRenteon"
-                    :ok-mobility-fuel-policy="okMobilityFuelPolicy"
-                    :ok-mobility-cancellation-summary="okMobilityCancellationSummary"
-                    :renteon-included-services="renteonIncludedServices"
-                    :renteon-driver-policy="renteonDriverPolicy"
-                    :is-sicily-by-car="isSicilyByCar"
-                    :is-record-go="isRecordGo"
-                    :sicily-by-car-included-services="sicilyByCarIncludedServices"
-                    :record-go-included-complements="recordGoIncludedComplements"
-                    :record-go-automatic-complements="recordGoAutomaticComplements"
-                    :format-price="formatPrice"
-                    :format-rental-price="formatRentalPrice"
-                    :strip-html="stripHtml"
-                />
-
-                <!-- ═══ 7. DRIVER REQUIREMENTS ═══ -->
-                <DriverRequirements
-                    v-if="driverRequirementItems.length || mileageTypeLabel"
-                    :items="driverRequirementItems"
-                    :mileage-type-label="mileageTypeLabel"
-                />
-
-                <!-- ═══ 8. PACKAGE / RATE SELECTION ═══ -->
+                <!-- ═══ 4. PACKAGE / RATE SELECTION ═══ -->
                 <PackageSelection
                     v-if="(!isLocautoRent && availablePackages.length > 0) || (isLocautoRent && locautoProtectionPlans.length > 0)"
                     :available-packages="availablePackages"
@@ -776,7 +733,43 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
                     @toggle-locauto-protection="toggleLocautoProtection"
                 />
 
-                <!-- ═══ 9. PROTECTION PLANS / INSURANCE ═══ -->
+                <!-- ═══ 5. WHAT'S INCLUDED (after package so customer sees what they picked) ═══ -->
+                <IncludedItems
+                    v-if="unifiedIncludedItems.length > 0"
+                    :items="unifiedIncludedItems"
+                />
+
+                <!-- ═══ 6. DEPOSIT & EXCESS ═══ -->
+                <DepositExcess
+                    v-if="(isInternal && (vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount)) || (isRenteon && (currentProduct?.deposit || currentProduct?.excess || currentProduct?.excess_theft_amount || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount))"
+                    :vehicle="vehicle"
+                    :current-product="currentProduct"
+                    :format-price="formatPrice"
+                    :format-payment-method="formatPaymentMethod"
+                    v-model:selected-deposit-type="selectedDepositType"
+                    :available-deposit-types="availableDepositTypes"
+                />
+
+                <!-- ═══ 7. PROVIDER HIGHLIGHTS (Taxes, Policies, Included Services) ═══ -->
+                <ProviderHighlights
+                    :unified-tax-breakdown="unifiedTaxBreakdown"
+                    :is-ok-mobility="isOkMobility"
+                    :is-renteon="isRenteon"
+                    :ok-mobility-fuel-policy="okMobilityFuelPolicy"
+                    :ok-mobility-cancellation-summary="okMobilityCancellationSummary"
+                    :renteon-included-services="renteonIncludedServices"
+                    :renteon-driver-policy="renteonDriverPolicy"
+                    :is-sicily-by-car="isSicilyByCar"
+                    :is-record-go="isRecordGo"
+                    :sicily-by-car-included-services="sicilyByCarIncludedServices"
+                    :record-go-included-complements="recordGoIncludedComplements"
+                    :record-go-automatic-complements="recordGoAutomaticComplements"
+                    :format-price="formatPrice"
+                    :format-rental-price="formatRentalPrice"
+                    :strip-html="stripHtml"
+                />
+
+                <!-- ═══ 8. PROTECTION PLANS / INSURANCE ═══ -->
                 <ProtectionPlans
                     v-if="hasUnifiedProtectionPlans || isRenteon"
                     :plans="unifiedProtectionPlans"
@@ -822,7 +815,14 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
                     v-model:show-provider-notes="showProviderNotes"
                 />
 
-                <!-- ═══ 12. TERMS & CONDITIONS ═══ -->
+                <!-- ═══ 12. DRIVER REQUIREMENTS ═══ -->
+                <DriverRequirements
+                    v-if="driverRequirementItems.length || mileageTypeLabel"
+                    :items="driverRequirementItems"
+                    :mileage-type-label="mileageTypeLabel"
+                />
+
+                <!-- ═══ 13. TERMS & CONDITIONS ═══ -->
                 <TermsConditions
                     v-if="terms && terms.length"
                     :terms="terms"

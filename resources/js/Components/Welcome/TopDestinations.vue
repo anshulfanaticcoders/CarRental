@@ -42,6 +42,16 @@ const getDestinationHref = (place) => {
     return searchUrl ? `/${page.props.locale}${searchUrl}` : `/${page.props.locale}`;
 };
 
+const getDestinationMeta = (place) => {
+    const city = `${place?.city || ''}`.trim();
+    const country = `${place?.country || ''}`.trim();
+    const name = `${place?.place_name || ''}`.trim().toLowerCase();
+
+    if (city && city.toLowerCase() !== name) return city;
+    if (country) return country;
+    return _p('destination_card_fallback_meta', 'Destination');
+};
+
 // Static fallback destinations
 const staticPlaces = [
     { id: 1, place_name: 'Barcelona', city: 'Barcelona', country: 'Spain', image: 'https://images.unsplash.com/photo-1523531294919-4bcd7c65e216?w=600&q=80' },
@@ -111,17 +121,19 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
                     <CarouselItem
                         v-for="p in places"
                         :key="p.id"
-                        class="md:basis-1/2 lg:basis-1/4"
+                        class="basis-[86%] sm:basis-[70%] md:basis-[48%] lg:basis-[31%] xl:basis-[24%]"
                     >
                         <a
                             :href="getDestinationHref(p)"
                             @click.prevent="navigateToSearch(p)"
                             class="dest-card"
                         >
-                            <img :src="p.image" :alt="p.place_name" loading="lazy" />
+                            <div class="dest-image-shell">
+                                <img :src="p.image" :alt="p.place_name" loading="lazy" />
+                            </div>
                             <div class="dest-info">
                                 <div class="dest-name">{{ p.place_name }}</div>
-                                <div class="dest-loc">{{ p.city }}, {{ p.country }}</div>
+                                <div class="dest-loc">{{ getDestinationMeta(p) }}</div>
                             </div>
                         </a>
                     </CarouselItem>
@@ -220,22 +232,58 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
 }
 
 .dest-card {
-    position: relative; border-radius: 20px; overflow: hidden;
-    aspect-ratio: 3/4; cursor: pointer; display: block;
-    box-shadow: 0 4px 24px rgba(10,29,40,0.06);
-    transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
     height: 100%;
+    padding: 0.75rem;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
+    transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1);
 }
-.dest-card:hover { transform: translateY(-6px); box-shadow: 0 16px 48px rgba(10,29,40,0.12); }
-.dest-card img { width:100%; height:100%; object-fit:cover; transition: transform 0.6s cubic-bezier(0.22,1,0.36,1); }
-.dest-card:hover img { transform: scale(1.06); }
-.dest-card::after {
-    content: ""; position: absolute; inset: 0;
-    background: linear-gradient(to top, rgba(10,29,40,0.85) 0%, rgba(10,29,40,0.4) 35%, rgba(10,29,40,0.05) 60%, transparent 100%);
+.dest-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+    border-color: #d7e4ec;
 }
-.dest-info { position: absolute; bottom: 0; left: 0; right: 0; padding: 1.25rem; z-index: 1; }
-.dest-name { font-size: 1.05rem; font-weight: 700; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.4); }
-.dest-loc { font-size: 0.78rem; color: rgba(255,255,255,0.7); text-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+
+.dest-image-shell {
+    overflow: hidden;
+    border-radius: 16px;
+    aspect-ratio: 16 / 10;
+    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+}
+
+.dest-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.22,1,0.36,1);
+}
+
+.dest-card:hover img { transform: scale(1.04); }
+
+.dest-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0 0.35rem 0.25rem;
+}
+
+.dest-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #1f2937;
+}
+
+.dest-loc {
+    font-size: 0.88rem;
+    color: #6b7280;
+}
 
 .dest-dots {
     display: flex;
@@ -261,9 +309,7 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
 }
 
 @media (max-width: 1280px) {
-    .dest-card {
-        aspect-ratio: 16/10;
-    }
+    .dest-card { gap: 0.9rem; }
 }
 
 @media (max-width: 768px) {
@@ -280,6 +326,10 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
 }
 
 @media (max-width: 480px) {
-    .dest-card { aspect-ratio: 16/9; }
+    .dest-card { padding: 0.65rem; }
+
+    .dest-name {
+        font-size: 1rem;
+    }
 }
 </style>
