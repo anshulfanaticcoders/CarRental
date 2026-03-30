@@ -274,7 +274,7 @@ class StripeBookingService
                     $providerCurrency = $metadata->provider_currency ?? $metadata->currency ?? null;
                     $bookingCurrency = $metadata->currency ?? null;
                     foreach ($extrasData as $extraItem) {
-                        $price = (float) ($extraItem['total'] ?? 0);
+                        $price = (float) ($extraItem['total_for_booking'] ?? $extraItem['total_price'] ?? $extraItem['total'] ?? 0);
                         if ($price > 0 && $providerCurrency && $bookingCurrency && $providerCurrency !== $bookingCurrency) {
                             $conversion = app(CurrencyConversionService::class)->convert($price, $providerCurrency, $bookingCurrency);
                             if ($conversion['success'] ?? false) {

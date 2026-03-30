@@ -250,7 +250,7 @@ class StripeCheckoutController extends Controller
     {
         // Only regular users can make bookings
         $user = auth()->user();
-        if ($user && !in_array($user->role, ['user', null], true)) {
+        if ($user && !in_array($user->role, ['user', 'customer', null], true)) {
             return response()->json([
                 'error' => 'Only customer accounts can make bookings. Please use a regular account.',
             ], 403);

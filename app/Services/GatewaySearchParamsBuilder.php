@@ -32,11 +32,22 @@ class GatewaySearchParamsBuilder
         if ($location && !empty($location['providers'])) {
             $providerLocations = $location['providers'];
             $requestedProvider = strtolower(trim((string) ($validated['provider'] ?? 'mixed')));
+            $requestedPickupId = trim((string) ($validated['provider_pickup_id'] ?? ''));
 
             if ($requestedProvider !== '' && $requestedProvider !== 'mixed') {
                 $providerLocations = array_values(array_filter($providerLocations, function (array $providerLocation) use ($requestedProvider) {
                     return strtolower(trim((string) ($providerLocation['provider'] ?? ''))) === $requestedProvider;
                 }));
+            }
+
+            if ($requestedProvider !== '' && $requestedProvider !== 'mixed' && $requestedPickupId !== '') {
+                $matchingPickupLocations = array_values(array_filter($providerLocations, function (array $providerLocation) use ($requestedPickupId) {
+                    return trim((string) ($providerLocation['pickup_id'] ?? '')) === $requestedPickupId;
+                }));
+
+                if (!empty($matchingPickupLocations)) {
+                    $providerLocations = $matchingPickupLocations;
+                }
             }
 
             $params['provider_locations'] = $providerLocations;

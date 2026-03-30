@@ -68,12 +68,13 @@ export function createLocautoAdapter(props) {
         return extras.filter(extra =>
             !protectionCodes.includes(extra.code)
         ).map((extra) => ({
-            id: `locauto_extra_${extra.code}`,
+            id: extra.id || extra.code,
             code: extra.code,
             name: extra.description,
             description: extra.description,
             price: parseFloat(extra.amount) * props.numberOfDays,
             daily_rate: parseFloat(extra.amount),
+            total_for_booking: extra.total_price ?? extra.total_for_booking ?? (parseFloat(extra.amount) * props.numberOfDays),
             amount: extra.amount
         }));
     });

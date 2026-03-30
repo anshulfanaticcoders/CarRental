@@ -185,6 +185,38 @@ class GatewayVehicleTransformerTest extends TestCase
         $this->assertSame([], $result['options']);
     }
 
+    public function test_it_preserves_enriched_pickup_location_fields_from_gateway_payload(): void
+    {
+        $gv = $this->makeGatewayVehicle('locauto_rent');
+        $gv['pickup_location'] = [
+            'supplier_location_id' => 'FCO',
+            'name' => 'Roma Fiumicino Airport',
+            'latitude' => 41.79479,
+            'longitude' => 12.25221,
+            'address' => "AEROPORTO L.DA VINCI - Via dell'aeroporto di Fiumicino 320, 00054 Fiumicino (RM)",
+            'phone' => '+39 06 65953615',
+            'operating_hours' => [
+                'weekday' => '07:00 - 24:00',
+                'saturday' => '07:00 - 24:00',
+                'sunday' => '07:00 - 24:00',
+            ],
+            'pickup_instructions' => 'Desk inside the Epua 2 Tower.',
+            'dropoff_instructions' => 'Follow the Car Rental signs to Multilevel Parking C.',
+            'is_airport' => true,
+        ];
+        $gv['dropoff_location'] = $gv['pickup_location'];
+
+        $result = $this->transformer->transform($gv, 5);
+
+        $this->assertSame($gv['pickup_location']['address'], $result['pickup_address']);
+        $this->assertSame($gv['pickup_location']['address'], $result['dropoff_address']);
+        $this->assertSame($gv['pickup_location']['phone'], $result['office_phone']);
+        $this->assertSame($gv['pickup_location']['operating_hours'], $result['office_schedule']);
+        $this->assertSame($gv['pickup_location']['pickup_instructions'], $result['pickup_instructions']);
+        $this->assertSame($gv['pickup_location']['dropoff_instructions'], $result['dropoff_instructions']);
+        $this->assertTrue($result['at_airport']);
+    }
+
     public function test_renteon_included_computed_field(): void
     {
         $gv = $this->makeGatewayVehicle('renteon');

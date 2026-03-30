@@ -45,6 +45,7 @@ class InternalVehicleApiTest extends TestCase
             'company_email' => 'fleet@example.com',
             'company_phone_number' => '+971500000000',
             'company_address' => 'Terminal 1',
+            'company_gst_number' => 'GST-DXB-' . $vendor->id,
             'status' => 'approved',
         ]);
 
@@ -83,6 +84,10 @@ class InternalVehicleApiTest extends TestCase
         $this->assertSame('Airport Fleet Co', $payload['vendorProfileData']['company_name']);
         $this->assertSame('Airport Fleet Co', $payload['vendor_profile_data']['company_name']);
         $this->assertSame('https://example.com/internal/' . $referenceVehicle->id . '.jpg', $payload['images'][0]['image_url']);
+        $this->assertCount(2, $payload['images']);
+        $this->assertSame('primary', $payload['images'][0]['image_type']);
+        $this->assertSame('gallery', $payload['images'][1]['image_type']);
+        $this->assertSame('https://example.com/internal/' . $referenceVehicle->id . '-gallery.jpg', $payload['images'][1]['image_url']);
         $this->assertSame(250, $payload['benefits']['km_per_day']);
         $this->assertSame(25, $payload['benefits']['min_driver_age']);
         $this->assertStringContainsString('2', $payload['benefits']['cancellation']);
@@ -113,6 +118,10 @@ class InternalVehicleApiTest extends TestCase
         VendorProfile::create([
             'user_id' => $vendor->id,
             'company_name' => 'Airport Fleet Co',
+            'company_email' => 'fleet@example.com',
+            'company_phone_number' => '+971500000001',
+            'company_address' => 'Terminal 1',
+            'company_gst_number' => 'GST-DXB-' . $vendor->id,
             'status' => 'approved',
         ]);
 
@@ -178,6 +187,13 @@ class InternalVehicleApiTest extends TestCase
             'image_path' => 'vehicle_images/' . $vehicle->id . '.jpg',
             'image_url' => 'https://example.com/internal/' . $vehicle->id . '.jpg',
             'image_type' => 'primary',
+        ]);
+
+        VehicleImage::create([
+            'vehicle_id' => $vehicle->id,
+            'image_path' => 'vehicle_images/' . $vehicle->id . '-gallery.jpg',
+            'image_url' => 'https://example.com/internal/' . $vehicle->id . '-gallery.jpg',
+            'image_type' => 'gallery',
         ]);
 
         VehicleBenefit::create([

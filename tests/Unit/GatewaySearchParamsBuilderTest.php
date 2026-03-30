@@ -144,4 +144,45 @@ class GatewaySearchParamsBuilderTest extends TestCase
         $this->assertCount(1, $params['provider_locations']);
         $this->assertSame('greenmotion', $params['provider_locations'][0]['provider']);
     }
+
+    public function test_it_filters_provider_locations_to_the_exact_selected_pickup_id_when_present(): void
+    {
+        $locationSearchService = $this->createMock(LocationSearchService::class);
+        $locationSearchService->expects($this->once())
+            ->method('resolveSearchLocation')
+            ->with([
+                'unified_location_id' => 3038777513,
+                'provider' => 'internal',
+                'provider_pickup_id' => '2',
+            ])
+            ->willReturn([
+                'unified_location_id' => 3038777513,
+                'country_code' => 'BE',
+                'providers' => [
+                    [
+                        'provider' => 'internal',
+                        'pickup_id' => '2',
+                        'original_name' => 'Antwerp Downtown A',
+                    ],
+                    [
+                        'provider' => 'internal',
+                        'pickup_id' => '4',
+                        'original_name' => 'Antwerp Downtown B',
+                    ],
+                ],
+            ]);
+
+        $builder = new GatewaySearchParamsBuilder($locationSearchService);
+
+        $params = $builder->build([
+            'unified_location_id' => 3038777513,
+            'provider' => 'internal',
+            'provider_pickup_id' => '2',
+        ]);
+
+        $this->assertSame('BE', $params['country_code']);
+        $this->assertCount(1, $params['provider_locations']);
+        $this->assertSame('internal', $params['provider_locations'][0]['provider']);
+        $this->assertSame('2', $params['provider_locations'][0]['pickup_id']);
+    }
 }

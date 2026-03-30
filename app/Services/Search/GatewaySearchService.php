@@ -305,13 +305,93 @@ class GatewaySearchService
 
     private function mapGatewayProviderStatus(array $gatewayResult, callable $normalizeSupplierId): array
     {
+        $aggregate = [];
+
+        $mergeStatus = function (array $status) use (&$aggregate): void {
+            $provider = trim((string) ($status['provider'] ?? 'unknown'));
+            if ($provider === '') {
+                $provider = 'unknown';
+            }
+
+            $normalizedErrors = collect($status['errors'] ?? [])
+                ->filter(fn ($error) => is_string($error) && trim($error) !== '')
+                ->map(fn ($error) => trim($error))
+                ->values()
+                ->all();
+
+            if (!isset($aggregate[$provider])) {
+                $aggregate[$provider] = [
+                    'provider' => $provider,
+                    'status' => ($status['status'] ?? 'ok') === 'error' ? 'error' : 'ok',
+                    'vehicles' => (int) ($status['vehicles'] ?? 0),
+                    'ms' => $status['ms'] ?? null,
+                    'errors' => $normalizedErrors,
+                    'failure_type' => $status['failure_type'] ?? null,
+                    'stage' => $status['stage'] ?? null,
+                    'http_status' => $status['http_status'] ?? null,
+                    'provider_code' => $status['provider_code'] ?? null,
+                    'retryable' => (bool) ($status['retryable'] ?? false),
+                ];
+
+                return;
+            }
+
+            $existing = &$aggregate[$provider];
+            $existing['vehicles'] += (int) ($status['vehicles'] ?? 0);
+
+            if (isset($status['ms']) && is_numeric($status['ms'])) {
+                $existing['ms'] = max((int) ($existing['ms'] ?? 0), (int) $status['ms']);
+            }
+
+            $isStructuredFailure = array_key_exists('failure_type', $status)
+                || array_key_exists('stage', $status)
+                || array_key_exists('http_status', $status)
+                || array_key_exists('provider_code', $status)
+                || array_key_exists('retryable', $status);
+
+            if ($isStructuredFailure && !empty($normalizedErrors)) {
+                $existing['errors'] = $normalizedErrors;
+            } else {
+                $existing['errors'] = collect(array_merge($existing['errors'], $normalizedErrors))
+                    ->unique()
+                    ->values()
+                    ->all();
+            }
+
+            if ($existing['vehicles'] <= 0 && ($status['status'] ?? 'ok') === 'error') {
+                $existing['status'] = 'error';
+            } elseif ($existing['vehicles'] > 0) {
+                $existing['status'] = 'ok';
+            }
+
+            foreach (['failure_type', 'stage', 'http_status', 'provider_code'] as $field) {
+                if (!empty($status[$field])) {
+                    $existing[$field] = $status[$field];
+                }
+            }
+
+            $existing['retryable'] = $existing['retryable'] || (bool) ($status['retryable'] ?? false);
+        };
+
+        collect($gatewayResult['supplier_results'] ?? [])
+            ->filter(fn ($item) => is_array($item))
+            ->each(function (array $supplierResult) use ($normalizeSupplierId, $mergeStatus): void {
+                $providerId = $normalizeSupplierId((string) ($supplierResult['supplier_id'] ?? 'unknown'));
+                $mergeStatus([
+                    'provider' => $providerId,
+                    'status' => empty($supplierResult['error']) ? 'ok' : 'error',
+                    'vehicles' => $supplierResult['vehicle_count'] ?? 0,
+                    'ms' => $supplierResult['response_time_ms'] ?? null,
+                    'errors' => !empty($supplierResult['error']) ? [$supplierResult['error']] : [],
+                ]);
+            });
+
         $structured = collect($gatewayResult['provider_status'] ?? [])->filter(fn ($item) => is_array($item));
         if ($structured->isNotEmpty()) {
-            return $structured->map(function (array $item) use ($normalizeSupplierId) {
+            $structured->each(function (array $item) use ($normalizeSupplierId, $mergeStatus): void {
                 $providerId = $normalizeSupplierId((string) ($item['provider'] ?? 'unknown'));
                 $message = trim((string) ($item['message'] ?? ''));
-
-                return [
+                $mergeStatus([
                     'provider' => $providerId,
                     'status' => $message === '' ? 'ok' : 'error',
                     'vehicles' => 0,
@@ -322,19 +402,10 @@ class GatewaySearchService
                     'http_status' => $item['http_status'] ?? null,
                     'provider_code' => $item['provider_code'] ?? null,
                     'retryable' => $item['retryable'] ?? false,
-                ];
-            })->values()->all();
+                ]);
+            });
         }
 
-        return collect($gatewayResult['supplier_results'] ?? [])->map(function ($supplierResult) use ($normalizeSupplierId) {
-            $providerId = $normalizeSupplierId((string) ($supplierResult['supplier_id'] ?? 'unknown'));
-            return [
-                'provider' => $providerId,
-                'status' => empty($supplierResult['error']) ? 'ok' : 'error',
-                'vehicles' => $supplierResult['vehicle_count'] ?? 0,
-                'ms' => $supplierResult['response_time_ms'] ?? null,
-                'errors' => !empty($supplierResult['error']) ? [$supplierResult['error']] : [],
-            ];
-        })->values()->all();
+        return array_values($aggregate);
     }
 }
