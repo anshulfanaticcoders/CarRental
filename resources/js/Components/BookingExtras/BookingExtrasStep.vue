@@ -741,7 +741,7 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
 
                 <!-- ═══ 6. DEPOSIT & EXCESS ═══ -->
                 <DepositExcess
-                    v-if="(isInternal && (vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount)) || (isRenteon && (currentProduct?.deposit || currentProduct?.excess || currentProduct?.excess_theft_amount || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount)) || (vehicle?.security_deposit > 0 && (isSurprice || isRecordGo || isOkMobility || isFavrica || isXDrive))"
+                    v-if="(isInternal && (vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount)) || (isRenteon && (currentProduct?.deposit || currentProduct?.excess || currentProduct?.excess_theft_amount || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount)) || (vehicle?.security_deposit > 0 && (isSurprice || isRecordGo || isOkMobility || isFavrica || isXDrive || isSicilyByCar))"
                     :vehicle="vehicle"
                     :current-product="currentProduct"
                     :format-price="formatPrice"

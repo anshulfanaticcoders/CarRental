@@ -29,9 +29,9 @@ export function createSicilyByCarAdapter(props) {
 
     const sicilyByCarProtectionPlans = computed(() => {
         return sicilyByCarServices.value
-            .filter(service => !service?.isMandatory && SBC_PROTECTION_CODES.includes(`${service?.id || ''}`.toUpperCase()))
+            .filter(service => !service?.isMandatory && SBC_PROTECTION_CODES.includes(`${service?.code || service?.id || ''}`.toUpperCase()))
             .map((service, index) => {
-                const code = `${service?.id || ''}`.toUpperCase() || `PROT_${index}`;
+                const code = `${service?.code || service?.id || ''}`.toUpperCase() || `PROT_${index}`;
                 const total = parseFloat(service?.total || 0);
                 const excess = getSbcExcessValue(service);
                 return {
@@ -52,7 +52,7 @@ export function createSicilyByCarAdapter(props) {
 
     const sicilyByCarOptionalExtras = computed(() => {
         return buildSicilyByCarOptionalExtras(
-            sicilyByCarServices.value.filter(service => !service?.isMandatory && !SBC_PROTECTION_CODES.includes(`${service?.id || ''}`.toUpperCase())),
+            sicilyByCarServices.value.filter(service => !service?.isMandatory && !SBC_PROTECTION_CODES.includes(`${service?.code || service?.id || ''}`.toUpperCase())),
             props.numberOfDays,
         );
     });
@@ -102,10 +102,18 @@ export function createSicilyByCarAdapter(props) {
     const allExtras = sicilyByCarAllExtras;
 
     const includedItems = computed(() => {
-        return sicilyByCarIncludedServices.value.map(service => ({
-            label: service?.description || service?.id || 'Included Service',
-            detail: 'Included',
-        }));
+        return sicilyByCarIncludedServices.value.map(service => {
+            const excess = getSbcExcessValue(service);
+            const code = `${service?.code || service?.id || ''}`.toUpperCase();
+            let detail = 'Included';
+            if (excess && excess > 0 && (code === 'CDW' || code === 'TLW')) {
+                detail = `Included (excess: €${excess})`;
+            }
+            return {
+                label: service?.description || service?.name || service?.id || 'Included Service',
+                detail,
+            };
+        });
     });
 
     const taxBreakdown = computed(() => null);
