@@ -6,8 +6,37 @@
     <style>
         @page { margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        @font-face {
+            font-family: 'DM Sans';
+            font-style: normal;
+            font-weight: 400;
+            src: url('{{ public_path('fonts/pdf/DMSans-Regular.ttf') }}') format('truetype');
+        }
+
+        @font-face {
+            font-family: 'DM Sans';
+            font-style: normal;
+            font-weight: 700;
+            src: url('{{ public_path('fonts/pdf/DMSans-Bold.ttf') }}') format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Outfit';
+            font-style: normal;
+            font-weight: 400;
+            src: url('{{ public_path('fonts/pdf/Outfit-Regular.ttf') }}') format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Outfit';
+            font-style: normal;
+            font-weight: 700;
+            src: url('{{ public_path('fonts/pdf/Outfit-Bold.ttf') }}') format('truetype');
+        }
+
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-family: 'DM Sans', sans-serif;
             font-size: 11px;
             line-height: 1.5;
             color: #1a1a2e;
@@ -35,6 +64,7 @@
             align-items: flex-start;
         }
         .brand-name {
+            font-family: 'Outfit', sans-serif;
             font-size: 22px;
             font-weight: 800;
             letter-spacing: 0.1em;
@@ -49,6 +79,7 @@
         }
         .header-right { text-align: right; }
         .booking-num {
+            font-family: 'Outfit', sans-serif;
             font-size: 18px;
             font-weight: 700;
             letter-spacing: 0.03em;
@@ -91,6 +122,7 @@
             font-weight: 600;
         }
         .sum-value {
+            font-family: 'Outfit', sans-serif;
             font-size: 12px;
             font-weight: 700;
             color: #0f172a;
@@ -103,6 +135,7 @@
         /* ── Section Headers ── */
         .section { margin-bottom: 22px; }
         .section-head {
+            font-family: 'Outfit', sans-serif;
             font-size: 11px;
             font-weight: 700;
             color: #153B4F;
@@ -140,6 +173,7 @@
             margin-bottom: 2px;
         }
         .info-block-value {
+            font-family: 'Outfit', sans-serif;
             font-size: 11px;
             font-weight: 600;
             color: #0f172a;
@@ -172,6 +206,7 @@
         .loc-label-pickup { color: #059669; }
         .loc-label-return { color: #dc2626; }
         .loc-datetime {
+            font-family: 'Outfit', sans-serif;
             font-size: 12px;
             font-weight: 700;
             color: #0f172a;
@@ -234,6 +269,7 @@
             color: rgba(255,255,255,0.75);
         }
         .gt-amount {
+            font-family: 'Outfit', sans-serif;
             font-size: 20px;
             font-weight: 800;
             color: #fff;
@@ -260,6 +296,7 @@
         .pay-card-label-paid { color: #059669; }
         .pay-card-label-due { color: #d97706; }
         .pay-card-amount {
+            font-family: 'Outfit', sans-serif;
             font-size: 16px;
             font-weight: 800;
             margin-top: 2px;
@@ -305,6 +342,7 @@
             margin-bottom: 6px;
         }
         .contact-name {
+            font-family: 'Outfit', sans-serif;
             font-size: 12px;
             font-weight: 700;
             color: #0f172a;
@@ -338,10 +376,24 @@
             font-weight: 600;
         }
         .policy-val {
+            font-family: 'Outfit', sans-serif;
             font-size: 10px;
             font-weight: 700;
             color: #0f172a;
             margin-top: 2px;
+        }
+
+        .vehicle-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .summary-total {
+            font-size: 14px;
+            color: #153B4F;
         }
 
         /* ── Notes ── */
@@ -444,7 +496,7 @@
                 </td>
                 <td style="text-align:right;">
                     <div class="sum-label">Total</div>
-                    <div class="sum-value" style="font-size:14px; color:#153B4F;">{{ $currency }} {{ number_format($booking->total_amount ?? 0, 2) }}</div>
+                    <div class="sum-value summary-total">{{ $currency }} {{ number_format($booking->total_amount ?? 0, 2) }}</div>
                 </td>
             </tr>
         </table>
@@ -502,7 +554,7 @@
                                     <img src="{{ $imgUrl }}" alt="Vehicle" style="width:100%; height:80px; object-fit:contain; border-radius:6px; margin-bottom:8px;">
                                 @endif
                             @endif
-                            <div style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:4px;">
+                            <div class="vehicle-title">
                                 {{ is_object($vehicle) ? ($vehicle->brand ?? '') . ' ' . ($vehicle->model ?? $vehicle->vehicle_name ?? '') : (($vehicle['brand'] ?? '') . ' ' . ($vehicle['model'] ?? $vehicle['vehicle_name'] ?? '')) }}
                             </div>
                             <table style="width:100%; border-collapse:collapse; margin-top:6px;">

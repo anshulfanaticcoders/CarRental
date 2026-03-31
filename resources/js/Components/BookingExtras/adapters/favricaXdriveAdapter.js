@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import { useStandardPackages, useEmptyLocationData, defaultComputeNetTotal } from './shared.js';
+import { resolveStandardPackages, useEmptyLocationData, defaultComputeNetTotal } from './shared.js';
 
 const toTitleCase = (value) => {
     return `${value}`
@@ -91,7 +91,17 @@ export function createFavricaXdriveAdapter(props, source) {
     });
 
     const allExtras = computed(() => [...insuranceOptions.value, ...optionalExtras.value]);
-    const packages = useStandardPackages(props);
+    const packages = computed(() => {
+        const standardPkgs = resolveStandardPackages(props.vehicle);
+        if (standardPkgs.length > 0) return standardPkgs;
+        // Fallback: build basic package from vehicle pricing
+        const total = parseFloat(props.vehicle?.total_price || props.vehicle?.pricing?.total_price || 0);
+        if (total <= 0) return [];
+        const currency = props.vehicle?.currency || props.vehicle?.pricing?.currency || 'EUR';
+        const perDay = parseFloat(props.vehicle?.price_per_day || props.vehicle?.pricing?.price_per_day || 0)
+            || (props.numberOfDays > 0 ? +(total / props.numberOfDays).toFixed(2) : total);
+        return [{ type: 'BAS', name: 'Basic Rental', total, price_per_day: perDay, currency }];
+    });
     const protectionPlans = insuranceOptions;
     const locationData = useEmptyLocationData();
 

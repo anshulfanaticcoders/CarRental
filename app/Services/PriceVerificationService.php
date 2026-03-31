@@ -280,6 +280,12 @@ class PriceVerificationService
                 ->first(fn($candidate) => $this->resolveExtraIdentifier($candidate) === $extraId);
 
             if (!$storedExtra) {
+                // Skip validation for provider-built protection plans (not from search extras)
+                if (str_starts_with($extraId, 'adobe_protection_') || str_starts_with($extraId, 'ins_')) {
+                    $resolvedExtras[] = array_merge($extra, ['qty' => max(1, (int) ($extra['qty'] ?? $extra['quantity'] ?? 1))]);
+                    continue;
+                }
+
                 Log::warning('Price manipulation detected - unknown selected extra', [
                     'extra_id' => $extraId,
                     'available_extra_ids' => collect($storedData['extras'] ?? [])

@@ -563,7 +563,7 @@ const handleProceedToCheckout = () => {
                 const plan = locautoProtectionPlans.value.find(p => p.code === code);
                 return sum + (plan ? parseFloat(plan.amount || 0) : 0);
             }, 0)
-            : 0,
+            : (isAdobeCars.value ? (adobeMandatoryProtection.value || 0) : 0),
         extras: selectedExtras.value,
         detailedExtras: providerSelectedExtrasDetails.value,
         totals: { grandTotal: grandTotal.value, payableAmount: payableAmount.value, pendingAmount: pendingAmount.value },
@@ -741,7 +741,7 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
 
                 <!-- ═══ 6. DEPOSIT & EXCESS ═══ -->
                 <DepositExcess
-                    v-if="(isInternal && (vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount)) || (isRenteon && (currentProduct?.deposit || currentProduct?.excess || currentProduct?.excess_theft_amount || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount)) || (vehicle?.security_deposit > 0 && (isSurprice || isRecordGo || isOkMobility))"
+                    v-if="(isInternal && (vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount)) || (isRenteon && (currentProduct?.deposit || currentProduct?.excess || currentProduct?.excess_theft_amount || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount)) || (vehicle?.security_deposit > 0 && (isSurprice || isRecordGo || isOkMobility || isFavrica || isXDrive))"
                     :vehicle="vehicle"
                     :current-product="currentProduct"
                     :format-price="formatPrice"

@@ -22,17 +22,9 @@ class GatewayVehicleTransformer
         $dailyRate = (float) ($pricing['daily_rate'] ?? 0);
         $priceCurrency = $pricing['currency'] ?? 'EUR';
 
-        // Adobe's supplier payload exposes the booking total in `tdr`; the gateway
-        // pricing block currently inflates that into a per-day-looking pair.
-        if ($rawSupplierId === 'adobe_car') {
-            $supplierBookingTotal = $supplierData['tdr'] ?? null;
-            if (is_numeric($supplierBookingTotal) && (float) $supplierBookingTotal > 0) {
-                $totalPrice = (float) $supplierBookingTotal;
-                $dailyRate = $rentalDays > 0
-                    ? round($totalPrice / $rentalDays, 2)
-                    : $totalPrice;
-            }
-        }
+        // Adobe: `tdr` in supplier_data is the daily rate, not the booking total.
+        // The gateway pricing already has the correct total_price and daily_rate.
+        // No override needed — use the gateway pricing as-is.
 
         $transmission = $gv['transmission'] ?? null;
 

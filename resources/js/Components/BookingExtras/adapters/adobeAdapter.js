@@ -6,8 +6,7 @@ import { computed } from 'vue';
  */
 export function createAdobeAdapter(props) {
     const adobeBaseRate = computed(() => {
-        if (!props.vehicle?.tdr) return 0;
-        return parseFloat(props.vehicle.tdr);
+        return parseFloat(props.vehicle?.total_price || props.vehicle?.pricing?.total_price || props.vehicle?.tdr || 0);
     });
 
     const adobeProtectionPlans = computed(() => {
@@ -46,13 +45,15 @@ export function createAdobeAdapter(props) {
 
         const extras = props.vehicle?.extras || [];
         extras.forEach(extra => {
+            const totalPrice = extra.total_price ?? extra.total_for_booking ?? parseFloat(extra.price || extra.amount || 0);
             options.push({
                 id: extra.id || extra.option_id || extra.code,
                 code: extra.code,
                 name: extra.name || extra.displayName || extra.description || extra.code,
                 description: extra.description || extra.displayDescription || extra.name,
-                daily_rate: parseFloat(extra.price || extra.amount || 0) / props.numberOfDays,
-                price: parseFloat(extra.price || extra.amount || 0),
+                daily_rate: parseFloat(extra.daily_rate || extra.price || extra.amount || 0),
+                price: parseFloat(totalPrice),
+                total_for_booking: parseFloat(totalPrice),
                 amount: extra.price || extra.amount
             });
         });
@@ -62,16 +63,31 @@ export function createAdobeAdapter(props) {
 
     const protectionPlans = computed(() => {
         const protections = props.vehicle?.protections || [];
-        return protections.filter(p => p.code !== 'PLI' && !p.required).map(plan => ({
-            id: `adobe_protection_${plan.code}`,
-            code: plan.code,
-            name: plan.displayName || plan.name || plan.code,
-            description: plan.displayDescription || plan.description || '',
-            price: parseFloat(plan.price || plan.total || 0),
-            daily_rate: parseFloat(plan.price || plan.total || 0) / props.numberOfDays,
-            total_for_booking: parseFloat(plan.price || plan.total || 0),
-            required: plan.required || false,
-        }));
+        if (protections.length > 0) {
+            return protections.filter(p => p.code !== 'PLI' && !p.required).map(plan => ({
+                id: `adobe_protection_${plan.code}`,
+                code: plan.code,
+                name: plan.displayName || plan.name || plan.code,
+                description: plan.displayDescription || plan.description || '',
+                price: parseFloat(plan.price || plan.total || 0),
+                daily_rate: parseFloat(plan.price || plan.total || 0) / props.numberOfDays,
+                total_for_booking: parseFloat(plan.price || plan.total || 0),
+                required: plan.required || false,
+            }));
+        }
+        // Fallback: build from PLI/LDW/SPP fields
+        return adobeProtectionPlans.value
+            .filter(p => p.code !== 'PLI')
+            .map(plan => ({
+                id: `adobe_protection_${plan.code}`,
+                code: plan.code,
+                name: plan.name,
+                description: plan.code === 'LDW' ? 'Car damage protection' : 'Extended protection package',
+                price: plan.amount,
+                daily_rate: plan.amount / props.numberOfDays,
+                total_for_booking: plan.amount,
+                required: false,
+            }));
     });
 
     const allExtras = computed(() => [...optionalExtras.value, ...protectionPlans.value]);
@@ -82,7 +98,16 @@ export function createAdobeAdapter(props) {
     });
 
     const baseTotal = computed(() => adobeBaseRate.value);
-    const includedItems = computed(() => []);
+    const includedItems = computed(() => {
+        const items = [];
+        const pli = adobeProtectionPlans.value.find(p => p.code === 'PLI');
+        if (pli) {
+            items.push({ label: 'Liability Protection (PLI)', detail: `Mandatory — $${pli.amount.toFixed(2)}` });
+        }
+        items.push({ label: 'Third Party Liability', detail: 'Included' });
+        items.push({ label: 'Unlimited Mileage', detail: 'Included' });
+        return items;
+    });
     const taxBreakdown = computed(() => null);
 
     const locationData = computed(() => ({

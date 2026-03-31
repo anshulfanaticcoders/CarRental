@@ -10,6 +10,26 @@ const booking = props.booking || {};
 const vehicle = props.vehicle || {};
 const locale = props.locale || 'en';
 
+const successAnimationData = (() => {
+  const cloned = JSON.parse(JSON.stringify(paymentSuccessAnimation));
+
+  cloned.w = 960;
+  cloned.h = 720;
+  cloned.layers = (cloned.layers || [])
+    .filter((layer) => layer?.nm !== 'Payment Successful')
+    .map((layer) => {
+      const point = layer?.ks?.p?.k;
+
+      if (Array.isArray(point) && typeof point[0] === 'number' && typeof point[1] === 'number') {
+        layer.ks.p.k = [point[0] - 480, point[1] - 180, point[2] ?? 0];
+      }
+
+      return layer;
+    });
+
+  return cloned;
+})();
+
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
@@ -34,7 +54,7 @@ const discountPercentage = discountAmount > 0 && totalAmount > 0
 <template>
   <AuthenticatedHeaderLayout />
 
-  <div class="min-h-[80vh] flex items-center justify-center bg-gradient-to-br from-gray-50 to-emerald-50/30 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="booking-success-page min-h-[80vh] flex items-center justify-center bg-gradient-to-br from-gray-50 to-emerald-50/30 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-xl w-full">
 
       <!-- Success Card -->
@@ -42,8 +62,16 @@ const discountPercentage = discountAmount > 0 && totalAmount > 0
 
         <!-- Green header strip -->
         <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-8 text-center">
-          <div class="mb-4 flex justify-center">
-            <Vue3Lottie :animation-data="paymentSuccessAnimation" :height="120" :width="120" :loop="false" />
+          <div class="mb-4 flex justify-center success-lottie-wrap">
+            <Vue3Lottie
+              class="success-lottie"
+              :animation-data="successAnimationData"
+              :height="132"
+              :width="132"
+              :scale="1.2"
+              :no-margin="true"
+              :loop="false"
+            />
           </div>
           <h2 class="text-2xl font-extrabold text-white tracking-tight">Booking Confirmed!</h2>
           <p class="mt-1.5 text-emerald-100 text-sm">Your reservation is all set. Have a great trip!</p>
@@ -154,3 +182,22 @@ const discountPercentage = discountAmount > 0 && totalAmount > 0
   <Footer />
 </template>
 
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+.booking-success-page {
+  font-family: 'DM Sans', sans-serif;
+}
+
+.booking-success-page :deep(h1),
+.booking-success-page :deep(h2),
+.booking-success-page :deep(h3),
+.booking-success-page :deep(.font-extrabold),
+.booking-success-page :deep(.font-bold) {
+  font-family: 'Outfit', sans-serif;
+}
+
+.success-lottie-wrap {
+  min-height: 74px;
+}
+</style>

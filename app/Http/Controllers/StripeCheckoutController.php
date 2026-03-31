@@ -1135,13 +1135,16 @@ class StripeCheckoutController extends Controller
 
         $extrasTotalRaw = $this->resolveExtrasTotal($validated['detailed_extras'] ?? [], $days);
 
-        // Locauto protection amount is a daily rate; treat it as provider-priced add-on (net) and multiply by days.
+        // Protection amount: provider-priced add-on (net).
+        // Locauto: daily rate × days. Adobe: total amount (PLI + selected protections).
         $providerProtectionTotal = 0.0;
         if ($vehicleSource === 'locauto_rent') {
             $protectionDaily = (float) ($validated['protection_amount'] ?? 0);
             if ($protectionDaily > 0) {
                 $providerProtectionTotal = round($protectionDaily * $days, 2);
             }
+        } elseif ($vehicleSource === 'adobe') {
+            $providerProtectionTotal = (float) ($validated['protection_amount'] ?? 0);
         }
 
         $providerOptionsTotal = round($extrasTotalRaw + $providerProtectionTotal, 2);

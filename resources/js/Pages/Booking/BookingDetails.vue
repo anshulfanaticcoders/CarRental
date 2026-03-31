@@ -321,7 +321,7 @@ const vendorInitials = computed(() => {
 
   <AuthenticatedHeaderLayout />
 
-  <div class="min-h-screen bg-[#f5f7fa] pb-16">
+  <div class="booking-details-page min-h-screen bg-[#f5f7fa] pb-16">
 
     <!-- Breadcrumb -->
     <div class="bg-white border-b border-gray-200">
@@ -1078,6 +1078,21 @@ const vendorInitials = computed(() => {
 </template>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+.booking-details-page {
+  font-family: 'DM Sans', sans-serif;
+}
+
+.booking-details-page :deep(h1),
+.booking-details-page :deep(h2),
+.booking-details-page :deep(h3),
+.booking-details-page :deep(.font-extrabold),
+.booking-details-page :deep(.font-bold),
+.booking-details-page :deep(.amount-xl) {
+  font-family: 'Outfit', sans-serif;
+}
+
 /* Hero highlight card */
 .hero-card {
   background: linear-gradient(135deg, var(--gray-800, #153b4f) 0%, var(--gray-700, #1c4d66) 55%, var(--gray-600, #245f7d) 100%);
