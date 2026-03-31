@@ -83,7 +83,7 @@ export function createRenteonAdapter(props) {
         const byId = new Map();
         extras.filter(isRenteonProtectionExtra).forEach(extra => {
             const key = getRenteonExtraKey(extra);
-            const id = `renteon_extra_${key || (extra.service_id || extra.id || extra.code)}`;
+            const id = extra.id || extra.option_id || `ext_renteon_${key || (extra.service_id || extra.code)}`;
             if (!id || byId.has(id)) return;
             byId.set(id, {
                 id,
@@ -92,6 +92,7 @@ export function createRenteonAdapter(props) {
                 description: extra.description || extra.name || 'Protection Plan',
                 price: parseFloat(extra.price || extra.amount || 0) * props.numberOfDays,
                 daily_rate: parseFloat(extra.daily_rate || extra.price || extra.amount || 0),
+                total_for_booking: extra.total_price ?? extra.total_for_booking ?? extra.Total_for_this_booking ?? (parseFloat(extra.price || extra.amount || 0) * props.numberOfDays),
                 amount: extra.price || extra.amount,
                 maxQuantity: extra.max_quantity || 1,
                 numberAllowed: extra.max_quantity || 1,
@@ -129,7 +130,7 @@ export function createRenteonAdapter(props) {
             .filter(extra => !isRenteonProtectionExtra(extra))
             .forEach(extra => {
                 const key = getRenteonExtraKey(extra);
-                const id = `renteon_extra_${key || (extra.service_id || extra.id || extra.code)}`;
+                const id = extra.id || extra.option_id || `ext_renteon_${key || (extra.service_id || extra.code)}`;
                 if (!id || byId.has(id)) return;
                 byId.set(id, {
                     id,
@@ -138,6 +139,7 @@ export function createRenteonAdapter(props) {
                     description: extra.description || extra.name || 'Optional Extra',
                     price: parseFloat(extra.price || extra.amount || 0) * props.numberOfDays,
                     daily_rate: parseFloat(extra.daily_rate || extra.price || extra.amount || 0),
+                    total_for_booking: extra.total_price ?? extra.total_for_booking ?? extra.Total_for_this_booking ?? (parseFloat(extra.price || extra.amount || 0) * props.numberOfDays),
                     amount: extra.price || extra.amount,
                     maxQuantity: extra.max_quantity || 1,
                     numberAllowed: extra.max_quantity || 1,

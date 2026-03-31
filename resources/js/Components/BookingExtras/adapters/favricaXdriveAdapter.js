@@ -17,7 +17,7 @@ const normalizeFavricaExtra = (extra) => {
     if (!extra) return null;
     const price = parseFloat(extra.total_for_booking ?? extra.price ?? extra.amount ?? 0);
     const dailyRate = parseFloat(extra.daily_rate ?? 0);
-    const id = extra.id || `favrica_extra_${extra.code || extra.service_id || ''}`;
+    const id = extra.id || extra.option_id || extra.code || extra.service_id || '';
     return {
         id,
         code: extra.code || extra.service_id,

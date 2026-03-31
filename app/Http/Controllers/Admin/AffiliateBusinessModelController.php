@@ -1974,7 +1974,7 @@ class AffiliateBusinessModelController extends Controller
     /**
      * Verify a business
      */
-    public function verifyBusiness($businessId): JsonResponse
+    public function verifyBusiness(Request $request, $businessId)
     {
         try {
             $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
@@ -1993,22 +1993,16 @@ class AffiliateBusinessModelController extends Controller
                 \Illuminate\Support\Facades\Log::warning('Verify notification failed: ' . $mailError->getMessage());
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Business verified successfully'
-            ]);
+            return $this->affiliateActionResponse($request, 'Business verified successfully');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error verifying business: ' . $e->getMessage(),
-            ], 500);
+            return $this->affiliateActionResponse($request, 'Error verifying business: ' . $e->getMessage(), 500);
         }
     }
 
     /**
      * Reject a business
      */
-    public function rejectBusiness($businessId): JsonResponse
+    public function rejectBusiness(Request $request, $businessId)
     {
         try {
             $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
@@ -2023,58 +2017,52 @@ class AffiliateBusinessModelController extends Controller
                 \Illuminate\Support\Facades\Log::warning('Reject notification failed: ' . $mailError->getMessage());
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Business rejected successfully'
-            ]);
+            return $this->affiliateActionResponse($request, 'Business rejected successfully');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error rejecting business: ' . $e->getMessage(),
-            ], 500);
+            return $this->affiliateActionResponse($request, 'Error rejecting business: ' . $e->getMessage(), 500);
         }
     }
 
     /**
      * Suspend a business
      */
-    public function suspendBusiness($businessId): JsonResponse
+    public function suspendBusiness(Request $request, $businessId)
     {
         try {
             $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
             $business->update(['status' => 'suspended']);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Business suspended successfully'
-            ]);
+            return $this->affiliateActionResponse($request, 'Business suspended successfully');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error suspending business: ' . $e->getMessage(),
-            ], 500);
+            return $this->affiliateActionResponse($request, 'Error suspending business: ' . $e->getMessage(), 500);
         }
     }
 
     /**
      * Activate a business
      */
-    public function activateBusiness($businessId): JsonResponse
+    public function activateBusiness(Request $request, $businessId)
     {
         try {
             $business = \App\Models\Affiliate\AffiliateBusiness::findOrFail($businessId);
             $business->update(['status' => 'active']);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Business activated successfully'
-            ]);
+            return $this->affiliateActionResponse($request, 'Business activated successfully');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error activating business: ' . $e->getMessage(),
-            ], 500);
+            return $this->affiliateActionResponse($request, 'Error activating business: ' . $e->getMessage(), 500);
         }
+    }
+
+    private function affiliateActionResponse(Request $request, string $message, int $status = 200)
+    {
+        if ($request->header('X-Inertia')) {
+            return back()->with($status >= 400 ? 'error' : 'success', $message);
+        }
+
+        return response()->json([
+            'success' => $status < 400,
+            'message' => $message,
+        ], $status);
     }
 
     /**

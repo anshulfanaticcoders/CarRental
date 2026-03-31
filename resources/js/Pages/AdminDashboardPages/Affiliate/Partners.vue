@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
+import { router, Link, usePage } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Card, CardContent } from '@/Components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
@@ -8,6 +8,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Users, UserCheck, Clock, ShieldCheck, Search, Eye } from 'lucide-vue-next';
+import { toast } from 'vue-sonner';
 
 const viewPartner = (id) => {
     router.visit(route('admin.affiliate.partners.show', { id }));
@@ -19,9 +20,12 @@ const props = defineProps({
     stats: Object,
 });
 
+const page = usePage();
+
 const search = ref(props.filters.search || '');
 const status = ref(props.filters.status || 'all');
 const verification = ref(props.filters.verification || 'all');
+const verifyingPartnerId = ref(null);
 
 const buildParams = () => ({
     search: search.value || undefined,
@@ -58,12 +62,48 @@ const verificationColor = (val) => {
     return map[val] || 'bg-gray-100 text-gray-600';
 };
 
+const notifyFromFlash = () => {
+    if (page.props.flash?.success) {
+        toast.success(page.props.flash.success);
+        return;
+    }
+
+    if (page.props.flash?.error) {
+        toast.error(page.props.flash.error);
+    }
+};
+
+const handlePartnerActionError = () => {
+    const firstError = Object.values(page.props.errors || {})[0];
+    const message = Array.isArray(firstError) ? firstError[0] : firstError;
+
+    toast.error(message || 'Partner action failed.');
+};
+
+const postPartnerAction = (routeName, id) => {
+    router.post(route(routeName, { businessId: id }), {}, {
+        preserveScroll: true,
+        onStart: () => {
+            if (routeName === 'admin.affiliate.businesses.verify') {
+                verifyingPartnerId.value = id;
+            }
+        },
+        onSuccess: notifyFromFlash,
+        onError: handlePartnerActionError,
+        onFinish: () => {
+            if (routeName === 'admin.affiliate.businesses.verify' && verifyingPartnerId.value === id) {
+                verifyingPartnerId.value = null;
+            }
+        },
+    });
+};
+
 const verifyPartner = (id) => {
-    router.post(route('admin.affiliate.businesses.verify', { businessId: id }), {}, { preserveScroll: true });
+    postPartnerAction('admin.affiliate.businesses.verify', id);
 };
 
 const rejectPartner = (id) => {
-    router.post(route('admin.affiliate.businesses.reject', { businessId: id }), {}, { preserveScroll: true });
+    postPartnerAction('admin.affiliate.businesses.reject', id);
 };
 </script>
 
@@ -162,9 +202,10 @@ const rejectPartner = (id) => {
                                             v-if="p.verification_status === 'pending'"
                                             size="sm"
                                             class="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                            :disabled="verifyingPartnerId === p.id"
                                             @click="verifyPartner(p.id)"
                                         >
-                                            Verify
+                                            {{ verifyingPartnerId === p.id ? 'Verifying...' : 'Verify' }}
                                         </Button>
                                         <Button
                                             v-if="p.verification_status === 'pending'"

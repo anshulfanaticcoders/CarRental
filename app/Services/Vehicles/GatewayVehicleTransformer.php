@@ -410,6 +410,8 @@ class GatewayVehicleTransformer
         $bookingContext = is_array($gv['booking_context'] ?? null) ? $gv['booking_context'] : [];
         $providerPayload = is_array($bookingContext['provider_payload'] ?? null) ? $bookingContext['provider_payload'] : [];
         $extrasPreview = is_array($gv['extras_preview'] ?? null) ? $gv['extras_preview'] : [];
+        // Fallback: if no extras_preview, use full extras array (e.g. OKMobility, Locauto)
+        $fullExtras = is_array($gv['extras'] ?? null) ? $gv['extras'] : [];
         $products = is_array($gv['products'] ?? null) ? $gv['products'] : [];
         $image = (string) ($gv['image'] ?? '');
         $totalPrice = (float) ($pricing['total_price'] ?? 0);
@@ -476,9 +478,13 @@ class GatewayVehicleTransformer
             'tdr' => $providerPayload['tdr'] ?? $totalPrice,
             'quoteid' => $providerPayload['quote_id'] ?? null,
             'rentalCode' => null,
-            'options' => $this->mapCanonicalExtrasPreview($extrasPreview),
-            'extras' => $this->mapCanonicalExtrasPreview($extrasPreview),
-            'insurance_options' => [],
+            'options' => !empty($extrasPreview)
+                ? $this->mapCanonicalExtrasPreview($extrasPreview)
+                : $this->mapExtras($fullExtras, $source),
+            'extras' => !empty($extrasPreview)
+                ? $this->mapCanonicalExtrasPreview($extrasPreview)
+                : $this->mapExtras($fullExtras, $source),
+            'insurance_options' => $this->mapCanonicalInsuranceOptions($gv, $providerPayload),
             'supplier_data' => $providerPayload,
             'pickup_office' => $providerPayload['pickup_office'] ?? null,
             'dropoff_office' => $providerPayload['dropoff_office'] ?? null,
@@ -646,6 +652,71 @@ class GatewayVehicleTransformer
         };
     }
 
+    private function mapCanonicalInsuranceOptions(array $gv, array $providerPayload): array
+    {
+        // Try booking_context.insurance_options first
+        $options = $gv['booking_context']['insurance_options']
+            ?? $gv['insurance_options']
+            ?? [];
+
+        if (!empty($options)) {
+            return collect($options)->filter(fn ($ins) => is_array($ins))->map(fn ($ins) => [
+                'id' => $ins['id'] ?? '',
+                'name' => $ins['name'] ?? '',
+                'coverage_type' => $ins['coverage_type'] ?? 'basic',
+                'daily_rate' => $ins['daily_rate'] ?? 0,
+                'total_price' => $ins['total_price'] ?? 0,
+                'currency' => $ins['currency'] ?? 'EUR',
+                'excess_amount' => $ins['excess_amount'] ?? null,
+                'deposit_amount' => $ins['deposit_amount'] ?? null,
+                'included' => $ins['included'] ?? false,
+                'description' => $ins['description'] ?? null,
+            ])->values()->all();
+        }
+
+        // Fallback: build from provider excess/deposit fields
+        $result = [];
+        $excess = $providerPayload['excess_amount'] ?? null;
+        $deposit = $providerPayload['deposit_amount'] ?? null;
+        if ($excess || $deposit) {
+            $result[] = [
+                'id' => 'ins_cdw_basic',
+                'name' => 'CDW',
+                'coverage_type' => 'basic',
+                'daily_rate' => 0,
+                'total_price' => 0,
+                'currency' => 'EUR',
+                'excess_amount' => $excess,
+                'deposit_amount' => $deposit,
+                'included' => true,
+            ];
+        }
+
+        // Build FDW from fdw_* fields (Surprice)
+        $fdwTotal = (float) ($providerPayload['fdw_total_amount'] ?? 0);
+        if ($fdwTotal > 0) {
+            $rentalDays = max(1, (int) ($gv['specs']['rental_days'] ?? 1));
+            if (isset($gv['pricing']['total_price']) && $totalPrice = (float) $gv['pricing']['total_price']) {
+                $dailyBase = $gv['pricing']['price_per_day'] ?? $gv['pricing']['daily_rate'] ?? 0;
+                $rentalDays = $dailyBase > 0 ? max(1, (int) round($totalPrice / (float) $dailyBase)) : 1;
+            }
+            $result[] = [
+                'id' => 'ins_surprice_fdw',
+                'name' => 'FDW (Full Damage Waiver)',
+                'coverage_type' => 'full',
+                'daily_rate' => $rentalDays > 0 ? round($fdwTotal / $rentalDays, 2) : $fdwTotal,
+                'total_price' => $fdwTotal,
+                'currency' => 'EUR',
+                'excess_amount' => (float) ($providerPayload['fdw_excess_amount'] ?? 0),
+                'deposit_amount' => (float) ($providerPayload['fdw_deposit_amount'] ?? 0),
+                'included' => false,
+                'description' => 'Full Damage Waiver — reduces excess to zero',
+            ];
+        }
+
+        return $result;
+    }
+
     private function mapCanonicalExtrasPreview(array $extrasPreview): array
     {
         return collect($extrasPreview)->filter(fn ($extra) => is_array($extra))->map(function ($extra) {
@@ -654,6 +725,13 @@ class GatewayVehicleTransformer
             $currency = $extra['currency'] ?? 'EUR';
             $id = $extra['id'] ?? '';
             $mandatory = (bool) ($extra['mandatory'] ?? false);
+
+            // Extract raw code from gateway ID (e.g. 'ext_ok_mobility_ADD' → 'ADD')
+            $code = $extra['code'] ?? $id;
+            if (str_starts_with($code, 'ext_') && substr_count($code, '_') >= 2) {
+                $parts = explode('_', $code);
+                $code = end($parts);
+            }
 
             return [
                 'id' => $id,
@@ -673,12 +751,12 @@ class GatewayVehicleTransformer
                 'price_per_day' => $dailyRate,
                 'service_id' => $id,
                 'currency' => $currency,
-                'max_quantity' => 1,
-                'numberAllowed' => 1,
+                'max_quantity' => $extra['max_quantity'] ?? 1,
+                'numberAllowed' => $extra['max_quantity'] ?? 1,
                 'mandatory' => $mandatory,
                 'required' => $mandatory,
                 'type' => $extra['type'] ?? 'equipment',
-                'code' => $id,
+                'code' => $code,
             ];
         })->values()->all();
     }

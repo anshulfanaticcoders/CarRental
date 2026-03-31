@@ -47,7 +47,7 @@ export function createAdobeAdapter(props) {
         const extras = props.vehicle?.extras || [];
         extras.forEach(extra => {
             options.push({
-                id: `adobe_extra_${extra.code}`,
+                id: extra.id || extra.option_id || extra.code,
                 code: extra.code,
                 name: extra.name || extra.displayName || extra.description || extra.code,
                 description: extra.description || extra.displayDescription || extra.name,

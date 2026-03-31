@@ -961,6 +961,7 @@ class StripeBookingService
                 'dropoff_date' => $metadata->dropoff_date ?? null,
                 'dropoff_time' => $metadata->dropoff_time ?? '09:00',
                 'laravel_booking_id' => $booking->id,
+                'laravel_booking_number' => $booking->booking_number,
             ]);
 
             if ($result && !empty($result['supplier_booking_id'])) {

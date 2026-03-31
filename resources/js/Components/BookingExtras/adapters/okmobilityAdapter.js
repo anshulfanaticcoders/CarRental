@@ -237,13 +237,17 @@ export function createOkMobilityAdapter(props) {
             const isRequired = extra.required || extra.extra_Required === 'true' || (code && requiredCodes.has(code));
             const isIncluded = extra.included || extra.extra_Included === 'true' || (code && includedCodes.has(code));
 
+            const totalForBooking = pricePerContract
+                ? priceValue
+                : (dailyRate * props.numberOfDays);
             return {
-                id: `okmobility_extra_${id}`,
+                id: id,
                 code: code || codeRaw || id,
                 name,
                 description,
                 price: priceValue,
                 daily_rate: dailyRate,
+                total_for_booking: totalForBooking,
                 amount: priceValue,
                 included: isIncluded,
                 required: isRequired,

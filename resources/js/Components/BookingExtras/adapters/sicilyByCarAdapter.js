@@ -35,7 +35,7 @@ export function createSicilyByCarAdapter(props) {
                 const total = parseFloat(service?.total || 0);
                 const excess = getSbcExcessValue(service);
                 return {
-                    id: `sbc_protection_${code}_${index}`,
+                    id: service?.id || `sbc_protection_${code}_${index}`,
                     code,
                     name: service?.description || code,
                     description: service?.description || code,
