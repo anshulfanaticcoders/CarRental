@@ -2,11 +2,46 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
+    @php
+        $initialSeoTitle = data_get($page, 'props.seo.title') ?: config('app.name', 'Vrooem');
+        $initialSeoDescription = data_get($page, 'props.seo.description');
+        $initialSeoCanonical = data_get($page, 'props.seo.canonical');
+        $initialSeoImage = data_get($page, 'props.seo.image');
+        $initialSeoRobots = data_get($page, 'props.seo.robots');
+    @endphp
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}">
 
-    <title inertia>{{ config('app.name', 'Laravel') }}</title>
+    <title inertia>{{ $initialSeoTitle }}</title>
+    @if($initialSeoRobots)
+        <meta name="robots" content="{{ $initialSeoRobots }}">
+    @endif
+    @if($initialSeoDescription)
+        <meta name="description" content="{{ $initialSeoDescription }}">
+    @endif
+    @if($initialSeoCanonical)
+        <link rel="canonical" href="{{ $initialSeoCanonical }}">
+    @endif
+    <meta property="og:title" content="{{ $initialSeoTitle }}">
+    @if($initialSeoDescription)
+        <meta property="og:description" content="{{ $initialSeoDescription }}">
+    @endif
+    @if($initialSeoCanonical)
+        <meta property="og:url" content="{{ $initialSeoCanonical }}">
+    @endif
+    @if($initialSeoImage)
+        <meta property="og:image" content="{{ $initialSeoImage }}">
+    @endif
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $initialSeoTitle }}">
+    @if($initialSeoDescription)
+        <meta name="twitter:description" content="{{ $initialSeoDescription }}">
+    @endif
+    @if($initialSeoImage)
+        <meta name="twitter:image" content="{{ $initialSeoImage }}">
+    @endif
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
     <!-- CSRF Token -->
