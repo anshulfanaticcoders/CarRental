@@ -873,7 +873,7 @@ const vendorInitials = computed(() => {
           </div>
 
           <!-- Rental Policies -->
-          <div v-if="bookingData.policies.fuelPolicy || bookingData.policies.mileage || bookingData.policies.minimumDriverAge || bookingData.policies.cancellation" class="bd-card">
+          <div v-if="bookingData.policies.fuelPolicy || bookingData.policies.mileage || bookingData.policies.minimumDriverAge || bookingData.policies.cancellation || bookingData.policies.drivingLicense" class="bd-card">
             <div class="bd-card-header">
               <div class="bd-icon-box bg-purple-50">
                 <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -903,6 +903,30 @@ const vendorInitials = computed(() => {
                 <div class="p-3 rounded-xl bg-gray-50 border border-gray-100">
                   <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">{{ _t('customerprofile', 'cancellation') || 'Cancellation' }}</p>
                   <p class="text-sm font-bold mt-1" :class="bookingData.policies.cancellation?.includes('Free') ? 'text-emerald-600' : 'text-amber-600'">{{ bookingData.policies.cancellation }}</p>
+                </div>
+                <div v-if="bookingData.policies.drivingLicense" class="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Driving License</p>
+                  <p class="text-xs text-gray-700 mt-1">{{ bookingData.policies.drivingLicense }}</p>
+                </div>
+                <div v-if="bookingData.policies.paymentMethods" class="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Payment at Pickup</p>
+                  <p class="text-xs text-gray-700 mt-1">{{ bookingData.policies.paymentMethods }}</p>
+                </div>
+                <div v-if="bookingData.policies.damageExcess" class="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Damage Excess</p>
+                  <p class="text-sm font-bold text-gray-800 mt-1">€{{ bookingData.policies.damageExcess }}</p>
+                </div>
+                <div v-if="bookingData.policies.theftExcess" class="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Theft Excess</p>
+                  <p class="text-sm font-bold text-gray-800 mt-1">€{{ bookingData.policies.theftExcess }}</p>
+                </div>
+                <div v-if="bookingData.policies.gracePeriodPickup" class="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Grace Period</p>
+                  <p class="text-xs text-gray-700 mt-1">{{ bookingData.policies.gracePeriodPickup }}</p>
+                </div>
+                <div v-if="bookingData.policies.outOfHoursFee" class="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Out of Hours</p>
+                  <p class="text-xs text-gray-700 mt-1">{{ bookingData.policies.outOfHoursFee }}</p>
                 </div>
               </div>
             </div>

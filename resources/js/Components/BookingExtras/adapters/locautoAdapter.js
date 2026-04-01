@@ -83,17 +83,27 @@ export function createLocautoAdapter(props) {
     const protectionPlans = locautoProtectionPlans;
     const allExtras = computed(() => [...optionalExtras.value]);
     const mandatoryAmount = computed(() => 0);
-    const includedItems = computed(() => []);
+    const includedItems = computed(() => {
+        const policies = props.vehicle?.rental_policies || [];
+        if (!Array.isArray(policies) || policies.length === 0) return [];
+        return policies.map(p => ({
+            label: p.label || '',
+            detail: p.detail || p.value || '',
+        }));
+    });
     const taxBreakdown = computed(() => null);
     const locationData = useEmptyLocationData();
     const highlights = computed(() => []);
 
-    const computeNetTotal = (extrasTotal) => {
-        const protectionAmount = selectedLocautoProtections.value.reduce((sum, code) => {
+    const locautoProtectionTotal = computed(() => {
+        return selectedLocautoProtections.value.reduce((sum, code) => {
             const plan = locautoProtectionPlans.value.find(p => p.code === code);
             return sum + (plan ? parseFloat(plan.amount || 0) * props.numberOfDays : 0);
         }, 0);
-        return baseTotal.value + protectionAmount + extrasTotal;
+    });
+
+    const computeNetTotal = (extrasTotal) => {
+        return baseTotal.value + locautoProtectionTotal.value + extrasTotal;
     };
 
     return {
@@ -101,7 +111,7 @@ export function createLocautoAdapter(props) {
         includedItems, taxBreakdown, baseTotal, mandatoryAmount,
         locationData, highlights, computeNetTotal,
         // Locauto-specific exports
-        locautoProtectionPlans, selectedLocautoProtections, toggleLocautoProtection,
+        locautoProtectionPlans, selectedLocautoProtections, toggleLocautoProtection, locautoProtectionTotal,
         locautoSmartCoverPlan, locautoDontWorryPlan, locautoBaseDaily,
     };
 }

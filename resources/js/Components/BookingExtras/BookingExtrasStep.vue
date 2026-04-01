@@ -442,6 +442,25 @@ const getSelectedExtrasDetails = computed(() => {
             service_id: extra.service_id, code: extra.code, purpose: extra.purpose ?? null
         });
     }
+
+    // Add Locauto selected protection plans as line items
+    if (isLocautoRent.value && selectedLocautoProtections.value.length > 0) {
+        for (const code of selectedLocautoProtections.value) {
+            const plan = locautoProtectionPlans.value.find(p => p.code === code);
+            if (plan) {
+                const total = parseFloat(plan.amount || 0) * props.numberOfDays;
+                details.push({
+                    id: `locauto_protection_${code}`,
+                    name: plan.description || plan.name || code,
+                    qty: 1,
+                    total,
+                    daily_rate: parseFloat(plan.amount || 0),
+                    code,
+                });
+            }
+        }
+    }
+
     return details;
 });
 
@@ -741,7 +760,7 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
 
                 <!-- ═══ 6. DEPOSIT & EXCESS ═══ -->
                 <DepositExcess
-                    v-if="(isInternal && (vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount)) || (isRenteon && (currentProduct?.deposit || currentProduct?.excess || currentProduct?.excess_theft_amount || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount)) || (vehicle?.security_deposit > 0 && (isSurprice || isRecordGo || isOkMobility || isFavrica || isXDrive || isSicilyByCar))"
+                    v-if="(isInternal && (vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount)) || (isRenteon && (currentProduct?.deposit || currentProduct?.excess || currentProduct?.excess_theft_amount || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount)) || (vehicle?.security_deposit > 0 && (isSurprice || isRecordGo || isOkMobility || isFavrica || isXDrive || isSicilyByCar)) || (isLocautoRent && (vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount))"
                     :vehicle="vehicle"
                     :current-product="currentProduct"
                     :format-price="formatPrice"

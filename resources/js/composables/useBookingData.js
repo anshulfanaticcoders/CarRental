@@ -310,10 +310,15 @@ export function useBookingData(booking, vehicle, payment) {
       cancellationText = days ? `Free cancellation (${days} days before)` : 'Free cancellation';
     }
 
+    // Provider conditions from supplier_data (Locauto YAML, etc.)
+    const extras = meta?.extras_selected || [];
+    const firstExtra = Array.isArray(extras) && extras.length > 0 ? extras[0] : {};
+    const sdConditions = firstExtra?.supplier_data || meta?.supplier_conditions || {};
+
     return {
-      fuelPolicy: benefits?.fuel_policy || meta?.fuel_policy || meta?.fuelpolicy || null,
-      mileage: mileageText,
-      minimumDriverAge: benefits?.minimum_driver_age || meta?.min_age || meta?.minDriverAge || null,
+      fuelPolicy: sdConditions?.fuel_policy || benefits?.fuel_policy || meta?.fuel_policy || meta?.fuelpolicy || null,
+      mileage: sdConditions?.mileage_policy_text || mileageText,
+      minimumDriverAge: sdConditions?.min_age || benefits?.minimum_driver_age || meta?.min_age || meta?.minDriverAge || null,
       maximumDriverAge: benefits?.maximum_driver_age || meta?.max_age || null,
       youngDriverAge: benefits?.young_driver_age_from || null,
       seniorDriverAge: benefits?.senior_driver_age_from || null,
@@ -321,10 +326,18 @@ export function useBookingData(booking, vehicle, payment) {
       deposit: pricingBreakdown.value.deposit,
       excess: pricingBreakdown.value.excess,
       excessTheft: pricingBreakdown.value.excessTheft || null,
+      damageExcess: sdConditions?.damage_excess || null,
+      theftExcess: sdConditions?.theft_excess || null,
       securityDeposit: benefits?.security_deposit || null,
       depositPaymentMethod: benefits?.deposit_payment_method || null,
       selectedDepositType: benefits?.selected_deposit_type || null,
       // Provider-specific policies
+      drivingLicense: sdConditions?.driving_license || null,
+      paymentMethods: sdConditions?.payment_methods || null,
+      gracePeriodPickup: sdConditions?.grace_period_pickup || null,
+      gracePeriodDropoff: sdConditions?.grace_period_dropoff || null,
+      outOfHoursFee: sdConditions?.out_of_hours_fee || null,
+      crossBorder: sdConditions?.cross_border || null,
       debitCardAccepted: meta?.debitcard === 'true' || meta?.debitCardAccepted || false,
       creditCardRequired: !meta?.debitcard || meta?.debitcard === 'false',
       transmission: benefits?.transmission || null,

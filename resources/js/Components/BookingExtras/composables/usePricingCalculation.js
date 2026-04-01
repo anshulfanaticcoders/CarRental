@@ -142,6 +142,9 @@ export function usePricingCalculation({
     });
 
     const netGrandTotal = computed(() => {
+        // Access locautoProtectionTotal to ensure Vue tracks it as dependency
+        const locautoProtTotal = adapter.locautoProtectionTotal?.value ?? 0;
+
         if (typeof adapter.computeNetTotal === 'function') {
             return adapter.computeNetTotal(extrasTotal.value, currentProduct.value);
         }

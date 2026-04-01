@@ -279,6 +279,14 @@ onMounted(() => {
     fetchExchangeRates();
 });
 
+// Rental conditions checkbox (provider-specific T&C links)
+const acceptedRentalConditions = ref(false);
+const rentalConditionsUrl = computed(() => {
+    const source = (props.vehicle?.source || '').toLowerCase();
+    if (source === 'locauto_rent') return 'https://portale.locautorent.com/doc/GeneralRentalConditions.pdf';
+    return null;
+});
+
 // Get vehicle image (handles internal vehicles which use images array)
 const vehicleImage = computed(() => {
     return resolveSearchVehicleImage(props.vehicle) || '/images/dummyCarImaage.png';
@@ -813,9 +821,19 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                         </div>
                     </div>
 
+                    <!-- Rental Conditions Checkbox -->
+                    <div v-if="rentalConditionsUrl" class="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                        <input type="checkbox" id="accept-rental-conditions" v-model="acceptedRentalConditions"
+                            class="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1e3a5f] focus:ring-[#1e3a5f] cursor-pointer" />
+                        <label for="accept-rental-conditions" class="text-xs text-gray-600 leading-relaxed cursor-pointer">
+                            I have read and agree to the
+                            <a :href="rentalConditionsUrl" target="_blank" rel="noopener noreferrer" class="text-[#1e3a5f] font-semibold underline hover:text-[#2d5a8f]">Rental Conditions</a>
+                        </label>
+                    </div>
+
                     <!-- Stripe Button -->
                     <div class="space-y-3">
-                        <div v-if="form.name && form.email && form.phone && form.driver_age">
+                        <div v-if="form.name && form.email && form.phone && form.driver_age && (!rentalConditionsUrl || acceptedRentalConditions)">
                             <StripeCheckoutButton v-if="!Object.keys(errors).length" :booking-data="bookingData"
                                 :label="`Pay ${formatTotalPrice(totals.payableAmount)}`" />
                             <button v-else @click="validate()"

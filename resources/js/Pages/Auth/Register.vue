@@ -17,11 +17,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/Components/ui/select";
-
-import { Calendar } from '@/Components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover';
-import { CalendarDate } from '@internationalized/date';
-import { CalendarIcon } from 'lucide-vue-next';
+import VueDatePicker from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css';
 
 const stepIndex = ref(1);
 const showPassword = ref(false);
@@ -93,13 +90,6 @@ const passwordsMatch = computed(() => {
 });
 
 const dateOfBirth = ref(null);
-const dobOpen = ref(false);
-
-const formatDob = (date) => {
-    if (!date) return '';
-    const d = new Date(date.year, date.month - 1, date.day);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-};
 
 const currentStepTitle = computed(() => {
     return _t('registerUser', `step${stepIndex.value}_title`);
@@ -242,7 +232,7 @@ const submit = () => {
     isRegistering.value = true;
 
     if (dateOfBirth.value) {
-        const d = new Date(dateOfBirth.value.year, dateOfBirth.value.month - 1, dateOfBirth.value.day);
+        const d = new Date(dateOfBirth.value);
         form.date_of_birth = d.toISOString().split('T')[0];
     }
 
@@ -331,14 +321,13 @@ onMounted(async () => {
 
 const maxDateOfBirth = computed(() => {
     const today = new Date();
-    return new CalendarDate(today.getFullYear() - 18, today.getMonth() + 1, today.getDate());
+    return new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
 });
 
 watch(dateOfBirth, (newValue) => {
     if (newValue) {
-        const d = new Date(newValue.year, newValue.month - 1, newValue.day);
+        const d = new Date(newValue);
         form.date_of_birth = d.toISOString().split('T')[0];
-        dobOpen.value = false;
     } else {
         form.date_of_birth = '';
     }
@@ -394,18 +383,17 @@ watch(dateOfBirth, (newValue) => {
                         </div>
                         <div class="field">
                             <InputLabel for="date_of_birth" :value="_t('registerUser', 'date_of_birth_label')" class="field-label" />
-                            <Popover v-model:open="dobOpen">
-                                <PopoverTrigger as-child>
-                                    <button type="button" class="field-input dob-trigger" :class="{ 'has-value': dateOfBirth }">
-                                        <CalendarIcon :size="16" class="dob-icon" />
-                                        <span v-if="dateOfBirth">{{ formatDob(dateOfBirth) }}</span>
-                                        <span v-else class="dob-placeholder">{{ _t('registerUser', 'date_of_birth_placeholder') || 'Select your date of birth' }}</span>
-                                    </button>
-                                </PopoverTrigger>
-                                <PopoverContent class="w-auto p-0" align="start">
-                                    <Calendar v-model="dateOfBirth" :max-value="maxDateOfBirth" :placeholder="maxDateOfBirth" initial-focus />
-                                </PopoverContent>
-                            </Popover>
+                            <VueDatePicker
+                                v-model="dateOfBirth"
+                                :enable-time-picker="false"
+                                :teleport="true"
+                                uid="register-date-of-birth"
+                                auto-apply
+                                :placeholder="_t('registerUser', 'date_of_birth_placeholder') || 'Select your date of birth'"
+                                class="w-full"
+                                :max-date="maxDateOfBirth"
+                                :start-date="maxDateOfBirth"
+                            />
                             <InputError class="field-error" :message="form.errors.date_of_birth" />
                         </div>
 
@@ -659,6 +647,10 @@ watch(dateOfBirth, (newValue) => {
 .dob-trigger.has-value { color: #0f172a; }
 .dob-icon { color: #94a3b8; flex-shrink: 0; }
 .dob-placeholder { color: #94a3b8; }
+
+:deep(.dp__menu) {
+    z-index: 9999 !important;
+}
 
 /* Panel animation */
 .panel { animation: fadeUp 0.4s var(--ease); }

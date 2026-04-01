@@ -130,15 +130,7 @@ class GatewayVehicleTransformer
             'airConditioning' => $gv['air_conditioning'] ?? null,
             'sipp_code' => $gv['sipp_code'] ?? null,
             'doors' => $gv['doors'] ?? null,
-            'benefits' => [
-                'minimum_driver_age' => $gv['min_driver_age'] ?? null,
-                'maximum_driver_age' => $gv['max_driver_age'] ?? null,
-                'fuel_policy' => $supplierData['fuel_policy'] ?? null,
-                'deposit_amount' => $depositAmount,
-                'deposit_currency' => $depositCurrency,
-                'excess_amount' => !empty($gv['insurance_options']) ? ($gv['insurance_options'][0]['excess_amount'] ?? null) : null,
-                'excess_theft_amount' => $supplierData['excess_theft_amount'] ?? ($supplierData['theft_excess'] ?? null),
-            ],
+            'benefits' => $this->buildBenefits($rawSupplierId, $gv, $supplierData, $depositAmount, $depositCurrency),
             'provider_gross_amount' => !empty($supplierData['net_amount']) ? ($totalPrice) : null,
             'provider_net_amount' => $supplierData['net_amount'] ?? null,
             'provider_vat_amount' => $supplierData['vat_amount'] ?? null,
@@ -185,6 +177,19 @@ class GatewayVehicleTransformer
             'office_phone' => $supplierData['office_phone'] ?? ($pickup['phone'] ?? null),
             'office_schedule' => $supplierData['office_schedule'] ?? ($pickup['operating_hours'] ?? null),
             'at_airport' => $supplierData['at_airport'] ?? ($pickup['is_airport'] ?? false),
+            'location_details' => [
+                'name' => $supplierData['pickup_station_name'] ?? $supplierData['office_name'] ?? ($pickup['name'] ?? null),
+                'address_1' => $supplierData['pickup_address'] ?? $supplierData['office_address'] ?? ($pickup['address'] ?? null),
+                'telephone' => $supplierData['pickup_phone'] ?? $supplierData['office_phone'] ?? ($pickup['phone'] ?? null),
+                'email' => $supplierData['pickup_email'] ?? ($pickup['email'] ?? null),
+                'latitude' => $pickup['latitude'] ?? null,
+                'longitude' => $pickup['longitude'] ?? null,
+                'opening_hours' => $supplierData['pickup_hours'] ?? $supplierData['office_schedule'] ?? ($pickup['operating_hours'] ?? null),
+                'out_of_hours' => $supplierData['pickup_out_of_hours'] ?? null,
+                'collection_details' => $supplierData['pickup_instructions'] ?? ($pickup['pickup_instructions'] ?? null),
+                'dropoff_instructions' => $supplierData['dropoff_instructions'] ?? ($pickup['dropoff_instructions'] ?? null),
+            ],
+            'location_instructions' => $supplierData['pickup_instructions'] ?? ($pickup['pickup_instructions'] ?? null),
             'pli' => $supplierData['pli'] ?? 0,
             'ldw' => $supplierData['ldw'] ?? 0,
             'spp' => $supplierData['spp'] ?? 0,
@@ -199,6 +204,7 @@ class GatewayVehicleTransformer
             'recordgo_country' => $supplierData['country'] ?? null,
             'terms' => $this->extractTerms($rawSupplierId, $supplierData),
             'driver_requirements' => $this->extractDriverRequirements($rawSupplierId, $supplierData, $gv),
+            'rental_policies' => $this->extractRentalPolicies($rawSupplierId, $gv),
             'bags' => array_key_exists('bags_large', $gv) || array_key_exists('bags_small', $gv)
                 ? (($gv['bags_large'] ?? 0) + ($gv['bags_small'] ?? 0))
                 : null,
@@ -316,6 +322,64 @@ class GatewayVehicleTransformer
             }
         }
 
+        // Locauto: comprehensive T&Cs from conditions docs
+        if (in_array($supplierId, ['locauto_rent', 'locauto'], true)) {
+            $sipp = $gv['sipp_code'] ?? ($supplierData['sipp_code'] ?? '');
+            $conditions = $this->getLocautoConditions($sipp);
+            $minAge = $conditions['min_age'] ?? 19;
+            $damageExcess = $conditions['damage_excess'] ?? '';
+            $theftExcess = $conditions['theft_excess'] ?? '';
+
+            return [
+                ['name' => 'Payment Methods', 'conditions' => [
+                    'Credit Cards or Debit Cards accepted (Visa, Mastercard, Amex, Union Pay).',
+                    'Maestro, prepaid or rechargeable cards are NOT accepted.',
+                    'Card must be in the main driver\'s name with sufficient funds for deposit + rental charges.',
+                    'Digital cards are not accepted.',
+                ]],
+                ['name' => 'Documents Required', 'conditions' => [
+                    'Valid ID card or passport with residence data (digital documents not accepted).',
+                    'Valid driving license held for minimum 1 year (digital license not accepted).',
+                    'Non-EU licenses require International Driving Permit (IDP) or official translation.',
+                ]],
+                ['name' => 'Deposit & Excess', 'conditions' => [
+                    "Damage excess (CDW): €{$damageExcess}",
+                    "Theft excess (TW): €{$theftExcess}",
+                    'Deposit blocked on credit card at pickup.',
+                ]],
+                ['name' => 'Fuel & Mileage', 'conditions' => [
+                    'Fuel policy: Full to Full. Return with same fuel level. Refuelling surcharge: €35.',
+                    'Unlimited mileage for rentals up to 27 days.',
+                    '28+ days: 117 km/day (3,500 km/month). Extra km: €0.24–€0.30 + fees + VAT.',
+                ]],
+                ['name' => 'Age Requirements', 'conditions' => [
+                    "Minimum driver age: {$minAge} years.",
+                    'Young driver surcharge (19–24 years): €15/day (up to 10 days).',
+                ]],
+                ['name' => 'Pickup & Grace Period', 'conditions' => [
+                    'Vehicle kept available for 59 minutes after booked time.',
+                    'For airport/station bookings: provide flight/train number for 59-min grace after landing.',
+                    'Out of hours pickup: €30/rental (on request, max 90 min after closing).',
+                ]],
+                ['name' => 'Drop-off', 'conditions' => [
+                    '59-minute grace period from pickup time on rental agreement.',
+                ]],
+                ['name' => 'Cross Border', 'conditions' => [
+                    'Allowed in all EU countries + Norway, Switzerland, UK. No extra charge.',
+                    'Prior authorisation recommended to booking@locautorent.it.',
+                    'One-way outside Italy not allowed without authorisation (€2,000 penalty).',
+                ]],
+                ['name' => 'Cancellation', 'conditions' => [
+                    'No-show fee for groups S, L, R, RR, P: €50.',
+                    'Late cancellation (within 24h before pickup) for groups S, L, R, RR, P: €50.',
+                ]],
+                ['name' => 'Vehicle', 'conditions' => [
+                    'Specific make/model not guaranteed. Vehicle category (SIPP code) is guaranteed.',
+                    'Voucher required at pickup (paper or digital accepted). Max 30 days per voucher.',
+                ]],
+            ];
+        }
+
         return null;
     }
 
@@ -340,13 +404,102 @@ class GatewayVehicleTransformer
             $requirements["Driving_licence_held_for_at_least_{$minLicense}_year(s)"] = '1';
         }
 
+        // Locauto — only driver-related requirements here
+        if ($supplierId === 'locauto_rent' || $supplierId === 'locauto') {
+            $conditions = $this->getLocautoConditions($gv['sipp_code'] ?? ($supplierData['sipp_code'] ?? ''));
+            if ($conditions && ($conditions['min_age'] ?? null)) {
+                $requirements["Minimum_driver_age:_{$conditions['min_age']}_years"] = '1';
+            }
+            $requirements['Valid_driving_license_(held_min_1_year)'] = '1';
+            $requirements['Valid_ID_or_passport_required'] = '1';
+            $requirements['mileage_type'] = 'Unlimited';
+        }
+
         // Mileage — special key, excluded from items list, shown as label
         $mileagePolicy = $gv['mileage_policy'] ?? null;
-        if ($mileagePolicy) {
+        if ($mileagePolicy && !isset($requirements['mileage_type'])) {
             $requirements['mileage_type'] = $mileagePolicy;
         }
 
         return !empty($requirements) ? $requirements : null;
+    }
+
+    private function buildBenefits(string $rawSupplierId, array $gv, array $supplierData, $depositAmount, $depositCurrency): array
+    {
+        $benefits = [
+            'minimum_driver_age' => $gv['min_driver_age'] ?? ($supplierData['min_driver_age'] ?? null),
+            'maximum_driver_age' => $gv['max_driver_age'] ?? ($supplierData['max_driver_age'] ?? null),
+            'fuel_policy' => $supplierData['fuel_policy'] ?? ($gv['policies']['fuel_policy'] ?? null),
+            'deposit_amount' => $depositAmount,
+            'deposit_currency' => $depositCurrency,
+            'excess_amount' => !empty($gv['insurance_options']) ? ($gv['insurance_options'][0]['excess_amount'] ?? null) : null,
+            'excess_theft_amount' => $supplierData['excess_theft_amount'] ?? ($supplierData['theft_excess'] ?? null),
+        ];
+
+        // Locauto: enrich from conditions YAML
+        if (in_array($rawSupplierId, ['locauto_rent', 'locauto'])) {
+            $sipp = $gv['sipp_code'] ?? ($gv['specs']['sipp_code'] ?? ($supplierData['sipp_code'] ?? ''));
+            $conditions = $this->getLocautoConditions($sipp);
+            if ($conditions) {
+                $benefits['minimum_driver_age'] = $benefits['minimum_driver_age'] ?? $conditions['min_age'];
+                $benefits['excess_amount'] = $benefits['excess_amount'] ?? $conditions['damage_excess'];
+                $benefits['excess_theft_amount'] = $benefits['excess_theft_amount'] ?? $conditions['theft_excess'];
+                $benefits['fuel_policy'] = $benefits['fuel_policy'] ?? 'Full to Full';
+            }
+        }
+
+        return $benefits;
+    }
+
+    private function extractRentalPolicies(string $supplierId, array $gv): ?array
+    {
+        if ($supplierId !== 'locauto_rent' && $supplierId !== 'locauto') {
+            return null;
+        }
+
+        $sippCode = $gv['sipp_code'] ?? ($gv['supplier_data']['sipp_code'] ?? '');
+        $conditions = $this->getLocautoConditions($sippCode);
+        if (!$conditions) {
+            return null;
+        }
+
+        return [
+            ['label' => 'Fuel Policy', 'value' => 'Full to Full', 'detail' => 'Return with full tank. Refuelling surcharge: €35'],
+            ['label' => 'Mileage', 'value' => 'Unlimited'],
+            ['label' => 'Damage Excess (CDW)', 'value' => '€' . $conditions['damage_excess']],
+            ['label' => 'Theft Excess (TW)', 'value' => '€' . $conditions['theft_excess']],
+            ['label' => 'Payment at Pickup', 'value' => 'Credit or Debit card in driver\'s name'],
+            ['label' => 'Pickup Grace Period', 'value' => '59 minutes from booked time'],
+            ['label' => 'Drop-off Grace Period', 'value' => '59 minutes from pickup time on agreement'],
+            ['label' => 'Out of Hours Fee', 'value' => '€30 per rental (on request, max 90 min after closing)'],
+            ['label' => 'Cross Border', 'value' => 'Allowed in EU + Norway + Switzerland (prior authorisation required)'],
+        ];
+    }
+
+    private function getLocautoConditions(string $sippCode): ?array
+    {
+        // Per-SIPP conditions from Locauto T&Cs
+        $conditions = [
+            'MBMR' => ['min_age' => 19, 'damage_excess' => 1200, 'theft_excess' => 1800],
+            'MDMR' => ['min_age' => 19, 'damage_excess' => 1200, 'theft_excess' => 1800],
+            'EDMR' => ['min_age' => 19, 'damage_excess' => 1200, 'theft_excess' => 1800],
+            'CDMR' => ['min_age' => 21, 'damage_excess' => 1500, 'theft_excess' => 2000],
+            'CXMR' => ['min_age' => 21, 'damage_excess' => 1500, 'theft_excess' => 2000],
+            'IDAR' => ['min_age' => 21, 'damage_excess' => 1700, 'theft_excess' => 2200],
+            'CDAR' => ['min_age' => 21, 'damage_excess' => 1700, 'theft_excess' => 2200],
+            'CFAR' => ['min_age' => 21, 'damage_excess' => 1500, 'theft_excess' => 2000],
+            'CFMR' => ['min_age' => 21, 'damage_excess' => 1500, 'theft_excess' => 2000],
+            'EDAR' => ['min_age' => 21, 'damage_excess' => 1500, 'theft_excess' => 2000],
+            'LWAR' => ['min_age' => 27, 'damage_excess' => 2000, 'theft_excess' => 2800],
+            'PWAR' => ['min_age' => 27, 'damage_excess' => 2000, 'theft_excess' => 2800],
+            'FVMR' => ['min_age' => 25, 'damage_excess' => 2000, 'theft_excess' => 2800],
+            'SWAR' => ['min_age' => 25, 'damage_excess' => 1700, 'theft_excess' => 2200],
+            'CWAR' => ['min_age' => 25, 'damage_excess' => 1700, 'theft_excess' => 2200],
+            'SWMR' => ['min_age' => 25, 'damage_excess' => 1700, 'theft_excess' => 2200],
+            'IFAR' => ['min_age' => 25, 'damage_excess' => 1700, 'theft_excess' => 2200],
+        ];
+
+        return $conditions[$sippCode] ?? null;
     }
 
     private function resolveProviderVehicleId(string $rawSupplierId, array $gv, array $supplierData, mixed $supplierVehicleId): ?string
@@ -451,15 +604,7 @@ class GatewayVehicleTransformer
             'airConditioning' => $airConditioning,
             'sipp_code' => $specs['sipp_code'] ?? null,
             'doors' => $specs['doors'] ?? null,
-            'benefits' => [
-                'minimum_driver_age' => $providerPayload['min_driver_age'] ?? null,
-                'maximum_driver_age' => $providerPayload['max_driver_age'] ?? null,
-                'fuel_policy' => $policies['fuel_policy'] ?? null,
-                'deposit_amount' => $pricing['deposit_amount'] ?? null,
-                'deposit_currency' => $pricing['deposit_currency'] ?? null,
-                'excess_amount' => $pricing['excess_amount'] ?? null,
-                'excess_theft_amount' => $pricing['excess_theft_amount'] ?? null,
-            ],
+            'benefits' => $this->buildBenefits($source, $gv, $providerPayload, $pricing['deposit_amount'] ?? null, $pricing['deposit_currency'] ?? null),
             'provider_gross_amount' => null,
             'provider_net_amount' => $providerPayload['net_amount'] ?? null,
             'provider_vat_amount' => $providerPayload['vat_amount'] ?? null,
