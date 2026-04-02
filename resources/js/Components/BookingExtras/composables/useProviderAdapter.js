@@ -32,6 +32,7 @@ export function useProviderAdapter(props, deps = {}) {
         isSurprice: computed(() => source.value === 'surprice'),
         isFavrica: computed(() => source.value === 'favrica'),
         isXDrive: computed(() => source.value === 'xdrive'),
+        isEmr: computed(() => source.value === 'emr'),
         isGreenMotion: computed(() => source.value === 'greenmotion' || source.value === 'usave'),
     };
 
@@ -47,6 +48,7 @@ export function useProviderAdapter(props, deps = {}) {
         surprice: () => createSurpriceAdapter(props, deps),
         favrica: () => createFavricaXdriveAdapter(props, 'favrica'),
         xdrive: () => createFavricaXdriveAdapter(props, 'xdrive'),
+        emr: () => createFavricaXdriveAdapter(props, 'emr'),
         greenmotion: () => createGreenMotionAdapter(props),
         usave: () => createGreenMotionAdapter(props),
     };

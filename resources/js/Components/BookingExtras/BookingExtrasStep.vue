@@ -90,7 +90,7 @@ const providerGrossMultiplier = computed(() => toProviderGrossMultiplier(provide
 const {
     adapter, source,
     isAdobeCars, isLocautoRent, isInternal, isRenteon, isOkMobility,
-    isSicilyByCar, isRecordGo, isSurprice, isFavrica, isXDrive, isGreenMotion,
+    isSicilyByCar, isRecordGo, isSurprice, isFavrica, isXDrive, isEmr, isGreenMotion,
 } = useProviderAdapter(props, {
     formatPrice: (val) => formatPrice(val),
     currentPackage: computed(() => currentPackage.value),
@@ -413,7 +413,7 @@ const recordGoAutomaticComplements = adapter.recordGoAutomaticComplements ?? com
 const OK_MOBILITY_COVER_CODES = adapter.OK_MOBILITY_COVER_CODES ?? ['OPC', 'OPCO'];
 const normalizeExtraCode = adapter.normalizeExtraCode ?? ((value) => `${value || ''}`.trim().toUpperCase());
 const getProviderExtraLabel = adapter.getProviderExtraLabel ?? ((extra) => {
-    if (!isXDrive.value && !isFavrica.value) return extra?.name || '';
+    if (!isXDrive.value && !isFavrica.value && !isEmr.value) return extra?.name || '';
     const code = `${extra?.code || ''}`.trim();
     return code ? toTitleCase(code) : (extra?.name || '');
 });
@@ -760,7 +760,7 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
 
                 <!-- ═══ 6. DEPOSIT & EXCESS ═══ -->
                 <DepositExcess
-                    v-if="(isInternal && (vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount)) || (isRenteon && (currentProduct?.deposit || currentProduct?.excess || currentProduct?.excess_theft_amount || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount)) || (vehicle?.security_deposit > 0 && (isSurprice || isRecordGo || isOkMobility || isFavrica || isXDrive || isSicilyByCar)) || (isLocautoRent && (vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount))"
+                    v-if="(isInternal && (vehicle?.security_deposit > 0 || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount)) || (isRenteon && (currentProduct?.deposit || currentProduct?.excess || currentProduct?.excess_theft_amount || vehicle?.benefits?.deposit_amount || vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount)) || (vehicle?.security_deposit > 0 && (isSurprice || isRecordGo || isOkMobility || isFavrica || isXDrive || isEmr || isSicilyByCar)) || (isLocautoRent && (vehicle?.benefits?.excess_amount || vehicle?.benefits?.excess_theft_amount))"
                     :vehicle="vehicle"
                     :current-product="currentProduct"
                     :format-price="formatPrice"
@@ -811,6 +811,7 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
                     :selected-extras="selectedExtras"
                     :is-favrica="isFavrica"
                     :is-x-drive="isXDrive"
+                    :is-emr="isEmr"
                     :is-sicily-by-car="isSicilyByCar"
                     :is-record-go="isRecordGo"
                     :format-rental-price="formatRentalPrice"

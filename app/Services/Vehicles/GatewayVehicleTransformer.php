@@ -388,9 +388,9 @@ class GatewayVehicleTransformer
         $requirements = [];
 
         $productData = $supplierData['product_data'] ?? [];
-        $minAge = $gv['min_driver_age'] ?? ($productData['min_age'] ?? null);
-        $maxAge = $gv['max_driver_age'] ?? ($productData['max_age'] ?? null);
-        $minLicense = $productData['min_driver_license'] ?? null;
+        $minAge = $gv['min_driver_age'] ?? ($supplierData['min_driver_age'] ?? ($productData['min_age'] ?? null));
+        $maxAge = $gv['max_driver_age'] ?? ($supplierData['max_driver_age'] ?? ($productData['max_age'] ?? null));
+        $minLicense = $productData['min_driver_license'] ?? ($supplierData['driving_license_age'] ?? null);
 
         // Keys become display labels via key.replace(/_/g, ' ') in frontend
         // Values must be '1' to pass the boolean filter
@@ -416,9 +416,15 @@ class GatewayVehicleTransformer
         }
 
         // Mileage — special key, excluded from items list, shown as label
-        $mileagePolicy = $gv['mileage_policy'] ?? null;
+        $policies = $gv['policies'] ?? [];
+        $mileagePolicy = $gv['mileage_policy'] ?? ($policies['mileage_policy'] ?? null);
+        $mileageLimitKm = $gv['mileage_limit_km'] ?? ($policies['mileage_limit_km'] ?? null);
         if ($mileagePolicy && !isset($requirements['mileage_type'])) {
-            $requirements['mileage_type'] = $mileagePolicy;
+            if ($mileagePolicy === 'limited' && $mileageLimitKm) {
+                $requirements['mileage_type'] = "Limited ({$mileageLimitKm} km)";
+            } else {
+                $requirements['mileage_type'] = ucfirst($mileagePolicy);
+            }
         }
 
         return !empty($requirements) ? $requirements : null;

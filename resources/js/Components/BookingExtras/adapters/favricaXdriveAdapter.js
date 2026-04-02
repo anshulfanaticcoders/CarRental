@@ -46,17 +46,19 @@ const isFavricaInsuranceService = (extra) => {
 
 /**
  * @param {{ vehicle: Object, numberOfDays: number }} props
- * @param {'favrica' | 'xdrive'} source
+ * @param {'favrica' | 'xdrive' | 'emr'} source
  * @returns {import('./types').AdapterResult & Record<string, any>}
  */
 export function createFavricaXdriveAdapter(props, source) {
     const isFavrica = source === 'favrica';
     const isXDrive = source === 'xdrive';
+    const isEmr = source === 'emr';
 
     // ── Service Pool ────────────────────────────────────────────────────
     const servicePool = computed(() => {
         if (isFavrica && props.vehicle?.source !== 'favrica') return [];
         if (isXDrive && props.vehicle?.source !== 'xdrive') return [];
+        if (isEmr && props.vehicle?.source !== 'emr') return [];
         const raw = [
             ...(props.vehicle?.insurance_options || []),
             ...(props.vehicle?.extras || [])

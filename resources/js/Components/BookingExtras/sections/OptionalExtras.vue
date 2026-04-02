@@ -4,6 +4,7 @@ defineProps({
     selectedExtras: Object,
     isFavrica: Boolean,
     isXDrive: Boolean,
+    isEmr: Boolean,
     isSicilyByCar: Boolean,
     isRecordGo: Boolean,
     formatRentalPrice: Function,
@@ -23,9 +24,9 @@ const emit = defineEmits(['toggle-extra', 'update-extra-quantity']);
     <section v-if="extras.length > 0" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 fade-in-up" style="animation-delay:0.5s">
         <h3 class="text-lg font-bold text-[#1e3a5f] mb-2 flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-            {{ (isFavrica || isXDrive) ? 'Additional Services' : 'Optional Extras' }}
+            {{ (isFavrica || isXDrive || isEmr) ? 'Additional Services' : 'Optional Extras' }}
         </h3>
-        <p class="text-sm text-gray-500 mb-5">{{ (isFavrica || isXDrive) ? 'Add helpful services to your booking' : 'Enhance your rental experience' }}</p>
+        <p class="text-sm text-gray-500 mb-5">{{ (isFavrica || isXDrive || isEmr) ? 'Add helpful services to your booking' : 'Enhance your rental experience' }}</p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <template v-for="extra in extras" :key="extra.id">
