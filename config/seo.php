@@ -50,9 +50,9 @@ return [
         ],
         [
             'key' => 'blog_listing',
-            'label' => 'Blog Listing (Country)',
+            'label' => 'Blog Listing',
             'route_name' => 'blog',
-            'params' => ['country' => null],
+            'params' => [],
         ],
     ],
 ];

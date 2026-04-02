@@ -29,6 +29,30 @@ class SeoMetaResolver
         return $this->buildSeoData($resolved, $locale, $canonicalUrl, $robots);
     }
 
+    public function resolveForRouteWithFallbacks(
+        string $routeName,
+        array $routeParamsCandidates,
+        string $locale,
+        string $canonicalUrl,
+        ?string $robots = null
+    ): SeoData {
+        foreach ($routeParamsCandidates as $candidateParams) {
+            $hash = $this->hashRouteParams((array) $candidateParams);
+
+            $resolved = SeoMeta::query()
+                ->with('translations')
+                ->where('route_name', $routeName)
+                ->where('route_params_hash', $hash)
+                ->first();
+
+            if ($resolved) {
+                return $this->buildSeoData($resolved, $locale, $canonicalUrl, $robots);
+            }
+        }
+
+        return $this->buildSeoData(null, $locale, $canonicalUrl, $robots);
+    }
+
     public function resolveForModel(
         Model $model,
         string $locale,

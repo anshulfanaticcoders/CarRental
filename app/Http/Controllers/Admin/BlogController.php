@@ -789,9 +789,12 @@ class BlogController extends Controller
 
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
-        $seo = app(SeoMetaResolver::class)->resolveForRoute(
+        $seo = app(SeoMetaResolver::class)->resolveForRouteWithFallbacks(
             'blog',
-            ['country' => $country],
+            [
+                ['country' => $country],
+                [],
+            ],
             App::getLocale(),
             url("/{$locale}/{$country}/blog")
         )->toArray();

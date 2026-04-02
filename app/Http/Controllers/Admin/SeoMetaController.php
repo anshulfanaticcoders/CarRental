@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Cache;
 
 class SeoMetaController extends Controller
 {
+    private function buildRouteParamsForTarget(array $target): array
+    {
+        return (array) ($target['params'] ?? []);
+    }
+
     private function forgetRouteSeoCache(string $routeName, string $routeParamsHash): void
     {
         foreach (config('app.available_locales', ['en']) as $locale) {
@@ -63,19 +68,8 @@ class SeoMetaController extends Controller
             return back()->withErrors(['target_key' => 'Invalid SEO target.']);
         }
 
-        $country = $request->input('country');
-        if ($targetKey === 'blog_listing') {
-            $request->validate([
-                'country' => 'required|string|size:2',
-            ]);
-            $country = strtolower((string) $country);
-        }
-
         $routeName = (string) $target['route_name'];
-        $routeParams = (array) ($target['params'] ?? []);
-        if (array_key_exists('country', $routeParams)) {
-            $routeParams['country'] = $country;
-        }
+        $routeParams = $this->buildRouteParamsForTarget($target);
         $routeParamsHash = $resolver->hashRouteParams($routeParams);
 
         $validatedData = $request->validate([
@@ -169,10 +163,8 @@ class SeoMetaController extends Controller
 
         $routeTargets = collect(config('seo.route_targets', []));
         $targetKey = $routeTargets->first(fn ($t) => ($t['route_name'] ?? null) === $seoMeta->route_name && empty($t['params']))['key'] ?? null;
-        $country = null;
         if ($seoMeta->route_name === 'blog') {
             $targetKey = 'blog_listing';
-            $country = $seoMeta->route_params['country'] ?? null;
         }
 
         return Inertia::render('AdminDashboardPages/SEO/Edit', [
@@ -181,7 +173,7 @@ class SeoMetaController extends Controller
             'routeTargets' => config('seo.route_targets', []),
             'available_locales' => config('app.available_locales', ['en']),
             'targetKey' => $targetKey,
-            'country' => $country,
+            'country' => null,
         ]); // Or a shared Form component for Create/Edit
     }
 
@@ -207,19 +199,8 @@ class SeoMetaController extends Controller
             return back()->withErrors(['target_key' => 'Invalid SEO target.']);
         }
 
-        $country = $request->input('country');
-        if ($targetKey === 'blog_listing') {
-            $request->validate([
-                'country' => 'required|string|size:2',
-            ]);
-            $country = strtolower((string) $country);
-        }
-
         $routeName = (string) $target['route_name'];
-        $routeParams = (array) ($target['params'] ?? []);
-        if (array_key_exists('country', $routeParams)) {
-            $routeParams['country'] = $country;
-        }
+        $routeParams = $this->buildRouteParamsForTarget($target);
         $routeParamsHash = $resolver->hashRouteParams($routeParams);
 
         $validatedData = $request->validate([

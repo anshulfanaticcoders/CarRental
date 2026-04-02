@@ -2,7 +2,6 @@
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue'
 import { useForm } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
-import CountrySelector from '@/Components/CountrySelector.vue'
 import loaderVariant from '../../../../assets/loader-variant.svg'
 
 const props = defineProps({
@@ -47,21 +46,10 @@ locales.value.forEach((locale) => {
 })
 
 const initialTargetKey = props.targetKey || props.routeTargets?.[0]?.key || 'home'
-const initialCountry = (props.country || 'us').toLowerCase()
-const countrySelection = ref(initialTargetKey === 'blog_listing' ? [initialCountry] : [])
-
-watch(countrySelection, (newVal) => {
-  if (!newVal) return
-  if (newVal.length <= 1) return
-  countrySelection.value = [newVal[newVal.length - 1]]
-})
-
-const selectedCountry = computed(() => (countrySelection.value?.[0] || 'us').toLowerCase())
 
 const form = useForm({
   _method: isEditing.value ? 'PUT' : 'POST',
   target_key: initialTargetKey,
-  country: initialCountry,
   seo_title: props.seoMeta?.seo_title || '',
   meta_description: props.seoMeta?.meta_description || '',
   keywords: props.seoMeta?.keywords || '',
@@ -69,24 +57,6 @@ const form = useForm({
   seo_image_url: props.seoMeta?.seo_image_url || '',
   translations: JSON.parse(JSON.stringify(initialTranslations)),
 })
-
-watch(
-  () => form.target_key,
-  (key) => {
-    if (key !== 'blog_listing') {
-      countrySelection.value = []
-    } else if (countrySelection.value.length === 0) {
-      countrySelection.value = ['us']
-    }
-  }
-)
-
-watch(
-  () => selectedCountry.value,
-  (country) => {
-    form.country = country
-  }
-)
 
 watch(
   () => form.errors,
@@ -111,8 +81,6 @@ const submitForm = () => {
 
   form.post(url, { preserveScroll: true })
 }
-
-const isBlogListing = computed(() => form.target_key === 'blog_listing')
 
 const charCount = (value) => `${value || ''}`.length
 </script>
@@ -163,14 +131,6 @@ const charCount = (value) => `${value || ''}`.length
                       <option v-for="t in routeTargets" :key="t.key" :value="t.key">{{ t.label }}</option>
                     </select>
                     <p v-if="form.errors.target_key" class="mt-2 text-sm text-red-600">{{ form.errors.target_key }}</p>
-                  </div>
-
-                  <div v-if="isBlogListing">
-                    <CountrySelector v-model="countrySelection" />
-                    <p v-if="form.errors.country" class="mt-2 text-sm text-red-600">{{ form.errors.country }}</p>
-                    <p class="mt-2 text-sm text-gray-500">
-                      This SEO target applies to the blog listing route for the selected country.
-                    </p>
                   </div>
                 </div>
               </div>
