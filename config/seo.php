@@ -37,15 +37,9 @@ return [
             'params' => [],
         ],
         [
-            'key' => 'contact',
-            'label' => 'Contact Us',
-            'route_name' => 'contact-us',
-            'params' => [],
-        ],
-        [
             'key' => 'business_register',
             'label' => 'Business Register',
-            'route_name' => 'affiliate.business.register',
+            'route_name' => 'affiliate.register',
             'params' => [],
         ],
         [

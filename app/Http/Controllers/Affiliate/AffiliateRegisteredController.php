@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Affiliate;
 
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate\AffiliateBusiness;
+use App\Services\Seo\SeoMetaResolver;
 use App\Models\User;
 use App\Notifications\Affiliate\BusinessRegistrationAdminNotification;
 use App\Notifications\Affiliate\BusinessRegistrationNotification;
@@ -20,9 +21,16 @@ class AffiliateRegisteredController extends Controller
     public function create(Request $request)
     {
         $locale = $request->route('locale', 'en');
+        $seo = app(SeoMetaResolver::class)->resolveForRoute(
+            'affiliate.register',
+            [],
+            $locale,
+            route('affiliate.register', ['locale' => $locale])
+        )->toArray();
 
         return Inertia::render('Affiliate/Register', [
             'locale' => $locale,
+            'seo' => $seo,
         ]);
     }
 

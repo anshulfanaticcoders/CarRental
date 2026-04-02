@@ -1,4 +1,5 @@
 <template>
+    <SeoHead :seo="props.seo" />
     <GuestHeader />
         <!-- Dark Hero Section -->
         <section class="relative overflow-hidden bg-gradient-to-br from-[#0a1d28] to-[#153b4f]">
@@ -416,10 +417,18 @@ import { ref, computed } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
 import { Toaster } from '@/Components/ui/sonner';
+import SeoHead from '@/Components/SeoHead.vue';
 import axios from 'axios';
 import GuestHeader from '@/Layouts/GuestHeader.vue';
 import Footer from '@/Components/Footer.vue';
 import { Check, User, Mail, Lock, ChevronRight, ChevronLeft, Building2, Phone, MapPin, Landmark, CreditCard, Globe, Info, DollarSign, Smartphone, BarChart3 } from 'lucide-vue-next';
+
+const props = defineProps({
+    seo: {
+        type: Object,
+        default: () => ({}),
+    },
+});
 
 const page = usePage();
 const locale = computed(() => page.props.locale || 'en');

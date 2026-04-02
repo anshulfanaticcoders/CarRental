@@ -47,6 +47,7 @@ const props = defineProps({
 });
 
 const primaryLocale = 'en'
+const seoFallbackLocale = props.available_locales.includes('en') ? 'en' : (props.available_locales[0] || 'en')
 
 const activeLocale = ref(props.current_locale || props.available_locales[0]);
 
@@ -160,14 +161,18 @@ onMounted(() => {
     }
 });
 
-// Watch the 'en' title to auto-fill seo_title
-watch(() => form.translations.en?.title, (newEnTitle, oldEnTitle) => {
-    if (newEnTitle && (!form.seo_title || form.seo_title === oldEnTitle)) {
-        form.seo_title = newEnTitle;
-    } else if (!newEnTitle && form.seo_title === oldEnTitle) {
-        form.seo_title = '';
-    }
-}, { deep: true });
+const syncSeoFallbackFields = () => {
+    const fallbackSeo = form.seo_translations?.[seoFallbackLocale] || {};
+    const fallbackTranslation = form.translations?.[seoFallbackLocale] || {};
+
+    form.seo_title = `${fallbackSeo.seo_title || ''}`.trim()
+        || `${props.seoMeta?.seo_title || ''}`.trim()
+        || `${fallbackTranslation.title || ''}`.trim();
+    form.meta_description = `${fallbackSeo.meta_description || ''}`.trim()
+        || `${props.seoMeta?.meta_description || ''}`.trim();
+    form.keywords = `${fallbackSeo.keywords || ''}`.trim()
+        || `${props.seoMeta?.keywords || ''}`.trim();
+};
 
 // Arabic to Latin transliteration map (simplified for common characters)
 const arabicToLatinMap = {
@@ -216,9 +221,22 @@ props.available_locales.forEach((locale) => {
     )
 })
 
-const showLocalizedSeo = ref(false)
-
 const charCount = (value) => `${value || ''}`.length
+
+watch(
+    () => form.seo_translations?.[seoFallbackLocale],
+    () => {
+        syncSeoFallbackFields();
+    },
+    { deep: true, immediate: true }
+);
+
+watch(
+    () => form.translations?.[seoFallbackLocale]?.title,
+    () => {
+        syncSeoFallbackFields();
+    }
+);
 
 // Watch for errors to switch to the tab with errors
 watch(() => form.errors, (newErrors) => {
@@ -238,6 +256,8 @@ watch(() => form.errors, (newErrors) => {
 });
 
 const submitForm = () => {
+    syncSeoFallbackFields();
+
     form.post(route('admin.blogs.update', props.blog.id), {
         preserveScroll: true,
         onSuccess: () => {
@@ -460,8 +480,8 @@ const removeImage = () => {
                         menubar: true,
                         skin: 'oxide',
                         content_css: 'default',
-                        toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image',
-                        plugins: 'lists link image',
+                        toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image | code',
+                        plugins: 'lists link image code',
                       }"
                       class="border border-gray-300 rounded-lg"
                     />
@@ -602,71 +622,9 @@ const removeImage = () => {
               <div class="mb-8 pt-6 border-t border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900 mb-6">SEO Meta Information</h3>
                 <p class="text-sm text-gray-600 mb-4">
-                  Keep SEO simple: defaults are used unless you override them.
+                  Add localized SEO for the selected locale. Hidden fallback SEO is generated automatically from {{ seoFallbackLocale.toUpperCase() }}.
                 </p>
 
-                <!-- Non-translatable SEO fields -->
-                <div class="grid grid-cols-1 gap-6 mb-6">
-                  <div>
-                    <label for="seo_title" class="block text-sm font-medium text-gray-700 mb-2">
-                      Default SEO Title (Required Fallback)
-                    </label>
-                    <Input
-                      id="seo_title"
-                      v-model="form.seo_title"
-                      type="text"
-                      maxlength="60"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                    />
-                    <p v-if="form.errors.seo_title" class="mt-2 text-sm text-red-600">{{ form.errors.seo_title }}</p>
-                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
-                      <span>{{ charCount(form.seo_title) }}/60</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label for="meta_description" class="block text-sm font-medium text-gray-700 mb-2">
-                      Default Meta Description (Fallback)
-                    </label>
-                    <textarea
-                      id="meta_description"
-                      v-model="form.meta_description"
-                      maxlength="160"
-                      rows="3"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                    ></textarea>
-                    <p v-if="form.errors.meta_description" class="mt-2 text-sm text-red-600">{{ form.errors.meta_description }}</p>
-                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
-                      <span>{{ charCount(form.meta_description) }}/160</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label for="keywords" class="block text-sm font-medium text-gray-700 mb-2">
-                      Default Keywords (Fallback)
-                    </label>
-                    <Input
-                      id="keywords"
-                      v-model="form.keywords"
-                      type="text"
-                      maxlength="255"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor transition-colors duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="keyword1, keyword2..."
-                    />
-                    <p v-if="form.errors.keywords" class="mt-2 text-sm text-red-600">{{ form.errors.keywords }}</p>
-                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
-                      <span>{{ charCount(form.keywords) }}/255</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Translatable SEO Fields -->
-                <div class="flex items-center justify-between border-t pt-4">
-                  <div class="text-sm text-gray-700">Localized SEO is optional.</div>
-                  <button type="button" class="text-sm text-customPrimaryColor hover:underline" @click="showLocalizedSeo = !showLocalizedSeo">
-                    {{ showLocalizedSeo ? 'Hide localized SEO' : 'Edit localized SEO' }}
-                  </button>
-                </div>
-
-                <template v-if="showLocalizedSeo">
                   <template v-for="locale in available_locales" :key="`seo-fields-${locale}`">
                     <div v-if="activeLocale === locale" class="grid grid-cols-1 gap-6 mt-4 pt-4 border-t">
                       <h4 class="text-md font-semibold text-gray-800">Localized SEO Fields ({{ locale.toUpperCase() }})</h4>
@@ -715,7 +673,6 @@ const removeImage = () => {
                       </div>
                     </div>
                   </template>
-                </template>
               </div>
 
               <!-- Action Buttons -->

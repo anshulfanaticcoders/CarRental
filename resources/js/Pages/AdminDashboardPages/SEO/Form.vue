@@ -35,13 +35,15 @@ const locales = computed(() => props.available_locales?.length ? props.available
 const isEditing = computed(() => !!props.seoMeta)
 const formTitle = computed(() => (isEditing.value ? 'Edit SEO Target' : 'Create SEO Target'))
 const currentLocaleTab = ref(locales.value[0])
+const fallbackLocale = computed(() => locales.value.includes('en') ? 'en' : locales.value[0])
 
 const initialTranslations = {}
 locales.value.forEach((locale) => {
+  const isFallbackLocale = locale === fallbackLocale.value
   initialTranslations[locale] = {
-    seo_title: props.translations?.[locale]?.seo_title || '',
-    meta_description: props.translations?.[locale]?.meta_description || '',
-    keywords: props.translations?.[locale]?.keywords || '',
+    seo_title: props.translations?.[locale]?.seo_title || (isFallbackLocale ? (props.seoMeta?.seo_title || '') : ''),
+    meta_description: props.translations?.[locale]?.meta_description || (isFallbackLocale ? (props.seoMeta?.meta_description || '') : ''),
+    keywords: props.translations?.[locale]?.keywords || (isFallbackLocale ? (props.seoMeta?.keywords || '') : ''),
   }
 })
 
@@ -74,7 +76,33 @@ watch(
   }
 )
 
+watch(
+  () => fallbackLocale.value,
+  () => {
+    const fallback = form.translations?.[fallbackLocale.value] || {}
+    form.seo_title = fallback.seo_title || ''
+    form.meta_description = fallback.meta_description || ''
+    form.keywords = fallback.keywords || ''
+  },
+  { immediate: true }
+)
+
+watch(
+  () => form.translations?.[fallbackLocale.value],
+  (fallback) => {
+    form.seo_title = fallback?.seo_title || ''
+    form.meta_description = fallback?.meta_description || ''
+    form.keywords = fallback?.keywords || ''
+  },
+  { deep: true }
+)
+
 const submitForm = () => {
+  const fallback = form.translations?.[fallbackLocale.value] || {}
+  form.seo_title = fallback.seo_title || ''
+  form.meta_description = fallback.meta_description || ''
+  form.keywords = fallback.keywords || ''
+
   const url = isEditing.value
     ? route('admin.seo-meta.update', props.seoMeta.id)
     : route('admin.seo-meta.store')
@@ -136,94 +164,10 @@ const charCount = (value) => `${value || ''}`.length
               </div>
 
               <div class="mb-10">
-                <h3 class="text-lg font-semibold text-gray-900 mb-6">Default SEO</h3>
-                <div class="grid grid-cols-1 gap-6">
-                  <div>
-                    <label for="seo_title" class="block text-sm font-medium text-gray-700 mb-2">
-                      Default SEO Title <span class="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="seo_title"
-                      v-model="form.seo_title"
-                      type="text"
-                      maxlength="60"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor bg-gray-50 focus:bg-white"
-                      placeholder="Title used when translation is missing"
-                    />
-                    <p v-if="form.errors.seo_title" class="mt-2 text-sm text-red-600">{{ form.errors.seo_title }}</p>
-                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
-                      <span>{{ charCount(form.seo_title) }}/60</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label for="meta_description" class="block text-sm font-medium text-gray-700 mb-2">Default Meta Description</label>
-                    <textarea
-                      id="meta_description"
-                      v-model="form.meta_description"
-                      rows="3"
-                      maxlength="160"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor bg-gray-50 focus:bg-white"
-                    ></textarea>
-                    <p v-if="form.errors.meta_description" class="mt-2 text-sm text-red-600">{{ form.errors.meta_description }}</p>
-                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
-                      <span>{{ charCount(form.meta_description) }}/160</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label for="keywords" class="block text-sm font-medium text-gray-700 mb-2">Default Keywords</label>
-                    <input
-                      id="keywords"
-                      v-model="form.keywords"
-                      type="text"
-                      maxlength="255"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor bg-gray-50 focus:bg-white"
-                      placeholder="keyword1, keyword2..."
-                    />
-                    <p v-if="form.errors.keywords" class="mt-2 text-sm text-red-600">{{ form.errors.keywords }}</p>
-                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
-                      <span>{{ charCount(form.keywords) }}/255</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label for="canonical_url" class="block text-sm font-medium text-gray-700 mb-2">Canonical URL Override</label>
-                    <input
-                      id="canonical_url"
-                      v-model="form.canonical_url"
-                      type="url"
-                      maxlength="255"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor bg-gray-50 focus:bg-white"
-                      placeholder="https://example.com/preferred-url"
-                    />
-                    <p v-if="form.errors.canonical_url" class="mt-2 text-sm text-red-600">{{ form.errors.canonical_url }}</p>
-                    <p v-else class="mt-2 text-sm text-gray-500">Use only when you intentionally want a different canonical.</p>
-                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
-                      <span>{{ charCount(form.canonical_url) }}/255</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label for="seo_image_url" class="block text-sm font-medium text-gray-700 mb-2">SEO Image URL</label>
-                    <input
-                      id="seo_image_url"
-                      v-model="form.seo_image_url"
-                      type="url"
-                      maxlength="255"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor bg-gray-50 focus:bg-white"
-                      placeholder="https://example.com/image.jpg"
-                    />
-                    <p v-if="form.errors.seo_image_url" class="mt-2 text-sm text-red-600">{{ form.errors.seo_image_url }}</p>
-                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
-                      <span>{{ charCount(form.seo_image_url) }}/255</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="mb-10">
                 <h3 class="text-lg font-semibold text-gray-900 mb-6">Localized SEO</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                  Add SEO per locale here. Fallback SEO is auto-generated from {{ fallbackLocale.toUpperCase() }}.
+                </p>
                 <nav class="flex space-x-4 border-b border-gray-200" aria-label="Tabs">
                   <button
                     v-for="locale in locales"
@@ -285,6 +229,44 @@ const charCount = (value) => `${value || ''}`.length
                       </div>
                     </div>
                   </template>
+                </div>
+              </div>
+
+              <div class="mb-10">
+                <h3 class="text-lg font-semibold text-gray-900 mb-6">SEO Settings</h3>
+                <div class="grid grid-cols-1 gap-6">
+                  <div>
+                    <label for="canonical_url" class="block text-sm font-medium text-gray-700 mb-2">Canonical URL Override</label>
+                    <input
+                      id="canonical_url"
+                      v-model="form.canonical_url"
+                      type="url"
+                      maxlength="255"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor bg-gray-50 focus:bg-white"
+                      placeholder="https://example.com/preferred-url"
+                    />
+                    <p v-if="form.errors.canonical_url" class="mt-2 text-sm text-red-600">{{ form.errors.canonical_url }}</p>
+                    <p v-else class="mt-2 text-sm text-gray-500">Use only when you intentionally want a different canonical.</p>
+                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
+                      <span>{{ charCount(form.canonical_url) }}/255</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label for="seo_image_url" class="block text-sm font-medium text-gray-700 mb-2">SEO Image URL</label>
+                    <input
+                      id="seo_image_url"
+                      v-model="form.seo_image_url"
+                      type="url"
+                      maxlength="255"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor bg-gray-50 focus:bg-white"
+                      placeholder="https://example.com/image.jpg"
+                    />
+                    <p v-if="form.errors.seo_image_url" class="mt-2 text-sm text-red-600">{{ form.errors.seo_image_url }}</p>
+                    <div class="mt-2 flex items-center justify-end text-sm text-gray-500">
+                      <span>{{ charCount(form.seo_image_url) }}/255</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
