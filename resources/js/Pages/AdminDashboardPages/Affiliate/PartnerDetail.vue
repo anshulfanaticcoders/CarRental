@@ -6,7 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Euro, Clock, QrCode, MousePointerClick } from 'lucide-vue-next';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/Components/ui/alert-dialog';
+import { ArrowLeft, Euro, Clock, QrCode, MousePointerClick, Trash2 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 
 const props = defineProps({
@@ -20,6 +30,8 @@ const props = defineProps({
 const activeTab = ref('commissions');
 const page = usePage();
 const isVerifying = ref(false);
+const isDeleting = ref(false);
+const isDeleteDialogOpen = ref(false);
 
 const statusColor = (val) => {
     const map = { active: 'bg-emerald-100 text-emerald-700', pending: 'bg-amber-100 text-amber-700', suspended: 'bg-red-100 text-red-700' };
@@ -93,6 +105,21 @@ const suspendPartner = () => {
 const activatePartner = () => {
     postPartnerAction('admin.affiliate.businesses.activate');
 };
+
+const confirmDeletePartner = () => {
+    router.delete(route('admin.affiliate.partners.destroy', { id: props.partner.id }), {
+        preserveScroll: true,
+        onStart: () => {
+            isDeleting.value = true;
+        },
+        onSuccess: notifyFromFlash,
+        onError: handlePartnerActionError,
+        onFinish: () => {
+            isDeleting.value = false;
+            isDeleteDialogOpen.value = false;
+        },
+    });
+};
 </script>
 
 <template>
@@ -154,6 +181,16 @@ const activatePartner = () => {
                         @click="activatePartner"
                     >
                         Activate
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        class="text-red-600 border-red-200 hover:bg-red-50"
+                        :disabled="isDeleting"
+                        @click="isDeleteDialogOpen = true"
+                    >
+                        <Trash2 class="mr-1 h-4 w-4" />
+                        {{ isDeleting ? 'Deleting...' : 'Delete' }}
                     </Button>
                 </div>
             </div>
@@ -385,5 +422,27 @@ const activatePartner = () => {
                 </TabsContent>
             </Tabs>
         </div>
+
+        <AlertDialog v-model:open="isDeleteDialogOpen">
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete affiliate?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will remove {{ partner.name }} from the admin dashboard and disable its QR/location surface.
+                        Commission and payout history will stay available for audit.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        class="bg-red-600 hover:bg-red-700"
+                        :disabled="isDeleting"
+                        @click="confirmDeletePartner"
+                    >
+                        {{ isDeleting ? 'Deleting...' : 'Delete Affiliate' }}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </AdminDashboardLayout>
 </template>

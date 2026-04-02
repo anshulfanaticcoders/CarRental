@@ -121,16 +121,14 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
                     <CarouselItem
                         v-for="p in places"
                         :key="p.id"
-                        class="basis-[86%] sm:basis-[70%] md:basis-[48%] lg:basis-[31%] xl:basis-[24%]"
+                        class="md:basis-1/2 lg:basis-1/4"
                     >
                         <a
                             :href="getDestinationHref(p)"
                             @click.prevent="navigateToSearch(p)"
                             class="dest-card"
                         >
-                            <div class="dest-image-shell">
-                                <img :src="p.image" :alt="p.place_name" loading="lazy" />
-                            </div>
+                            <img :src="p.image" :alt="p.place_name" loading="lazy" />
                             <div class="dest-info">
                                 <div class="dest-name">{{ p.place_name }}</div>
                                 <div class="dest-loc">{{ getDestinationMeta(p) }}</div>
@@ -232,57 +230,55 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
 }
 
 .dest-card {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    position: relative;
+    display: block;
     height: 100%;
-    padding: 0.75rem;
-    border-radius: 20px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
+    border-radius: 18px;
+    overflow: hidden;
+    aspect-ratio: 3 / 4;
     cursor: pointer;
-    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07);
-    transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1);
+    box-shadow: 0 8px 24px rgba(10, 29, 40, 0.08);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .dest-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
-    border-color: #d7e4ec;
-}
-
-.dest-image-shell {
-    overflow: hidden;
-    border-radius: 16px;
-    aspect-ratio: 16 / 10;
-    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+    transform: translateY(-6px);
+    box-shadow: 0 14px 36px rgba(10, 29, 40, 0.16);
 }
 
 .dest-card img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.6s cubic-bezier(0.22,1,0.36,1);
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.dest-card:hover img { transform: scale(1.04); }
+.dest-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(10, 29, 40, 0.88) 0%, rgba(10, 29, 40, 0.42) 45%, rgba(10, 29, 40, 0.08) 72%, transparent 100%);
+}
+
+.dest-card:hover img { transform: scale(1.05); }
 
 .dest-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    padding: 0 0.35rem 0.25rem;
+    position: absolute;
+    z-index: 1;
+    inset: auto 0 0;
+    padding: 1.15rem;
 }
 
 .dest-name {
     font-size: 1.05rem;
     font-weight: 700;
     line-height: 1.2;
-    color: #1f2937;
+    color: #fff;
 }
 
 .dest-loc {
-    font-size: 0.88rem;
-    color: #6b7280;
+    margin-top: 0.2rem;
+    font-size: 0.83rem;
+    color: rgba(255, 255, 255, 0.78);
 }
 
 .dest-dots {
@@ -308,10 +304,6 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
     background: #153b4f;
 }
 
-@media (max-width: 1280px) {
-    .dest-card { gap: 0.9rem; }
-}
-
 @media (max-width: 768px) {
     .dest-header { flex-direction: column; align-items: flex-start; }
 
@@ -323,11 +315,13 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
     .dest-carousel :deep(.dest-next) {
         display: none !important;
     }
+
+    .dest-card {
+        aspect-ratio: 16 / 10;
+    }
 }
 
 @media (max-width: 480px) {
-    .dest-card { padding: 0.65rem; }
-
     .dest-name {
         font-size: 1rem;
     }

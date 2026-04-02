@@ -617,7 +617,9 @@ class GatewayVehicleTransformer
             'luggageSmall' => isset($specs['luggage_small']) ? (string) $specs['luggage_small'] : null,
             'luggageMed' => isset($specs['luggage_medium']) ? (string) $specs['luggage_medium'] : null,
             'luggageLarge' => isset($specs['luggage_large']) ? (string) $specs['luggage_large'] : null,
-            'products' => $this->mapCanonicalProducts($products, $currency, $pricePerDay),
+            'products' => !empty($products)
+                ? $this->mapCanonicalProducts($products, $currency, $pricePerDay)
+                : [['type' => 'BAS', 'name' => 'Basic Package', 'total' => $totalPrice, 'price_per_day' => $pricePerDay, 'currency' => $currency]],
             'tdr' => $providerPayload['tdr'] ?? $totalPrice,
             'quoteid' => $providerPayload['quote_id'] ?? null,
             'rentalCode' => null,

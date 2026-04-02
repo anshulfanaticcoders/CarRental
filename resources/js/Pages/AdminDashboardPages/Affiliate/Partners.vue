@@ -7,7 +7,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
-import { Users, UserCheck, Clock, ShieldCheck, Search, Eye } from 'lucide-vue-next';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/Components/ui/alert-dialog';
+import { Users, UserCheck, Clock, ShieldCheck, Search, Eye, Trash2 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 
 const viewPartner = (id) => {
@@ -26,6 +36,9 @@ const search = ref(props.filters.search || '');
 const status = ref(props.filters.status || 'all');
 const verification = ref(props.filters.verification || 'all');
 const verifyingPartnerId = ref(null);
+const deletingPartnerId = ref(null);
+const partnerPendingDeletion = ref(null);
+const isDeleteDialogOpen = ref(false);
 
 const buildParams = () => ({
     search: search.value || undefined,
@@ -104,6 +117,35 @@ const verifyPartner = (id) => {
 
 const rejectPartner = (id) => {
     postPartnerAction('admin.affiliate.businesses.reject', id);
+};
+
+const openDeleteDialog = (partner) => {
+    partnerPendingDeletion.value = partner;
+    isDeleteDialogOpen.value = true;
+};
+
+const confirmDeletePartner = () => {
+    if (!partnerPendingDeletion.value) {
+        return;
+    }
+
+    const partnerId = partnerPendingDeletion.value.id;
+
+    router.delete(route('admin.affiliate.partners.destroy', { id: partnerId }), {
+        preserveScroll: true,
+        onStart: () => {
+            deletingPartnerId.value = partnerId;
+        },
+        onSuccess: () => {
+            isDeleteDialogOpen.value = false;
+            partnerPendingDeletion.value = null;
+            notifyFromFlash();
+        },
+        onError: handlePartnerActionError,
+        onFinish: () => {
+            deletingPartnerId.value = null;
+        },
+    });
 };
 </script>
 
@@ -216,6 +258,16 @@ const rejectPartner = (id) => {
                                         >
                                             Reject
                                         </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            class="h-8 px-2.5 text-red-600 border-red-200 hover:bg-red-50"
+                                            :disabled="deletingPartnerId === p.id"
+                                            @click="openDeleteDialog(p)"
+                                        >
+                                            <Trash2 class="w-3.5 h-3.5" />
+                                            <span class="ml-1">{{ deletingPartnerId === p.id ? 'Deleting...' : 'Delete' }}</span>
+                                        </Button>
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -249,5 +301,30 @@ const rejectPartner = (id) => {
                 </div>
             </div>
         </div>
+
+        <AlertDialog v-model:open="isDeleteDialogOpen">
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete affiliate?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will remove the affiliate from the admin dashboard and disable its QR/location surface.
+                        Commission and payout history will stay for audit purposes.
+                        <span v-if="partnerPendingDeletion" class="mt-2 block font-medium text-foreground">
+                            {{ partnerPendingDeletion.name }}
+                        </span>
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel @click="partnerPendingDeletion = null">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        class="bg-red-600 hover:bg-red-700"
+                        :disabled="!!deletingPartnerId"
+                        @click="confirmDeletePartner"
+                    >
+                        {{ deletingPartnerId ? 'Deleting...' : 'Delete Affiliate' }}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </AdminDashboardLayout>
 </template>

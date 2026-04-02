@@ -10,6 +10,7 @@ import { createSurpriceAdapter } from '../adapters/surpriceAdapter';
 import { createFavricaXdriveAdapter } from '../adapters/favricaXdriveAdapter';
 import { createGreenMotionAdapter } from '../adapters/greenMotionAdapter';
 import { createDefaultAdapter } from '../adapters/defaultAdapter';
+import { createClick2RentAdapter } from '../adapters/click2rentAdapter';
 
 /**
  * Factory composable that resolves the correct provider adapter based on vehicle.source.
@@ -34,6 +35,7 @@ export function useProviderAdapter(props, deps = {}) {
         isXDrive: computed(() => source.value === 'xdrive'),
         isEmr: computed(() => source.value === 'emr'),
         isGreenMotion: computed(() => source.value === 'greenmotion' || source.value === 'usave'),
+        isClick2Rent: computed(() => source.value === 'click2rent'),
     };
 
     // Create all adapters lazily — only the active one is used
@@ -51,6 +53,7 @@ export function useProviderAdapter(props, deps = {}) {
         emr: () => createFavricaXdriveAdapter(props, 'emr'),
         greenmotion: () => createGreenMotionAdapter(props),
         usave: () => createGreenMotionAdapter(props),
+        click2rent: () => createClick2RentAdapter(props),
     };
 
     // Eagerly resolve the adapter for the current source

@@ -130,6 +130,39 @@ class AdminAffiliateController extends Controller
         ]);
     }
 
+    public function destroy(Request $request, $id)
+    {
+        $business = AffiliateBusiness::with([
+            'businessModel',
+            'locations',
+            'qrCodes',
+            'childBusinesses:id,parent_business_id',
+        ])->findOrFail($id);
+
+        if ($business->childBusinesses->isNotEmpty()) {
+            return back()->with('error', 'Delete child affiliates first before deleting this affiliate.');
+        }
+
+        DB::transaction(function () use ($business) {
+            foreach ($business->qrCodes as $qrCode) {
+                $qrCode->delete();
+            }
+
+            foreach ($business->locations as $location) {
+                $location->delete();
+            }
+
+            if ($business->businessModel) {
+                $business->businessModel->delete();
+            }
+            $business->delete();
+        });
+
+        return redirect()
+            ->route('admin.affiliate.partners')
+            ->with('success', 'Affiliate deleted successfully.');
+    }
+
     public function commissions(Request $request)
     {
         $query = AffiliateCommission::with([

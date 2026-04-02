@@ -322,6 +322,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/affiliate/overview', [AdminAffiliateController::class, 'overview'])->name('admin.affiliate.overview');
     Route::get('/admin/affiliate/partners', [AdminAffiliateController::class, 'partners'])->name('admin.affiliate.partners');
     Route::get('/admin/affiliate/partners/{id}', [AdminAffiliateController::class, 'partnerDetail'])->name('admin.affiliate.partners.show');
+    Route::delete('/admin/affiliate/partners/{id}', [AdminAffiliateController::class, 'destroy'])->name('admin.affiliate.partners.destroy');
     Route::get('/admin/affiliate/commissions', [AdminAffiliateController::class, 'commissions'])->name('admin.affiliate.commissions');
     Route::patch('/admin/affiliate/commissions/{id}/status', [AdminAffiliateController::class, 'updateCommissionStatus'])->name('admin.affiliate.commissions.status.update');
 
