@@ -40,6 +40,7 @@ import {
   Target,
   Handshake,
   Megaphone,
+  Plug,
   LogOut,
 } from 'lucide-vue-next';
 import { onMounted, ref, computed, type Component } from 'vue';
@@ -128,6 +129,14 @@ const navGroups: NavGroup[] = [
           { title: 'Active', url: '/customer-bookings/confirmed' },
           { title: 'Completed', url: '/customer-bookings/completed' },
           { title: 'Cancelled', url: '/customer-bookings/cancelled' },
+        ],
+      },
+      {
+        title: 'Provider API',
+        url: '#',
+        icon: Plug,
+        items: [
+          { title: 'API Consumers', url: '/api-consumers' },
         ],
       },
     ],

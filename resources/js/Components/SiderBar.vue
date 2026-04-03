@@ -11,6 +11,7 @@ import dashboardIcon from "../../assets/vendorDashboarIcon.svg";
 import vehiclesIcon from "../../assets/vehicletypeIcon.svg";
 import clockIcon from "../../assets/clockIcon.svg";
 import dateblockingIcon from "../../assets/dateblockingIcon.svg";
+import globeIcon from "../../assets/globe.svg";
 import logoutIcon from '../../assets/logoutIcon.svg';
 import {
   AlertDialog,
@@ -145,6 +146,7 @@ const vendorMenus = [
 const vendorOtherLinks = [
   { name: _t('customerprofile', 'payment_history'), path: route('vendor.payments', { locale: usePage().props.locale }), icon: clockIcon },
   { name: _t('customerprofile', 'bookings'), path: route('bookings.index', { locale: usePage().props.locale }), icon: vehiclesIcon },
+  { name: 'External Bookings', path: route('vendor.external-bookings.index', { locale: usePage().props.locale }), icon: globeIcon },
   { name: _t('customerprofile', 'date_blocking'), path: route('vendor.blocking-dates.index', { locale: usePage().props.locale }), icon: dateblockingIcon },
   { name: _t('customerprofile', 'inbox'), path: route('messages.vendor.index', { locale: usePage().props.locale }), icon: inboxIcon, isInbox: true },
   { name: _t('customerprofile', 'customer_reviews'), path: route('vendor.reviews', { locale: usePage().props.locale }), icon: reviewsIcon },

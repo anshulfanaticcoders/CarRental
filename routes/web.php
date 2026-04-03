@@ -60,6 +60,7 @@ use App\Http\Controllers\Vendor\DamageProtectionController;
 use App\Http\Controllers\Vendor\VendorBookingController;
 use App\Http\Controllers\Vendor\VendorOverviewController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
+use App\Http\Controllers\Vendor\VendorExternalBookingController;
 use App\Http\Controllers\Vendor\VendorVehiclePlanController;
 use App\Http\Controllers\VendorBulkImageController;
 use App\Http\Controllers\VendorController;
@@ -330,6 +331,13 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/affiliate/payouts', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'index'])->name('admin.affiliate.payouts');
     Route::post('/admin/affiliate/payouts', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'createPayout'])->name('admin.affiliate.payouts.create');
     Route::post('/admin/affiliate/payouts/{payout}/mark-paid', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'markAsPaid'])->name('admin.affiliate.payouts.mark-paid');
+
+    // API Consumer Management
+    Route::resource('api-consumers', \App\Http\Controllers\Admin\ApiConsumerController::class)->names('admin.api-consumers');
+    Route::post('/api-consumers/{apiConsumer}/generate-key', [\App\Http\Controllers\Admin\ApiConsumerController::class, 'generateKey'])->name('admin.api-consumers.generate-key');
+    Route::post('/api-consumers/keys/{apiKey}/rotate', [\App\Http\Controllers\Admin\ApiConsumerController::class, 'rotateKey'])->name('admin.api-consumers.rotate-key');
+    Route::post('/api-consumers/keys/{apiKey}/revoke', [\App\Http\Controllers\Admin\ApiConsumerController::class, 'revokeKey'])->name('admin.api-consumers.revoke-key');
+    Route::patch('/api-consumers/{apiConsumer}/toggle-status', [\App\Http\Controllers\Admin\ApiConsumerController::class, 'toggleStatus'])->name('admin.api-consumers.toggle-status');
 });
 
 // Newsletter tracking (public signed routes)
@@ -730,6 +738,11 @@ Route::group([
         Route::post('/bulk-vehicle-images', [VendorBulkImageController::class, 'store'])->name('vendor.bulk-vehicle-images.store');
         Route::delete('/bulk-vehicle-images/{image}', [VendorBulkImageController::class, 'destroy'])->name('vendor.bulk-vehicle-images.destroy');
         Route::post('/bulk-vehicle-images/bulk-destroy', [VendorBulkImageController::class, 'bulkDestroy'])->name('vendor.bulk-vehicle-images.bulk-destroy');
+
+        // External Bookings (Provider API)
+        Route::get('/external-bookings', [VendorExternalBookingController::class, 'index'])->name('vendor.external-bookings.index');
+        Route::get('/external-bookings/{apiBooking}', [VendorExternalBookingController::class, 'show'])->name('vendor.external-bookings.show');
+        Route::patch('/external-bookings/{apiBooking}/status', [VendorExternalBookingController::class, 'updateStatus'])->name('vendor.external-bookings.update-status');
     });
 
 
