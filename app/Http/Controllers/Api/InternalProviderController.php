@@ -55,7 +55,7 @@ class InternalProviderController extends Controller
 
         $vehicles = Vehicle::whereIn('status', ['active', 'available'])
             ->where('full_vehicle_address', $locationVehicle->full_vehicle_address)
-            ->with(['vendor', 'vendor.vendorProfile', 'images', 'blockings', 'category'])
+            ->with(['vendor', 'vendor.vendorProfile', 'images', 'blockings', 'category', 'benefits', 'operatingHours', 'addons'])
             ->get();
 
         $available = $vehicles->filter(function ($vehicle) use ($pickupDate, $dropoffDate) {
@@ -91,22 +91,113 @@ class InternalProviderController extends Controller
             ? ($dropoffLocationVehicle->full_vehicle_address ?: $dropoffLocationVehicle->location)
             : $pickupLocationName;
 
+        // Get global insurance plans and addons
+        $globalPlans = \App\Models\Plan::all();
+        $globalAddons = \App\Models\BookingAddon::all();
+
         $results = $available->map(function ($vehicle) use (
-            $totalDays, $currency, $pickupLocationName, $dropoffLocationName
+            $totalDays, $currency, $pickupLocationName, $dropoffLocationName, $globalPlans, $globalAddons
         ) {
             $dailyRate = (float) $vehicle->price_per_day;
             $totalPrice = round($dailyRate * $totalDays, 2);
 
-            $primaryImage = $vehicle->images->first();
+            $primaryImage = $vehicle->images->sortBy('sort_order')->first();
             $image = $primaryImage ? ($primaryImage->image_url ?: $primaryImage->image_path) : null;
 
-            $images = $vehicle->images->map(function ($img) {
+            $images = $vehicle->images->sortBy('sort_order')->map(function ($img) {
                 return $img->image_url ?: $img->image_path;
             })->values()->toArray();
 
             $vendorName = $vehicle->vendor?->vendorProfile?->company_name
                 ?? $vehicle->vendor?->name
                 ?? 'Unknown';
+
+            // Parse features JSON
+            $features = [];
+            if ($vehicle->features) {
+                $decoded = is_string($vehicle->features) ? json_decode($vehicle->features, true) : $vehicle->features;
+                $features = is_array($decoded) ? $decoded : [];
+            }
+
+            // Benefits data (mileage, cancellation, driver age)
+            $benefits = $vehicle->benefits;
+            $mileagePolicy = [
+                'type' => ($benefits && $benefits->limited_km_per_day) ? 'limited' : 'unlimited',
+                'km_per_day' => $benefits ? (float) $benefits->limited_km_per_day_range : null,
+                'price_per_extra_km' => $benefits ? (float) $benefits->price_per_km_per_day : null,
+            ];
+
+            $cancellationPolicy = [
+                'free_cancellation' => $benefits ? (bool) $benefits->cancellation_available_per_day : false,
+                'cancel_before_days' => $benefits ? (int) $benefits->cancellation_available_per_day_date : 0,
+                'cancellation_fee' => $benefits ? (float) ($benefits->cancellation_fee_per_day ?? 0) : 0,
+            ];
+
+            $minimumDriverAge = $benefits ? (int) $benefits->minimum_driver_age : 18;
+
+            // Operating hours
+            $operatingHours = $vehicle->operatingHours->map(fn ($h) => [
+                'day' => (int) $h->day_of_week,
+                'is_open' => (bool) $h->is_open,
+                'open_time' => $h->open_time,
+                'close_time' => $h->close_time,
+            ])->values()->toArray();
+
+            // Payment methods
+            $paymentMethods = [];
+            if ($vehicle->payment_method) {
+                $decoded = is_string($vehicle->payment_method) ? json_decode($vehicle->payment_method, true) : $vehicle->payment_method;
+                $paymentMethods = is_array($decoded) ? $decoded : [];
+            }
+
+            // Insurance plans (global + vendor-specific)
+            $insurancePlans = $globalPlans->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->plan_type,
+                'daily_rate' => (float) $p->plan_value,
+                'total_price' => round((float) $p->plan_value * $totalDays, 2),
+                'description' => $p->plan_description,
+                'features' => is_string($p->features) ? json_decode($p->features, true) : ($p->features ?? []),
+            ])->values()->toArray();
+
+            // Vehicle-specific vendor plans (if any)
+            $vendorPlans = \App\Models\VendorVehiclePlan::where('vendor_id', $vehicle->vendor_id)
+                ->where('vehicle_id', $vehicle->id)
+                ->get();
+            foreach ($vendorPlans as $vp) {
+                $insurancePlans[] = [
+                    'id' => $vp->id,
+                    'name' => $vp->plan_type,
+                    'daily_rate' => (float) $vp->price,
+                    'total_price' => round((float) $vp->price * $totalDays, 2),
+                    'description' => $vp->plan_description,
+                    'features' => is_string($vp->features) ? json_decode($vp->features, true) : ($vp->features ?? []),
+                ];
+            }
+
+            // Extras (global + vehicle-specific addons)
+            $extras = $globalAddons->map(fn ($a) => [
+                'id' => $a->id,
+                'name' => $a->extra_name,
+                'type' => $a->extra_type,
+                'daily_rate' => (float) $a->price,
+                'total_price' => round((float) $a->price * $totalDays, 2),
+                'description' => $a->description,
+                'max_quantity' => (int) ($a->quantity ?: 1),
+            ])->values()->toArray();
+
+            // Vehicle-specific addons
+            foreach ($vehicle->addons as $addon) {
+                $extras[] = [
+                    'id' => $addon->id,
+                    'name' => $addon->extra_name,
+                    'type' => $addon->extra_type,
+                    'daily_rate' => (float) $addon->price,
+                    'total_price' => round((float) $addon->price * $totalDays, 2),
+                    'description' => $addon->description,
+                    'max_quantity' => (int) ($addon->quantity ?: 1),
+                ];
+            }
 
             return [
                 'id' => $vehicle->id,
@@ -117,21 +208,37 @@ class InternalProviderController extends Controller
                 'category' => $vehicle->category?->name ?? 'Standard',
                 'transmission' => $vehicle->transmission,
                 'fuel_type' => $vehicle->fuel,
+                'fuel_policy' => $vehicle->fuel_policy ?? 'full_to_full',
                 'seats' => (int) $vehicle->seating_capacity,
                 'doors' => (int) $vehicle->number_of_doors,
                 'bags' => (int) $vehicle->luggage_capacity,
                 'air_conditioning' => (bool) $vehicle->air_conditioning,
+                'color' => $vehicle->color,
                 'image' => $image,
                 'images' => $images,
                 'daily_rate' => $dailyRate,
                 'total_price' => $totalPrice,
                 'currency' => $currency,
                 'total_days' => $totalDays,
+                'security_deposit' => (float) ($vehicle->security_deposit ?? 0),
                 'pickup_location' => $pickupLocationName,
                 'dropoff_location' => $dropoffLocationName,
+                'location_type' => $vehicle->location_type,
+                'location_phone' => $vehicle->location_phone,
+                'pickup_instructions' => $vehicle->pickup_instructions,
+                'dropoff_instructions' => $vehicle->dropoff_instructions,
                 'vendor_name' => $vendorName,
-                'features' => [],
-                'mileage_policy' => $vehicle->limited_km ? $vehicle->limited_km . ' km' : 'unlimited',
+                'features' => $features,
+                'mileage_policy' => $mileagePolicy,
+                'cancellation_policy' => $cancellationPolicy,
+                'minimum_driver_age' => $minimumDriverAge,
+                'operating_hours' => $operatingHours,
+                'payment_methods' => $paymentMethods,
+                'insurance_plans' => $insurancePlans,
+                'extras' => $extras,
+                'guidelines' => $vehicle->guidelines,
+                'terms_policy' => $vehicle->terms_policy,
+                'rental_policy' => $vehicle->rental_policy,
             ];
         })->values();
 

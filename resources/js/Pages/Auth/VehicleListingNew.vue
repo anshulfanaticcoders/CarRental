@@ -157,6 +157,17 @@
                             </Select>
                         </div>
                         <div class="vln-field">
+                            <label class="vln-label">Fuel Policy</label>
+                            <Select v-model="form.fuel_policy">
+                                <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select fuel policy" /></SelectTrigger>
+                                <SelectContent><SelectGroup>
+                                    <SelectItem value="full_to_full">Full-to-Full</SelectItem>
+                                    <SelectItem value="same_to_same">Same-to-Same</SelectItem>
+                                    <SelectItem value="pre_purchase">Pre-Purchase</SelectItem>
+                                </SelectGroup></SelectContent>
+                            </Select>
+                        </div>
+                        <div class="vln-field">
                             <label class="vln-label">Seats</label>
                             <Select v-model="form.seating_capacity">
                                 <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select" /></SelectTrigger>
@@ -364,6 +375,19 @@
                         </Select>
                         <span v-if="errors.location_type" class="vln-error"><AlertCircle :size="13" /> {{ errors.location_type }}</span>
                     </div>
+                    <div class="vln-field">
+                        <label class="vln-label">Location Phone</label>
+                        <input class="vln-input" type="tel" v-model="form.location_phone" placeholder="+32 2 123 4567" />
+                        <span class="vln-hint">Contact number for the pickup location</span>
+                    </div>
+                    <div class="vln-field full">
+                        <label class="vln-label">Pickup Instructions</label>
+                        <textarea class="vln-textarea" v-model="form.pickup_instructions" rows="3" placeholder="e.g., Meet at desk 3 in Terminal 2, bring your booking confirmation and ID..."></textarea>
+                    </div>
+                    <div class="vln-field full">
+                        <label class="vln-label">Dropoff Instructions</label>
+                        <textarea class="vln-textarea" v-model="form.dropoff_instructions" rows="3" placeholder="e.g., Return the car to parking lot B, leave keys in the glove box..."></textarea>
+                    </div>
                 </div>
             </section>
 
@@ -448,6 +472,28 @@
                     </div>
                 </div>
 
+                <!-- Rental Policy -->
+                <div class="vln-field-group">
+                    <div class="vln-fg-header">
+                        <div class="vln-fg-icon"><FileText :size="18" /></div>
+                        <div><div class="vln-fg-title">Rental Policy</div><div class="vln-fg-sub">Detailed rental terms — damage policy, late return fees, fuel charges, insurance terms, etc.</div></div>
+                    </div>
+                    <div class="vln-field full">
+                        <Editor
+                            v-model="form.rental_policy"
+                            api-key="l37l3e84opgzd4x6rdhlugh30o2l5mh5f5vvq3mieu4yn1j1"
+                            :init="{
+                                height: 350,
+                                menubar: false,
+                                plugins: 'lists link',
+                                toolbar: 'undo redo | bold italic underline | bullist numlist | link | removeformat',
+                                placeholder: 'Write your detailed rental policy here...',
+                            }"
+                        />
+                        <span class="vln-hint">This policy will be shown to customers before booking. Include all important terms.</span>
+                    </div>
+                </div>
+
                 <!-- Operating Hours -->
                 <div class="vln-field-group">
                     <div class="vln-fg-header">
@@ -468,15 +514,11 @@
                                 <span class="vln-hour-day" :class="{ muted: !day.is_open }">{{ day.day_name }}</span>
                             </div>
                             <div v-if="day.is_open" class="vln-hour-right">
-                                <Clock :size="14" class="text-gray-400 shrink-0" />
                                 <input type="time" v-model="day.open_time" class="vln-time-input" />
-                                <span class="text-gray-400 text-xs">to</span>
+                                <span class="vln-hour-sep">–</span>
                                 <input type="time" v-model="day.close_time" class="vln-time-input" />
                             </div>
                             <span v-else class="text-sm text-gray-400 italic ml-auto">Closed</span>
-                            <span v-if="day.is_open && day.open_time && day.close_time && day.close_time <= day.open_time" class="vln-error text-xs ml-2">
-                                <AlertCircle :size="12" /> Close must be after open
-                            </span>
                         </div>
                     </div>
                     <div v-if="operatingHoursError" class="vln-error mt-3"><AlertCircle :size="14" /> {{ operatingHoursError }}</div>
@@ -532,29 +574,65 @@
                     </div>
                 </div>
 
-                <!-- Cancellation -->
+                <!-- Cancellation Policy -->
                 <div class="vln-field-group">
                     <div class="vln-fg-header">
                         <div class="vln-fg-icon"><X :size="18" /></div>
-                        <div><div class="vln-fg-title">Cancellation Policy</div><div class="vln-fg-sub">Set notice periods for cancellation</div></div>
+                        <div><div class="vln-fg-title">Cancellation Policy</div><div class="vln-fg-sub">Define if and how customers can cancel</div></div>
                     </div>
-                    <div class="space-y-3">
-                        <div v-if="selectedTypes.day" class="vln-sub-card">
-                            <label class="vln-check-label"><input type="checkbox" v-model="form.cancellation_available_per_day" class="vln-checkbox" /> Allow daily cancellation</label>
-                            <div v-if="form.cancellation_available_per_day" class="vln-grid mt-3">
-                                <div class="vln-field"><label class="vln-label">Days prior notice</label><input class="vln-input" type="number" v-model="form.cancellation_available_per_day_date" /></div>
+
+                    <!-- Cancellation toggle -->
+                    <div class="vln-sub-card">
+                        <label class="vln-check-label">
+                            <input type="checkbox" v-model="form.cancellation_available_per_day" class="vln-checkbox" />
+                            Allow cancellation
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-7">If unchecked, bookings are non-refundable and cannot be cancelled.</p>
+
+                        <div v-if="form.cancellation_available_per_day" class="mt-4 space-y-4">
+                            <!-- Free cancellation window -->
+                            <div class="vln-cancel-rule">
+                                <div class="vln-cancel-rule-header">
+                                    <ShieldCheck :size="16" class="text-emerald-600" />
+                                    <span class="text-sm font-semibold text-gray-800">Free Cancellation Window</span>
+                                </div>
+                                <div class="vln-grid mt-2">
+                                    <div class="vln-field">
+                                        <label class="vln-label">Cancel free if before</label>
+                                        <div class="vln-input-suffix">
+                                            <input class="vln-input" type="number" v-model="form.cancellation_available_per_day_date" min="0" placeholder="e.g. 2" />
+                                            <span class="vln-suffix">days before pickup</span>
+                                        </div>
+                                        <span class="vln-hint">Customer gets full refund if they cancel before this deadline</span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div v-if="selectedTypes.week" class="vln-sub-card">
-                            <label class="vln-check-label"><input type="checkbox" v-model="form.cancellation_available_per_week" class="vln-checkbox" /> Allow weekly cancellation</label>
-                            <div v-if="form.cancellation_available_per_week" class="vln-grid mt-3">
-                                <div class="vln-field"><label class="vln-label">Days prior notice</label><input class="vln-input" type="number" v-model="form.cancellation_available_per_week_date" /></div>
+
+                            <!-- Late cancellation fee -->
+                            <div class="vln-cancel-rule">
+                                <div class="vln-cancel-rule-header">
+                                    <AlertCircle :size="16" class="text-amber-600" />
+                                    <span class="text-sm font-semibold text-gray-800">Late Cancellation Fee</span>
+                                </div>
+                                <div class="vln-grid mt-2">
+                                    <div class="vln-field">
+                                        <label class="vln-label">Cancellation fee</label>
+                                        <div class="vln-input-suffix">
+                                            <input class="vln-input" type="number" v-model="form.cancellation_fee_per_day" min="0" step="0.01" placeholder="e.g. 50.00" />
+                                            <span class="vln-suffix">{{ currencyCode }}</span>
+                                        </div>
+                                        <span class="vln-hint">Charged if customer cancels after the free window or doesn't show up</span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div v-if="selectedTypes.month" class="vln-sub-card">
-                            <label class="vln-check-label"><input type="checkbox" v-model="form.cancellation_available_per_month" class="vln-checkbox" /> Allow monthly cancellation</label>
-                            <div v-if="form.cancellation_available_per_month" class="vln-grid mt-3">
-                                <div class="vln-field"><label class="vln-label">Days prior notice</label><input class="vln-input" type="number" v-model="form.cancellation_available_per_month_date" /></div>
+
+                            <!-- Summary -->
+                            <div class="vln-cancel-summary" v-if="form.cancellation_available_per_day_date">
+                                <p class="text-xs text-gray-600">
+                                    <strong>Summary:</strong>
+                                    Cancel <strong>{{ form.cancellation_available_per_day_date }}+ days</strong> before pickup = <strong class="text-emerald-700">Free</strong>.
+                                    Cancel later = <strong class="text-amber-700">{{ form.cancellation_fee_per_day ? currencyCode + ' ' + form.cancellation_fee_per_day + ' fee' : 'No refund' }}</strong>.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -725,6 +803,7 @@ import Select from "@/Components/ui/select/Select.vue";
 import SelectItem from "@/Components/ui/select/SelectItem.vue";
 import { SelectContent, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import { usePage } from '@inertiajs/vue3';
+import Editor from '@tinymce/tinymce-vue';
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import vehicleColorsFromJson from '../../data/colors.json';
@@ -734,7 +813,7 @@ import {
     HelpCircle, X, Upload, CreditCard, Banknote, FileText, Gauge, Star,
     Info, Zap, Plus, Snowflake, Navigation, Bluetooth, Video, KeyRound,
     Usb, Sun, Armchair, ParkingCircle, Gauge as CruiseIcon, Baby, Wifi,
-    CircleDot, Lock, Lightbulb, Music, Wind, ThermometerSun, Eye
+    CircleDot, Lock, Lightbulb, Music, Wind, ThermometerSun, Eye, ShieldCheck
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -796,12 +875,13 @@ const sidebarContent = {
 // ═══ Form ═══
 const form = useForm({
     category_id: null, brand: "", model: "", color: "", mileage: 0,
-    transmission: "manual", fuel: "petrol", seating_capacity: 1,
+    transmission: "manual", fuel: "petrol", fuel_policy: "full_to_full", seating_capacity: 1,
     number_of_doors: 2, luggage_capacity: 1, horsepower: 70, co2: "",
     location: "", location_type: "", latitude: null, longitude: null,
     city: "", state: "", country: "", status: "available",
     features: [], featured: false, security_deposit: 0,
     payment_method: [], guidelines: "", terms_policy: "",
+    rental_policy: "", pickup_instructions: "", dropoff_instructions: "", location_phone: "",
     price_per_day: null, price_per_week: null, price_per_month: null,
     weekly_discount: null, monthly_discount: null, preferred_price_type: 'day',
     limited_km: false, price_per_km: null, cancellation_available: false,
@@ -822,7 +902,7 @@ const form = useForm({
     limited_km_per_day: false, limited_km_per_week: false, limited_km_per_month: false,
     limited_km_per_day_range: null, limited_km_per_week_range: null, limited_km_per_month_range: null,
     cancellation_available_per_day: false, cancellation_available_per_week: false, cancellation_available_per_month: false,
-    cancellation_available_per_day_date: null, cancellation_available_per_week_date: null, cancellation_available_per_month_date: null,
+    cancellation_available_per_day_date: null, cancellation_fee_per_day: null, cancellation_available_per_week_date: null, cancellation_available_per_month_date: null,
     price_per_km_per_day: null, price_per_km_per_week: null, price_per_km_per_month: null,
     minimum_driver_age: null, selected_plans: [],
     custom_addons: customAddons.value, full_vehicle_address: null,
@@ -1112,7 +1192,19 @@ watch(isLoading, (v) => { document.body.style.overflow = v ? 'hidden' : ''; });
 Object.keys(errors).forEach(k => { watch(() => form[k], () => { if (errors[k]) errors[k] = ''; }); });
 watch(customAddons, () => { if (errors.custom_addons) errors.custom_addons = ''; }, { deep: true });
 
-onMounted(() => { fetchCategories(); fetchCountries(); });
+onMounted(() => {
+    fetchCategories(); fetchCountries();
+    if (props.vehicle) {
+        form.fuel_policy = props.vehicle.fuel_policy || 'full_to_full';
+        form.rental_policy = props.vehicle.rental_policy || '';
+        form.pickup_instructions = props.vehicle.pickup_instructions || '';
+        form.dropoff_instructions = props.vehicle.dropoff_instructions || '';
+        form.location_phone = props.vehicle.location_phone || '';
+        if (props.vehicle.benefits) {
+            form.cancellation_fee_per_day = props.vehicle.benefits.cancellation_fee_per_day || null;
+        }
+    }
+});
 onUnmounted(() => { document.body.style.overflow = ''; });
 </script>
 
@@ -1198,6 +1290,10 @@ onUnmounted(() => { document.body.style.overflow = ''; });
 .vln-textarea:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.08); }
 .vln-select-trigger { height: 42px !important; border: 1.5px solid #e2e8f0 !important; border-radius: 8px !important; padding: 0 0.8rem !important; }
 .vln-error { display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: #ef4444; margin-top: 0.2rem; }
+.vln-hint { font-size: 0.75rem; color: #64748b; margin-top: 0.2rem; }
+.vln-cancel-rule { padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0; background: #f8fafc; }
+.vln-cancel-rule-header { display: flex; align-items: center; gap: 0.5rem; }
+.vln-cancel-summary { padding: 0.75rem 1rem; border-radius: 8px; background: #f0f9ff; border: 1px solid #bae6fd; }
 
 /* ═══ CATEGORIES ═══ */
 .vln-category-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
@@ -1239,17 +1335,18 @@ onUnmounted(() => { document.body.style.overflow = ''; });
 /* ═══ OPERATING HOURS ═══ */
 .vln-link-btn { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; font-weight: 600; color: #0891b2; background: none; border: none; cursor: pointer; transition: opacity 0.2s; }
 .vln-link-btn:hover { opacity: 0.7; }
-.vln-hour-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.85rem; border-radius: 10px; border: 1px solid #f1f5f9; background: #f8fafc; transition: all 0.2s; flex-wrap: wrap; }
+.vln-hour-row { display: grid; grid-template-columns: 120px 1fr; align-items: center; padding: 0.55rem 0.75rem; border-radius: 10px; border: 1px solid #f1f5f9; background: #f8fafc; transition: all 0.2s; }
 .vln-hour-row.open { background: #fff; border-color: #e2e8f0; }
-.vln-hour-left { display: flex; align-items: center; gap: 0.65rem; width: 140px; flex-shrink: 0; }
-.vln-hour-right { display: flex; align-items: center; gap: 0.5rem; flex: 1; }
-.vln-hour-day { font-size: 0.85rem; font-weight: 600; color: #0b1b26; }
-.vln-hour-day.muted { color: #94a3b8; }
-.vln-toggle { position: relative; width: 38px; height: 20px; border-radius: 10px; background: #cbd5e1; border: none; cursor: pointer; transition: background 0.25s; flex-shrink: 0; }
+.vln-hour-left { display: flex; align-items: center; gap: 0.5rem; }
+.vln-hour-right { display: flex; align-items: center; gap: 0.3rem; justify-content: flex-end; min-width: 0; }
+.vln-hour-sep { color: #94a3b8; font-size: 0.8rem; flex-shrink: 0; }
+.vln-hour-day { font-size: 0.8rem; font-weight: 600; color: #0b1b26; }
+.vln-hour-day.muted { color: #94a3b8; font-weight: 500; }
+.vln-toggle { position: relative; width: 34px; height: 18px; border-radius: 9px; background: #cbd5e1; border: none; cursor: pointer; transition: background 0.25s cubic-bezier(0.22,1,0.36,1); flex-shrink: 0; }
 .vln-toggle.on { background: #0891b2; }
-.vln-toggle-dot { position: absolute; top: 2.5px; left: 2.5px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.15); transition: transform 0.25s; display: block; }
-.vln-toggle.on .vln-toggle-dot { transform: translateX(18px); }
-.vln-time-input { width: 100px; height: 36px; padding: 0 0.5rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font: inherit; font-size: 0.82rem; outline: none; transition: all 0.2s; }
+.vln-toggle-dot { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.15); transition: transform 0.25s cubic-bezier(0.22,1,0.36,1); display: block; }
+.vln-toggle.on .vln-toggle-dot { transform: translateX(16px); }
+.vln-time-input { min-width: 0; flex: 1; max-width: 90px; height: 32px; padding: 0 0.35rem; border: 1.5px solid #e2e8f0; border-radius: 7px; font: inherit; font-size: 0.78rem; outline: none; transition: border-color 0.2s; background: #fff; }
 .vln-time-input:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.08); }
 
 /* ═══ PAYMENT ═══ */
@@ -1354,9 +1451,9 @@ onUnmounted(() => { document.body.style.overflow = ''; });
     .vln-action-buttons { width: 100%; }
     .vln-btn-back, .vln-btn-next, .vln-btn-submit { flex: 1; justify-content: center; }
     .vln-step-label { display: none; }
-    .vln-hour-left { width: auto; }
-    .vln-hour-row { gap: 0.5rem; }
-    .vln-hour-right { width: 100%; }
-    .vln-time-input { flex: 1; min-width: 0; }
+    .vln-hour-row { flex-wrap: wrap; gap: 0.5rem; }
+    .vln-hour-left { min-width: auto; }
+    .vln-hour-right { width: 100%; margin-left: 0; }
+    .vln-time-input { flex: 1; min-width: 80px; }
 }
 </style>

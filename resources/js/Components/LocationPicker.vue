@@ -468,8 +468,9 @@ defineExpose({ openLocationDialog });
     </div>
     
     <!-- New Location Picker Popup -->
-    <div v-if="showLocationPickerPopup" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[1000]">
-      <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl">
+    <Teleport to="body">
+    <div v-if="showLocationPickerPopup" class="lp-overlay">
+      <div class="lp-modal">
         <!-- Step 1: Location Details Form -->
         <div v-if="currentPopupStep === 1">
           <div class="flex justify-between items-center mb-4">
@@ -594,6 +595,7 @@ defineExpose({ openLocationDialog });
         </div>
       </div>
     </div>
+    </Teleport>
 
     <!-- Display Final Selected Location (Readonly) -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 border-t pt-4">
@@ -630,20 +632,30 @@ defineExpose({ openLocationDialog });
   </div>
 </template>
 
-<style scoped>
-/* Ensure map has a good cursor */
-/* The mapRef div itself might not be directly styled for cursor if events are on mapInstance */
-.leaflet-container {
-  cursor: pointer !important; /* Or crosshair, etc. */
-}
-
-.fixed {
+<style>
+/* LocationPicker modal — NOT scoped because Teleport moves it to <body> */
+.lp-overlay {
   position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
 }
-.inset-0 {
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+.lp-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+.leaflet-container {
+  cursor: pointer !important;
 }
 </style>
