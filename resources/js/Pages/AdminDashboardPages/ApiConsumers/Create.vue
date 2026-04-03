@@ -60,6 +60,21 @@
                                 </div>
 
                                 <div>
+                                    <label for="mode" class="block text-sm font-medium text-gray-700 mb-2">Mode <span class="text-red-500">*</span></label>
+                                    <Select v-model="form.mode">
+                                        <SelectTrigger class="w-full">
+                                            <SelectValue placeholder="Select mode" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="sandbox">Sandbox (testing — no real bookings)</SelectItem>
+                                            <SelectItem value="live">Live (real bookings)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p class="mt-1 text-xs text-gray-500">Start with Sandbox. Switch to Live when integration is tested.</p>
+                                    <p v-if="form.errors.mode" class="mt-1 text-sm text-red-600">{{ form.errors.mode }}</p>
+                                </div>
+
+                                <div>
                                     <label for="rate_limit" class="block text-sm font-medium text-gray-700 mb-2">Rate Limit (req/min)</label>
                                     <Input id="rate_limit" v-model.number="form.rate_limit" type="number" min="1" class="w-full" />
                                     <p class="mt-1 text-xs text-gray-500">Default for {{ form.plan }}: {{ defaultRateLimit[form.plan] }} req/min</p>
@@ -123,6 +138,7 @@ const form = useForm({
     contact_phone: '',
     company_url: '',
     plan: 'basic',
+    mode: 'sandbox',
     rate_limit: props.defaultRateLimit?.basic ?? 60,
     notes: '',
 });

@@ -17,6 +17,7 @@ class ApiConsumer extends Model
         'contact_phone',
         'company_url',
         'status',
+        'mode',
         'plan',
         'rate_limit',
         'notes',
@@ -44,6 +45,16 @@ class ApiConsumer extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function isSandbox(): bool
+    {
+        return $this->mode === 'sandbox';
+    }
+
+    public function isLive(): bool
+    {
+        return $this->mode === 'live';
     }
 
     public function routeNotificationForMail(): string

@@ -34,6 +34,7 @@ class ApiBooking extends Model
         'total_amount',
         'currency',
         'status',
+        'is_test',
         'cancellation_reason',
         'cancelled_at',
         'flight_number',
@@ -51,6 +52,7 @@ class ApiBooking extends Model
         'total_amount' => 'decimal:2',
         'driver_age' => 'integer',
         'total_days' => 'integer',
+        'is_test' => 'boolean',
     ];
 
     public function consumer(): BelongsTo

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Vendor;
 use App\Http\Controllers\Controller;
 use App\Models\ApiBooking;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 
 class VendorExternalBookingController extends Controller
@@ -17,6 +19,7 @@ class VendorExternalBookingController extends Controller
 
         $bookings = ApiBooking::with(['consumer', 'vehicle'])
             ->whereHas('vehicle', fn($q) => $q->where('vendor_id', $vendorId))
+            ->where('is_test', false)
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('booking_number', 'like', '%' . $search . '%')
@@ -66,6 +69,19 @@ class VendorExternalBookingController extends Controller
         ]);
 
         $apiBooking->update(['status' => $validated['status']]);
+
+        // When vendor confirms — send confirmation email to the driver
+        if ($validated['status'] === 'confirmed') {
+            try {
+                Notification::route('mail', $apiBooking->driver_email)
+                    ->notify(new \App\Notifications\ApiBooking\ApiBookingCreatedDriverNotification($apiBooking));
+            } catch (\Exception $e) {
+                Log::warning('Failed to send driver confirmation email', [
+                    'booking_number' => $apiBooking->booking_number,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return redirect()->back()->with('success', 'Booking status updated successfully.');
     }

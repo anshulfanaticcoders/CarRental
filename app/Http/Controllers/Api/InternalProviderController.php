@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ApiBooking;
 use App\Models\ApiBookingExtra;
+use App\Models\ApiConsumer;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VendorVehicleAddon;
 use App\Models\VendorVehiclePlan;
@@ -13,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class InternalProviderController extends Controller
 {
@@ -74,6 +77,7 @@ class InternalProviderController extends Controller
 
             $hasApiBooking = ApiBooking::where('vehicle_id', $vehicle->id)
                 ->whereNotIn('status', ['cancelled'])
+                ->where('is_test', false)
                 ->where(function ($q) use ($pickupDate, $dropoffDate) {
                     $q->where('pickup_date', '<=', $dropoffDate)
                       ->where('return_date', '>=', $pickupDate);
@@ -244,6 +248,7 @@ class InternalProviderController extends Controller
 
         $hasApiBooking = ApiBooking::where('vehicle_id', $vehicle->id)
             ->whereNotIn('status', ['cancelled'])
+            ->where('is_test', false)
             ->where(function ($q) use ($pickupDate, $dropoffDate) {
                 $q->where('pickup_date', '<=', $dropoffDate)
                   ->where('return_date', '>=', $pickupDate);
@@ -298,6 +303,10 @@ class InternalProviderController extends Controller
         DB::beginTransaction();
 
         try {
+            // Check if consumer is in sandbox mode
+            $consumer = ApiConsumer::find($validated['api_consumer_id']);
+            $isSandbox = $consumer && $consumer->isSandbox();
+
             $booking = ApiBooking::create([
                 'booking_number' => ApiBooking::generateBookingNumber(),
                 'api_consumer_id' => $validated['api_consumer_id'],
@@ -323,7 +332,8 @@ class InternalProviderController extends Controller
                 'extras_total' => $extrasTotal,
                 'total_amount' => $totalAmount,
                 'currency' => 'EUR',
-                'status' => 'confirmed',
+                'status' => 'pending',
+                'is_test' => $isSandbox,
                 'flight_number' => $validated['flight_number'] ?? null,
                 'special_requests' => $validated['special_requests'] ?? null,
                 'insurance_id' => $validated['insurance_id'] ?? null,
@@ -338,6 +348,23 @@ class InternalProviderController extends Controller
             DB::commit();
 
             $booking->load('extras');
+
+            // Notify vendor only — driver gets email when vendor confirms
+            // Skip notifications for sandbox/test bookings
+            if (!$isSandbox) {
+                try {
+                    $vendor = $vehicle->vendor_id ? User::find($vehicle->vendor_id) : null;
+
+                    if ($vendor && $consumer) {
+                        $vendor->notify(new \App\Notifications\ApiBooking\ApiBookingCreatedVendorNotification($booking, $consumer));
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send API booking creation notifications', [
+                        'booking_number' => $booking->booking_number,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             return response()->json([
                 'data' => [
@@ -513,6 +540,24 @@ class InternalProviderController extends Controller
             'cancellation_reason' => $request->input('reason'),
             'cancelled_at' => now(),
         ]);
+
+        // Send notifications
+        try {
+            $vehicle = Vehicle::find($booking->vehicle_id);
+            $vendor = $vehicle && $vehicle->vendor_id ? User::find($vehicle->vendor_id) : null;
+
+            Notification::route('mail', $booking->driver_email)
+                ->notify(new \App\Notifications\ApiBooking\ApiBookingCancelledDriverNotification($booking));
+
+            if ($vendor) {
+                $vendor->notify(new \App\Notifications\ApiBooking\ApiBookingCancelledVendorNotification($booking));
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to send API booking cancellation notifications', [
+                'booking_number' => $booking->booking_number,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return response()->json([
             'data' => [

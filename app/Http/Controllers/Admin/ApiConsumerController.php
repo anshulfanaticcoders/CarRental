@@ -53,6 +53,7 @@ class ApiConsumerController extends Controller
             'contact_phone' => 'nullable|max:50',
             'company_url' => 'nullable|url|max:255',
             'plan' => 'required|in:basic,premium,enterprise',
+            'mode' => 'required|in:sandbox,live',
             'rate_limit' => 'required|integer|min:1',
             'notes' => 'nullable',
         ]);
@@ -109,6 +110,7 @@ class ApiConsumerController extends Controller
             'contact_phone' => 'nullable|max:50',
             'company_url' => 'nullable|url|max:255',
             'plan' => 'required|in:basic,premium,enterprise',
+            'mode' => 'required|in:sandbox,live',
             'rate_limit' => 'required|integer|min:1',
             'notes' => 'nullable',
         ]);

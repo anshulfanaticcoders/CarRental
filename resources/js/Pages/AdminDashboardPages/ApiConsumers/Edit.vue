@@ -60,6 +60,20 @@
                                 </div>
 
                                 <div>
+                                    <label for="mode" class="block text-sm font-medium text-gray-700 mb-2">Mode <span class="text-red-500">*</span></label>
+                                    <Select v-model="form.mode">
+                                        <SelectTrigger class="w-full">
+                                            <SelectValue placeholder="Select mode" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="sandbox">Sandbox (testing)</SelectItem>
+                                            <SelectItem value="live">Live (real bookings)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p v-if="form.errors.mode" class="mt-1 text-sm text-red-600">{{ form.errors.mode }}</p>
+                                </div>
+
+                                <div>
                                     <label for="rate_limit" class="block text-sm font-medium text-gray-700 mb-2">Rate Limit (req/min)</label>
                                     <Input id="rate_limit" v-model.number="form.rate_limit" type="number" min="1" class="w-full" />
                                     <p class="mt-1 text-xs text-gray-500">Default for {{ form.plan }}: {{ defaultRateLimit[form.plan] }} req/min</p>
@@ -124,6 +138,7 @@ const form = useForm({
     contact_phone: props.consumer.contact_phone ?? '',
     company_url: props.consumer.company_url ?? '',
     plan: props.consumer.plan,
+    mode: props.consumer.mode ?? 'sandbox',
     rate_limit: props.consumer.rate_limit,
     notes: props.consumer.notes ?? '',
 });

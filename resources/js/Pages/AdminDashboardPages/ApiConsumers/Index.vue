@@ -23,6 +23,7 @@
                                 <TableHead>Contact</TableHead>
                                 <TableHead class="w-28">Plan</TableHead>
                                 <TableHead class="w-28">Status</TableHead>
+                                <TableHead class="w-28">Mode</TableHead>
                                 <TableHead class="w-28 text-center">Active Keys</TableHead>
                                 <TableHead class="w-28 text-right">Requests</TableHead>
                                 <TableHead class="w-36">Last Active</TableHead>
@@ -42,6 +43,9 @@
                                 <TableCell>
                                     <Badge :class="statusBadgeClass(consumer.status)">{{ consumer.status }}</Badge>
                                 </TableCell>
+                                <TableCell>
+                                    <Badge :class="consumer.mode === 'sandbox' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'">{{ consumer.mode }}</Badge>
+                                </TableCell>
                                 <TableCell class="text-center">{{ consumer.active_keys_count }}</TableCell>
                                 <TableCell class="text-right">{{ consumer.total_requests.toLocaleString() }}</TableCell>
                                 <TableCell>{{ formatRelative(consumer.api_keys_max_last_used_at) }}</TableCell>
@@ -57,7 +61,7 @@
                                 </TableCell>
                             </TableRow>
                             <TableRow v-if="consumers.data.length === 0">
-                                <TableCell colspan="8" class="text-center py-8 text-gray-500">No API consumers found.</TableCell>
+                                <TableCell colspan="9" class="text-center py-8 text-gray-500">No API consumers found.</TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>

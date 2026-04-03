@@ -137,6 +137,7 @@ const navGroups: NavGroup[] = [
         icon: Plug,
         items: [
           { title: 'API Consumers', url: '/api-consumers' },
+          { title: 'External Bookings', url: '/external-bookings' },
         ],
       },
     ],

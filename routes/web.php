@@ -338,6 +338,13 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/api-consumers/keys/{apiKey}/rotate', [\App\Http\Controllers\Admin\ApiConsumerController::class, 'rotateKey'])->name('admin.api-consumers.rotate-key');
     Route::post('/api-consumers/keys/{apiKey}/revoke', [\App\Http\Controllers\Admin\ApiConsumerController::class, 'revokeKey'])->name('admin.api-consumers.revoke-key');
     Route::patch('/api-consumers/{apiConsumer}/toggle-status', [\App\Http\Controllers\Admin\ApiConsumerController::class, 'toggleStatus'])->name('admin.api-consumers.toggle-status');
+
+    // External Bookings Management
+    Route::get('/external-bookings', [\App\Http\Controllers\Admin\AdminExternalBookingController::class, 'index'])->name('admin.external-bookings.index');
+    Route::get('/external-bookings/{apiBooking}', [\App\Http\Controllers\Admin\AdminExternalBookingController::class, 'show'])->name('admin.external-bookings.show');
+    Route::post('/external-bookings/{apiBooking}/confirm', [\App\Http\Controllers\Admin\AdminExternalBookingController::class, 'confirm'])->name('admin.external-bookings.confirm');
+    Route::post('/external-bookings/{apiBooking}/cancel', [\App\Http\Controllers\Admin\AdminExternalBookingController::class, 'cancel'])->name('admin.external-bookings.cancel');
+    Route::post('/external-bookings/{apiBooking}/complete', [\App\Http\Controllers\Admin\AdminExternalBookingController::class, 'markCompleted'])->name('admin.external-bookings.complete');
 });
 
 // Newsletter tracking (public signed routes)
