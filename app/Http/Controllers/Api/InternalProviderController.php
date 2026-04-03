@@ -55,7 +55,7 @@ class InternalProviderController extends Controller
 
         $vehicles = Vehicle::whereIn('status', ['active', 'available'])
             ->where('full_vehicle_address', $locationVehicle->full_vehicle_address)
-            ->with(['vendor', 'vendor.vendorProfile', 'images', 'features', 'blockings', 'category'])
+            ->with(['vendor', 'vendor.vendorProfile', 'images', 'blockings', 'category'])
             ->get();
 
         $available = $vehicles->filter(function ($vehicle) use ($pickupDate, $dropoffDate) {
@@ -120,8 +120,7 @@ class InternalProviderController extends Controller
                 'seats' => (int) $vehicle->seating_capacity,
                 'doors' => (int) $vehicle->number_of_doors,
                 'bags' => (int) $vehicle->luggage_capacity,
-                'air_conditioning' => $vehicle->features->contains('feature_name', 'Air Conditioning')
-                    || $vehicle->features->contains('feature_name', 'AC'),
+                'air_conditioning' => (bool) $vehicle->air_conditioning,
                 'image' => $image,
                 'images' => $images,
                 'daily_rate' => $dailyRate,
@@ -131,7 +130,7 @@ class InternalProviderController extends Controller
                 'pickup_location' => $pickupLocationName,
                 'dropoff_location' => $dropoffLocationName,
                 'vendor_name' => $vendorName,
-                'features' => $vehicle->features->pluck('feature_name')->values()->toArray(),
+                'features' => [],
                 'mileage_policy' => $vehicle->limited_km ? $vehicle->limited_km . ' km' : 'unlimited',
             ];
         })->values();
