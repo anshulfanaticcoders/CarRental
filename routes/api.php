@@ -117,6 +117,15 @@ Route::get('/footer-contact-info', [ContactUsPageController::class, 'getContactI
 Route::post('/newsletter/subscriptions', [NewsletterSubscriptionController::class, 'store'])
     ->middleware('throttle:newsletter');
 
+// Internal Provider API for Vrooem Gateway
+Route::prefix('internal/provider')->middleware('gateway.token')->group(function () {
+    Route::post('/vehicles/search', [\App\Http\Controllers\Api\InternalProviderController::class, 'searchVehicles']);
+    Route::get('/vehicles/{vehicleId}/extras', [\App\Http\Controllers\Api\InternalProviderController::class, 'getVehicleExtras']);
+    Route::post('/bookings', [\App\Http\Controllers\Api\InternalProviderController::class, 'createBooking']);
+    Route::get('/bookings/{bookingNumber}', [\App\Http\Controllers\Api\InternalProviderController::class, 'getBooking']);
+    Route::post('/bookings/{bookingNumber}/cancel', [\App\Http\Controllers\Api\InternalProviderController::class, 'cancelBooking']);
+});
+
 // Stripe Checkout Routes
 Route::post('/stripe/checkout', [\App\Http\Controllers\StripeCheckoutController::class, 'createSession'])->name('api.stripe.checkout');
 Route::post('/stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handle'])->name('api.stripe.webhook');
