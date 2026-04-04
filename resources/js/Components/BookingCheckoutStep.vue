@@ -279,13 +279,28 @@ onMounted(() => {
     fetchExchangeRates();
 });
 
-// Rental conditions checkbox (provider-specific T&C links)
+// Rental conditions checkbox (provider-specific T&C links OR internal rental policy)
 const acceptedRentalConditions = ref(false);
+const showRentalPolicyModal = ref(false);
 const rentalConditionsUrl = computed(() => {
     const source = (props.vehicle?.source || '').toLowerCase();
     if (source === 'locauto_rent') return 'https://portale.locautorent.com/doc/GeneralRentalConditions.pdf';
     return null;
 });
+const internalRentalPolicy = computed(() => {
+    const legacy = props.vehicle?.booking_context?.provider_payload;
+    // Combine rental_policy + any legacy guidelines/terms_policy into one
+    const policy = legacy?.rental_policy || props.vehicle?.rental_policy || null;
+    const terms = legacy?.terms_policy || props.vehicle?.terms_policy || null;
+    const guidelines = legacy?.guidelines || props.vehicle?.guidelines || null;
+    const parts = [policy, guidelines, terms].filter(Boolean);
+    if (parts.length === 0) return null;
+    // If rental_policy is HTML (from TinyMCE), use it as-is. Append plain text sections wrapped in HTML.
+    if (policy) return policy;
+    // Fallback: wrap plain text in basic HTML
+    return parts.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+});
+const hasRentalConditions = computed(() => !!rentalConditionsUrl.value || !!internalRentalPolicy.value);
 
 // Get vehicle image (handles internal vehicles which use images array)
 const vehicleImage = computed(() => {
@@ -822,18 +837,41 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                     </div>
 
                     <!-- Rental Conditions Checkbox -->
-                    <div v-if="rentalConditionsUrl" class="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                    <div v-if="hasRentalConditions" class="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 border border-gray-100">
                         <input type="checkbox" id="accept-rental-conditions" v-model="acceptedRentalConditions"
                             class="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1e3a5f] focus:ring-[#1e3a5f] cursor-pointer" />
                         <label for="accept-rental-conditions" class="text-xs text-gray-600 leading-relaxed cursor-pointer">
                             I have read and agree to the
-                            <a :href="rentalConditionsUrl" target="_blank" rel="noopener noreferrer" class="text-[#1e3a5f] font-semibold underline hover:text-[#2d5a8f]">Rental Conditions</a>
+                            <a v-if="rentalConditionsUrl" :href="rentalConditionsUrl" target="_blank" rel="noopener noreferrer" class="text-[#1e3a5f] font-semibold underline hover:text-[#2d5a8f]">Rental Conditions</a>
+                            <button v-else-if="internalRentalPolicy" type="button" @click="showRentalPolicyModal = true" class="text-[#1e3a5f] font-semibold underline hover:text-[#2d5a8f]">Rental Policy & Terms</button>
                         </label>
                     </div>
 
+                    <!-- Rental Policy Modal (internal vehicles) -->
+                    <Teleport to="body">
+                        <div v-if="showRentalPolicyModal" class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" @click.self="showRentalPolicyModal = false">
+                            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+                                <div class="flex items-center justify-between p-5 border-b border-gray-200">
+                                    <h3 class="text-lg font-bold text-gray-900">Rental Policy & Terms</h3>
+                                    <button @click="showRentalPolicyModal = false" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                                <div class="p-5 overflow-y-auto flex-1">
+                                    <div class="prose prose-sm max-w-none text-gray-700" v-html="internalRentalPolicy"></div>
+                                </div>
+                                <div class="p-4 border-t border-gray-200 flex justify-end">
+                                    <button @click="acceptedRentalConditions = true; showRentalPolicyModal = false" class="px-5 py-2.5 bg-[#1e3a5f] text-white text-sm font-semibold rounded-xl hover:bg-[#2d5a8f] transition-colors">
+                                        I Accept
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </Teleport>
+
                     <!-- Stripe Button -->
                     <div class="space-y-3">
-                        <div v-if="form.name && form.email && form.phone && form.driver_age && (!rentalConditionsUrl || acceptedRentalConditions)">
+                        <div v-if="form.name && form.email && form.phone && form.driver_age && (!hasRentalConditions || acceptedRentalConditions)">
                             <StripeCheckoutButton v-if="!Object.keys(errors).length" :booking-data="bookingData"
                                 :label="`Pay ${formatTotalPrice(totals.payableAmount)}`" />
                             <button v-else @click="validate()"

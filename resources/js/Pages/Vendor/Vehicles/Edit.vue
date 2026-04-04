@@ -412,7 +412,7 @@
                     <div class="vln-field-group">
                         <div class="vln-fg-header">
                             <div class="vln-fg-icon"><DollarSign :size="18" /></div>
-                            <div><div class="vln-fg-title">Deposit & Terms</div><div class="vln-fg-sub">Security deposit and rental rules</div></div>
+                            <div><div class="vln-fg-title">Deposit & Driver</div><div class="vln-fg-sub">Security deposit and driver requirements</div></div>
                         </div>
                         <div class="vln-grid">
                             <div class="vln-field">
@@ -426,12 +426,8 @@
                                 <span v-if="errors.minimum_driver_age" class="vln-error"><AlertCircle :size="13" /> {{ errors.minimum_driver_age }}</span>
                             </div>
                             <div class="vln-field full">
-                                <label class="vln-label">Rental Guidelines</label>
-                                <textarea class="vln-textarea" v-model="form.guidelines" placeholder="Rules or instructions for renters..."></textarea>
-                            </div>
-                            <div class="vln-field full">
-                                <label class="vln-label">Terms & Conditions</label>
-                                <textarea class="vln-textarea" v-model="form.terms_policy" placeholder="Vendor terms and conditions..."></textarea>
+                                <label class="vln-label">Guidelines for Customer</label>
+                                <textarea class="vln-textarea" v-model="form.guidelines" rows="4" placeholder="Instructions for the customer — e.g. what to bring at pickup, return procedure, cleaning rules..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -440,21 +436,21 @@
                     <div class="vln-field-group">
                         <div class="vln-fg-header">
                             <div class="vln-fg-icon"><FileText :size="18" /></div>
-                            <div><div class="vln-fg-title">Rental Policy</div><div class="vln-fg-sub">Detailed rental terms — damage policy, late return fees, fuel charges, insurance terms, etc.</div></div>
+                            <div><div class="vln-fg-title">Rental Policy</div><div class="vln-fg-sub">Include everything: rental terms, guidelines, damage policy, late return fees, fuel charges, insurance terms. Customers must accept this before booking.</div></div>
                         </div>
                         <div class="vln-field full">
                             <Editor
                                 v-model="form.rental_policy"
                                 api-key="l37l3e84opgzd4x6rdhlugh30o2l5mh5f5vvq3mieu4yn1j1"
                                 :init="{
-                                    height: 350,
+                                    height: 400,
                                     menubar: false,
                                     plugins: 'lists link',
                                     toolbar: 'undo redo | bold italic underline | bullist numlist | link | removeformat',
-                                    placeholder: 'Write your detailed rental policy here...',
+                                    placeholder: 'Write your complete rental policy here...',
                                 }"
                             />
-                            <span class="vln-hint">This policy will be shown to customers before booking. Include all important terms.</span>
+                            <span class="vln-hint">Customers must read and accept this policy before they can proceed to payment.</span>
                         </div>
                     </div>
 

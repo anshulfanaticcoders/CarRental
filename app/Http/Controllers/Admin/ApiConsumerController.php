@@ -83,12 +83,15 @@ class ApiConsumerController extends Controller
 
         return Inertia::render('AdminDashboardPages/ApiConsumers/Show', [
             'consumer' => $apiConsumer,
-            'totalBookings' => $totalBookings,
-            'usageStats' => [
+            'apiKeys' => $apiConsumer->apiKeys,
+            'apiLogs' => $apiConsumer->apiLogs,
+            'stats' => [
                 'today' => $requestsToday,
-                'thisWeek' => $requestsThisWeek,
-                'thisMonth' => $requestsThisMonth,
+                'week' => $requestsThisWeek,
+                'month' => $requestsThisMonth,
+                'total_bookings' => $totalBookings,
             ],
+            'newKey' => session('newApiKey'),
         ]);
     }
 

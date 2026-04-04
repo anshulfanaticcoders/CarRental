@@ -119,7 +119,7 @@ const showDetailsModal = ref(false);
 const showLocationHoursModal = ref(false);
 const showLightbox = ref(false);
 const lightboxIndex = ref(0);
-const showProviderNotes = ref(false);
+const showProviderNotes = ref(true);
 const vehicleHeroRef = ref(null);
 const mapModalCompRef = ref(null);
 
@@ -565,9 +565,20 @@ const formatPaymentMethod = (method) => {
 };
 
 const hasProviderNotes = computed(() => {
-    if (isInternal.value) return !!(props.vehicle?.vendor?.profile || props.vehicle?.vendorProfile || props.vehicle?.vendor_profile || props.vehicle?.guidelines || props.vehicle?.terms_policy);
+    if (isInternal.value) return true; // Always show for internal — has fuel policy, cancellation policy at minimum
     if (isRecordGo.value) return recordGoAutomaticComplements.value.length > 0;
     return false;
+});
+
+const vehicleFeatures = computed(() => {
+    const raw = props.vehicle?.features;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.filter(f => f && typeof f === 'string');
+    if (typeof raw === 'string') {
+        try { const parsed = JSON.parse(raw); return Array.isArray(parsed) ? parsed.filter(f => f && typeof f === 'string') : []; }
+        catch { return []; }
+    }
+    return [];
 });
 
 const adobeMandatoryProtection = adapter.mandatoryAmount ?? computed(() => 0);

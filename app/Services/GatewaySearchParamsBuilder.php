@@ -50,6 +50,11 @@ class GatewaySearchParamsBuilder
                 }
             }
 
+            // Exclude 'internal' provider — internal vehicles are already queried directly from MySQL
+            $providerLocations = array_values(array_filter($providerLocations, function (array $pl) {
+                return strtolower(trim($pl['provider'] ?? '')) !== 'internal';
+            }));
+
             $params['provider_locations'] = $providerLocations;
             $params['country_code'] = $location['country_code'] ?? null;
         }
