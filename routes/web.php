@@ -345,6 +345,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/external-bookings/{apiBooking}/confirm', [\App\Http\Controllers\Admin\AdminExternalBookingController::class, 'confirm'])->name('admin.external-bookings.confirm');
     Route::post('/external-bookings/{apiBooking}/cancel', [\App\Http\Controllers\Admin\AdminExternalBookingController::class, 'cancel'])->name('admin.external-bookings.cancel');
     Route::post('/external-bookings/{apiBooking}/complete', [\App\Http\Controllers\Admin\AdminExternalBookingController::class, 'markCompleted'])->name('admin.external-bookings.complete');
+
+    // API Analytics Dashboard
+    Route::get('/admin/api-analytics', [\App\Http\Controllers\Admin\ApiAnalyticsController::class, 'index'])->name('admin.api-analytics');
 });
 
 // Newsletter tracking (public signed routes)

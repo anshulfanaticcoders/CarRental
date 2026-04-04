@@ -138,6 +138,7 @@ const navGroups: NavGroup[] = [
         items: [
           { title: 'API Consumers', url: '/api-consumers' },
           { title: 'External Bookings', url: '/external-bookings' },
+          { title: 'API Analytics', url: '/admin/api-analytics' },
         ],
       },
     ],
