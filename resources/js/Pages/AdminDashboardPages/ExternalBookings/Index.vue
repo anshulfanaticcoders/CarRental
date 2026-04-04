@@ -67,7 +67,7 @@
                                     <Badge class="bg-blue-50 text-blue-700 border-blue-200">{{ booking.consumer?.name || 'N/A' }}</Badge>
                                 </TableCell>
                                 <TableCell>
-                                    <span class="text-sm text-gray-700">{{ booking.vehicle?.vendor?.name || 'N/A' }}</span>
+                                    <span class="text-sm text-gray-700">{{ booking.vehicle?.vendor?.vendor_profile?.company_name || booking.vehicle?.vendor?.first_name || 'N/A' }}</span>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap">
                                     <span class="text-sm text-gray-700">{{ formatDateCompact(booking.pickup_date) }}</span>

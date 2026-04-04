@@ -19,7 +19,7 @@ class AdminExternalBookingController extends Controller
         $statusFilter = $request->input('status', '');
         $consumerFilter = $request->input('api_consumer_id', '');
 
-        $bookings = ApiBooking::with(['consumer', 'vehicle'])
+        $bookings = ApiBooking::with(['consumer', 'vehicle.vendor.vendorProfile'])
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('booking_number', 'like', '%' . $search . '%')
