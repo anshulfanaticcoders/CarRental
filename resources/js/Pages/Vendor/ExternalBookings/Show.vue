@@ -189,6 +189,50 @@
                         </div>
                     </div>
 
+                    <!-- Rental Policies Card -->
+                    <div class="rounded-xl border border-[var(--gray-200)] bg-white shadow-sm overflow-hidden">
+                        <div class="px-5 py-3.5 border-b border-[var(--gray-100)] bg-[var(--gray-50)]/60">
+                            <h2 class="text-sm font-semibold text-[var(--gray-700)] flex items-center gap-2">
+                                <Shield class="w-4 h-4 text-[var(--primary-600)]" />
+                                Rental Policies
+                            </h2>
+                        </div>
+                        <div class="p-5">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="rounded-lg border border-[var(--gray-200)] p-4">
+                                    <p class="text-[11px] font-semibold text-[var(--gray-400)] uppercase tracking-wider mb-1">Security Deposit</p>
+                                    <p class="text-sm font-semibold text-[var(--gray-900)]">
+                                        {{ booking.vehicle?.security_deposit ? currSym + formatNumber(booking.vehicle.security_deposit) : 'None' }}
+                                    </p>
+                                </div>
+                                <div class="rounded-lg border border-[var(--gray-200)] p-4">
+                                    <p class="text-[11px] font-semibold text-[var(--gray-400)] uppercase tracking-wider mb-1">Fuel Policy</p>
+                                    <p class="text-sm font-semibold text-[var(--gray-900)] capitalize">
+                                        {{ formatFuelPolicy(booking.vehicle?.fuel_policy) }}
+                                    </p>
+                                </div>
+                                <div class="rounded-lg border border-[var(--gray-200)] p-4">
+                                    <p class="text-[11px] font-semibold text-[var(--gray-400)] uppercase tracking-wider mb-1">Mileage</p>
+                                    <p class="text-sm font-semibold text-[var(--gray-900)]">
+                                        <template v-if="booking.vehicle?.limited_km && parseFloat(booking.vehicle.mileage) > 0">
+                                            {{ booking.vehicle.mileage }} km/day
+                                            <span v-if="booking.vehicle.price_per_km" class="text-xs font-normal text-[var(--gray-500)]">
+                                                ({{ currSym }}{{ formatNumber(booking.vehicle.price_per_km) }}/extra km)
+                                            </span>
+                                        </template>
+                                        <template v-else>Unlimited</template>
+                                    </p>
+                                </div>
+                                <div class="rounded-lg border border-[var(--gray-200)] p-4">
+                                    <p class="text-[11px] font-semibold text-[var(--gray-400)] uppercase tracking-wider mb-1">Insurance Plan</p>
+                                    <p class="text-sm font-semibold text-[var(--gray-900)]">
+                                        {{ booking.insurance_id ? 'Selected (ID: ' + booking.insurance_id + ')' : 'No plan selected' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Additional Info -->
                     <div v-if="booking.flight_number || booking.special_requests" class="rounded-xl border border-[var(--gray-200)] bg-white shadow-sm overflow-hidden">
                         <div class="px-5 py-3.5 border-b border-[var(--gray-100)] bg-[var(--gray-50)]/60">
@@ -329,7 +373,7 @@ import { useToast } from 'vue-toastification';
 import {
     ArrowLeft, Car, MapPin, Mail, Phone, Plane,
     User as UserIcon, FileText, Receipt, Globe,
-    ExternalLink, Info, CheckCircle,
+    ExternalLink, Info, CheckCircle, Shield,
 } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -361,6 +405,11 @@ const formatNumber = (number) => {
 const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const formatFuelPolicy = (policy) => {
+    const labels = { 'full_to_full': 'Full to Full', 'full_to_empty': 'Full to Empty', 'same_to_same': 'Same to Same', 'free_tank': 'Free Tank' };
+    return labels[policy] || policy || 'N/A';
 };
 
 // --- Status ---

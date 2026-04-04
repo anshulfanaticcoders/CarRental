@@ -72,11 +72,16 @@ class ApiBooking extends Model
 
     public static function generateBookingNumber(): string
     {
-        $prefix = 'API';
-        $date = date('Ymd');
-        $random = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        $chars = 'ABCDEFGHJKMNPQRSTVWXYZ23456789'; // no 0/O, 1/I/L, U
+        do {
+            $code = '';
+            for ($i = 0; $i < 6; $i++) {
+                $code .= $chars[random_int(0, strlen($chars) - 1)];
+            }
+            $number = 'VRO-' . $code;
+        } while (static::where('booking_number', $number)->exists());
 
-        return $prefix . '-' . $date . '-' . $random;
+        return $number;
     }
 
     public function getDriverFullNameAttribute(): string
