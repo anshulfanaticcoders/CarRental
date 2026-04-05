@@ -189,30 +189,55 @@ const getNotificationLink = (notification) => {
   const type = notification.type.split('\\').pop();
   const locale = 'en';
   switch (type) {
-    case 'VendorVehicleCreateNotification':
-      return route('vendor-vehicles', { locale });
-    case 'BookingCreatedAdminNotification':
-      return route('customer-bookings.index', { locale });
-    case 'VendorStatusUpdatedNotification':
-      return route('vendors', { locale });
-    case 'NewMessageNotification':
-      return route('admin.messages', { locale });
-    case 'ReviewSubmittedVendorNotification':
-      return route('vendors', { locale });
-    case 'BookingCancelledNotification':
-      return route('customer-bookings.cancelled', { locale });
-    case 'AccountCreatedNotification':
-      return route('users.index', { locale });
-    case 'BulkVehicleUploadAdminNotification':
-      return route('admin.vehicles.index', { locale });
+    // Vendor management
     case 'VendorRegisteredNotification':
-      return route('vendors.index', { locale });
-    case 'BookingStatusUpdatedCustomerNotification':
-      const bookingStatus = notification.data.status;
-      if (bookingStatus === 'pending') return route('customer-bookings.pending', { locale });
-      if (bookingStatus === 'confirmed') return route('customer-bookings.confirmed', { locale });
-      if (bookingStatus === 'completed') return route('customer-bookings.completed', { locale });
-      return '#';
+      return '/vendors';
+    case 'VendorStatusUpdatedNotification':
+      return '/vendors';
+    case 'VendorVehicleCreateNotification':
+      return '/vendor-vehicles';
+    case 'VehicleCreatedNotification':
+      return '/vendor-vehicles';
+    case 'BulkVehicleUploadAdminNotification':
+      return '/vendor-vehicles';
+    // User management
+    case 'AccountCreatedNotification':
+      return '/users';
+    // Bookings
+    case 'BookingCreatedAdminNotification':
+      return '/customer-bookings';
+    case 'BookingCancelledNotification':
+      return '/customer-bookings/cancelled';
+    case 'BookingStatusUpdatedAdminNotification':
+    case 'BookingStatusUpdatedCustomerNotification': {
+      const s = notification.data?.status;
+      if (s === 'pending') return '/customer-bookings/pending';
+      if (s === 'confirmed') return '/customer-bookings/confirmed';
+      if (s === 'completed') return '/customer-bookings/completed';
+      return '/customer-bookings';
+    }
+    // External API bookings
+    case 'ApiBookingCreatedVendorNotification':
+    case 'ApiBookingCancelledVendorNotification':
+      return '/external-bookings';
+    // Payments
+    case 'AdminPaymentFailedNotification':
+      return '/admin/payments';
+    // Reviews
+    case 'ReviewSubmittedAdminNotification':
+    case 'ReviewSubmittedVendorNotification':
+    case 'ReviewSubmittedCompanyNotification':
+      return '/admin/reviews';
+    // Messages
+    case 'NewMessageNotification':
+    case 'MessageReminderNotification':
+      return '/contact-us-mails';
+    // Affiliates
+    case 'BusinessRegistrationAdminNotification':
+      return '/admin/affiliate/partners';
+    // Pending vendor bookings
+    case 'PendingBookingReminderNotification':
+      return '/customer-bookings/pending';
     default:
       return '#';
   }

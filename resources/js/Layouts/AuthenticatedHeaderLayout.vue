@@ -139,40 +139,53 @@ const getNotificationLink = (notification) => {
   const locale = currentLocale.value;
 
   switch (type) {
+    // Vendor vehicle management
     case 'VendorVehicleCreateNotification':
-      return route('current-vendor-vehicles.index', { locale });
-    case 'BookingCreatedVendorNotification':
-      return route('bookings.index', { locale });
-    case 'BookingCreatedCustomerNotification':
-      return route('profile.bookings.confirmed', { locale });
-    case 'VendorStatusUpdatedNotification':
-      return route('vendor.status', { locale });
-    case 'NewMessageNotification':
-      return isVendor.value ? route('messages.vendor.index', { locale }) : route('messages.index', { locale });
+    case 'VendorVehicleCreateCompanyNotification':
     case 'VehicleCreatedNotification':
-      return route('current-vendor-vehicles.index', { locale });
-    case 'VehicleCreatedNotification':
-      return route('current-vendor-vehicles.index', { locale });
-    case 'ReviewSubmittedVendorNotification':
-      return route('vendor.reviews', { locale });
-    case 'BookingCancelledNotification':
-      return route('profile.bookings.cancelled', { locale });
     case 'BulkVehicleUploadNotification':
       return route('current-vendor-vehicles.index', { locale });
+    // Vendor status
+    case 'VendorStatusUpdatedNotification':
+      return route('vendor.status', { locale });
+    // Vendor bookings
+    case 'BookingCreatedVendorNotification':
+    case 'BookingCreatedCompanyNotification':
     case 'PendingBookingReminderNotification':
       return route('bookings.index', { locale });
-    case 'BookingStatusUpdatedCustomerNotification':
-      const bookingStatus = notification.data.status;
-      if (bookingStatus === 'pending') {
-        return route('profile.bookings.pending', { locale });
-      } else if (bookingStatus === 'confirmed') {
-        return route('profile.bookings.confirmed', { locale });
-      } else if (bookingStatus === 'completed') {
-        return route('profile.bookings.completed', { locale });
-      }
-      return '#'; // Fallback if status is not recognized
+    // Customer bookings
+    case 'BookingCreatedCustomerNotification':
+      return route('profile.bookings.confirmed', { locale });
+    case 'BookingCancelledNotification':
+    case 'BookingCancelledCustomerNotification':
+      return isVendor.value ? route('bookings.index', { locale }) : route('profile.bookings.cancelled', { locale });
+    case 'BookingStatusUpdatedCustomerNotification': {
+      const s = notification.data?.status;
+      if (s === 'pending') return route('profile.bookings.pending', { locale });
+      if (s === 'confirmed') return route('profile.bookings.confirmed', { locale });
+      if (s === 'completed') return route('profile.bookings.completed', { locale });
+      return route('profile.bookings', { locale });
+    }
+    // External API bookings (vendor)
+    case 'ApiBookingCreatedVendorNotification':
+    case 'ApiBookingCancelledVendorNotification':
+      return route('vendor.external-bookings.index', { locale });
+    // Messages
+    case 'NewMessageNotification':
+    case 'MessageReminderNotification':
+      return isVendor.value ? route('messages.vendor.index', { locale }) : route('messages.index', { locale });
+    // Reviews
+    case 'ReviewSubmittedVendorNotification':
+    case 'ReviewSubmittedCompanyNotification':
+      return route('vendor.reviews', { locale });
+    // Payments
+    case 'CustomerPaymentFailedNotification':
+      return route('profile.payments', { locale });
+    // Guest booking
+    case 'GuestBookingCreatedNotification':
+      return route('login', { locale });
     default:
-      return '#'; // Fallback for unknown notification types
+      return '#';
   }
 };
 
