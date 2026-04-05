@@ -57,7 +57,7 @@ class BulkVehicleUploadAdminNotification extends Notification implements ShouldQ
 
         if ($this->vehicles->isNotEmpty()) {
             $mailMessage->line('Successfully created ' . $this->vehicles->count() . ' vehicle(s).');
-            $mailMessage->action('View Uploaded Vehicles', route('current-vendor-vehicles.index', ['locale' => app()->getLocale()]));
+            $mailMessage->action('View Uploaded Vehicles', url('/vendor-vehicles'));
         } else {
             $mailMessage->line('A bulk upload of vehicles was attempted, but no vehicles were successfully created.');
         }

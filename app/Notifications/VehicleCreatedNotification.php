@@ -51,7 +51,7 @@ class VehicleCreatedNotification extends Notification
             ->line('**Location:** ' . ($this->vehicle->location ?? 'N/A'))
             ->line('**Address:** ' . (!empty($addressParts) ? implode(', ', $addressParts) : 'N/A'))
             ->line('**Price per Day:** ' . ($this->vehicle->price_per_day ? number_format($this->vehicle->price_per_day, 2) . ' EUR' : 'Not set'))
-            ->action('Review Vehicles', url('/admin/vehicles'))
+            ->action('Review Vehicles', url('/vendor-vehicles'))
             ->line('Please review the listing if necessary.');
     }
 

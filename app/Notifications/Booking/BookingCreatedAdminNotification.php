@@ -62,7 +62,7 @@ class BookingCreatedAdminNotification extends Notification
             ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
             ->line('**Email:** ' . $this->customer->email)
             ->line('**Phone:** ' . ($this->customer->phone ?: 'Not provided'))
-            ->action('View Booking', url('/admin/customer-bookings'))
+            ->action('View Booking', url('/customer-bookings'))
             ->line('Please review the booking details.');
     }
 

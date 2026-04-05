@@ -76,11 +76,7 @@ const handleSubmit = () => {
         preserveScroll: true, // Keeps scroll position unless overridden
         onSuccess: () => {
             toast.success(_t('customerprofilepages', 'profile_updated_success_toast'));
-            // Scroll to top before reload
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
         },
         onError: (errors) => {
             toast.error('Failed to update profile. Please check the form.');

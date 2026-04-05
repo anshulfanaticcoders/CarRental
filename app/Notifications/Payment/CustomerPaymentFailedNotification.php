@@ -47,7 +47,7 @@ class CustomerPaymentFailedNotification extends Notification
             ->line('**Return Time:** ' . $this->booking->return_time)
             ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
             ->line('Please try again or contact support if the issue persists.')
-            ->action('Retry Payment', url('/' . app()->getLocale() . '/retry-payment/' . $this->booking->id))
+            ->action('View Booking', url('/' . app()->getLocale() . '/booking/' . $this->booking->id))
             ->line('Thank you for choosing our service.');
     }
 

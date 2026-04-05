@@ -111,8 +111,7 @@ class ProfileController extends Controller
             ActivityLogHelper::logActivity('update', 'User Updates Profile', $user, $request);
             $locale = $request->route('locale') ?? config('app.fallback_locale', 'en');
 
-            return Redirect::route('profile.edit', ['locale' => $locale])
-                ->with('status', 'Profile updated successfully.');
+            return Redirect::route('profile.edit', ['locale' => $locale]);
 
         } catch (\Exception $e) {
             DB::rollBack();

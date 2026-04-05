@@ -58,7 +58,7 @@ class BookingStatusUpdatedAdminNotification extends Notification
             ->line('**Customer Details:**')
             ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
             ->line('**Email:** ' . $this->customer->email)
-            ->action('View Booking', url('/admin/customer-bookings'))
+            ->action('View Booking', url('/customer-bookings'))
             ->line('Please review the updated booking details.');
     }
 

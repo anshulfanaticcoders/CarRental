@@ -35,7 +35,7 @@ class ReviewSubmittedAdminNotification extends Notification
             ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
             ->line('**Rating:** ' . $this->review->rating . '/5')
             ->line('**Review Text:** ' . $this->review->review_text)
-            ->action('View Review', url('/admin/reviews/' . $this->review->id))
+            ->action('View Review', url('/admin/reviews'))
             ->line('Please review and approve or reject the submission.');
     }
 

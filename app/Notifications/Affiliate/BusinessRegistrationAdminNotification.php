@@ -22,7 +22,7 @@ class BusinessRegistrationAdminNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $verificationUrl = url('/admin/affiliate/business-verification');
+        $verificationUrl = url('/admin/affiliate/partners');
 
         return (new MailMessage)
             ->subject('New Affiliate Business Registered — Review Required')

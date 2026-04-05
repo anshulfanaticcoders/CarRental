@@ -36,7 +36,7 @@ class ApiBookingCancelledVendorNotification extends Notification
             ->line('**Vehicle:** ' . $this->booking->vehicle_name)
             ->line('**Driver:** ' . $this->booking->driver_first_name . ' ' . $this->booking->driver_last_name)
             ->line('**Reason:** ' . $reason)
-            ->action('View External Bookings', url('/' . app()->getLocale() . '/vendor/external-bookings'))
+            ->action('View External Bookings', url('/' . app()->getLocale() . '/external-bookings'))
             ->line('The vehicle is now available for the previously blocked dates.');
     }
 
