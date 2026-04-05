@@ -48,7 +48,7 @@ class VendorRegisteredNotification extends Notification
             ->line('**Email:** ' . $this->user->email)
             ->line('**Company Phone:** ' . ($this->vendorProfile->company_phone_number ?? 'Not provided'))
             ->line('**Status:** ' . ucfirst($this->vendorProfile->status))
-            ->action('Review Vendors', url('/admin/vendors'))
+            ->action('Review Vendors', url('/vendors'))
             ->line('Please review the vendor details and approve or reject the registration.');
     }
 

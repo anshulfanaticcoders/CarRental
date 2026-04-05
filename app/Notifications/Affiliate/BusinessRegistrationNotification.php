@@ -22,7 +22,7 @@ class BusinessRegistrationNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $loginUrl = url('/login');
+        $loginUrl = url('/' . app()->getLocale() . '/login');
 
         return (new MailMessage)
             ->subject('Welcome to the Vrooem Partner Program!')

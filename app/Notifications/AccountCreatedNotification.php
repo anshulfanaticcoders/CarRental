@@ -44,7 +44,7 @@ class AccountCreatedNotification extends Notification
             ->line('**Name:** ' . $this->user->first_name . ' ' . $this->user->last_name)
             ->line('**Email:** ' . $this->user->email)
             ->line('**Phone:** ' . ($this->user->phone_code ?? '') . ' ' . ($this->user->phone ?? 'Not provided'))
-            ->action('View Users', url('/admin/users'))
+            ->action('View Users', url('/users'))
             ->line('Please review the account details if necessary.');
     }
 

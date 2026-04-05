@@ -61,7 +61,7 @@ class BookingCreatedVendorNotification extends Notification
             ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
             ->line('**Email:** ' . $this->customer->email)
             ->line('**Phone:** ' . ($this->customer->phone ?: 'Not provided'))
-            ->action('View Booking', url('/vendor/bookings'))
+            ->action('View Booking', url('/' . app()->getLocale() . '/bookings'))
             ->line('Please review the booking and update its status as needed.');
     }
 

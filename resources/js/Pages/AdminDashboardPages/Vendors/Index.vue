@@ -217,6 +217,14 @@
                                 <TableCell class="whitespace-nowrap px-4 py-3">{{ formatDate(user.created_at) }}</TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="flex justify-end gap-2">
+                                        <Button v-if="user.status === 'pending'" size="sm" class="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" @click="quickStatusUpdate(user, 'approved')">
+                                            <UserCheck class="w-3 h-3" />
+                                            Approve
+                                        </Button>
+                                        <Button v-if="user.status === 'pending'" size="sm" variant="destructive" class="flex items-center gap-1" @click="quickStatusUpdate(user, 'rejected')">
+                                            <UserX class="w-3 h-3" />
+                                            Reject
+                                        </Button>
                                         <Button size="sm" variant="outline" @click="openViewDialog(user)" class="flex items-center gap-1">
                                             <Eye class="w-3 h-3" />
                                             View
@@ -364,6 +372,19 @@ watch(search, (newValue) => {
 watch(statusFilter, (newValue) => {
     filterByStatus();
 });
+
+const quickStatusUpdate = (user, status) => {
+    if (!confirm(`Are you sure you want to ${status === 'approved' ? 'approve' : 'reject'} ${user.company_name || 'this vendor'}?`)) return;
+    router.put(`/vendors/${user.id}`, { status }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast.success(status === 'approved' ? 'Vendor approved successfully' : 'Vendor rejected');
+        },
+        onError: () => {
+            toast.error('Failed to update vendor status');
+        },
+    });
+};
 
 const openEditDialog = (user) => {
     editForm.value = { ...user };

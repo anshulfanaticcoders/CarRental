@@ -35,7 +35,7 @@ class ReviewSubmittedVendorNotification extends Notification
             ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
             ->line('**Rating:** ' . $this->review->rating . '/5')
             ->line('**Review:** ' . $this->review->review_text)
-            ->action('View Your Reviews', url('/vendor/reviews'))
+            ->action('View Your Reviews', url('/' . app()->getLocale() . '/customer-reviews'))
             ->line('Thank you for providing great service!');
     }
 

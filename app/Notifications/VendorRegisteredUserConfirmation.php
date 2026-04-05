@@ -47,7 +47,7 @@ class VendorRegisteredUserConfirmation extends Notification
             ->line('**Email:** ' . $this->user->email)
             ->line('**Company Phone:** ' . $this->vendorProfile->company_phone_number)
             ->line('We will notify you once your registration is reviewed.')
-            ->action('View Status', url('/vendor/status'))
+            ->action('View Status', url('/' . app()->getLocale() . '/vendor-status'))
             ->line('Thank you for joining our platform!');
     }
 

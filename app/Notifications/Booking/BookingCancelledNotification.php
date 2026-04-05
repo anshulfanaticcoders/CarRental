@@ -77,13 +77,13 @@ class BookingCancelledNotification extends Notification
             $mailMessage
                 ->greeting('Hello Admin,')
                 ->line('A booking has been cancelled by a customer.')
-                ->action('View Booking', url('/admin/bookings/' . $this->booking->id))
+                ->action('View Booking', url('/customer-bookings'))
                 ->line('Please review the cancelled booking details.');
         } elseif ($this->recipientType === 'vendor') {
             $mailMessage
                 ->greeting('Hello ' . $notifiable->first_name . ',')
                 ->line('A booking for your vehicle has been cancelled by the customer.')
-                ->action('View Bookings', url('/bookings'))
+                ->action('View Bookings', url('/' . app()->getLocale() . '/bookings'))
                 ->line('Please review the cancellation details.');
         } else { // company
             $mailMessage

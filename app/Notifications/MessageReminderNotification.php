@@ -63,7 +63,7 @@ class MessageReminderNotification extends Notification implements ShouldQueue
             // Add more booking details as needed
         }
 
-        $mailMessage->action('View Message & Booking', url('/bookings/' . $this->message->booking_id . '/chat')) // Adjusted URL
+        $mailMessage->action('View Message & Booking', url('/' . app()->getLocale() . '/messages/' . $this->message->booking_id))
                     ->line('Please check your messages at your earliest convenience.');
 
         return $mailMessage;

@@ -61,7 +61,7 @@ class BookingCreatedCompanyNotification extends Notification
             ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
             ->line('**Email:** ' . $this->customer->email)
             ->line('**Phone:** ' . ($this->customer->phone ?: 'Not provided'))
-            ->action('View Bookings', url('/vendor/bookings'))
+            ->action('View Bookings', url('/' . app()->getLocale() . '/bookings'))
             ->line('Please review the booking and coordinate with your vendor as needed.');
     }
 

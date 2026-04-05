@@ -24,7 +24,7 @@ class BusinessStatusChangedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $loginUrl = url('/login');
+        $loginUrl = url('/' . app()->getLocale() . '/login');
         $statusInfo = $this->getStatusInfo($this->newStatus);
 
         $mail = (new MailMessage)

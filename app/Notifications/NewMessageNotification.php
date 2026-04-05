@@ -63,7 +63,7 @@ class NewMessageNotification extends Notification implements ShouldQueue
             // Add more booking details as needed, e.g., $booking->return_location
         }
 
-        $mailMessage->action('View Message & Booking', url('/bookings/' . $this->message->booking_id . '/chat'))
+        $mailMessage->action('View Message & Booking', url('/' . app()->getLocale() . '/messages/' . $this->message->booking_id))
                     ->line('Thank you for using ' . config('app.name') . '.');
 
         return $mailMessage;

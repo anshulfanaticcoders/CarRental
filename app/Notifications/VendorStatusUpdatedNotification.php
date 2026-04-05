@@ -48,10 +48,10 @@ class VendorStatusUpdatedNotification extends Notification
 
         if ($this->vendorProfile->status === 'approved') {
             $message->line('Congratulations! Your vendor account has been approved. You can now start offering your services.')
-                    ->action('Get Started', url('/vendor-status'));
+                    ->action('Get Started', url('/' . app()->getLocale() . '/vendor-status'));
         } elseif ($this->vendorProfile->status === 'rejected') {
             $message->line('We regret to inform you that your vendor application has been rejected. Please contact support for more details.')
-                    ->action('Contact Support', url('/contact-us')); // Adjust URL as needed
+                    ->action('Contact Support', url('/' . app()->getLocale() . '/contact-us'));
         } else {
             $message->line('Your application is still under review. We will notify you once a decision is made.');
         }

@@ -50,7 +50,7 @@ class BookingCancelledCustomerNotification extends Notification
             ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
             ->line('**Reason:** ' . $this->cancellationReason)
             ->line('If you have any questions about this cancellation, please contact our support team.')
-            ->action('View Your Bookings', url('/bookings'));
+            ->action('View Your Bookings', url('/' . app()->getLocale() . '/profile/bookings'));
     }
 
     public function toArray(object $notifiable): array
