@@ -238,6 +238,9 @@ const getNotificationLink = (notification) => {
     // Pending vendor bookings
     case 'PendingBookingReminderNotification':
       return '/customer-bookings/pending';
+    // Contact form submissions
+    case 'ContactUsNotification':
+      return '/contact-us-mails';
     default:
       return '#';
   }

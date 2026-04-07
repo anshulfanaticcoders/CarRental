@@ -181,8 +181,18 @@ const getNotificationLink = (notification) => {
     // Payments
     case 'CustomerPaymentFailedNotification':
       return route('profile.payments', { locale });
+    // Vendor booking status updates
+    case 'BookingStatusUpdatedCompanyNotification':
+      return route('bookings.index', { locale });
+    // Account created
+    case 'AccountCreatedUserConfirmation':
+      return '/' + locale;
     // Guest booking
     case 'GuestBookingCreatedNotification':
+      return route('login', { locale });
+    // Affiliate notifications
+    case 'BusinessRegistrationNotification':
+    case 'BusinessStatusChangedNotification':
       return route('login', { locale });
     default:
       return '#';
