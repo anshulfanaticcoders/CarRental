@@ -1,8 +1,9 @@
 [variables]
-NODE_OPTIONS = "--max-old-space-size=2048"
+NODE_OPTIONS = "--max-old-space-size=3072"
 
 [phases.setup]
 nixPkgs = ["...", "python311Packages.supervisor"]
+aptPkgs = []
 
 [phases.build]
 cmds = [
