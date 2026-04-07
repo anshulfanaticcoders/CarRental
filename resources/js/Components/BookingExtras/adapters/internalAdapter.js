@@ -2,6 +2,8 @@ import { computed } from 'vue';
 import { getSearchVehicleLegacyPayload } from '@/features/search/utils/searchVehiclePresentation';
 import { defaultComputeNetTotal } from './shared.js';
 
+const round2 = (v) => Math.round(v * 100) / 100;
+
 export function createInternalAdapter(props, { formatPrice }) {
   const legacyPayload = computed(() => getSearchVehicleLegacyPayload(props.vehicle));
 
@@ -53,16 +55,21 @@ export function createInternalAdapter(props, { formatPrice }) {
 
   const optionalExtras = computed(() => {
     const addons = legacyPayload.value?.addons || [];
-    return addons.map(addon => ({
-      id: `internal_addon_${addon.id}`,
-      code: addon.addon_id?.toString() || addon.id?.toString(),
-      name: addon.extra_name || 'Extra',
-      description: addon.description || addon.extra_name || 'Optional Add-on',
-      price: parseFloat(addon.price) * props.numberOfDays || 0,
-      daily_rate: parseFloat(addon.price) || 0,
-      amount: addon.price,
-      maxQuantity: addon.quantity || 1
-    }));
+    return addons.map(addon => {
+      const dailyRate = parseFloat(addon.price) || 0;
+      const totalForBooking = round2(dailyRate * props.numberOfDays);
+      return {
+        id: `internal_addon_${addon.id}`,
+        code: addon.addon_id?.toString() || addon.id?.toString(),
+        name: addon.extra_name || 'Extra',
+        description: addon.description || addon.extra_name || 'Optional Add-on',
+        total_for_booking: totalForBooking,
+        daily_rate: dailyRate,
+        price: totalForBooking,
+        amount: addon.price,
+        maxQuantity: addon.quantity || 1,
+      };
+    });
   });
 
   const protectionPlans = computed(() => []);
