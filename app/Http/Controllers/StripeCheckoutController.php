@@ -574,7 +574,10 @@ class StripeCheckoutController extends Controller
             }
 
             // Normalize currency (symbols to ISO codes)
-            $currency = $validated['currency'] ?? 'EUR';
+            // display_currency = user's preferred currency (what they see on screen)
+            // currency = original source currency (what the vehicle price was stored in)
+            $displayCurrency = $request->input('display_currency');
+            $currency = $displayCurrency ?? ($validated['currency'] ?? 'EUR');
             $currencyCode = $this->normalizeCurrencyCode($currency);
             $providerCurrency = $this->resolveProviderCurrency($validated, $currencyCode);
 
