@@ -211,10 +211,21 @@ class SearchController extends Controller
 
         // Apply location filters for internal vehicles based on search parameters
         if (!empty($validated['provider_pickup_id']) && (!isset($validated['provider']) || $validated['provider'] !== 'internal')) {
-            if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+            // For mixed/provider searches: match internal vehicles by city first,
+            // then fall back to a generous radius (50km) to include vendors near airports
+            $cityMatched = false;
+            if (!empty($validated['city'])) {
+                $cityCheck = Vehicle::query()->whereIn('status', Vehicle::searchableStatuses())
+                    ->where('city', $validated['city'])->exists();
+                if ($cityCheck) {
+                    $internalVehiclesQuery->where('city', $validated['city']);
+                    $cityMatched = true;
+                }
+            }
+            if (!$cityMatched && !empty($validated['latitude']) && !empty($validated['longitude'])) {
                 $lat = $validated['latitude'];
                 $lon = $validated['longitude'];
-                $radius = $validated['radius'] / 1000;
+                $radius = max(($validated['radius'] ?? 5000) / 1000, 50); // minimum 50km for internal
 
                 $internalVehiclesQuery->whereRaw("
                     6371 * acos(
@@ -222,7 +233,7 @@ class SearchController extends Controller
                         sin(radians(?)) * sin(radians(latitude))
                     ) <= ?
                 ", [$lat, $lon, $lat, $radius]);
-            } else {
+            } elseif (!$cityMatched) {
                 $internalVehiclesQuery->whereRaw('1 = 0');
             }
         } elseif (!empty($validated['provider'])) {
