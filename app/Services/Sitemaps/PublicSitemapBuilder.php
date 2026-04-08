@@ -104,6 +104,7 @@ class PublicSitemapBuilder
             "{$locale}/faq",
             "{$locale}/contact-us",
             "{$locale}/business/register",
+            "{$locale}/affiliate/register",
         ];
 
         foreach ($staticPaths as $path) {
