@@ -98,8 +98,9 @@ Disallow: /validate-contact
 Disallow: /contact
 
 # ===========================
-# BLOCKED: Affiliate (internal)
+# BLOCKED: Affiliate (internal, except register)
 # ===========================
+Allow: */affiliate/register
 Disallow: */affiliate/
 
 # ===========================
