@@ -19,8 +19,8 @@ class HandleSeoRedirects
         $path = '/' . ltrim($request->path(), '/');
 
         // Permanently removed URL patterns — return 410 Gone
-        if (preg_match('#^/(vehicles?|single-car|vehicle-listing)/\d+#', $path)
-            || preg_match('#^/[a-z]{2}/(vehicles?|single-car|vehicle-listing)/\d+#', $path)) {
+        // ~1,000 old vehicle pages like /{locale}/vehicle/{id} indexed in Google
+        if (preg_match('#^/([a-z]{2}/)?vehicle/\d+#', $path)) {
             abort(410, 'This page has been permanently removed.');
         }
 
