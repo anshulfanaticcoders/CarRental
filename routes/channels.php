@@ -22,7 +22,12 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 
 // Legacy chat channel (keep for backward compatibility)
 Broadcast::channel('chat.{bookingId}', function ($user, $bookingId) {
-    $booking = Booking::findOrFail($bookingId);
+    $booking = Booking::with(['customer', 'vehicle'])->find($bookingId);
+
+    if (!$booking || !$booking->customer || !$booking->vehicle) {
+        return false;
+    }
+
     return $user->id === $booking->customer->user_id || $user->id === $booking->vehicle->vendor_id;
 });
 
