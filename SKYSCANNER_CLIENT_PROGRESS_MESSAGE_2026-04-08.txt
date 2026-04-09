@@ -1,0 +1,14 @@
+Hi Salim,
+
+Quick update from our side on the Skyscanner integration.
+
+Today we completed and verified the main local testing flow for the new Skyscanner setup. From our side, the separate integration flow is working correctly for search, quote creation, redirect handling, quote expiry, booking linkage, and reporting preparation.
+
+We also improved the expired quote behavior so that old quotes now return a proper expiry response instead of a missing-record response.
+
+Important point: this work has been kept separate from the current live platform flow, so the existing website behavior is not being disturbed.
+
+What remains now is mainly the Skyscanner-specific final alignment items, such as their final contract details, DV/tracking implementation details, and the final reporting method before staging/production rollout.
+
+Best,
+[Your Name]
