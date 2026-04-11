@@ -59,6 +59,7 @@ use App\Http\Controllers\Vendor\BlockingDateController;
 use App\Http\Controllers\Vendor\DamageProtectionController;
 use App\Http\Controllers\Vendor\VendorBookingController;
 use App\Http\Controllers\Vendor\VendorOverviewController;
+use App\Http\Controllers\Vendor\VendorLocationController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
 use App\Http\Controllers\Vendor\VendorExternalBookingController;
 use App\Http\Controllers\Vendor\VendorVehiclePlanController;
@@ -712,6 +713,9 @@ Route::group([
             ->name('current-vendor-vehicles.update-parking-address');
         Route::post('current-vendor-vehicles/bulk-destroy', [VendorVehicleController::class, 'bulkDestroy'])->name('current-vendor-vehicles.bulk-destroy');
         Route::delete('/current-vendor-vehicles/{vehicle}/images/{image}', [VendorVehicleController::class, 'deleteImage'])->name('current-vendor-vehicles.deleteImage');
+        Route::resource('vendor-locations', VendorLocationController::class)
+            ->except(['create', 'show', 'edit'])
+            ->names('vendor.locations');
 
         // Blocking Dates
         Route::resource('blocking-dates', BlockingDateController::class)->names('vendor.blocking-dates');

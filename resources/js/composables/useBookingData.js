@@ -51,15 +51,46 @@ export function useBookingData(booking, vehicle, payment) {
   // Location details - normalized
   const pickupLocation = computed(() => {
     const meta = providerMetadata.value;
-    const details = meta?.pickup_location_details || meta?.location || meta?.pickup_office || {};
+    const details = meta?.pickup_location_details || meta?.location || meta?.pickup_office || fallbackInternalLocation('pickup');
     return normalizeLocationData(details, meta, 'pickup');
   });
 
   const dropoffLocation = computed(() => {
     const meta = providerMetadata.value;
-    const details = meta?.dropoff_location_details || meta?.dropoff_office || {};
+    const details = meta?.dropoff_location_details || meta?.dropoff_office || fallbackInternalLocation('dropoff');
     return normalizeLocationData(details, meta, 'dropoff');
   });
+
+  function fallbackInternalLocation(type) {
+    if (!isInternalProvider.value || !vehicle) {
+      return {};
+    }
+
+    const location = vehicle?.vendorLocation || vehicle?.vendor_location || {};
+    const label = type === 'pickup' ? booking?.pickup_location : booking?.return_location;
+
+    return {
+      name: label || location?.name || vehicle?.location || vehicle?.full_vehicle_address || null,
+      location_name: location?.name || vehicle?.location || vehicle?.full_vehicle_address || null,
+      location_type: location?.location_type || vehicle?.location_type || null,
+      iata_code: location?.iata_code || null,
+      telephone: location?.phone || vehicle?.location_phone || null,
+      phone: location?.phone || vehicle?.location_phone || null,
+      pickup_instructions: location?.pickup_instructions || vehicle?.pickup_instructions || null,
+      dropoff_instructions: location?.dropoff_instructions || vehicle?.dropoff_instructions || null,
+      collection_details: location?.pickup_instructions || vehicle?.pickup_instructions || null,
+      return_instructions: location?.dropoff_instructions || vehicle?.dropoff_instructions || null,
+      address_1: location?.address_line_1 || vehicle?.full_vehicle_address || null,
+      address_2: location?.address_line_2 || null,
+      address_city: location?.city || vehicle?.city || null,
+      address_county: location?.state || vehicle?.state || null,
+      address_country: location?.country || vehicle?.country || null,
+      city: location?.city || vehicle?.city || null,
+      country: location?.country || vehicle?.country || null,
+      latitude: location?.latitude ?? vehicle?.latitude ?? null,
+      longitude: location?.longitude ?? vehicle?.longitude ?? null,
+    };
+  }
 
   function normalizeLocationData(details, meta, type) {
     const result = {

@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Review;
 use App\Models\Vehicle;
 use App\Models\VehicleCategory;
+use App\Models\VendorLocation;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Services\LocationSearchService; // Import LocationSearchService
 use App\Services\Search\GatewaySearchService;
 use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\GatewayVehicleTransformer;
+use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Illuminate\Support\Facades\Log; // Import Log facade
 use App\Services\Seo\SeoMetaResolver;
 use Illuminate\Support\Facades\App;
@@ -21,17 +23,20 @@ class SearchController extends Controller
     protected $gatewaySearchService;
     protected $gatewayVehicleTransformer;
     protected $internalSearchVehicleFactory;
+    protected $internalVehicleAvailabilityService;
 
     public function __construct(
         LocationSearchService $locationSearchService,
         GatewaySearchService $gatewaySearchService,
         GatewayVehicleTransformer $gatewayVehicleTransformer,
-        InternalSearchVehicleFactory $internalSearchVehicleFactory
+        InternalSearchVehicleFactory $internalSearchVehicleFactory,
+        InternalVehicleAvailabilityService $internalVehicleAvailabilityService
     ) {
         $this->locationSearchService = $locationSearchService;
         $this->gatewaySearchService = $gatewaySearchService;
         $this->gatewayVehicleTransformer = $gatewayVehicleTransformer;
         $this->internalSearchVehicleFactory = $internalSearchVehicleFactory;
+        $this->internalVehicleAvailabilityService = $internalVehicleAvailabilityService;
     }
 
     public function search(Request $request)
@@ -154,59 +159,18 @@ class SearchController extends Controller
             return $emptyResultsResponse();
         }
 
-        $internalVehiclesQuery = Vehicle::query()->whereIn('status', Vehicle::searchableStatuses())
+        $internalVehiclesQuery = Vehicle::query()
             ->with(['images', 'bookings', 'vendor.profile', 'vendorProfile', 'vendorProfileData', 'benefits', 'vendorPlans', 'addons', 'operatingHours']);
 
-        // Apply date filters to internal vehicles
         if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
-            $internalVehiclesQuery->whereDoesntHave('bookings', function ($q) use ($validated) {
-                $q->where(function ($query) use ($validated) {
-                    $query->whereBetween('bookings.pickup_date', [$validated['date_from'], $validated['date_to']])
-                        ->orWhereBetween('bookings.return_date', [$validated['date_from'], $validated['date_to']])
-                        ->orWhere(function ($q) use ($validated) {
-                            $q->where('bookings.pickup_date', '<=', $validated['date_from'])
-                                ->where('bookings.return_date', '>=', $validated['date_to']);
-                        });
-                });
-            });
-
-            $internalVehiclesQuery->whereDoesntHave('blockings', function ($q) use ($validated) {
-                $q->where(function ($query) use ($validated) {
-                    $query->whereBetween('blocking_start_date', [$validated['date_from'], $validated['date_to']])
-                        ->orWhereBetween('blocking_end_date', [$validated['date_from'], $validated['date_to']])
-                        ->orWhere(function ($q) use ($validated) {
-                            $q->where('blocking_start_date', '<=', $validated['date_from'])
-                                ->where('blocking_end_date', '>=', $validated['date_to']);
-                        });
-                });
-            });
-        }
-
-        // Filter by operating hours: exclude vehicles closed at pickup/return time
-        $startTime = $validated['start_time'] ?? null;
-        $endTime = $validated['end_time'] ?? null;
-        $dateFrom = $validated['date_from'] ?? null;
-        $dateTo = $validated['date_to'] ?? null;
-
-        if ($startTime && $dateFrom) {
-            // Carbon dayOfWeekIso: 1=Monday ... 7=Sunday → convert to 0=Monday ... 6=Sunday
-            $pickupDay = \Carbon\Carbon::parse($dateFrom)->dayOfWeekIso - 1;
-            $internalVehiclesQuery->whereHas('operatingHours', function ($q) use ($pickupDay, $startTime) {
-                $q->where('day_of_week', $pickupDay)
-                  ->where('is_open', true)
-                  ->where('open_time', '<=', $startTime)
-                  ->where('close_time', '>=', $startTime);
-            });
-        }
-
-        if ($endTime && $dateTo) {
-            $returnDay = \Carbon\Carbon::parse($dateTo)->dayOfWeekIso - 1;
-            $internalVehiclesQuery->whereHas('operatingHours', function ($q) use ($returnDay, $endTime) {
-                $q->where('day_of_week', $returnDay)
-                  ->where('is_open', true)
-                  ->where('open_time', '<=', $endTime)
-                  ->where('close_time', '>=', $endTime);
-            });
+            $this->internalVehicleAvailabilityService->apply($internalVehiclesQuery, [
+                'pickup_date' => $validated['date_from'],
+                'pickup_time' => $validated['start_time'] ?? null,
+                'dropoff_date' => $validated['date_to'],
+                'dropoff_time' => $validated['end_time'] ?? null,
+            ]);
+        } else {
+            $internalVehiclesQuery->whereIn('status', Vehicle::searchableStatuses());
         }
 
         // Apply location filters for internal vehicles based on search parameters
@@ -465,8 +429,8 @@ class SearchController extends Controller
             })->values()->toArray();
 
             return $this->internalSearchVehicleFactory->make($data, $rentalDays, [
-                'pickup_location_id' => isset($data['id']) ? (string) $data['id'] : null,
-                'dropoff_location_id' => isset($data['id']) ? (string) $data['id'] : null,
+                'pickup_location_id' => isset($data['vendor_location_id']) ? (string) $data['vendor_location_id'] : (isset($data['id']) ? (string) $data['id'] : null),
+                'dropoff_location_id' => isset($data['vendor_location_id']) ? (string) $data['vendor_location_id'] : (isset($data['id']) ? (string) $data['id'] : null),
             ]);
         })->values()->all();
 
@@ -543,6 +507,17 @@ class SearchController extends Controller
     {
         if (blank($referenceVehicleId)) {
             return false;
+        }
+
+        $referenceLocation = VendorLocation::query()
+            ->whereKey($referenceVehicleId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($referenceLocation) {
+            $query->where('vendor_location_id', $referenceLocation->id);
+
+            return true;
         }
 
         $referenceVehicle = Vehicle::query()

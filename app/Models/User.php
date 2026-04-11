@@ -56,6 +56,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Vehicle::class, 'vendor_id', 'user_id');
     }
+
+    public function vendorLocations(): HasMany
+    {
+        return $this->hasMany(VendorLocation::class, 'vendor_id');
+    }
+
     public function vendorProfile()
     {
         return $this->hasOne(VendorProfile::class);

@@ -31,24 +31,38 @@ use Illuminate\Support\Facades\Redirect;
 use App\Helpers\SchemaBuilder; // Import SchemaBuilder
 use App\Services\LocationSearchService;
 use App\Services\Affiliate\AffiliateQrCodeService;
+use App\Services\Vehicles\SippCodeSuggestionService;
+use App\Services\Vehicles\VendorLocationSyncService;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class VehicleController extends Controller
 {
 
     protected $locationSearchService;
+    protected $vendorLocationSyncService;
+    protected $sippCodeSuggestionService;
 
-    public function __construct(LocationSearchService $locationSearchService)
+    public function __construct(
+        LocationSearchService $locationSearchService,
+        VendorLocationSyncService $vendorLocationSyncService,
+        SippCodeSuggestionService $sippCodeSuggestionService
+    )
     {
         $this->locationSearchService = $locationSearchService;
+        $this->vendorLocationSyncService = $vendorLocationSyncService;
+        $this->sippCodeSuggestionService = $sippCodeSuggestionService;
     }
 
     
     public function create()
     {
         $categories = DB::table('vehicle_categories')->select('id', 'name')->get();
+        $vendorLocations = $this->vendorLocationsForUser(auth()->id());
 
         return Inertia::render('Auth/VehicleListingNew', [
             'categories' => $categories,
+            'vendorLocations' => $vendorLocations,
         ]);
     }
 
@@ -66,13 +80,20 @@ class VehicleController extends Controller
             'mileage' => 'required|integer|min:0',
             'transmission' => 'required|string',
             'fuel' => 'required|string',
+            'body_style' => 'required|string|max:50',
+            'air_conditioning' => 'required|boolean',
             'seating_capacity' => 'required|integer|min:1',
             'number_of_doors' => 'required|integer|min:2',
             'luggage_capacity' => 'required|integer|min:0',
             'horsepower' => 'required|integer|min:0',
             'co2' => 'required|string',
-            'location' => 'required|string',
-            'location_type' => 'required|string|max:255',
+            'vendor_location_id' => [
+                'required',
+                Rule::exists('vendor_locations', 'id')->where('vendor_id', $request->user()->id),
+            ],
+            'location' => 'nullable|string',
+            'location_type' => 'nullable|string|max:255',
+            'iata_code' => 'nullable|string|size:3',
             'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
@@ -108,8 +129,8 @@ class VehicleController extends Controller
             // 'vehicle_height' => 'required|integer|min:0',
             // 'dealer_cost' => 'required|decimal:0,2|min:0',
             'phone_number' => 'required|string|max:15',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
 
             // New Vehicle Benefit fields
             'limited_km_per_day' => 'boolean',
@@ -183,9 +204,32 @@ class VehicleController extends Controller
         try {
             DB::beginTransaction();
 
+            $vendorLocation = $this->vendorLocationSyncService->resolveSelectedLocation(
+                $request->user()->id,
+                (int) $request->input('vendor_location_id')
+            );
+
+            if (!$vendorLocation) {
+                throw ValidationException::withMessages([
+                    'vendor_location_id' => ['Please select a valid vendor location.'],
+                ]);
+            }
+
+            $vehicleLocationAttributes = $this->vendorLocationSyncService->vehicleLocationAttributes($vendorLocation);
+            $resolvedSippCode = $this->sippCodeSuggestionService->suggest([
+                'category_name' => VehicleCategory::query()->find($request->input('category_id'))?->name,
+                'body_style' => $request->input('body_style'),
+                'seating_capacity' => $request->input('seating_capacity'),
+                'horsepower' => $request->input('horsepower'),
+                'transmission' => $request->input('transmission'),
+                'fuel' => $request->input('fuel'),
+                'air_conditioning' => $request->input('air_conditioning'),
+            ]);
+
             // Create the vehicle
             $vehicle = Vehicle::create([
                 'vendor_id' => $request->user()->id,
+                'vendor_location_id' => $vendorLocation->id,
                 'category_id' => $request->category_id,
                 'brand' => $request->brand,
                 'model' => $request->model,
@@ -193,19 +237,22 @@ class VehicleController extends Controller
                 'mileage' => $request->mileage,
                 'transmission' => $request->transmission,
                 'fuel' => $request->fuel,
+                'body_style' => $request->body_style,
+                'air_conditioning' => $request->boolean('air_conditioning'),
+                'sipp_code' => $resolvedSippCode,
                 'seating_capacity' => $request->seating_capacity,
                 'number_of_doors' => $request->number_of_doors,
                 'luggage_capacity' => $request->luggage_capacity,
                 'horsepower' => $request->horsepower,
                 'co2' => $request->co2,
-                'location' => $request->location,
-                'location_type' => $request->location_type,
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
-                'city' => $request->city,
-                'state' => $request->state,
-                'country' => $request->country,
-                'full_vehicle_address' => $request->full_vehicle_address,
+                'location' => $vehicleLocationAttributes['location'],
+                'location_type' => $vehicleLocationAttributes['location_type'],
+                'latitude' => $vehicleLocationAttributes['latitude'],
+                'longitude' => $vehicleLocationAttributes['longitude'],
+                'city' => $vehicleLocationAttributes['city'],
+                'state' => $vehicleLocationAttributes['state'],
+                'country' => $vehicleLocationAttributes['country'],
+                'full_vehicle_address' => $vehicleLocationAttributes['full_vehicle_address'],
                 'status' => $request->status,
                 'features' => json_encode($request->features),
                 'featured' => $request->featured,
@@ -216,9 +263,9 @@ class VehicleController extends Controller
                 'terms_policy' => $request->terms_policy,
                 'rental_policy' => $request->rental_policy,
                 'fuel_policy' => $request->fuel_policy ?? 'full_to_full',
-                'pickup_instructions' => $request->pickup_instructions,
-                'dropoff_instructions' => $request->dropoff_instructions,
-                'location_phone' => $request->location_phone,
+                'pickup_instructions' => $vehicleLocationAttributes['pickup_instructions'],
+                'dropoff_instructions' => $vehicleLocationAttributes['dropoff_instructions'],
+                'location_phone' => $vehicleLocationAttributes['location_phone'],
                 'price_per_day' => $request->price_per_day,
                 'price_per_week' => $request->price_per_week,
                 'weekly_discount' => $request->weekly_discount,
@@ -409,6 +456,9 @@ class VehicleController extends Controller
             DB::commit();
         } catch (\Throwable $exception) {
             DB::rollBack();
+            if ($exception instanceof ValidationException) {
+                throw $exception;
+            }
             \Log::error('Vehicle creation failed', [
                 'vendor_id' => $request->user()->id,
                 'message' => $exception->getMessage(),
@@ -460,6 +510,58 @@ class VehicleController extends Controller
             'message' => 'Vehicle added successfully!',
             'type' => 'success'
         ]);
+    }
+
+    private function vendorLocationsForUser(?int $vendorId)
+    {
+        if (!$vendorId) {
+            return [];
+        }
+
+        return User::query()
+            ->find($vendorId)
+            ?->vendorLocations()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get([
+                'id',
+                'name',
+                'address_line_1',
+                'city',
+                'state',
+                'country',
+                'country_code',
+                'latitude',
+                'longitude',
+                'location_type',
+                'iata_code',
+                'phone',
+                'pickup_instructions',
+                'dropoff_instructions',
+            ])
+            ->map(fn ($location) => [
+                'id' => $location->id,
+                'name' => $location->name,
+                'address_line_1' => $location->address_line_1,
+                'city' => $location->city,
+                'state' => $location->state,
+                'country' => $location->country,
+                'country_code' => $location->country_code,
+                'latitude' => $location->latitude,
+                'longitude' => $location->longitude,
+                'location_type' => $location->location_type,
+                'iata_code' => $location->iata_code,
+                'phone' => $location->phone,
+                'pickup_instructions' => $location->pickup_instructions,
+                'dropoff_instructions' => $location->dropoff_instructions,
+                'display_name' => trim(implode(' • ', array_filter([
+                    $location->name,
+                    $location->city,
+                    $location->country,
+                ]))),
+            ])
+            ->values()
+            ->all() ?? [];
     }
 
     public function index()

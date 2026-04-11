@@ -24,15 +24,23 @@
                         </p>
                     </div>
 
-                    <!-- Add Vehicle Button Only in Header -->
-                    <Link :href="route('vehicles.create', { locale: usePage().props.locale })" class="w-full sm:w-auto">
-                        <Button size="sm" class="flex items-center justify-center gap-2 w-full sm:w-auto">
-                            <Plus class="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span class="hidden sm:inline">{{ _t('vendorprofilepages', 'add_new_vehicle_button')
-                                }}</span>
-                            <span class="sm:hidden">Add Vehicle</span>
-                        </Button>
-                    </Link>
+                    <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <Link :href="route('vendor.locations.index', { locale: usePage().props.locale })" class="w-full sm:w-auto">
+                            <Button size="sm" variant="outline" class="flex items-center justify-center gap-2 w-full sm:w-auto">
+                                <MapPin class="w-3 h-3 sm:w-4 sm:h-4" />
+                                <span>Manage Locations</span>
+                            </Button>
+                        </Link>
+
+                        <Link :href="route('vehicles.create', { locale: usePage().props.locale })" class="w-full sm:w-auto">
+                            <Button size="sm" class="flex items-center justify-center gap-2 w-full sm:w-auto">
+                                <Plus class="w-3 h-3 sm:w-4 sm:h-4" />
+                                <span class="hidden sm:inline">{{ _t('vendorprofilepages', 'add_new_vehicle_button')
+                                    }}</span>
+                                <span class="sm:hidden">Add Vehicle</span>
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
             </div>
 

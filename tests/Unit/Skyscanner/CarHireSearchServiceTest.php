@@ -47,6 +47,19 @@ class CarHireSearchServiceTest extends TestCase
                         'source' => 'internal',
                         'provider_code' => 'internal',
                         'display_name' => 'Toyota Yaris',
+                        'supplier' => [
+                            'code' => 'internal',
+                            'name' => 'Vrooem Internal Fleet',
+                        ],
+                        'image' => 'https://example.com/yaris.jpg',
+                        'specs' => [
+                            'sipp_code' => 'ECMR',
+                            'transmission' => 'manual',
+                            'fuel' => 'petrol',
+                            'air_conditioning' => true,
+                            'seating_capacity' => 5,
+                            'doors' => 4,
+                        ],
                         'pricing' => [
                             'currency' => 'EUR',
                             'total_price' => 90.0,
@@ -71,6 +84,8 @@ class CarHireSearchServiceTest extends TestCase
 
         $this->assertCount(1, $results['quotes']);
         $this->assertSame('327', $results['quotes'][0]['vehicle']['provider_vehicle_id']);
+        $this->assertSame('ECMR', $results['quotes'][0]['vehicle']['sipp_code']);
+        $this->assertSame('Vrooem Internal Fleet', $results['quotes'][0]['supplier']['name']);
         $this->assertSame([], $results['excluded_vehicle_ids']);
     }
 
@@ -91,6 +106,29 @@ class CarHireSearchServiceTest extends TestCase
                 [
                     'provider_vehicle_id' => '327',
                     'display_name' => 'Toyota Yaris',
+                    'supplier' => [
+                        'code' => 'internal',
+                        'name' => 'Vrooem Internal Fleet',
+                    ],
+                    'image' => 'https://example.com/yaris.jpg',
+                    'specs' => [
+                        'sipp_code' => 'ECMR',
+                        'transmission' => 'manual',
+                        'fuel' => 'petrol',
+                        'air_conditioning' => true,
+                        'seating_capacity' => 5,
+                        'doors' => 4,
+                    ],
+                    'location' => [
+                        'pickup' => [
+                            'provider_location_id' => '3272373056',
+                            'name' => 'Marrakech Airport',
+                        ],
+                        'dropoff' => [
+                            'provider_location_id' => '3272373056',
+                            'name' => 'Marrakech Airport',
+                        ],
+                    ],
                     'pricing' => [
                         'currency' => 'EUR',
                         'total_price' => 90.0,
@@ -121,6 +159,8 @@ class CarHireSearchServiceTest extends TestCase
         $this->assertCount(1, $results['quotes']);
         $this->assertSame('327', $results['quotes'][0]['vehicle']['provider_vehicle_id']);
         $this->assertSame('Toyota Yaris', $results['quotes'][0]['vehicle']['display_name']);
+        $this->assertSame('ECMR', $results['quotes'][0]['vehicle']['sipp_code']);
+        $this->assertArrayHasKey('deeplink', $results['quotes'][0]);
         $this->assertSame('2026-04-08T10:30:00+00:00', $results['quotes'][0]['expires_at']);
         $this->assertSame([
             '328',

@@ -12,6 +12,8 @@ class ApiBooking extends Model
         'booking_number',
         'api_consumer_id',
         'vehicle_id',
+        'pickup_vendor_location_id',
+        'dropoff_vendor_location_id',
         'vehicle_name',
         'vehicle_image',
         'driver_first_name',
@@ -40,6 +42,7 @@ class ApiBooking extends Model
         'flight_number',
         'special_requests',
         'insurance_id',
+        'provider_metadata',
     ];
 
     protected $casts = [
@@ -53,6 +56,7 @@ class ApiBooking extends Model
         'driver_age' => 'integer',
         'total_days' => 'integer',
         'is_test' => 'boolean',
+        'provider_metadata' => 'array',
     ];
 
     public function consumer(): BelongsTo

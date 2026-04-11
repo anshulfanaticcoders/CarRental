@@ -48,8 +48,8 @@ class CarHireSearchService
             $this->quoteStoreService->put($quote);
             $this->auditLogService->append('quote', (string) $quote['quote_id'], 'quote_created', [
                 'provider_vehicle_id' => $quote['vehicle']['provider_vehicle_id'] ?? null,
-                'currency' => $quote['vehicle']['pricing']['currency'] ?? null,
-                'total_price' => $quote['vehicle']['pricing']['total_price'] ?? null,
+                'currency' => $quote['pricing']['currency'] ?? null,
+                'total_price' => $quote['pricing']['total_price'] ?? null,
             ]);
             $quotes[] = $quote;
         }

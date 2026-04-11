@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\StripeCheckoutPayload;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Models\Vehicle;
 use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
@@ -16,6 +17,7 @@ use App\Notifications\Booking\GuestBookingCreatedNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
 use App\Models\VendorProfile;
 use App\Services\BookingAmountService;
+use App\Services\Bookings\InternalBookingSnapshotService;
 use App\Services\CurrencyConversionService;
 use App\Services\VrooemGatewayService;
 use Illuminate\Support\Facades\Log;
@@ -98,8 +100,10 @@ class StripeBookingService
             Log::info('StripeBookingService: Customer processed', ['customer_id' => $customer->id]);
 
             $vehicleId = null;
+            $internalVehicle = null;
             if (($metadata->vehicle_source ?? '') === 'internal' && !empty($metadata->vehicle_id)) {
                 $vehicleId = (int) $metadata->vehicle_id;
+                $internalVehicle = Vehicle::with(['vendorLocation', 'vendorProfileData', 'vendor'])->find($vehicleId);
             }
 
             $bookingCurrency = $this->normalizeCurrencyCode($metadata->currency ?? 'EUR');
@@ -186,7 +190,7 @@ class StripeBookingService
             }
 
             if (empty($booking->provider_metadata)) {
-                $providerMetadata = $this->buildProviderMetadataFromSession($metadata, $booking);
+                $providerMetadata = $this->buildProviderMetadataFromSession($metadata, $booking, $internalVehicle);
                 $booking->update([
                     'provider_metadata' => $providerMetadata,
                 ]);
@@ -559,8 +563,16 @@ class StripeBookingService
         return $resolved;
     }
 
-    protected function buildProviderMetadataFromSession($metadata, Booking $booking): array
+    protected function buildProviderMetadataFromSession($metadata, Booking $booking, ?Vehicle $vehicle = null): array
     {
+        if (($booking->provider_source ?? $metadata->vehicle_source ?? null) === 'internal' && $vehicle) {
+            return app(InternalBookingSnapshotService::class)->buildForVehicle($vehicle, [
+                'pickup_location' => $booking->pickup_location,
+                'return_location' => $booking->return_location,
+                'booking_currency' => $booking->booking_currency,
+            ]);
+        }
+
         $normalizeValue = static function ($value) {
             if (!is_string($value)) {
                 return $value;

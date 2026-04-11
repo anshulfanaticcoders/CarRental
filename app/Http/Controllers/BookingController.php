@@ -23,6 +23,8 @@ use App\Models\VehicleOperatingHour;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 use App\Services\BookingAmountService;
+use App\Services\Bookings\InternalBookingSnapshotService;
+use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use App\Services\VrooemGatewayService;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
@@ -84,7 +86,7 @@ class BookingController extends Controller
         $validatedData['extra_charges'] = $validatedData['extra_charges'] ?? 0;
 
         // Validate operating hours for internal vehicles
-        $vehicle = Vehicle::with('operatingHours')->findOrFail($validatedData['vehicle_id']);
+        $vehicle = Vehicle::with(['operatingHours', 'vendorLocation', 'vendorProfileData', 'vendor'])->findOrFail($validatedData['vehicle_id']);
         if ($vehicle->operatingHours->isNotEmpty()) {
             $pickupDay = \Carbon\Carbon::parse($validatedData['pickup_date'])->dayOfWeekIso - 1;
             $returnDay = \Carbon\Carbon::parse($validatedData['return_date'])->dayOfWeekIso - 1;
@@ -137,13 +139,30 @@ class BookingController extends Controller
 
         // Vehicle already loaded above with operatingHours
 
+        if (!app(InternalVehicleAvailabilityService::class)->isVehicleAvailable($vehicle, [
+            'pickup_date' => $validatedData['pickup_date'],
+            'pickup_time' => $validatedData['pickup_time'],
+            'dropoff_date' => $validatedData['return_date'],
+            'dropoff_time' => $validatedData['return_time'],
+        ])) {
+            return back()->withErrors([
+                'vehicle_id' => 'This vehicle is no longer available for the selected dates and times.',
+            ])->withInput();
+        }
+
         // Booking creation
         $bookingCurrency = strtoupper($request->input('currency', config('currency.default', 'EUR')));
+        $providerMetadata = app(InternalBookingSnapshotService::class)->buildForVehicle($vehicle, [
+            'pickup_location' => $request->input('pickup_location'),
+            'return_location' => $request->input('return_location'),
+            'booking_currency' => $bookingCurrency,
+        ]);
 
         $booking = Booking::create([
             'booking_number' => uniqid('BOOK-'),
             'customer_id' => $customer->id,
             'vehicle_id' => $vehicle->id,
+            'provider_source' => 'internal',
             'pickup_date' => $request->input('pickup_date'),
             'return_date' => $request->input('return_date'),
             'pickup_time' => $request->input('pickup_time'),
@@ -160,6 +179,7 @@ class BookingController extends Controller
             'pending_amount' => $request->input('pending_amount'),
             'amount_paid' => $request->input('amount_paid'),
             'booking_currency' => $bookingCurrency,
+            'provider_metadata' => $providerMetadata,
             'payment_status' => 'pending',
             'booking_status' => 'pending',
             'plan' => $request->input('plan'),
@@ -176,7 +196,7 @@ class BookingController extends Controller
         ], $bookingCurrency, $vendorCurrency);
 
         $extrasData = [];
-        foreach ($validatedData['extras'] as $extra) {
+        foreach (($validatedData['extras'] ?? []) as $extra) {
             if ($extra['quantity'] > 0) {
                 $extrasData[] = [
                     'booking_id' => $booking->id,
@@ -305,11 +325,15 @@ class BookingController extends Controller
             return response()->json([
                 'clientSecret' => $paymentIntent->client_secret,
             ]);
-        } catch (\Stripe\Exception\CardException $e) {
-            // Handle payment failure
+        } catch (\Throwable $e) {
+            $booking->update([
+                'booking_status' => 'expired',
+                'payment_status' => 'failed',
+            ]);
+
             return response()->json([
                 'error' => $e->getMessage(),
-                'booking' => $booking, // Return booking details for further processing
+                'booking' => $booking->fresh(),
             ], 400);
         }
     }
@@ -338,14 +362,26 @@ class BookingController extends Controller
         }
 
         // Fetch booking details
-        $booking = Booking::with(['extras', 'customer', 'vehicle.vendorProfile'])->find($payment->booking_id);
+        $booking = Booking::with(['extras', 'customer', 'vehicle.vendorProfile', 'vehicle.vendorLocation'])->find($payment->booking_id);
 
         if (!$booking) {
             return response()->json(['error' => 'Booking not found'], 404);
         }
 
+        if ($booking->vehicle) {
+            $booking->provider_metadata = app(InternalBookingSnapshotService::class)->mergeMissingIntoMetadata(
+                $booking->provider_metadata,
+                $booking->vehicle,
+                [
+                    'pickup_location' => $booking->pickup_location,
+                    'return_location' => $booking->return_location,
+                    'booking_currency' => $booking->booking_currency,
+                ]
+            );
+        }
+
         $vehicleId = $booking->vehicle_id;
-        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorPlans'])->find($vehicleId);
+        $vehicle = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorPlans', 'vendorLocation'])->find($vehicleId);
         $plan = Plan::where('plan_type', $booking->plan)->first();
 
         // Return booking and payment details in JSON format
@@ -496,7 +532,7 @@ class BookingController extends Controller
 
         // Check if internal vehicle exists
         if ($booking->vehicle_id) {
-            $booking->load(['vehicle.images', 'vehicle.category', 'vehicle.vendorProfileData']);
+            $booking->load(['vehicle.images', 'vehicle.category', 'vehicle.vendorProfileData', 'vehicle.vendorLocation', 'vehicle.vendor']);
         }
 
         // Normalize Vehicle Data
@@ -504,6 +540,16 @@ class BookingController extends Controller
         $vendorProfile = null;
 
         if ($booking->vehicle) {
+            $booking->provider_metadata = app(InternalBookingSnapshotService::class)->mergeMissingIntoMetadata(
+                $booking->provider_metadata,
+                $booking->vehicle,
+                [
+                    'pickup_location' => $booking->pickup_location,
+                    'return_location' => $booking->return_location,
+                    'booking_currency' => $booking->booking_currency,
+                ]
+            );
+
             // Internal Vehicle
             $vehicleData = $booking->vehicle;
             $vendorProfile = $booking->vehicle->vendorProfileData;
@@ -618,7 +664,7 @@ class BookingController extends Controller
 
         // Check if internal vehicle exists
         if ($booking->vehicle_id) {
-            $booking->load(['vehicle.images', 'vehicle.category', 'vehicle.vendorProfile', 'vehicle.vendor']);
+            $booking->load(['vehicle.images', 'vehicle.category', 'vehicle.vendorProfile', 'vehicle.vendor', 'vehicle.vendorLocation']);
         }
 
         // Load vendor user if vendorProfile exists
@@ -633,6 +679,16 @@ class BookingController extends Controller
         $vendorCompany = null;
 
         if ($booking->vehicle) {
+            $booking->provider_metadata = app(InternalBookingSnapshotService::class)->mergeMissingIntoMetadata(
+                $booking->provider_metadata,
+                $booking->vehicle,
+                [
+                    'pickup_location' => $booking->pickup_location,
+                    'return_location' => $booking->return_location,
+                    'booking_currency' => $booking->booking_currency,
+                ]
+            );
+
             $vehicleData = $booking->vehicle;
             // Try to get vendorProfile from vehicle first, then from booking
             $vendorProfile = $booking->vehicle->vendorProfile ?? $booking->vendorProfile;
@@ -895,11 +951,6 @@ class BookingController extends Controller
         }
 
         $booking->save();
-
-        // Update vehicle status to available
-        if ($vehicle) {
-            $vehicle->update(['status' => 'available']);
-        }
 
         if ($request->wantsJson()) {
             return response()->json(['message' => 'Booking cancelled successfully']);

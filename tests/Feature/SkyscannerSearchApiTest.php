@@ -9,6 +9,7 @@ use App\Models\VehicleBenefit;
 use App\Models\VehicleCategory;
 use App\Models\VehicleImage;
 use App\Models\VehicleOperatingHour;
+use App\Models\VendorLocation;
 use App\Models\VendorProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -76,6 +77,84 @@ class SkyscannerSearchApiTest extends TestCase
         $response->assertJsonCount(1, 'quotes');
         $response->assertJsonPath('quotes.0.vehicle.provider_vehicle_id', (string) $referenceVehicle->id);
         $response->assertJsonPath('quotes.0.vehicle.display_name', 'Toyota Yaris');
+        $response->assertJsonPath('excluded_vehicle_ids', []);
+    }
+
+    public function test_skyscanner_search_api_accepts_canonical_vendor_location_ids(): void
+    {
+        config([
+            'skyscanner.api_key' => 'secret-key',
+            'skyscanner.testing_access.auth_header' => 'x-api-key',
+            'skyscanner.case_id' => 'PSM-46100',
+            'skyscanner.quote_ttl_minutes' => 30,
+        ]);
+
+        $category = VehicleCategory::create([
+            'name' => 'Economy',
+            'slug' => 'economy',
+            'description' => 'Economy vehicles',
+            'status' => true,
+        ]);
+
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+
+        UserProfile::create([
+            'user_id' => $vendor->id,
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+        ]);
+
+        VendorProfile::create([
+            'user_id' => $vendor->id,
+            'company_name' => 'Airport Fleet Co',
+            'company_email' => 'fleet@example.com',
+            'company_phone_number' => '+971500000000',
+            'company_address' => 'Terminal 1',
+            'company_gst_number' => 'GST-DXB-' . $vendor->id,
+            'status' => 'approved',
+        ]);
+
+        $location = VendorLocation::create([
+            'vendor_id' => $vendor->id,
+            'name' => 'Dubai Airport (DXB)',
+            'code' => 'vl-' . $vendor->id . '-dxb',
+            'address_line_1' => 'Dubai Airport Terminal 1',
+            'city' => 'Dubai',
+            'state' => null,
+            'country' => 'United Arab Emirates',
+            'country_code' => 'AE',
+            'latitude' => 25.251369,
+            'longitude' => 55.347204,
+            'location_type' => 'airport',
+            'iata_code' => 'DXB',
+            'is_active' => true,
+        ]);
+
+        $referenceVehicle = $this->createVehicleAtAirport($vendor->id, $category->id, [
+            'brand' => 'Toyota',
+            'model' => 'Yaris',
+            'vendor_location_id' => $location->id,
+        ]);
+
+        $response = $this
+            ->withHeader('x-api-key', 'secret-key')
+            ->postJson('/api/skyscanner/car-hire/search', [
+                'pickup_location_id' => $location->id,
+                'dropoff_location_id' => $location->id,
+                'pickup_date' => '2026-06-15',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-06-18',
+                'dropoff_time' => '09:00',
+                'driver_age' => 35,
+                'currency' => 'EUR',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'quotes');
+        $response->assertJsonPath('quotes.0.vehicle.provider_vehicle_id', (string) $referenceVehicle->id);
         $response->assertJsonPath('excluded_vehicle_ids', []);
     }
 

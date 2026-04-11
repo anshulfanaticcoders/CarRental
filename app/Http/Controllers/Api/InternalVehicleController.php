@@ -3,15 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\VendorLocation;
 use App\Models\Vehicle;
 use App\Services\CountryCodeResolver;
-use Carbon\Carbon;
+use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class InternalVehicleController extends Controller
 {
+    public function __construct(
+        private readonly InternalVehicleAvailabilityService $internalVehicleAvailabilityService,
+    ) {
+    }
+
     /**
      * Return raw internal fleet vehicles for a grouped internal location.
      * This endpoint is consumed by the gateway's internal adapter.
@@ -21,7 +27,7 @@ class InternalVehicleController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'location_id' => ['required'],
+            'location_id' => ['required', 'integer'],
             'pickup_date' => ['required', 'date'],
             'dropoff_date' => ['required', 'date', 'after_or_equal:pickup_date'],
             'pickup_time' => ['required', 'date_format:H:i'],
@@ -29,65 +35,54 @@ class InternalVehicleController extends Controller
             'driver_age' => ['nullable', 'integer'],
         ]);
 
-        $referenceVehicle = Vehicle::query()
-            ->whereKey($validated['location_id'])
-            ->whereIn('status', Vehicle::searchableStatuses())
+        $locationId = (int) $validated['location_id'];
+        $referenceLocation = VendorLocation::query()
+            ->whereKey($locationId)
+            ->where('is_active', true)
             ->first();
 
-        if (!$referenceVehicle) {
+        $referenceVehicle = null;
+        if (!$referenceLocation) {
+            $referenceVehicle = Vehicle::query()
+                ->whereKey($locationId)
+                ->whereIn('status', Vehicle::searchableStatuses())
+                ->first();
+        }
+
+        if (!$referenceLocation && !$referenceVehicle) {
             return response()->json(['data' => []]);
         }
 
-        $pickupDayOfWeek = Carbon::parse($validated['pickup_date'])->dayOfWeekIso - 1;
-        $dropoffDayOfWeek = Carbon::parse($validated['dropoff_date'])->dayOfWeekIso - 1;
-
-        $vehicles = Vehicle::query()
-            ->whereIn('status', Vehicle::searchableStatuses())
-            ->where('full_vehicle_address', $referenceVehicle->full_vehicle_address)
-            ->where('location', $referenceVehicle->location)
-            ->where('location_type', $referenceVehicle->location_type)
-            ->where('city', $referenceVehicle->city)
-            ->where('country', $referenceVehicle->country)
+        $vehicleQuery = Vehicle::query()
+            ->with(['vendor.profile', 'vendor.vendorProfile', 'vendorProfileData', 'benefits', 'images', 'vendorLocation'])
             ->when(
-                $referenceVehicle->state === null,
-                fn ($query) => $query->whereNull('state'),
-                fn ($query) => $query->where('state', $referenceVehicle->state)
-            )
-            ->whereRaw('ROUND(latitude, 6) = ?', [round((float) $referenceVehicle->latitude, 6)])
-            ->whereRaw('ROUND(longitude, 6) = ?', [round((float) $referenceVehicle->longitude, 6)])
-            ->whereDoesntHave('bookings', function ($query) use ($validated) {
-                $query->where(function ($nested) use ($validated) {
-                    $nested->whereBetween('bookings.pickup_date', [$validated['pickup_date'], $validated['dropoff_date']])
-                        ->orWhereBetween('bookings.return_date', [$validated['pickup_date'], $validated['dropoff_date']])
-                        ->orWhere(function ($overlap) use ($validated) {
-                            $overlap->where('bookings.pickup_date', '<=', $validated['pickup_date'])
-                                ->where('bookings.return_date', '>=', $validated['dropoff_date']);
-                        });
-                });
-            })
-            ->whereDoesntHave('blockings', function ($query) use ($validated) {
-                $query->where(function ($nested) use ($validated) {
-                    $nested->whereBetween('blocking_start_date', [$validated['pickup_date'], $validated['dropoff_date']])
-                        ->orWhereBetween('blocking_end_date', [$validated['pickup_date'], $validated['dropoff_date']])
-                        ->orWhere(function ($overlap) use ($validated) {
-                            $overlap->where('blocking_start_date', '<=', $validated['pickup_date'])
-                                ->where('blocking_end_date', '>=', $validated['dropoff_date']);
-                        });
-                });
-            })
-            ->whereHas('operatingHours', function ($query) use ($pickupDayOfWeek, $validated) {
-                $query->where('day_of_week', $pickupDayOfWeek)
-                    ->where('is_open', true)
-                    ->where('open_time', '<=', $validated['pickup_time'])
-                    ->where('close_time', '>=', $validated['pickup_time']);
-            })
-            ->whereHas('operatingHours', function ($query) use ($dropoffDayOfWeek, $validated) {
-                $query->where('day_of_week', $dropoffDayOfWeek)
-                    ->where('is_open', true)
-                    ->where('open_time', '<=', $validated['dropoff_time'])
-                    ->where('close_time', '>=', $validated['dropoff_time']);
-            })
-            ->with(['vendor.profile', 'vendor.vendorProfile', 'vendorProfileData', 'benefits', 'images'])
+                $referenceLocation !== null,
+                fn ($query) => $query->where('vendor_location_id', $referenceLocation->id),
+                function ($query) use ($referenceVehicle) {
+                    return $query
+                        ->where('full_vehicle_address', $referenceVehicle->full_vehicle_address)
+                        ->where('location', $referenceVehicle->location)
+                        ->where('location_type', $referenceVehicle->location_type)
+                        ->where('city', $referenceVehicle->city)
+                        ->where('country', $referenceVehicle->country)
+                        ->when(
+                            $referenceVehicle->state === null,
+                            fn ($innerQuery) => $innerQuery->whereNull('state'),
+                            fn ($innerQuery) => $innerQuery->where('state', $referenceVehicle->state)
+                        )
+                        ->whereRaw('ROUND(latitude, 6) = ?', [round((float) $referenceVehicle->latitude, 6)])
+                        ->whereRaw('ROUND(longitude, 6) = ?', [round((float) $referenceVehicle->longitude, 6)]);
+                }
+            );
+
+        $this->internalVehicleAvailabilityService->apply($vehicleQuery, [
+            'pickup_date' => $validated['pickup_date'],
+            'pickup_time' => $validated['pickup_time'],
+            'dropoff_date' => $validated['dropoff_date'],
+            'dropoff_time' => $validated['dropoff_time'],
+        ]);
+
+        $vehicles = $vehicleQuery
             ->get()
             ->map(fn (Vehicle $vehicle) => $this->transformVehicle($vehicle));
 
@@ -96,9 +91,11 @@ class InternalVehicleController extends Controller
 
     private function transformVehicle(Vehicle $vehicle): array
     {
-        $profile = $vehicle->vendor?->profile;
-        $vendorProfileData = $vehicle->vendorProfileData ?: $vehicle->vendor?->vendorProfile;
+        $vendor = $vehicle->vendor;
+        $profile = $vendor ? $vendor->profile : null;
+        $vendorProfileData = $vehicle->vendorProfileData ?: ($vendor ? $vendor->vendorProfile : null);
         $benefits = $vehicle->benefits;
+        $canonicalLocation = $vehicle->vendorLocation;
 
         $cancellation = '';
         if ($benefits && (int) ($benefits->cancellation_available_per_day ?? 0) === 1) {
@@ -131,6 +128,7 @@ class InternalVehicleController extends Controller
         return [
             'id' => $vehicle->id,
             'vendor_id' => $vehicle->vendor_id,
+            'vendor_location_id' => $vehicle->vendor_location_id,
             'category_id' => $vehicle->category_id,
             'brand' => $vehicle->brand,
             'model' => $vehicle->model,
@@ -138,9 +136,28 @@ class InternalVehicleController extends Controller
             'fuel' => $vehicle->fuel,
             'seating_capacity' => $vehicle->seating_capacity,
             'doors' => $vehicle->number_of_doors,
-            'latitude' => $vehicle->latitude !== null ? (float) $vehicle->latitude : null,
-            'longitude' => $vehicle->longitude !== null ? (float) $vehicle->longitude : null,
-            'location' => $vehicle->full_vehicle_address ?: $vehicle->location,
+            'latitude' => $canonicalLocation && $canonicalLocation->latitude !== null ? (float) $canonicalLocation->latitude : ($vehicle->latitude !== null ? (float) $vehicle->latitude : null),
+            'longitude' => $canonicalLocation && $canonicalLocation->longitude !== null ? (float) $canonicalLocation->longitude : ($vehicle->longitude !== null ? (float) $vehicle->longitude : null),
+            'location' => $canonicalLocation && $canonicalLocation->name ? $canonicalLocation->name : ($vehicle->full_vehicle_address ?: $vehicle->location),
+            'location_type' => $canonicalLocation?->location_type ?: $vehicle->location_type,
+            'location_phone' => $canonicalLocation?->phone ?: $vehicle->location_phone,
+            'pickup_instructions' => $canonicalLocation?->pickup_instructions ?: $vehicle->pickup_instructions,
+            'dropoff_instructions' => $canonicalLocation?->dropoff_instructions ?: $vehicle->dropoff_instructions,
+            'location_details' => [
+                'name' => $canonicalLocation?->name ?: ($vehicle->full_vehicle_address ?: $vehicle->location),
+                'location_type' => $canonicalLocation?->location_type ?: $vehicle->location_type,
+                'iata_code' => $canonicalLocation?->iata_code,
+                'telephone' => $canonicalLocation?->phone ?: $vehicle->location_phone,
+                'address_1' => $canonicalLocation?->address_line_1 ?: $vehicle->full_vehicle_address,
+                'address_2' => $canonicalLocation?->address_line_2,
+                'address_city' => $canonicalLocation?->city ?: $vehicle->city,
+                'address_county' => $canonicalLocation?->state ?: $vehicle->state,
+                'address_country' => $canonicalLocation?->country ?: $vehicle->country,
+                'latitude' => $canonicalLocation && $canonicalLocation->latitude !== null ? (float) $canonicalLocation->latitude : ($vehicle->latitude !== null ? (float) $vehicle->latitude : null),
+                'longitude' => $canonicalLocation && $canonicalLocation->longitude !== null ? (float) $canonicalLocation->longitude : ($vehicle->longitude !== null ? (float) $vehicle->longitude : null),
+                'pickup_instructions' => $canonicalLocation?->pickup_instructions ?: $vehicle->pickup_instructions,
+                'dropoff_instructions' => $canonicalLocation?->dropoff_instructions ?: $vehicle->dropoff_instructions,
+            ],
             'security_deposit' => $vehicle->security_deposit !== null ? (float) $vehicle->security_deposit : null,
             'price_per_day' => $vehicle->price_per_day !== null ? (float) $vehicle->price_per_day : null,
             'price_per_week' => $vehicle->price_per_week !== null ? (float) $vehicle->price_per_week : null,
@@ -149,8 +166,8 @@ class InternalVehicleController extends Controller
             'payment_method' => is_array($paymentMethods) ? array_values($paymentMethods) : [],
             'vendor' => [
                 'profile' => [
-                    'city' => $profile?->city ?: $vehicle->city,
-                    'country_code' => CountryCodeResolver::resolve($profile?->country ?: $vehicle->country),
+                    'city' => $canonicalLocation?->city ?: ($profile?->city ?: $vehicle->city),
+                    'country_code' => $canonicalLocation?->country_code ?: CountryCodeResolver::resolve($profile?->country ?: $vehicle->country),
                     'company_name' => $vendorProfileData?->company_name,
                 ],
             ],

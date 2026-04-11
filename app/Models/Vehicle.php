@@ -11,10 +11,11 @@ class Vehicle extends Model
 
     use HasFactory;
 
-    public const SEARCHABLE_STATUSES = ['active', 'available', 'rented'];
+    public const SEARCHABLE_STATUSES = ['active', 'available'];
 
     protected $fillable = [
         'vendor_id',
+        'vendor_location_id',
         'category_id',
         'brand',
         'model',
@@ -22,6 +23,9 @@ class Vehicle extends Model
         'mileage',
         'transmission',
         'fuel',
+        'body_style',
+        'air_conditioning',
+        'sipp_code',
         'seating_capacity',
         'number_of_doors',
         'luggage_capacity',
@@ -125,6 +129,11 @@ class Vehicle extends Model
         return $this->belongsTo(User::class, 'vendor_id');
     }
 
+    public function vendorLocation()
+    {
+        return $this->belongsTo(VendorLocation::class, 'vendor_location_id');
+    }
+
     public function benefits()
     {
         return $this->hasOne(VehicleBenefit::class);
@@ -145,6 +154,11 @@ class Vehicle extends Model
     public function blockings()
     {
         return $this->hasMany(BlockingDate::class, 'vehicle_id');
+    }
+
+    public function apiBookings()
+    {
+        return $this->hasMany(ApiBooking::class, 'vehicle_id');
     }
 
     public function operatingHours()
@@ -191,5 +205,6 @@ class Vehicle extends Model
     protected $casts = [
         'pickup_times' => 'array',
         'return_times' => 'array',
+        'air_conditioning' => 'boolean',
     ];
 }

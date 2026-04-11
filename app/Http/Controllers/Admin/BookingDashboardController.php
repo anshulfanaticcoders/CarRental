@@ -75,11 +75,6 @@ class BookingDashboardController extends Controller
         $booking->cancellation_reason = $reason;
         $booking->save();
 
-        // Update vehicle status for internal vehicles
-        if ($vehicle) {
-            $vehicle->update(['status' => 'available']);
-        }
-
         // Send notifications
         $this->sendCancellationNotifications($booking, $customer, $vehicle, $reason);
 

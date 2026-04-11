@@ -23,6 +23,24 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
             [
                 'provider_vehicle_id' => '327',
                 'display_name' => 'Toyota Yaris',
+                'brand' => 'Toyota',
+                'model' => 'Yaris',
+                'image' => 'https://example.com/yaris.jpg',
+                'supplier' => [
+                    'code' => 'internal',
+                    'name' => 'Vrooem Internal Fleet',
+                ],
+                'specs' => [
+                    'sipp_code' => 'ECMR',
+                    'transmission' => 'manual',
+                    'fuel' => 'petrol',
+                    'air_conditioning' => true,
+                    'seating_capacity' => 5,
+                    'doors' => 4,
+                    'luggage_small' => 1,
+                    'luggage_medium' => 1,
+                    'luggage_large' => 0,
+                ],
                 'pricing' => [
                     'currency' => 'EUR',
                     'total_price' => 90.0,
@@ -31,12 +49,30 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
                     'mileage_policy' => 'limited',
                     'fuel_policy' => 'full_to_full',
                 ],
+                'location' => [
+                    'pickup' => [
+                        'provider_location_id' => '3272373056',
+                        'name' => 'Marrakech Airport',
+                        'location_type' => 'airport',
+                        'iata' => 'RAK',
+                    ],
+                    'dropoff' => [
+                        'provider_location_id' => '3272373056',
+                        'name' => 'Marrakech Airport',
+                        'location_type' => 'airport',
+                        'iata' => 'RAK',
+                    ],
+                ],
             ],
             [
                 'pickup_location_id' => '3272373056',
                 'dropoff_location_id' => '3272373056',
-                'pickup_at' => '2026-06-15T09:00:00Z',
-                'dropoff_at' => '2026-06-18T09:00:00Z',
+                'pickup_date' => '2026-06-15',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-06-18',
+                'dropoff_time' => '09:00',
+                'driver_age' => 35,
+                'currency' => 'EUR',
             ],
             $now,
         );
@@ -47,9 +83,17 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
         $this->assertSame('2026-04-08T10:30:00+00:00', $quote['expires_at']);
         $this->assertSame('327', $quote['vehicle']['provider_vehicle_id']);
         $this->assertSame('Toyota Yaris', $quote['vehicle']['display_name']);
+        $this->assertSame('ECMR', $quote['vehicle']['sipp_code']);
+        $this->assertSame('Vrooem Internal Fleet', $quote['vehicle']['supplier_name']);
+        $this->assertSame('https://example.com/yaris.jpg', $quote['vehicle']['image_url']);
+        $this->assertSame('internal', $quote['supplier']['code']);
+        $this->assertSame('ECMR', $quote['specs']['sipp_code']);
         $this->assertSame(90.0, $quote['pricing']['total_price']);
         $this->assertSame('EUR', $quote['pricing']['currency']);
         $this->assertSame('3272373056', $quote['search']['pickup_location_id']);
+        $this->assertSame('Marrakech Airport', $quote['pickup_location_details']['name']);
+        $this->assertStringContainsString('/vehicle/327', $quote['deeplink']['landing_page_url']);
+        $this->assertStringContainsString('/api/skyscanner/redirect', $quote['deeplink']['quote_redirect_url']);
         $this->assertSame('limited', $quote['policies']['mileage_policy']);
     }
 

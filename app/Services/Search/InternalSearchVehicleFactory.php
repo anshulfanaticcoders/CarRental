@@ -2,6 +2,8 @@
 
 namespace App\Services\Search;
 
+use App\Services\Vehicles\SippCodeSuggestionService;
+
 class InternalSearchVehicleFactory
 {
     public function make(array $vehicle, int $rentalDays, array $searchContext = []): array
@@ -11,6 +13,15 @@ class InternalSearchVehicleFactory
         $currency = $this->resolveCurrency($legacyPayload);
         $depositAmount = $this->toFloat($benefits['deposit_amount'] ?? $legacyPayload['security_deposit'] ?? null);
         $depositCurrency = $this->normalizeCurrencyCode($benefits['deposit_currency'] ?? $currency);
+        $supplier = $this->resolveSupplier($vehicle);
+        $pickupLocation = $this->buildLocationPayload(
+            $vehicle,
+            $this->nullableString($searchContext['pickup_location_id'] ?? null)
+        );
+        $dropoffLocation = $this->buildLocationPayload(
+            $vehicle,
+            $this->nullableString($searchContext['dropoff_location_id'] ?? ($searchContext['pickup_location_id'] ?? null))
+        );
 
         return [
             'id' => (string) ($vehicle['id'] ?? ''),
@@ -18,6 +29,7 @@ class InternalSearchVehicleFactory
             'provider_vehicle_id' => isset($vehicle['id']) ? (string) $vehicle['id'] : null,
             'source' => 'internal',
             'provider_code' => 'internal',
+            'supplier' => $supplier,
             'display_name' => $this->resolveDisplayName($vehicle),
             'brand' => $this->nullableString($vehicle['brand'] ?? null),
             'model' => $this->nullableString($vehicle['model'] ?? null),
@@ -27,12 +39,12 @@ class InternalSearchVehicleFactory
                 'transmission' => $this->normalizeTransmission($vehicle['transmission'] ?? null),
                 'fuel' => $this->normalizeFuel($vehicle['fuel'] ?? null),
                 'seating_capacity' => $this->toFloat($vehicle['seating_capacity'] ?? null),
-                'doors' => $this->toFloat($vehicle['doors'] ?? null),
+                'doors' => $this->toFloat($vehicle['number_of_doors'] ?? ($vehicle['doors'] ?? null)),
                 'luggage_small' => $this->toFloat($vehicle['small_bags'] ?? null),
                 'luggage_medium' => $this->toFloat($vehicle['medium_bags'] ?? null),
-                'luggage_large' => $this->toFloat($vehicle['large_bags'] ?? null),
+                'luggage_large' => $this->toFloat($vehicle['large_bags'] ?? ($vehicle['luggage_capacity'] ?? null)),
                 'air_conditioning' => $this->toBool($vehicle['air_conditioning'] ?? null),
-                'sipp_code' => null,
+                'sipp_code' => $this->resolveSippCode($vehicle),
             ],
             'pricing' => [
                 'currency' => $currency,
@@ -62,18 +74,8 @@ class InternalSearchVehicleFactory
             'city' => $this->nullableString($vehicle['city'] ?? null),
             'country' => $this->nullableString($vehicle['country'] ?? null),
             'location' => [
-                'pickup' => [
-                    'provider_location_id' => $this->nullableString($searchContext['pickup_location_id'] ?? null),
-                    'name' => $this->nullableString($vehicle['full_vehicle_address'] ?? ($vehicle['location'] ?? null)),
-                    'latitude' => $this->toFloat($vehicle['latitude'] ?? null),
-                    'longitude' => $this->toFloat($vehicle['longitude'] ?? null),
-                ],
-                'dropoff' => [
-                    'provider_location_id' => $this->nullableString($searchContext['dropoff_location_id'] ?? ($searchContext['pickup_location_id'] ?? null)),
-                    'name' => $this->nullableString($vehicle['location'] ?? null),
-                    'latitude' => $this->toFloat($vehicle['latitude'] ?? null),
-                    'longitude' => $this->toFloat($vehicle['longitude'] ?? null),
-                ],
+                'pickup' => $pickupLocation,
+                'dropoff' => $dropoffLocation,
             ],
             'data_quality_flags' => [],
             'pricing_transparency_flags' => [],
@@ -181,6 +183,48 @@ class InternalSearchVehicleFactory
         return trim(implode(' ', $parts));
     }
 
+    private function resolveSupplier(array $vehicle): array
+    {
+        $vendorProfile = $this->extractVendorLocationMeta($vehicle, 'vendorProfile')
+            ?: $this->extractVendorLocationMeta($vehicle, 'vendor_profile')
+            ?: $this->extractVendorLocationMeta($vehicle, 'vendorProfileData')
+            ?: $this->extractVendorLocationMeta($vehicle, 'vendor_profile_data');
+
+        $supplierName = $this->nullableString($vendorProfile['company_name'] ?? null)
+            ?? $this->nullableString($vendorProfile['name'] ?? null)
+            ?? 'Vrooem Internal Fleet';
+
+        return [
+            'code' => 'internal',
+            'name' => $supplierName,
+        ];
+    }
+
+    private function buildLocationPayload(array $vehicle, ?string $providerLocationId): array
+    {
+        $vendorLocation = $this->extractVendorLocationMeta($vehicle, 'vendorLocation')
+            ?: $this->extractVendorLocationMeta($vehicle, 'vendor_location');
+
+        return [
+            'provider_location_id' => $providerLocationId,
+            'name' => $this->nullableString($vehicle['location'] ?? null)
+                ?? $this->nullableString($vendorLocation['name'] ?? null)
+                ?? $this->nullableString($vehicle['full_vehicle_address'] ?? null),
+            'address' => $this->nullableString($vehicle['full_vehicle_address'] ?? null),
+            'city' => $this->nullableString($vehicle['city'] ?? null),
+            'state' => $this->nullableString($vehicle['state'] ?? null),
+            'country' => $this->nullableString($vehicle['country'] ?? null),
+            'country_code' => $this->nullableString($vehicle['country_code'] ?? ($vendorLocation['country_code'] ?? null)),
+            'location_type' => $this->nullableString($vehicle['location_type'] ?? ($vendorLocation['location_type'] ?? null)),
+            'iata' => $this->nullableString($vehicle['iata_code'] ?? ($vendorLocation['iata_code'] ?? null)),
+            'phone' => $this->nullableString($vehicle['location_phone'] ?? ($vendorLocation['phone'] ?? null)),
+            'pickup_instructions' => $this->nullableString($vehicle['pickup_instructions'] ?? ($vendorLocation['pickup_instructions'] ?? null)),
+            'dropoff_instructions' => $this->nullableString($vehicle['dropoff_instructions'] ?? ($vendorLocation['dropoff_instructions'] ?? null)),
+            'latitude' => $this->toFloat($vehicle['latitude'] ?? ($vendorLocation['latitude'] ?? null)),
+            'longitude' => $this->toFloat($vehicle['longitude'] ?? ($vendorLocation['longitude'] ?? null)),
+        ];
+    }
+
     private function resolveCategory(array $vehicle): ?string
     {
         $categoryName = $vehicle['category_name']
@@ -211,6 +255,13 @@ class InternalSearchVehicleFactory
         }
 
         return null;
+    }
+
+    private function extractVendorLocationMeta(array $vehicle, string $key): array
+    {
+        $value = $vehicle[$key] ?? null;
+
+        return is_array($value) ? $value : [];
     }
 
     private function resolveMileagePolicy(array $benefits): ?string
@@ -250,6 +301,28 @@ class InternalSearchVehicleFactory
             ?? 'USD';
 
         return $this->normalizeCurrencyCode($rawCurrency);
+    }
+
+    private function resolveSippCode(array $vehicle): ?string
+    {
+        $value = $this->nullableString($vehicle['sipp_code'] ?? null);
+
+        if ($value === null) {
+            return (new SippCodeSuggestionService())->suggest([
+                'category_name' => $vehicle['category_name']
+                    ?? ($vehicle['category']['name'] ?? null)
+                    ?? ($vehicle['category']['title'] ?? null)
+                    ?? null,
+                'body_style' => $vehicle['body_style'] ?? null,
+                'seating_capacity' => $vehicle['seating_capacity'] ?? null,
+                'horsepower' => $vehicle['horsepower'] ?? null,
+                'transmission' => $vehicle['transmission'] ?? null,
+                'fuel' => $vehicle['fuel'] ?? null,
+                'air_conditioning' => $vehicle['air_conditioning'] ?? null,
+            ]);
+        }
+
+        return strtoupper($value);
     }
 
     private function normalizeCurrencyCode(mixed $value): string

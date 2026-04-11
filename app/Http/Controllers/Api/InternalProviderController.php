@@ -7,18 +7,75 @@ use App\Models\ApiBooking;
 use App\Models\ApiBookingExtra;
 use App\Models\ApiConsumer;
 use App\Models\User;
+use App\Models\VendorLocation;
 use App\Models\Vehicle;
 use App\Models\VendorVehicleAddon;
 use App\Models\VendorVehiclePlan;
+use App\Services\Bookings\InternalBookingSnapshotService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 class InternalProviderController extends Controller
 {
+    public function __construct(
+        private readonly InternalVehicleAvailabilityService $internalVehicleAvailabilityService,
+        private readonly InternalBookingSnapshotService $internalBookingSnapshotService,
+    ) {
+    }
+
+    private function dispatchBookingCreatedNotificationsAfterResponse(
+        ApiBooking $booking,
+        Vehicle $vehicle,
+        ?ApiConsumer $consumer,
+        bool $isSandbox,
+    ): void {
+        if ($isSandbox) {
+            return;
+        }
+
+        dispatch(function () use ($booking, $vehicle, $consumer) {
+            try {
+                $vendor = $vehicle->vendor_id ? User::find($vehicle->vendor_id) : null;
+
+                if ($vendor && $consumer) {
+                    $vendor->notify(new \App\Notifications\ApiBooking\ApiBookingCreatedVendorNotification($booking, $consumer));
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to send API booking creation notifications', [
+                    'booking_number' => $booking->booking_number,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        })->afterResponse();
+    }
+
+    private function dispatchBookingCancelledNotificationsAfterResponse(ApiBooking $booking): void
+    {
+        dispatch(function () use ($booking) {
+            try {
+                $vehicle = Vehicle::find($booking->vehicle_id);
+                $vendor = $vehicle && $vehicle->vendor_id ? User::find($vehicle->vendor_id) : null;
+
+                Notification::route('mail', $booking->driver_email)
+                    ->notify(new \App\Notifications\ApiBooking\ApiBookingCancelledDriverNotification($booking));
+
+                if ($vendor) {
+                    $vendor->notify(new \App\Notifications\ApiBooking\ApiBookingCancelledVendorNotification($booking));
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to send API booking cancellation notifications', [
+                    'booking_number' => $booking->booking_number,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        })->afterResponse();
+    }
+
     public function searchVehicles(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -37,9 +94,13 @@ class InternalProviderController extends Controller
         $totalDays = max(1, $pickupDate->diffInDays($dropoffDate));
         $currency = $validated['currency'] ?? 'EUR';
 
-        $locationVehicle = Vehicle::find($validated['pickup_location_id']);
+        $pickupLocation = VendorLocation::query()
+            ->whereKey($validated['pickup_location_id'])
+            ->where('is_active', true)
+            ->first();
+        $locationVehicle = $pickupLocation ? null : Vehicle::find($validated['pickup_location_id']);
 
-        if (!$locationVehicle) {
+        if (!$pickupLocation && !$locationVehicle) {
             return response()->json([
                 'error' => [
                     'code' => 'LOCATION_NOT_FOUND',
@@ -49,47 +110,42 @@ class InternalProviderController extends Controller
             ], 404);
         }
 
-        $dropoffLocationVehicle = !empty($validated['dropoff_location_id'])
+        $dropoffLocation = !empty($validated['dropoff_location_id'])
+            ? VendorLocation::query()
+                ->whereKey($validated['dropoff_location_id'])
+                ->where('is_active', true)
+                ->first()
+            : null;
+        $dropoffLocationVehicle = (!$dropoffLocation && !empty($validated['dropoff_location_id']))
             ? Vehicle::find($validated['dropoff_location_id'])
             : null;
 
-        $vehicles = Vehicle::whereIn('status', ['active', 'available'])
-            ->where('full_vehicle_address', $locationVehicle->full_vehicle_address)
-            ->with(['vendor', 'vendor.vendorProfile', 'images', 'blockings', 'category', 'benefits', 'operatingHours', 'addons'])
+        $vehicles = Vehicle::query()
+            ->when(
+                $pickupLocation !== null,
+                fn ($query) => $query->where('vendor_location_id', $pickupLocation->id),
+                fn ($query) => $query->where('full_vehicle_address', $locationVehicle->full_vehicle_address)
+            )
+            ->with(['vendor', 'vendor.vendorProfile', 'images', 'blockings', 'category', 'benefits', 'operatingHours', 'addons', 'vendorLocation']);
+
+        $this->internalVehicleAvailabilityService->apply($vehicles, [
+            'pickup_date' => $validated['pickup_date'],
+            'pickup_time' => $validated['pickup_time'],
+            'dropoff_date' => $validated['dropoff_date'],
+            'dropoff_time' => $validated['dropoff_time'],
+        ]);
+
+        $available = $vehicles
             ->get();
 
-        $available = $vehicles->filter(function ($vehicle) use ($pickupDate, $dropoffDate) {
-            $isBlocked = $vehicle->blockings->contains(function ($blocking) use ($pickupDate, $dropoffDate) {
-                return $blocking->blocking_start_date <= $dropoffDate
-                    && $blocking->blocking_end_date >= $pickupDate;
-            });
-
-            if ($isBlocked) {
-                return false;
-            }
-
-            $hasRegularBooking = $vehicle->bookings()
-                ->whereNotIn('booking_status', ['cancelled', 'rejected'])
-                ->where(function ($q) use ($pickupDate, $dropoffDate) {
-                    $q->where('pickup_date', '<=', $dropoffDate)
-                      ->where('return_date', '>=', $pickupDate);
-                })->exists();
-
-            $hasApiBooking = ApiBooking::where('vehicle_id', $vehicle->id)
-                ->whereNotIn('status', ['cancelled'])
-                ->where('is_test', false)
-                ->where(function ($q) use ($pickupDate, $dropoffDate) {
-                    $q->where('pickup_date', '<=', $dropoffDate)
-                      ->where('return_date', '>=', $pickupDate);
-                })->exists();
-
-            return !$hasRegularBooking && !$hasApiBooking;
-        });
-
-        $pickupLocationName = $locationVehicle->full_vehicle_address ?: $locationVehicle->location;
-        $dropoffLocationName = $dropoffLocationVehicle
-            ? ($dropoffLocationVehicle->full_vehicle_address ?: $dropoffLocationVehicle->location)
-            : $pickupLocationName;
+        $pickupLocationName = ($pickupLocation && $pickupLocation->name)
+            ? $pickupLocation->name
+            : ($locationVehicle->full_vehicle_address ?: $locationVehicle->location);
+        $dropoffLocationName = $dropoffLocation
+            ? $dropoffLocation->name
+            : ($dropoffLocationVehicle
+                ? ($dropoffLocationVehicle->full_vehicle_address ?: $dropoffLocationVehicle->location)
+                : $pickupLocationName);
 
         // Get global insurance plans and addons
         $globalPlans = \App\Models\Plan::all();
@@ -111,6 +167,12 @@ class InternalProviderController extends Controller
             $vendorName = $vehicle->vendor?->vendorProfile?->company_name
                 ?? $vehicle->vendor?->name
                 ?? 'Unknown';
+            $canonicalLocation = $vehicle->vendorLocation;
+            $locationSnapshot = $this->internalBookingSnapshotService->buildForVehicle($vehicle, [
+                'pickup_location' => $pickupLocationName,
+                'return_location' => $dropoffLocationName,
+                'booking_currency' => $currency,
+            ]);
 
             // Parse features JSON
             $features = [];
@@ -221,12 +283,16 @@ class InternalProviderController extends Controller
                 'currency' => $currency,
                 'total_days' => $totalDays,
                 'security_deposit' => (float) ($vehicle->security_deposit ?? 0),
+                'pickup_location_id' => $canonicalLocation?->id,
+                'dropoff_location_id' => $canonicalLocation?->id,
                 'pickup_location' => $pickupLocationName,
                 'dropoff_location' => $dropoffLocationName,
-                'location_type' => $vehicle->location_type,
-                'location_phone' => $vehicle->location_phone,
-                'pickup_instructions' => $vehicle->pickup_instructions,
-                'dropoff_instructions' => $vehicle->dropoff_instructions,
+                'pickup_location_details' => $locationSnapshot['pickup_location_details'] ?? null,
+                'dropoff_location_details' => $locationSnapshot['dropoff_location_details'] ?? null,
+                'location_type' => $canonicalLocation?->location_type ?: $vehicle->location_type,
+                'location_phone' => $vehicle->location_phone ?: $canonicalLocation?->phone,
+                'pickup_instructions' => $vehicle->pickup_instructions ?: $canonicalLocation?->pickup_instructions,
+                'dropoff_instructions' => $vehicle->dropoff_instructions ?: $canonicalLocation?->dropoff_instructions,
                 'vendor_name' => $vendorName,
                 'features' => $features,
                 'mileage_policy' => $mileagePolicy,
@@ -330,9 +396,9 @@ class InternalProviderController extends Controller
             'dropoff_time' => ['required', 'date_format:H:i'],
         ]);
 
-        $vehicle = Vehicle::with(['vendor', 'vendor.vendorProfile', 'images'])->find($validated['vehicle_id']);
+        $vehicle = Vehicle::with(['vendor', 'vendor.vendorProfile', 'images', 'vendorLocation', 'vendorProfileData'])->find($validated['vehicle_id']);
 
-        if (!$vehicle || !in_array($vehicle->status, ['active', 'available'])) {
+        if (!$vehicle || !in_array($vehicle->status, Vehicle::searchableStatuses(), true)) {
             return response()->json([
                 'error' => [
                     'code' => 'VEHICLE_UNAVAILABLE',
@@ -342,25 +408,12 @@ class InternalProviderController extends Controller
             ], 409);
         }
 
-        $pickupDate = Carbon::parse($validated['pickup_date']);
-        $dropoffDate = Carbon::parse($validated['dropoff_date']);
-
-        $hasRegularBooking = $vehicle->bookings()
-            ->whereNotIn('booking_status', ['cancelled', 'rejected'])
-            ->where(function ($q) use ($pickupDate, $dropoffDate) {
-                $q->where('pickup_date', '<=', $dropoffDate)
-                  ->where('return_date', '>=', $pickupDate);
-            })->exists();
-
-        $hasApiBooking = ApiBooking::where('vehicle_id', $vehicle->id)
-            ->whereNotIn('status', ['cancelled'])
-            ->where('is_test', false)
-            ->where(function ($q) use ($pickupDate, $dropoffDate) {
-                $q->where('pickup_date', '<=', $dropoffDate)
-                  ->where('return_date', '>=', $pickupDate);
-            })->exists();
-
-        if ($hasRegularBooking || $hasApiBooking) {
+        if (!$this->internalVehicleAvailabilityService->isVehicleAvailable($vehicle, [
+            'pickup_date' => $validated['pickup_date'],
+            'pickup_time' => $validated['pickup_time'],
+            'dropoff_date' => $validated['dropoff_date'],
+            'dropoff_time' => $validated['dropoff_time'],
+        ])) {
             return response()->json([
                 'error' => [
                     'code' => 'VEHICLE_UNAVAILABLE',
@@ -370,6 +423,8 @@ class InternalProviderController extends Controller
             ], 409);
         }
 
+        $pickupDate = Carbon::parse($validated['pickup_date']);
+        $dropoffDate = Carbon::parse($validated['dropoff_date']);
         $dailyRate = (float) $vehicle->price_per_day;
         $totalDays = max(1, $pickupDate->diffInDays($dropoffDate));
         $basePrice = round($dailyRate * $totalDays, 2);
@@ -405,6 +460,11 @@ class InternalProviderController extends Controller
 
         $primaryImage = $vehicle->images->first();
         $vehicleImage = $primaryImage ? ($primaryImage->image_url ?: $primaryImage->image_path) : null;
+        $locationSnapshot = $this->internalBookingSnapshotService->buildForVehicle($vehicle, [
+            'pickup_location' => $vehicle->vendorLocation?->name ?: ($vehicle->full_vehicle_address ?: $vehicle->location),
+            'return_location' => $vehicle->vendorLocation?->name ?: ($vehicle->full_vehicle_address ?: $vehicle->location),
+            'booking_currency' => 'EUR',
+        ]);
 
         DB::beginTransaction();
 
@@ -417,6 +477,8 @@ class InternalProviderController extends Controller
                 'booking_number' => ApiBooking::generateBookingNumber(),
                 'api_consumer_id' => $validated['api_consumer_id'],
                 'vehicle_id' => $vehicle->id,
+                'pickup_vendor_location_id' => $vehicle->vendor_location_id,
+                'dropoff_vendor_location_id' => $vehicle->vendor_location_id,
                 'vehicle_name' => trim($vehicle->brand . ' ' . $vehicle->model),
                 'vehicle_image' => $vehicleImage,
                 'driver_first_name' => $validated['driver']['first_name'],
@@ -430,8 +492,8 @@ class InternalProviderController extends Controller
                 'pickup_time' => $validated['pickup_time'],
                 'return_date' => $validated['dropoff_date'],
                 'return_time' => $validated['dropoff_time'],
-                'pickup_location' => $vehicle->full_vehicle_address ?: $vehicle->location,
-                'return_location' => $vehicle->full_vehicle_address ?: $vehicle->location,
+                'pickup_location' => $locationSnapshot['pickup_location_details']['name'] ?? ($vehicle->full_vehicle_address ?: $vehicle->location),
+                'return_location' => $locationSnapshot['dropoff_location_details']['name'] ?? ($vehicle->full_vehicle_address ?: $vehicle->location),
                 'total_days' => $totalDays,
                 'daily_rate' => $dailyRate,
                 'base_price' => $basePrice,
@@ -443,6 +505,7 @@ class InternalProviderController extends Controller
                 'flight_number' => $validated['flight_number'] ?? null,
                 'special_requests' => $validated['special_requests'] ?? null,
                 'insurance_id' => $validated['insurance_id'] ?? null,
+                'provider_metadata' => $locationSnapshot,
             ]);
 
             foreach ($extrasData as $extra) {
@@ -454,23 +517,7 @@ class InternalProviderController extends Controller
             DB::commit();
 
             $booking->load('extras');
-
-            // Notify vendor only — driver gets email when vendor confirms
-            // Skip notifications for sandbox/test bookings
-            if (!$isSandbox) {
-                try {
-                    $vendor = $vehicle->vendor_id ? User::find($vehicle->vendor_id) : null;
-
-                    if ($vendor && $consumer) {
-                        $vendor->notify(new \App\Notifications\ApiBooking\ApiBookingCreatedVendorNotification($booking, $consumer));
-                    }
-                } catch (\Exception $e) {
-                    Log::warning('Failed to send API booking creation notifications', [
-                        'booking_number' => $booking->booking_number,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+            $this->dispatchBookingCreatedNotificationsAfterResponse($booking, $vehicle, $consumer, $isSandbox);
 
             return response()->json([
                 'data' => [
@@ -490,8 +537,12 @@ class InternalProviderController extends Controller
                     'pickup_time' => $booking->pickup_time,
                     'dropoff_date' => $booking->return_date->toDateString(),
                     'dropoff_time' => $booking->return_time,
+                    'pickup_location_id' => $booking->pickup_vendor_location_id,
+                    'dropoff_location_id' => $booking->dropoff_vendor_location_id,
                     'pickup_location' => $booking->pickup_location,
                     'return_location' => $booking->return_location,
+                    'pickup_location_details' => $booking->provider_metadata['pickup_location_details'] ?? null,
+                    'dropoff_location_details' => $booking->provider_metadata['dropoff_location_details'] ?? null,
                     'total_days' => $booking->total_days,
                     'daily_rate' => (float) $booking->daily_rate,
                     'base_price' => (float) $booking->base_price,
@@ -544,7 +595,7 @@ class InternalProviderController extends Controller
 
         $booking = ApiBooking::where('booking_number', $bookingNumber)
             ->where('api_consumer_id', $apiConsumerId)
-            ->with('extras')
+            ->with(['extras', 'vehicle.vendorLocation', 'vehicle.vendorProfileData', 'vehicle.vendor'])
             ->first();
 
         if (!$booking) {
@@ -555,6 +606,18 @@ class InternalProviderController extends Controller
                     'status' => 404,
                 ],
             ], 404);
+        }
+
+        if ($booking->vehicle) {
+            $booking->provider_metadata = $this->internalBookingSnapshotService->mergeMissingIntoMetadata(
+                $booking->provider_metadata,
+                $booking->vehicle,
+                [
+                    'pickup_location' => $booking->pickup_location,
+                    'return_location' => $booking->return_location,
+                    'booking_currency' => $booking->currency,
+                ]
+            );
         }
 
         return response()->json([
@@ -575,8 +638,12 @@ class InternalProviderController extends Controller
                 'pickup_time' => $booking->pickup_time,
                 'dropoff_date' => $booking->return_date->toDateString(),
                 'dropoff_time' => $booking->return_time,
+                'pickup_location_id' => $booking->pickup_vendor_location_id,
+                'dropoff_location_id' => $booking->dropoff_vendor_location_id,
                 'pickup_location' => $booking->pickup_location,
                 'return_location' => $booking->return_location,
+                'pickup_location_details' => $booking->provider_metadata['pickup_location_details'] ?? null,
+                'dropoff_location_details' => $booking->provider_metadata['dropoff_location_details'] ?? null,
                 'total_days' => $booking->total_days,
                 'daily_rate' => (float) $booking->daily_rate,
                 'base_price' => (float) $booking->base_price,
@@ -646,24 +713,7 @@ class InternalProviderController extends Controller
             'cancellation_reason' => $request->input('reason'),
             'cancelled_at' => now(),
         ]);
-
-        // Send notifications
-        try {
-            $vehicle = Vehicle::find($booking->vehicle_id);
-            $vendor = $vehicle && $vehicle->vendor_id ? User::find($vehicle->vendor_id) : null;
-
-            Notification::route('mail', $booking->driver_email)
-                ->notify(new \App\Notifications\ApiBooking\ApiBookingCancelledDriverNotification($booking));
-
-            if ($vendor) {
-                $vendor->notify(new \App\Notifications\ApiBooking\ApiBookingCancelledVendorNotification($booking));
-            }
-        } catch (\Exception $e) {
-            Log::warning('Failed to send API booking cancellation notifications', [
-                'booking_number' => $booking->booking_number,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        $this->dispatchBookingCancelledNotificationsAfterResponse($booking);
 
         return response()->json([
             'data' => [

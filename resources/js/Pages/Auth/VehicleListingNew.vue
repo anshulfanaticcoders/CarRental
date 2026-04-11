@@ -157,6 +157,33 @@
                             </Select>
                         </div>
                         <div class="vln-field">
+                            <label class="vln-label">Body Style <span class="req">*</span></label>
+                            <Select v-model="form.body_style">
+                                <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select body style" /></SelectTrigger>
+                                <SelectContent><SelectGroup>
+                                    <SelectItem value="hatchback">Hatchback</SelectItem>
+                                    <SelectItem value="sedan">Sedan</SelectItem>
+                                    <SelectItem value="suv">SUV</SelectItem>
+                                    <SelectItem value="wagon">Wagon / Estate</SelectItem>
+                                    <SelectItem value="van">Van / Minivan</SelectItem>
+                                    <SelectItem value="convertible">Convertible</SelectItem>
+                                    <SelectItem value="pickup">Pickup</SelectItem>
+                                </SelectGroup></SelectContent>
+                            </Select>
+                            <span v-if="errors.body_style" class="vln-error"><AlertCircle :size="13" /> {{ errors.body_style }}</span>
+                        </div>
+                        <div class="vln-field">
+                            <label class="vln-label">Air Conditioning <span class="req">*</span></label>
+                            <Select v-model="form.air_conditioning">
+                                <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select AC availability" /></SelectTrigger>
+                                <SelectContent><SelectGroup>
+                                    <SelectItem value="1">Available</SelectItem>
+                                    <SelectItem value="0">Not Available</SelectItem>
+                                </SelectGroup></SelectContent>
+                            </Select>
+                            <span v-if="errors.air_conditioning" class="vln-error"><AlertCircle :size="13" /> {{ errors.air_conditioning }}</span>
+                        </div>
+                        <div class="vln-field">
                             <label class="vln-label">Fuel Policy</label>
                             <Select v-model="form.fuel_policy">
                                 <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select fuel policy" /></SelectTrigger>
@@ -217,6 +244,11 @@
                                 <span class="vln-suffix">g/km</span>
                             </div>
                             <span v-if="errors.co2" class="vln-error"><AlertCircle :size="13" /> {{ errors.co2 }}</span>
+                        </div>
+                        <div class="vln-field">
+                            <label class="vln-label">SIPP / ACRISS Code</label>
+                            <div class="vln-input read-only-field">{{ displayedSippCode }}</div>
+                            <span class="vln-hint">This code is generated automatically from category, body style, transmission, fuel and AC.</span>
                         </div>
                     </div>
                 </div>
@@ -354,39 +386,52 @@
                 <div class="vln-field-group">
                     <div class="vln-fg-header">
                         <div class="vln-fg-icon"><MapPin :size="18" /></div>
-                        <div><div class="vln-fg-title">Parking Address</div><div class="vln-fg-sub">Search or enter manually</div></div>
+                        <div><div class="vln-fg-title">Pickup Location</div><div class="vln-fg-sub">Choose one of your saved vendor locations</div></div>
                     </div>
                     <div class="vln-field mb-4">
-                        <label class="vln-label">Search Address <span class="req">*</span></label>
-                        <LocationPicker :onLocationSelect="selectLocation" />
-                        <span v-if="errors.location" class="vln-error"><AlertCircle :size="13" /> {{ errors.location }}</span>
-                    </div>
-                    <div class="vln-field">
-                        <label class="vln-label">Location Type <span class="req">*</span></label>
-                        <Select v-model="form.location_type">
-                            <SelectTrigger class="vln-select-trigger"><SelectValue placeholder="Select type" /></SelectTrigger>
-                            <SelectContent><SelectGroup>
-                                <SelectItem value="Downtown">Downtown</SelectItem>
-                                <SelectItem value="Airport">Airport</SelectItem>
-                                <SelectItem value="Terminal">Terminal</SelectItem>
-                                <SelectItem value="Bus Stop">Bus Stop</SelectItem>
-                                <SelectItem value="Railway Station">Railway Station</SelectItem>
-                            </SelectGroup></SelectContent>
+                        <div class="flex items-center justify-between gap-3 mb-2">
+                            <label class="vln-label">Vendor Location <span class="req">*</span></label>
+                            <Link :href="route('vendor.locations.index', { locale: $page.props.locale })" class="text-sm font-medium text-cyan-700 hover:text-cyan-800">
+                                Manage locations
+                            </Link>
+                        </div>
+                        <Select v-model="form.vendor_location_id">
+                            <SelectTrigger class="vln-select-trigger">
+                                <SelectValue placeholder="Select a saved location" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem v-for="location in vendorLocations" :key="location.id" :value="location.id">
+                                        {{ location.display_name }}
+                                    </SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
                         </Select>
-                        <span v-if="errors.location_type" class="vln-error"><AlertCircle :size="13" /> {{ errors.location_type }}</span>
+                        <span class="vln-hint">Create locations separately so multiple vehicles can share the same pickup point.</span>
+                        <span v-if="errors.location" class="vln-error"><AlertCircle :size="13" /> {{ errors.location }}</span>
+                        <p v-if="!vendorLocations.length" class="vln-hint text-amber-700">
+                            You have no saved vendor locations yet. Create one first from the locations page.
+                        </p>
                     </div>
-                    <div class="vln-field">
-                        <label class="vln-label">Location Phone</label>
-                        <input class="vln-input" type="tel" v-model="form.location_phone" placeholder="+32 2 123 4567" />
-                        <span class="vln-hint">Contact number for the pickup location</span>
-                    </div>
-                    <div class="vln-field full">
-                        <label class="vln-label">Pickup Instructions</label>
-                        <textarea class="vln-textarea" v-model="form.pickup_instructions" rows="3" placeholder="e.g., Meet at desk 3 in Terminal 2, bring your booking confirmation and ID..."></textarea>
-                    </div>
-                    <div class="vln-field full">
-                        <label class="vln-label">Dropoff Instructions</label>
-                        <textarea class="vln-textarea" v-model="form.dropoff_instructions" rows="3" placeholder="e.g., Return the car to parking lot B, leave keys in the glove box..."></textarea>
+                    <div v-if="selectedVendorLocation" class="vln-field full">
+                        <div class="rounded-xl border border-cyan-100 bg-cyan-50 p-4 space-y-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <div class="font-semibold text-slate-900">{{ selectedVendorLocation.name }}</div>
+                                    <div class="text-sm text-slate-600">{{ selectedVendorLocation.address_line_1 }}</div>
+                                    <div class="text-sm text-slate-600">{{ [selectedVendorLocation.city, selectedVendorLocation.state, selectedVendorLocation.country].filter(Boolean).join(', ') }}</div>
+                                </div>
+                                <div class="text-xs font-semibold uppercase tracking-wide text-cyan-700">
+                                    {{ selectedVendorLocation.location_type }}
+                                </div>
+                            </div>
+                            <div class="grid gap-3 md:grid-cols-2 text-sm text-slate-700">
+                                <div><span class="font-medium">Phone:</span> {{ selectedVendorLocation.phone || 'Not set' }}</div>
+                                <div><span class="font-medium">IATA:</span> {{ selectedVendorLocation.iata_code || 'Not set' }}</div>
+                                <div class="md:col-span-2"><span class="font-medium">Pickup:</span> {{ selectedVendorLocation.pickup_instructions || 'Not set' }}</div>
+                                <div class="md:col-span-2"><span class="font-medium">Dropoff:</span> {{ selectedVendorLocation.dropoff_instructions || 'Not set' }}</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -791,7 +836,6 @@
 import { Head, Link, useForm } from "@inertiajs/vue3";
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
-import LocationPicker from "@/Components/LocationPicker.vue";
 import axios from "axios";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import { useToast } from 'vue-toastification';
@@ -803,6 +847,7 @@ import Editor from '@tinymce/tinymce-vue';
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import vehicleColorsFromJson from '../../data/colors.json';
+import { suggestSippCode } from '@/utils/sippSuggestion';
 import {
     CalendarDays, Clock, Copy, AlertCircle, Car, Wrench, CheckCircle2,
     MapPin, DollarSign, Shield, Package, Camera, ChevronRight, ArrowLeft,
@@ -871,10 +916,10 @@ const sidebarContent = {
 // ═══ Form ═══
 const form = useForm({
     category_id: null, brand: "", model: "", color: "", mileage: 0,
-    transmission: "manual", fuel: "petrol", fuel_policy: "full_to_full", seating_capacity: 1,
-    number_of_doors: 2, luggage_capacity: 1, horsepower: 70, co2: "",
+    transmission: "manual", fuel: "petrol", body_style: "", air_conditioning: "", fuel_policy: "full_to_full", seating_capacity: 1,
+    number_of_doors: 2, luggage_capacity: 1, horsepower: 70, co2: "", sipp_code: "",
     location: "", location_type: "", latitude: null, longitude: null,
-    city: "", state: "", country: "", status: "available",
+    city: "", state: "", country: "", iata_code: "", vendor_location_id: null, status: "available",
     features: [], featured: false, security_deposit: 0,
     payment_method: [], guidelines: "", terms_policy: "",
     rental_policy: "", pickup_instructions: "", dropoff_instructions: "", location_phone: "",
@@ -904,8 +949,27 @@ const form = useForm({
     custom_addons: customAddons.value, full_vehicle_address: null,
 });
 
-const props = defineProps({ vehicle: { type: Object, default: null } });
+const props = defineProps({
+    vehicle: { type: Object, default: null },
+    vendorLocations: { type: Array, default: () => [] },
+});
 const selectedTypes = reactive({ day: true, week: false, month: false });
+const vendorLocations = computed(() => props.vendorLocations || []);
+const selectedVendorLocation = computed(() => {
+    if (!form.vendor_location_id) return null;
+    return vendorLocations.value.find(location => Number(location.id) === Number(form.vendor_location_id)) || null;
+});
+const selectedCategory = computed(() => categories.value.find(category => Number(category.id) === Number(form.category_id)) || null);
+const suggestedSippCode = computed(() => suggestSippCode({
+    categoryName: selectedCategory.value?.name,
+    bodyStyle: form.body_style,
+    seatingCapacity: form.seating_capacity,
+    horsepower: form.horsepower,
+    transmission: form.transmission,
+    fuel: form.fuel,
+    airConditioning: form.air_conditioning,
+}));
+const displayedSippCode = computed(() => suggestedSippCode.value || form.sipp_code || 'Will be generated when vehicle specs are complete');
 
 // ═══ Computed ═══
 const pricePerDay = computed(() => { const v = Number(form.price_per_day); return Number.isFinite(v) ? v : 0; });
@@ -987,6 +1051,7 @@ const planErrors = reactive({ essential: '', premium: '', premium_plus: '' });
 // ═══ Errors ═══
 const errors = reactive({
     category_id: '', brand: '', model: '', color: '', mileage: '', horsepower: '', co2: '', features: '',
+    body_style: '', air_conditioning: '', vendor_location_id: '',
     registration_number: '', registration_country: '', registration_date: '', phone_number: '',
     location: '', location_type: '', latitude: '', longitude: '',
     security_deposit: '', payment_method: '', terms_policy: '', minimum_driver_age: '',
@@ -1067,11 +1132,21 @@ const fetchFeaturesForCategory = async (id) => {
 };
 
 // ═══ Location ═══
-const selectLocation = (loc) => {
-    form.location = loc.address || loc.formattedAddress || '';
-    form.latitude = Number.isFinite(loc.latitude) ? loc.latitude : null;
-    form.longitude = Number.isFinite(loc.longitude) ? loc.longitude : null;
-    form.city = loc.city || ''; form.state = loc.state || ''; form.country = loc.country || '';
+const applyVendorLocation = (location) => {
+    if (!location) return;
+    form.vendor_location_id = Number(location.id);
+    form.location = location.name || '';
+    form.location_type = location.location_type ? String(location.location_type).replace(/\b\w/g, c => c.toUpperCase()) : '';
+    form.latitude = Number.isFinite(Number(location.latitude)) ? Number(location.latitude) : null;
+    form.longitude = Number.isFinite(Number(location.longitude)) ? Number(location.longitude) : null;
+    form.city = location.city || '';
+    form.state = location.state || '';
+    form.country = location.country || '';
+    form.iata_code = location.iata_code || '';
+    form.location_phone = location.phone || '';
+    form.pickup_instructions = location.pickup_instructions || '';
+    form.dropoff_instructions = location.dropoff_instructions || '';
+    form.full_vehicle_address = location.address_line_1 || '';
 };
 const getFlagUrl = (code) => `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
 const formatDate = (v) => { if (!v) { form.registration_date = null; return; } form.registration_date = new Date(v).toISOString().split('T')[0]; };
@@ -1110,6 +1185,8 @@ const nextStep = () => {
             if (!form.brand) { ok = false; errors.brand = 'Please enter the vehicle brand'; }
             if (!form.model) { ok = false; errors.model = 'Please enter the vehicle model'; }
             if (!form.color) { ok = false; errors.color = 'Please select a color'; }
+            if (!form.body_style) { ok = false; errors.body_style = 'Please select a body style'; }
+            if (form.air_conditioning === '') { ok = false; errors.air_conditioning = 'Please select whether AC is available'; }
             if (!form.mileage) { ok = false; errors.mileage = 'Please enter mileage'; }
             if (!form.horsepower) { ok = false; errors.horsepower = 'Please enter horsepower'; }
             if (!form.co2) { ok = false; errors.co2 = 'Please enter CO2 emissions'; }
@@ -1122,8 +1199,7 @@ const nextStep = () => {
             if (!form.phone_number) { ok = false; errors.phone_number = 'Please enter phone number'; }
             break;
         case 3:
-            if (!form.location || form.latitude === null || form.longitude === null) { ok = false; errors.location = 'Please select a valid address'; }
-            if (!form.location_type) { ok = false; errors.location_type = 'Please select location type'; }
+            if (!form.vendor_location_id) { ok = false; errors.location = 'Please select a saved vendor location'; }
             break;
         case 4:
             if (!form.security_deposit) { ok = false; errors.security_deposit = 'Please enter security deposit'; }
@@ -1155,14 +1231,26 @@ const submit = () => {
     isLoading.value = true;
     if (form.images.length < 5) { isLoading.value = false; errors.images = 'Please upload at least 5 images'; return; }
     if (!validateProtectionPlans()) { toast.error('Please review protection plan prices.'); isLoading.value = false; return; }
+    if (selectedVendorLocation.value) {
+        applyVendorLocation(selectedVendorLocation.value);
+    }
     form.selected_plans = buildSelectedPlans();
     const norm = normalizeCustomAddons();
     if (norm.find(a => !a.extra_name || a.price === null || !a.quantity)) { toast.error('Please complete all addon fields.'); isLoading.value = false; return; }
     form.custom_addons = norm;
-    form.full_vehicle_address = [form.location, form.city, form.state, form.country].filter(Boolean).join(', ');
     form.post(route("vehicles.store", { locale: page.props.locale }), {
         onSuccess: () => toast.success('Vehicle Added Successfully'),
-        onError: (errs) => { Object.entries(errs || {}).forEach(([k, v]) => { if (k in errors) errors[k] = Array.isArray(v) ? v[0] : v; }); toast.error('Something went wrong. Please check your inputs.'); },
+        onError: (errs) => {
+            Object.entries(errs || {}).forEach(([k, v]) => {
+                const message = Array.isArray(v) ? v[0] : v;
+                if (k === 'vendor_location_id') {
+                    errors.location = message;
+                    return;
+                }
+                if (k in errors) errors[k] = message;
+            });
+            toast.error('Something went wrong. Please check your inputs.');
+        },
         onFinish: () => { isLoading.value = false; },
     });
 };
@@ -1176,6 +1264,21 @@ watch(() => form.co2, (v) => { if (v > 100) form.co2 = 100; });
 watch(() => form.gross_vehicle_mass, (v) => { if (v > 20000) form.gross_vehicle_mass = 20000; });
 watch(() => form.price_per_day, (v) => { if (!v) return; if (selectedTypes.week && !form.price_per_week) form.price_per_week = toPrice(Number(v) * 7); if (selectedTypes.month && !form.price_per_month) form.price_per_month = toPrice(Number(v) * 30); });
 watch(() => form.registration_number, (v) => { if (v.length > 10) form.registration_number = v.slice(0, 10); });
+watch(() => form.vendor_location_id, (value) => {
+    const selected = vendorLocations.value.find(location => Number(location.id) === Number(value));
+    if (selected) {
+        applyVendorLocation(selected);
+    }
+});
+watch(() => form.iata_code, (v) => {
+    if (v === null || v === undefined) return;
+    form.iata_code = String(v).toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+});
+watch(() => form.location_type, (v) => {
+    if ((v || '').toLowerCase() !== 'airport' && form.iata_code) {
+        form.iata_code = '';
+    }
+});
 watch(() => form.category_id, (v, o) => { if (v !== o) fetchFeaturesForCategory(v); });
 watch(() => form.registration_country, (v) => { if (v) { const c = countries.value.find(x => x.code === v); form.phone_number = c ? `${c.phone_code} ` : ''; } });
 watch(() => form.limited_km_per_day, (v) => { if (!v) { form.limited_km_per_day_range = null; form.price_per_km_per_day = null; } });

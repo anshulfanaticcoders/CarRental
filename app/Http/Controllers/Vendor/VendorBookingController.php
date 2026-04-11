@@ -88,14 +88,6 @@ class VendorBookingController extends Controller
 
         $booking->update($validated);
 
-        if ($request->booking_status === 'confirmed') {
-            $vehicle = Vehicle::find($booking->vehicle_id);
-            $vehicle->update(['status' => 'rented']);
-        }else if($request->booking_status === 'completed' || $request->booking_status === 'cancelled') {
-            $vehicle = Vehicle::find($booking->vehicle_id);
-            $vehicle->update(['status' => 'available']);
-        }
-
         // Send notifications
         $customer = $booking->customer;
         $vehicle = $booking->vehicle;
@@ -154,9 +146,6 @@ class VendorBookingController extends Controller
             'booking_status' => 'cancelled',
             'cancellation_reason' => $validated['cancellation_reason'] ?? 'Cancelled by vendor',
         ]);
-
-        $vehicle = Vehicle::find($booking->vehicle_id);
-        $vehicle->update(['status' => 'available']);
         // Send notifications
         $customer = $booking->customer;
         $vehicle = $booking->vehicle;

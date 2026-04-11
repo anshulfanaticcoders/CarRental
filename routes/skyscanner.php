@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Skyscanner\CarHireRedirectController;
+use App\Http\Controllers\Skyscanner\CarHireLocationsController;
 use App\Http\Controllers\Skyscanner\CarHireSearchController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +17,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('skyscanner')->group(function () {
+    Route::get('locations', CarHireLocationsController::class)
+        ->name('skyscanner.locations');
+
     Route::post('car-hire/search', CarHireSearchController::class)
         ->name('skyscanner.car-hire.search');
 
