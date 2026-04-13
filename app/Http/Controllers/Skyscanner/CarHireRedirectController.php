@@ -9,6 +9,7 @@ use App\Services\Skyscanner\CarHireQuoteStoreService;
 use App\Services\Skyscanner\CarHireSecurityService;
 use App\Services\Skyscanner\CarHireTrackingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class CarHireRedirectController extends Controller
@@ -22,7 +23,7 @@ class CarHireRedirectController extends Controller
     ) {
     }
 
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(Request $request): JsonResponse|RedirectResponse
     {
         $quoteId = (string) $request->query('quote_id', '');
         $signature = (string) $request->query('signature', '');
@@ -50,6 +51,14 @@ class CarHireRedirectController extends Controller
         $validation = $this->quoteLifecycleService->revalidate($quote);
 
         if (($validation['valid'] ?? false) !== true) {
+            if (!$this->shouldReturnJson($request)) {
+                $landingPageUrl = $this->buildLandingPageUrl($quote, (string) $request->query('skyscanner_redirectid', ''), $quoteId);
+
+                if ($landingPageUrl !== null) {
+                    return redirect()->away($landingPageUrl);
+                }
+            }
+
             return response()->json([
                 'error' => 'quote_expired',
             ], 410);
@@ -74,9 +83,37 @@ class CarHireRedirectController extends Controller
             ];
         }
 
+        if (!$this->shouldReturnJson($request)) {
+            $landingPageUrl = $this->buildLandingPageUrl($quote, $redirectId, $quoteId);
+
+            if ($landingPageUrl !== null) {
+                return redirect()->away($landingPageUrl);
+            }
+        }
+
         return response()->json([
             'quote' => $quote,
             'tracking' => $tracking,
         ]);
+    }
+
+    private function shouldReturnJson(Request $request): bool
+    {
+        if ((string) $request->query('format', '') === 'json') {
+            return true;
+        }
+
+        return $request->expectsJson() || $request->wantsJson();
+    }
+
+    private function buildLandingPageUrl(array $quote, string $redirectId, string $quoteId): ?string
+    {
+        $landingPageUrl = trim((string) data_get($quote, 'deeplink.landing_page_url', ''));
+
+        if ($landingPageUrl === '') {
+            return null;
+        }
+
+        return $landingPageUrl;
     }
 }

@@ -92,7 +92,8 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
         $this->assertSame('EUR', $quote['pricing']['currency']);
         $this->assertSame('3272373056', $quote['search']['pickup_location_id']);
         $this->assertSame('Marrakech Airport', $quote['pickup_location_details']['name']);
-        $this->assertStringContainsString('/vehicle/327', $quote['deeplink']['landing_page_url']);
+        $this->assertStringContainsString('/offers/' . $quote['quote_id'], $quote['deeplink']['landing_page_url']);
+        $this->assertStringNotContainsString('skyscanner', $quote['deeplink']['landing_page_url']);
         $this->assertStringContainsString('/api/skyscanner/redirect', $quote['deeplink']['quote_redirect_url']);
         $this->assertSame('limited', $quote['policies']['mileage_policy']);
     }

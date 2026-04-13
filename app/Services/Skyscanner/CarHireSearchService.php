@@ -44,14 +44,21 @@ class CarHireSearchService
             }
 
             $quote = $this->quoteLifecycleService->createQuote($mappedVehicle, $search, $now);
+            $quotes[] = $quote;
+        }
 
-            $this->quoteStoreService->put($quote);
+        $offerResults = [
+            'search' => $search,
+            'quotes' => $quotes,
+        ];
+
+        foreach ($quotes as $quote) {
+            $this->quoteStoreService->put($quote, $offerResults);
             $this->auditLogService->append('quote', (string) $quote['quote_id'], 'quote_created', [
                 'provider_vehicle_id' => $quote['vehicle']['provider_vehicle_id'] ?? null,
                 'currency' => $quote['pricing']['currency'] ?? null,
                 'total_price' => $quote['pricing']['total_price'] ?? null,
             ]);
-            $quotes[] = $quote;
         }
 
         return [

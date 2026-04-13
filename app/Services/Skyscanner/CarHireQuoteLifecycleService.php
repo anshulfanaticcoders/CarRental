@@ -14,7 +14,6 @@ class CarHireQuoteLifecycleService
         $createdAt = $this->normalizeNow($now);
         $expiresAt = $createdAt->addMinutes((int) config('skyscanner.quote_ttl_minutes', 30));
         $quoteId = (string) Str::uuid();
-        $providerVehicleId = $vehicle['provider_vehicle_id'] ?? null;
         $pickupLocation = is_array(data_get($vehicle, 'location.pickup')) ? data_get($vehicle, 'location.pickup') : [];
         $dropoffLocation = is_array(data_get($vehicle, 'location.dropoff')) ? data_get($vehicle, 'location.dropoff') : [];
 
@@ -33,7 +32,7 @@ class CarHireQuoteLifecycleService
             'products' => is_array($vehicle['products'] ?? null) ? $vehicle['products'] : [],
             'extras_preview' => is_array($vehicle['extras_preview'] ?? null) ? $vehicle['extras_preview'] : [],
             'deeplink' => [
-                'landing_page_url' => $this->buildVehicleLandingUrl($providerVehicleId, $search, $pickupLocation, $dropoffLocation),
+                'landing_page_url' => $this->buildOfferLandingUrl($quoteId),
                 'quote_redirect_url' => $this->buildQuoteRedirectUrl($quoteId),
                 'tracking_query_parameter' => 'skyscanner_redirectid',
                 'signature_query_parameter' => 'signature',
@@ -154,26 +153,15 @@ class CarHireQuoteLifecycleService
         ];
     }
 
-    private function buildVehicleLandingUrl(mixed $providerVehicleId, array $search, array $pickupLocation, array $dropoffLocation): ?string
+    private function buildOfferLandingUrl(string $quoteId): ?string
     {
-        $vehicleId = trim((string) ($providerVehicleId ?? ''));
-        if ($vehicleId === '' || !Route::has('vehicle.show')) {
+        if ($quoteId === '' || !Route::has('skyscanner.offer')) {
             return null;
         }
 
-        return route('vehicle.show', array_filter([
+        return route('skyscanner.offer', array_filter([
             'locale' => app()->getLocale() ?: config('app.locale', 'en'),
-            'id' => $vehicleId,
-            'currency' => $search['currency'] ?? null,
-            'pickup_date' => $search['pickup_date'] ?? null,
-            'pickup_time' => $search['pickup_time'] ?? null,
-            'dropoff_date' => $search['dropoff_date'] ?? null,
-            'dropoff_time' => $search['dropoff_time'] ?? null,
-            'driver_age' => $search['driver_age'] ?? null,
-            'pickup_location_id' => $search['pickup_location_id'] ?? null,
-            'dropoff_location_id' => $search['dropoff_location_id'] ?? null,
-            'pickup_where' => $pickupLocation['name'] ?? null,
-            'dropoff_where' => $dropoffLocation['name'] ?? null,
+            'quoteId' => $quoteId,
         ], static fn ($value) => $value !== null && $value !== ''));
     }
 

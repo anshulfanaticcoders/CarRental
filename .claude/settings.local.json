@@ -50,7 +50,8 @@
       "Bash(/mnt/c/laragon/www/vrooem-gateway/.venv/bin/python3.11 -m pip install pytest pytest-asyncio)",
       "Bash(/home/anshul/.local/bin/uv add:*)",
       "Bash(PYTHONPATH=/mnt/c/laragon/www/vrooem-gateway /tmp/testenv/bin/python3.11 -m pytest -v)",
-      "Bash(agent-browser:*)"
+      "Bash(agent-browser:*)",
+      "Bash(grep:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

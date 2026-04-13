@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About Vrooem — Demo Redesign v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{font-family:'IBM Plex Sans',sans-serif;color:#334155;background:#fff;overflow-x:hidden}
+img{max-width:100%;display:block}
+a{text-decoration:none;color:inherit}
+
+:root{
+  --p:#153b4f;--p9:#0b2230;--p7:#1c4d66;--p5:#2d7294;--p1:#dceef6;--p0:#f0f8fc;
+  --a:#22d3ee;--a6:#0891b2;
+  --g0:#f8fafc;--g1:#f1f5f9;--g2:#e2e8f0;--g4:#94a3b8;--g5:#64748b;--g6:#475569;--g8:#1e293b;--g9:#0f172a;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --w:min(90%,1320px);
+  --spy:clamp(5rem,10vw,8rem);
+}
+h1,h2,h3,h4{font-family:'Plus Jakarta Sans',sans-serif;line-height:1.15;color:var(--g9)}
+
+.wrap{width:var(--w);margin-inline:auto}
+
+/* reveal */
+[data-r]{opacity:0;transform:translateY(28px);transition:opacity .65s var(--ease),transform .65s var(--ease)}
+[data-r].v{opacity:1;transform:none}
+[data-r="1"]{transition-delay:.08s}[data-r="2"]{transition-delay:.16s}[data-r="3"]{transition-delay:.24s}
+[data-r="4"]{transition-delay:.32s}[data-r="5"]{transition-delay:.4s}[data-r="6"]{transition-delay:.48s}
+
+/* ═══════════════════════════════════════════════
+   1. HERO — full-bleed split
+   ═══════════════════════════════════════════════ */
+.hero{display:grid;grid-template-columns:1fr 1fr;min-height:85vh}
+.hero__left{
+  display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(3rem,6vw,6rem) clamp(2rem,5vw,5rem) clamp(3rem,6vw,6rem) calc((100vw - min(90vw,1320px)) / 2);
+  background:#fff;position:relative;
+}
+.hero__tag{
+  display:inline-flex;align-items:center;gap:8px;width:fit-content;
+  font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--a6);margin-bottom:1.5rem;
+}
+.hero__tag::before{content:'';width:28px;height:2px;background:var(--a);border-radius:2px}
+.hero h1{
+  font-size:clamp(2.6rem,5.5vw,4.5rem);font-weight:900;
+  line-height:1.05;margin-bottom:1.5rem;letter-spacing:-.03em;
+}
+.hero h1 span{
+  background:linear-gradient(135deg,var(--p),var(--a6));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero__desc{font-size:clamp(1rem,1.6vw,1.15rem);line-height:1.8;color:var(--g5);max-width:460px;margin-bottom:2.5rem}
+.hero__scroll{
+  display:inline-flex;align-items:center;gap:10px;
+  font-size:.82rem;font-weight:600;color:var(--p);cursor:pointer;
+  transition:gap .4s var(--ease);
+}
+.hero__scroll:hover{gap:14px}
+.hero__scroll svg{width:18px;height:18px;stroke:var(--a);stroke-width:2;fill:none}
+
+.hero__right{
+  background:linear-gradient(160deg,var(--p9),var(--p) 60%,var(--p7));
+  position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+.hero__right::before{
+  content:'';position:absolute;width:340px;height:340px;
+  top:10%;right:-8%;border-radius:50%;
+  background:radial-gradient(circle,rgba(34,211,238,.2),transparent 65%);
+}
+.hero__right::after{
+  content:'';position:absolute;width:250px;height:250px;
+  bottom:5%;left:-5%;border-radius:50%;
+  background:radial-gradient(circle,rgba(34,211,238,.08),transparent 60%);
+}
+.hero__graphic{position:relative;z-index:1;text-align:center;padding:3rem}
+.hero__num{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(5rem,12vw,9rem);font-weight:900;color:rgba(255,255,255,.06);line-height:1;letter-spacing:-.04em;user-select:none}
+.hero__num-label{font-size:.85rem;font-weight:600;color:var(--a);letter-spacing:.08em;text-transform:uppercase;margin-top:.5rem}
+.hero__dots{display:flex;gap:8px;justify-content:center;margin-top:2rem}
+.hero__dots span{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.12)}
+.hero__dots span:first-child{background:var(--a);width:28px;border-radius:4px}
+
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr;min-height:auto}
+  .hero__left{padding:clamp(3rem,6vw,5rem) 5%}
+  .hero__right{min-height:300px}
+}
+
+/* ═══════════════════════════════════════════════
+   2. STATS — horizontal ticker feel
+   ═══════════════════════════════════════════════ */
+.stats{padding:clamp(3rem,5vw,4.5rem) 0;border-bottom:1px solid var(--g2)}
+.stats__row{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem}
+.stat{text-align:center;position:relative}
+.stat::after{content:'';position:absolute;right:0;top:15%;height:70%;width:1px;background:var(--g2)}
+.stat:last-child::after{display:none}
+.stat__val{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(2rem,4vw,3rem);font-weight:900;color:var(--p);line-height:1}
+.stat__val span{color:var(--a6)}
+.stat__lbl{font-size:.8rem;color:var(--g4);font-weight:500;margin-top:.4rem;letter-spacing:.02em}
+@media(max-width:640px){
+  .stats__row{grid-template-columns:1fr 1fr;gap:2rem 0}
+  .stat:nth-child(2)::after{display:none}
+}
+
+/* ═══════════════════════════════════════════════
+   3. STORY — offset image + text
+   ═══════════════════════════════════════════════ */
+.story{padding:var(--spy) 0}
+.story__grid{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(3rem,6vw,6rem);align-items:center}
+.story__img{
+  position:relative;border-radius:24px;overflow:hidden;
+  aspect-ratio:4/3;
+  background:linear-gradient(135deg,var(--p0),var(--p1));
+}
+.story__img-inner{
+  position:absolute;inset:20px;border-radius:16px;
+  background:linear-gradient(160deg,var(--p),var(--p7));
+  display:flex;align-items:flex-end;padding:2rem;
+}
+.story__img-badge{
+  background:rgba(255,255,255,.1);backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,.12);border-radius:14px;
+  padding:1rem 1.4rem;color:#fff;
+}
+.story__img-badge strong{display:block;font-family:'Plus Jakarta Sans',sans-serif;font-size:1.5rem;font-weight:800}
+.story__img-badge span{font-size:.78rem;color:rgba(255,255,255,.6)}
+.story__tag{font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--a6);margin-bottom:1rem}
+.story__tag::before{content:'';display:inline-block;width:20px;height:2px;background:var(--a);border-radius:2px;margin-right:8px;vertical-align:middle}
+.story h2{font-size:clamp(1.8rem,3.5vw,2.6rem);font-weight:800;margin-bottom:1.5rem;letter-spacing:-.02em}
+.story p{font-size:1rem;line-height:1.9;color:var(--g6);margin-bottom:1rem}
+.story p:last-of-type{margin-bottom:0}
+@media(max-width:768px){
+  .story__grid{grid-template-columns:1fr}
+  .story__img{max-width:420px;margin:0 auto}
+}
+
+/* ═══════════════════════════════════════════════
+   4. MISSION — big quote
+   ═══════════════════════════════════════════════ */
+.mission{
+  padding:var(--spy) 0;
+  background:var(--g0);
+  position:relative;
+}
+.mission__inner{display:grid;grid-template-columns:auto 1fr;gap:clamp(2rem,4vw,4rem);align-items:start;max-width:960px;margin:0 auto}
+.mission__mark{
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(6rem,14vw,10rem);
+  font-weight:900;line-height:.8;color:var(--p);opacity:.08;user-select:none;
+}
+.mission__text h2{font-size:clamp(1.4rem,2.5vw,1.8rem);font-weight:800;margin-bottom:1.25rem}
+.mission__text p{font-size:clamp(.95rem,1.5vw,1.1rem);line-height:2;color:var(--g6)}
+.mission__line{width:48px;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--p),var(--a));margin-top:2rem}
+@media(max-width:640px){.mission__inner{grid-template-columns:1fr}.mission__mark{font-size:5rem;position:absolute;top:2rem;left:5%;opacity:.04}}
+
+/* ═══════════════════════════════════════════════
+   5. WHY CHOOSE — bento grid
+   ═══════════════════════════════════════════════ */
+.why{padding:var(--spy) 0}
+.why__head{text-align:center;margin-bottom:clamp(2.5rem,5vw,4rem)}
+.why__head h2{font-size:clamp(1.8rem,3.5vw,2.6rem);font-weight:800;letter-spacing:-.02em}
+.why__head p{font-size:1rem;color:var(--g5);margin-top:.75rem;max-width:480px;margin-inline:auto}
+.bento{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:auto auto;gap:1.25rem}
+.bento__card{
+  padding:clamp(1.5rem,3vw,2.25rem);border-radius:20px;
+  border:1px solid var(--g2);background:#fff;
+  transition:transform .5s var(--ease),box-shadow .5s var(--ease),border-color .5s var(--ease);
+  position:relative;overflow:hidden;
+}
+.bento__card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--p),var(--a));
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .5s var(--ease);
+}
+.bento__card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 12px 40px rgba(21,59,79,.08);
+  border-color:var(--p1);
+}
+.bento__card:hover::before{transform:scaleX(1)}
+.bento__icon{
+  width:44px;height:44px;border-radius:12px;
+  background:var(--p0);border:1px solid var(--p1);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:1.25rem;
+  transition:background .4s var(--ease),border-color .4s var(--ease);
+}
+.bento__card:hover .bento__icon{background:var(--p);border-color:var(--p)}
+.bento__icon svg{width:20px;height:20px;stroke:var(--p);stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .4s var(--ease)}
+.bento__card:hover .bento__icon svg{stroke:#fff}
+.bento__card h3{font-size:1rem;font-weight:700;margin-bottom:.5rem}
+.bento__card p{font-size:.85rem;line-height:1.7;color:var(--g5)}
+/* Span first card wider on desktop */
+.bento__card--wide{grid-column:span 2}
+@media(max-width:768px){.bento{grid-template-columns:1fr 1fr}.bento__card--wide{grid-column:span 1}}
+@media(max-width:480px){.bento{grid-template-columns:1fr}}
+
+/* ═══════════════════════════════════════════════
+   6. INNOVATION — dark panel
+   ═══════════════════════════════════════════════ */
+.inno{
+  padding:var(--spy) 0;
+  background:linear-gradient(160deg,var(--p9),var(--p) 60%,#0e2a3a);
+  position:relative;overflow:hidden;
+}
+.inno::before{
+  content:'';position:absolute;bottom:-20%;right:-10%;width:500px;height:500px;
+  background:radial-gradient(circle,rgba(34,211,238,.1),transparent 60%);pointer-events:none;
+}
+.inno__grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(3rem,6vw,5rem);align-items:center;position:relative;z-index:1}
+.inno__tag{font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--a);margin-bottom:1rem}
+.inno h2{font-size:clamp(1.8rem,3.5vw,2.6rem);font-weight:800;color:#fff;margin-bottom:1.25rem;letter-spacing:-.02em}
+.inno__desc{font-size:1rem;line-height:1.85;color:rgba(255,255,255,.55);margin-bottom:2rem}
+.inno__list{display:flex;flex-direction:column;gap:.6rem}
+.inno__item{
+  display:flex;align-items:center;gap:12px;
+  padding:.75rem 1rem;border-radius:12px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  transition:all .4s var(--ease);
+}
+.inno__item:hover{background:rgba(255,255,255,.08);border-color:rgba(34,211,238,.15);transform:translateX(4px)}
+.inno__item-dot{width:6px;height:6px;border-radius:50%;background:var(--a);flex-shrink:0}
+.inno__item span{font-size:.88rem;color:rgba(255,255,255,.7);font-weight:500}
+
+.inno__visual{display:flex;justify-content:center;align-items:center}
+.inno__rings{position:relative;width:280px;height:280px}
+.inno__ring{
+  position:absolute;border-radius:50%;
+  border:1px solid rgba(34,211,238,.1);
+  animation:pulse-ring 4s ease-in-out infinite;
+}
+.inno__ring:nth-child(1){inset:0;animation-delay:0s}
+.inno__ring:nth-child(2){inset:30px;border-color:rgba(34,211,238,.15);animation-delay:.5s}
+.inno__ring:nth-child(3){inset:60px;border-color:rgba(34,211,238,.2);animation-delay:1s}
+.inno__ring-center{
+  position:absolute;inset:80px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(34,211,238,.15),rgba(34,211,238,.05));
+  border:1px solid rgba(34,211,238,.25);
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(12px);
+}
+.inno__ring-center svg{width:40px;height:40px;stroke:var(--a);stroke-width:1.5;fill:none}
+@keyframes pulse-ring{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.04);opacity:1}}
+@media(max-width:768px){.inno__grid{grid-template-columns:1fr}.inno__visual{order:-1}.inno__rings{width:220px;height:220px}.inno__ring:nth-child(2){inset:24px}.inno__ring:nth-child(3){inset:48px}.inno__ring-center{inset:64px}}
+
+/* ═══════════════════════════════════════════════
+   7. CTA — clean card
+   ═══════════════════════════════════════════════ */
+.cta{padding:var(--spy) 0}
+.cta__card{
+  display:grid;grid-template-columns:1.2fr .8fr;
+  border-radius:24px;overflow:hidden;
+  box-shadow:0 24px 64px rgba(21,59,79,.1);
+}
+.cta__left{
+  padding:clamp(2.5rem,5vw,4rem);
+  background:#fff;display:flex;flex-direction:column;justify-content:center;
+}
+.cta__left h2{font-size:clamp(1.6rem,3vw,2.2rem);font-weight:800;margin-bottom:1rem;letter-spacing:-.02em}
+.cta__left p{font-size:1rem;line-height:1.8;color:var(--g5);margin-bottom:2rem;max-width:420px}
+.cta__btn{
+  display:inline-flex;align-items:center;gap:10px;width:fit-content;
+  background:var(--p);color:#fff;
+  font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.92rem;
+  padding:.85rem 2rem;border-radius:14px;border:none;cursor:pointer;
+  transition:all .4s var(--ease);
+}
+.cta__btn:hover{background:var(--p7);transform:translateY(-2px);box-shadow:0 8px 24px rgba(21,59,79,.15)}
+.cta__btn svg{width:16px;height:16px;stroke:currentColor;stroke-width:2.5;fill:none}
+.cta__right{
+  background:linear-gradient(160deg,var(--p9),var(--p));
+  display:flex;align-items:center;justify-content:center;
+  padding:3rem;position:relative;overflow:hidden;
+}
+.cta__right::before{
+  content:'';position:absolute;width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(34,211,238,.15),transparent 60%);
+  top:20%;right:-10%;
+}
+.cta__right-content{position:relative;z-index:1;text-align:center;color:#fff}
+.cta__right-content .big{font-family:'Plus Jakarta Sans',sans-serif;font-size:3.5rem;font-weight:900;line-height:1}
+.cta__right-content .sub{font-size:.82rem;color:rgba(255,255,255,.5);margin-top:.5rem;letter-spacing:.04em}
+@media(max-width:768px){.cta__card{grid-template-columns:1fr}.cta__right{min-height:200px}}
+
+.demo-ft{padding:2.5rem;text-align:center;font-size:.78rem;color:var(--g4);border-top:1px solid var(--g2)}
+</style>
+</head>
+<body>
+
+<!-- 1. HERO -->
+<section class="hero">
+  <div class="hero__left">
+    <div class="hero__tag" data-r>About Vrooem</div>
+    <h1 data-r="1">We make<br>car rental<br><span>effortless.</span></h1>
+    <p class="hero__desc" data-r="2">Your trusted partner for hassle-free car rentals across Europe and beyond. No hidden fees. No complicated paperwork. Just drive.</p>
+    <a href="#story" class="hero__scroll" data-r="3">
+      Discover our story
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+    </a>
+  </div>
+  <div class="hero__right">
+    <div class="hero__graphic">
+      <div class="hero__num">V</div>
+      <div class="hero__num-label">Est. 2024 &mdash; Belgium</div>
+      <div class="hero__dots"><span></span><span></span><span></span><span></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. STATS -->
+<section class="stats">
+  <div class="wrap">
+    <div class="stats__row">
+      <div class="stat" data-r><div class="stat__val">50K<span>+</span></div><div class="stat__lbl">Happy Customers</div></div>
+      <div class="stat" data-r="1"><div class="stat__val">100<span>+</span></div><div class="stat__lbl">Locations</div></div>
+      <div class="stat" data-r="2"><div class="stat__val">500<span>+</span></div><div class="stat__lbl">Vehicles</div></div>
+      <div class="stat" data-r="3"><div class="stat__val">24/7</div><div class="stat__lbl">Support</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. STORY -->
+<section class="story" id="story">
+  <div class="wrap">
+    <div class="story__grid">
+      <div class="story__img" data-r>
+        <div class="story__img-inner">
+          <div class="story__img-badge">
+            <strong>2+ Years</strong>
+            <span>Serving Europe</span>
+          </div>
+        </div>
+      </div>
+      <div data-r="1">
+        <div class="story__tag">Our Story</div>
+        <h2>It started with a simple idea</h2>
+        <p>Vrooem started with a simple idea: car rental should be easy. No hidden fees, no complicated paperwork, no waiting in long queues. Just select your car, book it, and drive away.</p>
+        <p>Today, we're proud to serve thousands of customers across multiple European countries, offering a diverse fleet of vehicles to suit every need and budget.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. MISSION -->
+<section class="mission">
+  <div class="wrap">
+    <div class="mission__inner" data-r>
+      <div class="mission__mark">&ldquo;</div>
+      <div class="mission__text">
+        <h2>Our Commitment to Excellence</h2>
+        <p>At Vrooem, our mission is to revolutionize the car rental experience by combining cutting-edge technology with genuine human care. We're committed to transparency, fair pricing, and exceptional service that puts your needs first. Whether you're traveling for business or leisure, alone or with family, we're here to ensure your journey is seamless, safe, and enjoyable.</p>
+        <div class="mission__line"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. WHY CHOOSE -->
+<section class="why">
+  <div class="wrap">
+    <div class="why__head" data-r>
+      <h2>Why Vrooem</h2>
+      <p>Everything you need for the perfect rental experience</p>
+    </div>
+    <div class="bento">
+      <div class="bento__card bento__card--wide" data-r>
+        <div class="bento__icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <h3>Wide Selection</h3>
+        <p>Choose from economy cars to luxury vehicles. Whatever your journey demands, we have the perfect match waiting for you across all categories.</p>
+      </div>
+      <div class="bento__card" data-r="1">
+        <div class="bento__icon"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <h3>Best Prices</h3>
+        <p>Competitive rates with no hidden fees. What you see is what you pay.</p>
+      </div>
+      <div class="bento__card" data-r="2">
+        <div class="bento__icon"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+        <h3>Fast Booking</h3>
+        <p>Book online in just a few clicks. Instant confirmation, zero waiting.</p>
+      </div>
+      <div class="bento__card bento__card--wide" data-r="3">
+        <div class="bento__icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h3>Secure Payments</h3>
+        <p>Your data and payments are protected with industry-leading encryption and security standards. We partner with Stripe to ensure every transaction is safe and seamless.</p>
+      </div>
+      <div class="bento__card" data-r="4">
+        <div class="bento__icon"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <h3>Convenient Locations</h3>
+        <p>Airports, city centres, and train stations across Europe.</p>
+      </div>
+      <div class="bento__card" data-r="5">
+        <div class="bento__icon"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 3.12 4.18 2 2 0 0 1 5.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+        <h3>24/7 Support</h3>
+        <p>Day or night, our team is always ready to help.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. INNOVATION -->
+<section class="inno">
+  <div class="wrap">
+    <div class="inno__grid">
+      <div data-r>
+        <div class="inno__tag">Technology</div>
+        <h2>Driving innovation in car rental</h2>
+        <p class="inno__desc">Our platform uses advanced algorithms to match you with the perfect vehicle for your journey. Smart filters, real-time availability, and instant confirmation.</p>
+        <div class="inno__list">
+          <div class="inno__item"><div class="inno__item-dot"></div><span>Smart vehicle matching algorithms</span></div>
+          <div class="inno__item"><div class="inno__item-dot"></div><span>Real-time availability across all providers</span></div>
+          <div class="inno__item"><div class="inno__item-dot"></div><span>Instant booking confirmation</span></div>
+          <div class="inno__item"><div class="inno__item-dot"></div><span>Multi-currency &amp; multi-language support</span></div>
+        </div>
+      </div>
+      <div class="inno__visual" data-r="2">
+        <div class="inno__rings">
+          <div class="inno__ring"></div>
+          <div class="inno__ring"></div>
+          <div class="inno__ring"></div>
+          <div class="inno__ring-center">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. CTA -->
+<section class="cta">
+  <div class="wrap">
+    <div class="cta__card" data-r>
+      <div class="cta__left">
+        <h2>Ready to Start Your Journey?</h2>
+        <p>Book your perfect ride today and experience the Vrooem difference. Quality vehicles, transparent pricing, and exceptional service await.</p>
+        <button class="cta__btn">
+          Book Your Ride Today
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <div class="cta__right">
+        <div class="cta__right-content">
+          <div class="big">500+</div>
+          <div class="sub">vehicles ready for you</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="demo-ft">Demo redesign v2 &mdash; Vrooem About Us &mdash; Not production code</div>
+
+<script>
+const o=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('v');o.unobserve(x.target)}})},{threshold:.12});
+document.querySelectorAll('[data-r]').forEach(el=>o.observe(el));
+</script>
+</body>
+</html>

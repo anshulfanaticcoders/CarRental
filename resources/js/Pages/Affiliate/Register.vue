@@ -1,12 +1,13 @@
 <template>
     <SeoHead :seo="props.seo" />
     <GuestHeader />
+    <main class="overflow-x-hidden">
         <!-- Dark Hero Section -->
         <section class="relative overflow-hidden bg-gradient-to-br from-[#0a1d28] to-[#153b4f]">
             <div class="absolute top-[5%] left-[-3%] w-[220px] h-[220px] rounded-full bg-cyan-500 opacity-20 blur-[80px] pointer-events-none animate-float"></div>
             <div class="absolute bottom-[5%] right-[-2%] w-[160px] h-[160px] rounded-full bg-cyan-500 opacity-[0.12] blur-[80px] pointer-events-none animate-float-delayed"></div>
 
-            <div class="relative z-10 max-w-[min(92%,1200px)] mx-auto py-8 md:py-12">
+            <div class="relative z-10 full-w-container py-8 md:py-12">
                 <span class="inline-block text-[0.76rem] font-bold tracking-[0.12em] uppercase text-cyan-400 mb-2">Partner Program</span>
                 <h1 class="text-2xl md:text-[2rem] font-[900] text-white mb-1">
                     Become a Vrooem <span class="text-cyan-300">Partner.</span>
@@ -31,7 +32,7 @@
 
         <!-- Form Section -->
         <section class="bg-gradient-to-b from-slate-50 to-white py-8 md:py-14">
-            <div class="max-w-[min(92%,1200px)] mx-auto">
+            <div class="full-w-container">
                 <div class="af-register-shell">
                     <!-- Left: Form Card -->
                     <div class="af-register-left">
@@ -46,9 +47,9 @@
                                 <p class="text-[0.88rem] text-slate-500 mb-6">Fill in your details to get started. <a :href="route('login', { locale })" class="text-[#2ea7ad] font-semibold no-underline hover:underline">Already a partner? Sign in</a></p>
 
                                 <!-- Step Indicator -->
-                                <div class="flex items-center gap-0 mb-7 py-3.5 px-5 bg-slate-50 border border-slate-200 rounded-2xl">
+                                <div class="flex items-center mb-7 py-3.5 px-3 sm:px-5 bg-slate-50 border border-slate-200 rounded-2xl">
                                     <template v-for="(s, i) in steps" :key="s.label">
-                                        <div class="flex items-center gap-2">
+                                        <div class="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 shrink-0">
                                             <div :class="[
                                                 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-[0.78rem] shrink-0 transition-all duration-300',
                                                 currentStep > i + 1 ? 'bg-emerald-500 text-white' :
@@ -60,12 +61,12 @@
                                                 </template>
                                                 <template v-else>{{ i + 1 }}</template>
                                             </div>
-                                            <span :class="['font-semibold text-[0.76rem]', currentStep >= i + 1 ? 'text-[#153b4f]' : 'text-slate-400']">
+                                            <span :class="['font-semibold text-[0.65rem] sm:text-[0.76rem] text-center leading-tight', currentStep >= i + 1 ? 'text-[#153b4f]' : 'text-slate-400']">
                                                 {{ s.label }}
                                             </span>
                                         </div>
                                         <div v-if="i < steps.length - 1"
-                                            :class="['flex-1 h-0.5 mx-2 rounded-full', currentStep > i + 1 ? 'bg-emerald-500' : 'bg-slate-200']">
+                                            :class="['flex-1 h-0.5 mx-1 sm:mx-2 rounded-full', currentStep > i + 1 ? 'bg-emerald-500' : 'bg-slate-200']">
                                         </div>
                                     </template>
                                 </div>
@@ -408,6 +409,7 @@
             </div>
         </section>
 
+    </main>
         <Footer />
         <Toaster position="bottom-right" />
 </template>
@@ -443,10 +445,10 @@ const perks = [
 const perkIconMap = { DollarSign, Smartphone, BarChart3, Landmark };
 
 const steps = [
-    { label: 'Account' },
-    { label: 'Business' },
-    { label: 'Bank Info' },
-    { label: 'Terms' },
+    { label: 'Account', shortLabel: 'Account' },
+    { label: 'Business', shortLabel: 'Business' },
+    { label: 'Bank Info', shortLabel: 'Bank' },
+    { label: 'Terms', shortLabel: 'Terms' },
 ];
 
 const currentStep = ref(1);

@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::get('quotes/{currency}/{pickup_point}/{dropoff_point}/{pickup_datetime}/{dropoff_datetime}/{driver_age}', CarHireSearchController::class)
+    ->name('skyscanner.car-hire.search.rest');
+
 Route::prefix('skyscanner')->group(function () {
     Route::get('locations', CarHireLocationsController::class)
         ->name('skyscanner.locations');

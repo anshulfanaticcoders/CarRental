@@ -32,9 +32,8 @@ class CarHireRedirectControllerTest extends TestCase
     public function test_it_returns_the_quote_when_it_exists_and_is_still_valid(): void
     {
         $store = app(CarHireQuoteStoreService::class);
-        $controller = app(CarHireRedirectController::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 8, 10, 0, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-123',
@@ -46,9 +45,7 @@ class CarHireRedirectControllerTest extends TestCase
 
         $store->put($quote);
 
-        $response = $controller(Request::create('/skyscanner/redirect', 'GET', [
-            'quote_id' => 'quote-123',
-        ]));
+        $response = $this->getJson('/api/skyscanner/redirect?quote_id=quote-123');
 
         $payload = $response->getData(true);
 
@@ -60,22 +57,19 @@ class CarHireRedirectControllerTest extends TestCase
     public function test_it_returns_gone_when_the_quote_is_expired(): void
     {
         $store = app(CarHireQuoteStoreService::class);
-        $controller = app(CarHireRedirectController::class);
 
         $quote = [
             'quote_id' => 'quote-123',
-            'expires_at' => CarbonImmutable::create(2026, 4, 8, 10, 30, 0, 'UTC')->toIso8601String(),
+            'expires_at' => CarbonImmutable::create(2026, 4, 11, 10, 30, 0, 'UTC')->toIso8601String(),
             'vehicle' => [
                 'display_name' => 'Toyota Yaris',
             ],
         ];
 
         $store->put($quote);
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 8, 10, 31, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 31, 0, 'UTC'));
 
-        $response = $controller(Request::create('/skyscanner/redirect', 'GET', [
-            'quote_id' => 'quote-123',
-        ]));
+        $response = $this->getJson('/api/skyscanner/redirect?quote_id=quote-123');
 
         $payload = $response->getData(true);
 
@@ -83,13 +77,38 @@ class CarHireRedirectControllerTest extends TestCase
         $this->assertSame('quote_expired', $payload['error']);
     }
 
-    public function test_it_returns_not_found_when_the_quote_does_not_exist(): void
+    public function test_it_redirects_browser_requests_to_the_offer_page_when_the_quote_is_expired(): void
     {
+        $store = app(CarHireQuoteStoreService::class);
         $controller = app(CarHireRedirectController::class);
 
-        $response = $controller(Request::create('/skyscanner/redirect', 'GET', [
-            'quote_id' => 'missing-quote',
+        $quote = [
+            'quote_id' => 'quote-expired',
+            'case_id' => 'PSM-46100',
+            'expires_at' => CarbonImmutable::create(2026, 4, 11, 10, 30, 0, 'UTC')->toIso8601String(),
+            'vehicle' => [
+                'display_name' => 'Toyota Yaris',
+            ],
+            'deeplink' => [
+                'landing_page_url' => 'https://vrooem.test/en/offers/quote-expired',
+            ],
+        ];
+
+        $store->put($quote);
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 31, 0, 'UTC'));
+
+        $response = $controller(Request::create('/api/skyscanner/redirect', 'GET', [
+            'quote_id' => 'quote-expired',
+            'skyscanner_redirectid' => 'rid-expired',
         ]));
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertSame('https://vrooem.test/en/offers/quote-expired', $response->headers->get('Location'));
+    }
+
+    public function test_it_returns_not_found_when_the_quote_does_not_exist(): void
+    {
+        $response = $this->getJson('/api/skyscanner/redirect?quote_id=missing-quote');
 
         $payload = $response->getData(true);
 
@@ -103,9 +122,8 @@ class CarHireRedirectControllerTest extends TestCase
         $tracking = app(CarHireTrackingService::class);
         $auditLog = app(CarHireAuditLogService::class);
         $security = app(CarHireSecurityService::class);
-        $controller = app(CarHireRedirectController::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 8, 10, 0, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC'));
         config([
             'skyscanner.signing_secret' => 'top-secret',
         ]);
@@ -123,7 +141,7 @@ class CarHireRedirectControllerTest extends TestCase
         $store->put($quote);
         $params = $security->buildSignedRedirectParams('quote-123', 'rid-123');
 
-        $response = $controller(Request::create('/skyscanner/redirect', 'GET', $params));
+        $response = $this->getJson('/api/skyscanner/redirect?' . http_build_query($params));
 
         $payload = $response->getData(true);
         $correlation = $tracking->getRedirectCorrelation('rid-123');
@@ -147,13 +165,12 @@ class CarHireRedirectControllerTest extends TestCase
         $store = app(CarHireQuoteStoreService::class);
         $tracking = app(CarHireTrackingService::class);
         $security = app(CarHireSecurityService::class);
-        $controller = app(CarHireRedirectController::class);
 
         config([
             'skyscanner.signing_secret' => 'top-secret',
         ]);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 8, 10, 0, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-123',
@@ -169,11 +186,49 @@ class CarHireRedirectControllerTest extends TestCase
         $params = $security->buildSignedRedirectParams('quote-123', 'rid-123');
         $params['quote_id'] = 'quote-999';
 
-        $response = $controller(Request::create('/skyscanner/redirect', 'GET', $params));
+        $response = $this->getJson('/api/skyscanner/redirect?' . http_build_query($params));
         $payload = $response->getData(true);
 
         $this->assertSame(403, $response->getStatusCode());
         $this->assertSame('invalid_signature', $payload['error']);
         $this->assertNull($tracking->getRedirectCorrelation('rid-123'));
+    }
+
+    public function test_it_redirects_browser_requests_to_the_landing_page_with_tracking_context(): void
+    {
+        $store = app(CarHireQuoteStoreService::class);
+        $tracking = app(CarHireTrackingService::class);
+        $controller = app(CarHireRedirectController::class);
+
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC'));
+
+        $quote = [
+            'quote_id' => 'quote-123',
+            'case_id' => 'PSM-46100',
+            'expires_at' => CarbonImmutable::now('UTC')->addMinutes(30)->toIso8601String(),
+            'vehicle' => [
+                'provider_vehicle_id' => '327',
+                'display_name' => 'Toyota Yaris',
+            ],
+            'deeplink' => [
+                'landing_page_url' => 'https://vrooem.test/en/offers/quote-123',
+            ],
+        ];
+
+        $store->put($quote);
+
+        $response = $controller(Request::create('/api/skyscanner/redirect', 'GET', [
+            'quote_id' => 'quote-123',
+            'skyscanner_redirectid' => 'rid-123',
+        ]));
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertSame('https://vrooem.test/en/offers/quote-123', $response->headers->get('Location'));
+        $this->assertSame([
+            'redirect_id' => 'rid-123',
+            'quote_id' => 'quote-123',
+            'case_id' => 'PSM-46100',
+            'provider_vehicle_id' => '327',
+        ], $tracking->getRedirectCorrelation('rid-123'));
     }
 }

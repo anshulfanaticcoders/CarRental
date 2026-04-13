@@ -158,6 +158,84 @@ class SkyscannerSearchApiTest extends TestCase
         $response->assertJsonPath('excluded_vehicle_ids', []);
     }
 
+    public function test_skyscanner_search_api_supports_rest_style_uri_parameters(): void
+    {
+        config([
+            'skyscanner.api_key' => 'secret-key',
+            'skyscanner.testing_access.auth_header' => 'x-api-key',
+            'skyscanner.case_id' => 'PSM-46100',
+            'skyscanner.quote_ttl_minutes' => 30,
+        ]);
+
+        $category = VehicleCategory::create([
+            'name' => 'Economy',
+            'slug' => 'economy',
+            'description' => 'Economy vehicles',
+            'status' => true,
+        ]);
+
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+
+        UserProfile::create([
+            'user_id' => $vendor->id,
+            'city' => 'Marrakech',
+            'country' => 'Morocco',
+        ]);
+
+        VendorProfile::create([
+            'user_id' => $vendor->id,
+            'company_name' => 'Airport Fleet Co',
+            'company_email' => 'fleet@example.com',
+            'company_phone_number' => '+212500000000',
+            'company_address' => 'Terminal 2',
+            'company_gst_number' => 'GST-RAK-' . $vendor->id,
+            'status' => 'approved',
+        ]);
+
+        $location = VendorLocation::create([
+            'vendor_id' => $vendor->id,
+            'name' => 'Menara Airport',
+            'code' => 'vl-' . $vendor->id . '-rak',
+            'address_line_1' => 'Menara Airport Terminal 2',
+            'city' => 'Marrakech',
+            'state' => null,
+            'country' => 'Morocco',
+            'country_code' => 'MA',
+            'latitude' => 31.6069,
+            'longitude' => -8.0363,
+            'location_type' => 'airport',
+            'iata_code' => 'RAK',
+            'is_active' => true,
+        ]);
+
+        $referenceVehicle = $this->createVehicleAtAirport($vendor->id, $category->id, [
+            'brand' => 'Toyota',
+            'model' => 'Yaris',
+            'location' => 'Menara Airport',
+            'location_type' => 'airport',
+            'city' => 'Marrakech',
+            'state' => null,
+            'country' => 'Morocco',
+            'full_vehicle_address' => 'Menara Airport Terminal 2, Marrakech, Morocco',
+            'latitude' => 31.6069,
+            'longitude' => -8.0363,
+            'vendor_location_id' => $location->id,
+        ]);
+
+        $response = $this
+            ->withHeader('x-api-key', 'secret-key')
+            ->getJson('/api/quotes/EUR/' . $location->id . '/' . $location->id . '/2026-06-15T09:00/2026-06-18T09:00/35');
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'quotes');
+        $response->assertJsonPath('quotes.0.vehicle.provider_vehicle_id', (string) $referenceVehicle->id);
+        $response->assertJsonPath('quotes.0.search.pickup_location_id', $location->id);
+        $response->assertJsonPath('quotes.0.search.currency', 'EUR');
+    }
+
     private function createVehicleAtAirport(int $vendorId, int $categoryId, array $overrides = []): Vehicle
     {
         $vehicle = Vehicle::create(array_merge([

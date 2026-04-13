@@ -443,6 +443,7 @@ Route::group([
 
     // Show Blogs on Home page
     Route::get('/', [BlogController::class, 'homeBlogs'])->name('welcome');
+    Route::get('/offers/{quoteId}', [\App\Http\Controllers\Skyscanner\CarHireOfferController::class, 'show'])->name('skyscanner.offer');
     Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
     Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
     Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFooterCategories']);
