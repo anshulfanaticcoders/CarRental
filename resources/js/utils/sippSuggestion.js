@@ -15,12 +15,47 @@ const toInt = (value) => {
   return Number.isFinite(number) ? number : null;
 };
 
-const resolveCategoryLetter = ({ categoryName, bodyStyle, seatingCapacity, horsepower }) => {
+const containsAny = (haystack, needles) => needles.some((needle) => needle && haystack.includes(needle));
+
+const isSpecialPerformanceProfile = ({ lookup, bodyStyle, horsepower }) => {
+  if (["sport", "roadster"].includes(bodyStyle)) return true;
+
+  if (
+    containsAny(lookup, [
+      "sports car",
+      "sport car",
+      "performance",
+      "supercar",
+      "exotic",
+      "corvette",
+      "huracan",
+      "lamborghini",
+      "ferrari",
+      "mclaren",
+      "911",
+      "porsche 911",
+      "aston martin",
+      "amg gt",
+      "r8",
+      "nissan gt r",
+      "gtr",
+    ])
+  ) {
+    return ["convertible", "coupe"].includes(bodyStyle) || (horsepower ?? 0) >= 220;
+  }
+
+  return false;
+};
+
+const resolveCategoryLetter = ({ categoryName, bodyStyle, seatingCapacity, horsepower, brand, model }) => {
   const category = normalizeText(categoryName);
   const seats = toInt(seatingCapacity) ?? 0;
   const hp = toInt(horsepower) ?? 0;
+  const lookup = [category, normalizeText(brand), normalizeText(model)].filter(Boolean).join(" ");
 
-  if (category?.includes("luxury")) return "L";
+  if (isSpecialPerformanceProfile({ lookup, bodyStyle, horsepower: hp })) return "X";
+
+  if (category && containsAny(category, ["luxury", "prestige"])) return "L";
   if (category?.includes("premium")) return "P";
 
   if (["van", "minivan"].includes(bodyStyle)) {
@@ -28,20 +63,39 @@ const resolveCategoryLetter = ({ categoryName, bodyStyle, seatingCapacity, horse
   }
 
   if (bodyStyle === "suv") {
-    if (category?.includes("luxury")) return "L";
+    if (category && containsAny(category, ["luxury", "prestige"])) return "L";
+    if (category?.includes("premium")) return "P";
     if (hp >= 190 || seats >= 7) return "F";
     return "I";
   }
 
-  if (hp >= 220) return "L";
+  if (category && containsAny(category, ["mini"])) return "M";
+  if (category && containsAny(category, ["city", "economy"])) return "E";
+  if (category && containsAny(category, ["compact"])) return "C";
+  if (category && containsAny(category, ["intermediate", "mid size", "midsize"])) return "I";
+  if (category && containsAny(category, ["standard"])) return "S";
+  if (category && containsAny(category, ["full size", "fullsize"])) return "F";
+
+  if (hp >= 220) return "P";
   if (hp >= 170 || seats >= 7) return "F";
-  if (hp >= 130 || seats >= 5) return "I";
+  if (hp >= 130) return "I";
   if (hp >= 90) return "C";
   return "E";
 };
 
-const resolveTypeLetter = (bodyStyle) => {
+const resolveTypeLetter = (bodyStyle, numberOfDoors) => {
+  const doors = toInt(numberOfDoors) ?? 4;
+
   switch (bodyStyle) {
+    case "sport":
+      return "S";
+    case "roadster":
+      return "N";
+    case "convertible":
+    case "cabriolet":
+      return "T";
+    case "coupe":
+      return "E";
     case "suv":
       return "F";
     case "wagon":
@@ -50,13 +104,10 @@ const resolveTypeLetter = (bodyStyle) => {
     case "van":
     case "minivan":
       return "V";
-    case "convertible":
-    case "cabriolet":
-      return "N";
     case "pickup":
       return "P";
     default:
-      return "C";
+      return doors >= 4 ? "D" : "C";
   }
 };
 
@@ -76,7 +127,7 @@ const resolveFuelAcLetter = (fuel, airConditioning) => {
 
   switch (fuel) {
     case "diesel":
-      return "Q";
+      return "D";
     case "hybrid":
       return "H";
     case "electric":
@@ -100,9 +151,12 @@ export const suggestSippCode = (attributes) => {
     categoryName: attributes.categoryName,
     bodyStyle,
     seatingCapacity: attributes.seatingCapacity,
+    numberOfDoors: attributes.numberOfDoors,
     horsepower: attributes.horsepower,
+    brand: attributes.brand,
+    model: attributes.model,
   });
-  const typeLetter = resolveTypeLetter(bodyStyle);
+  const typeLetter = resolveTypeLetter(bodyStyle, attributes.numberOfDoors);
   const transmissionLetter = transmission === "automatic" ? "A" : "M";
   const fuelAcLetter = resolveFuelAcLetter(fuel, airConditioning);
 

@@ -315,10 +315,13 @@ class InternalSearchVehicleFactory
                     ?? null,
                 'body_style' => $vehicle['body_style'] ?? null,
                 'seating_capacity' => $vehicle['seating_capacity'] ?? null,
+                'number_of_doors' => $vehicle['number_of_doors'] ?? null,
                 'horsepower' => $vehicle['horsepower'] ?? null,
                 'transmission' => $vehicle['transmission'] ?? null,
                 'fuel' => $vehicle['fuel'] ?? null,
                 'air_conditioning' => $vehicle['air_conditioning'] ?? null,
+                'brand' => $vehicle['brand'] ?? null,
+                'model' => $vehicle['model'] ?? null,
             ]);
         }
 

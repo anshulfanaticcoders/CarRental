@@ -126,9 +126,13 @@
                                     <SelectContent><SelectGroup>
                                         <SelectItem value="hatchback">Hatchback</SelectItem>
                                         <SelectItem value="sedan">Sedan</SelectItem>
+                                        <SelectItem value="coupe">Coupe</SelectItem>
+                                        <SelectItem value="sport">Sport / Performance</SelectItem>
+                                        <SelectItem value="roadster">Roadster / Spyder</SelectItem>
                                         <SelectItem value="suv">SUV</SelectItem>
                                         <SelectItem value="wagon">Wagon / Estate</SelectItem>
-                                        <SelectItem value="van">Van / Minivan</SelectItem>
+                                        <SelectItem value="van">Van</SelectItem>
+                                        <SelectItem value="minivan">Minivan / People Carrier</SelectItem>
                                         <SelectItem value="convertible">Convertible</SelectItem>
                                         <SelectItem value="pickup">Pickup</SelectItem>
                                     </SelectGroup></SelectContent>
@@ -360,9 +364,9 @@
                         <div class="vln-field mb-4">
                             <div class="flex items-center justify-between gap-3 mb-2">
                                 <label class="vln-label">Vendor Location <span class="req">*</span></label>
-                                <Link :href="route('vendor.locations.index', { locale: $page.props.locale })" class="text-sm font-medium text-cyan-700 hover:text-cyan-800">
-                                    Manage locations
-                                </Link>
+                                <button type="button" class="text-sm font-medium text-cyan-700 hover:text-cyan-800" @click="toggleLocationForm">
+                                    {{ showLocationForm ? 'Cancel new location' : 'Add new location' }}
+                                </button>
                             </div>
                             <Select v-model="form.vendor_location_id">
                                 <SelectTrigger class="vln-select-trigger">
@@ -376,8 +380,26 @@
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-                            <span class="vln-hint">Locations are managed separately so all vehicles at the same pickup point stay grouped correctly.</span>
+                            <span class="vln-hint">Choose an existing location or add a new one here without leaving the listing flow.</span>
                             <span v-if="errors.location" class="vln-error"><AlertCircle :size="13" /> {{ errors.location }}</span>
+                        </div>
+                        <div v-if="showLocationForm" class="vln-field full">
+                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                                <div>
+                                    <div class="font-semibold text-slate-900">Add vendor location</div>
+                                    <div class="text-sm text-slate-600">Create the pickup point once, then assign this vehicle to it immediately.</div>
+                                </div>
+                                <VendorLocationFormFields :form="locationForm" :errors="locationFormErrors" />
+                                <div class="flex items-center gap-3">
+                                    <button type="button" class="vln-btn-next" @click="submitInlineLocation" :disabled="isSavingLocation">
+                                        <span v-if="isSavingLocation" class="vln-spinner-sm"></span>
+                                        <template v-else>Create and select location</template>
+                                    </button>
+                                    <button type="button" class="vln-btn-ghost" @click="resetLocationForm">
+                                        Clear
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div v-if="selectedVendorLocation" class="vln-field full">
                             <div class="rounded-xl border border-cyan-100 bg-cyan-50 p-4 space-y-3">
@@ -828,6 +850,7 @@
 import { Head, Link, useForm } from "@inertiajs/vue3";
 import { computed, getCurrentInstance, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import MyProfileLayout from "@/Layouts/MyProfileLayout.vue";
+import VendorLocationFormFields from "@/Components/VendorLocationFormFields.vue";
 import axios from "axios";
 import { useToast } from 'vue-toastification';
 import Select from "@/Components/ui/select/Select.vue";
@@ -882,7 +905,28 @@ const defaultOperatingHours = [
 ];
 
 const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const vendorLocations = computed(() => props.vendorLocations || []);
+const buildEmptyLocationForm = () => ({
+    name: '',
+    code: '',
+    address_line_1: '',
+    address_line_2: '',
+    city: '',
+    state: '',
+    country: '',
+    country_code: '',
+    latitude: '',
+    longitude: '',
+    location_type: 'airport',
+    iata_code: '',
+    phone: '',
+    pickup_instructions: '',
+    dropoff_instructions: '',
+});
+const vendorLocations = ref([...(props.vendorLocations || [])]);
+const showLocationForm = ref(false);
+const isSavingLocation = ref(false);
+const locationForm = reactive(buildEmptyLocationForm());
+const locationFormErrors = reactive({});
 const selectedCategory = computed(() => props.categories.find(category => Number(category.id) === Number(form.category_id)) || null);
 
 const form = useForm({
@@ -944,12 +988,76 @@ const suggestedSippCode = computed(() => suggestSippCode({
     categoryName: selectedCategory.value?.name,
     bodyStyle: form.body_style,
     seatingCapacity: form.seating_capacity,
+    numberOfDoors: form.number_of_doors,
     horsepower: form.horsepower,
     transmission: form.transmission,
     fuel: form.fuel,
     airConditioning: form.air_conditioning,
+    brand: form.brand,
+    model: form.model,
 }));
 const displayedSippCode = computed(() => suggestedSippCode.value || form.sipp_code || 'Will be generated when vehicle specs are complete');
+
+const clearLocationFormErrors = () => {
+    Object.keys(locationFormErrors).forEach((key) => delete locationFormErrors[key]);
+};
+
+const resetLocationForm = () => {
+    Object.assign(locationForm, buildEmptyLocationForm());
+    clearLocationFormErrors();
+};
+
+const sortVendorLocations = () => {
+    vendorLocations.value = [...vendorLocations.value].sort((left, right) =>
+        String(left.display_name || left.name || '').localeCompare(String(right.display_name || right.name || ''))
+    );
+};
+
+const toggleLocationForm = () => {
+    showLocationForm.value = !showLocationForm.value;
+    if (!showLocationForm.value) {
+        resetLocationForm();
+    }
+};
+
+const submitInlineLocation = async () => {
+    isSavingLocation.value = true;
+    clearLocationFormErrors();
+
+    try {
+        const { data } = await axios.post(
+            route('vendor.locations.store', { locale: page.props.locale }),
+            locationForm,
+            { headers: { Accept: 'application/json' } }
+        );
+
+        if (data?.location) {
+            vendorLocations.value = vendorLocations.value.filter(location => Number(location.id) !== Number(data.location.id));
+            vendorLocations.value.push(data.location);
+            sortVendorLocations();
+            form.vendor_location_id = Number(data.location.id);
+            errors.location = '';
+            showLocationForm.value = false;
+            resetLocationForm();
+            toast.success(data.message || 'Location created successfully.');
+        }
+    } catch (error) {
+        if (error.response?.status === 422 && error.response?.data?.errors) {
+            Object.assign(locationFormErrors, Object.fromEntries(
+                Object.entries(error.response.data.errors).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value])
+            ));
+        } else {
+            toast.error('Failed to create location.');
+        }
+    } finally {
+        isSavingLocation.value = false;
+    }
+};
+
+watch(() => props.vendorLocations, (locations) => {
+    vendorLocations.value = [...(locations || [])];
+    sortVendorLocations();
+}, { immediate: true, deep: true });
 
 const customFeatureInput = ref('');
 const allFeatures = ref([

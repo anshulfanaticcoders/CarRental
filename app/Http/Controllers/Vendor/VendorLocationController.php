@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApiBooking;
+use App\Models\Vehicle;
 use App\Models\VendorLocation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -19,28 +23,9 @@ class VendorLocationController extends Controller
             ->where('vendor_id', $vendorId)
             ->withCount('vehicles')
             ->orderBy('name')
-            ->get()
-            ->map(fn (VendorLocation $location) => [
-                'id' => $location->id,
-                'name' => $location->name,
-                'code' => $location->code,
-                'address_line_1' => $location->address_line_1,
-                'address_line_2' => $location->address_line_2,
-                'city' => $location->city,
-                'state' => $location->state,
-                'country' => $location->country,
-                'country_code' => $location->country_code,
-                'latitude' => $location->latitude,
-                'longitude' => $location->longitude,
-                'location_type' => $location->location_type,
-                'iata_code' => $location->iata_code,
-                'phone' => $location->phone,
-                'pickup_instructions' => $location->pickup_instructions,
-                'dropoff_instructions' => $location->dropoff_instructions,
-                'is_active' => $location->is_active,
-                'vehicles_count' => $location->vehicles_count,
-            ])
-            ->values();
+            ->paginate(6)
+            ->through(fn (VendorLocation $location) => $this->serializeLocation($location))
+            ->withQueryString();
 
         return Inertia::render('Vendor/Locations/Index', [
             'locations' => $locations,
@@ -54,18 +39,27 @@ class VendorLocationController extends Controller
 
         $this->ensureNoDuplicateLocation($validated, $vendorId);
 
-        VendorLocation::create([
+        $location = VendorLocation::create([
             ...$validated,
             'vendor_id' => $vendorId,
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'Location created successfully.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Location created successfully.',
+                'location' => $this->serializeLocation($location->fresh()),
+            ], 201);
+        }
+
+        return redirect()
+            ->route('vendor.locations.index', ['locale' => app()->getLocale()])
+            ->with('success', 'Location created successfully.');
     }
 
-    public function update(Request $request, VendorLocation $vendorLocation)
+    public function update(Request $request, $locale, $vendorLocation)
     {
-        abort_unless($vendorLocation->vendor_id === $request->user()->id, 403);
+        $vendorLocation = $this->resolveVendorLocation($request, $vendorLocation);
 
         $validated = $this->validatePayload($request);
 
@@ -73,12 +67,14 @@ class VendorLocationController extends Controller
 
         $vendorLocation->update($validated);
 
-        return back()->with('success', 'Location updated successfully.');
+        return redirect()
+            ->route('vendor.locations.index', ['locale' => $locale])
+            ->with('success', 'Location updated successfully.');
     }
 
-    public function destroy(Request $request, VendorLocation $vendorLocation)
+    public function destroy(Request $request, $locale, $vendorLocation)
     {
-        abort_unless($vendorLocation->vendor_id === $request->user()->id, 403);
+        $vendorLocation = $this->resolveVendorLocation($request, $vendorLocation);
 
         if ($vendorLocation->vehicles()->exists()) {
             return back()->withErrors([
@@ -88,7 +84,80 @@ class VendorLocationController extends Controller
 
         $vendorLocation->delete();
 
-        return back()->with('success', 'Location deleted successfully.');
+        return redirect()
+            ->route('vendor.locations.index', ['locale' => $locale])
+            ->with('success', 'Location deleted successfully.');
+    }
+
+    public function destroyWithVehicles(Request $request, $locale, $vendorLocation)
+    {
+        $vendorLocation = $this->resolveVendorLocation($request, $vendorLocation);
+
+        $vehicles = $vendorLocation->vehicles()->with(['images', 'bookings.damageProtection'])->get();
+
+        foreach ($vehicles as $vehicle) {
+            foreach ($vehicle->images as $image) {
+                $path = $image->image_path ?: $image->image_url;
+
+                if ($path) {
+                    try {
+                        Storage::disk('upcloud')->delete($path);
+                    } catch (\Throwable $exception) {
+                    }
+                }
+            }
+
+            foreach ($vehicle->bookings as $booking) {
+                $damageProtection = $booking->damageProtection;
+
+                if (!$damageProtection) {
+                    continue;
+                }
+
+                foreach ($damageProtection->before_images ?? [] as $imageKey) {
+                    $this->deleteStoragePath('damage_protections/before/' . $imageKey);
+                }
+
+                foreach ($damageProtection->after_images ?? [] as $imageKey) {
+                    $this->deleteStoragePath('damage_protections/after/' . $imageKey);
+                }
+            }
+        }
+
+        DB::transaction(function () use ($vendorLocation, $vehicles) {
+            $vehicleIds = $vehicles->pluck('id')->all();
+
+            if (!empty($vehicleIds)) {
+                ApiBooking::query()->whereIn('vehicle_id', $vehicleIds)->delete();
+                Vehicle::query()->whereIn('id', $vehicleIds)->delete();
+            }
+
+            $vendorLocation->delete();
+        });
+
+        return redirect()
+            ->route('vendor.locations.index', ['locale' => $locale])
+            ->with('success', 'Location and linked vehicles deleted successfully.');
+    }
+
+    private function deleteStoragePath(?string $path): void
+    {
+        if (!$path) {
+            return;
+        }
+
+        try {
+            Storage::disk('upcloud')->delete($path);
+        } catch (\Throwable $exception) {
+        }
+    }
+
+    private function resolveVendorLocation(Request $request, $vendorLocation): VendorLocation
+    {
+        return VendorLocation::query()
+            ->whereKey($vendorLocation)
+            ->where('vendor_id', $request->user()->id)
+            ->firstOrFail();
     }
 
     private function validatePayload(Request $request): array
@@ -149,5 +218,34 @@ class VendorLocationController extends Controller
                 'name' => 'A matching location already exists. Use the existing one instead of creating a duplicate.',
             ]);
         }
+    }
+
+    private function serializeLocation(VendorLocation $location): array
+    {
+        return [
+            'id' => $location->id,
+            'name' => $location->name,
+            'code' => $location->code,
+            'address_line_1' => $location->address_line_1,
+            'address_line_2' => $location->address_line_2,
+            'city' => $location->city,
+            'state' => $location->state,
+            'country' => $location->country,
+            'country_code' => $location->country_code,
+            'latitude' => $location->latitude,
+            'longitude' => $location->longitude,
+            'location_type' => $location->location_type,
+            'iata_code' => $location->iata_code,
+            'phone' => $location->phone,
+            'pickup_instructions' => $location->pickup_instructions,
+            'dropoff_instructions' => $location->dropoff_instructions,
+            'is_active' => $location->is_active,
+            'vehicles_count' => $location->vehicles_count ?? 0,
+            'display_name' => trim(implode(' • ', array_filter([
+                $location->name,
+                $location->city,
+                $location->country,
+            ]))),
+        ];
     }
 }

@@ -36,9 +36,11 @@ class VendorVehicleController extends Controller
     {
         $vendorId = auth()->id();
         $searchQuery = $request->input('search', '');
+        $vendorLocationId = $request->input('vendor_location_id');
 
         $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile', 'benefits'])
             ->where('vendor_id', $vendorId)
+            ->when($vendorLocationId, fn ($query) => $query->where('vendor_location_id', $vendorLocationId))
             ->when($searchQuery, function ($query, $searchQuery) {
                 $query->where(function ($q) use ($searchQuery) {
                     $q->where('brand', 'like', '%' . $searchQuery . '%')
@@ -308,10 +310,13 @@ class VendorVehicleController extends Controller
                     'category_name' => VehicleCategory::query()->find($request->input('category_id'))?->name,
                     'body_style' => $request->input('body_style'),
                     'seating_capacity' => $request->input('seating_capacity'),
+                    'number_of_doors' => $request->input('number_of_doors'),
                     'horsepower' => $request->input('horsepower'),
                     'transmission' => $request->input('transmission'),
                     'fuel' => $request->input('fuel'),
                     'air_conditioning' => $request->input('air_conditioning'),
+                    'brand' => $request->input('brand'),
+                    'model' => $request->input('model'),
                 ]) ?? $vehicle->sipp_code;
 
                 // Update vehicle

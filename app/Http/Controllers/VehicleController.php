@@ -220,10 +220,13 @@ class VehicleController extends Controller
                 'category_name' => VehicleCategory::query()->find($request->input('category_id'))?->name,
                 'body_style' => $request->input('body_style'),
                 'seating_capacity' => $request->input('seating_capacity'),
+                'number_of_doors' => $request->input('number_of_doors'),
                 'horsepower' => $request->input('horsepower'),
                 'transmission' => $request->input('transmission'),
                 'fuel' => $request->input('fuel'),
                 'air_conditioning' => $request->input('air_conditioning'),
+                'brand' => $request->input('brand'),
+                'model' => $request->input('model'),
             ]);
 
             // Create the vehicle

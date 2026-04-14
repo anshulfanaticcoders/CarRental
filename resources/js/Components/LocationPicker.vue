@@ -1,11 +1,24 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { Search, MapPin, Check, X } from 'lucide-vue-next'; // Added X for close button
+import { useToast } from 'vue-toastification';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const props = defineProps({
   onLocationSelect: Function,
+  showSelectedSummary: {
+    type: Boolean,
+    default: true,
+  },
+  label: {
+    type: String,
+    default: 'Search for a location',
+  },
+  placeholder: {
+    type: String,
+    default: 'Enter an address, city, or landmark',
+  },
 });
 
 const mapRef = ref(null);
@@ -18,6 +31,8 @@ const addressError = ref('');
 const fullAddress = ref('');
 const formattedAddress = ref('');
 const placeId = ref('');
+const countryCode = ref('');
+const toast = useToast();
 
 
 // Location detail fields
@@ -112,15 +127,14 @@ onMounted(async () => {
 
         if (!place.geometry || !place.geometry.location) {
           isLoadingDetails.value = false;
-          // Optionally clear fields or show a message
-          window.alert("No details available for input: '" + place.name + "'. Please select a valid location from the suggestions.");
+          toast.error(`No details available for "${place.name || 'that location'}". Please select a valid suggestion.`);
           return;
         }
 
         latitude.value = parseFloat(place.geometry.location.lat().toFixed(6));
         longitude.value = parseFloat(place.geometry.location.lng().toFixed(6));
 
-        let streetNumber = '', route = '', locality = '', administrative_area_level_1 = '', countryName = '', postal_code = '';
+        let streetNumber = '', route = '', locality = '', administrative_area_level_1 = '', countryName = '', postal_code = '', countryCodeShort = '';
         if (place.address_components) {
           place.address_components.forEach(component => {
             if (component.types.includes('street_number')) streetNumber = component.long_name;
@@ -129,6 +143,7 @@ onMounted(async () => {
             if (component.types.includes('postal_town') && !locality) locality = component.long_name;
             if (component.types.includes('administrative_area_level_1')) administrative_area_level_1 = component.long_name;
             if (component.types.includes('country')) countryName = component.long_name;
+            if (component.types.includes('country')) countryCodeShort = component.short_name;
             if (component.types.includes('postal_code')) postal_code = component.long_name;
           });
         }
@@ -142,6 +157,7 @@ onMounted(async () => {
         city.value = tempCity.value;
         state.value = tempState.value;
         country.value = tempCountry.value;
+        countryCode.value = countryCodeShort || '';
         formattedAddress.value = place.formatted_address || '';
         placeId.value = place.place_id || '';
         fullAddress.value = formattedAddress.value || `${tempAddress.value}, ${tempCity.value}, ${tempState.value}, ${tempCountry.value}`;
@@ -208,12 +224,16 @@ onUnmounted(() => {
 });
 
 const extractAddressParts = (components = []) => {
-  const getPart = (type) => components.find(component => component.types.includes(type))?.long_name || '';
+  const getPart = (type, useShortName = false) => {
+    const component = components.find(entry => entry.types.includes(type));
+    return component ? (useShortName ? component.short_name : component.long_name) : '';
+  };
   const streetNumber = getPart('street_number');
   const route = getPart('route');
   const city = getPart('locality') || getPart('postal_town') || getPart('administrative_area_level_2');
   const state = getPart('administrative_area_level_1');
   const countryName = getPart('country');
+  const countryCode = getPart('country', true);
 
   return {
     streetNumber,
@@ -221,6 +241,7 @@ const extractAddressParts = (components = []) => {
     city,
     state,
     countryName,
+    countryCode,
   };
 };
 
@@ -259,6 +280,7 @@ const reverseGeocodeAndPrefill = async (lat, lng) => {
     city.value = tempCity.value;
     state.value = tempState.value;
     country.value = tempCountry.value;
+    countryCode.value = parts.countryCode || '';
     formattedAddress.value = geocodeResult.formatted_address || '';
     placeId.value = geocodeResult.place_id || '';
     fullAddress.value = formattedAddress.value || `${tempAddress.value}, ${tempCity.value}, ${tempState.value}, ${tempCountry.value}`;
@@ -389,6 +411,7 @@ const finalSaveLocation = () => {
       city: city.value,
       state: state.value,
       country: country.value,
+      countryCode: countryCode.value,
       latitude: parseFloat(latitude.value),
       longitude: parseFloat(longitude.value),
       fullAddress: fullAddress.value,
@@ -401,7 +424,7 @@ const finalSaveLocation = () => {
 
 const locateMe = () => {
   if (!navigator.geolocation) {
-    alert("Geolocation is not supported by your browser");
+    toast.error('Geolocation is not supported by your browser.');
     return;
   }
   
@@ -418,7 +441,7 @@ const locateMe = () => {
       isLocating.value = false;
       let errorMessage = "Unknown error";
       // ... (error handling as before)
-      alert(`Error getting your location: ${errorMessage}`);
+      toast.error(`Error getting your location: ${errorMessage}`);
       // Optionally open popup for manual entry if geolocation fails
       openLocationDetailsPopupWithCoords(null, null, "Could not get current location");
     },
@@ -444,6 +467,7 @@ const openLocationDialog = () => {
     city.value = '';
     state.value = '';
     country.value = '';
+    countryCode.value = '';
     currentPopupStep.value = 1;
     showLocationPickerPopup.value = true;
 };
@@ -456,13 +480,13 @@ defineExpose({ openLocationDialog });
   <div class="w-full p-4 border rounded-lg shadow-md">
     <!-- Standard Input for Google Places Autocomplete -->
     <div class="mb-4">
-      <label for="locationSearchInput" class="block text-sm font-medium text-gray-700 mb-1">Search for a location</label>
+      <label for="locationSearchInput" class="block text-sm font-medium text-gray-700 mb-1">{{ props.label }}</label>
       <input 
         id="locationSearchInput"
         type="text"
         ref="autocompleteInputRef"
         class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-        placeholder="Enter an address, city, or landmark"
+        :placeholder="props.placeholder"
       />
       <p v-if="isLoadingDetails" class="text-sm text-gray-500 mt-1">Loading location details...</p>
     </div>
@@ -598,7 +622,7 @@ defineExpose({ openLocationDialog });
     </Teleport>
 
     <!-- Display Final Selected Location (Readonly) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 border-t pt-4">
+    <div v-if="props.showSelectedSummary" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 border-t pt-4">
       <h3 class="col-span-1 md:col-span-2 text-md font-semibold text-gray-800 mb-2">Selected Location:</h3>
       <div class="form-group">
         <label class="block text-xs font-medium text-gray-600 mb-1">Full Address</label>

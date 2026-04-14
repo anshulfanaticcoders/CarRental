@@ -26,7 +26,7 @@ class SippCodeSuggestionService
         }
 
         $categoryLetter = $this->resolveCategoryLetter($attributes, $bodyStyle);
-        $typeLetter = $this->resolveTypeLetter($bodyStyle);
+        $typeLetter = $this->resolveTypeLetter($bodyStyle, $attributes);
         $transmissionLetter = $transmission === 'automatic' ? 'A' : 'M';
         $fuelAcLetter = $this->resolveFuelAcLetter($fuel, $airConditioning);
 
@@ -36,14 +36,21 @@ class SippCodeSuggestionService
     private function resolveCategoryLetter(array $attributes, string $bodyStyle): string
     {
         $category = $this->normalizeText($attributes['category_name'] ?? null);
+        $brand = $this->normalizeText($attributes['brand'] ?? null);
+        $model = $this->normalizeText($attributes['model'] ?? null);
         $seats = $this->toInt($attributes['seating_capacity'] ?? null) ?? 0;
         $horsepower = $this->toInt($attributes['horsepower'] ?? null) ?? 0;
+        $lookup = implode(' ', array_filter([$category, $brand, $model]));
 
-        if ($category && str_contains($category, 'luxury')) {
+        if ($this->isSpecialPerformanceProfile($lookup, $bodyStyle, $horsepower)) {
+            return 'X';
+        }
+
+        if ($category && $this->containsAny($category, ['luxury', 'prestige'])) {
             return 'L';
         }
 
-        if ($category && str_contains($category, 'premium')) {
+        if ($category && $this->containsAny($category, ['premium'])) {
             return 'P';
         }
 
@@ -52,26 +59,47 @@ class SippCodeSuggestionService
         }
 
         if ($bodyStyle === 'suv') {
-            if ($category && str_contains($category, 'luxury')) {
-                return 'L';
-            }
+            return match (true) {
+                $category && $this->containsAny($category, ['luxury', 'prestige']) => 'L',
+                $category && $this->containsAny($category, ['premium']) => 'P',
+                $horsepower >= 190 || $seats >= 7 => 'F',
+                default => 'I',
+            };
+        }
 
-            if ($horsepower >= 190 || $seats >= 7) {
-                return 'F';
-            }
+        if ($category && $this->containsAny($category, ['mini'])) {
+            return 'M';
+        }
 
+        if ($category && $this->containsAny($category, ['city', 'economy'])) {
+            return 'E';
+        }
+
+        if ($category && $this->containsAny($category, ['compact'])) {
+            return 'C';
+        }
+
+        if ($category && $this->containsAny($category, ['intermediate', 'mid size', 'midsize'])) {
             return 'I';
         }
 
+        if ($category && $this->containsAny($category, ['standard'])) {
+            return 'S';
+        }
+
+        if ($category && $this->containsAny($category, ['full size', 'fullsize'])) {
+            return 'F';
+        }
+
         if ($horsepower >= 220) {
-            return 'L';
+            return 'P';
         }
 
         if ($horsepower >= 170 || $seats >= 7) {
             return 'F';
         }
 
-        if ($horsepower >= 130 || $seats >= 5) {
+        if ($horsepower >= 130) {
             return 'I';
         }
 
@@ -82,15 +110,20 @@ class SippCodeSuggestionService
         return 'E';
     }
 
-    private function resolveTypeLetter(string $bodyStyle): string
+    private function resolveTypeLetter(string $bodyStyle, array $attributes): string
     {
+        $doors = $this->toInt($attributes['number_of_doors'] ?? null) ?? 4;
+
         return match ($bodyStyle) {
+            'sport' => 'S',
+            'roadster' => 'N',
+            'convertible', 'cabriolet' => 'T',
+            'coupe' => 'E',
             'suv' => 'F',
             'wagon', 'estate' => 'W',
             'van', 'minivan' => 'V',
-            'convertible', 'cabriolet' => 'N',
             'pickup' => 'P',
-            default => 'C',
+            default => $doors >= 4 ? 'D' : 'C',
         };
     }
 
@@ -106,11 +139,42 @@ class SippCodeSuggestionService
         }
 
         return match ($fuel) {
-            'diesel' => 'Q',
+            'diesel' => 'D',
             'hybrid' => 'H',
             'electric' => 'E',
             default => 'R',
         };
+    }
+
+    private function isSpecialPerformanceProfile(string $lookup, string $bodyStyle, int $horsepower): bool
+    {
+        if (in_array($bodyStyle, ['sport', 'roadster'], true)) {
+            return true;
+        }
+
+        if ($this->containsAny($lookup, [
+            'sports car',
+            'sport car',
+            'performance',
+            'supercar',
+            'exotic',
+            'corvette',
+            'huracan',
+            'lamborghini',
+            'ferrari',
+            'mclaren',
+            '911',
+            'porsche 911',
+            'aston martin',
+            'amg gt',
+            'r8',
+            'nissan gt r',
+            'gtr',
+        ])) {
+            return in_array($bodyStyle, ['convertible', 'coupe'], true) || $horsepower >= 220;
+        }
+
+        return false;
     }
 
     private function normalizeCode(?string $value): ?string
@@ -152,5 +216,16 @@ class SippCodeSuggestionService
         }
 
         return (int) $value;
+    }
+
+    private function containsAny(string $haystack, array $needles): bool
+    {
+        foreach ($needles as $needle) {
+            if ($needle !== '' && str_contains($haystack, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -138,6 +138,7 @@ const vendorMenus = [
     items: [
       { name: _t('customerprofile', 'all_vehicles'), path: route('current-vendor-vehicles.index', { locale: usePage().props.locale }) },
       { name: _t('customerprofile', 'add_new_vehicle'), path: route('vehicles.create', { locale: usePage().props.locale }) },
+      { name: 'Manage Vehicle Locations', path: route('vendor.locations.index', { locale: usePage().props.locale }) },
       { name: _t('customerprofile', 'create_bulk_listing'), path: route('vehicles.bulk-upload.create', { locale: usePage().props.locale }) },
     ],
   },
