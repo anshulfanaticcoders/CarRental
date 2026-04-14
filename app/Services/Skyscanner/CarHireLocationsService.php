@@ -56,16 +56,38 @@ class CarHireLocationsService
 
     private function joinAddress(array $parts): ?string
     {
-        $parts = array_values(array_filter(array_map(
-            fn ($value) => $this->nullableString($value),
-            $parts
-        )));
+        $segments = [];
+        $seen = [];
 
-        if ($parts === []) {
+        foreach ($parts as $value) {
+            $value = $this->nullableString($value);
+
+            if ($value === null) {
+                continue;
+            }
+
+            foreach (preg_split('/\s*,\s*/', $value) ?: [] as $segment) {
+                $segment = $this->nullableString($segment);
+
+                if ($segment === null) {
+                    continue;
+                }
+
+                $key = mb_strtolower($segment);
+                if (isset($seen[$key])) {
+                    continue;
+                }
+
+                $seen[$key] = true;
+                $segments[] = $segment;
+            }
+        }
+
+        if ($segments === []) {
             return null;
         }
 
-        return implode(', ', $parts);
+        return implode(', ', $segments);
     }
 
     private function nullableString(mixed $value): ?string

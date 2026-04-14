@@ -86,11 +86,33 @@ class CarHireInternalInventoryService
 
     private function joinAddress(array $parts): ?string
     {
-        $parts = array_values(array_filter(array_map(
-            fn ($value) => $value !== null && trim((string) $value) !== '' ? trim((string) $value) : null,
-            $parts
-        )));
+        $segments = [];
+        $seen = [];
 
-        return $parts === [] ? null : implode(', ', $parts);
+        foreach ($parts as $value) {
+            $value = $value !== null && trim((string) $value) !== '' ? trim((string) $value) : null;
+
+            if ($value === null) {
+                continue;
+            }
+
+            foreach (preg_split('/\s*,\s*/', $value) ?: [] as $segment) {
+                $segment = trim((string) $segment);
+
+                if ($segment === '') {
+                    continue;
+                }
+
+                $key = mb_strtolower($segment);
+                if (isset($seen[$key])) {
+                    continue;
+                }
+
+                $seen[$key] = true;
+                $segments[] = $segment;
+            }
+        }
+
+        return $segments === [] ? null : implode(', ', $segments);
     }
 }
