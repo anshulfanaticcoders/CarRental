@@ -119,6 +119,13 @@
                 </Button>
             </div>
 
+            <div v-if="pendingDeletionIds.length > 0" class="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <Loader2 class="h-4 w-4 animate-spin text-amber-700" />
+                <span class="text-sm font-medium text-amber-900">
+                    Deleting {{ pendingDeletionIds.length }} vehicle{{ pendingDeletionIds.length > 1 ? 's' : '' }}. The list updates automatically when the server finishes.
+                </span>
+            </div>
+
             <Dialog v-model:open="isEditVehicleDialogOpen">
                 <EditVehicleDialog :vehicle="editVehicleForm" @close="isEditVehicleDialogOpen = false" />
             </Dialog>
@@ -143,8 +150,9 @@
             </Dialog>
 
             <!-- Enhanced Vehicles Table -->
-            <div v-if="users.data.length > 0" class="rounded-xl border bg-card shadow-sm overflow-hidden">
-                <div class="overflow-x-auto max-w-full">
+            <div v-if="visibleVehicles.length > 0" class="space-y-4">
+                <div class="rounded-xl border bg-card shadow-sm">
+                <div class="overflow-x-auto max-w-full rounded-t-xl">
                     <Table>
                         <TableHeader>
                             <TableRow class="bg-muted/50">
@@ -155,7 +163,7 @@
                                     />
                                 </TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold w-[72px]">ID</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold w-[112px]">Image</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold w-[96px]">Image</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[220px]">Vendor</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[180px]">Vehicle</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[260px]">Office</TableHead>
@@ -166,7 +174,12 @@
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="(vehicle,index) in users.data" :key="vehicle.id" class="hover:bg-muted/25 transition-colors">
+                            <TableRow
+                                v-for="(vehicle,index) in visibleVehicles"
+                                :key="vehicle.id"
+                                class="hover:bg-muted/25 transition-colors"
+                                :class="{ 'opacity-60': isVehiclePendingDeletion(vehicle.id) }"
+                            >
                                 <TableCell class="whitespace-nowrap px-4 py-4 align-top">
                                     <Checkbox
                                         :checked="isVehicleSelected(vehicle.id)"
@@ -177,12 +190,12 @@
                                     {{ (users.current_page - 1) * users.per_page + index + 1 }}
                                 </TableCell>
                                 <TableCell class="px-4 py-4 align-top">
-                                    <div v-if="vehicle.images && vehicle.images.length > 0" class="relative flex justify-center">
-                                        <div class="group cursor-pointer" @click="openImageModal(vehicle.images[0].image_url)">
+                                    <div v-if="vehicle.images && vehicle.images.length > 0" class="flex justify-center">
+                                        <div class="group relative h-14 w-14 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-gray-200 shadow-sm" @click="openImageModal(vehicle.images[0].image_url)">
                                         <img
                                             :src="vehicle.images[0].image_url"
                                             :alt="`${vehicle.brand} ${vehicle.model}`"
-                                            class="h-16 w-16 rounded-xl border border-gray-200 object-cover shadow-sm transition-all pointer-events-none group-hover:border-blue-400"
+                                            class="h-full w-full object-cover transition-all pointer-events-none"
                                         />
                                         <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-black bg-opacity-0 transition-all group-hover:bg-opacity-20">
                                             <Image class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -190,7 +203,7 @@
                                         </div>
                                     </div>
                                     <div v-else class="flex justify-center">
-                                        <div class="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-[11px] text-gray-400">
+                                        <div class="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-[10px] text-gray-400">
                                             No Image
                                         </div>
                                     </div>
@@ -237,18 +250,22 @@
                                     <Badge :variant="getStatusBadgeVariant(vehicle.status)" class="capitalize">
                                         {{ vehicle.status }}
                                     </Badge>
+                                    <div v-if="isVehiclePendingDeletion(vehicle.id)" class="mt-2 flex items-center gap-2 text-xs font-medium text-amber-700">
+                                        <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                                        Deleting...
+                                    </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-4 align-top">
                                     <div class="flex justify-end gap-2">
-                                        <Button size="sm" variant="outline" @click="openViewDialog(vehicle)" class="flex items-center gap-1">
+                                        <Button size="sm" variant="outline" @click="openViewDialog(vehicle)" class="flex items-center gap-1" :disabled="isVehiclePendingDeletion(vehicle.id)">
                                             <Eye class="w-3 h-3" />
                                             View
                                         </Button>
-                                        <Button size="sm" variant="outline" @click="openEditVehicleDialog(vehicle)" class="flex items-center gap-1">
+                                        <Button size="sm" variant="outline" @click="openEditVehicleDialog(vehicle)" class="flex items-center gap-1" :disabled="isVehiclePendingDeletion(vehicle.id)">
                                             <Edit class="w-3 h-3" />
                                             Edit
                                         </Button>
-                                        <Button size="sm" variant="destructive" @click="openDeleteDialog(vehicle.id)" class="flex items-center gap-1">
+                                        <Button size="sm" variant="destructive" @click="openDeleteDialog(vehicle.id)" class="flex items-center gap-1" :disabled="isVehiclePendingDeletion(vehicle.id)">
                                             <Trash2 class="w-3 h-3" />
                                             Delete
                                         </Button>
@@ -258,9 +275,22 @@
                         </TableBody>
                     </Table>
                 </div>
-                <div class="flex justify-end pt-4 pr-2">
-                    <Pagination :current-page="users.current_page" :total-pages="users.last_page"
-                        @page-change="handlePageChange" />
+                </div>
+                <div class="flex flex-col gap-3 px-1 md:flex-row md:items-center md:justify-between">
+                    <div class="text-sm text-muted-foreground">
+                        Showing
+                        <span class="font-medium text-foreground">{{ users.from || 0 }}</span>
+                        to
+                        <span class="font-medium text-foreground">{{ users.to || 0 }}</span>
+                        of
+                        <span class="font-medium text-foreground">{{ users.total || 0 }}</span>
+                        vehicles
+                    </div>
+                    <Pagination
+                        :current-page="users.current_page"
+                        :total-pages="users.last_page"
+                        @page-change="handlePageChange"
+                    />
                 </div>
             </div>
 
@@ -320,8 +350,9 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
+import axios from "axios";
 import { toast } from "vue-sonner";
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
@@ -349,7 +380,8 @@ import {
   Eye,
   Edit,
   Trash2,
-  Image
+  Image,
+  Loader2,
 } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
@@ -396,9 +428,19 @@ const viewForm = ref({});
 const editVehicleForm = ref({});
 const deleteUserId = ref(null);
 const selectedVehicleIds = ref([]);
+const pendingDeletionIds = ref([]);
+const searchDebounceTimer = ref(null);
+let deletionPollTimer = null;
+const maxDeletionPollAttempts = 20;
+const deletionPollAttempts = ref(0);
 
 const areAllSelected = computed(() => {
-    return props.users.data.length > 0 && selectedVehicleIds.value.length === props.users.data.length;
+    return visibleVehicles.value.length > 0
+        && visibleVehicles.value.every((vehicle) => selectedVehicleIds.value.includes(vehicle.id));
+});
+
+const visibleVehicles = computed(() => {
+    return props.users.data;
 });
 
 const vendorCompanyName = (vehicle) => {
@@ -443,19 +485,31 @@ const vehicleCurrency = (vehicle) => {
     return vehicle.vendor_profile_data?.currency || '$';
 };
 
-// Handle search input
-const handleSearch = () => {
-    clearSelection();
+const buildQueryParams = (overrides = {}) => {
     const params = {
-        search: search.value
+        search: search.value,
+        ...overrides,
     };
 
-    // Only add status parameter if it's not "all"
     if (statusFilter.value && statusFilter.value !== 'all') {
         params.status = statusFilter.value;
     }
 
-    router.get(route('admin.vehicles.index'), params, {
+    return params;
+};
+
+const clearSearchDebounce = () => {
+    if (searchDebounceTimer.value) {
+        clearTimeout(searchDebounceTimer.value);
+        searchDebounceTimer.value = null;
+    }
+};
+
+// Handle search input
+const handleSearch = () => {
+    clearSelection();
+
+    router.get(route('admin.vehicles.index'), buildQueryParams(), {
         preserveState: true,
         replace: true,
     });
@@ -463,25 +517,21 @@ const handleSearch = () => {
 
 // Filter by status
 const filterByStatus = () => {
+    clearSearchDebounce();
     clearSelection();
-    const params = {
-        search: search.value
-    };
 
-    // Only add status parameter if it's not "all"
-    if (statusFilter.value && statusFilter.value !== 'all') {
-        params.status = statusFilter.value;
-    }
-
-    router.get(route('admin.vehicles.index'), params, {
+    router.get(route('admin.vehicles.index'), buildQueryParams(), {
         preserveState: true,
         replace: true,
     });
 };
 
 // Watch for search query changes
-watch(search, (newValue) => {
-    handleSearch();
+watch(search, () => {
+    clearSearchDebounce();
+    searchDebounceTimer.value = setTimeout(() => {
+        handleSearch();
+    }, 350);
 });
 
 // Watch for status filter changes
@@ -509,6 +559,17 @@ const openDeleteDialog = (id) => {
     isDeleteDialogOpen.value = true;
 };
 
+const acceptDeletedVehicleIds = (ids) => {
+    pendingDeletionIds.value = Array.from(new Set([
+        ...pendingDeletionIds.value,
+        ...ids,
+    ]));
+
+    selectedVehicleIds.value = selectedVehicleIds.value.filter((id) => !ids.includes(id));
+};
+
+const isVehiclePendingDeletion = (vehicleId) => pendingDeletionIds.value.includes(vehicleId);
+
 const isVehicleSelected = (vehicleId) => selectedVehicleIds.value.includes(vehicleId);
 
 const toggleVehicleSelection = (vehicleId, checked) => {
@@ -523,7 +584,18 @@ const toggleVehicleSelection = (vehicleId, checked) => {
 };
 
 const toggleAllSelection = (checked) => {
-    selectedVehicleIds.value = checked ? props.users.data.map((vehicle) => vehicle.id) : [];
+    const currentPageIds = visibleVehicles.value.map((vehicle) => vehicle.id);
+
+    if (checked) {
+        selectedVehicleIds.value = Array.from(new Set([
+            ...selectedVehicleIds.value,
+            ...currentPageIds,
+        ]));
+
+        return;
+    }
+
+    selectedVehicleIds.value = selectedVehicleIds.value.filter((id) => !currentPageIds.includes(id));
 };
 
 const clearSelection = () => {
@@ -536,53 +608,136 @@ const openBulkDeleteDialog = () => {
 
 const confirmDelete = () => {
     isDeleting.value = true;
-    router.delete(route('admin.vehicles.destroy', { vendor_vehicle: deleteUserId.value }), {
-        onSuccess: () => {
-            toast.success('Vehicle deleted successfully');
+
+    (async () => {
+        try {
+            const vehicleId = deleteUserId.value;
+            const response = await axios.delete(route('admin.vehicles.destroy', { vendor_vehicle: vehicleId }), {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            const acceptedIds = Array.isArray(response.data?.accepted_ids)
+                ? response.data.accepted_ids
+                : [vehicleId];
+
+            acceptDeletedVehicleIds(acceptedIds);
             isDeleteDialogOpen.value = false;
-            isDeleting.value = false;
-        },
-        onError: (errors) => {
+            toast.success('Deletion started. The list will keep checking automatically.');
+            startDeletionPolling();
+        } catch (error) {
             toast.error('Failed to delete vehicle');
+        } finally {
             isDeleting.value = false;
         }
-    });
+    })();
 };
 
 const confirmBulkDelete = () => {
     isBulkDeleting.value = true;
 
-    router.delete(route('admin.vehicles.bulk-delete'), {
-        data: { ids: selectedVehicleIds.value },
-        onSuccess: () => {
-            toast.success(`${selectedVehicleIds.value.length} vehicle${selectedVehicleIds.value.length > 1 ? 's' : ''} deleted successfully`);
-            selectedVehicleIds.value = [];
+    const ids = [...selectedVehicleIds.value];
+
+    (async () => {
+        try {
+            const response = await axios.delete(route('admin.vehicles.bulk-delete'), {
+                data: { ids },
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            const acceptedIds = Array.isArray(response.data?.accepted_ids) ? response.data.accepted_ids : ids;
+            const acceptedCount = Number(response.data?.accepted_count || acceptedIds.length || ids.length);
+
+            acceptDeletedVehicleIds(acceptedIds);
             isBulkDeleteDialogOpen.value = false;
-            isBulkDeleting.value = false;
-        },
-        onError: () => {
+            toast.success(`Deletion started for ${acceptedCount} vehicle${acceptedCount > 1 ? 's' : ''}. The list will keep checking automatically.`);
+            startDeletionPolling();
+        } catch (error) {
             toast.error('Failed to delete selected vehicles');
+        } finally {
             isBulkDeleting.value = false;
+        }
+    })();
+};
+
+const stopDeletionPolling = () => {
+    if (deletionPollTimer) {
+        window.clearTimeout(deletionPollTimer);
+        deletionPollTimer = null;
+    }
+};
+
+const reconcilePendingDeletionIds = () => {
+    const visibleVehicleIds = props.users.data.map((vehicle) => vehicle.id);
+    pendingDeletionIds.value = pendingDeletionIds.value.filter((id) => visibleVehicleIds.includes(id));
+
+    if (pendingDeletionIds.value.length === 0) {
+        stopDeletionPolling();
+        deletionPollAttempts.value = 0;
+
+        if (props.users.data.length === 0 && (props.users.total || 0) > 0 && props.users.current_page > 1) {
+            handlePageChange(props.users.current_page - 1);
+        }
+    }
+};
+
+const pollDeletionStatus = () => {
+    stopDeletionPolling();
+
+    if (pendingDeletionIds.value.length === 0) {
+        deletionPollAttempts.value = 0;
+        return;
+    }
+
+    if (deletionPollAttempts.value >= maxDeletionPollAttempts) {
+        toast.error('Deletion is still running. Refresh the page in a few seconds if rows remain.');
+        stopDeletionPolling();
+        return;
+    }
+
+    deletionPollAttempts.value += 1;
+
+    router.reload({
+        only: ['users', 'statusCounts'],
+        onFinish: () => {
+            reconcilePendingDeletionIds();
+
+            if (pendingDeletionIds.value.length > 0) {
+                deletionPollTimer = window.setTimeout(() => {
+                    pollDeletionStatus();
+                }, 3000);
+            }
         },
     });
 };
 
+const startDeletionPolling = () => {
+    deletionPollAttempts.value = 0;
+    pollDeletionStatus();
+};
+
 const handlePageChange = (page) => {
+    clearSearchDebounce();
     const params = {
         page: page,
-        search: search.value
+        ...buildQueryParams(),
     };
-
-    // Only add status parameter if it's not "all"
-    if (statusFilter.value && statusFilter.value !== 'all') {
-        params.status = statusFilter.value;
-    }
 
     router.get(route('admin.vehicles.index'), params, {
         preserveState: true,
         replace: true,
     });
 };
+
+onBeforeUnmount(() => {
+    clearSearchDebounce();
+    stopDeletionPolling();
+});
 
 const getStatusBadgeVariant = (status) => {
     switch (status) {

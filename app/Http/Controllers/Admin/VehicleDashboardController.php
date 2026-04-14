@@ -132,9 +132,30 @@ class VehicleDashboardController extends Controller
      */
     public function destroy(Vehicle $vendor_vehicle)
     {
-        $this->vehicleDeletionService->delete($vendor_vehicle);
+        $vehicleId = $vendor_vehicle->id;
 
-        return redirect()->route('admin.vehicles.index')->with('success', 'Vehicle deleted successfully.');
+        dispatch(function () use ($vehicleId) {
+            $vehicle = Vehicle::query()
+                ->whereKey($vehicleId)
+                ->with(['images', 'bookings.damageProtection'])
+                ->first();
+
+            if (!$vehicle) {
+                return;
+            }
+
+            app(VehicleDeletionService::class)->delete($vehicle);
+        })->afterResponse();
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'message' => 'Deletion started for 1 vehicle.',
+                'accepted_count' => 1,
+                'accepted_ids' => [$vehicleId],
+            ], 202);
+        }
+
+        return redirect()->route('admin.vehicles.index')->with('success', 'Deletion started for 1 vehicle.');
     }
 
     public function bulkDelete(Request $request)
@@ -144,19 +165,31 @@ class VehicleDashboardController extends Controller
             'ids.*' => ['integer', 'exists:vehicles,id'],
         ]);
 
-        $vehicles = Vehicle::query()
-            ->whereIn('id', $validated['ids'])
-            ->with(['images', 'bookings.damageProtection'])
-            ->get();
+        $ids = array_values(array_unique($validated['ids']));
+        $acceptedCount = count($ids);
 
-        if ($vehicles->isEmpty()) {
-            return redirect()->route('admin.vehicles.index')
-                ->with('error', 'No vehicles found for deletion.');
+        dispatch(function () use ($ids) {
+            $vehicles = Vehicle::query()
+                ->whereIn('id', $ids)
+                ->with(['images', 'bookings.damageProtection'])
+                ->get();
+
+            if ($vehicles->isEmpty()) {
+                return;
+            }
+
+            app(VehicleDeletionService::class)->deleteMany($vehicles);
+        })->afterResponse();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => "Deletion started for {$acceptedCount} vehicle(s).",
+                'accepted_count' => $acceptedCount,
+                'accepted_ids' => $ids,
+            ], 202);
         }
 
-        $deletedCount = $this->vehicleDeletionService->deleteMany($vehicles);
-
         return redirect()->route('admin.vehicles.index')
-            ->with('success', "{$deletedCount} vehicle(s) deleted successfully.");
+            ->with('success', "Deletion started for {$acceptedCount} vehicle(s).");
     }
 }
