@@ -568,7 +568,6 @@ const confirmBulkDelete = () => {
 };
 
 const handlePageChange = (page) => {
-    clearSelection();
     const params = {
         page: page,
         search: search.value
