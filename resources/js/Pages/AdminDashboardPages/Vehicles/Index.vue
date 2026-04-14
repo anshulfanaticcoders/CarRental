@@ -106,6 +106,19 @@
                 </div>
             </div>
 
+            <div v-if="selectedVehicleIds.length > 0" class="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                <span class="text-sm font-medium text-red-900">
+                    {{ selectedVehicleIds.length }} vehicle{{ selectedVehicleIds.length > 1 ? 's' : '' }} selected
+                </span>
+                <Button size="sm" variant="destructive" @click="openBulkDeleteDialog" :disabled="isBulkDeleting">
+                    <span v-if="isBulkDeleting">Deleting...</span>
+                    <span v-else>Delete Selected</span>
+                </Button>
+                <Button size="sm" variant="outline" @click="clearSelection">
+                    Clear Selection
+                </Button>
+            </div>
+
             <Dialog v-model:open="isEditVehicleDialogOpen">
                 <EditVehicleDialog :vehicle="editVehicleForm" @close="isEditVehicleDialogOpen = false" />
             </Dialog>
@@ -135,75 +148,97 @@
                     <Table>
                         <TableHeader>
                             <TableRow class="bg-muted/50">
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Image</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Owner</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Vehicle</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Location</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Price</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Date Added</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right">Actions</TableHead>
+                                <TableHead class="w-[50px]">
+                                    <Checkbox
+                                        :checked="areAllSelected"
+                                        @update:checked="toggleAllSelection"
+                                    />
+                                </TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold w-[72px]">ID</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold w-[112px]">Image</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[220px]">Vendor</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[180px]">Vehicle</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[260px]">Office</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[140px]">Prices</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[150px]">Date Added</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[110px]">Status</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right min-w-[180px]">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             <TableRow v-for="(vehicle,index) in users.data" :key="vehicle.id" class="hover:bg-muted/25 transition-colors">
-                                <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
+                                <TableCell class="whitespace-nowrap px-4 py-4 align-top">
+                                    <Checkbox
+                                        :checked="isVehicleSelected(vehicle.id)"
+                                        @update:checked="(checked) => toggleVehicleSelection(vehicle.id, checked)"
+                                    />
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-4 align-top font-medium text-slate-700">
                                     {{ (users.current_page - 1) * users.per_page + index + 1 }}
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <!-- Vehicle Image -->
-                                    <div v-if="vehicle.images && vehicle.images.length > 0" class="relative group cursor-pointer" @click="openImageModal(vehicle.images[0].image_url)">
+                                <TableCell class="px-4 py-4 align-top">
+                                    <div v-if="vehicle.images && vehicle.images.length > 0" class="relative flex justify-center">
+                                        <div class="group cursor-pointer" @click="openImageModal(vehicle.images[0].image_url)">
                                         <img
                                             :src="vehicle.images[0].image_url"
                                             :alt="`${vehicle.brand} ${vehicle.model}`"
-                                            class="w-20 h-16 object-cover rounded-lg border border-gray-200 hover:border-blue-400 transition-all pointer-events-none"
+                                            class="h-16 w-16 rounded-xl border border-gray-200 object-cover shadow-sm transition-all pointer-events-none group-hover:border-blue-400"
                                         />
-                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
+                                        <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-black bg-opacity-0 transition-all group-hover:bg-opacity-20">
                                             <Image class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
+                                        </div>
                                     </div>
-                                    <div v-else class="w-20 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
-                                        No Image
-                                    </div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="font-medium">{{ vehicle.User?.first_name }} {{ vehicle.User?.last_name }}</div>
-                                    <div class="text-sm text-muted-foreground">Owner ID: {{ vehicle.vendor_id }}</div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="font-medium">{{ vehicle.brand }} {{ vehicle.model }}</div>
-                                    <div class="text-sm text-muted-foreground">{{ vehicle.color || 'N/A' }}</div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="text-sm">
-                                        <div>{{ vehicle.city || 'N/A' }}, {{ vehicle.country || 'N/A' }}</div>
-                                        <div class="text-muted-foreground text-xs truncate max-w-[150px]">{{ vehicle.full_vehicle_address }}</div>
+                                    <div v-else class="flex justify-center">
+                                        <div class="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-[11px] text-gray-400">
+                                            No Image
+                                        </div>
                                     </div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="text-sm font-medium">
+                                <TableCell class="px-4 py-3 align-top">
+                                    <div class="max-w-[220px] min-w-[220px] space-y-1">
+                                        <div class="break-words font-medium leading-5 text-foreground">{{ vendorCompanyName(vehicle) }}</div>
+                                        <div class="break-all text-sm leading-5 text-muted-foreground">{{ vendorContactSummary(vehicle) }}</div>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="px-4 py-4 align-top">
+                                    <div class="min-w-[180px] max-w-[200px] space-y-1">
+                                    <div class="break-words font-medium leading-5 text-foreground">{{ vehicle.brand }} {{ vehicle.model }}</div>
+                                    <div class="text-sm text-muted-foreground leading-5">
+                                        {{ [vehicle.color, vehicle.transmission, vehicle.fuel].filter(Boolean).join(' • ') || 'N/A' }}
+                                    </div>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="px-4 py-4 align-top">
+                                    <div class="max-w-[260px] min-w-[260px] space-y-1 text-sm">
+                                        <div class="break-words font-medium leading-5 text-foreground">{{ officeName(vehicle) }}</div>
+                                        <div class="break-words leading-5 text-muted-foreground">{{ officeMeta(vehicle) }}</div>
+                                        <div class="break-words text-xs leading-5 text-muted-foreground">{{ officeAddress(vehicle) }}</div>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="px-4 py-4 align-top">
+                                    <div class="min-w-[140px] space-y-1 text-sm font-medium">
                                         <template v-if="vehicle.price_per_day || vehicle.price_per_week || vehicle.price_per_month">
                                             <div v-if="vehicle.price_per_day" class="text-green-600">
-                                                {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_day }}/Day
+                                                {{ vehicleCurrency(vehicle) }}{{ vehicle.price_per_day }}/Day
                                             </div>
                                             <div v-if="vehicle.price_per_week" class="text-blue-600">
-                                                {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_week }}/Week
+                                                {{ vehicleCurrency(vehicle) }}{{ vehicle.price_per_week }}/Week
                                             </div>
                                             <div v-if="vehicle.price_per_month" class="text-purple-600">
-                                                {{ vehicle.vendor_profile?.currency || '$' }}{{ vehicle.price_per_month }}/Month
+                                                {{ vehicleCurrency(vehicle) }}{{ vehicle.price_per_month }}/Month
                                             </div>
                                         </template>
                                         <span v-else class="text-muted-foreground">Not Set</span>
                                     </div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">{{ formatDate(vehicle.created_at) }}</TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                <TableCell class="whitespace-nowrap px-4 py-4 align-top text-sm text-slate-700">{{ formatDate(vehicle.created_at) }}</TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-4 align-top">
                                     <Badge :variant="getStatusBadgeVariant(vehicle.status)" class="capitalize">
                                         {{ vehicle.status }}
                                     </Badge>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                <TableCell class="whitespace-nowrap px-4 py-4 align-top">
                                     <div class="flex justify-end gap-2">
                                         <Button size="sm" variant="outline" @click="openViewDialog(vehicle)" class="flex items-center gap-1">
                                             <Eye class="w-3 h-3" />
@@ -246,7 +281,7 @@
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Do you really want to delete this vehicle? This action cannot be undone.
+                            Do you really want to delete this vehicle? Its Upcloud images, related API bookings, and booking damage-protection files will also be removed. This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -261,13 +296,32 @@
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <AlertDialog v-model:open="isBulkDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete selected vehicles?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete {{ selectedVehicleIds.length }} vehicle{{ selectedVehicleIds.length > 1 ? 's' : '' }}, their images from Upcloud, related API bookings, and booking damage-protection files.
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel @click="isBulkDeleteDialogOpen = false">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmBulkDelete" :disabled="isBulkDeleting">
+                            <span v-if="isBulkDeleting">Deleting...</span>
+                            <span v-else>Delete {{ selectedVehicleIds.length }} Vehicle{{ selectedVehicleIds.length > 1 ? 's' : '' }}</span>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     </AdminDashboardLayout>
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
-import { router, Link } from "@inertiajs/vue3";
+import { computed, ref, watch } from "vue";
+import { router } from "@inertiajs/vue3";
 import { toast } from "vue-sonner";
 import Table from "@/Components/ui/table/Table.vue";
 import TableHeader from "@/Components/ui/table/TableHeader.vue";
@@ -278,6 +332,7 @@ import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
 import { Input } from "@/Components/ui/input";
+import { Checkbox } from "@/Components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -310,7 +365,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/Components/ui/alert-dialog'
 
 const props = defineProps({
@@ -334,14 +388,64 @@ const isViewDialogOpen = ref(false);
 const isEditVehicleDialogOpen = ref(false);
 const isImageModalOpen = ref(false);
 const isDeleteDialogOpen = ref(false);
+const isBulkDeleteDialogOpen = ref(false);
 const isDeleting = ref(false);
+const isBulkDeleting = ref(false);
 const selectedImage = ref('');
 const viewForm = ref({});
 const editVehicleForm = ref({});
 const deleteUserId = ref(null);
+const selectedVehicleIds = ref([]);
+
+const areAllSelected = computed(() => {
+    return props.users.data.length > 0 && selectedVehicleIds.value.length === props.users.data.length;
+});
+
+const vendorCompanyName = (vehicle) => {
+    return vehicle.vendor_profile_data?.company_name
+        || [vehicle.User?.first_name, vehicle.User?.last_name].filter(Boolean).join(' ')
+        || `Vendor #${vehicle.vendor_id}`;
+};
+
+const vendorContactSummary = (vehicle) => {
+    return vehicle.User?.email || `Vendor ID: ${vehicle.vendor_id}`;
+};
+
+const officeName = (vehicle) => {
+    return vehicle.vendor_location?.name || vehicle.location || 'No office assigned';
+};
+
+const officeMeta = (vehicle) => {
+    const location = vehicle.vendor_location;
+    const parts = [
+        location?.location_type || vehicle.location_type,
+        location?.iata_code,
+        location?.city || vehicle.city,
+        location?.country || vehicle.country,
+    ].filter(Boolean);
+
+    return parts.join(' • ') || 'Office details unavailable';
+};
+
+const officeAddress = (vehicle) => {
+    const location = vehicle.vendor_location;
+
+    return [
+        location?.address_line_1,
+        location?.address_line_2,
+        location?.city || vehicle.city,
+        location?.state || vehicle.state,
+        location?.country || vehicle.country,
+    ].filter(Boolean).join(', ') || vehicle.full_vehicle_address || 'No address';
+};
+
+const vehicleCurrency = (vehicle) => {
+    return vehicle.vendor_profile_data?.currency || '$';
+};
 
 // Handle search input
 const handleSearch = () => {
+    clearSelection();
     const params = {
         search: search.value
     };
@@ -359,6 +463,7 @@ const handleSearch = () => {
 
 // Filter by status
 const filterByStatus = () => {
+    clearSelection();
     const params = {
         search: search.value
     };
@@ -404,6 +509,31 @@ const openDeleteDialog = (id) => {
     isDeleteDialogOpen.value = true;
 };
 
+const isVehicleSelected = (vehicleId) => selectedVehicleIds.value.includes(vehicleId);
+
+const toggleVehicleSelection = (vehicleId, checked) => {
+    if (checked) {
+        if (!selectedVehicleIds.value.includes(vehicleId)) {
+            selectedVehicleIds.value.push(vehicleId);
+        }
+        return;
+    }
+
+    selectedVehicleIds.value = selectedVehicleIds.value.filter((id) => id !== vehicleId);
+};
+
+const toggleAllSelection = (checked) => {
+    selectedVehicleIds.value = checked ? props.users.data.map((vehicle) => vehicle.id) : [];
+};
+
+const clearSelection = () => {
+    selectedVehicleIds.value = [];
+};
+
+const openBulkDeleteDialog = () => {
+    isBulkDeleteDialogOpen.value = true;
+};
+
 const confirmDelete = () => {
     isDeleting.value = true;
     router.delete(route('admin.vehicles.destroy', { vendor_vehicle: deleteUserId.value }), {
@@ -419,7 +549,26 @@ const confirmDelete = () => {
     });
 };
 
+const confirmBulkDelete = () => {
+    isBulkDeleting.value = true;
+
+    router.delete(route('admin.vehicles.bulk-delete'), {
+        data: { ids: selectedVehicleIds.value },
+        onSuccess: () => {
+            toast.success(`${selectedVehicleIds.value.length} vehicle${selectedVehicleIds.value.length > 1 ? 's' : ''} deleted successfully`);
+            selectedVehicleIds.value = [];
+            isBulkDeleteDialogOpen.value = false;
+            isBulkDeleting.value = false;
+        },
+        onError: () => {
+            toast.error('Failed to delete selected vehicles');
+            isBulkDeleting.value = false;
+        },
+    });
+};
+
 const handlePageChange = (page) => {
+    clearSelection();
     const params = {
         page: page,
         search: search.value

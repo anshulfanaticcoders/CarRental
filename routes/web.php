@@ -13,7 +13,6 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PaymentDashboardController;
-use App\Http\Controllers\Admin\PlansController;
 use App\Http\Controllers\Admin\PopularPlacesController;
 use App\Http\Controllers\PopularPlacesController as PublicPopularPlacesController;
 use App\Http\Controllers\Admin\RadiusController;
@@ -22,7 +21,6 @@ use App\Http\Controllers\Admin\TestimonialController;
 use App\Http\Controllers\Admin\UserReportDownloadController;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\Admin\UsersReportController;
-use App\Http\Controllers\Admin\VehicleAddonsController;
 use App\Http\Controllers\Admin\VehicleDashboardController;
 use App\Http\Controllers\Admin\DamageProtectionController as AdminDamageProtectionController;
 use App\Http\Controllers\Admin\SeoMetaController;
@@ -133,6 +131,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::resource('vehicles-categories', VehicleCategoriesController::class)->parameters(['vehicles-categories' => 'vehicleCategory']);
     Route::patch('/vehicles-categories/{vehicleCategory}/status', [VehicleCategoriesController::class, 'updateStatus'])->name('vehicles-categories.status');
     Route::delete('/vehicles-categories/bulk-delete', [VehicleCategoriesController::class, 'bulkDelete'])->name('vehicles-categories.bulk-delete');
+    Route::delete('/vendor-vehicles/bulk-delete', [VehicleDashboardController::class, 'bulkDelete'])->name('admin.vehicles.bulk-delete');
     Route::patch('/vehicles-categories/bulk-status', [VehicleCategoriesController::class, 'bulkUpdateStatus'])->name('vehicles-categories.bulk-status');
     Route::resource('vendors', VendorsDashboardController::class)->except(['create', 'edit', 'show']);
     Route::put('/vendors/{vendorProfile}/status', [VendorsDashboardController::class, 'updateStatus'])->name('vendors.updateStatus');
@@ -154,9 +153,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
 
 
-    Route::resource('booking-addons', VehicleAddonsController::class);
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);
-    Route::resource('admin/plans', PlansController::class);
     Route::resource('blogs', BlogController::class)->names('admin.blogs');
     Route::get('/admin-dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 

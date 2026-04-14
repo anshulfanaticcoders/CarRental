@@ -106,8 +106,6 @@ const navGroups: NavGroup[] = [
         items: [
           { title: 'All Cars', url: '/vendor-vehicles' },
           { title: 'Categories', url: '/vehicles-categories' },
-          { title: 'Addons', url: '/booking-addons' },
-          { title: 'Plans', url: '/admin/plans' },
           { title: 'Features', url: '/features' },
         ],
       },

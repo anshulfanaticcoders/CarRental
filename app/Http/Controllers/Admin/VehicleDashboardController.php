@@ -3,13 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Vehicle;
+use App\Services\Vehicles\VehicleDeletionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class VehicleDashboardController extends Controller
 {
+    public function __construct(
+        private readonly VehicleDeletionService $vehicleDeletionService,
+    ) {
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -19,7 +24,7 @@ class VehicleDashboardController extends Controller
         $status = $request->query('status');
 
         // Build the vehicle query
-        $vehiclesQuery = Vehicle::with(['User', 'vendorProfile']);
+        $vehiclesQuery = Vehicle::with(['User', 'vendorProfileData', 'vendorLocation', 'images']);
 
         // Apply search filter
         if ($search) {
@@ -30,6 +35,14 @@ class VehicleDashboardController extends Controller
                       ->orWhere('color', 'like', "%{$search}%")
                       ->orWhere('price_per_day', 'like', "%{$search}%")
                       ->orWhere('full_vehicle_address', 'like', "%{$search}%")
+                      ->orWhereHas('vendorLocation', function ($locationQuery) use ($search) {
+                          $locationQuery->where('name', 'like', "%{$search}%")
+                              ->orWhere('city', 'like', "%{$search}%")
+                              ->orWhere('country', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('vendorProfileData', function ($vendorProfileQuery) use ($search) {
+                          $vendorProfileQuery->where('company_name', 'like', "%{$search}%");
+                      })
                       ->orWhereHas('User', function ($userQuery) use ($search) {
                           $userQuery->where('first_name', 'like', "%{$search}%")
                                ->orWhere('last_name', 'like', "%{$search}%")
@@ -43,9 +56,7 @@ class VehicleDashboardController extends Controller
             $vehiclesQuery->where('status', $status);
         }
 
-        $vehicles = $vehiclesQuery->orderBy('created_at', 'desc')
-            ->with(['images']) // Load vehicle images
-            ->paginate(7);
+        $vehicles = $vehiclesQuery->orderBy('created_at', 'desc')->paginate(7);
 
         // Get vehicle status counts
         $statusCounts = [
@@ -121,8 +132,31 @@ class VehicleDashboardController extends Controller
      */
     public function destroy(Vehicle $vendor_vehicle)
     {
-        $vendor_vehicle->delete();
+        $this->vehicleDeletionService->delete($vendor_vehicle);
 
         return redirect()->route('admin.vehicles.index')->with('success', 'Vehicle deleted successfully.');
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:vehicles,id'],
+        ]);
+
+        $vehicles = Vehicle::query()
+            ->whereIn('id', $validated['ids'])
+            ->with(['images', 'bookings.damageProtection'])
+            ->get();
+
+        if ($vehicles->isEmpty()) {
+            return redirect()->route('admin.vehicles.index')
+                ->with('error', 'No vehicles found for deletion.');
+        }
+
+        $deletedCount = $this->vehicleDeletionService->deleteMany($vehicles);
+
+        return redirect()->route('admin.vehicles.index')
+            ->with('success', "{$deletedCount} vehicle(s) deleted successfully.");
     }
 }
