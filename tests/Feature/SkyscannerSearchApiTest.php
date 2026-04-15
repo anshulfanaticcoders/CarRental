@@ -457,6 +457,92 @@ class SkyscannerSearchApiTest extends TestCase
         $response->assertJsonMissingPath('excluded_vehicle_ids');
     }
 
+    public function test_skyscanner_search_api_uses_upcloud_path_as_public_image_url_for_internal_vehicles(): void
+    {
+        config([
+            'skyscanner.api_key' => 'secret-key',
+            'skyscanner.testing_access.auth_header' => 'x-api-key',
+            'skyscanner.case_id' => 'PSM-46100',
+            'skyscanner.quote_ttl_minutes' => 30,
+            'filesystems.disks.upcloud.url' => 'https://my-public-bucket.4tcl8.upcloudobjects.com',
+        ]);
+
+        $category = VehicleCategory::create([
+            'name' => 'Economy',
+            'slug' => 'economy',
+            'description' => 'Economy vehicles',
+            'status' => true,
+        ]);
+
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+
+        UserProfile::create([
+            'user_id' => $vendor->id,
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+        ]);
+
+        VendorProfile::create([
+            'user_id' => $vendor->id,
+            'company_name' => 'Airport Fleet Co',
+            'company_email' => 'fleet@example.com',
+            'company_phone_number' => '+971500000000',
+            'company_address' => 'Terminal 1',
+            'company_gst_number' => 'GST-DXB-' . $vendor->id,
+            'status' => 'approved',
+        ]);
+
+        $location = VendorLocation::create([
+            'vendor_id' => $vendor->id,
+            'name' => 'Dubai Airport (DXB)',
+            'code' => 'vl-' . $vendor->id . '-dxb-image',
+            'address_line_1' => 'Dubai Airport Terminal 1',
+            'city' => 'Dubai',
+            'state' => null,
+            'country' => 'United Arab Emirates',
+            'country_code' => 'AE',
+            'latitude' => 25.251369,
+            'longitude' => 55.347204,
+            'location_type' => 'airport',
+            'iata_code' => 'DXB',
+            'is_active' => true,
+        ]);
+
+        $vehicle = $this->createVehicleAtAirport($vendor->id, $category->id, [
+            'brand' => 'Toyota',
+            'model' => 'Yaris',
+            'vendor_location_id' => $location->id,
+        ]);
+
+        $image = $vehicle->images()->firstOrFail();
+        $image->update([
+            'image_path' => 'vehicle_images/WhatsApp Image 2026-04-15 ' . $vehicle->id . '.jpg',
+            'image_url' => 'https://example.com/stale-internal-image.jpg',
+        ]);
+
+        $response = $this
+            ->withHeader('x-api-key', 'secret-key')
+            ->postJson('/api/skyscanner/car-hire/search', [
+                'pickup_location_id' => $location->id,
+                'dropoff_location_id' => $location->id,
+                'pickup_date' => '2026-06-15',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-06-18',
+                'dropoff_time' => '09:00',
+                'driver_age' => 35,
+                'currency' => 'EUR',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath(
+            'quotes.0.vehicle.image_url',
+            'https://my-public-bucket.4tcl8.upcloudobjects.com/vehicle_images/WhatsApp%20Image%202026-04-15%20' . $vehicle->id . '.jpg'
+        );
+    }
+
     private function createVehicleAtAirport(int $vendorId, int $categoryId, array $overrides = []): Vehicle
     {
         $vehicle = Vehicle::create(array_merge([

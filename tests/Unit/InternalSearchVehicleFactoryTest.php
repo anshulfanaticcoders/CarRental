@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\Search\InternalSearchVehicleFactory;
+use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 class InternalSearchVehicleFactoryTest extends TestCase
@@ -148,5 +149,56 @@ class InternalSearchVehicleFactoryTest extends TestCase
         $this->assertSame(150.0, $legacyPayload['security_deposit']);
         $this->assertSame('Baby Seat', $legacyPayload['addons'][0]['extra_name']);
         $this->assertSame('PRE', $legacyPayload['vendorPlans'][0]['plan_type']);
+    }
+
+    public function test_it_prefers_a_fresh_upcloud_url_from_image_path_over_a_stale_image_url(): void
+    {
+        Config::set('filesystems.disks.upcloud.url', 'https://my-public-bucket.4tcl8.upcloudobjects.com');
+
+        $factory = app(InternalSearchVehicleFactory::class);
+
+        $vehicle = [
+            'id' => 328,
+            'brand' => 'Toyota',
+            'model' => 'Yaris',
+            'category' => ['name' => 'Economy'],
+            'transmission' => 'automatic',
+            'fuel' => 'petrol',
+            'seating_capacity' => 5,
+            'doors' => 4,
+            'air_conditioning' => true,
+            'price_per_day' => 30.0,
+            'security_deposit' => 150.0,
+            'location' => 'Dubai Airport (DXB)',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'latitude' => 25.251369,
+            'longitude' => 55.347204,
+            'images' => [
+                [
+                    'image_type' => 'primary',
+                    'image_path' => 'vehicle_images/WhatsApp Image 2026-04-15 328.jpg',
+                    'image_url' => 'https://example.com/stale-internal-image.jpg',
+                ],
+            ],
+            'vendorProfileData' => [
+                'company_name' => 'Desert Drive LLC',
+                'currency' => 'EUR',
+            ],
+        ];
+
+        $payload = $factory->make($vehicle, 3, [
+            'pickup_location_id' => '3272373056',
+            'dropoff_location_id' => '3272373056',
+        ]);
+
+        $this->assertSame(
+            'https://my-public-bucket.4tcl8.upcloudobjects.com/vehicle_images/WhatsApp%20Image%202026-04-15%20328.jpg',
+            $payload['image']
+        );
+        $this->assertSame(
+            'https://my-public-bucket.4tcl8.upcloudobjects.com/vehicle_images/WhatsApp%20Image%202026-04-15%20328.jpg',
+            $payload['booking_context']['provider_payload']['images'][0]['image_url']
+        );
     }
 }

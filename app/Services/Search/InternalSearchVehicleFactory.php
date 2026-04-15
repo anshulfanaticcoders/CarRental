@@ -3,6 +3,7 @@
 namespace App\Services\Search;
 
 use App\Services\Vehicles\SippCodeSuggestionService;
+use Illuminate\Support\Facades\Storage;
 
 class InternalSearchVehicleFactory
 {
@@ -102,11 +103,33 @@ class InternalSearchVehicleFactory
         $payload['vendor_profile_data'] = $payload['vendorProfileData'];
         $payload['vendorProfile'] = $vehicle['vendorProfile'] ?? $vehicle['vendor_profile'] ?? [];
         $payload['vendor_profile'] = $payload['vendorProfile'];
-        $payload['images'] = $vehicle['images'] ?? [];
+        $payload['images'] = $this->normalizeLegacyImages($vehicle['images'] ?? []);
         $payload['addons'] = $vehicle['addons'] ?? [];
         $payload['benefits'] = $vehicle['benefits'] ?? [];
 
         return $payload;
+    }
+
+    private function normalizeLegacyImages(mixed $images): array
+    {
+        if (!is_array($images)) {
+            return [];
+        }
+
+        return array_values(array_map(function ($image): mixed {
+            if (!is_array($image)) {
+                return $image;
+            }
+
+            $resolved = $this->resolveImageUrl($image);
+            if ($resolved === null) {
+                return $image;
+            }
+
+            $image['image_url'] = $resolved;
+
+            return $image;
+        }, $images));
     }
 
     private function buildProducts(array $legacyPayload, int $rentalDays, string $currency, array $benefits): array
@@ -243,18 +266,75 @@ class InternalSearchVehicleFactory
     private function resolvePrimaryImage(array $images): ?string
     {
         foreach ($images as $image) {
-            if (($image['image_type'] ?? null) === 'primary' && !empty($image['image_url'])) {
-                return (string) $image['image_url'];
+            if (($image['image_type'] ?? null) === 'primary') {
+                $resolved = $this->resolveImageUrl($image);
+
+                if ($resolved !== null) {
+                    return $resolved;
+                }
             }
         }
 
         foreach ($images as $image) {
-            if (($image['image_type'] ?? null) === 'gallery' && !empty($image['image_url'])) {
-                return (string) $image['image_url'];
+            if (($image['image_type'] ?? null) === 'gallery') {
+                $resolved = $this->resolveImageUrl($image);
+
+                if ($resolved !== null) {
+                    return $resolved;
+                }
             }
         }
 
         return null;
+    }
+
+    private function resolveImageUrl(array $image): ?string
+    {
+        $path = $this->nullableString($image['image_path'] ?? null);
+        if ($path !== null) {
+            return $this->normalizePublicUrl(
+                Storage::disk('upcloud')->url(ltrim($path, '/'))
+            );
+        }
+
+        $url = $this->nullableString($image['image_url'] ?? null);
+
+        return $url === null ? null : $this->normalizePublicUrl($url);
+    }
+
+    private function normalizePublicUrl(string $url): string
+    {
+        $parts = parse_url($url);
+
+        if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
+            return $url;
+        }
+
+        $path = $parts['path'] ?? '';
+        $normalizedPath = implode('/', array_map(
+            static fn (string $segment): string => rawurlencode(rawurldecode($segment)),
+            array_filter(explode('/', $path), static fn (string $segment): bool => $segment !== '')
+        ));
+
+        $prefix = $parts['scheme'] . '://' . $parts['host'];
+
+        if (isset($parts['port'])) {
+            $prefix .= ':' . $parts['port'];
+        }
+
+        $rebuilt = $prefix;
+        $rebuilt .= str_starts_with($path, '/') ? '/' : '';
+        $rebuilt .= $normalizedPath;
+
+        if (isset($parts['query'])) {
+            $rebuilt .= '?' . $parts['query'];
+        }
+
+        if (isset($parts['fragment'])) {
+            $rebuilt .= '#' . $parts['fragment'];
+        }
+
+        return $rebuilt;
     }
 
     private function extractVendorLocationMeta(array $vehicle, string $key): array
