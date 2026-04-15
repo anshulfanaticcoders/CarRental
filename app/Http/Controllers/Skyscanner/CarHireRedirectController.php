@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Skyscanner;
 
 use App\Http\Controllers\Controller;
 use App\Services\Skyscanner\CarHireAuditLogService;
+use App\Services\Skyscanner\CarHirePublicResponseSerializer;
 use App\Services\Skyscanner\CarHireQuoteLifecycleService;
 use App\Services\Skyscanner\CarHireQuoteStoreService;
 use App\Services\Skyscanner\CarHireSecurityService;
@@ -20,6 +21,7 @@ class CarHireRedirectController extends Controller
         private readonly CarHireSecurityService $securityService,
         private readonly CarHireTrackingService $trackingService,
         private readonly CarHireAuditLogService $auditLogService,
+        private readonly CarHirePublicResponseSerializer $publicResponseSerializer,
     ) {
     }
 
@@ -91,10 +93,9 @@ class CarHireRedirectController extends Controller
             }
         }
 
-        return response()->json([
-            'quote' => $quote,
-            'tracking' => $tracking,
-        ]);
+        return response()->json(
+            $this->publicResponseSerializer->redirectPayload($quote, $tracking),
+        );
     }
 
     private function shouldReturnJson(Request $request): bool

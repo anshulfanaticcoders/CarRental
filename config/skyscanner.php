@@ -30,6 +30,11 @@ return [
     */
     'inventory_scope' => env('SKYSCANNER_INVENTORY_SCOPE', 'internal'),
 
+    'provider_whitelist' => array_values(array_filter(array_map(
+        static fn ($value) => strtolower(trim((string) $value)),
+        explode(',', (string) env('SKYSCANNER_PROVIDER_WHITELIST', ''))
+    ))),
+
     /*
     |--------------------------------------------------------------------------
     | Quote Lifecycle

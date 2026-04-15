@@ -114,6 +114,10 @@ class CarHireQuoteLifecycleService
 
         return [
             'provider_vehicle_id' => $vehicle['provider_vehicle_id'] ?? null,
+            'source' => $vehicle['source'] ?? null,
+            'provider_code' => $vehicle['provider_code'] ?? null,
+            'provider_product_id' => $vehicle['provider_product_id'] ?? null,
+            'provider_rate_id' => $vehicle['provider_rate_id'] ?? null,
             'display_name' => $vehicle['display_name'] ?? null,
             'brand' => $vehicle['brand'] ?? null,
             'model' => $vehicle['model'] ?? null,
@@ -132,6 +136,7 @@ class CarHireQuoteLifecycleService
                 'medium' => $specs['luggage_medium'] ?? null,
                 'large' => $specs['luggage_large'] ?? null,
             ],
+            'booking_context' => is_array($vehicle['booking_context'] ?? null) ? $vehicle['booking_context'] : [],
         ];
     }
 

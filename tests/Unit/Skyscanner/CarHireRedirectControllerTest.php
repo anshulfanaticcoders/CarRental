@@ -10,6 +10,7 @@ use App\Services\Skyscanner\CarHireTrackingService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Mockery;
 use Tests\TestCase;
 
 class CarHireRedirectControllerTest extends TestCase
@@ -52,6 +53,94 @@ class CarHireRedirectControllerTest extends TestCase
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame('quote-123', $payload['quote']['quote_id']);
         $this->assertSame('Toyota Yaris', $payload['quote']['vehicle']['display_name']);
+    }
+
+    public function test_it_hides_internal_quote_fields_from_redirect_json_response(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC'));
+
+        $quote = [
+            'quote_id' => 'quote-123',
+            'case_id' => 'PSM-46100',
+            'created_at' => CarbonImmutable::now('UTC')->toIso8601String(),
+            'expires_at' => CarbonImmutable::now('UTC')->addMinutes(30)->toIso8601String(),
+            'vehicle' => [
+                'provider_vehicle_id' => 'gm-vehicle-1',
+                'source' => 'greenmotion',
+                'provider_code' => 'greenmotion',
+                'provider_product_id' => 'gm-product-1',
+                'provider_rate_id' => 'gm-rate-1',
+                'display_name' => 'Toyota Yaris',
+                'booking_context' => [
+                    'provider_payload' => [
+                        'source' => 'greenmotion',
+                    ],
+                ],
+            ],
+            'supplier' => [
+                'code' => 'greenmotion',
+                'name' => 'Green Motion',
+            ],
+            'specs' => [
+                'sipp_code' => 'ECMR',
+                'sipp_source' => 'explicit',
+            ],
+            'pickup_location_details' => [
+                'provider_location_id' => 'gm-dxb-1',
+                'provider_location_source' => 'explicit',
+                'name' => 'Dubai Airport',
+            ],
+            'dropoff_location_details' => [
+                'provider_location_id' => 'gm-dxb-1',
+                'provider_location_source' => 'explicit',
+                'name' => 'Dubai Airport',
+            ],
+            'products' => [
+                ['id' => 'product-1'],
+            ],
+            'extras_preview' => [
+                ['code' => 'gps'],
+            ],
+            'data_quality_flags' => ['missing_postal_code'],
+            'search' => [
+                'pickup_location_id' => '3272373056',
+            ],
+        ];
+
+        $store = Mockery::mock(CarHireQuoteStoreService::class);
+        $store->shouldReceive('get')
+            ->once()
+            ->with('quote-123')
+            ->andReturn($quote);
+        $this->app->instance(CarHireQuoteStoreService::class, $store);
+
+        $controller = app(CarHireRedirectController::class);
+
+        $response = $controller(Request::create('/api/skyscanner/redirect', 'GET', [
+            'quote_id' => 'quote-123',
+            'format' => 'json',
+        ]));
+
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('quote-123', $payload['quote']['quote_id']);
+        $this->assertSame('Toyota Yaris', $payload['quote']['vehicle']['display_name']);
+        $this->assertArrayNotHasKey('source', $payload['quote']['vehicle']);
+        $this->assertArrayNotHasKey('provider_code', $payload['quote']['vehicle']);
+        $this->assertArrayNotHasKey('provider_product_id', $payload['quote']['vehicle']);
+        $this->assertArrayNotHasKey('provider_rate_id', $payload['quote']['vehicle']);
+        $this->assertArrayNotHasKey('booking_context', $payload['quote']['vehicle']);
+        $this->assertArrayNotHasKey('supplier', $payload['quote']);
+        $this->assertArrayNotHasKey('sipp_source', $payload['quote']['specs']);
+        $this->assertArrayNotHasKey('provider_location_id', $payload['quote']['pickup_location_details']);
+        $this->assertArrayNotHasKey('provider_location_source', $payload['quote']['pickup_location_details']);
+        $this->assertArrayNotHasKey('provider_location_id', $payload['quote']['dropoff_location_details']);
+        $this->assertArrayNotHasKey('provider_location_source', $payload['quote']['dropoff_location_details']);
+        $this->assertArrayNotHasKey('products', $payload['quote']);
+        $this->assertArrayNotHasKey('extras_preview', $payload['quote']);
+        $this->assertArrayNotHasKey('data_quality_flags', $payload['quote']);
+        $this->assertArrayNotHasKey('search', $payload['quote']);
     }
 
     public function test_it_returns_gone_when_the_quote_is_expired(): void

@@ -11,7 +11,9 @@ use App\Models\VehicleImage;
 use App\Models\VehicleOperatingHour;
 use App\Models\VendorLocation;
 use App\Models\VendorProfile;
+use App\Services\Skyscanner\CarHireGatewayInventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Tests\TestCase;
 
 class SkyscannerSearchApiTest extends TestCase
@@ -55,16 +57,33 @@ class SkyscannerSearchApiTest extends TestCase
             'status' => 'approved',
         ]);
 
+        $location = VendorLocation::create([
+            'vendor_id' => $vendor->id,
+            'name' => 'Dubai Airport (DXB)',
+            'code' => 'vl-' . $vendor->id . '-dxb-auth',
+            'address_line_1' => 'Dubai Airport Terminal 1',
+            'city' => 'Dubai',
+            'state' => null,
+            'country' => 'United Arab Emirates',
+            'country_code' => 'AE',
+            'latitude' => 25.251369,
+            'longitude' => 55.347204,
+            'location_type' => 'airport',
+            'iata_code' => 'DXB',
+            'is_active' => true,
+        ]);
+
         $referenceVehicle = $this->createVehicleAtAirport($vendor->id, $category->id, [
             'brand' => 'Toyota',
             'model' => 'Yaris',
+            'vendor_location_id' => $location->id,
         ]);
 
         $response = $this
             ->withHeader('x-api-key', 'secret-key')
             ->postJson('/api/skyscanner/car-hire/search', [
-                'pickup_location_id' => $referenceVehicle->id,
-                'dropoff_location_id' => $referenceVehicle->id,
+                'pickup_location_id' => $location->id,
+                'dropoff_location_id' => $location->id,
                 'pickup_date' => '2026-06-15',
                 'pickup_time' => '09:00',
                 'dropoff_date' => '2026-06-18',
@@ -75,9 +94,9 @@ class SkyscannerSearchApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonCount(1, 'quotes');
-        $response->assertJsonPath('quotes.0.vehicle.provider_vehicle_id', (string) $referenceVehicle->id);
+        $response->assertJsonPath('quotes.0.quote_id', fn ($value) => is_string($value) && $value !== '');
         $response->assertJsonPath('quotes.0.vehicle.display_name', 'Toyota Yaris');
-        $response->assertJsonPath('excluded_vehicle_ids', []);
+        $response->assertJsonMissingPath('quotes.0.vehicle.provider_vehicle_id');
     }
 
     public function test_skyscanner_search_api_accepts_canonical_vendor_location_ids(): void
@@ -154,8 +173,8 @@ class SkyscannerSearchApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonCount(1, 'quotes');
-        $response->assertJsonPath('quotes.0.vehicle.provider_vehicle_id', (string) $referenceVehicle->id);
-        $response->assertJsonPath('excluded_vehicle_ids', []);
+        $response->assertJsonPath('quotes.0.vehicle.display_name', 'Toyota Yaris');
+        $response->assertJsonMissingPath('quotes.0.vehicle.provider_vehicle_id');
     }
 
     public function test_skyscanner_search_api_supports_rest_style_uri_parameters(): void
@@ -231,9 +250,211 @@ class SkyscannerSearchApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonCount(1, 'quotes');
-        $response->assertJsonPath('quotes.0.vehicle.provider_vehicle_id', (string) $referenceVehicle->id);
-        $response->assertJsonPath('quotes.0.search.pickup_location_id', $location->id);
-        $response->assertJsonPath('quotes.0.search.currency', 'EUR');
+        $response->assertJsonPath('quotes.0.vehicle.display_name', 'Toyota Yaris');
+        $response->assertJsonPath('quotes.0.pricing.currency', 'EUR');
+        $response->assertJsonMissingPath('quotes.0.vehicle.provider_vehicle_id');
+        $response->assertJsonMissingPath('search');
+    }
+
+    public function test_skyscanner_search_api_returns_provider_quotes_in_mixed_inventory_mode(): void
+    {
+        config([
+            'skyscanner.api_key' => 'secret-key',
+            'skyscanner.testing_access.auth_header' => 'x-api-key',
+            'skyscanner.case_id' => 'PSM-46100',
+            'skyscanner.quote_ttl_minutes' => 30,
+            'skyscanner.inventory_scope' => 'mixed',
+            'skyscanner.provider_whitelist' => ['greenmotion'],
+        ]);
+
+        $gatewayInventoryService = Mockery::mock(CarHireGatewayInventoryService::class);
+        $gatewayInventoryService->shouldReceive('search')
+            ->once()
+            ->andReturn([
+                [
+                    'provider_vehicle_id' => 'gm-vehicle-1',
+                    'source' => 'greenmotion',
+                    'provider_code' => 'greenmotion',
+                    'supplier' => [
+                        'code' => 'greenmotion',
+                        'name' => 'Green Motion',
+                    ],
+                    'display_name' => 'Hyundai i10 or similar',
+                    'brand' => 'Hyundai',
+                    'model' => 'i10',
+                    'category' => 'economy',
+                    'image' => 'https://example.com/hyundai-i10.jpg',
+                    'specs' => [
+                        'sipp_code' => 'ECMR',
+                        'transmission' => 'manual',
+                        'fuel' => 'petrol',
+                        'air_conditioning' => true,
+                        'seating_capacity' => 5,
+                        'doors' => 5,
+                        'luggage_small' => 1,
+                        'luggage_medium' => 0,
+                        'luggage_large' => 1,
+                    ],
+                    'pricing' => [
+                        'currency' => 'EUR',
+                        'total_price' => 120.0,
+                        'price_per_day' => 40.0,
+                    ],
+                    'policies' => [],
+                    'location' => [
+                        'pickup' => [
+                            'provider_location_id' => 'gm-dxb-1',
+                            'name' => 'Dubai Airport',
+                            'city' => 'Dubai',
+                            'country' => 'United Arab Emirates',
+                            'latitude' => 25.251369,
+                            'longitude' => 55.347204,
+                        ],
+                        'dropoff' => [
+                            'provider_location_id' => 'gm-dxb-1',
+                            'name' => 'Dubai Airport',
+                            'city' => 'Dubai',
+                            'country' => 'United Arab Emirates',
+                            'latitude' => 25.251369,
+                            'longitude' => 55.347204,
+                        ],
+                    ],
+                    'products' => [],
+                    'extras_preview' => [],
+                    'booking_context' => [
+                        'provider_payload' => [
+                            'source' => 'greenmotion',
+                        ],
+                    ],
+                ],
+            ]);
+
+        $this->app->instance(CarHireGatewayInventoryService::class, $gatewayInventoryService);
+
+        $response = $this
+            ->withHeader('x-api-key', 'secret-key')
+            ->getJson('/api/quotes/EUR/3272373056/3272373056/2026-06-15T09:00/2026-06-18T09:00/35');
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'quotes');
+        $response->assertJsonPath('quotes.0.vehicle.display_name', 'Hyundai i10 or similar');
+        $response->assertJsonPath('quotes.0.pricing.currency', 'EUR');
+        $response->assertJsonMissingPath('quotes.0.vehicle.provider_vehicle_id');
+        $response->assertJsonMissingPath('quotes.0.supplier');
+        $response->assertJsonMissingPath('search');
+    }
+
+    public function test_skyscanner_search_api_hides_internal_quote_routing_fields_from_public_response(): void
+    {
+        config([
+            'skyscanner.api_key' => 'secret-key',
+            'skyscanner.testing_access.auth_header' => 'x-api-key',
+            'skyscanner.case_id' => 'PSM-46100',
+            'skyscanner.quote_ttl_minutes' => 30,
+            'skyscanner.inventory_scope' => 'mixed',
+            'skyscanner.provider_whitelist' => ['greenmotion'],
+        ]);
+
+        $gatewayInventoryService = Mockery::mock(CarHireGatewayInventoryService::class);
+        $gatewayInventoryService->shouldReceive('search')
+            ->once()
+            ->andReturn([
+                [
+                    'provider_vehicle_id' => 'gm-vehicle-1',
+                    'source' => 'greenmotion',
+                    'provider_code' => 'greenmotion',
+                    'provider_product_id' => 'gm-product-1',
+                    'provider_rate_id' => 'gm-rate-1',
+                    'supplier' => [
+                        'code' => 'greenmotion',
+                        'name' => 'Green Motion',
+                    ],
+                    'display_name' => 'Hyundai i10 or similar',
+                    'brand' => 'Hyundai',
+                    'model' => 'i10',
+                    'category' => 'economy',
+                    'image' => 'https://example.com/hyundai-i10.jpg',
+                    'specs' => [
+                        'sipp_code' => 'ECMR',
+                        'sipp_source' => 'explicit',
+                        'transmission' => 'manual',
+                        'fuel' => 'petrol',
+                        'air_conditioning' => true,
+                        'seating_capacity' => 5,
+                        'doors' => 5,
+                        'luggage_small' => 1,
+                        'luggage_medium' => 0,
+                        'luggage_large' => 1,
+                    ],
+                    'pricing' => [
+                        'currency' => 'EUR',
+                        'total_price' => 120.0,
+                        'price_per_day' => 40.0,
+                    ],
+                    'policies' => [],
+                    'location' => [
+                        'pickup' => [
+                            'provider_location_id' => 'gm-dxb-1',
+                            'provider_location_source' => 'explicit',
+                            'name' => 'Dubai Airport',
+                            'city' => 'Dubai',
+                            'country' => 'United Arab Emirates',
+                            'latitude' => 25.251369,
+                            'longitude' => 55.347204,
+                        ],
+                        'dropoff' => [
+                            'provider_location_id' => 'gm-dxb-1',
+                            'provider_location_source' => 'explicit',
+                            'name' => 'Dubai Airport',
+                            'city' => 'Dubai',
+                            'country' => 'United Arab Emirates',
+                            'latitude' => 25.251369,
+                            'longitude' => 55.347204,
+                        ],
+                    ],
+                    'products' => [
+                        ['id' => 'product-1'],
+                    ],
+                    'extras_preview' => [
+                        ['code' => 'gps'],
+                    ],
+                    'data_quality_flags' => ['missing_postal_code'],
+                    'booking_context' => [
+                        'provider_payload' => [
+                            'source' => 'greenmotion',
+                            'rate_id' => 'gm-rate-1',
+                        ],
+                    ],
+                ],
+            ]);
+
+        $this->app->instance(CarHireGatewayInventoryService::class, $gatewayInventoryService);
+
+        $response = $this
+            ->withHeader('x-api-key', 'secret-key')
+            ->getJson('/api/quotes/EUR/3272373056/3272373056/2026-06-15T09:00/2026-06-18T09:00/35');
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'quotes');
+        $response->assertJsonPath('quotes.0.quote_id', fn ($value) => is_string($value) && $value !== '');
+        $response->assertJsonPath('quotes.0.vehicle.display_name', 'Hyundai i10 or similar');
+        $response->assertJsonPath('quotes.0.specs.sipp_code', 'ECMR');
+        $response->assertJsonMissingPath('quotes.0.vehicle.source');
+        $response->assertJsonMissingPath('quotes.0.vehicle.provider_code');
+        $response->assertJsonMissingPath('quotes.0.vehicle.provider_product_id');
+        $response->assertJsonMissingPath('quotes.0.vehicle.provider_rate_id');
+        $response->assertJsonMissingPath('quotes.0.vehicle.booking_context');
+        $response->assertJsonMissingPath('quotes.0.supplier');
+        $response->assertJsonMissingPath('quotes.0.specs.sipp_source');
+        $response->assertJsonMissingPath('quotes.0.pickup_location_details.provider_location_id');
+        $response->assertJsonMissingPath('quotes.0.pickup_location_details.provider_location_source');
+        $response->assertJsonMissingPath('quotes.0.dropoff_location_details.provider_location_id');
+        $response->assertJsonMissingPath('quotes.0.dropoff_location_details.provider_location_source');
+        $response->assertJsonMissingPath('quotes.0.products');
+        $response->assertJsonMissingPath('quotes.0.extras_preview');
+        $response->assertJsonMissingPath('quotes.0.data_quality_flags');
+        $response->assertJsonMissingPath('search');
+        $response->assertJsonMissingPath('excluded_vehicle_ids');
     }
 
     private function createVehicleAtAirport(int $vendorId, int $categoryId, array $overrides = []): Vehicle

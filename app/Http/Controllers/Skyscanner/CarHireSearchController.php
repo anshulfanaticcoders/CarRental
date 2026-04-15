@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Skyscanner;
 
 use App\Http\Controllers\Controller;
+use App\Services\Skyscanner\CarHirePublicResponseSerializer;
 use App\Services\Skyscanner\CarHireSecurityService;
 use App\Services\Skyscanner\CarHireSearchService;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,7 @@ class CarHireSearchController extends Controller
     public function __construct(
         private readonly CarHireSearchService $searchService,
         private readonly CarHireSecurityService $securityService,
+        private readonly CarHirePublicResponseSerializer $publicResponseSerializer,
     ) {
     }
 
@@ -40,7 +42,11 @@ class CarHireSearchController extends Controller
             'currency' => ['nullable', 'string', 'size:3'],
         ])->validate();
 
-        return response()->json($this->searchService->search($validated));
+        return response()->json(
+            $this->publicResponseSerializer->searchPayload(
+                $this->searchService->search($validated),
+            ),
+        );
     }
 
     private function normalizePayload(Request $request): array

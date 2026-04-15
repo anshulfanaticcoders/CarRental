@@ -8,7 +8,9 @@ use App\Models\Vehicle;
 use App\Models\VehicleCategory;
 use App\Models\VendorLocation;
 use App\Models\VendorProfile;
+use App\Services\LocationSearchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Tests\TestCase;
 
 class SkyscannerLocationsApiTest extends TestCase
@@ -128,6 +130,69 @@ class SkyscannerLocationsApiTest extends TestCase
         $response->assertJsonPath('data.1.location_type', 'downtown');
         $response->assertJsonPath('data.1.iata', null);
         $response->assertJsonPath('data.1.country_code', 'MA');
+    }
+
+    public function test_skyscanner_locations_api_returns_unified_locations_for_mixed_inventory(): void
+    {
+        config([
+            'skyscanner.api_key' => 'secret-key',
+            'skyscanner.testing_access.auth_header' => 'x-api-key',
+            'skyscanner.inventory_scope' => 'mixed',
+            'skyscanner.provider_whitelist' => ['greenmotion'],
+        ]);
+
+        $locationSearchService = Mockery::mock(LocationSearchService::class);
+        $locationSearchService->shouldReceive('getAllLocations')
+            ->once()
+            ->with(1000)
+            ->andReturn([
+                [
+                    'unified_location_id' => 3272373056,
+                    'name' => 'Dubai Airport',
+                    'address' => 'Airport Road',
+                    'city' => 'Dubai',
+                    'state' => 'Dubai',
+                    'country' => 'United Arab Emirates',
+                    'country_code' => 'AE',
+                    'location_type' => 'airport',
+                    'iata' => 'DXB',
+                    'latitude' => 25.251369,
+                    'longitude' => 55.347204,
+                    'providers' => [
+                        ['provider' => 'internal', 'pickup_id' => '1'],
+                        ['provider' => 'greenmotion', 'pickup_id' => '61412'],
+                    ],
+                ],
+                [
+                    'unified_location_id' => 3280737750,
+                    'name' => 'San Jose Downtown',
+                    'address' => 'Central Avenue',
+                    'city' => 'San Jose',
+                    'state' => null,
+                    'country' => 'Costa Rica',
+                    'country_code' => 'CR',
+                    'location_type' => 'downtown',
+                    'iata' => null,
+                    'latitude' => 9.925916,
+                    'longitude' => -84.095894,
+                    'providers' => [
+                        ['provider' => 'usave', 'pickup_id' => '888'],
+                    ],
+                ],
+            ]);
+
+        $this->app->instance(LocationSearchService::class, $locationSearchService);
+
+        $response = $this
+            ->withHeader('x-api-key', 'secret-key')
+            ->getJson('/api/skyscanner/locations');
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.office_id', '3272373056');
+        $response->assertJsonPath('data.0.location_type', 'airport');
+        $response->assertJsonPath('data.0.iata', 'DXB');
+        $response->assertJsonPath('data.0.country_code', 'AE');
     }
 
     private function createVehicle(int $vendorId, int $categoryId, array $overrides = []): Vehicle

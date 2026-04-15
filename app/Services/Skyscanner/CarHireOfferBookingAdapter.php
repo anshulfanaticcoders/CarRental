@@ -16,13 +16,51 @@ class CarHireOfferBookingAdapter
         $pricing = is_array($quote['pricing'] ?? null) ? $quote['pricing'] : [];
         $vehicle = is_array($quote['vehicle'] ?? null) ? $quote['vehicle'] : [];
         $supplier = is_array($quote['supplier'] ?? null) ? $quote['supplier'] : [];
+        $source = $this->stringOrNull($vehicle['source'] ?? null)
+            ?? $this->stringOrNull($supplier['code'] ?? null)
+            ?? 'internal';
+        $baseProviderPayload = is_array(data_get($vehicle, 'booking_context.provider_payload'))
+            ? data_get($vehicle, 'booking_context.provider_payload')
+            : [];
+        $providerPayload = array_merge($baseProviderPayload, [
+            'source' => $source,
+            'currency' => $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR')),
+            'security_deposit' => $this->floatOrNull($pricing['deposit_amount'] ?? null),
+            'vendorPlans' => $this->buildVendorPlans($products),
+            'vendor_plans' => $this->buildVendorPlans($products),
+            'vendorProfileData' => array_merge(
+                is_array($baseProviderPayload['vendorProfileData'] ?? null) ? $baseProviderPayload['vendorProfileData'] : [],
+                [
+                    'company_name' => $this->stringOrNull($supplier['name'] ?? ($vehicle['supplier_name'] ?? 'Vrooem Internal Fleet')),
+                    'currency' => $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR')),
+                    'phone' => $pickupLocation['telephone'] ?? null,
+                    'city' => $pickupLocation['address_city'] ?? null,
+                    'country' => $pickupLocation['address_country'] ?? null,
+                ]
+            ),
+            'vendor_profile_data' => array_merge(
+                is_array($baseProviderPayload['vendor_profile_data'] ?? null) ? $baseProviderPayload['vendor_profile_data'] : [],
+                [
+                    'company_name' => $this->stringOrNull($supplier['name'] ?? ($vehicle['supplier_name'] ?? 'Vrooem Internal Fleet')),
+                    'currency' => $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR')),
+                    'phone' => $pickupLocation['telephone'] ?? null,
+                    'city' => $pickupLocation['address_city'] ?? null,
+                    'country' => $pickupLocation['address_country'] ?? null,
+                ]
+            ),
+            'benefits' => $this->buildBenefits($quote),
+            'addons' => $optionalExtras,
+            'images' => $this->buildImages($vehicle),
+        ]);
 
         return [
             'vehicle' => [
                 'id' => $this->stringOrNull($vehicle['provider_vehicle_id'] ?? null),
                 'provider_vehicle_id' => $this->stringOrNull($vehicle['provider_vehicle_id'] ?? null),
-                'source' => 'internal',
-                'provider_code' => $this->stringOrNull($supplier['code'] ?? ($vehicle['supplier_code'] ?? 'internal')),
+                'source' => $source,
+                'provider_code' => $this->stringOrNull($vehicle['provider_code'] ?? ($supplier['code'] ?? ($vehicle['supplier_code'] ?? 'internal'))),
+                'provider_product_id' => $this->stringOrNull($vehicle['provider_product_id'] ?? null),
+                'provider_rate_id' => $this->stringOrNull($vehicle['provider_rate_id'] ?? null),
                 'brand' => $this->stringOrNull($vehicle['brand'] ?? null),
                 'model' => $this->stringOrNull($vehicle['model'] ?? null),
                 'display_name' => $this->stringOrNull($vehicle['display_name'] ?? null),
@@ -70,28 +108,7 @@ class CarHireOfferBookingAdapter
                 'doors' => $this->floatOrNull($vehicle['doors'] ?? null),
                 'booking_context' => [
                     'provider_payload' => [
-                        'source' => 'internal',
-                        'currency' => $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR')),
-                        'security_deposit' => $this->floatOrNull($pricing['deposit_amount'] ?? null),
-                        'vendorPlans' => $this->buildVendorPlans($products),
-                        'vendor_plans' => $this->buildVendorPlans($products),
-                        'vendorProfileData' => [
-                            'company_name' => $this->stringOrNull($supplier['name'] ?? ($vehicle['supplier_name'] ?? 'Vrooem Internal Fleet')),
-                            'currency' => $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR')),
-                            'phone' => $pickupLocation['telephone'] ?? null,
-                            'city' => $pickupLocation['address_city'] ?? null,
-                            'country' => $pickupLocation['address_country'] ?? null,
-                        ],
-                        'vendor_profile_data' => [
-                            'company_name' => $this->stringOrNull($supplier['name'] ?? ($vehicle['supplier_name'] ?? 'Vrooem Internal Fleet')),
-                            'currency' => $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR')),
-                            'phone' => $pickupLocation['telephone'] ?? null,
-                            'city' => $pickupLocation['address_city'] ?? null,
-                            'country' => $pickupLocation['address_country'] ?? null,
-                        ],
-                        'benefits' => $this->buildBenefits($quote),
-                        'addons' => $optionalExtras,
-                        'images' => $this->buildImages($vehicle),
+                        ...$providerPayload,
                     ],
                 ],
             ],

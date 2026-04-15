@@ -155,4 +155,94 @@ class CarHireOfferBookingAdapterTest extends TestCase
         $this->assertSame('Vrooem Internal Fleet', $context['vehicle']['booking_context']['provider_payload']['vendorProfileData']['company_name']);
         $this->assertSame('PRE', $context['vehicle']['booking_context']['provider_payload']['vendorPlans'][0]['plan_type']);
     }
+
+    public function test_it_preserves_provider_source_and_payload_for_non_internal_quotes(): void
+    {
+        $service = app(CarHireOfferBookingAdapter::class);
+
+        $context = $service->build([
+            'quote_id' => 'quote-provider-123',
+            'vehicle' => [
+                'provider_vehicle_id' => 'gm-vehicle-1',
+                'source' => 'greenmotion',
+                'provider_code' => 'greenmotion',
+                'provider_product_id' => 'product-77',
+                'provider_rate_id' => 'rate-88',
+                'display_name' => 'Hyundai i10 or similar',
+                'brand' => 'Hyundai',
+                'model' => 'i10',
+                'category' => 'economy',
+                'image_url' => 'https://example.com/hyundai-i10.jpg',
+                'supplier_name' => 'Green Motion',
+                'supplier_code' => 'greenmotion',
+                'sipp_code' => 'ECMR',
+                'transmission' => 'manual',
+                'fuel_type' => 'petrol',
+                'air_conditioning' => true,
+                'seats' => 5,
+                'doors' => 5,
+                'booking_context' => [
+                    'provider_payload' => [
+                        'source' => 'greenmotion',
+                        'provider_code' => 'greenmotion',
+                        'product_id' => 'product-77',
+                        'rate_id' => 'rate-88',
+                        'vendorProfileData' => [
+                            'company_name' => 'Green Motion',
+                        ],
+                    ],
+                ],
+            ],
+            'supplier' => [
+                'code' => 'greenmotion',
+                'name' => 'Green Motion',
+            ],
+            'pricing' => [
+                'currency' => 'EUR',
+                'total_price' => 120.0,
+                'price_per_day' => 40.0,
+            ],
+            'pickup_location_details' => [
+                'provider_location_id' => 'gm-dxb-1',
+                'name' => 'Dubai Airport',
+                'address' => 'Airport Road, Dubai, United Arab Emirates',
+                'city' => 'Dubai',
+                'country' => 'United Arab Emirates',
+                'country_code' => 'AE',
+                'location_type' => 'airport',
+                'iata' => 'DXB',
+                'latitude' => 25.251369,
+                'longitude' => 55.347204,
+            ],
+            'dropoff_location_details' => [
+                'provider_location_id' => 'gm-dxb-1',
+                'name' => 'Dubai Airport',
+                'address' => 'Airport Road, Dubai, United Arab Emirates',
+                'city' => 'Dubai',
+                'country' => 'United Arab Emirates',
+                'country_code' => 'AE',
+                'location_type' => 'airport',
+                'iata' => 'DXB',
+                'latitude' => 25.251369,
+                'longitude' => 55.347204,
+            ],
+            'products' => [],
+            'extras_preview' => [],
+            'search' => [
+                'pickup_date' => '2026-05-10',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-05-13',
+                'dropoff_time' => '09:00',
+                'driver_age' => '35',
+                'currency' => 'EUR',
+            ],
+        ]);
+
+        $this->assertSame('greenmotion', $context['vehicle']['source']);
+        $this->assertSame('greenmotion', $context['vehicle']['provider_code']);
+        $this->assertSame('product-77', $context['vehicle']['provider_product_id']);
+        $this->assertSame('rate-88', $context['vehicle']['provider_rate_id']);
+        $this->assertSame('greenmotion', $context['vehicle']['booking_context']['provider_payload']['source']);
+        $this->assertSame('Green Motion', $context['vehicle']['booking_context']['provider_payload']['vendorProfileData']['company_name']);
+    }
 }

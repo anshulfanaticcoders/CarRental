@@ -4,12 +4,22 @@ namespace App\Services\Skyscanner;
 
 use App\Models\VendorLocation;
 use App\Services\CountryCodeResolver;
+use App\Services\LocationSearchService;
 use Illuminate\Support\Collection;
 
 class CarHireLocationsService
 {
+    public function __construct(
+        private readonly LocationSearchService $locationSearchService,
+    ) {
+    }
+
     public function export(): array
     {
+        if ($this->usesUnifiedLocationInventory()) {
+            return $this->unifiedLocations()->all();
+        }
+
         return $this->canonicalLocations()->all();
     }
 
@@ -51,6 +61,84 @@ class CarHireLocationsService
                 'pickup_instructions' => $this->nullableString($location->pickup_instructions),
                 'dropoff_instructions' => $this->nullableString($location->dropoff_instructions),
             ])
+            ->values();
+    }
+
+    private function unifiedLocations(): Collection
+    {
+        return collect($this->locationSearchService->getAllLocations(1000))
+            ->filter(fn ($location) => is_array($location) && $this->supportsSkyscannerLocation($location))
+            ->sortBy(fn (array $location) => sprintf(
+                '%d|%s',
+                strtolower((string) ($location['location_type'] ?? '')) === 'airport' ? 0 : 1,
+                strtolower((string) ($location['name'] ?? ''))
+            ))
+            ->values()
+            ->map(function (array $location): array {
+                $country = $this->nullableString($location['country'] ?? null);
+                $countryCode = $this->nullableString($location['country_code'] ?? null);
+
+                return [
+                    'office_id' => (string) ($location['unified_location_id'] ?? ''),
+                    'name' => $this->nullableString($location['name'] ?? null),
+                    'address' => $this->joinAddress([
+                        $location['address'] ?? null,
+                        $location['city'] ?? null,
+                        $location['state'] ?? null,
+                        $country,
+                    ]),
+                    'city' => $this->nullableString($location['city'] ?? null),
+                    'state' => $this->nullableString($location['state'] ?? null),
+                    'country' => $country,
+                    'country_code' => $countryCode !== null
+                        ? strtoupper($countryCode)
+                        : CountryCodeResolver::resolve($country),
+                    'location_type' => strtolower((string) ($location['location_type'] ?? 'unknown')),
+                    'iata' => $this->nullableString($location['iata'] ?? null),
+                    'latitude' => $location['latitude'] ?? null,
+                    'longitude' => $location['longitude'] ?? null,
+                    'phone' => null,
+                    'pickup_instructions' => null,
+                    'dropoff_instructions' => null,
+                ];
+            })
+            ->filter(fn (array $location) => $location['office_id'] !== '' && $location['name'] !== null);
+    }
+
+    private function supportsSkyscannerLocation(array $location): bool
+    {
+        $providers = collect($location['providers'] ?? [])
+            ->filter(fn ($provider) => is_array($provider));
+
+        if ($providers->isEmpty()) {
+            return false;
+        }
+
+        if (!$this->whitelistedProviders()->isEmpty()) {
+            $providers = $providers->filter(function (array $provider): bool {
+                $providerName = strtolower(trim((string) ($provider['provider'] ?? '')));
+
+                return $providerName === 'internal' || $this->whitelistedProviders()->contains($providerName);
+            });
+        }
+
+        return $providers->isNotEmpty();
+    }
+
+    private function usesUnifiedLocationInventory(): bool
+    {
+        return in_array((string) config('skyscanner.inventory_scope', 'internal'), ['providers', 'mixed'], true);
+    }
+
+    private function whitelistedProviders(): Collection
+    {
+        return collect(config('skyscanner.provider_whitelist', []))
+            ->map(function ($provider) {
+                $provider = strtolower(trim((string) ($provider ?? '')));
+
+                return $provider === '' ? null : $provider;
+            })
+            ->filter()
             ->values();
     }
 

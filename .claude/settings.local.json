@@ -51,7 +51,8 @@
       "Bash(/home/anshul/.local/bin/uv add:*)",
       "Bash(PYTHONPATH=/mnt/c/laragon/www/vrooem-gateway /tmp/testenv/bin/python3.11 -m pytest -v)",
       "Bash(agent-browser:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find /mnt/c/laragon/www/vrooem-gateway -type f -name \"*.py\" ! -path \"*/.venv/*\" ! -path \"*/.codex-venv/*\" ! -path \"*/__pycache__/*\" ! -path \"*/.git/*\" -exec wc -l {} +)"
     ]
   },
   "enableAllProjectMcpServers": true,

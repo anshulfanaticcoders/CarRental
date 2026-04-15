@@ -4,6 +4,7 @@ namespace App\Services\Skyscanner;
 
 use App\Models\Vehicle;
 use App\Models\VendorLocation;
+use App\Services\LocationSearchService;
 use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Carbon\Carbon;
@@ -11,6 +12,7 @@ use Carbon\Carbon;
 class CarHireInternalInventoryService
 {
     public function __construct(
+        private readonly LocationSearchService $locationSearchService,
         private readonly InternalSearchVehicleFactory $internalSearchVehicleFactory,
         private readonly InternalVehicleAvailabilityService $internalVehicleAvailabilityService,
     ) {
@@ -22,10 +24,7 @@ class CarHireInternalInventoryService
         $dropoffDateTime = Carbon::parse($criteria['dropoff_date'] . ' ' . $criteria['dropoff_time']);
         $rentalDays = max(1, (int) ceil($pickupDateTime->diffInMinutes($dropoffDateTime) / 1440));
 
-        $canonicalLocation = VendorLocation::query()
-            ->whereKey($criteria['pickup_location_id'])
-            ->where('is_active', true)
-            ->first();
+        $canonicalLocation = $this->resolveCanonicalLocation($criteria);
 
         if (!$canonicalLocation) {
             return [];
@@ -82,6 +81,46 @@ class CarHireInternalInventoryService
             })
             ->values()
             ->all();
+    }
+
+    private function resolveCanonicalLocation(array $criteria): ?VendorLocation
+    {
+        $locationId = (int) ($criteria['pickup_location_id'] ?? 0);
+
+        if ($locationId > 0) {
+            $directLocation = VendorLocation::query()
+                ->whereKey($locationId)
+                ->where('is_active', true)
+                ->first();
+
+            if ($directLocation) {
+                return $directLocation;
+            }
+        }
+
+        $searchLocation = $this->locationSearchService->resolveSearchLocation([
+            'unified_location_id' => $locationId,
+        ]);
+
+        if (!is_array($searchLocation) || $searchLocation === []) {
+            return null;
+        }
+
+        $internalProvider = collect($searchLocation['providers'] ?? [])
+            ->first(function (array $provider): bool {
+                return strtolower(trim((string) ($provider['provider'] ?? ''))) === 'internal'
+                    && trim((string) ($provider['pickup_id'] ?? '')) !== '';
+            });
+
+        $internalPickupId = (int) ($internalProvider['pickup_id'] ?? 0);
+        if ($internalPickupId <= 0) {
+            return null;
+        }
+
+        return VendorLocation::query()
+            ->whereKey($internalPickupId)
+            ->where('is_active', true)
+            ->first();
     }
 
     private function joinAddress(array $parts): ?string

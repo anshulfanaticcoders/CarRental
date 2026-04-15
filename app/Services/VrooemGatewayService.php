@@ -58,10 +58,11 @@ class VrooemGatewayService
     /**
      * List unified locations via the gateway.
      */
-    public function listLocations(int $limit = 50): array
+    public function listLocations(int $limit = 50, int $offset = 0): array
     {
         $response = $this->request('GET', '/api/v1/locations', [
             'limit' => $limit,
+            'offset' => $offset,
         ]);
 
         return is_array($response) ? $response : [];

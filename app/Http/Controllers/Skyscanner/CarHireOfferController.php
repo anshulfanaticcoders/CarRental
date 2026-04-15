@@ -80,6 +80,8 @@ class CarHireOfferController extends Controller
         $search = is_array($quote['search'] ?? null) ? $quote['search'] : [];
         $pickup = is_array($quote['pickup_location_details'] ?? null) ? $quote['pickup_location_details'] : [];
         $dropoff = is_array($quote['dropoff_location_details'] ?? null) ? $quote['dropoff_location_details'] : [];
+        $source = strtolower(trim((string) data_get($quote, 'vehicle.source', data_get($quote, 'supplier.code', 'internal'))));
+        $provider = $source === '' ? 'mixed' : $source;
 
         return route('search', array_filter([
             'locale' => $locale,
@@ -88,8 +90,9 @@ class CarHireOfferController extends Controller
             'country' => $pickup['country'] ?? null,
             'latitude' => $pickup['latitude'] ?? null,
             'longitude' => $pickup['longitude'] ?? null,
-            'provider' => 'internal',
-            'provider_pickup_id' => $search['pickup_location_id'] ?? null,
+            'unified_location_id' => $search['pickup_location_id'] ?? null,
+            'provider' => $provider,
+            'provider_pickup_id' => $provider === 'internal' ? null : ($pickup['provider_location_id'] ?? null),
             'date_from' => $search['pickup_date'] ?? null,
             'date_to' => $search['dropoff_date'] ?? null,
             'start_time' => $search['pickup_time'] ?? null,
@@ -97,7 +100,8 @@ class CarHireOfferController extends Controller
             'age' => $search['driver_age'] ?? null,
             'currency' => $search['currency'] ?? null,
             'dropoff_where' => $dropoff['name'] ?? null,
-            'dropoff_location_id' => $search['dropoff_location_id'] ?? null,
+            'dropoff_unified_location_id' => $search['dropoff_location_id'] ?? null,
+            'dropoff_location_id' => $provider === 'internal' ? null : ($dropoff['provider_location_id'] ?? null),
             'dropoff_latitude' => $dropoff['latitude'] ?? null,
             'dropoff_longitude' => $dropoff['longitude'] ?? null,
         ], static fn ($value) => $value !== null && $value !== ''));

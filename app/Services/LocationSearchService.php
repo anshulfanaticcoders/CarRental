@@ -29,7 +29,22 @@ class LocationSearchService
 
     public function getAllLocations(int $limit = 50): array
     {
-        return collect($this->gatewayService->listLocations($limit))
+        $chunkSize = max(1, min(200, $limit));
+        $offset = 0;
+        $rawLocations = [];
+
+        do {
+            $batch = $this->gatewayService->listLocations($chunkSize, $offset);
+
+            if (!is_array($batch) || $batch === []) {
+                break;
+            }
+
+            $rawLocations = array_merge($rawLocations, $batch);
+            $offset += count($batch);
+        } while (count($rawLocations) < $limit && count($batch) === $chunkSize);
+
+        return collect(array_slice($rawLocations, 0, $limit))
             ->filter(fn ($location) => is_array($location))
             ->map(fn (array $location): array => $this->normalizeLocationRecord($location))
             ->values()
@@ -142,7 +157,9 @@ class LocationSearchService
             ? (int) $location['unified_location_id']
             : null;
         $location['name'] = isset($location['name']) ? (string) $location['name'] : ($location['label'] ?? null);
+        $location['address'] = isset($location['address']) ? (string) $location['address'] : null;
         $location['city'] = isset($location['city']) ? (string) $location['city'] : null;
+        $location['state'] = isset($location['state']) ? (string) $location['state'] : null;
         $location['location_type'] = trim((string) ($location['location_type'] ?? '')) ?: 'unknown';
         $location['aliases'] = array_values(array_unique(array_filter($location['aliases'] ?? [])));
         $location['our_location_id'] = $location['our_location_id'] ?? null;
