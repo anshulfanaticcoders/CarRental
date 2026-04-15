@@ -4,6 +4,9 @@ import { Search, MapPin, Check, X } from 'lucide-vue-next'; // Added X for close
 import { useToast } from 'vue-toastification';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 const props = defineProps({
   onLocationSelect: Function,
@@ -33,6 +36,15 @@ const formattedAddress = ref('');
 const placeId = ref('');
 const countryCode = ref('');
 const toast = useToast();
+
+// Leaflet's default marker asset paths often break in production bundlers unless
+// they are wired explicitly. Without this, the marker can remain draggable but invisible.
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 
 // Location detail fields
