@@ -245,4 +245,126 @@ class CarHireOfferBookingAdapterTest extends TestCase
         $this->assertSame('greenmotion', $context['vehicle']['booking_context']['provider_payload']['source']);
         $this->assertSame('Green Motion', $context['vehicle']['booking_context']['provider_payload']['vendorProfileData']['company_name']);
     }
+
+    public function test_it_mirrors_provider_pricing_and_payload_fields_needed_by_booking_adapters(): void
+    {
+        $service = app(CarHireOfferBookingAdapter::class);
+
+        $context = $service->build([
+            'quote_id' => 'quote-ok-123',
+            'vehicle' => [
+                'provider_vehicle_id' => 'ok-vehicle-1',
+                'source' => 'okmobility',
+                'provider_code' => 'okmobility',
+                'display_name' => 'Peugeot 108 Automatic or similar',
+                'supplier_name' => 'OK Mobility',
+                'supplier_code' => 'okmobility',
+                'transmission' => 'automatic',
+                'fuel_type' => 'petrol',
+                'seats' => 4,
+                'booking_context' => [
+                    'provider_payload' => [
+                        'preview_value' => 187.46,
+                        'value_without_tax' => 154.93,
+                        'tax_rate' => 21,
+                        'tax_value' => 32.53,
+                        'extras_included' => ['BAS'],
+                        'extras_required' => ['OPC'],
+                        'extras_available' => ['GPS'],
+                        'pickup_station_name' => 'OK DXB - Airport',
+                        'dropoff_station_name' => 'OK DXB - Airport',
+                        'pickup_address' => 'Dubai Airport T1',
+                        'dropoff_address' => 'Dubai Airport T1',
+                        'extras' => [
+                            [
+                                'id' => 'gps',
+                                'code' => 'GPS',
+                                'name' => 'GPS',
+                                'price' => 15.00,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'supplier' => [
+                'code' => 'okmobility',
+                'name' => 'OK Mobility',
+            ],
+            'pricing' => [
+                'currency' => 'EUR',
+                'total_price' => 187.46,
+                'price_per_day' => 62.49,
+                'deposit_amount' => 400.00,
+                'deposit_currency' => 'EUR',
+            ],
+            'policies' => [
+                'mileage_policy' => 'unlimited',
+                'cancellation' => [
+                    'available' => true,
+                    'days_before_pickup' => 2,
+                ],
+            ],
+            'pickup_location_details' => [
+                'provider_location_id' => 'ok-dxb-1',
+                'name' => 'Dubai Airport',
+                'address' => 'Airport Road, Dubai, United Arab Emirates',
+                'city' => 'Dubai',
+                'country' => 'United Arab Emirates',
+                'country_code' => 'AE',
+                'location_type' => 'airport',
+                'iata' => 'DXB',
+                'latitude' => 25.251369,
+                'longitude' => 55.347204,
+            ],
+            'dropoff_location_details' => [
+                'provider_location_id' => 'ok-dxb-1',
+                'name' => 'Dubai Airport',
+                'address' => 'Airport Road, Dubai, United Arab Emirates',
+                'city' => 'Dubai',
+                'country' => 'United Arab Emirates',
+                'country_code' => 'AE',
+                'location_type' => 'airport',
+                'iata' => 'DXB',
+                'latitude' => 25.251369,
+                'longitude' => 55.347204,
+            ],
+            'products' => [],
+            'extras_preview' => [
+                [
+                    'id' => 'gps',
+                    'code' => 'GPS',
+                    'name' => 'GPS',
+                    'daily_rate' => 5.00,
+                    'total_for_booking' => 15.00,
+                    'currency' => 'EUR',
+                ],
+            ],
+            'search' => [
+                'pickup_date' => '2026-05-10',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-05-13',
+                'dropoff_time' => '09:00',
+                'driver_age' => '35',
+                'currency' => 'EUR',
+            ],
+        ]);
+
+        $this->assertSame('okmobility', $context['vehicle']['source']);
+        $this->assertSame(187.46, $context['vehicle']['total_price']);
+        $this->assertSame(62.49, $context['vehicle']['price_per_day']);
+        $this->assertSame('EUR', $context['vehicle']['currency']);
+        $this->assertSame(400.0, $context['vehicle']['security_deposit']);
+        $this->assertSame(187.46, $context['vehicle']['preview_value']);
+        $this->assertSame(154.93, $context['vehicle']['value_without_tax']);
+        $this->assertSame(21.0, $context['vehicle']['tax_rate']);
+        $this->assertSame(32.53, $context['vehicle']['tax_value']);
+        $this->assertSame(['BAS'], $context['vehicle']['extras_included']);
+        $this->assertSame(['OPC'], $context['vehicle']['extras_required']);
+        $this->assertSame(['GPS'], $context['vehicle']['extras_available']);
+        $this->assertSame('OK DXB - Airport', $context['vehicle']['pickup_station_name']);
+        $this->assertCount(1, $context['vehicle']['extras']);
+        $this->assertSame('GPS', $context['vehicle']['extras'][0]['code']);
+        $this->assertSame(15.0, $context['vehicle']['extras'][0]['price']);
+        $this->assertSame(400.0, $context['vehicle']['benefits']['deposit_amount']);
+    }
 }

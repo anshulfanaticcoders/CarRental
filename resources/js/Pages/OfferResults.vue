@@ -6,9 +6,8 @@ import Footer from '@/Components/Footer.vue'
 import { Toaster } from '@/Components/ui/sonner'
 import BookingExtrasStep from '@/Components/BookingExtras/BookingExtrasStep.vue'
 import BookingCheckoutStep from '@/Components/BookingCheckoutStep.vue'
-import OfferCompactMap from '@/Components/Skyscanner/OfferCompactMap.vue'
+import OfferMediaSummary from '@/Components/Skyscanner/OfferMediaSummary.vue'
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion'
-import { resolveOfferMapDetails } from '@/features/skyscanner/utils/offerMapDetails'
 
 type Luggage = {
   small?: number | null
@@ -188,7 +187,6 @@ const displayedQuotes = computed(() => props.offerResults.quotes ?? [])
 const alternativeQuotes = computed(() => displayedQuotes.value.filter((offer) => offer.quote_id !== props.quote.quote_id))
 const quoteStatus = computed(() => props.quoteStatus ?? {})
 const isExpired = computed(() => quoteStatus.value.expired === true)
-const hasCompactMap = computed(() => resolveOfferMapDetails(pickupLocation.value, dropoffLocation.value).hasMap)
 
 const currentBookingContext = computed(() => activeBookingContext.value ?? props.bookingContext)
 const selectedVehicle = computed<Record<string, unknown> | null>(() => currentBookingContext.value?.vehicle ?? null)
@@ -430,16 +428,29 @@ onMounted(() => {
         <div class="or-grid">
           <div class="or-col-main">
             <article class="or-vehicle">
-              <div class="or-vehicle-media" :class="{ 'or-vehicle-media-split': hasCompactMap }">
-                <div class="or-vehicle-media-image">
-                  <img v-if="vehicle.image_url" :src="vehicle.image_url" :alt="displayName || 'Vehicle image'" />
-                  <div v-else class="or-vehicle-empty">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 16H9m10 0h3v-3.15a1 1 0 00-.84-.99L16 11l-2.7-3.6a1 1 0 00-.8-.4H5.24a2 2 0 00-1.8 1.1l-.8 1.63A6 6 0 002 12.42V16h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
-                    <span>No image available</span>
+              <div class="or-vehicle-media">
+                <div class="or-vehicle-media-layout">
+                  <div class="or-vehicle-media-image">
+                    <img v-if="vehicle.image_url" :src="vehicle.image_url" :alt="displayName || 'Vehicle image'" />
+                    <div v-else class="or-vehicle-empty">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 16H9m10 0h3v-3.15a1 1 0 00-.84-.99L16 11l-2.7-3.6a1 1 0 00-.8-.4H5.24a2 2 0 00-1.8 1.1l-.8 1.63A6 6 0 002 12.42V16h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                      <span>No image available</span>
+                    </div>
                   </div>
-                </div>
-                <div v-if="hasCompactMap" class="or-vehicle-media-map">
-                  <OfferCompactMap :pickup-location="pickupLocation" :dropoff-location="dropoffLocation" />
+                  <div class="or-vehicle-media-side">
+                    <OfferMediaSummary
+                      :supplier-name="quote.supplier?.name || vehicle.supplier_name || null"
+                      :pickup-office="pickupLocation.name || null"
+                      :transmission="vehicle.transmission || null"
+                      :fuel-type="vehicle.fuel_type || null"
+                      :seats="vehicle.seats ?? null"
+                      :mileage-policy="policies.mileage_policy || null"
+                      :cancellation="{
+                        available: policies.cancellation?.available ?? false,
+                        daysBeforePickup: policies.cancellation?.days_before_pickup ?? null,
+                      }"
+                    />
+                  </div>
                 </div>
                 <div class="or-vehicle-badges">
                   <span class="or-badge or-badge-selected">
@@ -933,26 +944,32 @@ onMounted(() => {
 .or-vehicle-media {
   position: relative;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  aspect-ratio: 16 / 8;
-  max-height: 320px;
+  display: flex;
+  padding: 16px;
   overflow: hidden;
 }
-.or-vehicle-media-split {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
+.or-vehicle-media-layout {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
 }
 .or-vehicle-media-image {
+  flex: 1 1 auto;
   min-width: 0;
-  min-height: 100%;
+  min-height: 300px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #eef4f8 0%, #dae5ee 100%);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.or-vehicle-media-image img { width: 100%; height: 100%; object-fit: cover; }
-.or-vehicle-media-map {
-  min-width: 0;
-  min-height: 100%;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+.or-vehicle-media-image img { width: 100%; height: 100%; object-fit: contain; }
+.or-vehicle-media-side {
+  flex: 0 0 260px;
+  display: flex;
+  align-items: stretch;
 }
 .or-vehicle-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #94a3b8; }
 .or-vehicle-empty svg { width: 56px; height: 56px; }
@@ -1311,12 +1328,15 @@ onMounted(() => {
   .or-hero-grid { flex-direction: column; align-items: flex-start; }
   .or-hero-dates { width: 100%; justify-content: space-between; }
   .or-body { padding: 20px 0 40px; }
-  .or-vehicle-media { aspect-ratio: auto; max-height: none; }
-  .or-vehicle-media-split { grid-template-columns: minmax(0, 1fr); }
-  .or-vehicle-media-image { min-height: 240px; }
-  .or-vehicle-media-map {
-    min-height: 220px;
-    border-top: 1px solid #e2e8f0;
+  .or-vehicle-media-layout {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .or-vehicle-media-image {
+    min-height: 240px;
+  }
+  .or-vehicle-media-side {
+    flex: 0 0 auto;
   }
 }
 @media (max-width: 640px) {

@@ -16,6 +16,11 @@ class CarHireOfferBookingAdapter
         $pricing = is_array($quote['pricing'] ?? null) ? $quote['pricing'] : [];
         $vehicle = is_array($quote['vehicle'] ?? null) ? $quote['vehicle'] : [];
         $supplier = is_array($quote['supplier'] ?? null) ? $quote['supplier'] : [];
+        $benefits = $this->buildBenefits($quote);
+        $currency = $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR'));
+        $totalPrice = $this->floatOrNull($pricing['total_price'] ?? null);
+        $pricePerDay = $this->floatOrNull($pricing['price_per_day'] ?? null);
+        $depositAmount = $this->floatOrNull($pricing['deposit_amount'] ?? null);
         $source = $this->stringOrNull($vehicle['source'] ?? null)
             ?? $this->stringOrNull($supplier['code'] ?? null)
             ?? 'internal';
@@ -24,15 +29,15 @@ class CarHireOfferBookingAdapter
             : [];
         $providerPayload = array_merge($baseProviderPayload, [
             'source' => $source,
-            'currency' => $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR')),
-            'security_deposit' => $this->floatOrNull($pricing['deposit_amount'] ?? null),
+            'currency' => $currency,
+            'security_deposit' => $depositAmount,
             'vendorPlans' => $this->buildVendorPlans($products),
             'vendor_plans' => $this->buildVendorPlans($products),
             'vendorProfileData' => array_merge(
                 is_array($baseProviderPayload['vendorProfileData'] ?? null) ? $baseProviderPayload['vendorProfileData'] : [],
                 [
                     'company_name' => $this->stringOrNull($supplier['name'] ?? ($vehicle['supplier_name'] ?? 'Vrooem Internal Fleet')),
-                    'currency' => $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR')),
+                    'currency' => $currency,
                     'phone' => $pickupLocation['telephone'] ?? null,
                     'city' => $pickupLocation['address_city'] ?? null,
                     'country' => $pickupLocation['address_country'] ?? null,
@@ -42,16 +47,19 @@ class CarHireOfferBookingAdapter
                 is_array($baseProviderPayload['vendor_profile_data'] ?? null) ? $baseProviderPayload['vendor_profile_data'] : [],
                 [
                     'company_name' => $this->stringOrNull($supplier['name'] ?? ($vehicle['supplier_name'] ?? 'Vrooem Internal Fleet')),
-                    'currency' => $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR')),
+                    'currency' => $currency,
                     'phone' => $pickupLocation['telephone'] ?? null,
                     'city' => $pickupLocation['address_city'] ?? null,
                     'country' => $pickupLocation['address_country'] ?? null,
                 ]
             ),
-            'benefits' => $this->buildBenefits($quote),
+            'benefits' => $benefits,
             'addons' => $optionalExtras,
             'images' => $this->buildImages($vehicle),
         ]);
+        $adapterExtras = $this->buildAdapterExtras($providerPayload['extras'] ?? null, $optionalExtras);
+        $pickupOffice = is_array($providerPayload['pickup_office'] ?? null) ? $providerPayload['pickup_office'] : null;
+        $dropoffOffice = is_array($providerPayload['dropoff_office'] ?? null) ? $providerPayload['dropoff_office'] : null;
 
         return [
             'vehicle' => [
@@ -66,11 +74,51 @@ class CarHireOfferBookingAdapter
                 'display_name' => $this->stringOrNull($vehicle['display_name'] ?? null),
                 'category' => $this->stringOrNull($vehicle['category'] ?? null),
                 'image' => $this->stringOrNull($vehicle['image_url'] ?? null),
+                'currency' => $currency,
+                'total_price' => $totalPrice,
+                'price_per_day' => $pricePerDay,
+                'security_deposit' => $depositAmount,
+                'deposit' => $depositAmount,
+                'benefits' => $benefits,
+                'extras' => $adapterExtras,
+                'supplier_data' => is_array($providerPayload['supplier_data'] ?? null) ? $providerPayload['supplier_data'] : [],
+                'preview_value' => $this->floatOrNull($providerPayload['preview_value'] ?? $totalPrice),
+                'value_without_tax' => $this->floatOrNull($providerPayload['value_without_tax'] ?? null),
+                'tax_rate' => $this->floatOrNull($providerPayload['tax_rate'] ?? null),
+                'tax_value' => $this->floatOrNull($providerPayload['tax_value'] ?? null),
+                'extras_included' => $this->arrayValue($providerPayload['extras_included'] ?? null),
+                'extras_required' => $this->arrayValue($providerPayload['extras_required'] ?? null),
+                'extras_available' => $this->arrayValue($providerPayload['extras_available'] ?? null),
+                'pickup_station_name' => $this->stringOrNull($providerPayload['pickup_station_name'] ?? ($pickupOffice['name'] ?? null)),
+                'dropoff_station_name' => $this->stringOrNull($providerPayload['dropoff_station_name'] ?? ($dropoffOffice['name'] ?? null)),
+                'station' => $this->stringOrNull($providerPayload['station'] ?? ($providerPayload['pickup_station_name'] ?? ($pickupOffice['name'] ?? null))),
+                'pickup_address' => $this->stringOrNull($providerPayload['pickup_address'] ?? ($pickupOffice['address'] ?? null)),
+                'dropoff_address' => $this->stringOrNull($providerPayload['dropoff_address'] ?? ($dropoffOffice['address'] ?? null)),
+                'pickup_office' => $pickupOffice,
+                'dropoff_office' => $dropoffOffice,
+                'rate_name' => $this->stringOrNull($providerPayload['rate_name'] ?? null),
+                'payment_type' => $this->stringOrNull($providerPayload['payment_type'] ?? null),
+                'mileage' => $this->stringOrNull($providerPayload['mileage'] ?? null),
+                'fuel_policy' => $this->stringOrNull($providerPayload['fuel_policy'] ?? ($quote['policies']['fuel_policy'] ?? null)),
+                'cancellation' => is_array($providerPayload['cancellation'] ?? null) ? $providerPayload['cancellation'] : ($quote['policies']['cancellation'] ?? null),
+                'options' => $this->arrayValue($providerPayload['options'] ?? null),
+                'insurance_options' => $this->arrayValue($providerPayload['insurance_options'] ?? null),
+                'provider_gross_amount' => $this->floatOrNull($providerPayload['provider_gross_amount'] ?? null),
+                'provider_net_amount' => $this->floatOrNull($providerPayload['provider_net_amount'] ?? null),
+                'provider_vat_amount' => $this->floatOrNull($providerPayload['provider_vat_amount'] ?? null),
+                'gateway_vehicle_id' => $this->stringOrNull($providerPayload['gateway_vehicle_id'] ?? null),
+                'connector_id' => $this->stringOrNull($providerPayload['connector_id'] ?? null),
+                'provider_pickup_office_id' => $this->stringOrNull($providerPayload['provider_pickup_office_id'] ?? null),
+                'provider_dropoff_office_id' => $this->stringOrNull($providerPayload['provider_dropoff_office_id'] ?? null),
+                'pricelist_id' => $this->stringOrNull($providerPayload['pricelist_id'] ?? null),
+                'pricelist_code' => $this->stringOrNull($providerPayload['pricelist_code'] ?? null),
+                'price_date' => $this->stringOrNull($providerPayload['price_date'] ?? null),
+                'prepaid' => (bool) ($providerPayload['prepaid'] ?? false),
                 'pricing' => [
-                    'currency' => $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR')),
-                    'total_price' => $this->floatOrNull($pricing['total_price'] ?? null),
-                    'price_per_day' => $this->floatOrNull($pricing['price_per_day'] ?? null),
-                    'deposit_amount' => $this->floatOrNull($pricing['deposit_amount'] ?? null),
+                    'currency' => $currency,
+                    'total_price' => $totalPrice,
+                    'price_per_day' => $pricePerDay,
+                    'deposit_amount' => $depositAmount,
                     'deposit_currency' => $this->stringOrNull($pricing['deposit_currency'] ?? ($pricing['currency'] ?? $search['currency'] ?? 'EUR')),
                     'excess_amount' => $this->floatOrNull($pricing['excess_amount'] ?? null),
                     'excess_theft_amount' => $this->floatOrNull($pricing['excess_theft_amount'] ?? null),
@@ -257,6 +305,33 @@ class CarHireOfferBookingAdapter
         ]];
     }
 
+    private function buildAdapterExtras(mixed $providerExtras, array $fallbackExtras): array
+    {
+        if (is_array($providerExtras) && $providerExtras !== []) {
+            return array_values(array_filter(array_map(function ($extra, int $index) {
+                if (!is_array($extra)) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->stringOrNull($extra['id'] ?? $extra['extraID'] ?? $extra['extraId'] ?? $extra['extra_id'] ?? $extra['code'] ?? $index),
+                    'code' => $this->stringOrNull($extra['code'] ?? $extra['extraID'] ?? $extra['extraId'] ?? $extra['extra_id'] ?? $extra['id'] ?? $index),
+                    'name' => $this->stringOrNull($extra['name'] ?? $extra['extra'] ?? $extra['description'] ?? $extra['displayName'] ?? $extra['code'] ?? null),
+                    'description' => $this->stringOrNull($extra['description'] ?? $extra['displayDescription'] ?? null),
+                    'price' => $this->floatOrNull($extra['priceWithTax'] ?? $extra['valueWithTax'] ?? $extra['value'] ?? $extra['price'] ?? $extra['amount'] ?? null),
+                    'daily_rate' => $this->floatOrNull($extra['daily_rate'] ?? $extra['price_per_day'] ?? null),
+                    'total_for_booking' => $this->floatOrNull($extra['total_for_booking'] ?? $extra['total_price'] ?? $extra['price'] ?? null),
+                    'currency' => $this->stringOrNull($extra['currency'] ?? null),
+                    'required' => (bool) ($extra['required'] ?? ($extra['extra_Required'] ?? false)),
+                    'included' => (bool) ($extra['included'] ?? ($extra['extra_Included'] ?? false)),
+                    'max_quantity' => (int) ($extra['max_quantity'] ?? $extra['allow_quantity'] ?? $extra['numberAllowed'] ?? 1),
+                ];
+            }, $providerExtras, array_keys($providerExtras))));
+        }
+
+        return $fallbackExtras;
+    }
+
     private function resolveInitialPackage(array $products): string
     {
         foreach ($products as $product) {
@@ -308,5 +383,10 @@ class CarHireOfferBookingAdapter
         }
 
         return is_numeric($value) ? (float) $value : null;
+    }
+
+    private function arrayValue(mixed $value): array
+    {
+        return is_array($value) ? array_values($value) : [];
     }
 }
