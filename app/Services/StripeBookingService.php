@@ -20,6 +20,7 @@ use App\Services\BookingAmountService;
 use App\Services\Bookings\InternalBookingSnapshotService;
 use App\Services\CurrencyConversionService;
 use App\Services\VrooemGatewayService;
+use App\Jobs\SendAwinConversion;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -322,6 +323,11 @@ class StripeBookingService
 
             DB::commit();
             Log::info('StripeBookingService: Transaction committed successfully', ['booking_id' => $booking->id]);
+
+            $awcValue = $metadata->awc ?? null;
+            if (config('awin.enabled') && $awcValue) {
+                SendAwinConversion::dispatch($booking->id, $awcValue);
+            }
 
             // Create affiliate commission if QR scan tracking data exists
             $affiliateBusinessId = $metadata->affiliate_business_id ?? null;

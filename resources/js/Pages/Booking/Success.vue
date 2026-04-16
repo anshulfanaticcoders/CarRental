@@ -1,5 +1,6 @@
 <script setup>
 import { Link, usePage } from "@inertiajs/vue3";
+import { onMounted } from "vue";
 import { Vue3Lottie } from 'vue3-lottie';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
@@ -49,6 +50,22 @@ const totalAmount = parseFloat(booking.total_amount || 0);
 const discountPercentage = discountAmount > 0 && totalAmount > 0
   ? Math.round(discountAmount / (totalAmount + discountAmount) * 100)
   : 0;
+
+onMounted(() => {
+  if (booking && booking.booking_number) {
+    const amount = parseFloat(booking.total_amount || 0).toFixed(2);
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'purchase',
+      awinOrderRef: booking.booking_number,
+      awinAmount: amount,
+      awinCurrency: booking.booking_currency || 'EUR',
+      awinVoucher: booking.discount_code || '',
+      awinParts: 'DEFAULT:' + amount,
+      awinTest: '0',
+    });
+  }
+});
 </script>
 
 <template>
@@ -155,6 +172,16 @@ const discountPercentage = discountAmount > 0 && totalAmount > 0
               <strong>{{ booking.booking_currency }} {{ parseFloat(booking.pending_amount).toFixed(2) }}</strong> remaining to be paid at pickup.
             </p>
           </div>
+
+          <!-- Awin fallback tracking pixel -->
+          <img
+            v-if="booking && booking.booking_number"
+            :src="`https://www.awin1.com/sread.img?tt=ns&tv=2&merchant=126167&amount=${parseFloat(booking.total_amount || 0).toFixed(2)}&ch=aw&parts=DEFAULT:${parseFloat(booking.total_amount || 0).toFixed(2)}&ref=${encodeURIComponent(booking.booking_number)}&cr=${booking.booking_currency || 'EUR'}&vc=${encodeURIComponent(booking.discount_code || '')}&testmode=0`"
+            width="0"
+            height="0"
+            style="display: none;"
+            alt=""
+          />
 
           <!-- Action Buttons -->
           <div class="flex gap-3 pt-1">

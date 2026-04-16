@@ -880,6 +880,7 @@ class StripeCheckoutController extends Controller
                 'booking_total_display' => $bookingTotalDisplay != $totalAmount ? (string) $bookingTotalDisplay : null,
                 'affiliate_business_id' => session('affiliate_data.business_id'),
                 'affiliate_scan_id' => session('affiliate_data.customer_scan_id'),
+                'awc' => $request->cookie('awc'),
             ];
 
             $metadata = $this->compactStripeMetadata($metadata);

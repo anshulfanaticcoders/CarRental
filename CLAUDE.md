@@ -17,6 +17,32 @@
 
 ---
 
+## COMMUNICATION STYLE: CAVEMAN MODE (ALWAYS ACTIVE)
+
+> Caveman mode is **always on** at `lite` level unless user says "stop caveman" or "normal mode".
+
+**Rules:**
+- Drop filler words: "just", "really", "basically", "actually", "simply"
+- Drop pleasantries: "Sure!", "Certainly!", "I'd be happy to", "Of course"
+- Drop hedging: "I think", "It seems like", "It might be"
+- Keep articles (a/an/the) and full sentences at `lite` level
+- Technical terms stay exact. Code blocks unchanged. Error messages quoted exact.
+- Pattern: `[thing] [action] [reason]. [next step].`
+- Security warnings, irreversible action confirmations: write in full clarity, then resume caveman.
+
+**Levels** (switch with `/caveman lite|full|ultra`):
+| Level | Behavior |
+|-------|----------|
+| `lite` (default) | No filler/hedging. Full sentences. Professional but tight. |
+| `full` | Fragments OK. Drop articles too. |
+| `ultra` | Maximum compression. Telegraphic style. |
+
+**Examples:**
+- BAD: "Sure! I'd be happy to help you with that. The issue you're experiencing is likely caused by..."
+- GOOD: "Bug in auth middleware. Token expiry check uses `<` not `<=`. Fix:"
+
+---
+
 ## STEP-BY-STEP WORKFLOW (Follow in Order)
 
 Every task goes through these phases. For each phase, invoke the skill, follow its instructions, then move to the next phase.
@@ -199,6 +225,18 @@ Skill: superpowers:verification-before-completion
 - Evidence before assertions - never say "done" without proof
 - This is the FINAL gate before declaring success
 
+**Step 12b - Codex Second Opinion (For critical/complex code)**
+```
+Skill: codex
+```
+- Uses OpenAI GPT-5.2 as an independent second model to review your work
+- A different AI architecture catches different blind spots than Claude
+- **MANDATORY for:** payment/Stripe flows, security-sensitive code, complex algorithms, database migrations with data loss risk, multi-service changes
+- **RECOMMENDED for:** new features touching 5+ files, refactors of core business logic, API contract changes
+- **SKIP for:** simple bug fixes, styling changes, config updates, single-file edits
+- How: delegate the review via `codex` skill — it runs Codex CLI and returns findings
+- Act on any issues found before proceeding to commit
+
 **Step 13 - Git Commit (Only when user asks)**
 - Do NOT commit automatically - wait for user to request it
 - Use conventional commit format: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`
@@ -225,6 +263,7 @@ These show which steps are MANDATORY (M) vs SKIP-IF-NOT-APPLICABLE (S) for commo
 | 10. Run tests | M |
 | 11. Browser test | M (if UI) / S (if backend-only) |
 | 12. superpowers:verification-before-completion | M |
+| 12b. Codex second opinion | S (M if 5+ files or core logic) |
 | 13. Git commit | When user asks |
 
 ### Bug Fix
@@ -276,6 +315,7 @@ These show which steps are MANDATORY (M) vs SKIP-IF-NOT-APPLICABLE (S) for commo
 | 10. pytest | M |
 | 11. Browser test | S |
 | 12. superpowers:verification-before-completion | M |
+| 12b. Codex second opinion | S (M if API contracts or multi-service) |
 | 13. Git commit | When user asks |
 
 ### Database Migration
@@ -328,6 +368,7 @@ These show which steps are MANDATORY (M) vs SKIP-IF-NOT-APPLICABLE (S) for commo
 | 10. Run tests | M |
 | 11. Browser test | M |
 | 12. superpowers:verification-before-completion | M |
+| 12b. Codex second opinion | M (ALWAYS for payment code) |
 | 13. Git commit | When user asks |
 
 ---
@@ -506,7 +547,7 @@ git log --oneline -10
 ### Utility Skills
 | Skill | When to Use |
 |---|---|
-| `codex` | Second model verification (GPT-5.2) |
+| `codex` | GPT-5.2 second opinion — M for payments/security, S for complex features (Step 12b) |
 | `find-skills` | Discover new skills (`npx skills find [query]`) |
 | `superpowers:writing-skills` | Create custom skills with Skill Creator 2.0 |
 | `superpowers-lab:mcp-cli` | Use MCP servers on-demand |
@@ -526,6 +567,7 @@ git log --oneline -10
 | `error-diagnostics` | latest | Error pattern analysis |
 | `git-pr-workflows` | latest | Git & PR workflows |
 | `backend-development` | latest | Backend architecture patterns |
+| `codex` | 1.0.3 | GPT-5.2 second-model review via Codex CLI |
 | `php-lsp` | 1.0.0 | PHP semantic code intelligence |
 | `typescript-lsp` | 1.0.0 | TypeScript semantic code intelligence |
 

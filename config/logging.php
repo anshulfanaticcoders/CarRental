@@ -112,6 +112,13 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'awin' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/awin.log'),
+            'level' => 'debug',
+            'days' => 30,
+        ],
+
         'errorlog' => [
             'driver' => 'errorlog',
             'level' => env('LOG_LEVEL', 'debug'),
