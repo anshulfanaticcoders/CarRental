@@ -6,6 +6,11 @@ export const buildSearchCardSelection = ({
     baseTotal = 0,
 } = {}) => {
     const source = `${vehicle?.source ?? ''}`.trim().toLowerCase();
+    const providerProducts = Array.isArray(vehicle?.products) ? vehicle.products : [];
+    const selectedProviderProduct = providerProducts.find((product) => product?.type === selectedPackage);
+    const fallbackProviderPackage = selectedProviderProduct?.type
+        || providerProducts.find((product) => `${product?.type ?? ''}`.trim() !== '')?.type
+        || 'BAS';
 
     if (source === 'locauto_rent') {
         return {
@@ -46,6 +51,6 @@ export const buildSearchCardSelection = ({
 
     return {
         vehicle,
-        package: 'BAS',
+        package: fallbackProviderPackage,
     };
 };

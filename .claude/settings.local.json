@@ -52,7 +52,10 @@
       "Bash(PYTHONPATH=/mnt/c/laragon/www/vrooem-gateway /tmp/testenv/bin/python3.11 -m pytest -v)",
       "Bash(agent-browser:*)",
       "Bash(grep:*)",
-      "Bash(find /mnt/c/laragon/www/vrooem-gateway -type f -name \"*.py\" ! -path \"*/.venv/*\" ! -path \"*/.codex-venv/*\" ! -path \"*/__pycache__/*\" ! -path \"*/.git/*\" -exec wc -l {} +)"
+      "Bash(find /mnt/c/laragon/www/vrooem-gateway -type f -name \"*.py\" ! -path \"*/.venv/*\" ! -path \"*/.codex-venv/*\" ! -path \"*/__pycache__/*\" ! -path \"*/.git/*\" -exec wc -l {} +)",
+      "WebFetch(domain:help.awin.com)",
+      "mcp__exa__web_fetch_exa",
+      "WebFetch(domain:advertiser-success.awin.com)"
     ]
   },
   "enableAllProjectMcpServers": true,

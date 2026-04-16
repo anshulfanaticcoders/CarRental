@@ -60,3 +60,51 @@ test('search card selection maps internal vendor plans', () => {
         vendor_plan_id: 9,
     });
 });
+
+test('search card selection falls back to the first provider product when BAS is invalid', () => {
+    assert.deepEqual(buildSearchCardSelection({
+        vehicle: {
+            source: 'easirent',
+            id: 'v6',
+            products: [
+                { type: 'POA', name: 'Pay at Pick-up' },
+                { type: 'PAY_NOW', name: 'Pay Now' },
+            ],
+        },
+        selectedPackage: 'BAS',
+    }), {
+        vehicle: {
+            source: 'easirent',
+            id: 'v6',
+            products: [
+                { type: 'POA', name: 'Pay at Pick-up' },
+                { type: 'PAY_NOW', name: 'Pay Now' },
+            ],
+        },
+        package: 'POA',
+    });
+});
+
+test('search card selection preserves a valid non-standard provider package', () => {
+    assert.deepEqual(buildSearchCardSelection({
+        vehicle: {
+            source: 'easirent',
+            id: 'v7',
+            products: [
+                { type: 'POA', name: 'Pay at Pick-up' },
+                { type: 'PAY_NOW', name: 'Pay Now' },
+            ],
+        },
+        selectedPackage: 'PAY_NOW',
+    }), {
+        vehicle: {
+            source: 'easirent',
+            id: 'v7',
+            products: [
+                { type: 'POA', name: 'Pay at Pick-up' },
+                { type: 'PAY_NOW', name: 'Pay Now' },
+            ],
+        },
+        package: 'PAY_NOW',
+    });
+});
