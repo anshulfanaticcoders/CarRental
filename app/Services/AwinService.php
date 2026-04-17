@@ -20,7 +20,7 @@ class AwinService
             return ['success' => false, 'reason' => 'api_key_missing'];
         }
 
-        $amount = round((float) $booking->total_amount, 2);
+        $amount = number_format((float) $booking->total_amount, 2, '.', '');
         $currency = $booking->booking_currency ?: 'EUR';
 
         $order = [
