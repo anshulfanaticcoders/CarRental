@@ -11,34 +11,11 @@ class AwinService
     public function sendConversion(Booking $booking, ?string $awc = null): array
     {
         $advertiserId = config('awin.advertiser_id');
-        $apiKey = config('awin.api_key');
-
-        if (!$apiKey) {
-            Log::channel('awin')->warning('Awin: API key not configured, skipping S2S', [
-                'booking_id' => $booking->id,
-            ]);
-            return ['success' => false, 'reason' => 'api_key_missing'];
-        }
-
-        $amount = round((float) $booking->total_amount, 2);
+        $amount = number_format((float) $booking->total_amount, 2, '.', '');
         $currency = $booking->booking_currency ?: 'EUR';
 
-        $order = [
-            'orderReference' => $booking->booking_number,
-            'amount' => $amount,
-            'currency' => $currency,
-            'channel' => 'aw',
-            'isTest' => config('awin.test_mode', true),
-            'commissionGroups' => [
-                [
-                    'code' => 'DEFAULT',
-                    'amount' => $amount,
-                ],
-            ],
-        ];
-
         if ($awc) {
-            $order['awc'] = $awc;
+            $awc = trim($awc);
         }
 
         $voucher = $booking->promo_code ?? null;
@@ -49,30 +26,40 @@ class AwinService
             }
         }
         if ($voucher) {
-            $order['voucher'] = $voucher;
+            $voucher = (string) $voucher;
         }
 
-        $order['custom'] = [
-            '1' => $booking->provider_source ?? 'internal',
+        $query = [
+            'tt' => 'ss',
+            'tv' => 2,
+            'merchant' => $advertiserId,
+            'amount' => $amount,
+            'ch' => 'aw',
+            'parts' => 'DEFAULT:' . $amount,
+            'vc' => $voucher ?? '',
+            'cr' => $currency,
+            'ref' => $booking->booking_number,
+            'testmode' => config('awin.test_mode', true) ? '1' : '0',
+            'p1' => $booking->provider_source ?? 'internal',
         ];
 
-        $url = config('awin.api_endpoint') . $advertiserId . '/orders';
+        if ($awc) {
+            $query['cks'] = $awc;
+        }
+
+        $url = 'https://www.awin1.com/sread.php?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
 
         Log::channel('awin')->info('Awin S2S: Sending conversion', [
             'booking_id' => $booking->id,
             'booking_number' => $booking->booking_number,
             'url' => $url,
-            'payload' => $order,
+            'query' => $query,
         ]);
 
         try {
             $response = Http::withHeaders([
-                'x-api-key' => $apiKey,
-                'Content-Type' => 'application/json',
-            ])->timeout(15)->withBody(
-                json_encode(['orders' => [$order]], JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION),
-                'application/json'
-            )->post($url);
+                'Referer' => rtrim((string) config('app.url', ''), '/') . '/',
+            ])->timeout(15)->get($url);
 
             $status = $response->status();
             $body = $response->json() ?? $response->body();

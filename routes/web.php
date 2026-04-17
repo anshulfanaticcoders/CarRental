@@ -878,6 +878,13 @@ Route::get('/test-business-debug/{token}', function ($token) {
     }
 });
 
+// llms.txt for AI tools (ChatGPT, Gemini, Perplexity)
+Route::get('/llms.txt', function () {
+    return response()->file(public_path('llms.txt'), [
+        'Content-Type' => 'text/plain',
+    ]);
+})->name('llms');
+
 // Sitemap route (must be before fallback)
 Route::get('/sitemap.xml', function () {
     $sitemapPath = public_path('sitemap.xml');
