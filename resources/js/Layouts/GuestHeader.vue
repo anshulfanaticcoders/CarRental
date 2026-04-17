@@ -93,11 +93,23 @@ const callLink = computed(() => {
     return `tel:${cleaned}`;
 });
 
-const changeLanguage = (newLocale) => {
+const resolveLanguageTargetUrl = (newLocale) => {
     const currentUrl = new URL(window.location.href);
     const pathParts = currentUrl.pathname.split('/');
     pathParts[1] = newLocale;
-    router.visit(pathParts.join('/') + currentUrl.search);
+    return pathParts.join('/') + currentUrl.search;
+};
+
+const changeLanguage = async (newLocale) => {
+    const targetUrl = resolveLanguageTargetUrl(newLocale);
+
+    try {
+        await axios.post(route('language.change'), { locale: newLocale });
+    } catch (error) {
+        console.error('Error persisting language preference:', error);
+    }
+
+    router.visit(targetUrl);
 };
 
 // Currency names mapping for better display

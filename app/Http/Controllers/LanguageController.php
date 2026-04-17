@@ -18,10 +18,11 @@ class LanguageController extends Controller
         $locale = $request->locale;
         App::setLocale($locale);
         Session::put('locale', $locale);
+        $preferredLocaleCookie = cookie()->forever('preferred_locale', $locale);
 
         // AJAX calls get JSON, normal requests get redirect
         if ($request->wantsJson() || $request->ajax()) {
-            return response()->json(['locale' => $locale]);
+            return response()->json(['locale' => $locale])->cookie($preferredLocaleCookie);
         }
 
         $previousUrl = url()->previous();
@@ -34,6 +35,6 @@ class LanguageController extends Controller
             array_unshift($segments, $locale);
         }
 
-        return redirect(implode('/', $segments));
+        return redirect(implode('/', $segments))->cookie($preferredLocaleCookie);
     }
 }

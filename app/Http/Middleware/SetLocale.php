@@ -18,6 +18,7 @@ class SetLocale
             abort(404);
         }
 
+        session(['locale' => $locale]);
         App::setLocale($locale);
         URL::defaults(['locale' => $locale]);
 

@@ -16,8 +16,6 @@ import flagNl from '../../assets/flag-nl.svg';
 import flagEs from '../../assets/flag-es.svg';
 import flagAr from '../../assets/flag-ar.svg';
 import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
-import { getGeoPreferredLocale, toCountryCodeSet } from '@/utils/geoLanguage';
-
 import FloatingSocialIcons from '@/Components/FloatingSocialIcons.vue';
 
 // Get page properties
@@ -65,8 +63,6 @@ onMounted(async () => {
     fetchNotifications();
   }
   fetchContactInfo();
-  await loadCountryCodeSet();
-  syncLanguageWithCountry();
 
   document.addEventListener('click', closeNotificationDropdownOnOutsideClick);
 });
@@ -316,35 +312,7 @@ const availableLocales = {
   ar: { name: 'Ar', flag: flagAr },
 };
 
-const AUTO_LANGUAGE_COUNTRY_KEY = 'auto_language_country_code';
-const normalizedCountryCode = computed(() => String(page.props.country || '').trim().toUpperCase());
-const supportedLocaleCodes = Object.keys(availableLocales);
-const countryCodeSet = ref(new Set());
-const preferredGeoLocale = computed(() => getGeoPreferredLocale(
-  normalizedCountryCode.value,
-  supportedLocaleCodes,
-  countryCodeSet.value,
-));
-
-const loadCountryCodeSet = async () => {
-  if (countryCodeSet.value.size > 0 || typeof window === 'undefined') {
-    return;
-  }
-
-  try {
-    const response = await fetch('/countries.json', { cache: 'force-cache' });
-    if (!response.ok) {
-      return;
-    }
-
-    const countries = await response.json();
-    countryCodeSet.value = toCountryCodeSet(countries);
-  } catch (error) {
-    // Keep fallback behavior if countries.json loading fails
-  }
-};
-
-const performLanguageNavigation = (newLocale) => {
+const resolveLanguageTargetUrl = (newLocale) => {
   const currentUrl = new URL(window.location.href);
   const pathParts = currentUrl.pathname.split('/');
 
@@ -380,48 +348,23 @@ const performLanguageNavigation = (newLocale) => {
     targetUrl = pathParts.join('/') + currentUrl.search;
   }
 
-  // Navigate immediately via Inertia — session is saved by the middleware on the target page
-  router.visit(targetUrl);
+  return targetUrl;
 };
 
-const changeLanguage = (newLocale, options = {}) => {
-  const { auto = false } = options;
+const changeLanguage = async (newLocale) => {
   if (!availableLocales[newLocale] || currentLocale.value === newLocale) {
     return;
   }
 
-  if (typeof window !== 'undefined' && normalizedCountryCode.value && !auto) {
-    sessionStorage.setItem(AUTO_LANGUAGE_COUNTRY_KEY, normalizedCountryCode.value);
+  const targetUrl = resolveLanguageTargetUrl(newLocale);
+
+  try {
+    await axios.post(route('language.change'), { locale: newLocale });
+  } catch (error) {
+    console.error('Error persisting language preference:', error);
   }
 
-  performLanguageNavigation(newLocale);
-};
-
-const syncLanguageWithCountry = () => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  const countryCode = normalizedCountryCode.value;
-  if (!countryCode) {
-    return;
-  }
-
-  const targetLocale = preferredGeoLocale.value;
-  if (!availableLocales[targetLocale]) {
-    return;
-  }
-
-  const lastAutoCountry = sessionStorage.getItem(AUTO_LANGUAGE_COUNTRY_KEY);
-  if (lastAutoCountry === countryCode) {
-    return;
-  }
-
-  sessionStorage.setItem(AUTO_LANGUAGE_COUNTRY_KEY, countryCode);
-
-  if (currentLocale.value !== targetLocale) {
-    changeLanguage(targetLocale, { auto: true });
-  }
+  router.visit(targetUrl);
 };
 
 const getTranslatedSlug = (pageSlug) => {
@@ -529,11 +472,6 @@ const toggleMobileNav = () => {
 watch(() => url.value, () => {
   showingNavigationDropdown.value = false;
   showingAccountDropdown.value = false;
-});
-
-watch(() => page.props.country, async () => {
-  await loadCountryCodeSet();
-  syncLanguageWithCountry();
 });
 
 watch(() => showingNavigationDropdown.value, (isOpen) => {

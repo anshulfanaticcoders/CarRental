@@ -75,6 +75,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
+use App\Services\LocalePreferenceResolver;
 use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
 use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
 use App\Http\Controllers\Affiliate\AffiliateQrCodeController; // Import the AffiliateQrCodeController
@@ -121,7 +122,7 @@ Route::get('/force-currency-detection', function () {
 });
 
 Route::get('/', function () {
-    $locale = session('locale', config('app.fallback_locale', 'en'));
+    $locale = app(LocalePreferenceResolver::class)->resolveRootLocale(request());
     return redirect($locale);
 });
 
