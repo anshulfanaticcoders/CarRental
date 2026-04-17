@@ -325,7 +325,13 @@ class StripeBookingService
             Log::info('StripeBookingService: Transaction committed successfully', ['booking_id' => $booking->id]);
 
             $awcValue = $metadata->awc ?? null;
-            if (config('awin.enabled') && $awcValue) {
+            if (config('awin.enabled')) {
+                Log::channel('awin')->info('StripeBookingService: Dispatching Awin conversion', [
+                    'booking_id' => $booking->id,
+                    'booking_number' => $booking->booking_number,
+                    'has_awc' => !empty($awcValue),
+                ]);
+
                 SendAwinConversion::dispatch($booking->id, $awcValue);
             }
 
