@@ -5,6 +5,9 @@ namespace App\Services;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Stevebauman\Location\Facades\Location;
+use Stevebauman\Location\Drivers\IpInfo;
+use Stevebauman\Location\LocationRequest;
+use Stevebauman\Location\Position;
 use Exception;
 
 class CurrencyDetectionService
@@ -37,7 +40,8 @@ class CurrencyDetectionService
                 return Cache::get($cacheKey);
             }
 
-            $location = Location::get($ip);
+            $resolvedLocation = $this->resolveLocation($ip);
+            $location = $resolvedLocation['location'];
 
             if ($location && $location->countryCode) {
                 $countryCode = strtoupper($location->countryCode);
@@ -49,7 +53,7 @@ class CurrencyDetectionService
                     'country_code' => $countryCode,
                     'country' => $location->countryName ?? null,
                     'city' => $location->cityName ?? null,
-                    'detection_method' => 'maxmind_local',
+                    'detection_method' => $resolvedLocation['method'],
                     'confidence' => 'high',
                 ];
 
@@ -123,6 +127,55 @@ class CurrencyDetectionService
         $ip = $ipAddress ?? request()->ip();
         if ($ip) {
             Cache::forget("currency_detection_{$ip}");
+        }
+    }
+
+    private function resolveLocation(string $ip): array
+    {
+        $location = Location::get($ip);
+
+        if ($location && $location->countryCode) {
+            return [
+                'location' => $location,
+                'method' => 'maxmind_or_configured_fallback',
+            ];
+        }
+
+        $location = $this->resolveLocationWithIpInfo($ip);
+
+        if ($location && $location->countryCode) {
+            return [
+                'location' => $location,
+                'method' => 'ipinfo',
+            ];
+        }
+
+        return [
+            'location' => false,
+            'method' => 'fallback',
+        ];
+    }
+
+    /**
+     * @return Position|bool
+     */
+    private function resolveLocationWithIpInfo(string $ip)
+    {
+        if (!config('location.ipinfo.token')) {
+            return false;
+        }
+
+        try {
+            $request = LocationRequest::createFrom(request())->setIp($ip);
+
+            return app(IpInfo::class)->get($request);
+        } catch (Exception $e) {
+            Log::warning('IpInfo detection failed', [
+                'error' => $e->getMessage(),
+                'ip' => $ip,
+            ]);
+
+            return false;
         }
     }
 

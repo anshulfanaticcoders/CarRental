@@ -55,7 +55,8 @@
       "Bash(find /mnt/c/laragon/www/vrooem-gateway -type f -name \"*.py\" ! -path \"*/.venv/*\" ! -path \"*/.codex-venv/*\" ! -path \"*/__pycache__/*\" ! -path \"*/.git/*\" -exec wc -l {} +)",
       "WebFetch(domain:help.awin.com)",
       "mcp__exa__web_fetch_exa",
-      "WebFetch(domain:advertiser-success.awin.com)"
+      "WebFetch(domain:advertiser-success.awin.com)",
+      "WebFetch(domain:www.trabber.us)"
     ]
   },
   "enableAllProjectMcpServers": true,

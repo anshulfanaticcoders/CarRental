@@ -2,31 +2,32 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\CurrencyDetectionService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Stevebauman\Location\Facades\Location;
 
 class SetCurrency
 {
+    private CurrencyDetectionService $currencyDetectionService;
+
+    public function __construct(CurrencyDetectionService $currencyDetectionService)
+    {
+        $this->currencyDetectionService = $currencyDetectionService;
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
         try {
             $currentCurrency = session('currency');
             $lastManualChangeTime = session('currency_manual_change_time', 0);
             $currentTime = time();
-            $currentIP = $request->ip();
+            $currentIP = $this->resolveRealIp($request);
             $lastDetectedIP = session('last_detected_ip', '');
 
-            $location = Location::get();
-
-            $detectedCurrency = 'USD';
-            $detectedCountry = 'US';
-
-            if ($location && $location->countryCode) {
-                $detectedCountry = $location->countryCode;
-                $detectedCurrency = $this->currencyForCountry($detectedCountry);
-            }
+            $detection = $this->currencyDetectionService->detectCurrencyByIp($currentIP);
+            $detectedCurrency = $detection['currency'] ?? ($currentCurrency ?: 'USD');
+            $detectedCountry = $detection['success'] ? strtoupper((string) ($detection['country_code'] ?? '')) : '';
 
             $shouldUpdateCurrency = false;
 
@@ -40,7 +41,9 @@ class SetCurrency
                 $shouldUpdateCurrency = true;
             }
 
-            session(['country' => strtolower($detectedCountry)]);
+            if ($detectedCountry !== '') {
+                session(['country' => strtolower($detectedCountry)]);
+            }
 
             if ($shouldUpdateCurrency && $currentCurrency !== $detectedCurrency) {
                 session(['currency' => $detectedCurrency]);
@@ -61,6 +64,37 @@ class SetCurrency
         }
 
         return $next($request);
+    }
+
+    private function resolveRealIp(Request $request): string
+    {
+        $ipKeys = [
+            'HTTP_CF_CONNECTING_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+            'HTTP_X_FORWARDED',
+            'HTTP_X_CLUSTER_CLIENT_IP',
+            'HTTP_CLIENT_IP',
+            'REMOTE_ADDR',
+        ];
+
+        foreach ($ipKeys as $key) {
+            $rawIp = $request->server($key);
+
+            if (!$rawIp) {
+                continue;
+            }
+
+            foreach (explode(',', $rawIp) as $candidateIp) {
+                $candidateIp = trim($candidateIp);
+
+                if (filter_var($candidateIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                    return $candidateIp;
+                }
+            }
+        }
+
+        return (string) $request->ip();
     }
 
     private function currencyForCountry(string $countryCode): string

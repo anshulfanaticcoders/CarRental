@@ -1,6 +1,6 @@
 # CarRental Project - Mandatory Development Workflow
 
-> **Last Updated:** 2026-03-19
+> **Last Updated:** 2026-04-17
 > **Project:** Laravel 10 + Vue.js 3 Car Rental Platform + Vrooem Gateway (FastAPI/Python)
 > **Enforcement Level:** MANDATORY - Every step MUST be followed. No rationalizing, no skipping.
 
@@ -14,6 +14,16 @@
 4. **Skills MUST be invoked via the `Skill` tool**, not remembered from previous conversations.
 5. **Each step produces visible output** - announce what you're doing before each skill invocation.
 6. **If a step doesn't apply, say "Skipping step N: [reason]"** - never silently skip.
+7. **NEVER run destructive or risky commands without asking the user first.** This includes:
+   - `git commit`, `git push`, `git reset`, `git checkout --`, `git clean`, `git rebase`, `git merge`
+   - `git branch -D`, `git push --force`, `git stash drop`
+   - `php artisan migrate:fresh`, `php artisan migrate:rollback`, `php artisan db:wipe`
+   - `rm`, `rm -rf`, deleting any files or directories
+   - `composer remove`, `npm uninstall`, dropping packages
+   - `docker-compose down -v` (destroys volumes/data)
+   - Any command that modifies database data in production
+   - Any command that overwrites uncommitted changes
+   - **When in doubt, ASK.** It is always safer to ask than to assume.
 
 ---
 
@@ -128,6 +138,15 @@ Invoke the MATCHING skill based on the file type you're about to edit:
 | Vue Router changes | `vue-router-best-practices` | Navigation guards, route params |
 | Pinia store changes | `vue-pinia-best-practices` | State management patterns |
 | Vue testing | `vue-testing-best-practices` | Vitest, Vue Test Utils |
+| Jobs / Queue workers | `laravel-specialist` | Retries, failures, backoff, rate limiting |
+| Events / Listeners | `laravel-specialist` | Event-driven patterns, async dispatch |
+| Console Commands / Scheduling | `laravel-specialist` | Artisan commands, `schedule()` method |
+| Observers | `laravel-specialist` | Model lifecycle hooks, side effects |
+| Middleware | `laravel-specialist` + `security-best-practices` | Request pipeline, auth, rate limiting |
+| Broadcasting / Channels | `laravel-specialist` | Pusher, presence channels, WebSocket |
+| Skyscanner services | `backend-development:api-design-principles` + `laravel-specialist` | External API integration, response mapping |
+| Affiliate system | `laravel-specialist` | Commission tracking, payouts, QR codes |
+| Sitemap generation | `laravel-specialist` + `seo-audit` | Spatie Sitemap, crawl rules |
 
 - If editing MULTIPLE file types, invoke ALL matching skills
 - If no domain skill matches, proceed without one
@@ -159,6 +178,16 @@ Skill: error-handling-patterns
 - Review all code changes for: edge cases, error messages, graceful failures
 - Ensure proper try/catch, validation, and user-facing error messages
 - Fix any issues found before proceeding
+
+**Step 8a - Code Simplification Pass**
+```
+Agent: code-simplifier (subagent_type via Agent tool)
+```
+- YOU MUST delegate to this agent AFTER writing or editing non-trivial code (>20 lines changed, OR any new function/class/component)
+- Agent reviews only code changed in the current session and **auto-applies** refinements that preserve functionality
+- Expected fixes: reduce nesting, remove redundant abstractions, eliminate nested ternaries, consolidate related logic
+- **Preserves behavior** — rejects any change that alters what the code does
+- Skip for: typo fixes, config tweaks, single-line edits, pure data additions (seeds, translations, fixtures)
 
 **Step 8b - Performance Review (for performance-sensitive code)**
 ```
@@ -259,6 +288,7 @@ These show which steps are MANDATORY (M) vs SKIP-IF-NOT-APPLICABLE (S) for commo
 | 6. Domain skill(s) | M |
 | 7. Write code | M |
 | 8. error-handling-patterns | M |
+| 8a. code-simplifier (agent) | M |
 | 9. Lint & type-check | M |
 | 10. Run tests | M |
 | 11. Browser test | M (if UI) / S (if backend-only) |
@@ -277,10 +307,12 @@ These show which steps are MANDATORY (M) vs SKIP-IF-NOT-APPLICABLE (S) for commo
 | 6. Domain skill(s) | M |
 | 7. Write fix | M |
 | 8. error-handling-patterns | M |
+| 8a. code-simplifier (agent) | M |
 | 9. Lint & type-check | M |
 | 10. Run tests | M |
 | 11. Browser test | S (only if UI bug) |
 | 12. superpowers:verification-before-completion | M |
+| 12b. Codex second opinion | S (M if payment/security/data-loss bug) |
 | 13. Git commit | When user asks |
 
 ### Vue Component
@@ -294,6 +326,7 @@ These show which steps are MANDATORY (M) vs SKIP-IF-NOT-APPLICABLE (S) for commo
 | 6. vue-best-practices + antfu/vue + frontend-design | M |
 | 7. Write component | M |
 | 8. error-handling-patterns | M |
+| 8a. code-simplifier (agent) | M |
 | 9. npm run type-check && npm run lint | M |
 | 10. Run tests | M |
 | 11. Browser test (agent-browser) | M |
@@ -311,6 +344,7 @@ These show which steps are MANDATORY (M) vs SKIP-IF-NOT-APPLICABLE (S) for commo
 | 6. fastapi-templates + redis-best-practices + supabase-postgres-best-practices | M (relevant ones) |
 | 7. Write code | M |
 | 8. error-handling-patterns | M |
+| 8a. code-simplifier (agent) | M |
 | 9. ruff check + ruff format | M |
 | 10. pytest | M |
 | 11. Browser test | S |
@@ -329,10 +363,12 @@ These show which steps are MANDATORY (M) vs SKIP-IF-NOT-APPLICABLE (S) for commo
 | 6. mysql + laravel-specialist | M |
 | 7. Write migration | M |
 | 8. error-handling-patterns | S |
+| 8a. code-simplifier (agent) | S |
 | 9. php artisan migrate --pretend | M |
 | 10. php artisan test | M |
 | 11. Browser test | S |
 | 12. superpowers:verification-before-completion | M |
+| 12b. Codex second opinion | S (M if dropping columns, renaming tables, or data loss risk) |
 | 13. Git commit | When user asks |
 
 ### SEO Work
@@ -364,11 +400,143 @@ These show which steps are MANDATORY (M) vs SKIP-IF-NOT-APPLICABLE (S) for commo
 | 6b. security-best-practices | M (ALWAYS for payment code) |
 | 7. Write code | M |
 | 8. error-handling-patterns | M |
+| 8a. code-simplifier (agent) | M |
 | 9. Lint & type-check | M |
 | 10. Run tests | M |
 | 11. Browser test | M |
 | 12. superpowers:verification-before-completion | M |
 | 12b. Codex second opinion | M (ALWAYS for payment code) |
+| 13. Git commit | When user asks |
+
+### Provider Integration (Gateway + Laravel)
+| Step | Status |
+|---|---|
+| 1. prompt-engineering-patterns | M |
+| 2. Research: read existing adapter in `vrooem-gateway/app/adapters/`, provider API docs in `docs/apidata/`, and `config/suppliers/*.yaml` | M |
+| 3. superpowers:brainstorming | M |
+| 4. superpowers:writing-plans | M (always multi-file: adapter + config + Laravel service + env vars) |
+| 5. karpathy-guidelines | M |
+| 6. `fastapi-templates` + `laravel-specialist` + `backend-development:api-design-principles` | M |
+| 6b. security-best-practices | M (external API calls, credentials handling) |
+| 7. Write code (adapter → YAML config → Laravel service → .env.example) | M |
+| 8. error-handling-patterns | M (HTTP timeouts, rate limits, malformed responses) |
+| 8a. code-simplifier (agent) | M |
+| 9. ruff check + ruff format (gateway) + ./vendor/bin/pint --test (Laravel) | M |
+| 10. pytest (gateway) + php artisan test (Laravel) | M |
+| 11. Browser test | S |
+| 12. superpowers:verification-before-completion | M |
+| 12b. Codex second opinion | M (external API + money handling) |
+| 13. Git commit | When user asks |
+
+### Notification Changes
+| Step | Status |
+|---|---|
+| 1. prompt-engineering-patterns | M |
+| 2. Research: read existing notification in same subdirectory, check `FormatsBookingAmounts` trait | M |
+| 3. Brainstorming | S (M if new notification type) |
+| 4. Writing plan | S |
+| 5. karpathy-guidelines | M |
+| 6. `laravel-specialist` + `mailtrap-laravel` | M |
+| 7. Write notification class (must include `title`, `role` fields for DB channel filtering) | M |
+| 8. error-handling-patterns | M |
+| 8a. code-simplifier (agent) | S |
+| 9. ./vendor/bin/pint --test | M |
+| 10. php artisan test | M |
+| 11. Browser test | S (M if testing email template appearance) |
+| 12. superpowers:verification-before-completion | M |
+| 13. Git commit | When user asks |
+
+### Skyscanner Integration
+| Step | Status |
+|---|---|
+| 1. prompt-engineering-patterns | M |
+| 2. Research: read `app/Services/Skyscanner/`, `routes/skyscanner.php`, `docs/skyscanner/` | M |
+| 3. superpowers:brainstorming | M |
+| 4. superpowers:writing-plans | M (if multi-service change) |
+| 5. karpathy-guidelines | M |
+| 6. `laravel-specialist` + `backend-development:api-design-principles` | M |
+| 7. Write code | M |
+| 8. error-handling-patterns | M (Skyscanner has strict API contract) |
+| 8a. code-simplifier (agent) | S |
+| 9. ./vendor/bin/pint --test | M |
+| 10. php artisan test | M |
+| 11. Browser test | S |
+| 12. superpowers:verification-before-completion | M |
+| 12b. Codex second opinion | S (M if changing API response format) |
+| 13. Git commit | When user asks |
+
+### Admin Dashboard Pages
+| Step | Status |
+|---|---|
+| 1. prompt-engineering-patterns | M |
+| 2. Research: read existing admin page in `Pages/AdminDashboardPages/`, check Shadcn `Components/ui/` | M |
+| 3. superpowers:brainstorming | M |
+| 4. Writing plan | S |
+| 5. karpathy-guidelines | M |
+| 6. `vue-best-practices` + `frontend-design` | M |
+| 7. Write page (use Shadcn `rounded-xl border bg-card shadow` pattern for admin cards) | M |
+| 8. error-handling-patterns | M |
+| 8a. code-simplifier (agent) | M |
+| 9. npm run type-check && npm run lint | M |
+| 10. Run tests | M |
+| 11. Browser test | M |
+| 12. superpowers:verification-before-completion | M |
+| 13. Git commit | When user asks |
+
+### Console Commands / Jobs
+| Step | Status |
+|---|---|
+| 1. prompt-engineering-patterns | M |
+| 2. Research: read existing commands in `app/Console/Commands/`, check `Kernel.php` schedule | M |
+| 3. Brainstorming | S |
+| 4. Writing plan | S |
+| 5. karpathy-guidelines | M |
+| 6. `laravel-specialist` | M |
+| 7. Write command/job (register in Kernel if scheduled) | M |
+| 8. error-handling-patterns | M (jobs MUST handle failures gracefully: retries, backoff, `failed()` method) |
+| 8a. code-simplifier (agent) | S |
+| 9. ./vendor/bin/pint --test | M |
+| 10. php artisan test | M |
+| 11. Browser test | S |
+| 12. superpowers:verification-before-completion | M |
+| 13. Git commit | When user asks |
+
+### Middleware Changes
+| Step | Status |
+|---|---|
+| 1. prompt-engineering-patterns | M |
+| 2. Research: read existing middleware in `app/Http/Middleware/`, check `Kernel.php` registration | M |
+| 3. Brainstorming | S (M if new middleware) |
+| 4. Writing plan | S |
+| 5. karpathy-guidelines | M |
+| 6. `laravel-specialist` + `security-best-practices` | M |
+| 7. Write middleware (register in Kernel.php, correct group: web/api/global) | M |
+| 8. error-handling-patterns | M (middleware failures affect ALL requests in its group) |
+| 8a. code-simplifier (agent) | S |
+| 9. ./vendor/bin/pint --test | M |
+| 10. php artisan test | M |
+| 11. Browser test | S (M if middleware affects frontend rendering) |
+| 12. superpowers:verification-before-completion | M |
+| 13. Git commit | When user asks |
+
+### Affiliate System
+| Step | Status |
+|---|---|
+| 1. prompt-engineering-patterns | M |
+| 2. Research: read `app/Models/Affiliate/` (8 models), `app/Services/Affiliate/`, `app/Notifications/Affiliate/` | M |
+| 3. superpowers:brainstorming | M |
+| 4. superpowers:writing-plans | M |
+| 5. karpathy-guidelines | M |
+| 6. `laravel-specialist` + `stripe-integration` (if payout-related) | M |
+| 6b. security-best-practices | M (commission calculations, payout handling) |
+| 7. Write code | M |
+| 8. error-handling-patterns | M |
+| 8a. code-simplifier (agent) | M |
+| 9. ./vendor/bin/pint --test | M |
+| 10. php artisan test | M |
+| 11. Browser test | M (if UI changes) |
+| 12. superpowers:verification-before-completion | M |
+| 12b. Codex second opinion | S (M if touching commission/payout logic) |
 | 13. Git commit | When user asks |
 
 ---
@@ -385,28 +553,156 @@ Everything else follows the full workflow. When in doubt, follow the workflow.
 
 ---
 
+## ENVIRONMENT VARIABLES PATTERNS
+
+When adding new features or providers, follow these naming patterns (check `.env.example` for full list):
+
+```bash
+# Provider API credentials (pattern: PROVIDERNAME_FIELD)
+GREENMOTION_USERNAME=
+GREENMOTION_PASSWORD=
+USAVE_API_URL=
+USAVE_USERNAME=
+SURPRICE_API_KEY=
+SURPRICE_RATE_CODE=
+FAVRICA_BASE_URL=
+XDRIVE_BASE_URL=
+XDRIVE_IMAGE_BASE_URL=
+OKMOBILITY_CUSTOMER_CODE=
+
+# Payments
+STRIPE_KEY=           # Public key (frontend)
+STRIPE_SECRET=        # Secret key (backend)
+
+# Broadcasting (real-time chat)
+PUSHER_APP_ID=
+PUSHER_APP_KEY=
+PUSHER_APP_SECRET=
+
+# Currency
+DEFAULT_CURRENCY=EUR
+EXCHANGE_RATE_API_KEY=
+
+# Affiliate
+TAPFILIATE_API_KEY=
+AWIN_ADVERTISER_ID=
+
+# Email
+MAILTRAP_API_KEY=     # Or SMTP: MAIL_HOST, MAIL_PORT, MAIL_USERNAME
+MAILTRAP_SANDBOX=     # true/false for testing
+
+# Monitoring
+SENTRY_LARAVEL_DSN=
+MICROSOFT_CLARITY_PROJECT_ID=
+
+# Storage
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=
+AWS_BUCKET=
+```
+
+**Rule:** When adding a new provider, ALWAYS add its env vars to `.env.example` with empty defaults and document them in `config/services.php` or a dedicated config file.
+
+---
+
 ## PROJECT STRUCTURE
 
 ### Backend (Laravel 10)
 ```
-app/Http/Controllers/     # Controllers
-app/Models/                # Eloquent models
-app/Services/              # Business logic services
-app/Notifications/         # Notification classes
-database/migrations/       # Database migrations
-routes/web.php             # Web routes (Inertia)
-routes/api.php             # API routes
-config/                    # Configuration files
+app/Http/Controllers/          # 108 controllers across 6 subdirectories
+  ├── Admin/                   # 41 admin controllers (dashboard, settings, reports)
+  ├── Auth/                    # 10 authentication controllers
+  ├── Api/                     # 7 internal API controllers
+  ├── Affiliate/               # 3 affiliate program controllers
+  ├── Skyscanner/              # 4 Skyscanner integration controllers
+  ├── Vendor/                  # 9 vendor management controllers
+  └── (root)                   # Bookings, vehicles, search, messages, notifications
+app/Http/Middleware/            # 22 middleware (auth, locale, currency, SEO, Awin)
+app/Http/Requests/             # Form request validation classes
+app/Models/                    # 83 models (User, Booking, Vehicle, Affiliate, etc.)
+  └── Affiliate/               # 8 affiliate models (Business, Commission, Payout, QR)
+app/Services/                  # 55 services across 8 subdirectories
+  ├── Affiliate/               # Commission, business services
+  ├── Bookings/                # Internal booking snapshots
+  ├── Search/                  # Gateway + internal search orchestration
+  ├── Seo/                     # SEO data resolution
+  ├── Sitemaps/                # 10 files - public sitemap generation
+  ├── Skyscanner/              # 18 Skyscanner-specific services
+  └── Vehicles/                # Availability, transformers, deletion
+app/Notifications/             # 40+ notification classes across 6 subdirectories
+  ├── Affiliate/               # Business registration, status changes
+  ├── ApiBooking/              # API booking created/cancelled
+  ├── Booking/                 # Lifecycle (created, cancelled, reminders, status)
+  ├── Payment/                 # Payment failure notifications
+  ├── Review/                  # Review submitted
+  ├── Vendor/                  # Vendor-specific notifications
+  └── Concerns/                # FormatsBookingAmounts trait
+app/Jobs/                      # SendAwinConversion, Newsletter campaign/recipient jobs
+app/Events/                    # 6 events (NewMessage, MessageRead, TypingIndicator, etc.)
+app/Listeners/                 # LogSuccessfulLogin, LogSuccessfulLogout
+app/Observers/                 # Blog, BlogTranslation, PageTranslation, Vehicle observers
+app/Mail/                      # NewsletterCampaignMail
+app/Console/Commands/          # 9 commands (sitemaps, currency, reminders, SEO, GeoIP)
+app/Helpers/                   # ActivityLog, Hreflang, ImageCompression, Locale, SchemaBuilder
+app/Policies/                  # UserDocumentPolicy
+app/Providers/                 # 6 providers (App, Auth, Broadcast, Currency, Event, Route)
+app/Rules/                     # PhoneNumber validation
+database/migrations/           # 158+ migrations
+config/                        # 26 config files (see Key Architecture)
+```
+
+### Routes
+```
+routes/web.php             # Main web routes (53KB, Inertia pages)
+routes/api.php             # REST API endpoints (bookings, vehicles, vendors, admin)
+routes/auth.php            # Authentication routes (Breeze)
+routes/skyscanner.php      # Skyscanner-specific API routes
+routes/channels.php        # Broadcasting channels (Pusher)
+routes/console.php         # Console command routes
+routes/chatify/            # Chat/messaging routes
 ```
 
 ### Frontend (Vue.js 3 + Inertia.js)
 ```
-resources/js/Pages/        # Page components (Inertia pages)
-resources/js/Components/   # Reusable components
-resources/js/Layouts/      # Layout components
-resources/js/Composables/  # Vue composables (useBookingData.js, etc.)
-resources/css/             # Stylesheets
+resources/js/Pages/            # Page components (Inertia pages)
+  ├── AdminDashboardPages/     # 45+ admin pages (Analytics, Bookings, SEO, Settings, etc.)
+  ├── Affiliate/               # Affiliate dashboard pages
+  ├── Auth/                    # Login, register, password reset
+  ├── Booking/                 # Booking flow (search, details, success)
+  ├── Destinations/            # Destination/location pages
+  ├── Frontend/                # Public site pages + Templates/
+  ├── Messages/                # Messaging interface
+  ├── Notifications/           # Notification pages
+  ├── Profile/                 # User profile (Bookings, Documents, Review)
+  └── Vendor/                  # Vendor dashboard (Bookings, Vehicles, Payments, etc.)
+resources/js/Components/       # 317 components
+  ├── Admin/                   # Admin-specific components
+  ├── BookingExtras/           # Add-ons UI (adapters, composables, modals, sections)
+  ├── ReusableComponents/      # Shared UI components
+  ├── Skyscanner/              # Skyscanner integration components
+  ├── Welcome/                 # Landing page components
+  └── ui/                      # 40+ Shadcn-Vue/Radix components (see list below)
+resources/js/Layouts/          # Layout components
+resources/js/composables/      # Vue composables (useBookingData.js, etc.)
+resources/js/features/         # Feature modules (search/, skyscanner/ with utils)
+resources/js/types/            # TypeScript type definitions
+resources/js/utils/            # Helper utilities
+resources/js/data/             # Static data files
+resources/js/plugins/          # Vue plugins
+resources/js/lib/              # Utility libraries
+resources/css/                 # Stylesheets
 ```
+
+### Available Shadcn-Vue Components (`Components/ui/`)
+```
+Accordion, Alert, AlertDialog, Avatar, Badge, Breadcrumb, Button,
+Calendar, Card, Carousel, Chart (Bar/Line/Pie), Checkbox, Collapsible,
+Dialog, DropdownMenu, Input, Label, Pagination, Popover, Select,
+Separator, Sheet, Sidebar, Skeleton, Sonner (toast), Stepper, Switch,
+Table, Tabs, Textarea, Toast, Tooltip
+```
+Always check `Components/ui/` before creating custom components.
 
 ### Vrooem Gateway (FastAPI/Python) - at `/mnt/c/laragon/www/vrooem-gateway/`
 ```
@@ -421,13 +717,28 @@ config/suppliers/          # YAML configs per provider
 ```
 
 ### Key Architecture
-- **3-tier currency**: Customer / Admin(EUR) / Vendor - each gets amounts in own currency
+- **3-tier currency**: Customer / Admin(EUR) / Vendor - each gets amounts in own currency via `BookingAmountService`
 - **15% platform commission**: Applied to ALL vehicles via `PROVIDER_MARKUP_PERCENT`
 - **Inertia.js**: Laravel-Vue bridge (no separate API for frontend)
-- **Price verification**: SHA-256 hash integrity between search and checkout
+- **Price verification**: SHA-256 hash integrity between search and checkout via `PriceVerificationService`
 - **Email service**: Mailtrap (transactional sending API + sandbox testing)
-- **Notifications**: `app/Notifications/` - 19+ classes for Customer, Vendor, Admin (email + DB for in-app notification bell)
-- **Notification routing**: Email via Mailtrap + DB channel for website notification bell (role-based filtering)
+- **Notifications**: `app/Notifications/` - 40+ classes across 6 subdirectories (Affiliate, ApiBooking, Booking, Payment, Review, Vendor)
+- **Notification routing**: Email via Mailtrap + DB channel for website notification bell (role-based filtering via `title` + `role` fields)
+- **Real-time messaging**: Pusher broadcasting for chat (Events → Listeners → Channels)
+- **Affiliate system**: Tapfiliate + Awin integration, commission tracking, payouts, QR codes (8 models)
+- **Skyscanner integration**: Dedicated route file, 4 controllers, 18 services — separate API contract
+- **Error tracking**: Sentry (sentry.php config, DSN in .env)
+- **SMS**: Twilio SDK for phone verification and notifications
+- **Social auth**: Laravel Socialite (Google, Facebook login)
+- **Image processing**: Intervention Image 3.11 for uploads and thumbnails
+- **PDF generation**: DomPDF for booking receipts (`booking-receipt.blade.php`)
+- **Sitemap generation**: Spatie Sitemap with 10 service files for automated public sitemaps
+- **Currency system**: CurrencyServiceProvider, ExchangeRate API, `RefreshCurrencyRates` command
+- **SEO system**: HandleSeoRedirects middleware, `app/Services/Seo/`, schema markup via `SchemaBuilder` helper
+- **Localization**: Multi-locale support via SetLocale + SetCurrency + LocalizationMiddleware
+- **Queue/Jobs**: 3 jobs (Awin conversion, newsletter send/process) via Laravel queue
+- **Observers**: Auto-trigger on model events (Blog, BlogTranslation, PageTranslation, Vehicle)
+- **17+ provider adapters**: External car rental suppliers integrated via vrooem-gateway (FastAPI)
 
 ---
 
@@ -436,16 +747,30 @@ config/suppliers/          # YAML configs per provider
 ```bash
 # Laravel Backend
 php artisan migrate:fresh --seed    # Reset DB with seeds
+php artisan migrate --pretend       # Dry run migration SQL
 php artisan test                    # Run PHPUnit tests
 php artisan route:list              # List all routes
 php artisan tinker                  # REPL
 composer dump-autoload              # Refresh autoloader
+
+# Laravel Queue & Scheduling
+php artisan queue:work              # Process queue jobs
+php artisan schedule:run            # Run scheduled commands
+php artisan queue:failed            # List failed jobs
+php artisan queue:retry all         # Retry all failed jobs
+
+# Laravel Artisan Commands (Custom)
+php artisan sitemap:generate        # Generate public sitemaps
+php artisan currency:refresh        # Refresh exchange rates from API
+php artisan reminders:send          # Send pending booking reminders
+php artisan geoip:update            # Update GeoIP database
 
 # Vue Frontend
 npm run dev                         # Dev server
 npm run build                       # Production build
 npm run type-check                  # TypeScript check
 npm run lint                        # ESLint
+npm run test                        # Vitest
 
 # Gateway (from /mnt/c/laragon/www/vrooem-gateway/)
 docker-compose up -d                # Start gateway + Redis + PostgreSQL
@@ -489,6 +814,7 @@ git log --oneline -10
 | `security-best-practices` | Payment flows, auth, user data, API endpoints |
 | `performance-optimization` | Backend performance, DB queries, API endpoints |
 | `web-performance-optimization` | Frontend performance, Core Web Vitals, page speed |
+| `code-simplifier` (agent, not skill) | After writing/editing non-trivial code — auto-refines for clarity, preserves behavior |
 
 ### Domain Skills - Laravel
 | Skill | When to Use |
