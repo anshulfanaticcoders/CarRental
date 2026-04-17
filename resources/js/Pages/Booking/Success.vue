@@ -10,6 +10,7 @@ const props = usePage().props;
 const booking = props.booking || {};
 const vehicle = props.vehicle || {};
 const locale = props.locale || 'en';
+const awinTestMode = ['1', 1, true, 'true'].includes(props.awin_test_mode) ? '1' : '0';
 
 const successAnimationData = (() => {
   const cloned = JSON.parse(JSON.stringify(paymentSuccessAnimation));
@@ -62,7 +63,7 @@ onMounted(() => {
       awinCurrency: booking.booking_currency || 'EUR',
       awinVoucher: booking.discount_code || '',
       awinParts: 'DEFAULT:' + amount,
-      awinTest: '0',
+      awinTest: awinTestMode,
     });
   }
 });
@@ -176,7 +177,7 @@ onMounted(() => {
           <!-- Awin fallback tracking pixel -->
           <img
             v-if="booking && booking.booking_number"
-            :src="`https://www.awin1.com/sread.img?tt=ns&tv=2&merchant=126167&amount=${parseFloat(booking.total_amount || 0).toFixed(2)}&ch=aw&parts=DEFAULT:${parseFloat(booking.total_amount || 0).toFixed(2)}&ref=${encodeURIComponent(booking.booking_number)}&cr=${booking.booking_currency || 'EUR'}&vc=${encodeURIComponent(booking.discount_code || '')}&testmode=0`"
+            :src="`https://www.awin1.com/sread.img?tt=ns&tv=2&merchant=126167&amount=${parseFloat(booking.total_amount || 0).toFixed(2)}&ch=aw&parts=DEFAULT:${parseFloat(booking.total_amount || 0).toFixed(2)}&ref=${encodeURIComponent(booking.booking_number)}&cr=${booking.booking_currency || 'EUR'}&vc=${encodeURIComponent(booking.discount_code || '')}&testmode=${awinTestMode}`"
             width="0"
             height="0"
             style="display: none;"

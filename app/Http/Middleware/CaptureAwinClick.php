@@ -22,7 +22,7 @@ class CaptureAwinClick
                     '/',
                     null,
                     true,
-                    true,
+                    false,
                     false,
                     'None'
                 );

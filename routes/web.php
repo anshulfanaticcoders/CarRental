@@ -122,8 +122,15 @@ Route::get('/force-currency-detection', function () {
 });
 
 Route::get('/', function () {
-    $locale = app(LocalePreferenceResolver::class)->resolveRootLocale(request());
-    return redirect($locale);
+    $request = request();
+    $locale = app(LocalePreferenceResolver::class)->resolveRootLocale($request);
+    $target = '/' . ltrim($locale, '/');
+
+    if ($request->getQueryString()) {
+        $target .= '?' . $request->getQueryString();
+    }
+
+    return redirect($target);
 });
 
 // Admin Routes (Moved outside of locale prefix)

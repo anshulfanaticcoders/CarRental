@@ -129,6 +129,7 @@ class HandleInertiaRequests extends Middleware
         }
         $sharedData['provider_markup_percent'] = $markupPercent;
         $sharedData['provider_markup_rate'] = $markupPercent / 100;
+        $sharedData['awin_test_mode'] = config('awin.test_mode', true) ? '1' : '0';
 
         $sharedData['active_promo'] = function () {
             $promo = app(PromoService::class)->getActivePromo();
