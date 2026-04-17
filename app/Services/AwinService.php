@@ -20,7 +20,7 @@ class AwinService
             return ['success' => false, 'reason' => 'api_key_missing'];
         }
 
-        $amount = number_format((float) $booking->total_amount, 2, '.', '');
+        $amount = round((float) $booking->total_amount, 2);
         $currency = $booking->booking_currency ?: 'EUR';
 
         $order = [
@@ -69,9 +69,10 @@ class AwinService
             $response = Http::withHeaders([
                 'x-api-key' => $apiKey,
                 'Content-Type' => 'application/json',
-            ])->timeout(15)->post($url, [
-                'orders' => [$order],
-            ]);
+            ])->timeout(15)->withBody(
+                json_encode(['orders' => [$order]], JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION),
+                'application/json'
+            )->post($url);
 
             $status = $response->status();
             $body = $response->json() ?? $response->body();
