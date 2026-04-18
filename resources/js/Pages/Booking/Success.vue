@@ -1,9 +1,10 @@
 <script setup>
 import { Link, usePage } from "@inertiajs/vue3";
-import { onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { Vue3Lottie } from 'vue3-lottie';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
+import BookingLocationBlock from "@/Components/Booking/BookingLocationBlock.vue";
 import paymentSuccessAnimation from '../../../assets/payment-successful.json';
 
 const props = usePage().props;
@@ -11,6 +12,9 @@ const booking = props.booking || {};
 const vehicle = props.vehicle || {};
 const locale = props.locale || 'en';
 const awinTestMode = ['1', 1, true, 'true'].includes(props.awin_test_mode) ? '1' : '0';
+
+const pickupDetails = computed(() => booking?.provider_metadata?.pickup_location_details || null);
+const dropoffDetails = computed(() => booking?.provider_metadata?.dropoff_location_details || null);
 
 const successAnimationData = (() => {
   const cloned = JSON.parse(JSON.stringify(paymentSuccessAnimation));
@@ -51,6 +55,9 @@ const totalAmount = parseFloat(booking.total_amount || 0);
 const discountPercentage = discountAmount > 0 && totalAmount > 0
   ? Math.round(discountAmount / (totalAmount + discountAmount) * 100)
   : 0;
+const appliedOffers = Array.isArray(booking.offers) ? booking.offers : [];
+const perkOffers = appliedOffers.filter((offer) => offer.effect_type !== 'price_discount_percentage');
+const hasFreeEsim = perkOffers.some((offer) => offer.effect_type === 'free_esim');
 
 onMounted(() => {
   if (booking && booking.booking_number) {
@@ -118,7 +125,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- Trip Details -->
+          <!-- Trip Details (dates only — locations below) -->
           <div class="grid grid-cols-2 gap-3">
             <div class="p-3 rounded-xl bg-gray-50 border border-gray-100">
               <div class="flex items-center gap-1.5 mb-1.5">
@@ -127,7 +134,6 @@ onMounted(() => {
               </div>
               <p class="text-sm font-semibold text-gray-900">{{ formatDate(booking.pickup_date) }}</p>
               <p class="text-xs text-gray-500">{{ formatTime(booking.pickup_time) }}</p>
-              <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ booking.pickup_location }}</p>
             </div>
             <div class="p-3 rounded-xl bg-gray-50 border border-gray-100">
               <div class="flex items-center gap-1.5 mb-1.5">
@@ -136,9 +142,16 @@ onMounted(() => {
               </div>
               <p class="text-sm font-semibold text-gray-900">{{ formatDate(booking.return_date) }}</p>
               <p class="text-xs text-gray-500">{{ formatTime(booking.return_time) }}</p>
-              <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ booking.return_location || booking.pickup_location }}</p>
             </div>
           </div>
+
+          <BookingLocationBlock
+            :pickup-string="booking.pickup_location"
+            :return-string="booking.return_location"
+            :pickup-details="pickupDetails"
+            :dropoff-details="dropoffDetails"
+            compact
+          />
 
           <!-- Payment Summary -->
           <div class="flex items-center justify-between py-3 px-4 rounded-xl bg-[#153B4F]/5 border border-[#153B4F]/10">
@@ -164,6 +177,20 @@ onMounted(() => {
               <p class="text-sm font-bold text-emerald-700">You saved {{ booking.booking_currency }} {{ discountAmount.toFixed(2) }}<span v-if="discountPercentage > 0"> ({{ discountPercentage }}% off)</span></p>
               <p class="text-xs text-emerald-600/70">Promotional discount applied to your booking</p>
             </div>
+          </div>
+
+          <div v-if="perkOffers.length > 0" class="rounded-xl border border-sky-200 bg-sky-50 p-3">
+            <p class="text-sm font-bold text-sky-800">Included offers</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <span
+                v-for="offer in perkOffers"
+                :key="offer.id || offer.effect_type"
+                class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-sky-700 border border-sky-200"
+              >
+                {{ offer.title || offer.name }}
+              </span>
+            </div>
+            <p v-if="hasFreeEsim" class="mt-2 text-xs text-sky-700/80">A free eSIM is attached to this booking offer.</p>
           </div>
 
           <!-- Due at pickup notice -->

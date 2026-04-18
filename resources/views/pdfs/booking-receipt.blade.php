@@ -964,6 +964,42 @@
                                     </div>
                                 </td>
                             @endif
+                            @php
+                                $pickupName = strtolower(trim((string) ($pickupLocation['name'] ?? '')));
+                                $dropoffName = strtolower(trim((string) ($dropoffLocation['name'] ?? '')));
+                                $isOneWayReceipt = !empty($dropoffLocation)
+                                    && ($pickupName === '' || $dropoffName === '' || $pickupName !== $dropoffName);
+                            @endphp
+                            @if($isOneWayReceipt && (!empty($dropoffLocation['address_1']) || !empty($dropoffLocation['address_city']) || !empty($dropoffLocation['name'])))
+                                <td>
+                                    <div class="contact-card">
+                                        <div class="contact-card-title">Dropoff Office</div>
+                                        @if(!empty($dropoffLocation['name']))
+                                            <div class="contact-name" style="font-size:11px;">{{ $dropoffLocation['name'] }}</div>
+                                        @endif
+                                        <div class="contact-detail">
+                                            {{ $dropoffLocation['address_1'] ?? '' }}
+                                            @if(!empty($dropoffLocation['address_city']))
+                                                , {{ $dropoffLocation['address_city'] }}
+                                            @endif
+                                            @if(!empty($dropoffLocation['address_postcode']))
+                                                {{ $dropoffLocation['address_postcode'] }}
+                                            @endif
+                                        </div>
+                                        @if(!empty($dropoffLocation['telephone']) || !empty($dropoffLocation['phone']))
+                                            <div class="contact-detail">Tel: {{ $dropoffLocation['telephone'] ?? $dropoffLocation['phone'] }}</div>
+                                        @endif
+                                        @if(!empty($dropoffLocation['email']))
+                                            <div class="contact-detail">{{ $dropoffLocation['email'] }}</div>
+                                        @endif
+                                        @if(!empty($dropoffLocation['dropoff_instructions']) || !empty($dropoffLocation['return_instructions']))
+                                            <div class="contact-detail" style="margin-top:4px; font-style:italic; color:#d97706;">
+                                                {{ $dropoffLocation['dropoff_instructions'] ?? $dropoffLocation['return_instructions'] }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                </td>
+                            @endif
                         @endif
                     </tr>
                 </table>

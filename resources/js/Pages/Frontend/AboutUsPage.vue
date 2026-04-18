@@ -123,7 +123,12 @@
                         </p>
                     </div>
                     <div class="mission-image">
-                        <img :src="onlineBooking" alt="">
+                        <img :src="onlineBooking"
+                             :alt="_t('aboutus', 'simple_online_booking_image_alt') || 'Simple online car rental booking on Vrooem'"
+                             loading="lazy"
+                             decoding="async"
+                             width="720"
+                             height="480" />
                     </div>
                 </div>
             </section>

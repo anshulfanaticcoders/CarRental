@@ -2,19 +2,20 @@
 
 namespace App\Notifications\Booking;
 
+use App\Notifications\Concerns\FormatsBookingAmounts;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use App\Notifications\Concerns\FormatsBookingAmounts;
 
 class PendingBookingReminderNotification extends Notification
 {
-    use Queueable;
     use FormatsBookingAmounts;
+    use Queueable;
 
     protected $booking;
+
     protected $customer;
+
     protected $vehicle;
 
     /**
@@ -43,27 +44,28 @@ class PendingBookingReminderNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $amounts = $this->getVendorAmounts($this->booking);
+
         return (new MailMessage)
-            ->subject('Reminder: Pending Booking - #' . $this->booking->booking_number)
-            ->greeting('Hello ' . $this->vehicle->vendor->first_name . ',') // Assuming vendor is accessible via vehicle->vendor
+            ->subject('Reminder: Pending Booking - #'.$this->booking->booking_number)
+            ->greeting('Hello '.$this->vehicle->vendor->first_name.',') // Assuming vendor is accessible via vehicle->vendor
             ->line('This is a reminder that you have a pending booking that requires your attention.')
             ->line('**Booking Details:**')
-            ->line('**Booking Number:** ' . $this->booking->booking_number)
-            ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
-            ->line('**Location:** ' . $this->vehicle->location)
-            ->line('**Address:** ' . $this->vehicle->city . ', ' . $this->vehicle->state . ', ' .$this->vehicle->country)
-            ->line('**Pickup Date:** ' . $this->booking->pickup_date->format('Y-m-d'))
-            ->line('**Pickup Time:** ' . $this->booking->pickup_time)
-            ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
-            ->line('**Return Time:** ' . $this->booking->return_time)
-            ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
-            ->line('**Amount Paid:** ' . $this->formatCurrencyAmount($amounts['paid'], $amounts['currency']))
-            ->line('**Pending Amount:** ' . $this->formatCurrencyAmount($amounts['pending'], $amounts['currency']))
+            ->line('**Booking Number:** '.$this->booking->booking_number)
+            ->line('**Vehicle:** '.$this->vehicle->brand.' '.$this->vehicle->model)
+            ->line('**Location:** '.$this->vehicle->location)
+            ->line('**Address:** '.$this->vehicle->city.', '.$this->vehicle->state.', '.$this->vehicle->country)
+            ->line('**Pickup Date:** '.$this->booking->pickup_date->format('Y-m-d'))
+            ->line('**Pickup Time:** '.$this->booking->pickup_time)
+            ->line('**Return Date:** '.$this->booking->return_date->format('Y-m-d'))
+            ->line('**Return Time:** '.$this->booking->return_time)
+            ->line('**Total Amount:** '.$this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
+            ->line('**Amount Paid:** '.$this->formatCurrencyAmount($amounts['paid'], $amounts['currency']))
+            ->line('**Pending Amount:** '.$this->formatCurrencyAmount($amounts['pending'], $amounts['currency']))
             ->line('**Customer Details:**')
-            ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
-            ->line('**Email:** ' . $this->customer->email)
-            ->line('**Phone:** ' . ($this->customer->phone ?: 'Not provided'))
-            ->action('Review Booking', url('/' . app()->getLocale() . '/bookings'))
+            ->line('**Name:** '.$this->customer->first_name.' '.$this->customer->last_name)
+            ->line('**Email:** '.$this->customer->email)
+            ->line('**Phone:** '.($this->customer->phone ?: 'Not provided'))
+            ->action('Review Booking', url('/'.app()->getLocale().'/bookings'))
             ->line('Please review the booking and update its status to confirmed as needed.');
     }
 
@@ -75,13 +77,14 @@ class PendingBookingReminderNotification extends Notification
     public function toArray(object $notifiable): array
     {
         $amounts = $this->getVendorAmounts($this->booking);
+
         return [
-            'title' => 'Pending Booking #' . $this->booking->booking_number,
+            'title' => 'Pending Booking #'.$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
-            'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
+            'vehicle' => $this->vehicle->brand.' '.$this->vehicle->model,
             'location' => $this->vehicle->location,
-            'address' => $this->vehicle->city . ', ' . $this->vehicle->state . ', ' .$this->vehicle->country,
+            'address' => $this->vehicle->city.', '.$this->vehicle->state.', '.$this->vehicle->country,
             'pickup_date' => $this->booking->pickup_date->format('Y-m-d'),
             'pickup_time' => $this->booking->pickup_time,
             'return_date' => $this->booking->return_date->format('Y-m-d'),
@@ -89,7 +92,7 @@ class PendingBookingReminderNotification extends Notification
             'total_amount' => $amounts['total'],
             'amount_paid' => $amounts['paid'],
             'pending_amount' => $amounts['pending'],
-            'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
+            'customer_name' => $this->customer->first_name.' '.$this->customer->last_name,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'role' => 'vendor',
             'message' => 'Reminder: You have a pending booking that requires your attention.',

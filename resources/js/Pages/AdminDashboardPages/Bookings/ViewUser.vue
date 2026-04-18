@@ -28,12 +28,14 @@
                 <Input v-model="user.return_date" readonly class="bg-gray-200 cursor-not-allowed" />
             </div>
             <div>
-                <InputLabel for="pickup_location" value="Pickup location" />
-                <Input v-model="user.pickup_location" readonly class="bg-gray-200 cursor-not-allowed" />
-            </div>
-            <div>
-                <InputLabel for="return_location" value="Return location" />
-                <Input v-model="user.return_location" readonly class="bg-gray-200 cursor-not-allowed" />
+                <InputLabel value="Locations" />
+                <BookingLocationBlock
+                    class="mt-1.5"
+                    :pickup-string="user.pickup_location"
+                    :return-string="user.return_location"
+                    :pickup-details="pickupDetails"
+                    :dropoff-details="dropoffDetails"
+                />
             </div>
             <div>
                 <InputLabel for="pickup_time" value="Pickup time" />
@@ -63,12 +65,17 @@
 </template>
 
 <script setup>
+import { computed } from "vue";
 import { DialogContent, DialogHeader, DialogTitle } from "@/Components/ui/dialog";
 import { Input } from "@/Components/ui/input";
 import InputLabel from "@/Components/InputLabel.vue";
+import BookingLocationBlock from "@/Components/Booking/BookingLocationBlock.vue";
 
 const props = defineProps({
     user: Object,
 });
+
+const pickupDetails = computed(() => props.user?.provider_metadata?.pickup_location_details || null);
+const dropoffDetails = computed(() => props.user?.provider_metadata?.dropoff_location_details || null);
 
 </script>

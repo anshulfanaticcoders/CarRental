@@ -64,6 +64,7 @@ class CarHireRedirectControllerTest extends TestCase
             'case_id' => 'PSM-46100',
             'created_at' => CarbonImmutable::now('UTC')->toIso8601String(),
             'expires_at' => CarbonImmutable::now('UTC')->addMinutes(30)->toIso8601String(),
+            'free_esim_included' => true,
             'vehicle' => [
                 'provider_vehicle_id' => 'gm-vehicle-1',
                 'source' => 'greenmotion',
@@ -125,6 +126,7 @@ class CarHireRedirectControllerTest extends TestCase
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame('quote-123', $payload['quote']['quote_id']);
+        $this->assertTrue($payload['quote']['free_esim_included']);
         $this->assertSame('Toyota Yaris', $payload['quote']['vehicle']['display_name']);
         $this->assertArrayNotHasKey('source', $payload['quote']['vehicle']);
         $this->assertArrayNotHasKey('provider_code', $payload['quote']['vehicle']);

@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -43,14 +42,14 @@ class VehicleCreatedNotification extends Notification
         ]);
 
         return (new MailMessage)
-            ->subject('New Vehicle Listed - ' . config('app.name'))
+            ->subject('New Vehicle Listed - '.config('app.name'))
             ->greeting('Hello Admin,')
-            ->line('A new vehicle has been listed on ' . config('app.name') . '.')
+            ->line('A new vehicle has been listed on '.config('app.name').'.')
             ->line('**Vehicle Details:**')
-            ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
-            ->line('**Location:** ' . ($this->vehicle->location ?? 'N/A'))
-            ->line('**Address:** ' . (!empty($addressParts) ? implode(', ', $addressParts) : 'N/A'))
-            ->line('**Price per Day:** ' . ($this->vehicle->price_per_day ? number_format($this->vehicle->price_per_day, 2) . ' EUR' : 'Not set'))
+            ->line('**Vehicle:** '.$this->vehicle->brand.' '.$this->vehicle->model)
+            ->line('**Location:** '.($this->vehicle->location ?? 'N/A'))
+            ->line('**Address:** '.(! empty($addressParts) ? implode(', ', $addressParts) : 'N/A'))
+            ->line('**Price per Day:** '.($this->vehicle->price_per_day ? number_format($this->vehicle->price_per_day, 2).' EUR' : 'Not set'))
             ->action('Review Vehicles', url('/vendor-vehicles'))
             ->line('Please review the listing if necessary.');
     }

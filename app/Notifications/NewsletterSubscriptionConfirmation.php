@@ -16,8 +16,7 @@ class NewsletterSubscriptionConfirmation extends Notification implements ShouldQ
     public function __construct(
         protected NewsletterSubscription $subscription,
         protected string $subscriptionLocale
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {

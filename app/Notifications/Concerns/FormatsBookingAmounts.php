@@ -15,7 +15,7 @@ trait FormatsBookingAmounts
             $separator = ' ';
         }
 
-        return $symbol . $separator . number_format($value, 2);
+        return $symbol.$separator.number_format($value, 2);
     }
 
     protected function getCurrencySymbol(string $currency): string

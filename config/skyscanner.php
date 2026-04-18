@@ -42,6 +42,7 @@ return [
     */
     'quote_ttl_minutes' => env('SKYSCANNER_QUOTE_TTL_MINUTES', 30),
     'expired_quote_retention_minutes' => env('SKYSCANNER_EXPIRED_QUOTE_RETENTION_MINUTES', 1440),
+    'free_esim_included' => env('SKYSCANNER_FREE_ESIM_INCLUDED', true),
 
     /*
     |--------------------------------------------------------------------------

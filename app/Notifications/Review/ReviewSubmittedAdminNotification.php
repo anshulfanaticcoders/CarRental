@@ -3,7 +3,6 @@
 namespace App\Notifications\Review;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -12,6 +11,7 @@ class ReviewSubmittedAdminNotification extends Notification
     use Queueable;
 
     protected $review;
+
     protected $vehicle;
 
     public function __construct($review, $vehicle)
@@ -32,9 +32,9 @@ class ReviewSubmittedAdminNotification extends Notification
             ->greeting('Hello Admin,')
             ->line('A new review has been submitted for a vehicle.')
             ->line('**Review Details:**')
-            ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
-            ->line('**Rating:** ' . $this->review->rating . '/5')
-            ->line('**Review Text:** ' . $this->review->review_text)
+            ->line('**Vehicle:** '.$this->vehicle->brand.' '.$this->vehicle->model)
+            ->line('**Rating:** '.$this->review->rating.'/5')
+            ->line('**Review Text:** '.$this->review->review_text)
             ->action('View Review', url('/admin/reviews'))
             ->line('Please review and approve or reject the submission.');
     }
@@ -45,10 +45,10 @@ class ReviewSubmittedAdminNotification extends Notification
             'title' => 'New Review Submitted',
             'role' => 'admin',
             'review_id' => $this->review->id,
-            'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
+            'vehicle' => $this->vehicle->brand.' '.$this->vehicle->model,
             'rating' => $this->review->rating,
             'review_text' => $this->review->review_text,
-            'message' => 'A new review has been submitted for ' . $this->vehicle->brand . ' ' . $this->vehicle->model,
+            'message' => 'A new review has been submitted for '.$this->vehicle->brand.' '.$this->vehicle->model,
         ];
     }
 }

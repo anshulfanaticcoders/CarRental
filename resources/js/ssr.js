@@ -9,13 +9,19 @@ import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import TranslationPlugin from '../js/plugins/translation';
 import * as Sentry from '@sentry/vue';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Vrooem';
 
 createServer((page) =>
     createInertiaApp({
         page,
         render: renderToString,
-        title: (title) => `${title} - ${appName}`,
+        title: (title) => {
+            const resolved = (title || '').trim();
+            if (!resolved || resolved.toLowerCase() === appName.toLowerCase()) return appName;
+            return resolved.toLowerCase().includes(appName.toLowerCase())
+                ? resolved
+                : `${resolved} - ${appName}`;
+        },
         resolve: (name) =>
             resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
         setup({ App, props, plugin }) {

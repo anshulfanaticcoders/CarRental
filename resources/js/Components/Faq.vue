@@ -28,6 +28,10 @@ const props = defineProps({
         default: 'dark',
         validator: (v) => ['dark', 'light'].includes(v),
     },
+    // Hide the component's built-in badge+heading+lead block. Use when the
+    // parent page already renders its own h1/intro (e.g. dedicated /faq page)
+    // to prevent duplicate headings that hurt SEO + heading hierarchy.
+    hideHeader: { type: Boolean, default: false },
 });
 
 const isLight = computed(() => props.variant === 'light');
@@ -72,13 +76,13 @@ watch(() => page.props.locale, (newLocale, oldLocale) => {
 
         <div class="full-w-container fq-container">
 
-            <!-- Header -->
-            <div class="fq-header">
+            <!-- Header (skipped when parent page already renders its own h1/intro) -->
+            <div v-if="!hideHeader" class="fq-header">
                 <div class="fq-badge">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="17" r="0.5"/></svg>
                     {{ _p('faqs_badge') }}
                 </div>
-                <h3 class="fq-heading">{{ _p('faqs_title') }}</h3>
+                <h2 class="fq-heading">{{ _p('faqs_title') }}</h2>
                 <p class="fq-lead">{{ _t('common','faqs_description') }}</p>
             </div>
 

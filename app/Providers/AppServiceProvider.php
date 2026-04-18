@@ -21,9 +21,7 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void
-    {
-    }
+    public function register(): void {}
 
     /**
      * Bootstrap any application services.
@@ -49,9 +47,14 @@ class AppServiceProvider extends ServiceProvider
         // Share Header/Footer scripts with all views
         // Check if the table exists to prevent errors during migrations
         if (Schema::hasTable('header_footer_scripts')) {
-            $latestScript = HeaderFooterScript::orderBy('id', 'desc')->first();
-            View::share('headerScript', $latestScript ? $latestScript->header_script : '');
-            View::share('footerScript', $latestScript ? $latestScript->footer_script : '');
+            try {
+                $latestScript = HeaderFooterScript::orderBy('id', 'desc')->first();
+                View::share('headerScript', $latestScript ? $latestScript->header_script : '');
+                View::share('footerScript', $latestScript ? $latestScript->footer_script : '');
+            } catch (\Throwable $e) {
+                View::share('headerScript', '');
+                View::share('footerScript', '');
+            }
         } else {
             View::share('headerScript', '');
             View::share('footerScript', '');
@@ -66,5 +69,23 @@ class AppServiceProvider extends ServiceProvider
 
         // Share with Blade views as well
         View::share('organizationSchemaForBlade', $organizationSchema);
+
+        // WebSite schema with SearchAction — enables Google sitelinks search box.
+        $appUrl = rtrim((string) config('app.url'), '/');
+        $websiteSchema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'WebSite',
+            'name' => config('app.name', 'Vrooem'),
+            'url' => $appUrl,
+            'potentialAction' => [
+                '@type' => 'SearchAction',
+                'target' => [
+                    '@type' => 'EntryPoint',
+                    'urlTemplate' => $appUrl.'/en/s?where={search_term_string}',
+                ],
+                'query-input' => 'required name=search_term_string',
+            ],
+        ];
+        View::share('websiteSchemaForBlade', $websiteSchema);
     }
 }

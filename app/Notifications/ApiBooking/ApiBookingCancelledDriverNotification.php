@@ -28,13 +28,13 @@ class ApiBookingCancelledDriverNotification extends Notification
         $reason = $this->booking->cancellation_reason ?: 'No reason provided';
 
         return (new MailMessage)
-            ->subject('Booking Cancelled - #' . $this->booking->booking_number)
-            ->greeting('Hello ' . $this->booking->driver_first_name . ',')
+            ->subject('Booking Cancelled - #'.$this->booking->booking_number)
+            ->greeting('Hello '.$this->booking->driver_first_name.',')
             ->line('Your booking has been cancelled.')
             ->line('**Booking Details:**')
-            ->line('**Booking Number:** ' . $this->booking->booking_number)
-            ->line('**Vehicle:** ' . $this->booking->vehicle_name)
-            ->line('**Reason:** ' . $reason)
+            ->line('**Booking Number:** '.$this->booking->booking_number)
+            ->line('**Vehicle:** '.$this->booking->vehicle_name)
+            ->line('**Reason:** '.$reason)
             ->line('If you have any questions about this cancellation, please contact support.');
     }
 }

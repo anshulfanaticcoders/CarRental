@@ -33,7 +33,7 @@ useScrollAnimation('.blog-section', '.blog-header, .blog-feat, .blog-card, .blog
             </div>
             <div class="blog-grid">
                 <Link :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[0].translated_slug })" class="blog-feat sr-reveal">
-                    <div class="blog-feat-img"><img :src="blogs[0].image" :alt="blogs[0].title" /></div>
+                    <div class="blog-feat-img"><img :src="blogs[0].image" :alt="blogs[0].title" loading="lazy" decoding="async" /></div>
                     <div class="blog-feat-content">
                         <span class="blog-date"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>{{ formatDate(blogs[0].created_at) }}</span>
                         <h4 class="blog-feat-title">{{ blogs[0].title }}</h4>
@@ -43,7 +43,7 @@ useScrollAnimation('.blog-section', '.blog-header, .blog-feat, .blog-card, .blog
                 </Link>
                 <div class="blog-stack">
                     <Link v-for="i in Math.min(3, blogs.length - 1)" :key="i" :href="route('blog.show', { locale: page.props.locale, country: page.props.country || 'us', blog: blogs[i].translated_slug })" class="blog-card sr-reveal">
-                        <div class="blog-card-img"><img :src="blogs[i].image" :alt="blogs[i].title" /></div>
+                        <div class="blog-card-img"><img :src="blogs[i].image" :alt="blogs[i].title" loading="lazy" decoding="async" /></div>
                         <div>
                             <span class="blog-date blog-date-dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>{{ formatDate(blogs[i].created_at) }}</span>
                             <h4 class="blog-card-title">{{ blogs[i].title }}</h4>

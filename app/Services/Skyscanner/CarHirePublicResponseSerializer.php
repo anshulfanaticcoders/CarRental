@@ -29,6 +29,8 @@ class CarHirePublicResponseSerializer
             'case_id' => $this->nullableString($quote['case_id'] ?? null),
             'created_at' => $this->nullableString($quote['created_at'] ?? null),
             'expires_at' => $this->nullableString($quote['expires_at'] ?? null),
+            'free_esim_included' => array_key_exists('free_esim_included', $quote) ? (bool) $quote['free_esim_included'] : null,
+            'applied_offers' => $this->appliedOffers($quote['applied_offers'] ?? null),
             'vehicle' => $this->vehicle($quote['vehicle'] ?? []),
             'specs' => $this->specs($quote['specs'] ?? []),
             'pricing' => $this->assoc($quote['pricing'] ?? null),
@@ -123,6 +125,31 @@ class CarHirePublicResponseSerializer
             'tracking_query_parameter' => $this->nullableString($deeplink['tracking_query_parameter'] ?? null),
             'signature_query_parameter' => $this->nullableString($deeplink['signature_query_parameter'] ?? null),
         ], static fn ($value) => $value !== null);
+    }
+
+    private function appliedOffers(mixed $offers): ?array
+    {
+        if (!is_array($offers)) {
+            return null;
+        }
+
+        $normalized = array_values(array_filter(array_map(function ($offer) {
+            if (!is_array($offer)) {
+                return null;
+            }
+
+            return array_filter([
+                'id' => $offer['id'] ?? null,
+                'name' => $this->nullableString($offer['name'] ?? null),
+                'slug' => $this->nullableString($offer['slug'] ?? null),
+                'title' => $this->nullableString($offer['title'] ?? null),
+                'effect_type' => $this->nullableString($offer['effect_type'] ?? null),
+                'effect_payload' => $this->assoc($offer['effect_payload'] ?? null),
+                'discount_amount' => array_key_exists('discount_amount', $offer) ? $offer['discount_amount'] : null,
+            ], static fn ($value) => $value !== null);
+        }, $offers)));
+
+        return $normalized === [] ? null : $normalized;
     }
 
     private function luggage(mixed $luggage): ?array

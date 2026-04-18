@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Skyscanner;
 
+use App\Services\OfferService;
 use App\Services\Skyscanner\CarHireQuoteLifecycleService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
@@ -15,6 +16,31 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
             'skyscanner.case_id' => 'PSM-46100',
             'skyscanner.quote_ttl_minutes' => 30,
         ]);
+
+        $offerService = $this->createMock(OfferService::class);
+        $offerService->method('resolveAppliedOffers')->willReturn([
+            'price_discount_rate' => 0.10,
+            'free_esim_included' => true,
+            'applied_offers' => [
+                [
+                    'id' => 1,
+                    'name' => 'Summer Discount',
+                    'slug' => 'summer-discount',
+                    'title' => 'Summer Discount',
+                    'effect_type' => 'price_discount_percentage',
+                    'effect_payload' => ['percentage' => 10],
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Free E-Sim',
+                    'slug' => 'free-e-sim',
+                    'title' => 'Free E-Sim',
+                    'effect_type' => 'free_esim',
+                    'effect_payload' => ['included' => true],
+                ],
+            ],
+        ]);
+        $this->app->instance(OfferService::class, $offerService);
 
         $service = app(CarHireQuoteLifecycleService::class);
         $now = CarbonImmutable::create(2026, 4, 8, 10, 0, 0, 'UTC');
@@ -96,6 +122,9 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
         $this->assertStringNotContainsString('skyscanner', $quote['deeplink']['landing_page_url']);
         $this->assertStringContainsString('/api/skyscanner/redirect', $quote['deeplink']['quote_redirect_url']);
         $this->assertSame('limited', $quote['policies']['mileage_policy']);
+        $this->assertTrue($quote['free_esim_included']);
+        $this->assertCount(2, $quote['applied_offers']);
+        $this->assertSame('free_esim', $quote['applied_offers'][1]['effect_type']);
     }
 
     public function test_it_revalidates_quotes_against_expiry(): void

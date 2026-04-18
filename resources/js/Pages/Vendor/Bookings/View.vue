@@ -74,7 +74,7 @@
                                 </div>
                             </div>
 
-                            <!-- Pickup / Return Grid -->
+                            <!-- Pickup / Return Dates -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div class="rounded-lg border border-[var(--gray-200)] p-4">
                                     <div class="flex items-center gap-2 mb-2.5">
@@ -83,10 +83,6 @@
                                     </div>
                                     <p class="text-sm font-semibold text-[var(--gray-800)]">{{ formatDate(booking.pickup_date) }}</p>
                                     <p class="text-xs text-[var(--gray-500)] mt-0.5">{{ booking.pickup_time }}</p>
-                                    <p class="text-xs text-[var(--gray-500)] mt-2 leading-relaxed">
-                                        <MapPin class="w-3 h-3 inline-block mr-0.5 -mt-0.5 text-[var(--gray-400)]" />
-                                        {{ booking.pickup_location }}
-                                    </p>
                                 </div>
                                 <div class="rounded-lg border border-[var(--gray-200)] p-4">
                                     <div class="flex items-center gap-2 mb-2.5">
@@ -95,12 +91,18 @@
                                     </div>
                                     <p class="text-sm font-semibold text-[var(--gray-800)]">{{ formatDate(booking.return_date) }}</p>
                                     <p class="text-xs text-[var(--gray-500)] mt-0.5">{{ booking.return_time }}</p>
-                                    <p class="text-xs text-[var(--gray-500)] mt-2 leading-relaxed">
-                                        <MapPin class="w-3 h-3 inline-block mr-0.5 -mt-0.5 text-[var(--gray-400)]" />
-                                        {{ booking.return_location }}
-                                    </p>
                                 </div>
                             </div>
+
+                            <!-- Pickup / Dropoff location details (one-way aware) -->
+                            <BookingLocationBlock
+                                class="mt-4"
+                                :pickup-string="booking.pickup_location"
+                                :return-string="booking.return_location"
+                                :pickup-details="providerMeta.pickup_location_details || null"
+                                :dropoff-details="providerMeta.dropoff_location_details || null"
+                                compact
+                            />
                         </div>
                     </div>
 
@@ -448,6 +450,7 @@ import axios from 'axios';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { useToast } from 'vue-toastification';
 import { useBookingData } from '@/composables/useBookingData.js';
+import BookingLocationBlock from '@/Components/Booking/BookingLocationBlock.vue';
 import loaderVariant from '../../../../assets/loader-variant.svg';
 import {
     ArrowLeft, ShieldCheck, Ban, Car, MapPin, Mail, Phone, Plane,

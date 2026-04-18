@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onBeforeUnmount } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { useScrollAnimation } from '@/composables/useScrollAnimation';
 import {
     Carousel,
@@ -107,9 +107,9 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
                     <h3 class="dest-title">{{ _p('popular_places', 'Where will you drive next?') }}</h3>
                     <p class="dest-sub">Most-booked locations by travelers this month.</p>
                 </div>
-                <a :href="`/${page.props.locale}/destinations`" class="dest-btn">
+                <Link :href="`/${page.props.locale}/destinations`" class="dest-btn">
                     {{ _p('view_all_destinations', 'View All Destinations') }}
-                </a>
+                </Link>
             </div>
 
             <Carousel

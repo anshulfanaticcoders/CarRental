@@ -13,7 +13,9 @@ class BulkVehicleUploadNotification extends Notification implements ShouldQueue
     use Queueable;
 
     public $vehicles;
+
     public $user;
+
     public $errorMessages;
 
     /**
@@ -36,7 +38,7 @@ class BulkVehicleUploadNotification extends Notification implements ShouldQueue
      */
     public function via($notifiable)
     {
-        return ['mail','database'];
+        return ['mail', 'database'];
     }
 
     /**
@@ -49,24 +51,24 @@ class BulkVehicleUploadNotification extends Notification implements ShouldQueue
     {
         $mailMessage = (new MailMessage)
             ->subject('Bulk Vehicle Upload Summary')
-            ->greeting('Hello ' . $notifiable->name . ',');
+            ->greeting('Hello '.$notifiable->name.',');
 
         if ($this->vehicles->isNotEmpty()) {
             $mailMessage->line('A bulk upload of vehicles has been completed.');
-            $mailMessage->line('Successfully created ' . $this->vehicles->count() . ' vehicle(s).');
+            $mailMessage->line('Successfully created '.$this->vehicles->count().' vehicle(s).');
             $mailMessage->action('View Uploaded Vehicles', route('current-vendor-vehicles.index', ['locale' => app()->getLocale()]));
         } else {
             $mailMessage->line('A bulk upload of vehicles was attempted, but no vehicles were successfully created.');
         }
 
-        if (!empty($this->errorMessages)) {
+        if (! empty($this->errorMessages)) {
             $mailMessage->line('The following errors occurred during the upload:');
             foreach ($this->errorMessages as $error) {
-                $mailMessage->line('- ' . $error);
+                $mailMessage->line('- '.$error);
             }
         }
 
-        $mailMessage->line('Thank you for using ' . config('app.name') . '.');
+        $mailMessage->line('Thank you for using '.config('app.name').'.');
 
         return $mailMessage;
     }
@@ -86,7 +88,7 @@ class BulkVehicleUploadNotification extends Notification implements ShouldQueue
             'user_name' => $this->user->name,
             'error_messages' => $this->errorMessages,
             'role' => 'vendor',
-            'message' => 'Bulk vehicle upload completed. Successfully created ' . $this->vehicles->count() . ' vehicle(s).',
+            'message' => 'Bulk vehicle upload completed. Successfully created '.$this->vehicles->count().' vehicle(s).',
         ];
     }
 }

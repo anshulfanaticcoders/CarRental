@@ -117,12 +117,18 @@ class BookingController extends Controller
 
         if ($customer) {
             // Update existing customer (except email)
-            $customer->update([
+            $customerData = [
                 'first_name' => $request->input('customer.first_name'),
                 'last_name' => $request->input('customer.last_name'),
                 'phone' => $request->input('customer.phone'),
                 'flight_number' => $request->input('customer.flight_number'),
-            ]);
+            ];
+
+            if (auth()->check() && $request->input('customer.email') === auth()->user()?->email) {
+                $customerData['user_id'] = auth()->id();
+            }
+
+            $customer->update($customerData);
         } else {
             // Create new customer
             $customer = Customer::create([
@@ -451,12 +457,10 @@ class BookingController extends Controller
     // Method for Pending Bookings
     public function getPendingBookings()
     {
-        $userId = Auth::id();
+        $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $customer = Customer::where('user_id', $userId)->first();
-
-        $pendingBookings = $customer ?
-            Booking::where('customer_id', $customer->id)
+        $pendingBookings = !empty($customerIds) ?
+            Booking::whereIn('customer_id', $customerIds)
                 ->where('booking_status', 'pending')
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile')
                 ->orderBy('created_at', 'desc')
@@ -471,12 +475,10 @@ class BookingController extends Controller
     // Method for Confirmed Bookings
     public function getConfirmedBookings()
     {
-        $userId = Auth::id();
+        $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $customer = Customer::where('user_id', $userId)->first();
-
-        $confirmedBookings = $customer ?
-            Booking::where('customer_id', $customer->id)
+        $confirmedBookings = !empty($customerIds) ?
+            Booking::whereIn('customer_id', $customerIds)
                 ->where('booking_status', 'confirmed')
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'vehicle.benefits')
                 ->orderBy('created_at', 'desc')
@@ -490,12 +492,10 @@ class BookingController extends Controller
 
     public function getCompletedBookings()
     {
-        $userId = Auth::id();
+        $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $customer = Customer::where('user_id', $userId)->first();
-
-        $completedBookings = $customer ?
-            Booking::where('customer_id', $customer->id)
+        $completedBookings = !empty($customerIds) ?
+            Booking::whereIn('customer_id', $customerIds)
                 ->where('booking_status', 'completed')
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'vehicle.vendorProfileData', 'review')
                 ->orderBy('created_at', 'desc')
@@ -520,10 +520,9 @@ class BookingController extends Controller
         $booking = Booking::findOrFail($id);
 
         // Authorize: Ensure the booking belongs to the current user
-        $userId = Auth::id();
-        $customer = Customer::where('user_id', $userId)->first();
+        $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        if (!$customer || $booking->customer_id !== $customer->id) {
+        if (empty($customerIds) || !in_array($booking->customer_id, $customerIds, true)) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -652,10 +651,9 @@ class BookingController extends Controller
         $booking = Booking::findOrFail($id);
 
         // Authorize: Ensure the booking belongs to the current user
-        $userId = Auth::id();
-        $customer = Customer::where('user_id', $userId)->first();
+        $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        if (!$customer || $booking->customer_id !== $customer->id) {
+        if (empty($customerIds) || !in_array($booking->customer_id, $customerIds, true)) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -771,16 +769,15 @@ class BookingController extends Controller
     public function getCustomerBookingsForMessages()
     {
         $userId = Auth::id();
+        $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $customer = Customer::where('user_id', $userId)->first();
-
-        if (!$customer) {
+        if (empty($customerIds)) {
             return Inertia::render('Messages/Index', [
                 'bookings' => []
             ]);
         }
 
-        $bookings = Booking::where('customer_id', $customer->id)
+        $bookings = Booking::whereIn('customer_id', $customerIds)
             ->with([
                 'vehicle.vendor',
                 'vehicle.images',
@@ -831,10 +828,9 @@ class BookingController extends Controller
         $booking = Booking::findOrFail($validatedData['booking_id']);
 
         // Make sure the booking belongs to the authenticated user
-        $userId = auth()->id();
-        $customer = Customer::where('user_id', $userId)->first();
+        $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        if (!$customer || $booking->customer_id !== $customer->id) {
+        if (empty($customerIds) || !in_array($booking->customer_id, $customerIds, true)) {
             return response()->json([
                 'message' => 'Unauthorized action'
             ], 403);
@@ -959,6 +955,39 @@ class BookingController extends Controller
         return redirect()->back()->with('success', 'Booking cancelled successfully');
     }
 
+    private function resolveCustomerIdsForAuthenticatedUser(): array
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return [];
+        }
+
+        $customerIds = Customer::where('user_id', $user->id)->pluck('id');
+
+        if ($user->email) {
+            $customerIds = $customerIds->merge(
+                Customer::where('email', $user->email)->pluck('id')
+            );
+        }
+
+        $customerIds = $customerIds->unique()->values();
+
+        if ($customerIds->isEmpty()) {
+            return [];
+        }
+
+        $customers = Customer::whereIn('id', $customerIds)->get();
+
+        foreach ($customers as $customer) {
+            if ($user->email && $customer->email === $user->email && (int) ($customer->user_id ?? 0) !== (int) $user->id) {
+                $customer->update(['user_id' => $user->id]);
+            }
+        }
+
+        return $customers->pluck('id')->all();
+    }
+
     private function mapProviderSourceToGatewaySupplierId(?string $providerSource): string
     {
         return match ($providerSource) {
@@ -974,10 +1003,9 @@ class BookingController extends Controller
 
     public function getCustomerPaymentHistory(Request $request)
     {
-        $userId = Auth::id();
-        $customer = Customer::where('user_id', $userId)->first();
+        $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        if (!$customer) {
+        if (empty($customerIds)) {
             return Inertia::render('Profile/IssuedPayments', [
                 'payments' => [],
                 'pagination' => null,
@@ -985,8 +1013,8 @@ class BookingController extends Controller
         }
 
         $payments = BookingPayment::with(['booking.vehicle.vendorProfile', 'booking.amounts'])
-            ->whereHas('booking', function ($query) use ($customer) {
-                $query->where('customer_id', $customer->id);
+            ->whereHas('booking', function ($query) use ($customerIds) {
+                $query->whereIn('customer_id', $customerIds);
             })
             ->orderBy('booking_payments.created_at', 'desc')
             ->paginate(8); // Or any other number for pagination
@@ -1006,11 +1034,10 @@ class BookingController extends Controller
 
     public function getCancelledBookings(Request $request)
     {
-        $userId = Auth::id();
-        $customer = Customer::where('user_id', $userId)->first();
+        $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $cancelledBookings = $customer ?
-            Booking::where('customer_id', $customer->id)
+        $cancelledBookings = !empty($customerIds) ?
+            Booking::whereIn('customer_id', $customerIds)
                 ->where('booking_status', 'cancelled')
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile')
                 ->orderBy('created_at', 'desc')
@@ -1027,11 +1054,10 @@ class BookingController extends Controller
      */
     public function getAllCustomerBookings(Request $request)
     {
-        $userId = Auth::id();
-        $customer = Customer::where('user_id', $userId)->first();
+        $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $bookings = $customer ?
-            Booking::where('customer_id', $customer->id)
+        $bookings = !empty($customerIds) ?
+            Booking::whereIn('customer_id', $customerIds)
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'extras', 'amounts')
                 ->orderBy('created_at', 'desc')
                 ->paginate(10) :

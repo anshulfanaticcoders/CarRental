@@ -6,23 +6,27 @@ use App\Models\Review;
 use App\Models\Vehicle;
 use App\Models\VehicleCategory;
 use App\Models\VendorLocation;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use App\Services\LocationSearchService; // Import LocationSearchService
+use App\Services\LocationSearchService;
 use App\Services\Search\GatewaySearchService;
-use App\Services\Search\InternalSearchVehicleFactory;
+use App\Services\Search\InternalSearchVehicleFactory; // Import LocationSearchService
+use App\Services\Seo\SeoMetaResolver;
 use App\Services\Vehicles\GatewayVehicleTransformer;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
-use Illuminate\Support\Facades\Log; // Import Log facade
-use App\Services\Seo\SeoMetaResolver;
-use Illuminate\Support\Facades\App;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App; // Import Log facade
+use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class SearchController extends Controller
 {
     protected $locationSearchService;
+
     protected $gatewaySearchService;
+
     protected $gatewayVehicleTransformer;
+
     protected $internalSearchVehicleFactory;
+
     protected $internalVehicleAvailabilityService;
 
     public function __construct(
@@ -48,7 +52,7 @@ class SearchController extends Controller
             }
 
             // Accept HH:MM (24h). Fallback to default for anything else.
-            if (!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $value)) {
+            if (! preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $value)) {
                 return $default;
             }
 
@@ -101,20 +105,20 @@ class SearchController extends Controller
         $validated['end_time'] = $normalizeTime($validated['end_time'] ?? '', '09:00');
 
         // Calculate rental duration in days for price-per-day normalization
-        $dtStart = \Carbon\Carbon::parse(($validated['date_from'] ?? now()->addDays(1)->format('Y-m-d')) . ' ' . ($validated['start_time'] ?? '09:00'));
-        $dtEnd = \Carbon\Carbon::parse(($validated['date_to'] ?? now()->addDays(2)->format('Y-m-d')) . ' ' . ($validated['end_time'] ?? '09:00'));
+        $dtStart = \Carbon\Carbon::parse(($validated['date_from'] ?? now()->addDays(1)->format('Y-m-d')).' '.($validated['start_time'] ?? '09:00'));
+        $dtEnd = \Carbon\Carbon::parse(($validated['date_to'] ?? now()->addDays(2)->format('Y-m-d')).' '.($validated['end_time'] ?? '09:00'));
         $rentalDays = max(1, (int) ceil($dtStart->diffInMinutes($dtEnd) / 1440));
         Log::info("Global rental duration: {$rentalDays} days.");
 
         // Check if any location parameter is provided - if not, return empty results
-        $hasLocation = !empty($validated['where']) ||
-                       !empty($validated['location']) ||
-                       !empty($validated['city']) ||
-                       !empty($validated['state']) ||
-                       !empty($validated['country']) ||
-                       !empty($validated['latitude']) ||
-                       !empty($validated['provider_pickup_id']) ||
-                       !empty($validated['unified_location_id']);
+        $hasLocation = ! empty($validated['where']) ||
+                       ! empty($validated['location']) ||
+                       ! empty($validated['city']) ||
+                       ! empty($validated['state']) ||
+                       ! empty($validated['country']) ||
+                       ! empty($validated['latitude']) ||
+                       ! empty($validated['provider_pickup_id']) ||
+                       ! empty($validated['unified_location_id']);
 
         $emptyResultsResponse = function (?string $searchError = null) use ($request, $validated) {
             $emptyVehicles = new \Illuminate\Pagination\LengthAwarePaginator(
@@ -132,6 +136,13 @@ class SearchController extends Controller
                 route('search', ['locale' => App::getLocale()]),
                 'noindex,follow'
             )->toArray();
+
+            if (empty($seo['title']) || $seo['title'] === config('app.name')) {
+                $locationLabel = $validated['where'] ?? null;
+                $seo['title'] = $locationLabel
+                    ? "Car Rentals in {$locationLabel} — Compare & Book | Vrooem"
+                    : 'Search Car Rentals — Compare Deals Worldwide | Vrooem';
+            }
 
             return Inertia::render('SearchResults', [
                 'vehicles' => $emptyVehicles,
@@ -154,15 +165,16 @@ class SearchController extends Controller
             ]);
         };
 
-        if (!$hasLocation) {
+        if (! $hasLocation) {
             Log::info('No location provided - returning empty vehicle results');
+
             return $emptyResultsResponse();
         }
 
         $internalVehiclesQuery = Vehicle::query()
             ->with(['images', 'bookings', 'vendor.profile', 'vendorProfile', 'vendorProfileData', 'benefits', 'vendorPlans', 'addons', 'operatingHours']);
 
-        if (!empty($validated['date_from']) && !empty($validated['date_to'])) {
+        if (! empty($validated['date_from']) && ! empty($validated['date_to'])) {
             $this->internalVehicleAvailabilityService->apply($internalVehiclesQuery, [
                 'pickup_date' => $validated['date_from'],
                 'pickup_time' => $validated['start_time'] ?? null,
@@ -174,11 +186,11 @@ class SearchController extends Controller
         }
 
         // Apply location filters for internal vehicles based on search parameters
-        if (!empty($validated['provider_pickup_id']) && (!isset($validated['provider']) || $validated['provider'] !== 'internal')) {
+        if (! empty($validated['provider_pickup_id']) && (! isset($validated['provider']) || $validated['provider'] !== 'internal')) {
             // For mixed/provider searches: match internal vehicles by city first,
             // then fall back to a generous radius (50km) to include vendors near airports
             $cityMatched = false;
-            if (!empty($validated['city'])) {
+            if (! empty($validated['city'])) {
                 $cityCheck = Vehicle::query()->whereIn('status', Vehicle::searchableStatuses())
                     ->where('city', $validated['city'])->exists();
                 if ($cityCheck) {
@@ -186,56 +198,56 @@ class SearchController extends Controller
                     $cityMatched = true;
                 }
             }
-            if (!$cityMatched && !empty($validated['latitude']) && !empty($validated['longitude'])) {
+            if (! $cityMatched && ! empty($validated['latitude']) && ! empty($validated['longitude'])) {
                 $lat = $validated['latitude'];
                 $lon = $validated['longitude'];
                 $radius = max(($validated['radius'] ?? 5000) / 1000, 50); // minimum 50km for internal
 
-                $internalVehiclesQuery->whereRaw("
+                $internalVehiclesQuery->whereRaw('
                     6371 * acos(
                         cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
                         sin(radians(?)) * sin(radians(latitude))
                     ) <= ?
-                ", [$lat, $lon, $lat, $radius]);
-            } elseif (!$cityMatched) {
+                ', [$lat, $lon, $lat, $radius]);
+            } elseif (! $cityMatched) {
                 $internalVehiclesQuery->whereRaw('1 = 0');
             }
-        } elseif (!empty($validated['provider'])) {
+        } elseif (! empty($validated['provider'])) {
             if ($validated['provider'] === 'internal') {
                 $appliedExactInternalLocationFilter = false;
 
-                if (!empty($validated['provider_pickup_id'])) {
+                if (! empty($validated['provider_pickup_id'])) {
                     $appliedExactInternalLocationFilter = $this->applyInternalGroupedLocationFilter(
                         $internalVehiclesQuery,
                         $validated['provider_pickup_id']
                     );
                 }
 
-                if (!$appliedExactInternalLocationFilter && !empty($validated['matched_field'])) {
+                if (! $appliedExactInternalLocationFilter && ! empty($validated['matched_field'])) {
                     $fieldToQuery = null;
                     $valueToQuery = null;
 
                     switch ($validated['matched_field']) {
                         case 'location':
-                            if (!empty($validated['location'])) {
+                            if (! empty($validated['location'])) {
                                 $fieldToQuery = 'location';
                                 $valueToQuery = $validated['location'];
                             }
                             break;
                         case 'city':
-                            if (!empty($validated['city'])) {
+                            if (! empty($validated['city'])) {
                                 $fieldToQuery = 'city';
                                 $valueToQuery = $validated['city'];
                             }
                             break;
                         case 'state':
-                            if (!empty($validated['state'])) {
+                            if (! empty($validated['state'])) {
                                 $fieldToQuery = 'state';
                                 $valueToQuery = $validated['state'];
                             }
                             break;
                         case 'country':
-                            if (!empty($validated['country'])) {
+                            if (! empty($validated['country'])) {
                                 $fieldToQuery = 'country';
                                 $valueToQuery = $validated['country'];
                             }
@@ -244,18 +256,18 @@ class SearchController extends Controller
                     if ($fieldToQuery && $valueToQuery) {
                         $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
                     }
-                } elseif (!$appliedExactInternalLocationFilter && !empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+                } elseif (! $appliedExactInternalLocationFilter && ! empty($validated['latitude']) && ! empty($validated['longitude']) && ! empty($validated['radius'])) {
                     $lat = $validated['latitude'];
                     $lon = $validated['longitude'];
                     $radius = $validated['radius'] / 1000;
 
-                    $internalVehiclesQuery->whereRaw("
+                    $internalVehiclesQuery->whereRaw('
                         6371 * acos(
                             cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
                             sin(radians(?)) * sin(radians(latitude))
                         ) <= ?
-                    ", [$lat, $lon, $lat, $radius]);
-                } elseif (!$appliedExactInternalLocationFilter && !empty($validated['where'])) {
+                    ', [$lat, $lon, $lat, $radius]);
+                } elseif (! $appliedExactInternalLocationFilter && ! empty($validated['where'])) {
                     $searchTerm = $validated['where'];
                     $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
                         $q->where('location', 'LIKE', "%{$searchTerm}%")
@@ -265,47 +277,47 @@ class SearchController extends Controller
                     });
                 }
             } else {
-                if (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+                if (! empty($validated['latitude']) && ! empty($validated['longitude']) && ! empty($validated['radius'])) {
                     $lat = $validated['latitude'];
                     $lon = $validated['longitude'];
                     $radius = $validated['radius'] / 1000;
 
-                    $internalVehiclesQuery->whereRaw("
+                    $internalVehiclesQuery->whereRaw('
                         6371 * acos(
                             cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
                             sin(radians(?)) * sin(radians(latitude))
                         ) <= ?
-                    ", [$lat, $lon, $lat, $radius]);
+                    ', [$lat, $lon, $lat, $radius]);
                 } else {
                     $internalVehiclesQuery->whereRaw('1 = 0');
                 }
             }
         } else { // If no provider is specified, apply broad internal filters
-            if (!empty($validated['matched_field'])) {
+            if (! empty($validated['matched_field'])) {
                 $fieldToQuery = null;
                 $valueToQuery = null;
 
                 switch ($validated['matched_field']) {
                     case 'location':
-                        if (!empty($validated['location'])) {
+                        if (! empty($validated['location'])) {
                             $fieldToQuery = 'location';
                             $valueToQuery = $validated['location'];
                         }
                         break;
                     case 'city':
-                        if (!empty($validated['city'])) {
+                        if (! empty($validated['city'])) {
                             $fieldToQuery = 'city';
                             $valueToQuery = $validated['city'];
                         }
                         break;
                     case 'state':
-                        if (!empty($validated['state'])) {
+                        if (! empty($validated['state'])) {
                             $fieldToQuery = 'state';
                             $valueToQuery = $validated['state'];
                         }
                         break;
                     case 'country':
-                        if (!empty($validated['country'])) {
+                        if (! empty($validated['country'])) {
                             $fieldToQuery = 'country';
                             $valueToQuery = $validated['country'];
                         }
@@ -314,18 +326,18 @@ class SearchController extends Controller
                 if ($fieldToQuery && $valueToQuery) {
                     $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
                 }
-            } elseif (!empty($validated['latitude']) && !empty($validated['longitude']) && !empty($validated['radius'])) {
+            } elseif (! empty($validated['latitude']) && ! empty($validated['longitude']) && ! empty($validated['radius'])) {
                 $lat = $validated['latitude'];
                 $lon = $validated['longitude'];
                 $radius = $validated['radius'] / 1000;
 
-                $internalVehiclesQuery->whereRaw("
+                $internalVehiclesQuery->whereRaw('
                     6371 * acos(
                         cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
                         sin(radians(?)) * sin(radians(latitude))
                     ) <= ?
-                ", [$lat, $lon, $lat, $radius]);
-            } elseif (!empty($validated['where'])) {
+                ', [$lat, $lon, $lat, $radius]);
+            } elseif (! empty($validated['where'])) {
                 $searchTerm = $validated['where'];
                 $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
                     $q->where('location', 'LIKE', "%{$searchTerm}%")
@@ -336,7 +348,6 @@ class SearchController extends Controller
             }
         }
 
-
         $queryForOptions = clone $internalVehiclesQuery;
         $potentialVehiclesForOptions = $queryForOptions->get();
 
@@ -346,16 +357,22 @@ class SearchController extends Controller
         $transmissions = $potentialVehiclesForOptions->pluck('transmission')->unique()->filter()->values()->all();
         $fuels = $potentialVehiclesForOptions->pluck('fuel')->unique()->filter()->values()->all();
         $mileages = $potentialVehiclesForOptions->pluck('mileage')->unique()->filter()->map(function ($mileage) {
-            if ($mileage >= 0 && $mileage <= 25)
+            if ($mileage >= 0 && $mileage <= 25) {
                 return '0-25';
-            if ($mileage > 25 && $mileage <= 50)
+            }
+            if ($mileage > 25 && $mileage <= 50) {
                 return '25-50';
-            if ($mileage > 50 && $mileage <= 75)
+            }
+            if ($mileage > 50 && $mileage <= 75) {
                 return '50-75';
-            if ($mileage > 75 && $mileage <= 100)
+            }
+            if ($mileage > 75 && $mileage <= 100) {
                 return '75-100';
-            if ($mileage > 100 && $mileage <= 120)
+            }
+            if ($mileage > 100 && $mileage <= 120) {
                 return '100-120';
+            }
+
             return null;
         })->filter()->unique()->values()->all();
         $categoriesFromOptions = [];
@@ -364,16 +381,16 @@ class SearchController extends Controller
             $categoriesFromOptions = VehicleCategory::whereIn('id', $categoryIds)->select('id', 'name')->get()->toArray();
         }
 
-        if (!empty($validated['seating_capacity'])) {
+        if (! empty($validated['seating_capacity'])) {
             $internalVehiclesQuery->where('seating_capacity', $validated['seating_capacity']);
         }
-        if (!empty($validated['brand'])) {
+        if (! empty($validated['brand'])) {
             $internalVehiclesQuery->where('brand', $validated['brand']);
         }
-        if (!empty($validated['transmission'])) {
+        if (! empty($validated['transmission'])) {
             $internalVehiclesQuery->where('transmission', $validated['transmission']);
         }
-        if (!empty($validated['fuel'])) {
+        if (! empty($validated['fuel'])) {
             $internalVehiclesQuery->where('fuel', $validated['fuel']);
         }
         // Note: price_range filtering removed from backend - handled on frontend with currency conversion
@@ -381,18 +398,18 @@ class SearchController extends Controller
         //     $range = explode('-', $validated['price_range']);
         //     $internalVehiclesQuery->whereBetween('price_per_day', [(int) $range[0], (int) $range[1]]);
         // }
-        if (!empty($validated['color'])) {
+        if (! empty($validated['color'])) {
             $internalVehiclesQuery->where('color', $validated['color']);
         }
-        if (!empty($validated['mileage'])) {
+        if (! empty($validated['mileage'])) {
             $range = explode('-', $validated['mileage']);
             $internalVehiclesQuery->whereBetween('mileage', [(int) $range[0], (int) $range[1]]);
         }
-        if (!empty($validated['category_id'])) {
+        if (! empty($validated['category_id'])) {
             $internalVehiclesQuery->where('category_id', $validated['category_id']);
         }
 
-        if (!empty($validated['package_type'])) {
+        if (! empty($validated['package_type'])) {
             switch ($validated['package_type']) {
                 case 'week':
                     $internalVehiclesQuery->whereNotNull('price_per_week')->orderBy('price_per_week');
@@ -452,7 +469,6 @@ class SearchController extends Controller
         );
     }
 
-
     /**
      * Gateway-based search: replaces all provider-specific fetching with a single gateway call.
      * Internal vehicles are still fetched from the local DB.
@@ -478,6 +494,16 @@ class SearchController extends Controller
             route('search', ['locale' => App::getLocale()]),
             'noindex,follow'
         )->toArray();
+
+        // Sensible branded fallback when no DB SEO row exists for the search
+        // page. Prevents the title showing as bare "Laravel" / APP_NAME when
+        // the admin hasn't configured SEO for this route yet.
+        if (empty($seo['title']) || $seo['title'] === config('app.name')) {
+            $locationLabel = $validated['where'] ?? null;
+            $seo['title'] = $locationLabel
+                ? "Car Rentals in {$locationLabel} — Compare & Book | Vrooem"
+                : 'Search Car Rentals — Compare Deals Worldwide | Vrooem';
+        }
 
         $props = $this->gatewaySearchService->buildPageProps(
             $request,
@@ -525,7 +551,7 @@ class SearchController extends Controller
             ->select(['id', 'location', 'location_type', 'city', 'state', 'country'])
             ->first();
 
-        if (!$referenceVehicle) {
+        if (! $referenceVehicle) {
             return false;
         }
 
@@ -552,8 +578,9 @@ class SearchController extends Controller
         ]);
 
         // Direct lookup by ID
-        if (!empty($validated['unified_location_id'])) {
+        if (! empty($validated['unified_location_id'])) {
             $location = $this->locationSearchService->getLocationByUnifiedId($validated['unified_location_id']);
+
             return response()->json($location ? [$location] : []);
         }
 
@@ -568,5 +595,4 @@ class SearchController extends Controller
 
         return response()->json($locations);
     }
-
 }

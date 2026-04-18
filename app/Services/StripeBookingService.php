@@ -19,6 +19,7 @@ use App\Models\VendorProfile;
 use App\Services\BookingAmountService;
 use App\Services\Bookings\InternalBookingSnapshotService;
 use App\Services\CurrencyConversionService;
+use App\Services\CheckoutIdentityGuardService;
 use App\Services\VrooemGatewayService;
 use App\Jobs\SendAwinConversion;
 use Illuminate\Support\Facades\Log;
@@ -180,14 +181,14 @@ class StripeBookingService
                     'stripe_session_id' => $session->id,
                     'stripe_payment_intent_id' => $session->payment_intent,
                     'provider_booking_ref' => $metadata->provider_booking_ref ?? null,
-                    'discount_amount' => (float) ($metadata->promo_discount_amount ?? 0),
+                    'discount_amount' => (float) ($metadata->offer_discount_amount ?? $metadata->promo_discount_amount ?? 0),
                 ]);
             }
 
             // Update discount_amount for existing bookings too (idempotent re-processing)
-            $promoDiscount = (float) ($metadata->promo_discount_amount ?? 0);
-            if ($promoDiscount > 0 && (float) ($booking->discount_amount ?? 0) === 0.0) {
-                $booking->update(['discount_amount' => $promoDiscount]);
+            $offerDiscount = (float) ($metadata->offer_discount_amount ?? $metadata->promo_discount_amount ?? 0);
+            if ($offerDiscount > 0 && (float) ($booking->discount_amount ?? 0) === 0.0) {
+                $booking->update(['discount_amount' => $offerDiscount]);
             }
 
             if (empty($booking->provider_metadata)) {
@@ -196,6 +197,8 @@ class StripeBookingService
                     'provider_metadata' => $providerMetadata,
                 ]);
             }
+
+            app(OfferService::class)->syncBookingOffers($booking, $this->resolveAppliedOffersFromMetadata($metadata));
 
             $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
             $extrasTotal = (float) ($metadata->extras_total ?? 0);
@@ -398,29 +401,30 @@ class StripeBookingService
         $user = null;
 
         if (!$userId) {
-            if ($email && $phone) {
-                $user = User::where('email', $email)
-                    ->orWhere('phone', $phone)
-                    ->first();
-            } elseif ($email) {
-                $user = User::where('email', $email)->first();
-            } elseif ($phone) {
-                $user = User::where('phone', $phone)->first();
+            $identityGuard = app(CheckoutIdentityGuardService::class);
+            $matches = $identityGuard->findExistingUsers($email, $phone);
+
+            $conflict = $identityGuard->resolveCheckoutConflict(
+                null,
+                $matches['email_user'] ?? null,
+                $matches['phone_user'] ?? null
+            );
+
+            if ($conflict) {
+                throw new \RuntimeException($conflict['message']);
             }
 
-            if (!$user) {
-                $safePhone = $phone ?: 'guest_' . now()->timestamp . '_' . Str::random(6);
-                $tempPassword = Str::random(10);
-                $user = User::create([
-                    'first_name' => $firstName,
-                    'last_name' => $lastName,
-                    'email' => $email ?? 'guest_' . now()->timestamp . '_' . Str::random(6) . '@temp.com',
-                    'phone' => $safePhone,
-                    'password' => Hash::make($tempPassword),
-                    'role' => 'customer',
-                    'status' => 'active',
-                ]);
-            }
+            $safePhone = $phone ?: 'guest_' . now()->timestamp . '_' . Str::random(6);
+            $tempPassword = Str::random(10);
+            $user = User::create([
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'email' => $email ?? 'guest_' . now()->timestamp . '_' . Str::random(6) . '@temp.com',
+                'phone' => $safePhone,
+                'password' => Hash::make($tempPassword),
+                'role' => 'customer',
+                'status' => 'active',
+            ]);
 
             $userId = $user->id;
         }
@@ -433,6 +437,27 @@ class StripeBookingService
         if ($email) {
             $customer = Customer::where('email', $email)->first();
             if ($customer) {
+                $customerUpdates = [
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'phone' => $phone,
+                    'flight_number' => $metadata->flight_number ?? $customer->flight_number,
+                    'driver_age' => $metadata->customer_driver_age ?? $customer->driver_age,
+                ];
+
+                if ($userId && $customer->email === $email && (int) ($customer->user_id ?? 0) !== (int) $userId) {
+                    $customerUpdates['user_id'] = $userId;
+                }
+
+                $customer->fill(array_filter(
+                    $customerUpdates,
+                    static fn ($value) => $value !== null && $value !== ''
+                ));
+
+                if ($customer->isDirty()) {
+                    $customer->save();
+                }
+
                 return [
                     'customer' => $customer,
                     'temp_password' => null,
@@ -682,6 +707,8 @@ class StripeBookingService
                 'commission_rate' => $commissionRate / 100, // Store as decimal (0.15)
                 'commission_amount' => $commissionAmount,
                 'grand_total' => $totalAmount,
+                'display_total' => $metadata->booking_total_display ?? $totalAmount,
+                'discount_amount' => (float) ($metadata->offer_discount_amount ?? $metadata->promo_discount_amount ?? 0),
             ],
 
             // Deposit & excess (in provider's original currency for vendor display)
@@ -751,6 +778,8 @@ class StripeBookingService
             'driver_requirements' => $driverRequirements,
             'terms' => $terms,
             'extras_selected' => $extrasPayload['detailed_extras'] ?? ($extrasPayload['extras'] ?? null),
+            'applied_offers' => $this->resolveAppliedOffersFromMetadata($metadata),
+            'free_esim_included' => $this->resolveTruthyValue($metadata->free_esim_included ?? false),
             'sbc' => [
                 'availability_id' => $metadata->sbc_availability_id ?? null,
                 'rate_id' => $metadata->sbc_rate_id ?? null,
@@ -799,6 +828,63 @@ class StripeBookingService
 
         // Merge provider metadata with additional fields
         return array_merge($providerMetadata, $additionalMetadata);
+    }
+
+    protected function resolveAppliedOffersFromMetadata($metadata): array
+    {
+        $appliedOffers = $metadata->applied_offers ?? [];
+
+        if (is_string($appliedOffers)) {
+            $decoded = json_decode($appliedOffers, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $appliedOffers = $decoded;
+            } else {
+                $appliedOffers = [];
+            }
+        }
+
+        if (!empty($appliedOffers) && is_array($appliedOffers)) {
+            return array_values(array_filter($appliedOffers, 'is_array'));
+        }
+
+        $offerRate = (float) ($metadata->offer_rate ?? $metadata->promo_rate ?? 0);
+        $offerDiscount = (float) ($metadata->offer_discount_amount ?? $metadata->promo_discount_amount ?? 0);
+        $offers = [];
+
+        if ($offerRate > 0) {
+            $offers[] = [
+                'id' => $metadata->offer_id ?? $metadata->promo_id ?? null,
+                'name' => 'Discount Offer',
+                'slug' => null,
+                'title' => 'Discount Offer',
+                'effect_type' => 'price_discount_percentage',
+                'effect_payload' => [
+                    'percentage' => round($offerRate * 100, 2),
+                ],
+                'discount_amount' => $offerDiscount,
+            ];
+        }
+
+        if ($this->resolveTruthyValue($metadata->free_esim_included ?? false)) {
+            $offers[] = [
+                'id' => null,
+                'name' => 'Free E-Sim',
+                'slug' => 'free-e-sim',
+                'title' => 'Free E-Sim',
+                'effect_type' => 'free_esim',
+                'effect_payload' => [
+                    'included' => true,
+                ],
+                'discount_amount' => 0,
+            ];
+        }
+
+        return $offers;
+    }
+
+    protected function resolveTruthyValue(mixed $value): bool
+    {
+        return in_array($value, [true, 1, '1', 'true', 'yes', 'on'], true);
     }
 
     protected function normalizeCurrencyCode($currency): string

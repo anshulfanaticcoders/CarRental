@@ -48,15 +48,21 @@
                                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Pickup</p>
                                 <p class="text-sm font-semibold text-gray-900">{{ fmtDate(booking.pickup_date) }}</p>
                                 <p class="text-xs text-gray-500">{{ booking.pickup_time || '' }}</p>
-                                <p class="text-xs text-gray-400 mt-1 leading-tight">{{ booking.pickup_location || '—' }}</p>
                             </div>
                             <div class="bg-gray-50 rounded-lg p-3">
                                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Return</p>
                                 <p class="text-sm font-semibold text-gray-900">{{ fmtDate(booking.return_date) }}</p>
                                 <p class="text-xs text-gray-500">{{ booking.return_time || '' }}</p>
-                                <p class="text-xs text-gray-400 mt-1 leading-tight">{{ booking.return_location || '—' }}</p>
                             </div>
                         </div>
+                        <BookingLocationBlock
+                            class="mt-4"
+                            :pickup-string="booking.pickup_location"
+                            :return-string="booking.return_location"
+                            :pickup-details="booking.provider_metadata?.pickup_location_details || null"
+                            :dropoff-details="booking.provider_metadata?.dropoff_location_details || null"
+                            compact
+                        />
                         <p class="text-xs text-gray-400 mt-3">{{ booking.total_days }} day{{ booking.total_days !== 1 ? 's' : '' }}</p>
                     </div>
 
@@ -155,6 +161,7 @@
 import { ref, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
+import BookingLocationBlock from '@/Components/Booking/BookingLocationBlock.vue';
 import { Button } from '@/Components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { Textarea } from '@/Components/ui/textarea';

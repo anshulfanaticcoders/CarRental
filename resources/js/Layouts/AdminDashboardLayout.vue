@@ -103,7 +103,7 @@ const routeTitles = {
   '/features': 'Features',
   '/admin/settings/payable-amount': 'Payable Amount',
   '/admin/settings/homepage': 'Home Page Settings',
-  '/admin/advertisements': 'Advertisements',
+  '/admin/offers': 'Offers',
   '/admin/reviews': 'Reviews',
   '/testimonials': 'Testimonials',
   '/damage-protection-records': 'Damage Protection',

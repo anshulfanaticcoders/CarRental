@@ -13,10 +13,21 @@ import TranslationPlugin from '../js/plugins/translation';
 import AffiliateSignupPopup from './Components/AffiliateSignupPopup.vue'; // Import the new component
 // import { hideTawk, showTawk } from './lib/tawk';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Vrooem';
 
 createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
+    // Title resolution rules:
+    //  - Empty / fallback title → use brand alone (avoids "Laravel - Laravel" or
+    //    "Vrooem - Vrooem" when a page has no SEO row).
+    //  - Title that already contains the brand → keep as-is (no dup suffix).
+    //  - Otherwise → append " - {brand}".
+    title: (title) => {
+        const resolved = (title || '').trim();
+        if (!resolved || resolved.toLowerCase() === appName.toLowerCase()) return appName;
+        return resolved.toLowerCase().includes(appName.toLowerCase())
+            ? resolved
+            : `${resolved} - ${appName}`;
+    },
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
         const vueApp = createApp({

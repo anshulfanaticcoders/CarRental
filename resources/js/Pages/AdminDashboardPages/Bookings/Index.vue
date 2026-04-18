@@ -175,7 +175,13 @@
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="text-sm">
                                         <div class="font-medium">{{ formatDate(booking.created_at) }}</div>
-                                        <div class="text-muted-foreground text-xs">{{ booking.pickup_location }}</div>
+                                        <div class="text-muted-foreground text-xs flex items-center gap-2">
+                                            <span>{{ booking.pickup_location }}</span>
+                                            <span v-if="booking.return_location && booking.return_location !== booking.pickup_location"
+                                                class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[#22d3ee]/15 text-[#0b2230] border border-[#22d3ee]/40">
+                                                One-way
+                                            </span>
+                                        </div>
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">

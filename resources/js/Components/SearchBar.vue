@@ -297,7 +297,7 @@
             <div v-for="result in searchResults" :key="result.unified_location_id" @click="selectLocation(result)"
               class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
               <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
-                <img :src="flighIcon" v-if="isAirportLocation(result)" class="w-1/2 h-1/2" />
+                <img :src="flighIcon" v-if="isAirportLocation(result)" alt="" aria-hidden="true" class="w-1/2 h-1/2" />
                 <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
                   class="w-1/2 h-1/2 group-hover:stroke-white">
                   <path clip-rule="evenodd"
@@ -337,7 +337,7 @@
             @click="selectDropoffLocation(result)"
             class="p-2 hover:bg-customPrimaryColor hover:text-white cursor-pointer flex gap-3 group rounded-[12px] hover:scale-[1.02] transition-transform">
             <div class="h-10 w-10 md:h-12 md:w-12 bg-gray-100 text-gray-300 rounded flex justify-center items-center">
-              <img :src="flighIcon" v-if="isAirportLocation(result)" class="w-1/2 h-1/2" />
+              <img :src="flighIcon" v-if="isAirportLocation(result)" alt="" aria-hidden="true" class="w-1/2 h-1/2" />
               <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
                 class="w-1/2 h-1/2 group-hover:stroke-white">
                 <path clip-rule="evenodd"
@@ -403,7 +403,7 @@
               <div v-for="result in searchResults" :key="result.unified_location_id" @click="selectLocation(result)"
                 class="p-3 active:bg-customPrimaryColor active:text-white cursor-pointer flex gap-3 rounded-xl transition-colors">
                 <div class="h-10 w-10 bg-gray-100 text-gray-300 rounded flex justify-center items-center flex-shrink-0">
-                  <img :src="flighIcon" v-if="isAirportLocation(result)" class="w-1/2 h-1/2" />
+                  <img :src="flighIcon" v-if="isAirportLocation(result)" alt="" aria-hidden="true" class="w-1/2 h-1/2" />
                   <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
                     <path clip-rule="evenodd"
                       d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z"
@@ -452,7 +452,7 @@
               @click="selectDropoffLocation(result)"
               class="p-3 active:bg-customPrimaryColor active:text-white cursor-pointer flex gap-3 rounded-xl transition-colors">
               <div class="h-10 w-10 bg-gray-100 text-gray-300 rounded flex justify-center items-center flex-shrink-0">
-                <img :src="flighIcon" v-if="isAirportLocation(result)" class="w-1/2 h-1/2" />
+                <img :src="flighIcon" v-if="isAirportLocation(result)" alt="" aria-hidden="true" class="w-1/2 h-1/2" />
                 <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-1/2 h-1/2">
                   <path clip-rule="evenodd"
                     d="M7.838 9.79c0 2.497 1.946 4.521 4.346 4.521 2.401 0 4.347-2.024 4.347-4.52 0-2.497-1.946-4.52-4.346-4.52-2.401 0-4.347 2.023-4.347 4.52Z"

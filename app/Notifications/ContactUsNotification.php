@@ -3,14 +3,15 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class ContactUsNotification extends Notification
 {
     use Queueable;
+
     protected $contactData;
+
     /**
      * Create a new notification instance.
      */
@@ -35,12 +36,12 @@ class ContactUsNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New Contact Form Submission - ' . config('app.name'))
+            ->subject('New Contact Form Submission - '.config('app.name'))
             ->greeting('Hello Admin,')
-            ->line('A new contact form has been submitted on ' . config('app.name') . '.')
+            ->line('A new contact form has been submitted on '.config('app.name').'.')
             ->line('**Contact Details:**')
-            ->line('**Name:** ' . $this->contactData['name'])
-            ->line('**Email:** ' . $this->contactData['email'])
+            ->line('**Name:** '.$this->contactData['name'])
+            ->line('**Email:** '.$this->contactData['email'])
             ->line('**Message:**')
             ->line($this->contactData['message'])
             ->line('Please respond to this inquiry as soon as possible.');
@@ -55,9 +56,9 @@ class ContactUsNotification extends Notification
     {
 
         return [
-            'title' => 'Contact Form: ' . $this->contactData['name'],
-            'name'    => $this->contactData['name'],
-            'email'   => $this->contactData['email'],
+            'title' => 'Contact Form: '.$this->contactData['name'],
+            'name' => $this->contactData['name'],
+            'email' => $this->contactData['email'],
             'role' => 'admin',
             'message' => $this->contactData['message'],
         ];

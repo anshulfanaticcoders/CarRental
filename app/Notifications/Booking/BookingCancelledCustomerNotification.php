@@ -2,20 +2,23 @@
 
 namespace App\Notifications\Booking;
 
+use App\Notifications\Concerns\FormatsBookingAmounts;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use App\Notifications\Concerns\FormatsBookingAmounts;
 use Illuminate\Support\Carbon;
 
 class BookingCancelledCustomerNotification extends Notification
 {
-    use Queueable;
     use FormatsBookingAmounts;
+    use Queueable;
 
     protected $booking;
+
     protected $customer;
+
     protected $vehicle;
+
     protected $cancellationReason;
 
     public function __construct($booking, $customer, $vehicle, string $cancellationReason)
@@ -39,18 +42,18 @@ class BookingCancelledCustomerNotification extends Notification
         $returnDate = $this->formatDate($this->booking->return_date ?? null);
 
         return (new MailMessage)
-            ->subject('Booking Cancelled - #' . $this->booking->booking_number)
-            ->greeting('Hello ' . $this->customer->first_name . ',')
+            ->subject('Booking Cancelled - #'.$this->booking->booking_number)
+            ->greeting('Hello '.$this->customer->first_name.',')
             ->line('Your booking has been cancelled by the platform administration.')
             ->line('**Booking Details:**')
-            ->line('**Booking Number:** ' . $this->booking->booking_number)
-            ->line('**Vehicle:** ' . $vehicleName)
-            ->line('**Pickup:** ' . ($this->booking->pickup_location ?? 'N/A') . ' on ' . $pickupDate)
-            ->line('**Return:** ' . ($this->booking->return_location ?? 'N/A') . ' on ' . $returnDate)
-            ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
-            ->line('**Reason:** ' . $this->cancellationReason)
+            ->line('**Booking Number:** '.$this->booking->booking_number)
+            ->line('**Vehicle:** '.$vehicleName)
+            ->line('**Pickup:** '.($this->booking->pickup_location ?? 'N/A').' on '.$pickupDate)
+            ->line('**Return:** '.($this->booking->return_location ?? 'N/A').' on '.$returnDate)
+            ->line('**Total Amount:** '.$this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
+            ->line('**Reason:** '.$this->cancellationReason)
             ->line('If you have any questions about this cancellation, please contact our support team.')
-            ->action('View Your Bookings', url('/' . app()->getLocale() . '/profile/bookings'));
+            ->action('View Your Bookings', url('/'.app()->getLocale().'/profile/bookings'));
     }
 
     public function toArray(object $notifiable): array
@@ -58,7 +61,7 @@ class BookingCancelledCustomerNotification extends Notification
         $amounts = $this->getCustomerAmounts($this->booking);
 
         return [
-            'title' => 'Booking Cancelled #' . $this->booking->booking_number,
+            'title' => 'Booking Cancelled #'.$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $this->getVehicleName(),
@@ -68,7 +71,7 @@ class BookingCancelledCustomerNotification extends Notification
             'cancellation_reason' => $this->cancellationReason,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'role' => 'customer',
-            'message' => 'Your booking #' . $this->booking->booking_number . ' has been cancelled by the platform.',
+            'message' => 'Your booking #'.$this->booking->booking_number.' has been cancelled by the platform.',
         ];
     }
 
@@ -76,7 +79,7 @@ class BookingCancelledCustomerNotification extends Notification
     {
         $brand = $this->vehicle?->brand ?? '';
         $model = $this->vehicle?->model ?? '';
-        $name = trim($brand . ' ' . $model);
+        $name = trim($brand.' '.$model);
 
         return $name !== '' ? $name : ($this->booking->vehicle_name ?? 'Vehicle');
     }
@@ -87,6 +90,6 @@ class BookingCancelledCustomerNotification extends Notification
             return $value->format('Y-m-d');
         }
 
-        return !empty($value) ? (string) $value : 'N/A';
+        return ! empty($value) ? (string) $value : 'N/A';
     }
 }

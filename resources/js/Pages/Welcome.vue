@@ -8,6 +8,7 @@ import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import WelcomeHero from '@/Components/Welcome/WelcomeHero.vue';
 import TopDestinations from '@/Components/Welcome/TopDestinations.vue';
 import WhyChooseUs from '@/Components/Welcome/WhyChooseUs.vue';
+import AdvertisementSection from '@/Components/AdvertisementSection.vue';
 import EsimSection from '@/Components/EsimSection.vue';
 import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
 import BlogSection from '@/Components/Welcome/BlogSection.vue';
@@ -102,6 +103,8 @@ onBeforeUnmount(() => { if (timer) clearTimeout(timer); });
     <main class="overflow-x-hidden">
 
         <WelcomeHero :hero-badge="heroBadge" :animated-tagline="animatedTagline" :hero-subtitle="heroSubtitle" :displayed-text="displayedText" :hero-image="heroImageSource" :trust-items="heroTrustItems" />
+
+        <AdvertisementSection :hero-image="heroImageSource" :advertisements="page.props.homepage_offers || []" />
         
         <TopDestinations :popular-places="popularPlaces" />
         

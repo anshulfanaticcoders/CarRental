@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
+use App\Models\Customer;
 use App\Models\User;
+use Inertia\Testing\AssertableInertia as Assert;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -100,5 +103,68 @@ class ProfileTest extends TestCase
             ->assertRedirect(route('profile.edit', ['locale' => 'en']));
 
         $this->assertNotNull($user->fresh());
+    }
+
+    public function test_profile_bookings_page_recovers_bookings_from_a_matching_customer_email_and_backfills_the_user_link(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'bookings@example.com',
+        ]);
+
+        $oldUser = User::factory()->create([
+            'email' => 'legacy-bookings@example.com',
+        ]);
+
+        $customer = Customer::create([
+            'user_id' => $oldUser->id,
+            'first_name' => 'Booking',
+            'last_name' => 'Customer',
+            'email' => 'bookings@example.com',
+            'phone' => $user->phone,
+            'driver_age' => 30,
+        ]);
+
+        $booking = Booking::create([
+            'booking_number' => 'BKTEST-' . uniqid(),
+            'customer_id' => $customer->id,
+            'vehicle_id' => null,
+            'provider_source' => 'internal',
+            'provider_vehicle_id' => 'vehicle-1',
+            'provider_booking_ref' => 'SUP-REF-1',
+            'provider_metadata' => [],
+            'vehicle_name' => 'Provider Vehicle',
+            'pickup_date' => now()->addDay(),
+            'return_date' => now()->addDays(2),
+            'pickup_time' => '09:00',
+            'return_time' => '09:00',
+            'pickup_location' => 'Airport',
+            'return_location' => 'Airport',
+            'plan' => 'BAS',
+            'total_days' => 1,
+            'base_price' => 100,
+            'extra_charges' => 0,
+            'tax_amount' => 0,
+            'total_amount' => 100,
+            'pending_amount' => 100,
+            'amount_paid' => 0,
+            'booking_currency' => 'EUR',
+            'payment_status' => 'partial',
+            'booking_status' => 'confirmed',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('profile.bookings.all', ['locale' => 'en']));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Profile/Bookings/AllBookings')
+            ->where('bookings.data.0.booking_number', $booking->booking_number)
+        );
+
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'user_id' => $user->id,
+        ]);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Offer;
+use App\Models\OfferEffect;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Vehicle;
@@ -28,6 +30,8 @@ class SkyscannerSearchApiTest extends TestCase
             'skyscanner.case_id' => 'PSM-46100',
             'skyscanner.quote_ttl_minutes' => 30,
         ]);
+
+        $this->createActiveFreeEsimOffer();
 
         $category = VehicleCategory::create([
             'name' => 'Economy',
@@ -96,6 +100,7 @@ class SkyscannerSearchApiTest extends TestCase
         $response->assertJsonCount(1, 'quotes');
         $response->assertJsonPath('quotes.0.quote_id', fn ($value) => is_string($value) && $value !== '');
         $response->assertJsonPath('quotes.0.vehicle.display_name', 'Toyota Yaris');
+        $response->assertJsonPath('quotes.0.free_esim_included', true);
         $response->assertJsonMissingPath('quotes.0.vehicle.provider_vehicle_id');
     }
 
@@ -185,6 +190,8 @@ class SkyscannerSearchApiTest extends TestCase
             'skyscanner.case_id' => 'PSM-46100',
             'skyscanner.quote_ttl_minutes' => 30,
         ]);
+
+        $this->createActiveFreeEsimOffer();
 
         $category = VehicleCategory::create([
             'name' => 'Economy',
@@ -355,6 +362,8 @@ class SkyscannerSearchApiTest extends TestCase
             'skyscanner.provider_whitelist' => ['greenmotion'],
         ]);
 
+        $this->createActiveFreeEsimOffer();
+
         $gatewayInventoryService = Mockery::mock(CarHireGatewayInventoryService::class);
         $gatewayInventoryService->shouldReceive('search')
             ->once()
@@ -438,6 +447,7 @@ class SkyscannerSearchApiTest extends TestCase
         $response->assertJsonCount(1, 'quotes');
         $response->assertJsonPath('quotes.0.quote_id', fn ($value) => is_string($value) && $value !== '');
         $response->assertJsonPath('quotes.0.vehicle.display_name', 'Hyundai i10 or similar');
+        $response->assertJsonPath('quotes.0.free_esim_included', true);
         $response->assertJsonPath('quotes.0.specs.sipp_code', 'ECMR');
         $response->assertJsonMissingPath('quotes.0.vehicle.source');
         $response->assertJsonMissingPath('quotes.0.vehicle.provider_code');
@@ -612,5 +622,27 @@ class SkyscannerSearchApiTest extends TestCase
         }
 
         return $vehicle;
+    }
+
+    private function createActiveFreeEsimOffer(): void
+    {
+        $offer = Offer::create([
+            'name' => 'Free E-Sim',
+            'slug' => 'free-e-sim-test',
+            'title' => 'Free E-Sim',
+            'description' => 'Free eSIM with every booking',
+            'start_date' => now()->subDay(),
+            'end_date' => now()->addDay(),
+            'is_active' => true,
+            'priority' => 100,
+            'placements' => ['homepage', 'search', 'checkout', 'success'],
+        ]);
+
+        OfferEffect::create([
+            'offer_id' => $offer->id,
+            'type' => 'free_esim',
+            'config' => ['included' => true],
+            'sort_order' => 1,
+        ]);
     }
 }

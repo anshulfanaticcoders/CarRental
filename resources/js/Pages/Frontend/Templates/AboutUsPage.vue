@@ -166,7 +166,7 @@ onUnmounted(() => {
         <!-- Hero -->
         <section class="au-hero">
             <div class="au-hero-bg">
-                <img :src="heroImageUrl" :alt="page.title" />
+                <img :src="heroImageUrl" :alt="`${page.title} — hero`" fetchpriority="high" decoding="async" />
             </div>
             <div class="au-container">
                 <div class="au-hero-content">
@@ -194,7 +194,10 @@ onUnmounted(() => {
                         <div class="au-story-text" v-html="contentSection?.content || page.content"></div>
                     </div>
                     <div v-if="meta?.team_image" class="au-story-img">
-                        <img :src="meta.team_image" :alt="page.title" />
+                        <img :src="meta.team_image"
+                             :alt="meta.team_image_alt || `${page.title} — team photo`"
+                             loading="lazy"
+                             decoding="async" />
                     </div>
                 </div>
             </div>
@@ -206,7 +209,10 @@ onUnmounted(() => {
                 <div class="au-story-grid au-reveal">
                     <div v-if="meta?.company_bio" class="au-story-text" v-html="meta.company_bio"></div>
                     <div v-if="meta?.team_image" class="au-story-img">
-                        <img :src="meta.team_image" :alt="page.title" />
+                        <img :src="meta.team_image"
+                             :alt="meta.team_image_alt || `${page.title} — team photo`"
+                             loading="lazy"
+                             decoding="async" />
                     </div>
                 </div>
             </div>
@@ -255,7 +261,10 @@ onUnmounted(() => {
             <div class="au-container">
                 <div class="au-bio-grid au-reveal">
                     <div v-if="splitImageUrl" class="au-bio-img">
-                        <img :src="splitImageUrl" :alt="splitSection.title || ''" />
+                        <img :src="splitImageUrl"
+                             :alt="splitSection.image_alt || splitSection.title || `${page.title} — illustration`"
+                             loading="lazy"
+                             decoding="async" />
                     </div>
                     <div class="au-bio-content">
                         <h2 v-if="splitSection.title">{{ splitSection.title }}</h2>

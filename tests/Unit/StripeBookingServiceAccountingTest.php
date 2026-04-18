@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Booking;
 use App\Models\Customer;
+use App\Models\StripeCheckoutPayload;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleCategory;
@@ -386,6 +387,95 @@ class StripeBookingServiceAccountingTest extends TestCase
     }
 
     #[Test]
+    public function it_backfills_an_existing_customer_record_to_the_logged_in_user_when_reusing_it_by_email(): void
+    {
+        Notification::fake();
+
+        config([
+            'currency.base_currency' => 'EUR',
+            'currency.default' => 'EUR',
+            'vrooem.enabled' => false,
+        ]);
+
+        $service = $this->makeServiceWithIdentityConversions();
+
+        $user = User::create([
+            'first_name' => 'Aman',
+            'last_name' => 'Customer',
+            'email' => 'aman@example.com',
+            'phone' => '+10000000009',
+            'password' => bcrypt('password'),
+            'role' => 'customer',
+            'status' => 'active',
+        ]);
+
+        $legacyUser = User::create([
+            'first_name' => 'Legacy',
+            'last_name' => 'Customer',
+            'email' => 'legacy-aman@example.com',
+            'phone' => '+10000000010',
+            'password' => bcrypt('password'),
+            'role' => 'customer',
+            'status' => 'active',
+        ]);
+
+        $customer = Customer::create([
+            'user_id' => $legacyUser->id,
+            'first_name' => 'Aman',
+            'last_name' => 'Customer',
+            'email' => 'aman@example.com',
+            'phone' => '+10000000009',
+            'driver_age' => 35,
+        ]);
+
+        $session = (object) [
+            'id' => 'cs_test_existing_customer_backfill',
+            'payment_intent' => 'pi_test_existing_customer_backfill',
+            'metadata' => (object) [
+                'user_id' => $user->id,
+                'vehicle_source' => 'internal',
+                'vehicle_id' => null,
+                'vehicle_brand' => 'Example',
+                'vehicle_model' => 'Sedan',
+                'pickup_date' => '2026-04-15',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-04-18',
+                'dropoff_time' => '09:00',
+                'pickup_location' => 'Dubai Airport',
+                'dropoff_location' => 'Dubai Airport',
+                'package' => 'BAS',
+                'number_of_days' => 3,
+                'currency' => 'EUR',
+                'provider_currency' => 'EUR',
+                'total_amount' => 172.50,
+                'total_amount_net' => 150.00,
+                'payable_amount' => 22.50,
+                'pending_amount' => 150.00,
+                'vehicle_total' => 115.00,
+                'extras_total' => 57.50,
+                'provider_vehicle_total' => 100.00,
+                'provider_extras_total' => 50.00,
+                'provider_grand_total' => 150.00,
+                'provider_booking_ref' => 'internal-existing-ref',
+                'deposit_percentage' => 15.00,
+                'customer_name' => 'Aman Customer',
+                'customer_email' => 'aman@example.com',
+                'customer_phone' => '+10000000009',
+                'customer_driver_age' => 35,
+                'payment_method' => 'card',
+            ],
+        ];
+
+        $booking = $service->createBookingFromSession($session);
+
+        $this->assertSame($customer->id, $booking->customer_id);
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'user_id' => $user->id,
+        ]);
+    }
+
+    #[Test]
     public function it_routes_new_external_provider_reservations_through_the_gateway_even_when_the_legacy_flag_is_disabled(): void
     {
         config([
@@ -465,5 +555,112 @@ class StripeBookingServiceAccountingTest extends TestCase
                 'provider_source' => 'recordgo',
             ],
         ], $service->reservationTriggers);
+    }
+
+    #[Test]
+    public function it_snapshots_applied_offers_and_free_esim_on_booking_creation(): void
+    {
+        Notification::fake();
+
+        config([
+            'currency.base_currency' => 'EUR',
+            'currency.default' => 'EUR',
+            'vrooem.enabled' => false,
+        ]);
+
+        $service = $this->makeServiceWithIdentityConversions();
+
+        $payload = StripeCheckoutPayload::create([
+            'payload' => [
+                'full_metadata' => [
+                    'applied_offers' => [
+                        [
+                            'id' => 501,
+                            'name' => 'Summer Discount',
+                            'slug' => 'summer-discount',
+                            'title' => 'Summer Discount',
+                            'effect_type' => 'price_discount_percentage',
+                            'effect_payload' => ['percentage' => 10],
+                            'discount_amount' => 17.25,
+                        ],
+                        [
+                            'id' => 502,
+                            'name' => 'Free E-Sim',
+                            'slug' => 'free-e-sim',
+                            'title' => 'Free E-Sim',
+                            'effect_type' => 'free_esim',
+                            'effect_payload' => ['included' => true],
+                            'discount_amount' => 0,
+                        ],
+                    ],
+                    'free_esim_included' => true,
+                ],
+            ],
+        ]);
+
+        $metadata = new class([
+            'vehicle_source' => 'greenmotion',
+            'vehicle_id' => 'gm-123',
+            'vehicle_brand' => 'Example',
+            'vehicle_model' => 'Sedan',
+            'pickup_date' => '2026-04-15',
+            'pickup_time' => '09:00',
+            'dropoff_date' => '2026-04-18',
+            'dropoff_time' => '09:00',
+            'pickup_location' => 'Sample Airport',
+            'dropoff_location' => 'Sample Airport',
+            'package' => 'BAS',
+            'number_of_days' => 3,
+            'currency' => 'EUR',
+            'provider_currency' => 'USD',
+            'total_amount' => 172.50,
+            'total_amount_net' => 150.00,
+            'payable_amount' => 22.50,
+            'pending_amount' => 150.00,
+            'vehicle_total' => 120.00,
+            'extras_total' => 52.50,
+            'provider_vehicle_total' => 100.00,
+            'provider_extras_total' => 50.00,
+            'provider_grand_total' => 150.00,
+            'customer_name' => 'Offer Customer',
+            'customer_email' => 'offer-customer@example.com',
+            'customer_phone' => '+919999999999',
+            'customer_driver_age' => 35,
+            'payment_method' => 'card',
+            'offer_discount_amount' => 17.25,
+            'booking_total_display' => 189.75,
+            'extras_payload_id' => (string) $payload->id,
+        ]) {
+            public function __construct(private array $data)
+            {
+                foreach ($data as $key => $value) {
+                    $this->{$key} = $value;
+                }
+            }
+
+            public function toArray(): array
+            {
+                return $this->data;
+            }
+        };
+
+        $session = (object) [
+            'id' => 'cs_test_offer_snapshot',
+            'payment_intent' => 'pi_test_offer_snapshot',
+            'metadata' => $metadata,
+        ];
+
+        $booking = $service->createBookingFromSession($session);
+
+        $booking->refresh()->load('offers');
+
+        $this->assertEqualsWithDelta(17.25, (float) $booking->discount_amount, 0.01);
+        $this->assertCount(2, $booking->offers);
+        $this->assertTrue((bool) data_get($booking->provider_metadata, 'free_esim_included'));
+        $this->assertSame(
+            ['free_esim', 'price_discount_percentage'],
+            $booking->offers->pluck('effect_type')->sort()->values()->all()
+        );
+        $this->assertSame('Summer Discount', $booking->offers->firstWhere('effect_type', 'price_discount_percentage')?->name);
     }
 }

@@ -7,15 +7,15 @@ use App\Models\ApiBooking;
 use App\Models\ApiBookingExtra;
 use App\Models\ApiConsumer;
 use App\Models\User;
-use App\Models\VendorLocation;
 use App\Models\Vehicle;
+use App\Models\VendorLocation;
 use App\Models\VendorVehicleAddon;
 use App\Models\VendorVehiclePlan;
 use App\Services\Bookings\InternalBookingSnapshotService;
+use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -25,8 +25,7 @@ class InternalProviderController extends Controller
     public function __construct(
         private readonly InternalVehicleAvailabilityService $internalVehicleAvailabilityService,
         private readonly InternalBookingSnapshotService $internalBookingSnapshotService,
-    ) {
-    }
+    ) {}
 
     private function dispatchBookingCreatedNotificationsAfterResponse(
         ApiBooking $booking,
@@ -100,7 +99,7 @@ class InternalProviderController extends Controller
             ->first();
         $locationVehicle = $pickupLocation ? null : Vehicle::find($validated['pickup_location_id']);
 
-        if (!$pickupLocation && !$locationVehicle) {
+        if (! $pickupLocation && ! $locationVehicle) {
             return response()->json([
                 'error' => [
                     'code' => 'LOCATION_NOT_FOUND',
@@ -110,13 +109,13 @@ class InternalProviderController extends Controller
             ], 404);
         }
 
-        $dropoffLocation = !empty($validated['dropoff_location_id'])
+        $dropoffLocation = ! empty($validated['dropoff_location_id'])
             ? VendorLocation::query()
                 ->whereKey($validated['dropoff_location_id'])
                 ->where('is_active', true)
                 ->first()
             : null;
-        $dropoffLocationVehicle = (!$dropoffLocation && !empty($validated['dropoff_location_id']))
+        $dropoffLocationVehicle = (! $dropoffLocation && ! empty($validated['dropoff_location_id']))
             ? Vehicle::find($validated['dropoff_location_id'])
             : null;
 
@@ -263,7 +262,7 @@ class InternalProviderController extends Controller
 
             return [
                 'id' => $vehicle->id,
-                'name' => trim($vehicle->brand . ' ' . $vehicle->model),
+                'name' => trim($vehicle->brand.' '.$vehicle->model),
                 'brand' => $vehicle->brand,
                 'model' => $vehicle->model,
                 'year' => $vehicle->registration_date ? Carbon::parse($vehicle->registration_date)->year : null,
@@ -324,7 +323,7 @@ class InternalProviderController extends Controller
     {
         $vehicle = Vehicle::find($vehicleId);
 
-        if (!$vehicle) {
+        if (! $vehicle) {
             return response()->json([
                 'error' => [
                     'code' => 'VEHICLE_NOT_FOUND',
@@ -337,7 +336,7 @@ class InternalProviderController extends Controller
         $extras = VendorVehicleAddon::where('vendor_id', $vehicle->vendor_id)
             ->where(function ($q) use ($vehicle) {
                 $q->where('vehicle_id', $vehicle->id)
-                  ->orWhereNull('vehicle_id');
+                    ->orWhereNull('vehicle_id');
             })
             ->get()
             ->map(fn ($addon) => [
@@ -352,7 +351,7 @@ class InternalProviderController extends Controller
         $insuranceOptions = VendorVehiclePlan::where('vendor_id', $vehicle->vendor_id)
             ->where(function ($q) use ($vehicle) {
                 $q->where('vehicle_id', $vehicle->id)
-                  ->orWhereNull('vehicle_id');
+                    ->orWhereNull('vehicle_id');
             })
             ->get()
             ->map(fn ($plan) => [
@@ -398,7 +397,7 @@ class InternalProviderController extends Controller
 
         $vehicle = Vehicle::with(['vendor', 'vendor.vendorProfile', 'images', 'vendorLocation', 'vendorProfileData'])->find($validated['vehicle_id']);
 
-        if (!$vehicle || !in_array($vehicle->status, Vehicle::searchableStatuses(), true)) {
+        if (! $vehicle || ! in_array($vehicle->status, Vehicle::searchableStatuses(), true)) {
             return response()->json([
                 'error' => [
                     'code' => 'VEHICLE_UNAVAILABLE',
@@ -408,7 +407,7 @@ class InternalProviderController extends Controller
             ], 409);
         }
 
-        if (!$this->internalVehicleAvailabilityService->isVehicleAvailable($vehicle, [
+        if (! $this->internalVehicleAvailabilityService->isVehicleAvailable($vehicle, [
             'pickup_date' => $validated['pickup_date'],
             'pickup_time' => $validated['pickup_time'],
             'dropoff_date' => $validated['dropoff_date'],
@@ -432,7 +431,7 @@ class InternalProviderController extends Controller
         $extrasTotal = 0;
         $extrasData = [];
 
-        if (!empty($validated['extras'])) {
+        if (! empty($validated['extras'])) {
             foreach ($validated['extras'] as $extraInput) {
                 $addon = VendorVehicleAddon::where('id', $extraInput['extra_id'])
                     ->where('vendor_id', $vehicle->vendor_id)
@@ -479,7 +478,7 @@ class InternalProviderController extends Controller
                 'vehicle_id' => $vehicle->id,
                 'pickup_vendor_location_id' => $vehicle->vendor_location_id,
                 'dropoff_vendor_location_id' => $vehicle->vendor_location_id,
-                'vehicle_name' => trim($vehicle->brand . ' ' . $vehicle->model),
+                'vehicle_name' => trim($vehicle->brand.' '.$vehicle->model),
                 'vehicle_image' => $vehicleImage,
                 'driver_first_name' => $validated['driver']['first_name'],
                 'driver_last_name' => $validated['driver']['last_name'],
@@ -541,8 +540,14 @@ class InternalProviderController extends Controller
                     'dropoff_location_id' => $booking->dropoff_vendor_location_id,
                     'pickup_location' => $booking->pickup_location,
                     'return_location' => $booking->return_location,
+                    'is_one_way' => trim((string) $booking->pickup_location) !== trim((string) $booking->return_location)
+                        && $booking->return_location !== null,
                     'pickup_location_details' => $booking->provider_metadata['pickup_location_details'] ?? null,
                     'dropoff_location_details' => $booking->provider_metadata['dropoff_location_details'] ?? null,
+                    'pickup_instructions' => $booking->provider_metadata['pickup_location_details']['pickup_instructions']
+                        ?? ($booking->provider_metadata['pickup_instructions'] ?? null),
+                    'dropoff_instructions' => $booking->provider_metadata['dropoff_location_details']['dropoff_instructions']
+                        ?? ($booking->provider_metadata['dropoff_instructions'] ?? null),
                     'total_days' => $booking->total_days,
                     'daily_rate' => (float) $booking->daily_rate,
                     'base_price' => (float) $booking->base_price,
@@ -583,7 +588,7 @@ class InternalProviderController extends Controller
     {
         $apiConsumerId = $request->query('api_consumer_id');
 
-        if (!$apiConsumerId) {
+        if (! $apiConsumerId) {
             return response()->json([
                 'error' => [
                     'code' => 'MISSING_CONSUMER_ID',
@@ -598,7 +603,7 @@ class InternalProviderController extends Controller
             ->with(['extras', 'vehicle.vendorLocation', 'vehicle.vendorProfileData', 'vehicle.vendor'])
             ->first();
 
-        if (!$booking) {
+        if (! $booking) {
             return response()->json([
                 'error' => [
                     'code' => 'BOOKING_NOT_FOUND',
@@ -670,7 +675,7 @@ class InternalProviderController extends Controller
     {
         $apiConsumerId = $request->query('api_consumer_id');
 
-        if (!$apiConsumerId) {
+        if (! $apiConsumerId) {
             return response()->json([
                 'error' => [
                     'code' => 'MISSING_CONSUMER_ID',
@@ -688,7 +693,7 @@ class InternalProviderController extends Controller
             ->where('api_consumer_id', $apiConsumerId)
             ->first();
 
-        if (!$booking) {
+        if (! $booking) {
             return response()->json([
                 'error' => [
                     'code' => 'BOOKING_NOT_FOUND',

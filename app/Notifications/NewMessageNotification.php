@@ -40,31 +40,31 @@ class NewMessageNotification extends Notification implements ShouldQueue
         $this->message->loadMissing(['sender', 'booking.vehicle']); // Eager load sender and booking with vehicle
 
         $sender = $this->message->sender;
-        $senderName = $sender ? ($sender->first_name . ' ' . $sender->last_name) : 'A user';
+        $senderName = $sender ? ($sender->first_name.' '.$sender->last_name) : 'A user';
         $booking = $this->message->booking;
 
         $mailMessage = (new MailMessage)
             ->subject('You have a new message regarding your booking')
-            ->greeting('Hello ' . $notifiable->first_name . ',')
-            ->line($senderName . ' has sent you a new message.')
+            ->greeting('Hello '.$notifiable->first_name.',')
+            ->line($senderName.' has sent you a new message.')
             ->line('**Message:**')
-            ->line(substr($this->message->message, 0, 200) . (strlen($this->message->message) > 200 ? '...' : ''));
+            ->line(substr($this->message->message, 0, 200).(strlen($this->message->message) > 200 ? '...' : ''));
 
         if ($booking) {
             $mailMessage->line('---')
-                        ->line('**Booking Details:**');
+                ->line('**Booking Details:**');
             if ($booking->vehicle) {
-                $mailMessage->line('Vehicle: ' . $booking->vehicle->name); // Assuming vehicle has a name attribute
+                $mailMessage->line('Vehicle: '.$booking->vehicle->name); // Assuming vehicle has a name attribute
             }
-            $mailMessage->line('Booking Reference: ' . ($booking->booking_number ?? 'N/A'));
-            $mailMessage->line('Pickup Date: ' . ($booking->pickup_date ? \Carbon\Carbon::parse($booking->pickup_date)->format('F j, Y H:i') : 'N/A'));
-            $mailMessage->line('Return Date: ' . ($booking->return_date ? \Carbon\Carbon::parse($booking->return_date)->format('F j, Y H:i') : 'N/A'));
-            $mailMessage->line('Pickup Location: ' . ($booking->pickup_location ?? 'N/A'));
+            $mailMessage->line('Booking Reference: '.($booking->booking_number ?? 'N/A'));
+            $mailMessage->line('Pickup Date: '.($booking->pickup_date ? \Carbon\Carbon::parse($booking->pickup_date)->format('F j, Y H:i') : 'N/A'));
+            $mailMessage->line('Return Date: '.($booking->return_date ? \Carbon\Carbon::parse($booking->return_date)->format('F j, Y H:i') : 'N/A'));
+            $mailMessage->line('Pickup Location: '.($booking->pickup_location ?? 'N/A'));
             // Add more booking details as needed, e.g., $booking->return_location
         }
 
-        $mailMessage->action('View Message & Booking', url('/' . app()->getLocale() . '/messages/' . $this->message->booking_id))
-                    ->line('Thank you for using ' . config('app.name') . '.');
+        $mailMessage->action('View Message & Booking', url('/'.app()->getLocale().'/messages/'.$this->message->booking_id))
+            ->line('Thank you for using '.config('app.name').'.');
 
         return $mailMessage;
     }
@@ -85,9 +85,9 @@ class NewMessageNotification extends Notification implements ShouldQueue
             'message_id' => $this->message->id,
             'booking_id' => $this->message->booking_id,
             'sender_id' => $this->message->sender_id,
-            'message_preview' => substr($this->message->message, 0, 50) . (strlen($this->message->message) > 50 ? '...' : ''),
+            'message_preview' => substr($this->message->message, 0, 50).(strlen($this->message->message) > 50 ? '...' : ''),
             'notification_type' => 'new_message',
-            'message' => substr($this->message->message, 0, 50) . (strlen($this->message->message) > 50 ? '...' : ''),
+            'message' => substr($this->message->message, 0, 50).(strlen($this->message->message) > 50 ? '...' : ''),
             'related_booking_reference' => $this->message->booking->booking_reference ?? null,
         ];
     }

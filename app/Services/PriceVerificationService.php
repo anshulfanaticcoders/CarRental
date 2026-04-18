@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Services\PromoService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -32,8 +31,7 @@ class PriceVerificationService
             // Store original prices - store by a composite key to avoid collisions
             $priceKey = $this->getPriceCacheKey($searchSessionId, $vehicleId);
 
-            // Capture active promo at search time so hash includes promo state
-            $activePromo = app(PromoService::class)->getActivePromo();
+            $offerFingerprint = app(OfferService::class)->getOfferFingerprint('search');
 
             $priceData = [
                 'vehicle_id' => $vehicleId,
@@ -47,8 +45,7 @@ class PriceVerificationService
                 'currency' => $vehicle['currency'] ?? ($vehicle['pricing']['currency'] ?? 'EUR'),
                 'stored_at' => now()->toIso8601String(),
                 'search_session' => $searchSessionId,
-                'promo_id' => $activePromo?->id,
-                'promo_rate' => $activePromo ? (float) $activePromo->promo_markup_rate : 0,
+                'offer_fingerprint' => $offerFingerprint,
             ];
 
             // Cache for 2 hours (typical user session duration)
@@ -226,9 +223,8 @@ class PriceVerificationService
             $priceData['currency'],
             // Include products totals
             collect($priceData['products'])->pluck('total')->sort()->values()->toArray(),
-            // Include promo state so hash changes if promo changes mid-session
-            $priceData['promo_id'] ?? null,
-            $priceData['promo_rate'] ?? 0,
+            // Include offer state so hash changes if active offers change mid-session
+            $priceData['offer_fingerprint'] ?? null,
         ]);
 
         return hash('sha256', $dataToHash . config('app.key'));

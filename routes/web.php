@@ -28,7 +28,7 @@ use App\Http\Controllers\Admin\NewsletterSubscriberController;
 use App\Http\Controllers\Admin\NewsletterCampaignController;
 use App\Http\Controllers\Admin\VendorsReportController;
 use App\Http\Controllers\NewsletterTrackingController;
-use App\Http\Controllers\Admin\AdminAdvertisementController;
+use App\Http\Controllers\Admin\AdminOfferController;
 use App\Http\Controllers\Admin\AdminAffiliateController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\SocialAuthController;
@@ -67,7 +67,6 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\VendorsDashboardController;
 use App\Http\Controllers\Admin\PayableSettingController;
 use App\Models\Booking;
-use App\Models\Advertisement;
 use App\Models\Message;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
@@ -304,8 +303,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/settings/profile', [AdminProfileController::class, 'index'])->name('admin.settings.profile');
     Route::post('/admin/settings/profile', [AdminProfileController::class, 'update'])->name('admin.settings.profile.update');
 
-    // Advertisements Management
-    Route::resource('admin/advertisements', AdminAdvertisementController::class)->names('admin.advertisements');
+    // Offers Management
+    Route::resource('admin/offers', AdminOfferController::class)->names('admin.offers');
+    Route::redirect('/admin/advertisements', '/admin/offers');
 
     // Payable Amount Settings
     Route::get('/admin/settings/payable-amount', [PayableSettingController::class, 'index'])->name('admin.settings.payable-amount.index');

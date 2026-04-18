@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Services\PromoService;
+use App\Services\OfferService;
 use App\Services\PriceVerificationService;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -87,9 +87,9 @@ class PriceVerificationServiceTest extends TestCase
     public function test_it_stores_canonical_nested_pricing_for_internal_search_vehicles(): void
     {
         Cache::flush();
-        $promoService = $this->createMock(PromoService::class);
-        $promoService->method('getActivePromo')->willReturn(null);
-        $this->app->instance(PromoService::class, $promoService);
+        $offerService = $this->createMock(OfferService::class);
+        $offerService->method('getOfferFingerprint')->willReturn('no-active-offers');
+        $this->app->instance(OfferService::class, $offerService);
 
         $service = app(PriceVerificationService::class);
         $priceMap = $service->storeOriginalPrices('search_internal_contract', [[
@@ -126,5 +126,41 @@ class PriceVerificationServiceTest extends TestCase
         $this->assertSame(30.0, $verified['original_prices']['original_daily_rate']);
         $this->assertSame('EUR', $verified['original_prices']['currency']);
         $this->assertSame('internal_addon_11', $verified['original_prices']['extras'][0]['id']);
+    }
+
+    public function test_price_hash_changes_when_offer_fingerprint_changes(): void
+    {
+        Cache::flush();
+
+        $vehicle = [[
+            'id' => 'offer-sensitive-1',
+            'source' => 'internal',
+            'pricing' => [
+                'currency' => 'EUR',
+                'price_per_day' => 45.0,
+                'total_price' => 135.0,
+            ],
+            'products' => [
+                ['type' => 'BAS', 'total' => 135.0],
+            ],
+        ]];
+
+        $offerServiceA = $this->createMock(OfferService::class);
+        $offerServiceA->method('getOfferFingerprint')->willReturn('discount-10');
+        $this->app->instance(OfferService::class, $offerServiceA);
+
+        $service = app(PriceVerificationService::class);
+        $first = $service->storeOriginalPrices('search_offer_a', $vehicle);
+
+        $offerServiceB = $this->createMock(OfferService::class);
+        $offerServiceB->method('getOfferFingerprint')->willReturn('discount-15');
+        $this->app->instance(OfferService::class, $offerServiceB);
+
+        $second = app(PriceVerificationService::class)->storeOriginalPrices('search_offer_b', $vehicle);
+
+        $this->assertNotSame(
+            $first['offer-sensitive-1']['price_hash'],
+            $second['offer-sensitive-1']['price_hash']
+        );
     }
 }

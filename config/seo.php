@@ -31,6 +31,18 @@ return [
             'params' => [],
         ],
         [
+            'key' => 'search',
+            'label' => 'Search Results',
+            'route_name' => 'search',
+            'params' => [],
+        ],
+        [
+            'key' => 'destinations',
+            'label' => 'Destinations',
+            'route_name' => 'destinations.index',
+            'params' => [],
+        ],
+        [
             'key' => 'faq',
             'label' => 'FAQ',
             'route_name' => 'faq.show',

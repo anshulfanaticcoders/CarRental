@@ -151,7 +151,7 @@
 
                     <!-- Tags Section -->
                     <div v-if="tags && tags.length > 0" class="mt-12 pt-8 border-t border-gray-200">
-                        <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">Tags</h3>
+                        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">Tags</h2>
                         <div class="flex flex-wrap gap-2">
                             <a
                                 v-for="tag in tags"
@@ -166,7 +166,7 @@
 
                     <!-- Share Bar -->
                     <div class="mt-10 pt-8 border-t border-gray-200">
-                        <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Share this article</h3>
+                        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Share this article</h2>
                         <div class="flex flex-wrap gap-3">
                             <!-- Facebook -->
                             <a
@@ -306,7 +306,7 @@
 
                         <!-- Related Articles -->
                         <div v-if="relatedBlogs && relatedBlogs.length > 0">
-                            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Related Articles</h3>
+                            <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Related Articles</h2>
                             <div class="space-y-4">
                                 <a
                                     v-for="related in relatedBlogs.slice(0, 3)"

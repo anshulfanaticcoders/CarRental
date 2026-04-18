@@ -14,43 +14,59 @@
         $initialSeoTitle = data_get($page, 'props.seo.title') ?: config('app.name', 'Vrooem');
         $initialSeoDescription = data_get($page, 'props.seo.description');
         $initialSeoCanonical = data_get($page, 'props.seo.canonical');
-        $initialSeoImage = data_get($page, 'props.seo.image');
+        $initialSeoImage = data_get($page, 'props.seo.image') ?: asset('og-default.jpg');
         $initialSeoRobots = data_get($page, 'props.seo.robots');
+        $initialSeoType = data_get($page, 'props.seo.og_type') ?: 'website';
+        $siteName = config('app.name', 'Vrooem');
+        $twitterHandle = config('seo.twitter_handle', '@vrooem');
+        $themeColor = '#153b4f';
     @endphp
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}">
+    <meta name="theme-color" content="{{ $themeColor }}">
+    {{--
+      SEO tags below are tagged `inertia` so the SeoHead.vue component can
+      replace them on SPA navigation. Do NOT emit duplicate <meta name="x">
+      tags elsewhere in the head — Inertia dedupes by head-key, which we set
+      via the `inertia` attribute on each managed tag.
+    --}}
+    <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}" inertia>
+    <meta property="og:type" content="{{ $initialSeoType }}" inertia="og:type">
+    <meta property="og:site_name" content="{{ $siteName }}" inertia="og:site_name">
 
     <title inertia>{{ $initialSeoTitle }}</title>
     @if($initialSeoRobots)
-        <meta name="robots" content="{{ $initialSeoRobots }}">
+        <meta name="robots" content="{{ $initialSeoRobots }}" inertia="robots">
     @endif
     @if($initialSeoDescription)
-        <meta name="description" content="{{ $initialSeoDescription }}">
+        <meta name="description" content="{{ $initialSeoDescription }}" inertia="description">
     @endif
     @if($initialSeoCanonical)
-        <link rel="canonical" href="{{ $initialSeoCanonical }}">
+        <link rel="canonical" href="{{ $initialSeoCanonical }}" inertia="canonical">
     @endif
-    <meta property="og:title" content="{{ $initialSeoTitle }}">
+    <meta property="og:title" content="{{ $initialSeoTitle }}" inertia="og:title">
     @if($initialSeoDescription)
-        <meta property="og:description" content="{{ $initialSeoDescription }}">
+        <meta property="og:description" content="{{ $initialSeoDescription }}" inertia="og:description">
     @endif
     @if($initialSeoCanonical)
-        <meta property="og:url" content="{{ $initialSeoCanonical }}">
+        <meta property="og:url" content="{{ $initialSeoCanonical }}" inertia="og:url">
     @endif
     @if($initialSeoImage)
-        <meta property="og:image" content="{{ $initialSeoImage }}">
+        <meta property="og:image" content="{{ $initialSeoImage }}" inertia="og:image">
+        <meta property="og:image:alt" content="{{ $initialSeoTitle }}" inertia="og:image:alt">
     @endif
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ $initialSeoTitle }}">
+    <meta name="twitter:card" content="summary_large_image" inertia="twitter:card">
+    <meta name="twitter:site" content="{{ $twitterHandle }}" inertia="twitter:site">
+    <meta name="twitter:title" content="{{ $initialSeoTitle }}" inertia="twitter:title">
     @if($initialSeoDescription)
-        <meta name="twitter:description" content="{{ $initialSeoDescription }}">
+        <meta name="twitter:description" content="{{ $initialSeoDescription }}" inertia="twitter:description">
     @endif
     @if($initialSeoImage)
-        <meta name="twitter:image" content="{{ $initialSeoImage }}">
+        <meta name="twitter:image" content="{{ $initialSeoImage }}" inertia="twitter:image">
     @endif
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
 
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -105,8 +121,15 @@
     {{-- Organization Schema --}}
     @if(!empty($organizationSchemaForBlade))
         <script type="application/ld+json">
-                        {!! json_encode($organizationSchemaForBlade, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-                    </script>
+            {!! json_encode($organizationSchemaForBlade, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+        </script>
+    @endif
+
+    {{-- WebSite Schema with SearchAction (enables Google sitelinks search box) --}}
+    @if(!empty($websiteSchemaForBlade))
+        <script type="application/ld+json">
+            {!! json_encode($websiteSchemaForBlade, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+        </script>
     @endif
 
     <!-- Google tag (gtag.js) -->

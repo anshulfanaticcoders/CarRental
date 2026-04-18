@@ -2,6 +2,7 @@
 
 namespace App\Services\Skyscanner;
 
+use App\Services\OfferService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Str;
@@ -16,12 +17,17 @@ class CarHireQuoteLifecycleService
         $quoteId = (string) Str::uuid();
         $pickupLocation = is_array(data_get($vehicle, 'location.pickup')) ? data_get($vehicle, 'location.pickup') : [];
         $dropoffLocation = is_array(data_get($vehicle, 'location.dropoff')) ? data_get($vehicle, 'location.dropoff') : [];
+        $resolvedOffers = app(OfferService::class)->resolveAppliedOffers([
+            'placement' => 'search',
+        ]);
 
         return [
             'quote_id' => $quoteId,
             'case_id' => (string) config('skyscanner.case_id'),
             'created_at' => $createdAt->toIso8601String(),
             'expires_at' => $expiresAt->toIso8601String(),
+            'free_esim_included' => (bool) ($resolvedOffers['free_esim_included'] ?? false),
+            'applied_offers' => $resolvedOffers['applied_offers'] ?? [],
             'vehicle' => $this->buildVehicleSnapshot($vehicle),
             'supplier' => $vehicle['supplier'] ?? [],
             'specs' => $this->buildSpecsSnapshot($vehicle),

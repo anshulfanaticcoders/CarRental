@@ -84,10 +84,6 @@
                                     </div>
                                     <p class="text-sm font-semibold text-[var(--gray-800)]">{{ formatDate(booking.pickup_date) }}</p>
                                     <p v-if="booking.pickup_time" class="text-xs text-[var(--gray-500)] mt-0.5">{{ booking.pickup_time }}</p>
-                                    <p v-if="booking.pickup_location" class="text-xs text-[var(--gray-500)] mt-2 leading-relaxed">
-                                        <MapPin class="w-3 h-3 inline-block mr-0.5 -mt-0.5 text-[var(--gray-400)]" />
-                                        {{ booking.pickup_location }}
-                                    </p>
                                 </div>
                                 <div class="rounded-lg border border-[var(--gray-200)] p-4">
                                     <div class="flex items-center gap-2 mb-2.5">
@@ -96,12 +92,17 @@
                                     </div>
                                     <p class="text-sm font-semibold text-[var(--gray-800)]">{{ formatDate(booking.return_date) }}</p>
                                     <p v-if="booking.return_time" class="text-xs text-[var(--gray-500)] mt-0.5">{{ booking.return_time }}</p>
-                                    <p v-if="booking.return_location" class="text-xs text-[var(--gray-500)] mt-2 leading-relaxed">
-                                        <MapPin class="w-3 h-3 inline-block mr-0.5 -mt-0.5 text-[var(--gray-400)]" />
-                                        {{ booking.return_location }}
-                                    </p>
                                 </div>
                             </div>
+
+                            <BookingLocationBlock
+                                class="mt-4"
+                                :pickup-string="booking.pickup_location"
+                                :return-string="booking.return_location"
+                                :pickup-details="booking.provider_metadata?.pickup_location_details || null"
+                                :dropoff-details="booking.provider_metadata?.dropoff_location_details || null"
+                                compact
+                            />
                         </div>
                     </div>
 
@@ -368,6 +369,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
+import BookingLocationBlock from '@/Components/Booking/BookingLocationBlock.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import {

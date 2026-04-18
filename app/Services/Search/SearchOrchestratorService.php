@@ -78,13 +78,29 @@ class SearchOrchestratorService
         }
 
         // One-way filtering: when dropoff differs from pickup, remove non-one-way providers
+        // AND providers that have no presence at the dropoff. Without the dropoff-presence
+        // check, the gateway silently falls back to a round-trip quote for those adapters,
+        // producing misleading "one-way" results and no dropoff coordinates downstream.
         $dropoffUnifiedId = $validated['dropoff_unified_location_id'] ?? null;
         $pickupUnifiedId = $matchedLocation['unified_location_id'] ?? null;
         $isOneWay = ! empty($dropoffUnifiedId) && (string) $dropoffUnifiedId !== (string) $pickupUnifiedId;
 
         if ($isOneWay && $providerName === 'mixed') {
-            $providerEntries = array_values(array_filter($providerEntries, function ($entry) {
-                return in_array($entry['provider'], self::ONE_WAY_PROVIDERS, true);
+            $dropoffProviders = $this->resolveDropoffProviderSet((int) $dropoffUnifiedId);
+
+            $providerEntries = array_values(array_filter($providerEntries, function ($entry) use ($dropoffProviders) {
+                $provider = strtolower(trim((string) ($entry['provider'] ?? '')));
+                if (! in_array($provider, self::ONE_WAY_PROVIDERS, true)) {
+                    return false;
+                }
+                // If we could not resolve the dropoff location, keep the adapter-level
+                // filter only. The gateway will still discard providers that genuinely
+                // cannot fulfill the route.
+                if ($dropoffProviders === null) {
+                    return true;
+                }
+
+                return in_array($provider, $dropoffProviders, true);
             }));
         }
 
@@ -102,6 +118,35 @@ class SearchOrchestratorService
             'isOneWay' => $isOneWay,
             'errors' => $errors,
         ];
+    }
+
+    /**
+     * Resolve the set of providers that serve the given dropoff location.
+     * Returns null when the dropoff cannot be resolved — callers should fall
+     * back to provider-level filtering only.
+     *
+     * @return list<string>|null
+     */
+    private function resolveDropoffProviderSet(int $dropoffUnifiedId): ?array
+    {
+        if ($dropoffUnifiedId <= 0) {
+            return null;
+        }
+
+        $dropoffLocation = $this->locationSearchService->getLocationByUnifiedId($dropoffUnifiedId);
+        if (empty($dropoffLocation) || empty($dropoffLocation['providers'])) {
+            return null;
+        }
+
+        $providers = [];
+        foreach ($dropoffLocation['providers'] as $provider) {
+            $id = strtolower(trim((string) ($provider['provider'] ?? '')));
+            if ($id !== '') {
+                $providers[] = $id;
+            }
+        }
+
+        return array_values(array_unique($providers));
     }
 
     public function filterGatewayVehiclesForRequestedProvider(Collection $vehicles, array $validated): Collection

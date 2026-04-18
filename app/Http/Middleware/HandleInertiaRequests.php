@@ -3,7 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\VendorProfile;
-use App\Services\PromoService;
+use App\Services\OfferService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -131,17 +131,55 @@ class HandleInertiaRequests extends Middleware
         $sharedData['provider_markup_rate'] = $markupPercent / 100;
         $sharedData['awin_test_mode'] = config('awin.test_mode', true) ? '1' : '0';
 
-        $sharedData['active_promo'] = function () {
-            $promo = app(PromoService::class)->getActivePromo();
-            if (!$promo) {
+        $sharedData['active_offers'] = function () {
+            $offerService = app(OfferService::class);
+
+            return $offerService->getDisplayOffers('search')
+                ->map(fn ($offer) => $offerService->summarizeHomepageOffer($offer))
+                ->values()
+                ->all();
+        };
+
+        $sharedData['homepage_offers'] = function () {
+            $offerService = app(OfferService::class);
+
+            return $offerService->getDisplayOffers('homepage')
+                ->map(fn ($offer) => $offerService->summarizeHomepageOffer($offer))
+                ->values()
+                ->all();
+        };
+
+        $sharedData['active_price_offer'] = function () {
+            $resolved = app(OfferService::class)->resolveAppliedOffers(['placement' => 'search']);
+            $monetary = $resolved['monetary_offer'];
+
+            if (!$monetary) {
                 return null;
             }
+
             return [
-                'id' => $promo->id,
-                'title' => $promo->title,
-                'description' => $promo->description,
-                'discount_percentage' => (float) $promo->discount_percentage,
-                'promo_markup_rate' => (float) $promo->promo_markup_rate,
+                'id' => $monetary['id'],
+                'title' => $monetary['title'],
+                'description' => $monetary['description'],
+                'discount_percentage' => (float) ($monetary['effect_payload']['percentage'] ?? 0),
+                'offer_rate' => (float) $resolved['price_discount_rate'],
+            ];
+        };
+
+        $sharedData['active_promo'] = function () {
+            $resolved = app(OfferService::class)->resolveAppliedOffers(['placement' => 'search']);
+            $monetary = $resolved['monetary_offer'];
+
+            if (!$monetary) {
+                return null;
+            }
+
+            return [
+                'id' => $monetary['id'],
+                'title' => $monetary['title'],
+                'description' => $monetary['description'],
+                'discount_percentage' => (float) ($monetary['effect_payload']['percentage'] ?? 0),
+                'promo_markup_rate' => (float) $resolved['price_discount_rate'],
             ];
         };
 

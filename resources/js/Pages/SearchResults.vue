@@ -28,7 +28,7 @@ import brandIcon from "../../assets/SedanCarIcon.svg";
 import colorIcon from "../../assets/color-palette.svg";
 import filterIcon from "../../assets/filterIcon.svg";
 import SearchBar from "@/Components/SearchBar.vue";
-import { Filter, DollarSign, Car, Cog, Fuel, Users, ChevronDown, X } from 'lucide-vue-next';
+import { Filter, DollarSign, Car, Cog, Fuel, Users, ChevronDown, X, ArrowUp } from 'lucide-vue-next';
 import CarListingCard from "@/Components/CarListingCard.vue"; // Import CarListingCard
 import BookingExtrasStep from "@/Components/BookingExtras/BookingExtrasStep.vue"; // Import BookingExtrasStep (refactored)
 import BookingCheckoutStep from '@/Components/BookingCheckoutStep.vue'; // Import BookingExtrasStep
@@ -207,6 +207,8 @@ let savedScrollPosition = 0;
 const selectedBookingExtras = ref({});
 const locationInstructions = ref(null);
 const locationDetails = ref(null);
+const dropoffInstructions = ref(null);
+const dropoffLocationDetails = ref(null);
 const driverRequirements = ref(null);
 const termsData = ref(null);
 // Initialize with 15% as default to prevent "Pay 0" bug - will be updated from API
@@ -240,6 +242,8 @@ const handlePackageSelection = (event) => {
     // Clear previous location state immediately to prevent leaking across providers
     locationInstructions.value = null;
     locationDetails.value = null;
+    dropoffInstructions.value = null;
+    dropoffLocationDetails.value = null;
     driverRequirements.value = null;
     termsData.value = null;
     if (event.vehicle.location_details) {
@@ -249,6 +253,31 @@ const handlePackageSelection = (event) => {
             || null;
     } else {
         locationInstructions.value = event.vehicle.location_instructions || null;
+    }
+    dropoffInstructions.value = event.vehicle.dropoff_instructions || null;
+    // Assemble dropoff details from gateway canonical payload + flat fallbacks
+    // so the extras page can render address, hours, and map pin.
+    const dropoffCanonical = event.vehicle?.location?.dropoff || null;
+    const dropoffOffice = event.vehicle?.dropoff_office || null;
+    if (dropoffCanonical || dropoffOffice || event.vehicle?.dropoff_address) {
+        dropoffLocationDetails.value = {
+            name: dropoffCanonical?.name
+                || event.vehicle?.dropoff_station_name
+                || dropoffOffice?.name
+                || null,
+            address_1: event.vehicle?.dropoff_address
+                || dropoffOffice?.address
+                || null,
+            address_city: dropoffCanonical?.city || dropoffOffice?.town || null,
+            address_postcode: dropoffOffice?.postal_code || null,
+            telephone: dropoffOffice?.phone || null,
+            email: dropoffOffice?.email || null,
+            latitude: dropoffCanonical?.latitude ?? dropoffOffice?.latitude ?? null,
+            longitude: dropoffCanonical?.longitude ?? dropoffOffice?.longitude ?? null,
+            opening_hours: dropoffOffice?.opening_hours || null,
+            out_of_hours: dropoffOffice?.out_of_hours || null,
+            dropoff_instructions: event.vehicle?.dropoff_instructions || null,
+        };
     }
     driverRequirements.value = event.vehicle.driver_requirements || null;
     termsData.value = Array.isArray(event.vehicle.terms) ? event.vehicle.terms : null;
@@ -264,6 +293,8 @@ const handleBackToResults = () => {
     selectedProtectionCode.value = null;
     locationDetails.value = null;
     locationInstructions.value = null;
+    dropoffInstructions.value = null;
+    dropoffLocationDetails.value = null;
     nextTick(() => window.scrollTo({ top: savedScrollPosition, behavior: 'instant' }));
 };
 
@@ -1782,6 +1813,7 @@ provide('setActiveDropdown', setActiveDropdown);
 
 const showFilterButton = ref(false);
 const showFixedMobileFilterButton = ref(false);
+const showScrollTop = ref(false);
 
 const handleScroll = () => {
     const filterSection = document.getElementById('filter-section');
@@ -1794,6 +1826,8 @@ const handleScroll = () => {
         const isMobile = window.innerWidth <= 768; // Adjust breakpoint as needed
         showFixedMobileFilterButton.value = isMobile && rect.top < -100; // Show when filter section is mostly out of view
     }
+
+    showScrollTop.value = window.scrollY > 600;
 };
 
 const scrollToFilter = () => {
@@ -1801,6 +1835,10 @@ const scrollToFilter = () => {
     if (filterSection) {
         filterSection.scrollIntoView({ behavior: 'smooth' });
     }
+};
+
+const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 onMounted(() => {
@@ -2553,6 +2591,7 @@ watch(
             :pickup-date="form.date_from" :pickup-time="form.start_time" :dropoff-date="form.date_to"
             :dropoff-time="form.end_time" :number-of-days="numberOfRentalDays"
             :location-instructions="locationInstructions" :location-details="locationDetails"
+            :dropoff-instructions="dropoffInstructions" :dropoff-location-details="dropoffLocationDetails"
             :driver-requirements="driverRequirements" :terms="termsData" :payment-percentage="paymentPercentage"
             :search-session-id="props.search_session_id" :price-map="props.price_map"
             @back="handleBackToResults" @proceed-to-checkout="handleProceedToCheckout" />
@@ -2604,6 +2643,13 @@ watch(
         </div>
     </div>
 
+    <Transition name="scroll-top">
+        <button v-if="showScrollTop && bookingStep === 'results'" type="button" @click="scrollToTop"
+            class="scroll-top-btn" aria-label="Scroll to top">
+            <ArrowUp class="w-5 h-5" stroke-width="2.5" />
+        </button>
+    </Transition>
+
     <Footer />
 </template>
 
@@ -2615,6 +2661,55 @@ watch(
 .price-range-input::-webkit-outer-spin-button,
 .price-range-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .price-range-input { -moz-appearance: textfield; }
+
+/* Scroll-to-top floating button — brand teal gradient, cyan hover accent */
+.scroll-top-btn {
+    position: fixed;
+    right: clamp(16px, 3vw, 28px);
+    bottom: clamp(20px, 4vw, 32px);
+    z-index: 9990;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #153b4f, #1c4d66);
+    color: #fff;
+    border: 1px solid rgba(34, 211, 238, 0.25);
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(21, 59, 79, 0.28), 0 2px 6px rgba(21, 59, 79, 0.12);
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+        background 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.scroll-top-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 28px rgba(21, 59, 79, 0.34), 0 3px 8px rgba(34, 211, 238, 0.22);
+    border-color: rgba(34, 211, 238, 0.6);
+}
+.scroll-top-btn:focus-visible {
+    outline: 2px solid #22d3ee;
+    outline-offset: 3px;
+}
+.scroll-top-btn:active {
+    transform: translateY(-1px);
+}
+@media (min-width: 1024px) {
+    .scroll-top-btn { width: 48px; height: 48px; border-radius: 16px; }
+}
+
+.scroll-top-enter-active,
+.scroll-top-leave-active {
+    transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.scroll-top-enter-from,
+.scroll-top-leave-to {
+    opacity: 0;
+    transform: translateY(12px);
+}
 
 /* Airbnb-Style Marker Styles */
 .marker-bnb {

@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -37,13 +36,13 @@ class AccountCreatedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New Account Created - ' . config('app.name'))
+            ->subject('New Account Created - '.config('app.name'))
             ->greeting('Hello Admin,')
-            ->line('A new user account has been created on ' . config('app.name') . '.')
+            ->line('A new user account has been created on '.config('app.name').'.')
             ->line('**User Details:**')
-            ->line('**Name:** ' . $this->user->first_name . ' ' . $this->user->last_name)
-            ->line('**Email:** ' . $this->user->email)
-            ->line('**Phone:** ' . ($this->user->phone_code ?? '') . ' ' . ($this->user->phone ?? 'Not provided'))
+            ->line('**Name:** '.$this->user->first_name.' '.$this->user->last_name)
+            ->line('**Email:** '.$this->user->email)
+            ->line('**Phone:** '.($this->user->phone_code ?? '').' '.($this->user->phone ?? 'Not provided'))
             ->action('View Users', url('/users'))
             ->line('Please review the account details if necessary.');
     }
@@ -56,11 +55,11 @@ class AccountCreatedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => 'New Account: ' . $this->user->first_name . ' ' . $this->user->last_name,
+            'title' => 'New Account: '.$this->user->first_name.' '.$this->user->last_name,
             'user_id' => $this->user->id,
-            'name' => $this->user->first_name . ' ' . $this->user->last_name,
+            'name' => $this->user->first_name.' '.$this->user->last_name,
             'email' => $this->user->email,
-            'phone' => $this->user->phone_code . ' ' . $this->user->phone,
+            'phone' => $this->user->phone_code.' '.$this->user->phone,
             'role' => 'admin',
             'message' => 'A new account has been created.',
         ];

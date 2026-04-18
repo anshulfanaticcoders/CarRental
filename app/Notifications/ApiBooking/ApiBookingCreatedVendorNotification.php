@@ -11,10 +11,11 @@ use Illuminate\Notifications\Notification;
 
 class ApiBookingCreatedVendorNotification extends Notification
 {
-    use Queueable;
     use FormatsBookingAmounts;
+    use Queueable;
 
     protected $booking;
+
     protected $consumer;
 
     public function __construct(ApiBooking $booking, ApiConsumer $consumer)
@@ -31,36 +32,45 @@ class ApiBookingCreatedVendorNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New Booking Request - #' . $this->booking->booking_number . ' — Action Required')
+            ->subject('New Booking Request - #'.$this->booking->booking_number.' — Action Required')
             ->greeting('Hello,')
-            ->line('You have received a new booking request through **' . $this->consumer->name . '** (Provider API). Please review and confirm.')
+            ->line('You have received a new booking request through **'.$this->consumer->name.'** (Provider API). Please review and confirm.')
             ->line('**Booking Details:**')
-            ->line('**Booking Number:** ' . $this->booking->booking_number)
-            ->line('**Vehicle:** ' . $this->booking->vehicle_name)
-            ->line('**Driver:** ' . $this->booking->driver_first_name . ' ' . $this->booking->driver_last_name)
-            ->line('**Pickup Location:** ' . $this->booking->pickup_location)
-            ->line('**Pickup Date:** ' . $this->booking->pickup_date->format('Y-m-d'))
-            ->line('**Pickup Time:** ' . $this->booking->pickup_time)
-            ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
-            ->line('**Return Time:** ' . $this->booking->return_time)
-            ->line('**Total Amount:** ' . $this->formatCurrencyAmount((float) $this->booking->total_amount, $this->booking->currency))
-            ->action('Review & Confirm Booking', url('/' . app()->getLocale() . '/external-bookings/' . $this->booking->id))
+            ->line('**Booking Number:** '.$this->booking->booking_number)
+            ->line('**Vehicle:** '.$this->booking->vehicle_name)
+            ->line('**Driver:** '.$this->booking->driver_first_name.' '.$this->booking->driver_last_name)
+            ->line('**Pickup Location:** '.$this->booking->pickup_location)
+            ->line('**Pickup Date:** '.$this->booking->pickup_date->format('Y-m-d'))
+            ->line('**Pickup Time:** '.$this->booking->pickup_time)
+            ->line('**Return Date:** '.$this->booking->return_date->format('Y-m-d'))
+            ->line('**Return Time:** '.$this->booking->return_time)
+            ->line('**Total Amount:** '.$this->formatCurrencyAmount((float) $this->booking->total_amount, $this->booking->currency))
+            ->action('Review & Confirm Booking', url('/'.app()->getLocale().'/external-bookings/'.$this->booking->id))
             ->line('Please confirm this booking from your dashboard. The customer will be notified once confirmed.');
     }
 
     public function toArray(object $notifiable): array
     {
+        $meta = $this->booking->provider_metadata ?? [];
+        $pickupDetails = (array) ($meta['pickup_location_details'] ?? []);
+        $dropoffDetails = (array) ($meta['dropoff_location_details'] ?? []);
+        $isOneWay = trim((string) $this->booking->pickup_location) !== trim((string) $this->booking->return_location)
+            && $this->booking->return_location !== null;
+
         return [
-            'title' => 'New Booking Request #' . $this->booking->booking_number . ' — Please Confirm',
+            'title' => 'New Booking Request #'.$this->booking->booking_number.' — Please Confirm',
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle_name' => $this->booking->vehicle_name,
-            'driver_name' => $this->booking->driver_first_name . ' ' . $this->booking->driver_last_name,
+            'driver_name' => $this->booking->driver_first_name.' '.$this->booking->driver_last_name,
             'source' => $this->consumer->name,
+            'is_one_way' => $isOneWay,
+            'pickup_location_details' => $pickupDetails ?: null,
+            'dropoff_location_details' => $dropoffDetails ?: null,
             'total_amount' => (float) $this->booking->total_amount,
             'currency_symbol' => $this->getCurrencySymbol($this->booking->currency),
             'role' => 'vendor',
-            'message' => 'New external booking #' . $this->booking->booking_number . ' from ' . $this->consumer->name . '.',
+            'message' => 'New external booking #'.$this->booking->booking_number.' from '.$this->consumer->name.'.',
         ];
     }
 }

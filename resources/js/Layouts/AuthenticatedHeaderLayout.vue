@@ -536,7 +536,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
             <Dropdown align="right" width="max">
               <template #trigger>
                 <button type="button" class="hdr-trigger" :disabled="currencyLoading" aria-label="Change currency">
-                  <img :src="moneyExchangeSymbol" alt="" class="w-5 h-5" :class="[{ 'opacity-60': currencyLoading }, heroTransparent ? 'brightness-0 invert' : '']">
+                  <img :src="moneyExchangeSymbol" alt="" aria-hidden="true" class="w-5 h-5" :class="[{ 'opacity-60': currencyLoading }, heroTransparent ? 'brightness-0 invert' : '']">
                   <span :class="{ 'opacity-60': currencyLoading }">{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
                 </button>
               </template>
@@ -553,7 +553,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
             <Dropdown align="right" width="48">
               <template #trigger>
                 <button type="button" class="hdr-trigger" aria-label="Change language">
-                  <img :src="availableLocales[currentLocale].flag" alt="" class="w-5 h-5 rounded-full">
+                  <img :src="availableLocales[currentLocale].flag" alt="" aria-hidden="true" class="w-5 h-5 rounded-full">
                   <span>{{ availableLocales[currentLocale].name }}</span>
                 </button>
               </template>

@@ -2,20 +2,22 @@
 
 namespace App\Notifications\Booking;
 
+use App\Notifications\Concerns\FormatsBookingAmounts;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use App\Notifications\Concerns\FormatsBookingAmounts;
 
 class BookingCreatedVendorNotification extends Notification
 {
-    use Queueable;
     use FormatsBookingAmounts;
+    use Queueable;
 
     protected $booking;
+
     protected $customer;
+
     protected $vehicle;
+
     protected $vendor; // Add vendor property
 
     public function __construct($booking, $customer, $vehicle, $vendor)
@@ -42,26 +44,26 @@ class BookingCreatedVendorNotification extends Notification
         // $formattedAddress = implode(', ', $addressParts);
 
         return (new MailMessage)
-            ->subject('New Booking for Your Vehicle - #' . $this->booking->booking_number)
-            ->greeting('Hello ' . $this->vendor->first_name . ',') // Use $this->vendor
+            ->subject('New Booking for Your Vehicle - #'.$this->booking->booking_number)
+            ->greeting('Hello '.$this->vendor->first_name.',') // Use $this->vendor
             ->line('A new booking has been made for your vehicle.')
             ->line('**Booking Details:**')
-            ->line('**Booking Number:** ' . $this->booking->booking_number)
-            ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
-            ->line('**Location:** ' . $this->vehicle->location)
-            ->line('**Address:** ' . $this->vehicle->city . ', ' . $this->vehicle->state . ', ' .$this->vehicle->country)
-            ->line('**Pickup Date:** ' . $this->booking->pickup_date->format('Y-m-d'))
-            ->line('**Pickup Time:** ' . $this->booking->pickup_time)
-            ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
-            ->line('**Return Time:** ' . $this->booking->return_time)
-            ->line('**Total Amount:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
-            ->line('**Amount Paid:** ' . $this->formatCurrencyAmount($amounts['paid'], $amounts['currency']))
-            ->line('**Pending Amount:** ' . $this->formatCurrencyAmount($amounts['pending'], $amounts['currency']))
+            ->line('**Booking Number:** '.$this->booking->booking_number)
+            ->line('**Vehicle:** '.$this->vehicle->brand.' '.$this->vehicle->model)
+            ->line('**Location:** '.$this->vehicle->location)
+            ->line('**Address:** '.$this->vehicle->city.', '.$this->vehicle->state.', '.$this->vehicle->country)
+            ->line('**Pickup Date:** '.$this->booking->pickup_date->format('Y-m-d'))
+            ->line('**Pickup Time:** '.$this->booking->pickup_time)
+            ->line('**Return Date:** '.$this->booking->return_date->format('Y-m-d'))
+            ->line('**Return Time:** '.$this->booking->return_time)
+            ->line('**Total Amount:** '.$this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
+            ->line('**Amount Paid:** '.$this->formatCurrencyAmount($amounts['paid'], $amounts['currency']))
+            ->line('**Pending Amount:** '.$this->formatCurrencyAmount($amounts['pending'], $amounts['currency']))
             ->line('**Customer Details:**')
-            ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
-            ->line('**Email:** ' . $this->customer->email)
-            ->line('**Phone:** ' . ($this->customer->phone ?: 'Not provided'))
-            ->action('View Booking', url('/' . app()->getLocale() . '/bookings'))
+            ->line('**Name:** '.$this->customer->first_name.' '.$this->customer->last_name)
+            ->line('**Email:** '.$this->customer->email)
+            ->line('**Phone:** '.($this->customer->phone ?: 'Not provided'))
+            ->action('View Booking', url('/'.app()->getLocale().'/bookings'))
             ->line('Please review the booking and update its status as needed.');
     }
 
@@ -75,13 +77,22 @@ class BookingCreatedVendorNotification extends Notification
         // ]);
         // $formattedAddress = implode(', ', $addressParts);
 
+        $meta = $this->booking->provider_metadata ?? [];
+        $pickupDetails = (array) ($meta['pickup_location_details'] ?? []);
+        $dropoffDetails = (array) ($meta['dropoff_location_details'] ?? []);
+        $isOneWay = trim((string) $this->booking->pickup_location) !== trim((string) $this->booking->return_location)
+            && $this->booking->return_location !== null;
+
         return [
-            'title' => 'New Booking #' . $this->booking->booking_number,
+            'title' => 'New Booking #'.$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
-            'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
+            'vehicle' => $this->vehicle->brand.' '.$this->vehicle->model,
             'location' => $this->vehicle->location,
-            'address' => $this->vehicle->city . ', ' . $this->vehicle->state . ', ' .$this->vehicle->country,
+            'address' => $this->vehicle->city.', '.$this->vehicle->state.', '.$this->vehicle->country,
+            'is_one_way' => $isOneWay,
+            'pickup_location_details' => $pickupDetails ?: null,
+            'dropoff_location_details' => $dropoffDetails ?: null,
             'pickup_date' => $this->booking->pickup_date->format('Y-m-d'),
             'pickup_time' => $this->booking->pickup_time,
             'return_date' => $this->booking->return_date->format('Y-m-d'),
@@ -89,7 +100,7 @@ class BookingCreatedVendorNotification extends Notification
             'total_amount' => $amounts['total'],
             'amount_paid' => $amounts['paid'],
             'pending_amount' => $amounts['pending'],
-            'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
+            'customer_name' => $this->customer->first_name.' '.$this->customer->last_name,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'role' => 'vendor',
             'message' => 'A new booking has been made for your vehicle.',

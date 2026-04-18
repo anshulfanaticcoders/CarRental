@@ -67,6 +67,8 @@ const props = defineProps({
     dropoffLongitude: { type: [String, Number], default: null },
     locationInstructions: String,
     locationDetails: { type: Object, default: null },
+    dropoffInstructions: String,
+    dropoffLocationDetails: { type: Object, default: null },
     driverRequirements: { type: Object, default: null },
     terms: { type: Array, default: null },
     pickupDate: String,
@@ -668,6 +670,18 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
                     <div class="flex-1 min-w-0">
                         <h4 class="text-sm font-bold mb-0.5">Pickup Instructions</h4>
                         <p class="text-xs text-white/85 leading-relaxed">{{ locationInstructions }}</p>
+                    </div>
+                </div>
+
+                <!-- Dropoff Instructions (only when distinct dropoff provided) -->
+                <div v-if="dropoffInstructions && isDifferentDropoff"
+                    class="rounded-xl p-4 flex items-start gap-3 relative overflow-hidden bg-gradient-to-r from-[#0b2230] to-[#1c4d66] text-white">
+                    <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-bold mb-0.5">Dropoff Instructions</h4>
+                        <p class="text-xs text-white/85 leading-relaxed">{{ dropoffInstructions }}</p>
                     </div>
                 </div>
 

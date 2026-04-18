@@ -83,9 +83,13 @@ Disallow: */reviews/
 
 # ===========================
 # BLOCKED: Search results (noindex already, but belt-and-suspenders)
+# Anchored with $ so the rule only catches the exact /{locale}/s path.
+# Without the anchor, `*/s` matched anything starting with `/s`, including
+# `/sitemaps/*.xml` — which made Search Console report nested sitemaps
+# as "blocked by robots.txt".
 # ===========================
-Disallow: */s
-Disallow: */s?*
+Disallow: /*/s$
+Disallow: /*/s?*
 
 # ===========================
 # BLOCKED: API & internal endpoints
@@ -107,6 +111,13 @@ Disallow: */affiliate/
 # BLOCKED: Plans pricing (internal)
 # ===========================
 Disallow: */plans
+
+# ===========================
+# ALLOWED: Sitemap files (explicit — protects against future rule changes
+# that might collide with the /sitemaps/ path.)
+# ===========================
+Allow: /sitemap.xml
+Allow: /sitemaps/
 
 # ===========================
 # ALLOWED: Public pages (all locales)

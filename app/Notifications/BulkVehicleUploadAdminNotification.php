@@ -13,7 +13,9 @@ class BulkVehicleUploadAdminNotification extends Notification implements ShouldQ
     use Queueable;
 
     public $vehicles;
+
     public $user;
+
     public $errorMessages;
 
     /**
@@ -36,7 +38,7 @@ class BulkVehicleUploadAdminNotification extends Notification implements ShouldQ
      */
     public function via($notifiable)
     {
-        return ['mail','database'];
+        return ['mail', 'database'];
     }
 
     /**
@@ -49,27 +51,27 @@ class BulkVehicleUploadAdminNotification extends Notification implements ShouldQ
     {
         $mailMessage = (new MailMessage)
             ->subject('Bulk Vehicle Upload Summary')
-            ->greeting('Hello ' . $notifiable->name . ',')
+            ->greeting('Hello '.$notifiable->name.',')
             ->line('A bulk upload of vehicles has been completed by vendor:');
-        
-        $mailMessage->line('**Vendor Name:** ' . $this->user->name);
-        $mailMessage->line('**Vendor Email:** ' . $this->user->email);
+
+        $mailMessage->line('**Vendor Name:** '.$this->user->name);
+        $mailMessage->line('**Vendor Email:** '.$this->user->email);
 
         if ($this->vehicles->isNotEmpty()) {
-            $mailMessage->line('Successfully created ' . $this->vehicles->count() . ' vehicle(s).');
+            $mailMessage->line('Successfully created '.$this->vehicles->count().' vehicle(s).');
             $mailMessage->action('View Uploaded Vehicles', url('/vendor-vehicles'));
         } else {
             $mailMessage->line('A bulk upload of vehicles was attempted, but no vehicles were successfully created.');
         }
 
-        if (!empty($this->errorMessages)) {
+        if (! empty($this->errorMessages)) {
             $mailMessage->line('The following errors occurred during the upload:');
             foreach ($this->errorMessages as $error) {
-                $mailMessage->line('- ' . $error);
+                $mailMessage->line('- '.$error);
             }
         }
 
-        $mailMessage->line('Thank you for using ' . config('app.name') . '.');
+        $mailMessage->line('Thank you for using '.config('app.name').'.');
 
         return $mailMessage;
     }
@@ -83,13 +85,13 @@ class BulkVehicleUploadAdminNotification extends Notification implements ShouldQ
     public function toArray($notifiable)
     {
         return [
-            'title' => 'Bulk Upload by ' . $this->user->name,
+            'title' => 'Bulk Upload by '.$this->user->name,
             'vehicles_count' => $this->vehicles->count(),
             'user_id' => $this->user->id,
             'user_name' => $this->user->name,
             'error_messages' => $this->errorMessages,
             'role' => 'admin',
-            'message' => 'Bulk vehicle upload completed by ' . $this->user->name . '. Successfully created ' . $this->vehicles->count() . ' vehicle(s).',
+            'message' => 'Bulk vehicle upload completed by '.$this->user->name.'. Successfully created '.$this->vehicles->count().' vehicle(s).',
         ];
     }
 }

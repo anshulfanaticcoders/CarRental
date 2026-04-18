@@ -22,12 +22,12 @@ class BusinessRegistrationNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $loginUrl = url('/' . app()->getLocale() . '/login');
+        $loginUrl = url('/'.app()->getLocale().'/login');
 
         return (new MailMessage)
             ->subject('Welcome to the Vrooem Partner Program!')
-            ->greeting('Hello ' . $notifiable->first_name . '!')
-            ->line('Thank you for registering **' . $this->business->name . '** with the Vrooem Partner Program.')
+            ->greeting('Hello '.$notifiable->first_name.'!')
+            ->line('Thank you for registering **'.$this->business->name.'** with the Vrooem Partner Program.')
             ->line('We\'re currently reviewing your application. This usually takes 1-2 business days.')
             ->line('Once approved, you\'ll be able to:')
             ->line('- Generate unique QR codes for your business locations')

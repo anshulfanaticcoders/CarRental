@@ -2,21 +2,23 @@
 
 namespace App\Notifications\Booking;
 
+use App\Notifications\Concerns\FormatsBookingAmounts;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use App\Notifications\Concerns\FormatsBookingAmounts;
 use Illuminate\Support\Carbon;
 
 class BookingCancelledNotification extends Notification
 {
-    use Queueable;
     use FormatsBookingAmounts;
+    use Queueable;
 
     protected $booking;
+
     protected $customer;
+
     protected $vehicle;
+
     protected $recipientType; // 'admin' or 'vendor'
 
     public function __construct($booking, $customer, $vehicle, $recipientType = 'vendor')
@@ -56,22 +58,22 @@ class BookingCancelledNotification extends Notification
         $amountLabel = $this->recipientType === 'admin' ? '**Commission Total:** ' : '**Total Amount:** ';
 
         $mailMessage = (new MailMessage)
-            ->subject('Booking Cancelled - #' . $this->booking->booking_number)
+            ->subject('Booking Cancelled - #'.$this->booking->booking_number)
             ->line('**Booking Details:**')
-            ->line('**Booking Number:** ' . $this->booking->booking_number)
-            ->line('**Vehicle:** ' . $vehicleName)
-            ->line('**Location:** ' . $location)
-            ->line('**Address:** ' . $address)
-            ->line('**Pickup Date:** ' . $pickupDate)
-            ->line('**Pickup Time:** ' . $pickupTime)
-            ->line('**Return Date:** ' . $returnDate)
-            ->line('**Return Time:** ' . $returnTime)
-            ->line($amountLabel . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
-            ->line('**Cancellation Reason:** ' . $this->booking->cancellation_reason)
+            ->line('**Booking Number:** '.$this->booking->booking_number)
+            ->line('**Vehicle:** '.$vehicleName)
+            ->line('**Location:** '.$location)
+            ->line('**Address:** '.$address)
+            ->line('**Pickup Date:** '.$pickupDate)
+            ->line('**Pickup Time:** '.$pickupTime)
+            ->line('**Return Date:** '.$returnDate)
+            ->line('**Return Time:** '.$returnTime)
+            ->line($amountLabel.$this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
+            ->line('**Cancellation Reason:** '.$this->booking->cancellation_reason)
             ->line('**Customer Details:**')
-            ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
-            ->line('**Email:** ' . $this->customer->email)
-            ->line('**Phone:** ' . ($this->customer->phone ?: 'Not provided'));
+            ->line('**Name:** '.$this->customer->first_name.' '.$this->customer->last_name)
+            ->line('**Email:** '.$this->customer->email)
+            ->line('**Phone:** '.($this->customer->phone ?: 'Not provided'));
 
         if ($this->recipientType === 'admin') {
             $mailMessage
@@ -81,9 +83,9 @@ class BookingCancelledNotification extends Notification
                 ->line('Please review the cancelled booking details.');
         } elseif ($this->recipientType === 'vendor') {
             $mailMessage
-                ->greeting('Hello ' . $notifiable->first_name . ',')
+                ->greeting('Hello '.$notifiable->first_name.',')
                 ->line('A booking for your vehicle has been cancelled by the customer.')
-                ->action('View Bookings', url('/' . app()->getLocale() . '/bookings'))
+                ->action('View Bookings', url('/'.app()->getLocale().'/bookings'))
                 ->line('Please review the cancellation details.');
         } else { // company
             $mailMessage
@@ -91,7 +93,6 @@ class BookingCancelledNotification extends Notification
                 ->line('A booking for a vehicle managed by your company has been cancelled by the customer.')
                 ->line('Please review the cancellation details.');
         }
-
 
         return $mailMessage;
     }
@@ -110,7 +111,7 @@ class BookingCancelledNotification extends Notification
         $returnTime = $this->booking->return_time ?? 'N/A';
 
         return [
-            'title' => 'Booking Cancelled #' . $this->booking->booking_number,
+            'title' => 'Booking Cancelled #'.$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $vehicleName,
@@ -122,11 +123,11 @@ class BookingCancelledNotification extends Notification
             'return_time' => $returnTime,
             'total_amount' => $amounts['total'],
             'cancellation_reason' => $this->booking->cancellation_reason,
-            'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
+            'customer_name' => $this->customer->first_name.' '.$this->customer->last_name,
             'customer_email' => $this->customer->email,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'role' => $this->recipientType,
-            'message' => 'Booking #' . $this->booking->booking_number . ' has been cancelled.',
+            'message' => 'Booking #'.$this->booking->booking_number.' has been cancelled.',
         ];
     }
 
@@ -134,7 +135,7 @@ class BookingCancelledNotification extends Notification
     {
         $brand = $this->vehicle?->brand ?? '';
         $model = $this->vehicle?->model ?? '';
-        $name = trim($brand . ' ' . $model);
+        $name = trim($brand.' '.$model);
 
         if ($name !== '') {
             return $name;
@@ -146,7 +147,7 @@ class BookingCancelledNotification extends Notification
     private function getLocation(): string
     {
         $location = $this->vehicle?->location ?? null;
-        if (!empty($location)) {
+        if (! empty($location)) {
             return $location;
         }
 
@@ -163,7 +164,7 @@ class BookingCancelledNotification extends Notification
             $this->vehicle?->country ?? null,
         ]);
 
-        if (!empty($parts)) {
+        if (! empty($parts)) {
             return implode(', ', $parts);
         }
 
@@ -176,7 +177,7 @@ class BookingCancelledNotification extends Notification
             return $value->format('Y-m-d');
         }
 
-        if (!empty($value)) {
+        if (! empty($value)) {
             return (string) $value;
         }
 

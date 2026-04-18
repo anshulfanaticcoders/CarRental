@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -12,6 +11,7 @@ class VendorStatusUpdatedNotification extends Notification
     use Queueable;
 
     protected $vendorProfile;
+
     protected $user;
 
     /**
@@ -41,17 +41,17 @@ class VendorStatusUpdatedNotification extends Notification
         $status = ucfirst($this->vendorProfile->status);
         $message = (new MailMessage)
             ->subject('Vendor Status Update')
-            ->greeting('Hello ' . $this->user->first_name . ',')
+            ->greeting('Hello '.$this->user->first_name.',')
             ->line('Your vendor registration status has been updated.')
-            ->line('**Company Name:** ' . $this->vendorProfile->company_name)
-            ->line('**Status:** ' . $status);
+            ->line('**Company Name:** '.$this->vendorProfile->company_name)
+            ->line('**Status:** '.$status);
 
         if ($this->vendorProfile->status === 'approved') {
             $message->line('Congratulations! Your vendor account has been approved. You can now start offering your services.')
-                    ->action('Get Started', url('/' . app()->getLocale() . '/vendor-status'));
+                ->action('Get Started', url('/'.app()->getLocale().'/vendor-status'));
         } elseif ($this->vendorProfile->status === 'rejected') {
             $message->line('We regret to inform you that your vendor application has been rejected. Please contact support for more details.')
-                    ->action('Contact Support', url('/' . app()->getLocale() . '/contact-us'));
+                ->action('Contact Support', url('/'.app()->getLocale().'/contact-us'));
         } else {
             $message->line('Your application is still under review. We will notify you once a decision is made.');
         }
@@ -74,7 +74,7 @@ class VendorStatusUpdatedNotification extends Notification
             'company_name' => $this->vendorProfile->company_name,
             'status' => $this->vendorProfile->status,
             'role' => 'vendor',
-            'message' => 'Your vendor status has been updated to ' . $this->vendorProfile->status . '.',
+            'message' => 'Your vendor status has been updated to '.$this->vendorProfile->status.'.',
         ];
     }
 }

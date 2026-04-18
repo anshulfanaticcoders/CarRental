@@ -3,7 +3,6 @@
 namespace App\Notifications\Review;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -12,6 +11,7 @@ class ReviewSubmittedCompanyNotification extends Notification
     use Queueable;
 
     protected $review;
+
     protected $vehicle;
 
     public function __construct($review, $vehicle)
@@ -32,10 +32,10 @@ class ReviewSubmittedCompanyNotification extends Notification
             ->greeting('Hello,')
             ->line('A new review has been submitted for a vehicle managed by one of your vendors.')
             ->line('**Review Details:**')
-            ->line('**Vehicle:** ' . $this->vehicle->brand . ' ' . $this->vehicle->model)
-            ->line('**Rating:** ' . $this->review->rating . '/5')
-            ->line('**Review Text:** ' . $this->review->review_text)
-            ->action('View Reviews', url('/' . app()->getLocale() . '/customer-reviews'))
+            ->line('**Vehicle:** '.$this->vehicle->brand.' '.$this->vehicle->model)
+            ->line('**Rating:** '.$this->review->rating.'/5')
+            ->line('**Review Text:** '.$this->review->review_text)
+            ->action('View Reviews', url('/'.app()->getLocale().'/customer-reviews'))
             ->line('Please review the submission.');
     }
 
@@ -45,10 +45,10 @@ class ReviewSubmittedCompanyNotification extends Notification
             'title' => 'New Review for Vehicle',
             'role' => 'vendor',
             'review_id' => $this->review->id,
-            'vehicle' => $this->vehicle->brand . ' ' . $this->vehicle->model,
+            'vehicle' => $this->vehicle->brand.' '.$this->vehicle->model,
             'rating' => $this->review->rating,
             'review_text' => $this->review->review_text,
-            'message' => 'A new review has been submitted for ' . $this->vehicle->brand . ' ' . $this->vehicle->model,
+            'message' => 'A new review has been submitted for '.$this->vehicle->brand.' '.$this->vehicle->model,
         ];
     }
 }

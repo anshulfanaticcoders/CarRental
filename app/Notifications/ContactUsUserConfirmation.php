@@ -3,14 +3,15 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class ContactUsUserConfirmation extends Notification
 {
     use Queueable;
+
     protected $contactData;
+
     /**
      * Create a new notification instance.
      */
@@ -35,13 +36,13 @@ class ContactUsUserConfirmation extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('We Received Your Message - ' . config('app.name'))
-            ->greeting('Hello ' . $this->contactData['name'] . ',')
-            ->line('Thank you for reaching out to ' . config('app.name') . '. We have received your message:')
-            ->line('> ' . $this->contactData['message'])
+            ->subject('We Received Your Message - '.config('app.name'))
+            ->greeting('Hello '.$this->contactData['name'].',')
+            ->line('Thank you for reaching out to '.config('app.name').'. We have received your message:')
+            ->line('> '.$this->contactData['message'])
             ->line('Our team will review your message and get back to you as soon as possible.')
-            ->action('Visit Our Website', url('/' . app()->getLocale()))
-            ->line('Thank you for choosing ' . config('app.name') . '.');
+            ->action('Visit Our Website', url('/'.app()->getLocale()))
+            ->line('Thank you for choosing '.config('app.name').'.');
     }
 
     /**
@@ -52,8 +53,8 @@ class ContactUsUserConfirmation extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'name'    => $this->contactData['name'],
-            'email'   => $this->contactData['email'],
+            'name' => $this->contactData['name'],
+            'email' => $this->contactData['email'],
             'message' => $this->contactData['message'],
         ];
     }

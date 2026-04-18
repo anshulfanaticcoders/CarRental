@@ -8,9 +8,11 @@ use App\Models\PayableSetting;
 use App\Models\StripeCheckoutPayload;
 use App\Models\Vehicle;
 use App\Models\VehicleOperatingHour;
+use App\Services\Bookings\LocationDetailsNormalizer;
+use App\Services\CheckoutIdentityGuardService;
 use App\Services\CurrencyConversionService;
+use App\Services\OfferService;
 use App\Services\PriceVerificationService;
-use App\Services\PromoService;
 use App\Services\StripeBookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -263,6 +265,11 @@ class StripeCheckoutController extends Controller
         $pickupLocationDetails = $this->enrichLocationDetailsFromVehicle($pickupLocationDetails, $vehicle, 'pickup');
         $dropoffLocationDetails = $this->enrichLocationDetailsFromVehicle($dropoffLocationDetails, $vehicle, 'dropoff');
 
+        // Normalize to the canonical shape before persistence so every downstream
+        // reader (admin, vendor, customer, PDF, notifications) sees the same keys.
+        $pickupLocationDetails = LocationDetailsNormalizer::normalize($pickupLocationDetails);
+        $dropoffLocationDetails = LocationDetailsNormalizer::normalize($dropoffLocationDetails);
+
         return [$pickupLocationDetails, $dropoffLocationDetails];
     }
 
@@ -333,6 +340,15 @@ class StripeCheckoutController extends Controller
 
             $vehicle = $validated['vehicle'] ?? [];
             $providerSource = strtolower((string) ($vehicle['source'] ?? ''));
+
+            $identityConflict = $this->resolveCheckoutIdentityConflict(
+                $request,
+                $validated['customer'] ?? []
+            );
+
+            if ($identityConflict) {
+                return response()->json($identityConflict, 409);
+            }
 
             // Validate operating hours for internal vehicles
             if ($providerSource === 'internal' && ! empty($vehicle['id'])) {
@@ -629,20 +645,33 @@ class StripeCheckoutController extends Controller
             $payableAmount = $computedTotals['booking_deposit'];
             $pendingAmount = $computedTotals['booking_pending'];
 
-            // Promo pricing: compute inflated display price if active promo exists
-            $promoService = app(PromoService::class);
-            $activePromo = $promoService->getActivePromo();
-            $promoDiscountAmount = 0;
+            $offerService = app(OfferService::class);
+            $resolvedOffers = $offerService->resolveAppliedOffers([
+                'placement' => 'checkout',
+            ]);
+            $offerDiscountAmount = 0;
             $bookingTotalDisplay = $totalAmount; // default: same as actual
-            $promoId = null;
-            $promoRate = 0;
+            $monetaryOfferId = null;
+            $offerRate = 0;
+            $appliedOffers = $resolvedOffers['applied_offers'] ?? [];
+            $freeEsimIncluded = (bool) ($resolvedOffers['free_esim_included'] ?? false);
 
-            if ($activePromo && $activePromo->promo_markup_rate > 0) {
-                $promoId = $activePromo->id;
-                $promoRate = (float) $activePromo->promo_markup_rate;
-                $promoResult = $promoService->computePromoPrice($totalAmount, $promoRate);
-                $bookingTotalDisplay = $promoResult['inflated_price'];
-                $promoDiscountAmount = $promoResult['discount_amount'];
+            if (! empty($resolvedOffers['monetary_offer'])) {
+                $monetaryOfferId = $resolvedOffers['monetary_offer']['id'] ?? null;
+                $offerRate = (float) ($resolvedOffers['price_discount_rate'] ?? 0);
+                $offerPricing = $offerService->computePricing($totalAmount, $resolvedOffers);
+                $bookingTotalDisplay = $offerPricing['display_total'];
+                $offerDiscountAmount = $offerPricing['discount_amount'];
+                $appliedOffers = collect($appliedOffers)
+                    ->map(function (array $offer) use ($offerDiscountAmount, $monetaryOfferId) {
+                        if (($offer['id'] ?? null) === $monetaryOfferId && ($offer['effect_type'] ?? null) === 'price_discount_percentage') {
+                            $offer['discount_amount'] = $offerDiscountAmount;
+                        }
+
+                        return $offer;
+                    })
+                    ->values()
+                    ->all();
             }
 
             $isProviderVehicle = $this->isExternalProviderSource($providerSource);
@@ -819,9 +848,14 @@ class StripeCheckoutController extends Controller
                 'cancellation_fee' => $validated['vehicle']['cancellation']['amount'] ?? null,
                 'cancellation_fee_currency' => $validated['vehicle']['cancellation']['currency'] ?? null,
                 // Promo pricing
-                'promo_id' => $promoId,
-                'promo_rate' => $promoRate > 0 ? (string) $promoRate : null,
-                'promo_discount_amount' => $promoDiscountAmount > 0 ? (string) $promoDiscountAmount : null,
+                'applied_offers' => $appliedOffers,
+                'free_esim_included' => $freeEsimIncluded,
+                'offer_id' => $monetaryOfferId,
+                'offer_rate' => $offerRate > 0 ? (string) $offerRate : null,
+                'offer_discount_amount' => $offerDiscountAmount > 0 ? (string) $offerDiscountAmount : null,
+                'promo_id' => $monetaryOfferId,
+                'promo_rate' => $offerRate > 0 ? (string) $offerRate : null,
+                'promo_discount_amount' => $offerDiscountAmount > 0 ? (string) $offerDiscountAmount : null,
                 'booking_total_display' => $bookingTotalDisplay != $totalAmount ? (string) $bookingTotalDisplay : null,
                 // Affiliate tracking
                 'affiliate_business_id' => session('affiliate_data.business_id'),
@@ -840,6 +874,8 @@ class StripeCheckoutController extends Controller
                 'location_instructions' => $validated['location_instructions'] ?? null,
                 'driver_requirements' => $validated['driver_requirements'] ?? null,
                 'terms' => $validated['terms'] ?? null,
+                'applied_offers' => $appliedOffers,
+                'free_esim_included' => $freeEsimIncluded,
                 // Vehicle benefits, policies, and deposit/excess info
                 'vehicle_benefits' => $vehicleBenefits,
                 'security_deposit' => $this->resolveVehicleSecurityDepositForCheckout($validated['vehicle'] ?? []),
@@ -910,9 +946,13 @@ class StripeCheckoutController extends Controller
                 'customer_driver_age' => $validated['customer']['driver_age'] ?? '',
                 'payment_method' => $validated['payment_method'] ?? 'card',
                 'extras_payload_id' => $extrasPayloadId ? (string) $extrasPayloadId : null,
-                'promo_id' => $promoId,
-                'promo_rate' => $promoRate > 0 ? (string) $promoRate : null,
-                'promo_discount_amount' => $promoDiscountAmount > 0 ? (string) $promoDiscountAmount : null,
+                'offer_id' => $monetaryOfferId,
+                'offer_rate' => $offerRate > 0 ? (string) $offerRate : null,
+                'offer_discount_amount' => $offerDiscountAmount > 0 ? (string) $offerDiscountAmount : null,
+                'free_esim_included' => $freeEsimIncluded ? '1' : null,
+                'promo_id' => $monetaryOfferId,
+                'promo_rate' => $offerRate > 0 ? (string) $offerRate : null,
+                'promo_discount_amount' => $offerDiscountAmount > 0 ? (string) $offerDiscountAmount : null,
                 'booking_total_display' => $bookingTotalDisplay != $totalAmount ? (string) $bookingTotalDisplay : null,
                 'affiliate_business_id' => session('affiliate_data.business_id'),
                 'affiliate_scan_id' => session('affiliate_data.customer_scan_id'),
@@ -1716,7 +1756,7 @@ class StripeCheckoutController extends Controller
             }
 
             // Re-fetch with relations to be sure
-            $booking = Booking::where('id', $booking->id)->with(['customer', 'payments', 'extras'])->first();
+            $booking = Booking::where('id', $booking->id)->with(['customer', 'payments', 'extras', 'offers'])->first();
 
             // Prepare props for Success.vue
             $vehicleData = [
@@ -1766,5 +1806,36 @@ class StripeCheckoutController extends Controller
         return inertia('Booking/Cancel', [
             'message' => 'Your payment was cancelled. You can try again anytime.',
         ]);
+    }
+
+    private function resolveCheckoutIdentityConflict(Request $request, array $customer): ?array
+    {
+        $identityGuard = app(CheckoutIdentityGuardService::class);
+        $matches = $identityGuard->findExistingUsers(
+            $customer['email'] ?? null,
+            $customer['phone'] ?? null
+        );
+
+        $conflict = $identityGuard->resolveCheckoutConflict(
+            $request->user(),
+            $matches['email_user'] ?? null,
+            $matches['phone_user'] ?? null
+        );
+
+        if (!$conflict) {
+            return null;
+        }
+
+        $payload = [
+            'success' => false,
+            'error' => $conflict['message'],
+            'error_code' => $conflict['code'],
+        ];
+
+        if (!empty($conflict['show_login'])) {
+            $payload['login_url'] = route('login', ['locale' => app()->getLocale()]);
+        }
+
+        return $payload;
     }
 }

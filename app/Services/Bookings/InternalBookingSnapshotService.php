@@ -10,15 +10,15 @@ class InternalBookingSnapshotService
     {
         $vehicle->loadMissing(['vendorLocation', 'vendorProfileData', 'vendor']);
 
-        $pickupLocation = $this->buildLocationDetails(
+        $pickupLocation = LocationDetailsNormalizer::normalize($this->buildLocationDetails(
             $vehicle,
             $overrides['pickup_location'] ?? null,
-        );
+        ));
 
-        $dropoffLocation = $this->buildLocationDetails(
+        $dropoffLocation = LocationDetailsNormalizer::normalize($this->buildLocationDetails(
             $vehicle,
             $overrides['return_location'] ?? $overrides['pickup_location'] ?? null,
-        );
+        ));
 
         return array_filter([
             'provider' => 'internal',
@@ -53,7 +53,7 @@ class InternalBookingSnapshotService
         }
 
         foreach (['location', 'pickup_location_details', 'dropoff_location_details', 'vendor_snapshot'] as $key) {
-            if (empty($metadata[$key]) && !empty($snapshot[$key])) {
+            if (empty($metadata[$key]) && ! empty($snapshot[$key])) {
                 $merged[$key] = $snapshot[$key];
             }
         }

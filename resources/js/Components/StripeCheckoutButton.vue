@@ -16,10 +16,14 @@ const props = defineProps({
 
 const isLoading = ref(false);
 const error = ref(null);
+const loginUrl = ref(null);
+const errorCode = ref(null);
 
 const handleCheckout = async () => {
     isLoading.value = true;
     error.value = null;
+    loginUrl.value = null;
+    errorCode.value = null;
 
     try {
         // 1. Initialize Stripe
@@ -45,7 +49,10 @@ const handleCheckout = async () => {
 
     } catch (err) {
         console.error('Checkout error:', err);
-        error.value = err.response?.data?.error || err.message || 'Payment initialization failed.';
+        const responseData = err.response?.data || {};
+        error.value = responseData.error || err.message || 'Payment initialization failed.';
+        loginUrl.value = responseData.login_url || null;
+        errorCode.value = responseData.error_code || null;
     } finally {
         isLoading.value = false;
     }
@@ -56,7 +63,15 @@ const handleCheckout = async () => {
     <div class="w-full">
         <!-- Error Message -->
         <div v-if="error" class="mb-4 p-3 bg-red-100 border border-red-200 text-red-700 rounded-lg text-sm">
-            {{ error }}
+            <div>{{ error }}</div>
+            <div v-if="loginUrl && errorCode === 'checkout_login_required'" class="mt-3">
+                <a
+                    :href="loginUrl"
+                    class="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#1e3a5f] border border-red-200 hover:bg-red-50 transition-colors"
+                >
+                    Log in to continue
+                </a>
+            </div>
         </div>
 
         <!-- Checkout Button -->

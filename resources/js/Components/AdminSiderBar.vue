@@ -188,7 +188,7 @@ const navGroups: NavGroup[] = [
         url: '#',
         icon: Megaphone,
         items: [
-          { title: 'Marketing Dashboard', url: '/admin/advertisements' },
+          { title: 'Offers', url: '/admin/offers' },
         ],
       },
     ],

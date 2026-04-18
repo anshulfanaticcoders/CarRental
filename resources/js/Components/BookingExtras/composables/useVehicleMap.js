@@ -26,6 +26,8 @@ export function useVehicleMap(props) {
     const resolvedDropoffLat = computed(() => {
         const providerLat = props.vehicle?.location?.dropoff?.latitude;
         if (isValidCoordinate(providerLat)) return parseFloat(providerLat);
+        const detailsLat = props.dropoffLocationDetails?.latitude;
+        if (isValidCoordinate(detailsLat)) return parseFloat(detailsLat);
         if (isValidCoordinate(props.dropoffLatitude)) return parseFloat(props.dropoffLatitude);
         return null;
     });
@@ -33,6 +35,8 @@ export function useVehicleMap(props) {
     const resolvedDropoffLng = computed(() => {
         const providerLng = props.vehicle?.location?.dropoff?.longitude;
         if (isValidCoordinate(providerLng)) return parseFloat(providerLng);
+        const detailsLng = props.dropoffLocationDetails?.longitude;
+        if (isValidCoordinate(detailsLng)) return parseFloat(detailsLng);
         if (isValidCoordinate(props.dropoffLongitude)) return parseFloat(props.dropoffLongitude);
         return null;
     });
@@ -166,6 +170,8 @@ export function useVehicleMap(props) {
             props.vehicle?.longitude,
             props.vehicle?.location?.dropoff?.latitude,
             props.vehicle?.location?.dropoff?.longitude,
+            props.dropoffLocationDetails?.latitude,
+            props.dropoffLocationDetails?.longitude,
             props.dropoffLatitude,
             props.dropoffLongitude,
             props.dropoffLocation,

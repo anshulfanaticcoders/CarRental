@@ -2,19 +2,20 @@
 
 namespace App\Notifications\Booking;
 
+use App\Notifications\Concerns\FormatsBookingAmounts;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use App\Notifications\Concerns\FormatsBookingAmounts;
 
 class BookingCreatedAdminNotification extends Notification
 {
-    use Queueable;
     use FormatsBookingAmounts;
+    use Queueable;
 
     protected $booking;
+
     protected $customer;
+
     protected $vehicle;
 
     public function __construct($booking, $customer, $vehicle)
@@ -43,25 +44,25 @@ class BookingCreatedAdminNotification extends Notification
         // $formattedAddress = implode(', ', $addressParts);
 
         return (new MailMessage)
-            ->subject('New Booking Created - #' . $this->booking->booking_number)
+            ->subject('New Booking Created - #'.$this->booking->booking_number)
             ->greeting('Hello Admin,')
             ->line('A new booking has been created and requires your review.')
             ->line('**Booking Details:**')
-            ->line('**Booking Number:** ' . $this->booking->booking_number)
-            ->line('**Vehicle:** ' . $vehicleName)
-            ->line('**Location:** ' . $location)
-            ->line('**Address:** ' . $address)
-            ->line('**Pickup Date:** ' . $this->booking->pickup_date->format('Y-m-d'))
-            ->line('**Pickup Time:** ' . $this->booking->pickup_time)
-            ->line('**Return Date:** ' . $this->booking->return_date->format('Y-m-d'))
-            ->line('**Return Time:** ' . $this->booking->return_time)
-            ->line('**Commission Total:** ' . $this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
-            ->line('**Commission Collected:** ' . $this->formatCurrencyAmount($amounts['paid'], $amounts['currency']))
-            ->line('**Pending Commission:** ' . $this->formatCurrencyAmount($amounts['pending'], $amounts['currency']))
+            ->line('**Booking Number:** '.$this->booking->booking_number)
+            ->line('**Vehicle:** '.$vehicleName)
+            ->line('**Location:** '.$location)
+            ->line('**Address:** '.$address)
+            ->line('**Pickup Date:** '.$this->booking->pickup_date->format('Y-m-d'))
+            ->line('**Pickup Time:** '.$this->booking->pickup_time)
+            ->line('**Return Date:** '.$this->booking->return_date->format('Y-m-d'))
+            ->line('**Return Time:** '.$this->booking->return_time)
+            ->line('**Commission Total:** '.$this->formatCurrencyAmount($amounts['total'], $amounts['currency']))
+            ->line('**Commission Collected:** '.$this->formatCurrencyAmount($amounts['paid'], $amounts['currency']))
+            ->line('**Pending Commission:** '.$this->formatCurrencyAmount($amounts['pending'], $amounts['currency']))
             ->line('**Customer Details:**')
-            ->line('**Name:** ' . $this->customer->first_name . ' ' . $this->customer->last_name)
-            ->line('**Email:** ' . $this->customer->email)
-            ->line('**Phone:** ' . ($this->customer->phone ?: 'Not provided'))
+            ->line('**Name:** '.$this->customer->first_name.' '.$this->customer->last_name)
+            ->line('**Email:** '.$this->customer->email)
+            ->line('**Phone:** '.($this->customer->phone ?: 'Not provided'))
             ->action('View Booking', url('/customer-bookings'))
             ->line('Please review the booking details.');
     }
@@ -79,13 +80,22 @@ class BookingCreatedAdminNotification extends Notification
         // ]);
         // $formattedAddress = implode(', ', $addressParts);
 
+        $meta = $this->booking->provider_metadata ?? [];
+        $pickupDetails = (array) ($meta['pickup_location_details'] ?? []);
+        $dropoffDetails = (array) ($meta['dropoff_location_details'] ?? []);
+        $isOneWay = trim((string) $this->booking->pickup_location) !== trim((string) $this->booking->return_location)
+            && $this->booking->return_location !== null;
+
         return [
-            'title' => 'New Booking #' . $this->booking->booking_number,
+            'title' => 'New Booking #'.$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'vehicle' => $vehicleName,
             'location' => $location,
             'address' => $address,
+            'is_one_way' => $isOneWay,
+            'pickup_location_details' => $pickupDetails ?: null,
+            'dropoff_location_details' => $dropoffDetails ?: null,
             'pickup_date' => $this->booking->pickup_date->format('Y-m-d'),
             'pickup_time' => $this->booking->pickup_time,
             'return_date' => $this->booking->return_date->format('Y-m-d'),
@@ -93,7 +103,7 @@ class BookingCreatedAdminNotification extends Notification
             'total_amount' => $amounts['total'],
             'amount_paid' => $amounts['paid'],
             'pending_amount' => $amounts['pending'],
-            'customer_name' => $this->customer->first_name . ' ' . $this->customer->last_name,
+            'customer_name' => $this->customer->first_name.' '.$this->customer->last_name,
             'customer_email' => $this->customer->email,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'role' => 'admin',
@@ -105,7 +115,7 @@ class BookingCreatedAdminNotification extends Notification
     {
         $brand = $this->vehicle?->brand ?? '';
         $model = $this->vehicle?->model ?? '';
-        $name = trim($brand . ' ' . $model);
+        $name = trim($brand.' '.$model);
 
         if ($name !== '') {
             return $name;
@@ -117,7 +127,7 @@ class BookingCreatedAdminNotification extends Notification
     private function getLocation(): string
     {
         $location = $this->vehicle?->location ?? null;
-        if (!empty($location)) {
+        if (! empty($location)) {
             return $location;
         }
 
@@ -134,7 +144,7 @@ class BookingCreatedAdminNotification extends Notification
             $this->vehicle?->country ?? null,
         ]);
 
-        if (!empty($parts)) {
+        if (! empty($parts)) {
             return implode(', ', $parts);
         }
 
