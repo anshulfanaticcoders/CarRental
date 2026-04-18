@@ -940,13 +940,30 @@ const fetchDropoffLocations = async (provider, locationId) => {
   try {
     const response = await axios.get(`/api/${provider}/dropoff-locations/${locationId}`);
     let dropoffs = response.data.locations || response.data;
-    if (selectedPickupLocation.value) {
-      // Ensure pickup location is not already in the list before adding
-      const pickupExists = dropoffs.some(loc => loc.unified_location_id === selectedPickupLocation.value.unified_location_id);
-      if (!pickupExists) {
-        dropoffs.unshift(selectedPickupLocation.value);
+
+    // Always surface the pickup location as an option so the user can revert
+    // a one-way search back to round-trip without clearing the field. If the
+    // in-memory ref is missing (e.g. restored from URL prefill), fetch it.
+    let pickup = selectedPickupLocation.value;
+    if (!pickup && form.value.unified_location_id) {
+      try {
+        const res = await axios.get('/api/unified-locations', {
+          params: { unified_location_id: form.value.unified_location_id },
+        });
+        pickup = Array.isArray(res.data) ? res.data[0] : res.data;
+        if (pickup) selectedPickupLocation.value = pickup;
+      } catch (e) {
+        console.warn('Failed to load pickup location for dropoff list:', e);
       }
     }
+
+    if (pickup) {
+      const pickupExists = dropoffs.some(loc => loc.unified_location_id === pickup.unified_location_id);
+      if (!pickupExists) {
+        dropoffs.unshift(pickup);
+      }
+    }
+
     dropoffSearchResults.value = dropoffs;
   } catch (error) {
     console.error(`Error fetching dropoff locations for ${provider}:`, error);
