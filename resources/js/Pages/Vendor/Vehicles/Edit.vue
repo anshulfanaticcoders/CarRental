@@ -428,7 +428,7 @@
                 <section v-show="currentStep === 3" class="vln-step" key="step-3">
                     <div class="vln-step-header">
                         <h1>Set your pricing</h1>
-                        <p>Daily rate is required. Add weekly/monthly rates to attract longer bookings.</p>
+                        <p>Daily rate is required.</p>
                     </div>
 
                     <div class="space-y-3 mb-4">
@@ -444,30 +444,6 @@
                                         <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_day" placeholder="0.00" /><span class="vln-suffix">{{ currencyCode }}</span></div>
                                         <span v-if="errors.price_per_day" class="vln-error"><AlertCircle :size="13" /> {{ errors.price_per_day }}</span>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="vln-pricing-card" :class="{ active: selectedTypes.week }">
-                            <div class="vln-pc-header" @click="selectedTypes.week = !selectedTypes.week">
-                                <div class="vln-pc-label"><div class="vln-pc-toggle"></div><span class="vln-pc-period">Weekly Rate</span></div>
-                            </div>
-                            <div class="vln-pc-body" v-if="selectedTypes.week">
-                                <div class="vln-grid" style="margin-top:0.4rem">
-                                    <div class="vln-field"><label class="vln-label">Price per week</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_week" placeholder="0.00" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
-                                    <div class="vln-field"><label class="vln-label">Weekly discount</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.weekly_discount" placeholder="0" /><span class="vln-suffix">%</span></div></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="vln-pricing-card" :class="{ active: selectedTypes.month }">
-                            <div class="vln-pc-header" @click="selectedTypes.month = !selectedTypes.month">
-                                <div class="vln-pc-label"><div class="vln-pc-toggle"></div><span class="vln-pc-period">Monthly Rate</span></div>
-                            </div>
-                            <div class="vln-pc-body" v-if="selectedTypes.month">
-                                <div class="vln-grid" style="margin-top:0.4rem">
-                                    <div class="vln-field"><label class="vln-label">Price per month</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_month" placeholder="0.00" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
-                                    <div class="vln-field"><label class="vln-label">Monthly discount</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.monthly_discount" placeholder="0" /><span class="vln-suffix">%</span></div></div>
                                 </div>
                             </div>
                         </div>
@@ -573,20 +549,6 @@
                                 <div v-if="form.benefits.limited_km_per_day" class="vln-grid mt-3">
                                     <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.benefits.limited_km_per_day_range" /></div>
                                     <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.benefits.price_per_km_per_day" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
-                                </div>
-                            </div>
-                            <div v-if="selectedTypes.week" class="vln-sub-card">
-                                <label class="vln-check-label"><input type="checkbox" v-model="form.benefits.limited_km_per_week" class="vln-checkbox" /> Limited KM per week</label>
-                                <div v-if="form.benefits.limited_km_per_week" class="vln-grid mt-3">
-                                    <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.benefits.limited_km_per_week_range" /></div>
-                                    <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.benefits.price_per_km_per_week" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
-                                </div>
-                            </div>
-                            <div v-if="selectedTypes.month" class="vln-sub-card">
-                                <label class="vln-check-label"><input type="checkbox" v-model="form.benefits.limited_km_per_month" class="vln-checkbox" /> Limited KM per month</label>
-                                <div v-if="form.benefits.limited_km_per_month" class="vln-grid mt-3">
-                                    <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.benefits.limited_km_per_month_range" /></div>
-                                    <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.benefits.price_per_km_per_month" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
                                 </div>
                             </div>
                         </div>
@@ -942,8 +904,7 @@ const form = useForm({
     pickup_instructions: props.vehicle?.pickup_instructions || '',
     dropoff_instructions: props.vehicle?.dropoff_instructions || '',
     location_phone: props.vehicle?.location_phone || '',
-    price_per_day: 0, price_per_week: null, price_per_month: null,
-    weekly_discount: null, monthly_discount: null, preferred_price_type: 'day',
+    price_per_day: 0, preferred_price_type: 'day',
     registration_number: "", registration_country: "", registration_date: "",
     gross_vehicle_mass: 0, vehicle_height: 0, dealer_cost: 0, phone_number: "",
     images: [],
@@ -1128,7 +1089,7 @@ const errors = reactive({
     registration_number: '', registration_country: '', registration_date: '', phone_number: '',
     location: '', location_type: '', latitude: '', longitude: '',
     security_deposit: '', payment_method: '', terms_policy: '', minimum_driver_age: '',
-    price_per_day: '', price_per_week: '', price_per_month: '', custom_addons: '', images: '',
+    price_per_day: '', custom_addons: '', images: '',
     operating_hours: '',
 });
 
@@ -1153,10 +1114,7 @@ const applyHoursToAllDays = () => {
 };
 
 const ensurePreferredPriceType = () => {
-    const types = ['day'];
-    if (selectedTypes.week) types.push('week');
-    if (selectedTypes.month) types.push('month');
-    if (!types.includes(form.preferred_price_type)) form.preferred_price_type = types[0];
+    form.preferred_price_type = 'day';
 };
 
 const validateProtectionPlans = () => {
@@ -1438,8 +1396,7 @@ const updateVehicle = () => {
 
     const numericFieldsToNullifyIfZero = [
         'mileage', 'luggage_capacity', 'horsepower', 'security_deposit',
-        'price_per_day', 'price_per_week', 'price_per_month',
-        'weekly_discount', 'monthly_discount', 'gross_vehicle_mass',
+        'price_per_day', 'gross_vehicle_mass',
         'vehicle_height', 'dealer_cost'
     ];
     numericFieldsToNullifyIfZero.forEach(key => {
@@ -1463,8 +1420,7 @@ const updateVehicle = () => {
 
     const fieldsToEnsureNumber = [
         'mileage', 'luggage_capacity', 'horsepower', 'security_deposit',
-        'price_per_day', 'price_per_week', 'price_per_month',
-        'weekly_discount', 'monthly_discount', 'gross_vehicle_mass',
+        'price_per_day', 'gross_vehicle_mass',
         'vehicle_height', 'dealer_cost', 'seating_capacity', 'number_of_doors',
         'latitude', 'longitude'
     ];
@@ -1616,13 +1572,12 @@ const initOperatingHours = (hoursArray) => {
     });
 };
 
-watch(() => selectedTypes.week, (on) => { if (on) { if (!form.price_per_week && form.price_per_day) form.price_per_week = toPrice(Number(form.price_per_day) * 7); } else { form.price_per_week = null; form.weekly_discount = null; } ensurePreferredPriceType(); });
-watch(() => selectedTypes.month, (on) => { if (on) { if (!form.price_per_month && form.price_per_day) form.price_per_month = toPrice(Number(form.price_per_day) * 30); } else { form.price_per_month = null; form.monthly_discount = null; } ensurePreferredPriceType(); });
+// Weekly / monthly watchers removed — daily pricing only.
 watch(() => form.mileage, (v) => { if (v > 120) form.mileage = 120; });
 watch(() => form.vehicle_height, (v) => { if (v > 5) form.vehicle_height = 5; });
 watch(() => form.co2, (v) => { if (v > 100) form.co2 = 100; });
 watch(() => form.gross_vehicle_mass, (v) => { if (v > 20000) form.gross_vehicle_mass = 20000; });
-watch(() => form.price_per_day, (v) => { if (!v) return; if (selectedTypes.week && !form.price_per_week) form.price_per_week = toPrice(Number(v) * 7); if (selectedTypes.month && !form.price_per_month) form.price_per_month = toPrice(Number(v) * 30); });
+// Daily-only: no cascade to weekly/monthly.
 watch(() => form.registration_number, (v) => { if (v && v.length > 10) form.registration_number = v.slice(0, 10); });
 watch(() => form.vendor_location_id, (value) => {
     const selected = vendorLocations.value.find(location => Number(location.id) === Number(value));
@@ -1705,22 +1660,11 @@ onMounted(() => {
     try { form.payment_method = JSON.parse(v.payment_method); } catch { form.payment_method = []; }
 
     const rawDaily = parseFloat(v.price_per_day);
-    const rawWeekly = parseFloat(v.price_per_week);
-    const rawMonthly = parseFloat(v.price_per_month);
-    const rawWeeklyDiscount = parseFloat(v.weekly_discount);
-    const rawMonthlyDiscount = parseFloat(v.monthly_discount);
-
     form.price_per_day = Number.isFinite(rawDaily) ? rawDaily : 0;
-    form.price_per_week = Number.isFinite(rawWeekly) ? rawWeekly : null;
-    form.price_per_month = Number.isFinite(rawMonthly) ? rawMonthly : null;
-    form.weekly_discount = Number.isFinite(rawWeeklyDiscount) ? rawWeeklyDiscount : null;
-    form.monthly_discount = Number.isFinite(rawMonthlyDiscount) ? rawMonthlyDiscount : null;
-    form.preferred_price_type = v.preferred_price_type || 'day';
+    form.preferred_price_type = 'day';
 
-    selectedTypes.week = Number.isFinite(rawWeekly) && rawWeekly > 0;
-    selectedTypes.month = Number.isFinite(rawMonthly) && rawMonthly > 0;
-    if (!selectedTypes.week) { form.price_per_week = null; form.weekly_discount = null; }
-    if (!selectedTypes.month) { form.price_per_month = null; form.monthly_discount = null; }
+    selectedTypes.week = false;
+    selectedTypes.month = false;
     ensurePreferredPriceType();
 
     form.guidelines = v.guidelines;

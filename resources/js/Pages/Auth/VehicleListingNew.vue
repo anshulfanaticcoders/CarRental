@@ -464,7 +464,7 @@
             <section v-show="currentStep === 4" class="vln-step" key="step-4">
                 <div class="vln-step-header">
                     <h1>Set your pricing</h1>
-                    <p>Daily rate is required. Add weekly/monthly rates to attract longer bookings.</p>
+                    <p>Daily rate is required.</p>
                 </div>
 
                 <!-- Pricing Toggle Cards -->
@@ -482,32 +482,6 @@
                                     <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_day" placeholder="0.00" id="price_per_day" /><span class="vln-suffix">{{ currencyCode }}</span></div>
                                     <span v-if="errors.price_per_day" class="vln-error"><AlertCircle :size="13" /> {{ errors.price_per_day }}</span>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Weekly -->
-                    <div class="vln-pricing-card" :class="{ active: selectedTypes.week }">
-                        <div class="vln-pc-header" @click="selectedTypes.week = !selectedTypes.week">
-                            <div class="vln-pc-label"><div class="vln-pc-toggle"></div><span class="vln-pc-period">Weekly Rate</span></div>
-                        </div>
-                        <div class="vln-pc-body" v-if="selectedTypes.week">
-                            <div class="vln-grid" style="margin-top:0.4rem">
-                                <div class="vln-field"><label class="vln-label">Price per week</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_week" placeholder="0.00" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
-                                <div class="vln-field"><label class="vln-label">Weekly discount</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.weekly_discount" placeholder="0" /><span class="vln-suffix">%</span></div></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Monthly -->
-                    <div class="vln-pricing-card" :class="{ active: selectedTypes.month }">
-                        <div class="vln-pc-header" @click="selectedTypes.month = !selectedTypes.month">
-                            <div class="vln-pc-label"><div class="vln-pc-toggle"></div><span class="vln-pc-period">Monthly Rate</span></div>
-                        </div>
-                        <div class="vln-pc-body" v-if="selectedTypes.month">
-                            <div class="vln-grid" style="margin-top:0.4rem">
-                                <div class="vln-field"><label class="vln-label">Price per month</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_month" placeholder="0.00" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
-                                <div class="vln-field"><label class="vln-label">Monthly discount</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.monthly_discount" placeholder="0" /><span class="vln-suffix">%</span></div></div>
                             </div>
                         </div>
                     </div>
@@ -612,28 +586,12 @@
                         <div><div class="vln-fg-title">Kilometer Limits</div><div class="vln-fg-sub">Set mileage restrictions per rental period</div></div>
                     </div>
                     <div class="space-y-3">
-                        <!-- Per Day -->
-                        <div v-if="selectedTypes.day" class="vln-sub-card">
+                        <!-- Per Day (only) -->
+                        <div class="vln-sub-card">
                             <label class="vln-check-label"><input type="checkbox" v-model="form.limited_km_per_day" class="vln-checkbox" /> Limited KM per day</label>
                             <div v-if="form.limited_km_per_day" class="vln-grid mt-3">
                                 <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.limited_km_per_day_range" /></div>
                                 <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_km_per_day" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
-                            </div>
-                        </div>
-                        <!-- Per Week -->
-                        <div v-if="selectedTypes.week" class="vln-sub-card">
-                            <label class="vln-check-label"><input type="checkbox" v-model="form.limited_km_per_week" class="vln-checkbox" /> Limited KM per week</label>
-                            <div v-if="form.limited_km_per_week" class="vln-grid mt-3">
-                                <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.limited_km_per_week_range" /></div>
-                                <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_km_per_week" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
-                            </div>
-                        </div>
-                        <!-- Per Month -->
-                        <div v-if="selectedTypes.month" class="vln-sub-card">
-                            <label class="vln-check-label"><input type="checkbox" v-model="form.limited_km_per_month" class="vln-checkbox" /> Limited KM per month</label>
-                            <div v-if="form.limited_km_per_month" class="vln-grid mt-3">
-                                <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.limited_km_per_month_range" /></div>
-                                <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_km_per_month" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
                             </div>
                         </div>
                     </div>
@@ -915,8 +873,8 @@ const sidebarContent = {
     ], tips: [
         { icon: Shield, title: 'Privacy', text: 'Your exact address is only revealed after a confirmed booking.' },
     ]},
-    4: { title: 'Price it right', desc: 'Offering weekly and monthly discounts can increase occupancy by up to 60%.', stats: [
-        { value: '+60%', label: 'Occupancy with discounts' },
+    4: { title: 'Price it right', desc: 'Competitive daily pricing drives more bookings.', stats: [
+        { value: '+60%', label: 'Higher occupancy' },
     ], tips: [
         { icon: DollarSign, title: 'Competitive Pricing', text: 'Research similar vehicles in your area for the best rate.' },
         { icon: Clock, title: 'Operating Hours', text: 'Set when you\'re available for vehicle handover.' },
@@ -948,8 +906,7 @@ const form = useForm({
     features: [], featured: false, security_deposit: 0,
     payment_method: [], guidelines: "", terms_policy: "",
     rental_policy: "", pickup_instructions: "", dropoff_instructions: "", location_phone: "",
-    price_per_day: null, price_per_week: null, price_per_month: null,
-    weekly_discount: null, monthly_discount: null, preferred_price_type: 'day',
+    price_per_day: null, preferred_price_type: 'day',
     limited_km: false, price_per_km: null, cancellation_available: false,
     registration_number: "", registration_country: "", registration_date: "",
     gross_vehicle_mass: 0, vehicle_height: 0, dealer_cost: 0, phone_number: "",
@@ -965,10 +922,10 @@ const form = useForm({
         { day: 6, day_name: 'Sunday',    is_open: false, open_time: null, close_time: null },
     ],
     radius: 831867.4340914232,
-    limited_km_per_day: false, limited_km_per_week: false, limited_km_per_month: false,
-    limited_km_per_day_range: null, limited_km_per_week_range: null, limited_km_per_month_range: null,
-    cancellation_available_per_day: false, cancellation_available_per_week: false, cancellation_available_per_month: false,
-    cancellation_available_per_day_date: null, cancellation_fee_per_day: null, cancellation_available_per_week_date: null, cancellation_available_per_month_date: null,
+    limited_km_per_day: false,
+    limited_km_per_day_range: null,
+    cancellation_available_per_day: false,
+    cancellation_available_per_day_date: null, cancellation_fee_per_day: null,
     price_per_km_per_day: null, price_per_km_per_week: null, price_per_km_per_month: null,
     minimum_driver_age: null, selected_plans: [],
     custom_addons: customAddons.value, full_vehicle_address: null,
@@ -978,6 +935,8 @@ const props = defineProps({
     vehicle: { type: Object, default: null },
     vendorLocations: { type: Array, default: () => [] },
 });
+// Daily-only pricing. `selectedTypes` kept for any external references but
+// always fixed to day=true.
 const selectedTypes = reactive({ day: true, week: false, month: false });
 const buildEmptyLocationForm = () => ({
     name: '',
@@ -1165,7 +1124,7 @@ const errors = reactive({
     registration_number: '', registration_country: '', registration_date: '', phone_number: '',
     location: '', location_type: '', latitude: '', longitude: '',
     security_deposit: '', payment_method: '', terms_policy: '', minimum_driver_age: '',
-    price_per_day: '', price_per_week: '', price_per_month: '', custom_addons: '', images: '',
+    price_per_day: '', custom_addons: '', images: '',
     operating_hours: '',
 });
 
@@ -1191,10 +1150,7 @@ const applyHoursToAllDays = () => {
 };
 
 const ensurePreferredPriceType = () => {
-    const types = ['day'];
-    if (selectedTypes.week) types.push('week');
-    if (selectedTypes.month) types.push('month');
-    if (!types.includes(form.preferred_price_type)) form.preferred_price_type = types[0];
+    form.preferred_price_type = 'day';
 };
 
 // ═══ Plans ═══
@@ -1366,13 +1322,12 @@ const submit = () => {
 };
 
 // ═══ Watchers ═══
-watch(() => selectedTypes.week, (on) => { if (on) { if (!form.price_per_week && form.price_per_day) form.price_per_week = toPrice(Number(form.price_per_day) * 7); } else { form.price_per_week = null; form.weekly_discount = null; } ensurePreferredPriceType(); });
-watch(() => selectedTypes.month, (on) => { if (on) { if (!form.price_per_month && form.price_per_day) form.price_per_month = toPrice(Number(form.price_per_day) * 30); } else { form.price_per_month = null; form.monthly_discount = null; } ensurePreferredPriceType(); });
+// Weekly / monthly watchers removed — only daily pricing is supported.
 watch(() => form.mileage, (v) => { if (v > 120) form.mileage = 120; });
 watch(() => form.vehicle_height, (v) => { if (v > 5) form.vehicle_height = 5; });
 watch(() => form.co2, (v) => { if (v > 100) form.co2 = 100; });
 watch(() => form.gross_vehicle_mass, (v) => { if (v > 20000) form.gross_vehicle_mass = 20000; });
-watch(() => form.price_per_day, (v) => { if (!v) return; if (selectedTypes.week && !form.price_per_week) form.price_per_week = toPrice(Number(v) * 7); if (selectedTypes.month && !form.price_per_month) form.price_per_month = toPrice(Number(v) * 30); });
+// form.price_per_day watcher no longer cascades to weekly/monthly.
 watch(() => form.registration_number, (v) => { if (v.length > 10) form.registration_number = v.slice(0, 10); });
 watch(() => form.vendor_location_id, (value) => {
     const selected = vendorLocations.value.find(location => Number(location.id) === Number(value));

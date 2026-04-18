@@ -1545,27 +1545,9 @@ const toggleFavourite = async (vehicle) => {
 
 // onMounted merged to the bottom of the script section
 
-const priceField = computed(() => {
-    switch (form.package_type) {
-        case "week":
-            return "price_per_week";
-        case "month":
-            return "price_per_month";
-        default:
-            return "price_per_day";
-    }
-});
-
-const priceUnit = computed(() => {
-    switch (form.package_type) {
-        case "week":
-            return "week";
-        case "month":
-            return "month";
-        default:
-            return "day";
-    }
-});
+// Daily-only pricing. `package_type` always resolves to day.
+const priceField = computed(() => "price_per_day");
+const priceUnit = computed(() => "day");
 
 const formatDate = (dateStr) => {
     // Handle Date objects directly (for fallbacks) or string dates

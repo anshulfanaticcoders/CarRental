@@ -34,24 +34,10 @@
                 <InputLabel for="location" value="Location" />
                 <Input v-model="user.location" readonly class="bg-gray-200 cursor-not-allowed" />
             </div>
-            <div v-if="user.price_per_day || user.price_per_week || user.price_per_month">
-                <div v-if="user.price_per_day">
-                    <InputLabel for="price_per_day" value="Price per day" />
-                    <Input id="price_per_day" v-model="user.price_per_day" readonly
-                        class="bg-gray-200 cursor-not-allowed text-gray-500" />
-                </div>
-
-                <div v-if="user.price_per_week">
-                    <InputLabel for="price_per_week" value="Price per week" />
-                    <Input id="price_per_week" v-model="user.price_per_week" readonly
-                        class="bg-gray-200 cursor-not-allowed text-gray-500" />
-                </div>
-
-                <div v-if="user.price_per_month">
-                    <InputLabel for="price_per_month" value="Price per month" />
-                    <Input id="price_per_month" v-model="user.price_per_month" readonly
-                        class="bg-gray-200 cursor-not-allowed text-gray-500" />
-                </div>
+            <div v-if="user.price_per_day">
+                <InputLabel for="price_per_day" value="Price per day" />
+                <Input id="price_per_day" v-model="user.price_per_day" readonly
+                    class="bg-gray-200 cursor-not-allowed text-gray-500" />
             </div>
             <span v-else class="text-gray-500">No pricing available</span>
 

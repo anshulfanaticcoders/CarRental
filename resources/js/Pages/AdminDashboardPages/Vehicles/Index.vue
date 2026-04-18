@@ -231,17 +231,9 @@
                                 </TableCell>
                                 <TableCell class="px-4 py-4 align-top">
                                     <div class="min-w-[140px] space-y-1 text-sm font-medium">
-                                        <template v-if="vehicle.price_per_day || vehicle.price_per_week || vehicle.price_per_month">
-                                            <div v-if="vehicle.price_per_day" class="text-green-600">
-                                                {{ vehicleCurrency(vehicle) }}{{ vehicle.price_per_day }}/Day
-                                            </div>
-                                            <div v-if="vehicle.price_per_week" class="text-blue-600">
-                                                {{ vehicleCurrency(vehicle) }}{{ vehicle.price_per_week }}/Week
-                                            </div>
-                                            <div v-if="vehicle.price_per_month" class="text-purple-600">
-                                                {{ vehicleCurrency(vehicle) }}{{ vehicle.price_per_month }}/Month
-                                            </div>
-                                        </template>
+                                        <div v-if="vehicle.price_per_day" class="text-green-600">
+                                            {{ vehicleCurrency(vehicle) }}{{ vehicle.price_per_day }}/Day
+                                        </div>
                                         <span v-else class="text-muted-foreground">Not Set</span>
                                     </div>
                                 </TableCell>

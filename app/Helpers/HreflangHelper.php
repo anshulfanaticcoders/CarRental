@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 class HreflangHelper
 {
     /**
-     * @param array $routeParameters Route parameters excluding 'locale'
+     * @param  array  $routeParameters  Route parameters excluding 'locale'
      * @return array<string, string> locale => url
      */
     public static function getAlternateUrls(string $routeName, array $routeParameters, string $currentLocale): array
@@ -52,6 +52,7 @@ class HreflangHelper
 
         if ($routeName === 'blog') {
             $country = strtolower((string) ($params['country'] ?? 'us'));
+
             return route('blog', ['locale' => $targetLocale, 'country' => $country]);
         }
 
@@ -61,7 +62,7 @@ class HreflangHelper
                 return null;
             }
 
-            $cacheKey = 'hreflang:page:' . $currentLocale . ':' . $slug;
+            $cacheKey = 'hreflang:page:'.$currentLocale.':'.$slug;
             $data = Cache::remember($cacheKey, now()->addHours(6), function () use ($currentLocale, $slug) {
                 $translation = PageTranslation::query()
                     ->where('locale', $currentLocale)
@@ -100,7 +101,7 @@ class HreflangHelper
                 return null;
             }
 
-            $cacheKey = 'hreflang:blog:' . $currentLocale . ':' . $slug;
+            $cacheKey = 'hreflang:blog:'.$currentLocale.':'.$slug;
             $data = Cache::remember($cacheKey, now()->addHours(6), function () use ($currentLocale, $slug) {
                 $translation = BlogTranslation::query()
                     ->where('locale', $currentLocale)
@@ -112,16 +113,8 @@ class HreflangHelper
                     return null;
                 }
 
-                $blog = $translation->blog;
-                $canonicalCountry = $blog->canonical_country;
-                if (!is_string($canonicalCountry) || trim($canonicalCountry) === '') {
-                    $canonicalCountry = is_array($blog->countries) && !empty($blog->countries) ? (string) $blog->countries[0] : 'us';
-                }
-                $canonicalCountry = strtolower((string) $canonicalCountry);
-
                 return [
                     'blog_id' => $translation->blog_id,
-                    'canonical_country' => $canonicalCountry,
                 ];
             });
 
@@ -138,9 +131,12 @@ class HreflangHelper
                 return null;
             }
 
-            $canonicalCountry = $data['canonical_country'] ?? $country;
-
-            return url("/{$targetLocale}/{$canonicalCountry}/blog/{$alt->slug}");
+            // Use the CURRENT URL's country for alternates — not the blog's
+            // stored canonical_country. Country represents a target market
+            // cluster; each cluster has its own hreflang group. A visitor on
+            // /nl/be/ must see Belgian siblings (/fr/be/, /en/be/, ...), not
+            // US siblings that contradict the self-canonical on the page.
+            return url("/{$targetLocale}/{$country}/blog/{$alt->slug}");
         }
 
         return null;

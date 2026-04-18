@@ -804,8 +804,7 @@ const formatPricing = (vehicle) => {
     const prices = [];
 
     if (vehicle.price_per_day) prices.push(`${currencySymbol}${vehicle.price_per_day}${_t('vendorprofilepages', 'price_per_day_suffix')}`);
-    if (vehicle.price_per_week) prices.push(`${currencySymbol}${vehicle.price_per_week}${_t('vendorprofilepages', 'price_per_week_suffix')}`);
-    if (vehicle.price_per_month) prices.push(`${currencySymbol}${vehicle.price_per_month}${_t('vendorprofilepages', 'price_per_month_suffix')}`);
+    // Weekly / monthly price display removed — daily only.
 
     return prices.length ? prices.join(' | ') : _t('vendorprofilepages', 'not_applicable_text');
 };

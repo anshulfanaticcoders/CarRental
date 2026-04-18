@@ -2,30 +2,29 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\ImageCompressionHelper;
+use App\Helpers\LocaleHelper;
+use App\Helpers\SchemaBuilder;
 use App\Http\Controllers\Controller;
 use App\Models\Blog;
 use App\Models\BlogTag;
-use App\Models\Testimonial;
-use App\Models\VehicleCategory;
-use App\Models\PopularPlace;
 use App\Models\Faq; // Added Faq model
+use App\Models\PopularPlace;
 use App\Models\SeoMeta;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use App\Helpers\SchemaBuilder; // Added for Schema
-use App\Helpers\ImageCompressionHelper;
-use App\Helpers\LocaleHelper;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str; // Added for slug generation
-use Illuminate\Support\Facades\App; // Added for locale access
-use Illuminate\Support\Facades\Route; // For Route::has()
-use Illuminate\Support\Facades\Log; // Added for logging
-use Illuminate\Foundation\Application; // For Application::VERSION
-use Stevebauman\Location\Facades\Location;
-use Illuminate\Support\Facades\DB;
+use App\Models\Testimonial;
+use App\Models\VehicleCategory; // Added for Schema
 use App\Services\Seo\SeoMetaResolver;
+use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App; // Added for slug generation
+use Illuminate\Support\Facades\Cache; // Added for locale access
+use Illuminate\Support\Facades\DB; // For Route::has()
+use Illuminate\Support\Facades\Log; // Added for logging
+use Illuminate\Support\Facades\Route; // For Application::VERSION
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
 
 class BlogController extends Controller
 {
@@ -66,7 +65,7 @@ class BlogController extends Controller
     {
         $available_locales = config('app.available_locales', ['en']);
         $primaryLocale = 'en';
-        if (!in_array($primaryLocale, $available_locales, true)) {
+        if (! in_array($primaryLocale, $available_locales, true)) {
             $primaryLocale = $available_locales[0] ?? 'en';
         }
 
@@ -110,7 +109,7 @@ class BlogController extends Controller
             $slug = isset($t['slug']) ? trim((string) $t['slug']) : '';
 
             $hasAny = ($title !== '' || $content !== '' || $slug !== '');
-            if (!$hasAny) {
+            if (! $hasAny) {
                 continue;
             }
 
@@ -129,7 +128,7 @@ class BlogController extends Controller
             }
         }
 
-        if (!empty($translationErrors)) {
+        if (! empty($translationErrors)) {
             throw ValidationException::withMessages($translationErrors);
         }
 
@@ -138,7 +137,7 @@ class BlogController extends Controller
         $mainSlug = Str::slug($slugTitle);
         $existingBlog = Blog::where('slug', $mainSlug)->first();
         if ($existingBlog) {
-            $mainSlug = $mainSlug . '-' . uniqid();
+            $mainSlug = $mainSlug.'-'.uniqid();
         }
 
         $countries = $request->input('countries', []);
@@ -187,7 +186,7 @@ class BlogController extends Controller
         $blog = Blog::create($blogData);
 
         foreach ($translationsData as $locale => $data) {
-            if (!in_array($locale, $available_locales, true) || !is_array($data)) {
+            if (! in_array($locale, $available_locales, true) || ! is_array($data)) {
                 continue;
             }
 
@@ -199,7 +198,7 @@ class BlogController extends Controller
                     $slugValue = $this->unicodeSlug($title);
                 }
                 if ($slugValue === '') {
-                    $slugValue = strtolower($locale) . '-' . uniqid();
+                    $slugValue = strtolower($locale).'-'.uniqid();
                 }
 
                 $blog->translations()->create([
@@ -229,14 +228,14 @@ class BlogController extends Controller
                 $q->where('seoable_type', $blog->getMorphClass())
                     ->where('seoable_id', $blog->getKey());
             })
-            ->orWhere('url_slug', 'blog/' . $blog->slug)
+            ->orWhere('url_slug', 'blog/'.$blog->slug)
             ->first();
 
         if (! $seoMeta) {
-            $seoMeta = new SeoMeta();
+            $seoMeta = new SeoMeta;
         }
 
-        $seoMeta->forceFill(array_filter($seoMetaToSave, fn ($v) => !is_null($v) && $v !== ''));
+        $seoMeta->forceFill(array_filter($seoMetaToSave, fn ($v) => ! is_null($v) && $v !== ''));
         $seoMeta->seoable_type = $blog->getMorphClass();
         $seoMeta->seoable_id = $blog->getKey();
         $seoMeta->save();
@@ -267,7 +266,7 @@ class BlogController extends Controller
 
         // Handle tags
         $tagNames = $request->input('tags', []);
-        if (!empty($tagNames)) {
+        if (! empty($tagNames)) {
             $tagIds = [];
             foreach ($tagNames as $tagName) {
                 $tagName = trim($tagName);
@@ -284,7 +283,7 @@ class BlogController extends Controller
 
         // Make changes visible immediately on the frontend.
         foreach ($available_locales as $locale) {
-            Cache::forget('seo:model:' . get_class($blog) . ':' . $blog->getKey() . ':' . $locale);
+            Cache::forget('seo:model:'.get_class($blog).':'.$blog->getKey().':'.$locale);
         }
 
         return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog created successfully.');
@@ -319,7 +318,7 @@ class BlogController extends Controller
                 $q->where('seoable_type', $blog->getMorphClass())
                     ->where('seoable_id', $blog->getKey());
             })
-            ->orWhere('url_slug', 'blog/' . $blog->slug)
+            ->orWhere('url_slug', 'blog/'.$blog->slug)
             ->first();
 
         $seoTranslations = [];
@@ -349,7 +348,7 @@ class BlogController extends Controller
     {
         $available_locales = config('app.available_locales', ['en']);
         $primaryLocale = 'en';
-        if (!in_array($primaryLocale, $available_locales, true)) {
+        if (! in_array($primaryLocale, $available_locales, true)) {
             $primaryLocale = $available_locales[0] ?? 'en';
         }
 
@@ -393,7 +392,7 @@ class BlogController extends Controller
             $slug = isset($t['slug']) ? trim((string) $t['slug']) : '';
 
             $hasAny = ($title !== '' || $content !== '' || $slug !== '');
-            if (!$hasAny) {
+            if (! $hasAny) {
                 continue;
             }
 
@@ -411,7 +410,7 @@ class BlogController extends Controller
             }
         }
 
-        if (!empty($translationErrors)) {
+        if (! empty($translationErrors)) {
             throw ValidationException::withMessages($translationErrors);
         }
 
@@ -472,7 +471,7 @@ class BlogController extends Controller
             if ($newMainSlug !== '' && $newMainSlug !== $blog->slug) {
                 $existingBlog = Blog::where('slug', $newMainSlug)->where('id', '!=', $blog->id)->first();
                 if ($existingBlog) {
-                    $newMainSlug = $newMainSlug . '-' . uniqid();
+                    $newMainSlug = $newMainSlug.'-'.uniqid();
                 }
                 $blogData['slug'] = $newMainSlug;
             }
@@ -482,7 +481,7 @@ class BlogController extends Controller
 
         // Upsert translations (optional locales).
         foreach ($translationsData as $locale => $data) {
-            if (!in_array($locale, $available_locales, true) || !is_array($data)) {
+            if (! in_array($locale, $available_locales, true) || ! is_array($data)) {
                 continue;
             }
 
@@ -497,7 +496,7 @@ class BlogController extends Controller
                 $slugValue = $this->unicodeSlug($title);
             }
             if ($slugValue === '') {
-                $slugValue = strtolower($locale) . '-' . uniqid();
+                $slugValue = strtolower($locale).'-'.uniqid();
             }
 
             $blog->translations()->updateOrCreate(
@@ -543,14 +542,14 @@ class BlogController extends Controller
                 $q->where('seoable_type', $blog->getMorphClass())
                     ->where('seoable_id', $blog->getKey());
             })
-            ->orWhere('url_slug', 'blog/' . $blog->slug)
+            ->orWhere('url_slug', 'blog/'.$blog->slug)
             ->first();
 
         if (! $seoMeta) {
-            $seoMeta = new SeoMeta();
+            $seoMeta = new SeoMeta;
         }
 
-        $seoMeta->forceFill(array_filter($seoMetaToSave, fn ($v) => !is_null($v) && $v !== ''));
+        $seoMeta->forceFill(array_filter($seoMetaToSave, fn ($v) => ! is_null($v) && $v !== ''));
         $seoMeta->seoable_type = $blog->getMorphClass();
         $seoMeta->seoable_id = $blog->getKey();
         $seoMeta->save();
@@ -579,9 +578,8 @@ class BlogController extends Controller
         }
 
         foreach ($available_locales as $locale) {
-            Cache::forget('seo:model:' . get_class($blog) . ':' . $blog->getKey() . ':' . $locale);
+            Cache::forget('seo:model:'.get_class($blog).':'.$blog->getKey().':'.$locale);
         }
-
 
         return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog updated successfully.');
     }
@@ -601,13 +599,13 @@ class BlogController extends Controller
             ->delete();
 
         // Backward compatibility: clean up old slug-keyed records
-        SeoMeta::where('url_slug', 'blog/' . $blog->slug)->delete();
+        SeoMeta::where('url_slug', 'blog/'.$blog->slug)->delete();
         SeoMeta::where('url_slug', $blog->slug)->delete();
 
         $blog->delete();
 
         foreach ($available_locales as $locale) {
-            Cache::forget('seo:model:' . get_class($blog) . ':' . $blog->getKey() . ':' . $locale);
+            Cache::forget('seo:model:'.get_class($blog).':'.$blog->getKey().':'.$locale);
         }
 
         return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog deleted successfully.');
@@ -615,13 +613,13 @@ class BlogController extends Controller
 
     public function togglePublish(Request $request, Blog $blog)
     {
-        $blog->is_published = !$blog->is_published;
+        $blog->is_published = ! $blog->is_published;
         // If you have a 'published_at' timestamp, you might want to update it here:
         // if ($blog->is_published && is_null($blog->published_at)) {
         //     $blog->published_at = now();
         // } elseif (!$blog->is_published) {
         //     // Option 1: Clear published_at when unpublishing
-        //     // $blog->published_at = null; 
+        //     // $blog->published_at = null;
         //     // Option 2: Keep published_at as the date it was first published (do nothing here)
         // }
         $blog->save();
@@ -654,10 +652,10 @@ class BlogController extends Controller
         // Combine schemas into an array
         // The Welcome.vue component will need to handle an array of schemas
         $pageSchemas = [];
-        if (!empty($blogListSchema)) {
+        if (! empty($blogListSchema)) {
             $pageSchemas[] = $blogListSchema;
         }
-        if (!empty($testimonialListSchema)) {
+        if (! empty($testimonialListSchema)) {
             $pageSchemas[] = $testimonialListSchema;
         }
 
@@ -677,7 +675,7 @@ class BlogController extends Controller
                 return ['question' => $faq->question, 'answer' => $faq->answer];
             })->all();
             $faqPageSchema = SchemaBuilder::faqPage($faqItems);
-            if (!empty($faqPageSchema)) {
+            if (! empty($faqPageSchema)) {
                 $pageSchemas[] = $faqPageSchema;
             }
         }
@@ -711,7 +709,6 @@ class BlogController extends Controller
         ]);
     }
 
-
     // public function show($locale, $slug)
     // {
     //     App::setLocale($locale);
@@ -733,7 +730,6 @@ class BlogController extends Controller
     //     if ($seoMetaTranslation) {
     //         $seoMeta = SeoMeta::with('translations')->find($seoMetaTranslation->seo_meta_id);
     //     }
-
 
     //     $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
@@ -761,7 +757,6 @@ class BlogController extends Controller
     //         'locale' => App::getLocale(), // Pass current locale
     //     ]);
     // }
-
 
     public function showBlogPage(Request $request, $locale, $country)
     {
@@ -800,7 +795,7 @@ class BlogController extends Controller
         )->toArray();
 
         $blogListSchema = [];
-        if (!empty($blogs->items())) {
+        if (! empty($blogs->items())) {
             $blogListSchema = SchemaBuilder::blogList(collect($blogs->items()), 'Latest Blog Posts', $country);
         }
 
@@ -832,20 +827,31 @@ class BlogController extends Controller
             ->firstOrFail();
 
         // Check if published or admin
-        if (!$blog->is_published && !(auth()->check() && auth()->user()->hasRole('admin'))) {
+        if (! $blog->is_published && ! (auth()->check() && auth()->user()->hasRole('admin'))) {
             abort(404);
         }
 
         $blog->load('translations');
 
-        // Generate schema
-        $blogSchema = SchemaBuilder::blog($blog);
+        // Generate schema: Blog article + Breadcrumb
+        $blogTranslation = $blog->getTranslation($locale);
+        $breadcrumb = SchemaBuilder::breadcrumbList([
+            ['name' => 'Home', 'url' => url("/{$locale}")],
+            ['name' => 'Blog', 'url' => url("/{$locale}/{$country}/blog")],
+            ['name' => $blogTranslation->title ?? $slug, 'url' => url("/{$locale}/{$country}/blog/{$slug}")],
+        ]);
+        $blogSchema = [
+            SchemaBuilder::blog($blog),
+            $breadcrumb,
+        ];
 
         $seo = app(SeoMetaResolver::class)->resolveForModel(
             $blog,
             $locale,
             url("/{$locale}/{$country}/blog/{$slug}")
         )->toArray();
+        // Mark as article for Open Graph — enables richer previews on FB/LinkedIn/etc.
+        $seo['og_type'] = 'article';
 
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
 
@@ -865,12 +871,11 @@ class BlogController extends Controller
             'locale' => $locale,
             'country' => $country,
             'pages' => LocaleHelper::sanitizeUtf8($pages),
-            'tags' => $blog->tags->map(fn($t) => ['name' => $t->name, 'slug' => $t->slug]),
+            'tags' => $blog->tags->map(fn ($t) => ['name' => $t->name, 'slug' => $t->slug]),
             'relatedBlogs' => LocaleHelper::sanitizeUtf8($relatedBlogs),
             'readingTime' => $readingTime,
         ]);
     }
-
 
     public function getRecentBlogs(Request $request) // Added Request
     {
@@ -886,7 +891,7 @@ class BlogController extends Controller
             $country = strtolower($country);
         }
 
-        \Log::info('getRecentBlogs: Using country - ' . $country . ' | Request country param: ' . $request->input('country'));
+        \Log::info('getRecentBlogs: Using country - '.$country.' | Request country param: '.$request->input('country'));
 
         $query = Blog::with('translations')
             ->where('is_published', true);
@@ -900,8 +905,7 @@ class BlogController extends Controller
 
         $recentBlogs = $query->latest()->offset(1)->take(5)->get();
 
-
-        \Log::info('getRecentBlogs: Found ' . $recentBlogs->count() . ' recent blogs for country ' . $country);
+        \Log::info('getRecentBlogs: Found '.$recentBlogs->count().' recent blogs for country '.$country);
 
         return response()->json(LocaleHelper::sanitizeUtf8($recentBlogs));
     }
@@ -930,6 +934,7 @@ class BlogController extends Controller
     {
         $text = strip_tags($content);
         $wordCount = str_word_count($text);
+
         return max(1, (int) ceil($wordCount / 200));
     }
 
@@ -943,7 +948,7 @@ class BlogController extends Controller
                 $q->where('locale', $locale);
             }]);
 
-        if (!empty($tagIds)) {
+        if (! empty($tagIds)) {
             $query->whereHas('tags', function ($q) use ($tagIds) {
                 $q->whereIn('blog_tags.id', $tagIds);
             });
@@ -955,15 +960,16 @@ class BlogController extends Controller
             $existingIds = $related->pluck('id')->merge([$blog->id])->toArray();
             $more = Blog::whereNotIn('id', $existingIds)
                 ->where('is_published', true)
-                ->with(['translations' => fn($q) => $q->where('locale', $locale)])
+                ->with(['translations' => fn ($q) => $q->where('locale', $locale)])
                 ->latest()
                 ->limit(3 - $related->count())
                 ->get();
             $related = $related->merge($more);
         }
 
-        return $related->map(function ($b) use ($locale) {
+        return $related->map(function ($b) {
             $t = $b->translations->first();
+
             return [
                 'title' => $t?->title ?? '',
                 'slug' => $t?->slug ?? $b->slug,

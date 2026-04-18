@@ -1,83 +1,77 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityLogsController;
+use App\Http\Controllers\Admin\AdminAffiliateController;
 use App\Http\Controllers\Admin\AdminFeaturesController;
 use App\Http\Controllers\Admin\AdminMediaController;
+use App\Http\Controllers\Admin\AdminOfferController;
 use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\Admin\AdminUserDocumentController;
+use App\Http\Controllers\Admin\AffiliateBusinessModelController;
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\BookingDashboardController;
 use App\Http\Controllers\Admin\BusinessReportsController;
 use App\Http\Controllers\Admin\ContactUsPageController;
+use App\Http\Controllers\Admin\DamageProtectionController as AdminDamageProtectionController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FaqController;
+use App\Http\Controllers\Admin\NewsletterCampaignController;
+use App\Http\Controllers\Admin\NewsletterSubscriberController;
 use App\Http\Controllers\Admin\PageController;
+use App\Http\Controllers\Admin\PayableSettingController;
 use App\Http\Controllers\Admin\PaymentDashboardController;
 use App\Http\Controllers\Admin\PopularPlacesController;
-use App\Http\Controllers\PopularPlacesController as PublicPopularPlacesController;
 use App\Http\Controllers\Admin\RadiusController;
 use App\Http\Controllers\Admin\SchemaController;
+use App\Http\Controllers\Admin\SeoMetaController;
 use App\Http\Controllers\Admin\TestimonialController;
 use App\Http\Controllers\Admin\UserReportDownloadController;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\Admin\UsersReportController;
+use App\Http\Controllers\Admin\VehicleCategoriesController;
 use App\Http\Controllers\Admin\VehicleDashboardController;
-use App\Http\Controllers\Admin\DamageProtectionController as AdminDamageProtectionController;
-use App\Http\Controllers\Admin\SeoMetaController;
-use App\Http\Controllers\Admin\NewsletterSubscriberController;
-use App\Http\Controllers\Admin\NewsletterCampaignController;
+use App\Http\Controllers\Admin\VendorsDashboardController;
 use App\Http\Controllers\Admin\VendorsReportController;
-use App\Http\Controllers\NewsletterTrackingController;
-use App\Http\Controllers\Admin\AdminOfferController;
-use App\Http\Controllers\Admin\AdminAffiliateController;
+use App\Http\Controllers\AdminProfileController;
+use App\Http\Controllers\Affiliate\AffiliateQrCodeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\Auth\EmailValidationController;
-use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\BookingController;
-use App\Http\Controllers\BulkVehicleController;
 use App\Http\Controllers\BulkVehicleUploadController;
 use App\Http\Controllers\ContactFormController;
+use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\EsimAccessController;
 use App\Http\Controllers\FavoriteController;
-use App\Http\Controllers\FrontendPageController;
 use App\Http\Controllers\GeocodingController;
-use App\Http\Controllers\CurrencyController;
-use App\Http\Controllers\NewsletterSubscriptionController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NewsletterSubscriptionController;
+use App\Http\Controllers\NewsletterTrackingController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PopularPlacesController as PublicPopularPlacesController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SearchController;
-use App\Http\Controllers\Admin\VehicleCategoriesController;
-use App\Http\Controllers\VehicleCsvImportController;
-use App\Http\Controllers\VehicleImportController;
+use App\Http\Controllers\UserDocumentController;
+use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\Vendor\BlockingDateController;
 use App\Http\Controllers\Vendor\DamageProtectionController;
 use App\Http\Controllers\Vendor\VendorBookingController;
-use App\Http\Controllers\Vendor\VendorOverviewController;
-use App\Http\Controllers\Vendor\VendorLocationController;
-use App\Http\Controllers\Vendor\VendorVehicleController;
 use App\Http\Controllers\Vendor\VendorExternalBookingController;
+use App\Http\Controllers\Vendor\VendorLocationController;
+use App\Http\Controllers\Vendor\VendorOverviewController;
+use App\Http\Controllers\Vendor\VendorVehicleController;
 use App\Http\Controllers\Vendor\VendorVehiclePlanController;
 use App\Http\Controllers\VendorBulkImageController;
 use App\Http\Controllers\VendorController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\Admin\VendorsDashboardController;
-use App\Http\Controllers\Admin\PayableSettingController;
 use App\Models\Booking;
 use App\Models\Message;
 use App\Models\Page;
-use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use App\Http\Controllers\UserDocumentController;
-use App\Http\Controllers\VehicleController;
 use App\Services\LocalePreferenceResolver;
-use App\Http\Controllers\AdminProfileController; // Import the AdminProfileController
-use App\Http\Controllers\Admin\AffiliateBusinessModelController; // Import the AffiliateBusinessModelController
-use App\Http\Controllers\Affiliate\AffiliateQrCodeController; // Import the AffiliateQrCodeController
+use Illuminate\Foundation\Application; // Import the AdminProfileController
+use Illuminate\Support\Facades\Route; // Import the AffiliateBusinessModelController
+use Inertia\Inertia; // Import the AffiliateQrCodeController
 
 /*
 |--------------------------------------------------------------------------
@@ -116,17 +110,17 @@ Route::get('/force-currency-detection', function () {
 
     return response()->json([
         'message' => 'Currency detection forced. Refresh page to see automatic detection.',
-        'session_cleared' => true
+        'session_cleared' => true,
     ]);
 });
 
 Route::get('/', function () {
     $request = request();
     $locale = app(LocalePreferenceResolver::class)->resolveRootLocale($request);
-    $target = '/' . ltrim($locale, '/');
+    $target = '/'.ltrim($locale, '/');
 
     if ($request->getQueryString()) {
-        $target .= '?' . $request->getQueryString();
+        $target .= '?'.$request->getQueryString();
     }
 
     return redirect($target);
@@ -157,8 +151,6 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/customer-bookings/completed', [BookingDashboardController::class, 'completed'])->name('customer-bookings.completed');
     Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
     Route::post('/customer-bookings/{id}/cancel', [BookingDashboardController::class, 'cancelBooking'])->name('customer-bookings.cancel');
-
-
 
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);
     Route::resource('blogs', BlogController::class)->names('admin.blogs');
@@ -371,11 +363,11 @@ Route::get('/newsletter/unsubscribe/{subscription}', [NewsletterTrackingControll
 Route::group([
     'prefix' => '{locale}',
     'where' => ['locale' => '(en|fr|nl|es|ar)'],
-    'middleware' => ['set_locale', 'share.country']
+    'middleware' => ['set_locale', 'share.country'],
 ], function () {
     // Homepage is served by BlogController::homeBlogs (see later in this group).
 
-    require __DIR__ . '/auth.php';
+    require __DIR__.'/auth.php';
 
     Route::get('/newsletter/confirm/{subscription}', [NewsletterSubscriptionController::class, 'confirm'])
         ->middleware(['signed:relative', 'throttle:6,1'])
@@ -384,7 +376,6 @@ Route::group([
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->middleware(['auth', 'verified'])->name('dashboard');
-
 
     // Authenticated routes
     Route::middleware(['auth'])->group(function () {
@@ -423,7 +414,6 @@ Route::group([
 
         Route::get('/profile/completion', [ProfileController::class, 'getProfileCompletion'])->name('profile.completion');
     });
-
 
     Route::get('/s', [SearchController::class, 'search'])->name('search');
     Route::get('/destinations', [PublicPopularPlacesController::class, 'destinations'])->name('destinations.index');
@@ -488,9 +478,9 @@ Route::group([
         session(['country' => strtolower($country)]);
 
         return response()->json([
-            'message' => "Country set to: " . strtolower($country),
+            'message' => 'Country set to: '.strtolower($country),
             'session_country' => session('country'),
-            'all_session_data' => session()->all()
+            'all_session_data' => session()->all(),
         ]);
     });
 
@@ -503,7 +493,7 @@ Route::group([
             'message' => session('currency') && session('country')
                 ? '✅ Unified IP detection working! Both currency and country detected.'
                 : '❌ Unified detection not complete. Check SetCurrency middleware.',
-            'all_session_data' => session()->all()
+            'all_session_data' => session()->all(),
         ]);
     });
 
@@ -600,7 +590,7 @@ Route::group([
                 'countries' => $blog->countries,
                 'should_show' => $filteredBlogs->contains($blog),
                 'contains_country' => $blog->countries ? in_array($currentCountry, $blog->countries) : false,
-                'is_global' => is_null($blog->countries)
+                'is_global' => is_null($blog->countries),
             ];
         }
 
@@ -610,7 +600,7 @@ Route::group([
             'filtered_blogs_count' => $filteredBlogs->count(),
             'blog_details' => $blogDetails,
             'sql_query' => $blogsQuery->toSql(),
-            'session_data' => session()->all()
+            'session_data' => session()->all(),
         ]);
     });
 
@@ -626,24 +616,24 @@ Route::group([
             'HTTP_X_FORWARDED',
             'HTTP_X_CLUSTER_CLIENT_IP',
             'HTTP_CLIENT_IP',
-            'REMOTE_ADDR'
+            'REMOTE_ADDR',
         ];
 
         $realIp = null;
         $allIps = [];
         foreach ($ipKeys as $key) {
-            if ($request->server($key) && !empty($request->server($key))) {
+            if ($request->server($key) && ! empty($request->server($key))) {
                 $ips = explode(',', $request->server($key));
                 $ip = trim($ips[0]);
                 $allIps[$key] = $ip;
 
-                if (!$realIp && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                if (! $realIp && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
                     $realIp = $ip;
                 }
             }
         }
 
-        if (!$realIp) {
+        if (! $realIp) {
             $realIp = $request->ip();
         }
 
@@ -669,17 +659,19 @@ Route::group([
             'location_error' => $locationError,
             'location_config_testing' => config('location.testing.enabled'),
             'location_driver' => config('location.driver'),
-            'all_session_data' => session()->all()
+            'all_session_data' => session()->all(),
         ]);
     });
 
     Route::get('/blog', function ($locale) {
         $country = session('country', 'us');
+
         return redirect("/{$locale}/{$country}/blog");
     });
 
     Route::get('/blog/{slug}', function ($locale, $slug) {
         $country = session('country', 'us');
+
         return redirect("/{$locale}/{$country}/blog/{$slug}");
     });
 
@@ -711,7 +703,6 @@ Route::group([
 
         // Vendor Payments
         Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
-
 
         // Vendor Vehicles
         Route::resource('current-vendor-vehicles', VendorVehicleController::class)->except(['create', 'store', 'show']);
@@ -767,7 +758,6 @@ Route::group([
         Route::patch('/external-bookings/{apiBooking}/status', [VendorExternalBookingController::class, 'updateStatus'])->name('vendor.external-bookings.update-status');
     });
 
-
     // Customer Routes
     Route::middleware(['auth', 'role:customer'])->group(function () {
         // User Profile routes
@@ -804,8 +794,6 @@ Route::group([
         Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
         Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
         Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
-
-
 
         // Unified booking route (replaces fragmented status routes)
         Route::get('/profile/bookings', [BookingController::class, 'getAllCustomerBookings'])->name('profile.bookings.all');
@@ -862,11 +850,10 @@ Route::group([
             ->get();
 
         return response()->json([
-            'messages' => $messages
+            'messages' => $messages,
         ]);
     });
 }); // End of locale group
-
 
 // Simple test route to verify routes are working
 Route::get('/test-business-debug/{token}', function ($token) {
@@ -888,24 +875,31 @@ Route::get('/llms.txt', function () {
 // Sitemap route (must be before fallback)
 Route::get('/sitemap.xml', function () {
     $sitemapPath = public_path('sitemap.xml');
-    if (!file_exists($sitemapPath)) {
+    if (! file_exists($sitemapPath)) {
         abort(404);
     }
+
     return response()->file($sitemapPath, ['Content-Type' => 'application/xml']);
 })->name('sitemap');
 
 // Serve individual sitemap files from sitemaps directory
 Route::get('/sitemaps/{filename}', function ($filename) {
-    $sitemapPath = public_path('sitemaps/' . $filename);
-    if (!file_exists($sitemapPath)) {
+    $sitemapPath = public_path('sitemaps/'.$filename);
+    if (! file_exists($sitemapPath)) {
         abort(404);
     }
+
     return response()->file($sitemapPath, ['Content-Type' => 'application/xml']);
 })->where('filename', '.*\.xml$')->name('sitemaps.file');
 
 // 410/301 redirects are handled by HandleSeoRedirects middleware + seo_redirects DB table.
 // Run: php artisan seo:seed-legacy-redirects (one time after migration)
 
+// Unknown URL → hard 404. Without an explicit status code, Inertia renders
+// the Error page with HTTP 200, which Google treats as a soft-404 and may
+// still index the URL. Setting the status ensures crawlers drop it.
 Route::fallback(function () {
-    return inertia('Error', ['status' => 404]);
+    return inertia('Error', ['status' => 404])
+        ->toResponse(request())
+        ->setStatusCode(404);
 });

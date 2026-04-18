@@ -13,6 +13,7 @@ use Spatie\Sitemap\Tags\Url;
 class PublicSitemapBuilder
 {
     private string $baseUrl;
+
     private int $maxUrlsPerSitemap;
 
     public function __construct(
@@ -43,7 +44,7 @@ class PublicSitemapBuilder
         $blogs = $this->dataProvider->getPublishedBlogs();
         $countries = $this->extractCountries($blogs);
 
-        $result = new SitemapBuildResult();
+        $result = new SitemapBuildResult;
         $files = [];
 
         foreach ($locales as $locale) {
@@ -98,13 +99,18 @@ class PublicSitemapBuilder
     private function buildStaticSitemap(string $locale, array $locales): ?SitemapFile
     {
         $entries = [];
+
+        // Public, indexable routes we want Google to discover.
+        // NOT included here: /contact-us (canonicals to /page/contact which is
+        // already emitted by the Pages sitemap) to avoid duplicate signals.
         $staticPaths = [
             "{$locale}",
             "{$locale}/destinations",
             "{$locale}/faq",
-            "{$locale}/contact-us",
             "{$locale}/business/register",
             "{$locale}/affiliate/register",
+            "{$locale}/login",
+            "{$locale}/register",
         ];
 
         foreach ($staticPaths as $path) {
@@ -190,7 +196,7 @@ class PublicSitemapBuilder
         $chunks = array_chunk($entries, $this->maxUrlsPerSitemap);
 
         foreach ($chunks as $index => $chunkEntries) {
-            $path = "sitemaps/blogs-{$locale}-{$country}-" . ($index + 1) . '.xml';
+            $path = "sitemaps/blogs-{$locale}-{$country}-".($index + 1).'.xml';
             $file = $this->createSitemapFile($path, $chunkEntries);
             if ($file) {
                 $files[] = $file;
@@ -335,9 +341,9 @@ class PublicSitemapBuilder
 
         foreach ($blogs as $blog) {
             $canonical = $blog['canonical_country'] ?? null;
-            if (!is_string($canonical) || trim($canonical) === '') {
+            if (! is_string($canonical) || trim($canonical) === '') {
                 $blogCountries = $blog['countries'] ?? null;
-                if (is_array($blogCountries) && !empty($blogCountries)) {
+                if (is_array($blogCountries) && ! empty($blogCountries)) {
                     $canonical = (string) $blogCountries[0];
                 } else {
                     $canonical = 'us';
@@ -360,6 +366,7 @@ class PublicSitemapBuilder
             $blogCountries = $blog['countries'] ?? null;
             if ($blogCountries === null) {
                 $visible[] = $blog;
+
                 continue;
             }
 
@@ -424,6 +431,7 @@ class PublicSitemapBuilder
         foreach ($locales as $locale) {
             if ($suffix === '') {
                 $alternates[$locale] = $this->buildUrl("{$locale}");
+
                 continue;
             }
 
@@ -439,7 +447,7 @@ class PublicSitemapBuilder
             return $path;
         }
 
-        return $this->baseUrl . '/' . ltrim($path, '/');
+        return $this->baseUrl.'/'.ltrim($path, '/');
     }
 
     private function maxDate(array $dates): ?Carbon

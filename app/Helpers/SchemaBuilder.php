@@ -3,20 +3,20 @@
 namespace App\Helpers;
 
 use App\Models\Blog;
+use App\Models\PopularPlace;
 use App\Models\Testimonial;
 use App\Models\Vehicle;
-use App\Models\VehicleCategory;
-use App\Models\PopularPlace; // Added PopularPlace model
+use App\Models\VehicleCategory; // Added PopularPlace model
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Route as LaravelRoute; // To avoid conflict with Inertia's Route
+
+// To avoid conflict with Inertia's Route
 
 class SchemaBuilder
 {
     /**
      * Generate BlogPosting schema.
      *
-     * @param Blog $blog The blog post model instance.
-     * @return array
+     * @param  Blog  $blog  The blog post model instance.
      */
     public static function blog(Blog $blog): array
     {
@@ -58,7 +58,7 @@ class SchemaBuilder
         ];
 
         // Add articleBody if content is available
-        if (!empty($blog->content)) {
+        if (! empty($blog->content)) {
             $schema['articleBody'] = strip_tags($blog->content); // Plain text version of the content
         }
 
@@ -74,10 +74,39 @@ class SchemaBuilder
     // public static function place($place) { ... }
 
     /**
+     * Build a BreadcrumbList schema from an ordered list of crumbs.
+     * Each crumb: ['name' => 'Home', 'url' => 'https://...'].
+     */
+    public static function breadcrumbList(array $crumbs): array
+    {
+        $items = [];
+        foreach (array_values($crumbs) as $index => $crumb) {
+            $name = trim((string) ($crumb['name'] ?? ''));
+            $url = trim((string) ($crumb['url'] ?? ''));
+            if ($name === '' || $url === '') {
+                continue;
+            }
+            $items[] = [
+                '@type' => 'ListItem',
+                'position' => $index + 1,
+                'name' => $name,
+                'item' => $url,
+            ];
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => $items,
+        ];
+    }
+
+    // faqPage() is defined below — do not duplicate.
+
+    /**
      * Generate Review schema for a single testimonial.
      *
-     * @param Testimonial $testimonial The testimonial model instance.
-     * @return array
+     * @param  Testimonial  $testimonial  The testimonial model instance.
      */
     public static function testimonial(Testimonial $testimonial): array
     {
@@ -112,11 +141,11 @@ class SchemaBuilder
             // 'datePublished' => $testimonial->created_at ? $testimonial->created_at->toIso8601String() : now()->toIso8601String(),
         ];
 
-        if (!empty($testimonial->avatar)) {
+        if (! empty($testimonial->avatar)) {
             $schema['image'] = [ // Image associated with the review, e.g., author's avatar
                 '@type' => 'ImageObject',
                 'url' => $testimonial->avatar,
-                'caption' => $testimonial->name . ' - Avatar',
+                'caption' => $testimonial->name.' - Avatar',
             ];
         }
 
@@ -125,16 +154,14 @@ class SchemaBuilder
             $schema['datePublished'] = $testimonial->created_at->toIso8601String();
         }
 
-
         return $schema;
     }
 
     /**
      * Generate ItemList schema for a collection of testimonials.
      *
-     * @param Collection $testimonials Collection of Testimonial models.
-     * @param string $pageTitle The title of the page listing the testimonials.
-     * @return array
+     * @param  Collection  $testimonials  Collection of Testimonial models.
+     * @param  string  $pageTitle  The title of the page listing the testimonials.
      */
     public static function testimonialList(Collection $testimonials, string $pageTitle = 'Customer Testimonials'): array
     {
@@ -166,9 +193,8 @@ class SchemaBuilder
     /**
      * Generate ItemList schema for a collection of blog posts.
      *
-     * @param \Illuminate\Support\Collection $blogs Collection of Blog models.
-     * @param string $pageTitle The title of the page listing the blogs.
-     * @return array
+     * @param  \Illuminate\Support\Collection  $blogs  Collection of Blog models.
+     * @param  string  $pageTitle  The title of the page listing the blogs.
      */
     // public static function blogList(\Illuminate\Database\Eloquent\Collection $blogs, string $pageTitle = 'Blog Posts'): array
     // {
@@ -239,7 +265,7 @@ class SchemaBuilder
                         '@type' => 'Person',
                         'name' => $blog->author->name ?? config('app.name', 'Your Site Name'),
                     ],
-                    'description' => $blog->meta_description ?? substr(strip_tags($blog->content), 0, 100) . '...',
+                    'description' => $blog->meta_description ?? substr(strip_tags($blog->content), 0, 100).'...',
                 ],
             ];
         }
@@ -255,10 +281,9 @@ class SchemaBuilder
     /**
      * Generate ItemList schema for a collection of vehicles.
      *
-     * @param \Illuminate\Database\Eloquent\Collection $vehicles Collection of Vehicle models.
-     * @param string $pageTitle The title of the page listing the vehicles.
-     * @param array $filters The current search filters, to determine price display.
-     * @return array
+     * @param  \Illuminate\Database\Eloquent\Collection  $vehicles  Collection of Vehicle models.
+     * @param  string  $pageTitle  The title of the page listing the vehicles.
+     * @param  array  $filters  The current search filters, to determine price display.
      */
     public static function vehicleList(\Illuminate\Database\Eloquent\Collection $vehicles, string $pageTitle = 'Vehicle Search Results', array $filters = []): array
     {
@@ -273,7 +298,7 @@ class SchemaBuilder
                     }
                 }
             }
-            if (!$primaryImage && $vehicle->images && is_array($vehicle->images) && count($vehicle->images) > 0 && isset($vehicle->images[0]['image_url'])) {
+            if (! $primaryImage && $vehicle->images && is_array($vehicle->images) && count($vehicle->images) > 0 && isset($vehicle->images[0]['image_url'])) {
                 $primaryImage = $vehicle->images[0]['image_url']; // Fallback to the first image
             }
 
@@ -303,7 +328,7 @@ class SchemaBuilder
             $item = [
                 '@type' => 'Product', // Using Product schema, could be Vehicle if more specific fields are needed
                 '@id' => route('vehicle.show', ['locale' => app()->getLocale(), 'id' => $vehicle->id]),
-                'name' => ($vehicle->brand ?? '') . ' ' . ($vehicle->model ?? '') . ' (' . ($vehicle->year ?? 'N/A') . ')',
+                'name' => ($vehicle->brand ?? '').' '.($vehicle->model ?? '').' ('.($vehicle->year ?? 'N/A').')',
                 'description' => $vehicle->description ?? 'High-quality rental vehicle.',
                 'image' => $primaryImage ?? asset('default-vehicle-image.jpg'),
                 'brand' => [
@@ -354,8 +379,7 @@ class SchemaBuilder
     /**
      * Generate FAQPage schema.
      *
-     * @param array $faqs An array of FAQ items, where each item is an associative array with 'question' and 'answer' keys.
-     * @return array
+     * @param  array  $faqs  An array of FAQ items, where each item is an associative array with 'question' and 'answer' keys.
      */
     public static function faqPage(array $faqs): array
     {
@@ -387,20 +411,14 @@ class SchemaBuilder
     /**
      * Generate Organization schema.
      *
-     * @param string $name
-     * @param string $url
-     * @param string $logoUrl
-     * @param string $telephone
-     * @param string $email
-     * @param array $address Assoc array with keys: streetAddress, addressLocality, addressRegion, postalCode, addressCountry
-     * @return array
+     * @param  array  $address  Assoc array with keys: streetAddress, addressLocality, addressRegion, postalCode, addressCountry
      */
     public static function organization(string $name, string $url, string $logoUrl, string $telephone, string $email, array $address): array
     {
         // Ensure URL has a scheme
         $parsedUrl = parse_url($url);
         if (empty($parsedUrl['scheme'])) {
-            $url = 'https://' . $url; // Default to https
+            $url = 'https://'.$url; // Default to https
         }
 
         return [
@@ -430,14 +448,13 @@ class SchemaBuilder
     /**
      * Generate Product/Car schema for a single vehicle.
      *
-     * @param Vehicle $vehicle The vehicle model instance.
-     * @return array
+     * @param  Vehicle  $vehicle  The vehicle model instance.
      */
     public static function singleVehicle(Vehicle $vehicle): array
     {
         $primaryImage = $vehicle->images()->where('image_type', 'primary')->first();
         $galleryImages = $vehicle->images()->where('image_type', 'gallery')->get();
-        $allImages = collect([$primaryImage])->concat($galleryImages)->filter()->map(fn($img) => $img->image_url)->all();
+        $allImages = collect([$primaryImage])->concat($galleryImages)->filter()->map(fn ($img) => $img->image_url)->all();
 
         $offers = [];
         $currency = $vehicle->vendorProfile->currency ?? 'USD';
@@ -473,21 +490,20 @@ class SchemaBuilder
             ];
         }
 
-        $description = "Rent the " . $vehicle->brand . " " . $vehicle->model . ". Features: " .
-            $vehicle->seating_capacity . " seats, " . $vehicle->transmission . " transmission, " .
-            $vehicle->fuel . " fuel type. Located at " . $vehicle->full_vehicle_address . ".";
+        $description = 'Rent the '.$vehicle->brand.' '.$vehicle->model.'. Features: '.
+            $vehicle->seating_capacity.' seats, '.$vehicle->transmission.' transmission, '.
+            $vehicle->fuel.' fuel type. Located at '.$vehicle->full_vehicle_address.'.';
         if ($vehicle->description) { // If a more detailed description exists
             $description = $vehicle->description;
         }
 
-
         $schema = [
             '@context' => 'https://schema.org',
             '@type' => 'Car', // Using 'Car' type as it's more specific than 'Product'
-            'name' => ($vehicle->brand ?? '') . ' ' . ($vehicle->model ?? '') . ' (' . ($vehicle->year ?? 'N/A') . ')',
+            'name' => ($vehicle->brand ?? '').' '.($vehicle->model ?? '').' ('.($vehicle->year ?? 'N/A').')',
             'description' => $description,
             'image' => $allImages, // Array of image URLs
-            'sku' => 'VEHICLE-' . $vehicle->id, // Unique SKU
+            'sku' => 'VEHICLE-'.$vehicle->id, // Unique SKU
             'mpn' => $vehicle->registration_number ?? $vehicle->id, // Manufacturer Part Number (e.g., VIN or registration)
             'brand' => [
                 '@type' => 'Brand',
@@ -501,7 +517,7 @@ class SchemaBuilder
             'mileageFromOdometer' => [ // If mileage is total mileage
                 '@type' => 'QuantitativeValue',
                 'value' => (float) $vehicle->mileage, // Assuming this is total mileage
-                'unitCode' => 'KMT' // KMT for kilometer
+                'unitCode' => 'KMT', // KMT for kilometer
             ],
             // 'vehicleEngine' => [
             //     '@type' => 'EngineSpecification',
@@ -526,15 +542,14 @@ class SchemaBuilder
         ];
 
         // Remove null values to keep schema clean
-        return array_filter($schema, fn($value) => !is_null($value));
+        return array_filter($schema, fn ($value) => ! is_null($value));
     }
 
     /**
      * Generate ItemList schema for a collection of vehicle categories.
      *
-     * @param Collection $categories Collection of VehicleCategory models.
-     * @param string $pageTitle The title of the page listing the categories.
-     * @return array
+     * @param  Collection  $categories  Collection of VehicleCategory models.
+     * @param  string  $pageTitle  The title of the page listing the categories.
      */
     public static function vehicleCategoryList(Collection $categories, string $pageTitle = 'Vehicle Categories'): array
     {
@@ -552,7 +567,7 @@ class SchemaBuilder
                     'url' => route('search', ['locale' => app()->getLocale(), 'category_id' => $category->id]),
                 ],
             ];
-            if (!empty($category->image)) {
+            if (! empty($category->image)) {
                 $item['item']['image'] = $category->image;
             }
             $items[] = $item;
@@ -574,9 +589,8 @@ class SchemaBuilder
     /**
      * Generate ItemList schema for a collection of popular places.
      *
-     * @param Collection $places Collection of PopularPlace models.
-     * @param string $pageTitle The title for the ItemList.
-     * @return array
+     * @param  Collection  $places  Collection of PopularPlace models.
+     * @param  string  $pageTitle  The title for the ItemList.
      */
     public static function popularPlaceList(Collection $places, string $pageTitle = 'Popular Destinations'): array
     {
@@ -600,13 +614,13 @@ class SchemaBuilder
                     'addressLocality' => $place->city,
                     'addressCountry' => $place->country,
                 ],
-                'url' => $searchRoute . '?' . http_build_query($searchParams),
+                'url' => $searchRoute.'?'.http_build_query($searchParams),
             ];
 
-            if (!empty($place->image)) {
+            if (! empty($place->image)) {
                 $placeSchema['image'] = $place->image;
             }
-            if (!empty($place->latitude) && !empty($place->longitude)) {
+            if (! empty($place->latitude) && ! empty($place->longitude)) {
                 $placeSchema['geo'] = [
                     '@type' => 'GeoCoordinates',
                     'latitude' => $place->latitude,

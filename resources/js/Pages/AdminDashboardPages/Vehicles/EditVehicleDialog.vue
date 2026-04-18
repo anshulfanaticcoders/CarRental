@@ -37,28 +37,6 @@
                 <div v-if="form.errors.price_per_day" class="text-red-500 text-sm">{{ form.errors.price_per_day }}</div>
             </div>
 
-            <div class="flex flex-col gap-2">
-                <Label for="price_per_week">Price Per Week</Label>
-                <Input id="price_per_week" type="number" step="0.01" v-model="form.price_per_week" />
-                <div v-if="form.errors.price_per_week" class="text-red-500 text-sm">{{ form.errors.price_per_week }}</div>
-            </div>
-
-            <div class="flex flex-col gap-2">
-                <Label for="price_per_month">Price Per Month</Label>
-                <Input id="price_per_month" type="number" step="0.01" v-model="form.price_per_month" />
-                <div v-if="form.errors.price_per_month" class="text-red-500 text-sm">{{ form.errors.price_per_month }}</div>
-            </div>
-
-            <div class="flex flex-col gap-2">
-                <Label for="preferred_price_type">Preferred Price Type</Label>
-                <select id="preferred_price_type" v-model="form.preferred_price_type" class="border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    <option value="day">Day</option>
-                    <option value="week">Week</option>
-                    <option value="month">Month</option>
-                </select>
-                <div v-if="form.errors.preferred_price_type" class="text-red-500 text-sm">{{ form.errors.preferred_price_type }}</div>
-            </div>
-            
             <!-- Add other editable fields here as needed -->
             <DialogFooter class="col-span-2 flex justify-end gap-2 mt-4">
                 <Button type="button" variant="outline" @click="$emit('close')">
@@ -104,8 +82,6 @@ const form = useForm({
     state: '',
     country: '',
     price_per_day: 0,
-    price_per_week: 0,
-    price_per_month: 0,
     preferred_price_type: 'day',
 });
 
@@ -119,9 +95,7 @@ watch(() => props.vehicle, (newVehicle) => {
         form.state = newVehicle.state || '';
         form.country = newVehicle.country || '';
         form.price_per_day = newVehicle.price_per_day || 0;
-        form.price_per_week = newVehicle.price_per_week || 0;
-        form.price_per_month = newVehicle.price_per_month || 0;
-        form.preferred_price_type = newVehicle.preferred_price_type || 'day';
+        form.preferred_price_type = 'day';
         form.clearErrors(); // Clear previous errors
     }
 }, { immediate: true, deep: true });
