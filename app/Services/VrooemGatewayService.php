@@ -8,8 +8,11 @@ use Illuminate\Support\Facades\Log;
 class VrooemGatewayService
 {
     protected string $baseUrl;
+
     protected string $apiKey;
+
     protected int $timeout;
+
     protected int $connectTimeout;
 
     public function __construct()
@@ -29,7 +32,7 @@ class VrooemGatewayService
     {
         $response = $this->request('POST', '/api/v1/vehicles/search', $params);
 
-        if (!$response) {
+        if (! $response) {
             return ['vehicles' => [], 'provider_status' => [], 'search_id' => null];
         }
 
@@ -48,7 +51,7 @@ class VrooemGatewayService
             'limit' => $limit,
         ]);
 
-        if (!$response) {
+        if (! $response) {
             return ['query' => $query, 'results' => [], 'total' => 0];
         }
 
@@ -88,6 +91,27 @@ class VrooemGatewayService
     }
 
     /**
+     * List one-way dropoff candidates for a provider + pickup.
+     *
+     * Returns an array of unified location dicts (same shape as getLocation()).
+     */
+    public function listDropoffCandidates(string $provider, int $pickupUnifiedId, ?string $countryCode = null, int $limit = 100): array
+    {
+        $params = [
+            'provider' => $provider,
+            'pickup_unified_id' => $pickupUnifiedId,
+            'limit' => $limit,
+        ];
+        if ($countryCode !== null && $countryCode !== '') {
+            $params['country_code'] = strtoupper($countryCode);
+        }
+
+        $response = $this->request('GET', '/api/v1/locations/dropoffs', $params);
+
+        return is_array($response) ? $response : [];
+    }
+
+    /**
      * Create a booking through the gateway.
      *
      * Returns array with: gateway_booking_id, supplier_booking_id, status, supplier_id
@@ -114,7 +138,7 @@ class VrooemGatewayService
      */
     protected function request(string $method, string $path, array $params = []): ?array
     {
-        $url = $this->baseUrl . $path;
+        $url = $this->baseUrl.$path;
 
         try {
             $http = Http::timeout($this->timeout)
@@ -126,8 +150,8 @@ class VrooemGatewayService
 
             $method = strtolower($method);
             if ($method === 'get' || $method === 'delete') {
-                $queryString = !empty($params) ? '?' . http_build_query($params) : '';
-                $fullUrl = $url . $queryString;
+                $queryString = ! empty($params) ? '?'.http_build_query($params) : '';
+                $fullUrl = $url.$queryString;
                 Log::info('VrooemGateway: Sending request', ['method' => $method, 'url' => $fullUrl]);
                 $response = $http->$method($fullUrl);
             } else {
@@ -148,6 +172,7 @@ class VrooemGatewayService
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
+
                 return null;
             }
 
@@ -158,6 +183,7 @@ class VrooemGatewayService
                 'url' => $url,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }

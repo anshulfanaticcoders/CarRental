@@ -128,6 +128,9 @@ class GatewaySearchService
             return true;
         });
 
+        $providerVehicles = $this->filterDisplayableVehicles($providerVehicles);
+        $filteredProviderVehicles = $this->filterDisplayableVehicles($filteredProviderVehicles);
+
         Log::info('VrooemGateway: After filtering', [
             'before' => $providerVehicles->count(),
             'after' => $filteredProviderVehicles->count(),
@@ -148,6 +151,7 @@ class GatewaySearchService
             $matchedLocation,
             $isOneWay
         );
+        $internalForMerge = $this->filterDisplayableVehicles($internalForMerge);
 
         $combinedVehicles = $this->deduplicateVehicles(
             $internalForMerge->merge($filteredProviderVehicles)
@@ -301,6 +305,39 @@ class GatewaySearchService
                 return $source . '|' . (string) $identity;
             })
             ->values();
+    }
+
+    private function filterDisplayableVehicles(Collection $vehicles): Collection
+    {
+        return $vehicles
+            ->filter(function ($vehicle): bool {
+                $total = $this->extractVehicleTotal($vehicle);
+
+                return $total !== null && $total > 0;
+            })
+            ->values();
+    }
+
+    private function extractVehicleTotal(mixed $vehicle): ?float
+    {
+        $vehicle = is_array($vehicle) ? $vehicle : (array) $vehicle;
+
+        $candidates = [
+            $vehicle['pricing']['total_price'] ?? null,
+            $vehicle['total_price'] ?? null,
+            $vehicle['total'] ?? null,
+            $vehicle['products'][0]['total'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (!is_numeric($candidate)) {
+                continue;
+            }
+
+            return (float) $candidate;
+        }
+
+        return null;
     }
 
     private function mapGatewayProviderStatus(array $gatewayResult, callable $normalizeSupplierId): array

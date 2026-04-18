@@ -19,17 +19,34 @@ export function useVehicleMap(props) {
         return isValidCoordinate(props.vehicle?.latitude) && isValidCoordinate(props.vehicle?.longitude);
     });
 
+    // Prefer provider-reported dropoff coords (`vehicle.location.dropoff`) from the
+    // gateway Vehicle payload over the form-supplied dropoff, because the form may
+    // still hold the pickup coords when the user hasn't picked a distinct dropoff
+    // from the search dropdown. Falls back to form-supplied values.
+    const resolvedDropoffLat = computed(() => {
+        const providerLat = props.vehicle?.location?.dropoff?.latitude;
+        if (isValidCoordinate(providerLat)) return parseFloat(providerLat);
+        if (isValidCoordinate(props.dropoffLatitude)) return parseFloat(props.dropoffLatitude);
+        return null;
+    });
+
+    const resolvedDropoffLng = computed(() => {
+        const providerLng = props.vehicle?.location?.dropoff?.longitude;
+        if (isValidCoordinate(providerLng)) return parseFloat(providerLng);
+        if (isValidCoordinate(props.dropoffLongitude)) return parseFloat(props.dropoffLongitude);
+        return null;
+    });
+
     const hasDropoffCoords = computed(() => {
-        return isValidCoordinate(props.dropoffLatitude) && isValidCoordinate(props.dropoffLongitude);
+        return resolvedDropoffLat.value !== null && resolvedDropoffLng.value !== null;
     });
 
     const isDifferentDropoff = computed(() => {
         if (!hasDropoffCoords.value || !hasVehicleCoords.value) return false;
-        if (props.dropoffLocation && props.pickupLocation && props.dropoffLocation === props.pickupLocation) return false;
         const pickupLat = parseFloat(props.vehicle.latitude);
         const pickupLng = parseFloat(props.vehicle.longitude);
-        const dropLat = parseFloat(props.dropoffLatitude);
-        const dropLng = parseFloat(props.dropoffLongitude);
+        const dropLat = resolvedDropoffLat.value;
+        const dropLng = resolvedDropoffLng.value;
         return Math.abs(pickupLat - dropLat) > 0.001 || Math.abs(pickupLng - dropLng) > 0.001;
     });
 
@@ -88,8 +105,8 @@ export function useVehicleMap(props) {
         const pickupLatLng = [pickupLat, pickupLng];
 
         if (isDifferentDropoff.value) {
-            const dropoffLat = parseFloat(props.dropoffLatitude);
-            const dropoffLng = parseFloat(props.dropoffLongitude);
+            const dropoffLat = resolvedDropoffLat.value;
+            const dropoffLng = resolvedDropoffLng.value;
             const dropoffLatLng = [dropoffLat, dropoffLng];
 
             const pickupIcon = createMapIcon('#059669', 'Pickup', true);
@@ -139,9 +156,21 @@ export function useVehicleMap(props) {
         }, 200);
     };
 
-    // Watch for vehicle changes to reinitialize the map
+    // Re-init the map when vehicle OR dropoff inputs change. Previously the watcher
+    // only reacted to vehicle fields, so a dropoff lat/lng arriving after mount (or
+    // changing mid-session) would not draw the second marker.
     watch(
-        () => [props.vehicle?.id, props.vehicle?.latitude, props.vehicle?.longitude],
+        () => [
+            props.vehicle?.id,
+            props.vehicle?.latitude,
+            props.vehicle?.longitude,
+            props.vehicle?.location?.dropoff?.latitude,
+            props.vehicle?.location?.dropoff?.longitude,
+            props.dropoffLatitude,
+            props.dropoffLongitude,
+            props.dropoffLocation,
+            props.pickupLocation,
+        ],
         () => {
             nextTick(() => {
                 initVehicleMap();
@@ -169,8 +198,8 @@ export function useVehicleMap(props) {
                     .bindPopup(`<div style="font-family:system-ui;text-align:center;padding:4px 0;"><p style="font-weight:600;margin:0 0 2px;">Pickup</p><p style="margin:0;color:#6b7280;font-size:12px;">${props.pickupLocation || ''}</p></div>`, { className: 'rental-popup' })
                     .addTo(modalMap);
                 if (isDifferentDropoff.value) {
-                    const dropoffLat = parseFloat(props.dropoffLatitude);
-                    const dropoffLng = parseFloat(props.dropoffLongitude);
+                    const dropoffLat = resolvedDropoffLat.value;
+                    const dropoffLng = resolvedDropoffLng.value;
                     const dropoffIcon = createMapIcon('#dc2626', 'Dropoff');
                     L.marker([dropoffLat, dropoffLng], { icon: dropoffIcon })
                         .bindPopup(`<div style="font-family:system-ui;text-align:center;padding:4px 0;"><p style="font-weight:600;margin:0 0 2px;">Dropoff</p><p style="margin:0;color:#6b7280;font-size:12px;">${props.dropoffLocation || ''}</p></div>`, { className: 'rental-popup' })

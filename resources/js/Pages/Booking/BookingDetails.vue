@@ -101,12 +101,57 @@ const statusTimeline = computed(() => {
   }));
 });
 
+const parseCoord = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const buildMarkerIcon = (variant) => {
+  const tint = variant === 'dropoff'
+    ? 'filter: hue-rotate(140deg) saturate(1.2);'
+    : '';
+  return L.divIcon({
+    className: 'custom-div-icon',
+    html: `<div class="marker-pin" style="${tint}"><img src="${MapPin}" alt="Location" /></div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
+  });
+};
+
+// Resolve dropoff coordinates from the raw booking payload, skipping the
+// normalizer which falls back to pickup metadata when per-location fields are
+// missing — that fallback would silently mask a real one-way dropoff by
+// reporting pickup coordinates for both markers.
+const resolveRawDropoffCoords = () => {
+  const candidates = [
+    props.booking?.provider_metadata?.dropoff_location_details,
+    props.vehicle?.dropoff_location,
+    props.vehicle?.dropoff_location_details,
+    props.booking?.provider_metadata?.dropoff_office,
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const lat = parseCoord(candidate.latitude);
+    const lng = parseCoord(candidate.longitude);
+    if (lat !== null && lng !== null) return { lat, lng, source: candidate };
+  }
+  return null;
+};
+
 const initMap = () => {
-  const rawLat = props.vehicle?.latitude || pickupDetails.value?.latitude;
-  const rawLng = props.vehicle?.longitude || pickupDetails.value?.longitude;
-  const lat = rawLat !== null && rawLat !== undefined ? parseFloat(rawLat) : null;
-  const lng = rawLng !== null && rawLng !== undefined ? parseFloat(rawLng) : null;
-  if (!lat || !lng) return;
+  const pickupLat = parseCoord(props.vehicle?.latitude) ?? parseCoord(pickupDetails.value?.latitude);
+  const pickupLng = parseCoord(props.vehicle?.longitude) ?? parseCoord(pickupDetails.value?.longitude);
+  if (pickupLat === null || pickupLng === null) return;
+
+  const rawDropoff = resolveRawDropoffCoords();
+  const dropoffLat = rawDropoff?.lat ?? null;
+  const dropoffLng = rawDropoff?.lng ?? null;
+  const hasDistinctDropoff =
+    dropoffLat !== null &&
+    dropoffLng !== null &&
+    (Math.abs(dropoffLat - pickupLat) > 0.0001 || Math.abs(dropoffLng - pickupLng) > 0.0001);
 
   if (map.value) {
     map.value.remove();
@@ -116,33 +161,45 @@ const initMap = () => {
     zoomControl: true,
     maxZoom: 18,
     minZoom: 4,
-    scrollWheelZoom: false
-  }).setView([lat, lng], 15);
+    scrollWheelZoom: false,
+  }).setView([pickupLat, pickupLng], 15);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+    attribution: '&copy; OpenStreetMap contributors',
   }).addTo(map.value);
 
-  const customIcon = L.divIcon({
-    className: 'custom-div-icon',
-    html: `<div class="marker-pin"><img src="${MapPin}" alt="Location" /></div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  });
-
-  const popupAddress = pickupDetails.value
+  const pickupAddress = pickupDetails.value
     ? formatLocationLines(pickupDetails.value).join(', ')
     : (props.vehicle?.full_vehicle_address || props.booking.pickup_location || 'Location');
 
-  L.marker([lat, lng], { icon: customIcon })
+  L.marker([pickupLat, pickupLng], { icon: buildMarkerIcon('pickup') })
     .bindPopup(`
       <div class="text-center p-2">
-        <p class="font-semibold text-[#153B4F]">Vehicle Location</p>
-        <p class="text-sm text-gray-600">${popupAddress}</p>
+        <p class="font-semibold text-[#153B4F]">Pickup Location</p>
+        <p class="text-sm text-gray-600">${pickupAddress}</p>
       </div>
     `)
     .addTo(map.value);
+
+  if (hasDistinctDropoff) {
+    const dropoffAddress = formatLocationLines(dropoffDetails.value).join(', ')
+      || props.booking.return_location
+      || 'Dropoff Location';
+
+    L.marker([dropoffLat, dropoffLng], { icon: buildMarkerIcon('dropoff') })
+      .bindPopup(`
+        <div class="text-center p-2">
+          <p class="font-semibold text-[#153B4F]">Dropoff Location</p>
+          <p class="text-sm text-gray-600">${dropoffAddress}</p>
+        </div>
+      `)
+      .addTo(map.value);
+
+    map.value.fitBounds(
+      [[pickupLat, pickupLng], [dropoffLat, dropoffLng]],
+      { padding: [48, 48], maxZoom: 14 },
+    );
+  }
 
   setTimeout(() => map.value?.invalidateSize(), 100);
 };

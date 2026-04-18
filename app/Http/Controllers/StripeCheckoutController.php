@@ -3,21 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
-use App\Models\BookingPayment;
-use App\Models\BookingExtra;
 use App\Models\Customer;
 use App\Models\PayableSetting;
 use App\Models\StripeCheckoutPayload;
 use App\Models\Vehicle;
 use App\Models\VehicleOperatingHour;
-use App\Services\PromoService;
-use App\Services\StripeBookingService;
 use App\Services\CurrencyConversionService;
 use App\Services\PriceVerificationService;
+use App\Services\PromoService;
+use App\Services\StripeBookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
+use Stripe\Stripe;
 
 class StripeCheckoutController extends Controller
 {
@@ -36,6 +34,7 @@ class StripeCheckoutController extends Controller
     {
         // Apply platform fee to ALL vehicles including internal
         $normalized = strtolower(trim((string) $source));
+
         return $normalized !== '';
     }
 
@@ -57,7 +56,7 @@ class StripeCheckoutController extends Controller
 
     private function grossUpProviderAmount(float $netAmount, ?string $vehicleSource): float
     {
-        if (!$this->isExternalProviderSource($vehicleSource)) {
+        if (! $this->isExternalProviderSource($vehicleSource)) {
             return round($netAmount, 2);
         }
 
@@ -81,8 +80,9 @@ class StripeCheckoutController extends Controller
                     return $value !== '';
                 }
                 if (is_array($value)) {
-                    return !empty($value);
+                    return ! empty($value);
                 }
+
                 return true;
             }
         );
@@ -146,11 +146,12 @@ class StripeCheckoutController extends Controller
 
     private function normalizeLocationCoordinate(mixed $value): ?float
     {
-        if (!is_numeric($value)) {
+        if (! is_numeric($value)) {
             return null;
         }
 
         $numeric = (float) $value;
+
         return $numeric === 0.0 ? null : $numeric;
     }
 
@@ -158,7 +159,21 @@ class StripeCheckoutController extends Controller
     {
         $isDropoff = $leg === 'dropoff';
         $officeKey = $isDropoff ? 'dropoff_office' : 'pickup_office';
-        $office = (!empty($vehicle[$officeKey]) && is_array($vehicle[$officeKey])) ? $vehicle[$officeKey] : [];
+        $office = (! empty($vehicle[$officeKey]) && is_array($vehicle[$officeKey])) ? $vehicle[$officeKey] : [];
+
+        // Gateway vehicles expose per-leg location data in two shapes:
+        //   - legacy flat: $vehicle['pickup_location'] / $vehicle['dropoff_location'] (VehicleLocation)
+        //   - canonical:   $vehicle['location']['pickup'] / $vehicle['location']['dropoff'] (SearchVehicleLocationPointPayload)
+        // Prefer whichever contains coords over copying pickup values into the dropoff entry.
+        $nestedKey = $isDropoff ? 'dropoff_location' : 'pickup_location';
+        $legPoint = $isDropoff ? 'dropoff' : 'pickup';
+        $nested = (! empty($vehicle[$nestedKey]) && is_array($vehicle[$nestedKey])) ? $vehicle[$nestedKey] : [];
+        $canonical = (isset($vehicle['location'][$legPoint]) && is_array($vehicle['location'][$legPoint]))
+            ? $vehicle['location'][$legPoint]
+            : [];
+        if (empty($nested)) {
+            $nested = $canonical;
+        }
 
         $stationName = $isDropoff
             ? ($vehicle['dropoff_station_name'] ?? null)
@@ -169,32 +184,51 @@ class StripeCheckoutController extends Controller
 
         $addressLine = $directAddress
             ?: ($office['address'] ?? null)
+            ?: ($nested['address'] ?? null)
             ?: ($vehicle['office_address'] ?? null)
             ?: ($vehicle['full_vehicle_address'] ?? null);
 
         $name = $stationName
             ?: ($office['name'] ?? null)
+            ?: ($nested['name'] ?? null)
             ?: ($vehicle['full_vehicle_address'] ?? null)
             ?: ($vehicle['pickup_location'] ?? null)
             ?: ($vehicle['location'] ?? null);
 
+        // Only fall back to the pickup-level coords for the PICKUP leg. For the dropoff leg,
+        // leave lat/lng null if the provider didn't give us a distinct dropoff — so the
+        // BookingDetails map can correctly distinguish round-trip from one-way.
+        if ($isDropoff) {
+            $latitude = $this->normalizeLocationCoordinate($vehicle['dropoff_latitude'] ?? null)
+                ?? $this->normalizeLocationCoordinate($nested['latitude'] ?? null)
+                ?? $this->normalizeLocationCoordinate($office['latitude'] ?? null);
+            $longitude = $this->normalizeLocationCoordinate($vehicle['dropoff_longitude'] ?? null)
+                ?? $this->normalizeLocationCoordinate($nested['longitude'] ?? null)
+                ?? $this->normalizeLocationCoordinate($office['longitude'] ?? null);
+        } else {
+            $latitude = $this->normalizeLocationCoordinate($vehicle['latitude'] ?? null)
+                ?? $this->normalizeLocationCoordinate($nested['latitude'] ?? null)
+                ?? $this->normalizeLocationCoordinate($office['latitude'] ?? null);
+            $longitude = $this->normalizeLocationCoordinate($vehicle['longitude'] ?? null)
+                ?? $this->normalizeLocationCoordinate($nested['longitude'] ?? null)
+                ?? $this->normalizeLocationCoordinate($office['longitude'] ?? null);
+        }
+
         $details = array_filter([
             'name' => $name,
             'address_1' => $addressLine,
-            'address_city' => $office['town'] ?? null,
+            'address_city' => $office['town'] ?? ($nested['city'] ?? null),
             'address_postcode' => $office['postal_code'] ?? null,
             'telephone' => $office['phone'] ?? ($vehicle['office_phone'] ?? null),
             'email' => $office['email'] ?? null,
             'collection_details' => $isDropoff
                 ? ($office['dropoff_instructions'] ?? null)
                 : ($office['pickup_instructions'] ?? null),
-            'latitude' => $this->normalizeLocationCoordinate($vehicle[$isDropoff ? 'dropoff_latitude' : 'latitude'] ?? null)
-                ?? $this->normalizeLocationCoordinate($vehicle['latitude'] ?? null),
-            'longitude' => $this->normalizeLocationCoordinate($vehicle[$isDropoff ? 'dropoff_longitude' : 'longitude'] ?? null)
-                ?? $this->normalizeLocationCoordinate($vehicle['longitude'] ?? null),
+            'latitude' => $latitude,
+            'longitude' => $longitude,
         ], static fn ($value) => $value !== null && $value !== '');
 
-        return !empty($details) ? $details : null;
+        return ! empty($details) ? $details : null;
     }
 
     private function resolveCheckoutLocationDetails(array $validated): array
@@ -207,10 +241,10 @@ class StripeCheckoutController extends Controller
 
         // Preserve existing Renteon-specific fallback behavior first.
         if ($providerSource === 'renteon') {
-            if (empty($pickupLocationDetails) && !empty($vehicle['pickup_office']) && is_array($vehicle['pickup_office'])) {
+            if (empty($pickupLocationDetails) && ! empty($vehicle['pickup_office']) && is_array($vehicle['pickup_office'])) {
                 $pickupLocationDetails = $vehicle['pickup_office'];
             }
-            if (empty($dropoffLocationDetails) && !empty($vehicle['dropoff_office']) && is_array($vehicle['dropoff_office'])) {
+            if (empty($dropoffLocationDetails) && ! empty($vehicle['dropoff_office']) && is_array($vehicle['dropoff_office'])) {
                 $dropoffLocationDetails = $vehicle['dropoff_office'];
             }
         }
@@ -222,7 +256,7 @@ class StripeCheckoutController extends Controller
         if (empty($dropoffLocationDetails)) {
             $dropoffLocationDetails = $this->buildFallbackLocationDetailsFromVehicle($vehicle, 'dropoff');
         }
-        if (empty($dropoffLocationDetails) && !empty($pickupLocationDetails)) {
+        if (empty($dropoffLocationDetails) && ! empty($pickupLocationDetails)) {
             $dropoffLocationDetails = $pickupLocationDetails;
         }
 
@@ -234,7 +268,7 @@ class StripeCheckoutController extends Controller
 
     private function enrichLocationDetailsFromVehicle(mixed $details, array $vehicle, string $leg = 'pickup'): mixed
     {
-        if (!is_array($details)) {
+        if (! is_array($details)) {
             return $details;
         }
 
@@ -244,7 +278,7 @@ class StripeCheckoutController extends Controller
         }
 
         foreach (['name', 'address_1', 'address_city', 'address_postcode', 'telephone', 'email', 'collection_details', 'latitude', 'longitude'] as $field) {
-            if ((!isset($details[$field]) || $details[$field] === '' || $details[$field] === null) && array_key_exists($field, $fallback)) {
+            if ((! isset($details[$field]) || $details[$field] === '' || $details[$field] === null) && array_key_exists($field, $fallback)) {
                 $details[$field] = $fallback[$field];
             }
         }
@@ -259,7 +293,7 @@ class StripeCheckoutController extends Controller
     {
         // Only regular users can make bookings
         $user = auth()->user();
-        if ($user && !in_array($user->role, ['user', 'customer', null], true)) {
+        if ($user && ! in_array($user->role, ['user', 'customer', null], true)) {
             return response()->json([
                 'error' => 'Only customer accounts can make bookings. Please use a regular account.',
             ], 403);
@@ -301,27 +335,29 @@ class StripeCheckoutController extends Controller
             $providerSource = strtolower((string) ($vehicle['source'] ?? ''));
 
             // Validate operating hours for internal vehicles
-            if ($providerSource === 'internal' && !empty($vehicle['id'])) {
+            if ($providerSource === 'internal' && ! empty($vehicle['id'])) {
                 $internalVehicle = Vehicle::with('operatingHours')->find($vehicle['id']);
                 if ($internalVehicle && $internalVehicle->operatingHours->isNotEmpty()) {
                     $pickupDay = \Carbon\Carbon::parse($validated['pickup_date'])->dayOfWeekIso - 1;
                     $returnDay = \Carbon\Carbon::parse($validated['dropoff_date'])->dayOfWeekIso - 1;
 
-                    if (!$internalVehicle->isAvailableAt($pickupDay, $validated['pickup_time'])) {
+                    if (! $internalVehicle->isAvailableAt($pickupDay, $validated['pickup_time'])) {
                         $hours = $internalVehicle->getOperatingHoursForDay($pickupDay);
                         $dayName = VehicleOperatingHour::DAY_NAMES[$pickupDay] ?? 'this day';
                         $msg = $hours && $hours->is_open
                             ? "Pickup is not available on {$dayName} at {$validated['pickup_time']}. Operating hours: {$hours->open_time}–{$hours->close_time}."
                             : "This vehicle is not available for pickup on {$dayName}s.";
+
                         return response()->json(['error' => $msg], 422);
                     }
 
-                    if (!$internalVehicle->isAvailableAt($returnDay, $validated['dropoff_time'])) {
+                    if (! $internalVehicle->isAvailableAt($returnDay, $validated['dropoff_time'])) {
                         $hours = $internalVehicle->getOperatingHoursForDay($returnDay);
                         $dayName = VehicleOperatingHour::DAY_NAMES[$returnDay] ?? 'this day';
                         $msg = $hours && $hours->is_open
                             ? "Return is not available on {$dayName} at {$validated['dropoff_time']}. Operating hours: {$hours->open_time}–{$hours->close_time}."
                             : "This vehicle is not available for return on {$dayName}s.";
+
                         return response()->json(['error' => $msg], 422);
                     }
                 }
@@ -332,7 +368,7 @@ class StripeCheckoutController extends Controller
                 $rateId = $vehicle['rate_id'] ?? null;
                 $pickupId = $vehicle['provider_pickup_id'] ?? null;
 
-                if ((!$vehicleId || !$rateId || !$pickupId) && !empty($vehicle['id'])) {
+                if ((! $vehicleId || ! $rateId || ! $pickupId) && ! empty($vehicle['id'])) {
                     $rawId = (string) $vehicle['id'];
                     $prefix = 'sicily_by_car_';
                     if (str_starts_with($rawId, $prefix)) {
@@ -377,7 +413,7 @@ class StripeCheckoutController extends Controller
                             break;
                         }
                     }
-                    if (!$selectedRecordGo && !empty($recordgoProducts)) {
+                    if (! $selectedRecordGo && ! empty($recordgoProducts)) {
                         $selectedRecordGo = $recordgoProducts[0];
                     }
                 }
@@ -395,14 +431,14 @@ class StripeCheckoutController extends Controller
                     $missing[] = 'vehicle.sipp_code';
                 }
 
-                if (!$selectedRecordGo || empty($selectedRecordGo['product_id']) || empty($selectedRecordGo['product_ver']) || empty($selectedRecordGo['rate_prod_ver'])) {
+                if (! $selectedRecordGo || empty($selectedRecordGo['product_id']) || empty($selectedRecordGo['product_ver']) || empty($selectedRecordGo['rate_prod_ver'])) {
                     $missing[] = 'recordgo.product_id/product_ver/rate_prod_ver';
                 }
                 if (empty($vehicle['recordgo_sellcode_ver'])) {
                     $missing[] = 'vehicle.recordgo_sellcode_ver';
                 }
 
-                if (!empty($missing)) {
+                if (! empty($missing)) {
                     return response()->json([
                         'error' => 'Missing required Record Go booking details. Please refresh and try again.',
                         'missing_fields' => $missing,
@@ -433,7 +469,7 @@ class StripeCheckoutController extends Controller
                     $missing[] = 'country';
                 }
 
-                if (!empty($missing)) {
+                if (! empty($missing)) {
                     return response()->json([
                         'error' => 'Please complete the required driver details before checkout.',
                         'missing_fields' => $missing,
@@ -441,7 +477,7 @@ class StripeCheckoutController extends Controller
                 }
 
                 $quoteId = $validated['quoteid'] ?? ($validated['vehicle']['quoteid'] ?? null);
-                if (!$quoteId) {
+                if (! $quoteId) {
                     return response()->json([
                         'error' => 'Quote expired or missing. Please search again.',
                     ], 422);
@@ -480,7 +516,7 @@ class StripeCheckoutController extends Controller
                 if (empty($vehicle['rate_id'])) {
                     $missing[] = 'vehicle.rate_id';
                 }
-                if (!empty($missing)) {
+                if (! empty($missing)) {
                     return response()->json([
                         'error' => 'Missing required Sicily By Car booking details. Please refresh and try again.',
                         'missing_fields' => $missing,
@@ -494,7 +530,7 @@ class StripeCheckoutController extends Controller
 
             // SECURITY: Verify prices against server-side stored values
             $searchSessionId = $request->input('search_session_id') ?? $request->header('X-Search-Session');
-            if (!$searchSessionId) {
+            if (! $searchSessionId) {
                 // Try to get from session
                 $searchSessionId = session()->get('search_session_id');
             }
@@ -504,7 +540,7 @@ class StripeCheckoutController extends Controller
             if ($searchSessionId) {
                 $verification = $priceVerificationService->verifyPrices($searchSessionId, $vehicle);
 
-                if (!$verification['valid']) {
+                if (! $verification['valid']) {
                     Log::warning('Price verification failed during checkout', [
                         'error' => $verification['error'],
                         'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
@@ -528,7 +564,7 @@ class StripeCheckoutController extends Controller
                 if (isset($verifiedPrices['original_total'])) {
                     $vehicle['total'] = $verifiedPrices['original_total'];
                 }
-                if (isset($verifiedPrices['products']) && !empty($verifiedPrices['products'])) {
+                if (isset($verifiedPrices['products']) && ! empty($verifiedPrices['products'])) {
                     $vehicle['products'] = $verifiedPrices['products'];
                 }
                 if (isset($verifiedPrices['price_per_day'])) {
@@ -548,7 +584,7 @@ class StripeCheckoutController extends Controller
                     $verifiedPrices
                 );
 
-                if (!$extrasVerification['valid']) {
+                if (! $extrasVerification['valid']) {
                     Log::warning('Extras verification failed during checkout', [
                         'error' => $extrasVerification['error'] ?? 'unknown',
                         'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
@@ -583,7 +619,7 @@ class StripeCheckoutController extends Controller
 
             $computedTotals = $this->computeServerTotals($validated, $currencyCode, $providerCurrency, $paymentPercentage);
 
-            if (!$computedTotals['success']) {
+            if (! $computedTotals['success']) {
                 return response()->json([
                     'error' => $computedTotals['error'] ?? 'Unable to validate pricing.',
                 ], 422);
@@ -636,14 +672,14 @@ class StripeCheckoutController extends Controller
             // Resolve vehicle image early so it's available for fullMetadata and Stripe
             $vehicleImage = null;
             $checkoutVehicleImages = $this->resolveVehicleImagesForCheckout($validated['vehicle'] ?? []);
-            if (($validated['vehicle']['source'] ?? null) === 'internal' && !empty($checkoutVehicleImages)) {
+            if (($validated['vehicle']['source'] ?? null) === 'internal' && ! empty($checkoutVehicleImages)) {
                 foreach ($checkoutVehicleImages as $img) {
                     if (isset($img['image_type']) && $img['image_type'] === 'primary') {
                         $vehicleImage = $img['image_url'] ?? null;
                         break;
                     }
                 }
-                if (!$vehicleImage) {
+                if (! $vehicleImage) {
                     foreach ($checkoutVehicleImages as $img) {
                         if (isset($img['image_type']) && $img['image_type'] === 'gallery') {
                             $vehicleImage = $img['image_url'] ?? null;
@@ -716,7 +752,7 @@ class StripeCheckoutController extends Controller
                 'pickup_location_code' => $validated['vehicle']['provider_pickup_id'] ?? '',
                 'return_location_code' => $validated['vehicle']['provider_return_id'] ?? $validated['vehicle']['provider_pickup_id'] ?? '',
                 'extras' => json_encode($validated['extras'] ?? []),
-                'quoteid' => !empty($validated['quoteid']) ? $validated['quoteid'] : ($validated['vehicle']['quoteid'] ?? ''),
+                'quoteid' => ! empty($validated['quoteid']) ? $validated['quoteid'] : ($validated['vehicle']['quoteid'] ?? ''),
                 'rental_code' => $validated['package'] ?? ($validated['vehicle']['rentalCode'] ?? ''),
                 'vehicle_total' => $computedTotals['booking_vehicle_total'],
                 'extras_total' => $computedTotals['booking_options_total'],
@@ -813,7 +849,7 @@ class StripeCheckoutController extends Controller
                 'mileage' => $validated['vehicle']['mileage'] ?? ($validated['vehicle']['policies']['mileage_limit_km'] ?? null),
                 'transmission' => $validated['vehicle']['transmission'] ?? ($validated['vehicle']['specs']['transmission'] ?? null),
                 // Store full metadata here — StripeBookingService merges this back
-                'full_metadata' => array_filter($fullMetadata, fn($v) => $v !== null && $v !== ''),
+                'full_metadata' => array_filter($fullMetadata, fn ($v) => $v !== null && $v !== ''),
             ];
 
             // Always save payload since it now contains vehicle benefits
@@ -832,8 +868,8 @@ class StripeCheckoutController extends Controller
                     'price_data' => [
                         'currency' => strtolower($currencyCode),
                         'product_data' => [
-                            'name' => $validated['vehicle']['brand'] . ' ' . $validated['vehicle']['model'],
-                            'description' => $validated['package'] . ' Package - ' . $validated['number_of_days'] . ' day(s)',
+                            'name' => $validated['vehicle']['brand'].' '.$validated['vehicle']['model'],
+                            'description' => $validated['package'].' Package - '.$validated['number_of_days'].' day(s)',
                             'images' => $vehicleImage ? [$vehicleImage] : [],
                         ],
                         'unit_amount' => (int) ($payableAmount * 100), // Stripe uses cents
@@ -885,22 +921,21 @@ class StripeCheckoutController extends Controller
 
             $metadata = $this->compactStripeMetadata($metadata);
 
-
             // Create Stripe Checkout Session
             $currentLocale = app()->getLocale();
             $supportedLocales = ['en', 'fr', 'nl', 'es', 'ar'];
-            if (!in_array($currentLocale, $supportedLocales)) {
+            if (! in_array($currentLocale, $supportedLocales)) {
                 $currentLocale = 'en';
             }
 
             // Determine supported payment method types based on currency
             $availableMethods = ['card'];
-            
+
             // Bancontact only supports EUR
             if (strtoupper($currency) === 'EUR') {
                 $availableMethods[] = 'bancontact';
             }
-            
+
             // Klarna supports multiple currencies
             $klarnaCurrencies = ['EUR', 'USD', 'GBP', 'DKK', 'NOK', 'SEK', 'CHF'];
             if (in_array(strtoupper($currency), $klarnaCurrencies)) {
@@ -923,7 +958,7 @@ class StripeCheckoutController extends Controller
                 'mode' => 'payment',
                 // Use route() to generate the correct URL with locale, but we need to append the session_id placeholder manually
                 // to avoid URL encoding issues with the curly braces.
-                'success_url' => route('booking.success', ['locale' => $currentLocale]) . '?session_id={CHECKOUT_SESSION_ID}',
+                'success_url' => route('booking.success', ['locale' => $currentLocale]).'?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => route('booking.cancel.page', ['locale' => $currentLocale]),
                 'customer_email' => $validated['customer']['email'] ?? null,
                 'metadata' => $metadata,
@@ -948,7 +983,7 @@ class StripeCheckoutController extends Controller
 
             Log::info('Stripe Checkout Session created', [
                 'session_id' => $session->id,
-                'vehicle' => $validated['vehicle']['brand'] . ' ' . $validated['vehicle']['model'],
+                'vehicle' => $validated['vehicle']['brand'].' '.$validated['vehicle']['model'],
                 'amount' => $payableAmount,
             ]);
 
@@ -963,6 +998,7 @@ class StripeCheckoutController extends Controller
                 'message' => $e->getMessage(),
                 'code' => $e->getStripeCode(),
             ]);
+
             return response()->json([
                 'success' => false,
                 'error' => 'Payment initialization failed. Please try again.',
@@ -973,6 +1009,7 @@ class StripeCheckoutController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -1025,12 +1062,12 @@ class StripeCheckoutController extends Controller
 
     private function resolveSelectedProduct(array $vehicle, ?string $package): ?array
     {
-        if (empty($vehicle['products']) || !is_array($vehicle['products'])) {
+        if (empty($vehicle['products']) || ! is_array($vehicle['products'])) {
             return null;
         }
 
         foreach ($vehicle['products'] as $entry) {
-            if (!is_array($entry)) {
+            if (! is_array($entry)) {
                 continue;
             }
             if (($entry['type'] ?? null) === $package) {
@@ -1066,7 +1103,7 @@ class StripeCheckoutController extends Controller
             'excess_theft_amount' => $benefits['excess_theft_amount'] ?? ($vehicle['pricing']['excess_theft_amount'] ?? null),
         ];
 
-        if (($vehicle['source'] ?? null) !== 'renteon' || !$selectedProduct) {
+        if (($vehicle['source'] ?? null) !== 'renteon' || ! $selectedProduct) {
             return $context;
         }
 
@@ -1090,10 +1127,10 @@ class StripeCheckoutController extends Controller
         $vehicle = $validated['vehicle'] ?? [];
         $providerCurrency = $vehicle['currency'] ?? ($vehicle['pricing']['currency'] ?? null);
 
-        if (!$providerCurrency && !empty($vehicle['products']) && is_array($vehicle['products'])) {
+        if (! $providerCurrency && ! empty($vehicle['products']) && is_array($vehicle['products'])) {
             $package = $validated['package'] ?? null;
             foreach ($vehicle['products'] as $product) {
-                if (!is_array($product)) {
+                if (! is_array($product)) {
                     continue;
                 }
                 if ($package !== null && ($product['type'] ?? null) !== $package) {
@@ -1105,9 +1142,9 @@ class StripeCheckoutController extends Controller
                 }
             }
 
-            if (!$providerCurrency) {
+            if (! $providerCurrency) {
                 foreach ($vehicle['products'] as $product) {
-                    if (is_array($product) && !empty($product['currency'])) {
+                    if (is_array($product) && ! empty($product['currency'])) {
                         $providerCurrency = $product['currency'];
                         break;
                     }
@@ -1143,7 +1180,7 @@ class StripeCheckoutController extends Controller
         $baseTotalConverted = $baseTotal;
         if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
             $conversion = app(CurrencyConversionService::class)->convert($baseTotal, $providerCurrency, $bookingCurrency);
-            if (!($conversion['success'] ?? false)) {
+            if (! ($conversion['success'] ?? false)) {
                 Log::warning('StripeCheckout: base total conversion failed', [
                     'provider_currency' => $providerCurrency,
                     'booking_currency' => $bookingCurrency,
@@ -1174,7 +1211,7 @@ class StripeCheckoutController extends Controller
         $extrasTotalConverted = $extrasTotalRaw;
         if ($providerCurrency && $providerCurrency !== $bookingCurrency && $extrasTotalConverted > 0) {
             $conversion = app(CurrencyConversionService::class)->convert($extrasTotalConverted, $providerCurrency, $bookingCurrency);
-            if (!($conversion['success'] ?? false)) {
+            if (! ($conversion['success'] ?? false)) {
                 Log::warning('StripeCheckout: extras total conversion failed', [
                     'provider_currency' => $providerCurrency,
                     'booking_currency' => $bookingCurrency,
@@ -1191,7 +1228,7 @@ class StripeCheckoutController extends Controller
             $protectionTotalConverted = $providerProtectionTotal;
             if ($vehicleSource !== 'internal' && $providerCurrency && $providerCurrency !== $bookingCurrency) {
                 $conversion = app(CurrencyConversionService::class)->convert($providerProtectionTotal, $providerCurrency, $bookingCurrency);
-                if (!($conversion['success'] ?? false)) {
+                if (! ($conversion['success'] ?? false)) {
                     return [
                         'success' => false,
                         'error' => 'Unable to convert protection amount. Please try again later.',
@@ -1226,7 +1263,7 @@ class StripeCheckoutController extends Controller
             // exchange rates may differ causing false mismatches).
             // Price integrity is already guaranteed by price_hash verification.
             $currenciesDiffer = $providerCurrency && $providerCurrency !== $bookingCurrency;
-            if (!$currenciesDiffer) {
+            if (! $currenciesDiffer) {
                 $tolerance = 0.5;
                 if ($delta > $tolerance) {
                     Log::warning('StripeCheckout: total mismatch', [
@@ -1273,7 +1310,7 @@ class StripeCheckoutController extends Controller
         $package = $validated['package'] ?? null;
 
         $product = null;
-        if (!empty($vehicle['products']) && is_array($vehicle['products'])) {
+        if (! empty($vehicle['products']) && is_array($vehicle['products'])) {
             foreach ($vehicle['products'] as $entry) {
                 if (($entry['type'] ?? null) === $package) {
                     $product = $entry;
@@ -1282,7 +1319,7 @@ class StripeCheckoutController extends Controller
             }
         }
 
-        if (!$product || empty($product['total'])) {
+        if (! $product || empty($product['total'])) {
             return [
                 'success' => false,
                 'error' => 'Unable to resolve selected package. Please search again.',
@@ -1309,7 +1346,7 @@ class StripeCheckoutController extends Controller
         $selectedExtras = $validated['detailed_extras'] ?? [];
         $selectedMap = [];
         foreach ($selectedExtras as $extra) {
-            if (!is_array($extra)) {
+            if (! is_array($extra)) {
                 continue;
             }
             $optionId = $extra['option_id'] ?? $extra['optionID'] ?? $extra['id'] ?? null;
@@ -1323,12 +1360,12 @@ class StripeCheckoutController extends Controller
         $missingRequired = [];
         foreach ($optionsById as $optionId => $option) {
             $required = strtolower((string) ($option['required'] ?? '')) === 'required';
-            if ($required && !isset($selectedMap[$optionId])) {
+            if ($required && ! isset($selectedMap[$optionId])) {
                 $missingRequired[] = $optionId;
             }
         }
 
-        if (!empty($missingRequired)) {
+        if (! empty($missingRequired)) {
             return [
                 'success' => false,
                 'error' => 'Required extras are missing. Please review your selection.',
@@ -1338,7 +1375,7 @@ class StripeCheckoutController extends Controller
         $providerOptionsTotal = 0.0;
         foreach ($selectedMap as $optionId => $qty) {
             $option = $optionsById[$optionId] ?? null;
-            if (!$option) {
+            if (! $option) {
                 continue;
             }
             $max = $option['numberAllowed'] ?? null;
@@ -1368,7 +1405,7 @@ class StripeCheckoutController extends Controller
         $bookingVehicleTotal = $providerVehicleTotal;
         if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
             $conversion = $conversionService->convert($providerVehicleTotal, $providerCurrency, $bookingCurrency);
-            if (!($conversion['success'] ?? false)) {
+            if (! ($conversion['success'] ?? false)) {
                 return [
                     'success' => false,
                     'error' => 'Unable to convert provider totals. Please try again later.',
@@ -1380,7 +1417,7 @@ class StripeCheckoutController extends Controller
         $bookingOptionsTotal = $providerOptionsTotal;
         if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
             $conversion = $conversionService->convert($providerOptionsTotal, $providerCurrency, $bookingCurrency);
-            if (!($conversion['success'] ?? false)) {
+            if (! ($conversion['success'] ?? false)) {
                 return [
                     'success' => false,
                     'error' => 'Unable to convert provider options. Please try again later.',
@@ -1422,9 +1459,9 @@ class StripeCheckoutController extends Controller
 
     private function resolvePackageTotal(array $vehicle, ?string $package, int $days, string $source, array $validated): ?float
     {
-        if (!empty($vehicle['products']) && is_array($vehicle['products']) && $package) {
+        if (! empty($vehicle['products']) && is_array($vehicle['products']) && $package) {
             foreach ($vehicle['products'] as $product) {
-                if (!is_array($product)) {
+                if (! is_array($product)) {
                     continue;
                 }
                 if (($product['type'] ?? null) === $package && isset($product['total'])) {
@@ -1456,6 +1493,7 @@ class StripeCheckoutController extends Controller
 
         if (isset($vehicle['total_price']) || isset($vehicle['pricing']['total_price'])) {
             $vehicleTotal = $vehicle['total_price'] ?? ($vehicle['pricing']['total_price'] ?? null);
+
             return (float) $vehicleTotal;
         }
 
@@ -1473,12 +1511,14 @@ class StripeCheckoutController extends Controller
     private function resolveVehicleLegacyPayload(array $vehicle): array
     {
         $payload = $vehicle['booking_context']['provider_payload'] ?? [];
+
         return is_array($payload) ? $payload : [];
     }
 
     private function resolveVehicleBenefitsForCheckout(array $vehicle): array
     {
         $benefits = $vehicle['benefits'] ?? $this->resolveVehicleLegacyPayload($vehicle)['benefits'] ?? [];
+
         return is_array($benefits) ? $benefits : [];
     }
 
@@ -1499,6 +1539,7 @@ class StripeCheckoutController extends Controller
     private function resolveVehicleImagesForCheckout(array $vehicle): array
     {
         $images = $vehicle['images'] ?? ($this->resolveVehicleLegacyPayload($vehicle)['images'] ?? []);
+
         return is_array($images) ? $images : [];
     }
 
@@ -1506,7 +1547,7 @@ class StripeCheckoutController extends Controller
     {
         $total = 0.0;
         foreach ($extras as $extra) {
-            if (!is_array($extra)) {
+            if (! is_array($extra)) {
                 continue;
             }
             $isFree = isset($extra['isFree']) ? (bool) $extra['isFree'] : false;
@@ -1585,7 +1626,7 @@ class StripeCheckoutController extends Controller
      */
     private function calculateExchangeRate(?string $fromCurrency, ?string $toCurrency, ?float $amount): ?float
     {
-        if (!$fromCurrency || !$toCurrency || $fromCurrency === $toCurrency) {
+        if (! $fromCurrency || ! $toCurrency || $fromCurrency === $toCurrency) {
             return 1.0;
         }
 
@@ -1597,13 +1638,14 @@ class StripeCheckoutController extends Controller
         $conversionService = app(CurrencyConversionService::class);
         $result = $conversionService->convert($amount, $fromCurrency, $toCurrency);
 
-        if (!($result['success'] ?? false)) {
+        if (! ($result['success'] ?? false)) {
             Log::warning('Failed to get exchange rate', [
                 'from' => $fromCurrency,
                 'to' => $toCurrency,
                 'amount' => $amount,
                 'error' => $result['error'] ?? null,
             ]);
+
             return null;
         }
 
@@ -1622,8 +1664,9 @@ class StripeCheckoutController extends Controller
     {
         $sessionId = $request->query('session_id');
 
-        if (!$sessionId) {
+        if (! $sessionId) {
             Log::warning('Success page accessed without session_id');
+
             return redirect('/')->with('error', 'Invalid session.');
         }
 
@@ -1638,8 +1681,8 @@ class StripeCheckoutController extends Controller
             $session = null;
 
             if ($booking) {
-                $needsUpdate = !in_array($booking->booking_status, ['confirmed', 'completed'], true)
-                    || !in_array($booking->payment_status, ['partial', 'paid'], true);
+                $needsUpdate = ! in_array($booking->booking_status, ['confirmed', 'completed'], true)
+                    || ! in_array($booking->payment_status, ['partial', 'paid'], true);
 
                 if ($needsUpdate) {
                     Log::info('Booking pending after success, attempting Stripe fetch', ['booking_id' => $booking->id, 'session_id' => $sessionId]);
@@ -1650,6 +1693,7 @@ class StripeCheckoutController extends Controller
                         $booking = $bookingService->createBookingFromSession($session);
                     } else {
                         Log::warning('Session not paid', ['session_id' => $sessionId, 'status' => $session->payment_status]);
+
                         return redirect('/')->with('error', 'Payment not completed.');
                     }
                 } else {
@@ -1666,6 +1710,7 @@ class StripeCheckoutController extends Controller
                     $booking = $bookingService->createBookingFromSession($session);
                 } else {
                     Log::warning('Session not paid', ['session_id' => $sessionId, 'status' => $session->payment_status]);
+
                     return redirect('/')->with('error', 'Payment not completed.');
                 }
             }
@@ -1696,7 +1741,8 @@ class StripeCheckoutController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Success page error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return redirect('/')->with('error', 'Could not retrieve booking details. Please contact support with reference: ' . $sessionId);
+
+            return redirect('/')->with('error', 'Could not retrieve booking details. Please contact support with reference: '.$sessionId);
         }
     }
 

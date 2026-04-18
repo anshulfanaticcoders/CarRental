@@ -147,4 +147,104 @@ class SearchOrchestratorServiceTest extends TestCase
 
         $this->assertCount(0, $filtered);
     }
+
+    public function test_one_way_filter_keeps_all_gateway_supported_providers(): void
+    {
+        // Regression guard: providers whose gateway adapter has supports_one_way = True
+        // must survive the Laravel-side one-way filter. Ensures the hardcoded list in
+        // SearchOrchestratorService stays in sync with vrooem-gateway adapters.
+        $locationSearchService = $this->createMock(LocationSearchService::class);
+        $locationSearchService->method('resolveSearchLocation')->willReturn([
+            'unified_location_id' => 100,
+            'name' => 'Test Airport',
+            'latitude' => 25.0,
+            'longitude' => 55.0,
+            'providers' => [
+                // One-way supported (10 from gateway adapters)
+                ['provider' => 'greenmotion',   'pickup_id' => 'GM-1'],
+                ['provider' => 'usave',         'pickup_id' => 'US-1'],
+                ['provider' => 'adobe',         'pickup_id' => 'AD-1'],
+                ['provider' => 'click2rent',    'pickup_id' => 'C2R-1'],
+                ['provider' => 'easirent',      'pickup_id' => 'ES-1'],
+                ['provider' => 'locauto_rent',  'pickup_id' => 'LR-1'],
+                ['provider' => 'recordgo',      'pickup_id' => 'RG-1'],
+                ['provider' => 'renteon',       'pickup_id' => 'RT-1'],
+                ['provider' => 'surprice',      'pickup_id' => 'SP-1'],
+                ['provider' => 'sicily_by_car', 'pickup_id' => 'SBC-1'],
+                // Round-trip only (must be removed)
+                ['provider' => 'okmobility',    'pickup_id' => 'OK-1'],
+                ['provider' => 'xdrive',        'pickup_id' => 'XD-1'],
+                ['provider' => 'favrica',       'pickup_id' => 'FV-1'],
+                ['provider' => 'emr',           'pickup_id' => 'EMR-1'],
+                ['provider' => 'wheelsys',      'pickup_id' => 'WS-1'],
+            ],
+        ]);
+
+        $service = new SearchOrchestratorService($locationSearchService);
+
+        $result = $service->resolveProviderEntries([
+            'provider' => 'mixed',
+            'unified_location_id' => 100,
+            'dropoff_unified_location_id' => 200,
+        ]);
+
+        $providerIds = array_column($result['providerEntries'], 'provider');
+
+        $this->assertTrue($result['isOneWay']);
+        $this->assertEqualsCanonicalizing(
+            ['greenmotion', 'usave', 'adobe', 'click2rent', 'easirent', 'locauto_rent', 'recordgo', 'renteon', 'surprice', 'sicily_by_car'],
+            $providerIds,
+        );
+    }
+
+    public function test_one_way_filter_skipped_when_explicit_provider_selected(): void
+    {
+        // When user explicitly picks a provider, the one-way filter does not run — the
+        // gateway will reject the request at the adapter level if the provider cannot
+        // fulfill one-way. This test locks in that Laravel passes the entry through.
+        $locationSearchService = $this->createMock(LocationSearchService::class);
+        $locationSearchService->method('resolveSearchLocation')->willReturn([
+            'unified_location_id' => 100,
+            'name' => 'Test Airport',
+            'providers' => [
+                ['provider' => 'okmobility', 'pickup_id' => 'OK-1'],
+                ['provider' => 'greenmotion', 'pickup_id' => 'GM-1'],
+            ],
+        ]);
+
+        $service = new SearchOrchestratorService($locationSearchService);
+
+        $result = $service->resolveProviderEntries([
+            'provider' => 'okmobility',
+            'unified_location_id' => 100,
+            'dropoff_unified_location_id' => 200,
+        ]);
+
+        $this->assertTrue($result['isOneWay']);
+        $this->assertSame(['okmobility'], array_column($result['providerEntries'], 'provider'));
+    }
+
+    public function test_one_way_detection_ignores_identical_pickup_and_dropoff(): void
+    {
+        $locationSearchService = $this->createMock(LocationSearchService::class);
+        $locationSearchService->method('resolveSearchLocation')->willReturn([
+            'unified_location_id' => 100,
+            'name' => 'Test Airport',
+            'providers' => [
+                ['provider' => 'greenmotion', 'pickup_id' => 'GM-1'],
+                ['provider' => 'okmobility', 'pickup_id' => 'OK-1'],
+            ],
+        ]);
+
+        $service = new SearchOrchestratorService($locationSearchService);
+
+        $result = $service->resolveProviderEntries([
+            'provider' => 'mixed',
+            'unified_location_id' => 100,
+            'dropoff_unified_location_id' => 100,
+        ]);
+
+        $this->assertFalse($result['isOneWay']);
+        $this->assertCount(2, $result['providerEntries']);
+    }
 }

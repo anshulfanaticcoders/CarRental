@@ -878,4 +878,222 @@ class GatewaySearchServiceTest extends TestCase
         $this->assertCount(1, $items);
         $this->assertSame([2], $items->pluck('id')->all());
     }
+
+    #[Test]
+    public function it_filters_out_gateway_vehicles_with_zero_total_price_from_search_results(): void
+    {
+        $locationSearchService = $this->createMock(LocationSearchService::class);
+        $locationSearchService->method('resolveSearchLocation')->willReturn([
+            'unified_location_id' => 501,
+            'name' => 'Dubai Airport',
+            'our_location_id' => null,
+        ]);
+        $locationSearchService->method('getLocationByUnifiedId')->willReturn([
+            'unified_location_id' => 501,
+            'name' => 'Dubai Airport',
+        ]);
+
+        $paramsBuilder = $this->createMock(GatewaySearchParamsBuilder::class);
+        $paramsBuilder->method('build')->willReturn(['unified_location_id' => 501]);
+
+        $gatewayService = $this->createMock(VrooemGatewayService::class);
+        $gatewayService->method('searchVehicles')->willReturn([
+            'vehicles' => [
+                [
+                    'id' => 'gw-free',
+                    'source' => 'greenmotion',
+                    'brand' => 'Toyota',
+                    'model' => 'Yaris',
+                    'category' => 'economy',
+                    'currency' => 'EUR',
+                    'total_price' => 0.0,
+                    'price_per_day' => 0.0,
+                ],
+                [
+                    'id' => 'gw-paid',
+                    'source' => 'greenmotion',
+                    'brand' => 'Toyota',
+                    'model' => 'Corolla',
+                    'category' => 'economy',
+                    'currency' => 'EUR',
+                    'total_price' => 120.0,
+                    'price_per_day' => 40.0,
+                ],
+            ],
+            'supplier_results' => [
+                [
+                    'supplier_id' => 'greenmotion',
+                    'vehicle_count' => 2,
+                    'response_time_ms' => 120,
+                    'error' => null,
+                ],
+            ],
+            'search_id' => 'search_zero_gateway',
+            'response_time_ms' => 120,
+        ]);
+
+        $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $presentationService->expects($this->once())
+            ->method('collapseEquivalentRenteonVehicles')
+            ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
+
+        $searchOrchestratorService = $this->createMock(SearchOrchestratorService::class);
+        $searchOrchestratorService->expects($this->once())
+            ->method('filterGatewayVehiclesForRequestedProvider')
+            ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
+
+        $internalMergeService = $this->createMock(InternalVehicleMergeService::class);
+        $internalMergeService->expects($this->once())
+            ->method('forGatewayMerge')
+            ->willReturn(collect());
+
+        $priceVerificationService = $this->createMock(PriceVerificationService::class);
+        $priceVerificationService->expects($this->once())
+            ->method('storeOriginalPrices')
+            ->willReturn([
+                'gw-paid' => ['price_hash' => 'hash_paid'],
+            ]);
+
+        $service = new GatewaySearchService(
+            $locationSearchService,
+            $paramsBuilder,
+            $gatewayService,
+            $presentationService,
+            $searchOrchestratorService,
+            $internalMergeService,
+            $priceVerificationService
+        );
+
+        $props = $service->buildPageProps(
+            Request::create('/en/s', 'GET'),
+            [
+                'unified_location_id' => 501,
+                'where' => 'Dubai Airport',
+                'provider' => 'greenmotion',
+            ],
+            3,
+            collect(),
+            [
+                'brands' => [],
+                'colors' => [],
+                'seatingCapacities' => [],
+                'transmissions' => [],
+                'fuels' => [],
+                'mileages' => [],
+                'categories' => [],
+                'schema' => null,
+                'seo' => ['title' => 'Search'],
+                'locale' => 'en',
+            ],
+            fn (array $vehicle): array => $vehicle,
+            fn (string $supplierId): string => $supplierId
+        );
+
+        $items = collect($props['vehicles']->items());
+
+        $this->assertSame(['gw-paid'], $items->pluck('id')->all());
+    }
+
+    #[Test]
+    public function it_filters_out_internal_vehicles_with_zero_nested_total_price_from_search_results(): void
+    {
+        $locationSearchService = $this->createMock(LocationSearchService::class);
+        $locationSearchService->method('resolveSearchLocation')->willReturn([
+            'unified_location_id' => 777,
+            'name' => 'Sharjah Airport',
+            'our_location_id' => null,
+        ]);
+        $locationSearchService->method('getLocationByUnifiedId')->willReturn([
+            'unified_location_id' => 777,
+            'name' => 'Sharjah Airport',
+        ]);
+
+        $paramsBuilder = $this->createMock(GatewaySearchParamsBuilder::class);
+        $paramsBuilder->method('build')->willReturn(['unified_location_id' => 777]);
+
+        $gatewayService = $this->createMock(VrooemGatewayService::class);
+        $gatewayService->method('searchVehicles')->willReturn([
+            'vehicles' => [],
+            'supplier_results' => [],
+            'search_id' => 'search_zero_internal',
+            'response_time_ms' => 90,
+        ]);
+
+        $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $searchOrchestratorService = $this->createMock(SearchOrchestratorService::class);
+
+        $internalMergeService = $this->createMock(InternalVehicleMergeService::class);
+        $internalMergeService->expects($this->once())
+            ->method('forGatewayMerge')
+            ->willReturn(collect([
+                [
+                    'id' => 'internal-zero',
+                    'source' => 'internal',
+                    'brand' => 'Toyota',
+                    'model' => 'Yaris',
+                    'pricing' => [
+                        'currency' => 'AED',
+                        'price_per_day' => 0.0,
+                        'total_price' => 0.0,
+                    ],
+                ],
+                [
+                    'id' => 'internal-paid',
+                    'source' => 'internal',
+                    'brand' => 'Nissan',
+                    'model' => 'Sunny',
+                    'pricing' => [
+                        'currency' => 'AED',
+                        'price_per_day' => 55.0,
+                        'total_price' => 110.0,
+                    ],
+                ],
+            ]));
+
+        $priceVerificationService = $this->createMock(PriceVerificationService::class);
+        $priceVerificationService->expects($this->once())
+            ->method('storeOriginalPrices')
+            ->willReturn([
+                'internal-paid' => ['price_hash' => 'hash_internal_paid'],
+            ]);
+
+        $service = new GatewaySearchService(
+            $locationSearchService,
+            $paramsBuilder,
+            $gatewayService,
+            $presentationService,
+            $searchOrchestratorService,
+            $internalMergeService,
+            $priceVerificationService
+        );
+
+        $props = $service->buildPageProps(
+            Request::create('/en/s', 'GET'),
+            [
+                'unified_location_id' => 777,
+                'where' => 'Sharjah Airport',
+                'provider' => 'internal',
+            ],
+            2,
+            collect(),
+            [
+                'brands' => [],
+                'colors' => [],
+                'seatingCapacities' => [],
+                'transmissions' => [],
+                'fuels' => [],
+                'mileages' => [],
+                'categories' => [],
+                'schema' => null,
+                'seo' => ['title' => 'Search'],
+                'locale' => 'en',
+            ],
+            fn (array $vehicle): array => $vehicle,
+            fn (string $supplierId): string => $supplierId
+        );
+
+        $items = collect($props['vehicles']->items());
+
+        $this->assertSame(['internal-paid'], $items->pluck('id')->all());
+    }
 }

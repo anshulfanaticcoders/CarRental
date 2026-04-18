@@ -863,7 +863,21 @@ const selectLocation = (result) => {
   }
 };
 
-const providersWithDropoffList = new Set(['greenmotion', 'usave', 'locauto_rent', 'renteon', 'sicily_by_car', 'recordgo']);
+// Providers whose gateway adapter supports one-way rentals. Keep in sync with
+// vrooem-gateway adapters where `supports_one_way = True` and with
+// SearchOrchestratorService::ONE_WAY_PROVIDERS on the Laravel side.
+const providersWithDropoffList = new Set([
+  'greenmotion',
+  'usave',
+  'adobe',
+  'click2rent',
+  'easirent',
+  'locauto_rent',
+  'recordgo',
+  'renteon',
+  'surprice',
+  'sicily_by_car',
+]);
 const providerSupportsDropoffList = (provider) => providersWithDropoffList.has(provider);
 const providerHasDropoffs = (provider) => Array.isArray(provider?.dropoffs) && provider.dropoffs.length > 0;
 const providerSupportsOneWay = (provider) => provider?.supports_one_way === true;

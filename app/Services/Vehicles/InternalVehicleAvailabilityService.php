@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class InternalVehicleAvailabilityService
 {
-    private const NON_BLOCKING_BOOKING_STATUSES = ['cancelled', 'rejected', 'expired'];
+    private const NON_BLOCKING_BOOKING_STATUSES = ['cancelled', 'rejected', 'expired', 'completed'];
     private const NON_BLOCKING_API_BOOKING_STATUSES = ['cancelled'];
 
     public function apply(Builder $query, array $window): Builder
