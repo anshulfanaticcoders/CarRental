@@ -103,6 +103,10 @@ class GatewaySearchService
             Log::info('VrooemGateway: After transform', ['count' => $transformedVehicles->count(), 'sources' => $transformedVehicles->pluck('source')->countBy()->all()]);
 
             $transformedVehicles = $this->presentationService
+                ->collapseEquivalentSicilyByCarVehicles($transformedVehicles);
+            Log::info('VrooemGateway: After SBC collapse', ['count' => $transformedVehicles->count()]);
+
+            $transformedVehicles = $this->presentationService
                 ->collapseEquivalentRenteonVehicles($transformedVehicles);
             Log::info('VrooemGateway: After Renteon collapse', ['count' => $transformedVehicles->count()]);
 

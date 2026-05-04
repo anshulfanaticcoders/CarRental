@@ -724,6 +724,7 @@ class StripeCheckoutController extends Controller
                 $validated['vehicle'] ?? [],
                 $validated['package'] ?? null
             );
+            $vehicleProviderPayload = $this->resolveVehicleLegacyPayload($validated['vehicle'] ?? []);
 
             // Build the FULL metadata (no Stripe key limit here — stored in our DB)
             $fullMetadata = [
@@ -797,10 +798,18 @@ class StripeCheckoutController extends Controller
                 'renteon_prepaid' => $selectedVehicleContext['prepaid']
                     ?? (($validated['vehicle']['source'] ?? '') === 'renteon' ? false : true),
                 'sbc_vehicle_id' => $validated['vehicle']['provider_vehicle_id'] ?? null,
-                'sbc_rate_id' => $validated['vehicle']['rate_id'] ?? null,
-                'sbc_availability_id' => $validated['vehicle']['availability_id'] ?? null,
-                'sbc_payment_type' => $validated['vehicle']['payment_type'] ?? null,
-                'sbc_currency' => $validated['vehicle']['currency'] ?? null,
+                'sbc_rate_id' => $validated['vehicle']['rate_id'] ?? ($vehicleProviderPayload['rate_id'] ?? null),
+                'sbc_availability_id' => $validated['vehicle']['availability_id'] ?? ($vehicleProviderPayload['availability_id'] ?? null),
+                'sbc_payment_type' => $validated['vehicle']['payment_type'] ?? ($vehicleProviderPayload['rate_payment'] ?? null),
+                'sbc_currency' => $validated['vehicle']['currency'] ?? ($vehicleProviderPayload['currency'] ?? null),
+                'sbc_request_id' => $vehicleProviderPayload['request_id'] ?? null,
+                'sbc_vehicle_category_id' => $validated['vehicle']['vehicle_category_id'] ?? ($vehicleProviderPayload['vehicle_category_id'] ?? null),
+                'sbc_pickup_location_id' => $validated['vehicle']['provider_pickup_id']
+                    ?? ($vehicleProviderPayload['pickup_location_id'] ?? null),
+                'sbc_dropoff_location_id' => $validated['vehicle']['provider_return_id']
+                    ?? $validated['vehicle']['provider_dropoff_id']
+                    ?? ($vehicleProviderPayload['dropoff_location_id'] ?? null)
+                    ?? ($validated['vehicle']['provider_pickup_id'] ?? null),
                 'recordgo_country' => $validated['vehicle']['recordgo_country'] ?? ($validated['country'] ?? null),
                 'recordgo_sell_code' => $this->resolveRecordGoSellCode($validated['country'] ?? null),
                 'recordgo_sellcode_ver' => $validated['vehicle']['recordgo_sellcode_ver'] ?? null,

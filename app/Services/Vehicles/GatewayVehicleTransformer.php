@@ -899,9 +899,16 @@ class GatewayVehicleTransformer
                 'max_quantity' => $extra['max_quantity'] ?? 1,
                 'numberAllowed' => $extra['max_quantity'] ?? 1,
                 'mandatory' => $mandatory,
+                'isMandatory' => $mandatory,
                 'required' => $mandatory,
                 'type' => $extra['type'] ?? 'equipment',
                 'code' => $code,
+                'total' => $totalPrice,
+                'payment' => $extra['payment'] ?? null,
+                'excess' => $extra['excess'] ?? null,
+                'excessAmount' => $extra['excess'] ?? ($extra['excessAmount'] ?? null),
+                'prepay_available' => $extra['prepay_available'] ?? null,
+                'purpose' => $extra['purpose'] ?? null,
             ];
         })->values()->all();
     }

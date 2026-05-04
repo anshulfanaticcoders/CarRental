@@ -217,6 +217,96 @@ class GatewayVehicleTransformerTest extends TestCase
         $this->assertTrue($result['at_airport']);
     }
 
+    public function test_canonical_sicily_by_car_extras_preview_preserves_fields_needed_by_booking_adapter(): void
+    {
+        $gv = [
+            'id' => 'gw_sbc_preview_1',
+            'gateway_vehicle_id' => 'gw_sbc_preview_1',
+            'provider_vehicle_id' => 'B_BASIC-POA',
+            'provider_rate_id' => 'BASIC-POA',
+            'source' => 'sicily_by_car',
+            'provider_code' => 'sicily_by_car',
+            'display_name' => 'Fiat Panda 1.2 or similar',
+            'availability_status' => 'Immediate',
+            'brand' => 'Fiat',
+            'model' => 'Panda 1.2',
+            'category' => 'mini',
+            'image' => 'https://example.com/panda.jpg',
+            'specs' => [
+                'transmission' => 'manual',
+                'fuel' => 'petrol',
+                'seating_capacity' => 4,
+                'doors' => 5,
+                'air_conditioning' => true,
+                'sipp_code' => 'MDMRS',
+            ],
+            'pricing' => [
+                'currency' => 'EUR',
+                'price_per_day' => 31.5,
+                'total_price' => 63.0,
+                'deposit_amount' => 200.0,
+                'deposit_currency' => 'EUR',
+            ],
+            'policies' => [
+                'mileage_policy' => 'unlimited',
+            ],
+            'extras_preview' => [
+                [
+                    'id' => 'ext_sicily_by_car_CDW',
+                    'name' => 'Collision damage waiver',
+                    'description' => 'Collision damage waiver',
+                    'type' => 'equipment',
+                    'currency' => 'EUR',
+                    'daily_rate' => 0.0,
+                    'total_price' => 0.0,
+                    'mandatory' => true,
+                ],
+                [
+                    'id' => 'ext_sicily_by_car_CPP',
+                    'name' => 'Car protection plus',
+                    'description' => 'Car protection plus',
+                    'type' => 'equipment',
+                    'currency' => 'EUR',
+                    'daily_rate' => 14.55,
+                    'total_price' => 29.1,
+                    'mandatory' => false,
+                ],
+            ],
+            'location' => [
+                'pickup' => [
+                    'provider_location_id' => 'IT014',
+                    'name' => 'Milano Linate Airport',
+                    'latitude' => null,
+                    'longitude' => null,
+                ],
+                'dropoff' => [
+                    'provider_location_id' => 'IT014',
+                ],
+            ],
+            'products' => [],
+            'booking_context' => [
+                'provider_payload' => [
+                    'rate_id' => 'BASIC-POA',
+                    'rate_payment' => 'PayOnArrival',
+                ],
+            ],
+        ];
+
+        $result = $this->transformer->transform($gv, 2);
+
+        $cdw = collect($result['extras'])->firstWhere('id', 'ext_sicily_by_car_CDW');
+        $cpp = collect($result['extras'])->firstWhere('id', 'ext_sicily_by_car_CPP');
+
+        $this->assertNotNull($cdw);
+        $this->assertTrue($cdw['isMandatory']);
+        $this->assertSame(0.0, $cdw['total']);
+
+        $this->assertNotNull($cpp);
+        $this->assertFalse($cpp['isMandatory']);
+        $this->assertSame(29.1, $cpp['total']);
+        $this->assertSame(14.55, $cpp['daily_rate']);
+    }
+
     public function test_renteon_included_computed_field(): void
     {
         $gv = $this->makeGatewayVehicle('renteon');

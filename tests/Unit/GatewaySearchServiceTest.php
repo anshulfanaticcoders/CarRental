@@ -48,6 +48,7 @@ class GatewaySearchServiceTest extends TestCase
             ]);
 
         $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $this->stubSicilyVehicleCollapse($presentationService);
         $searchOrchestratorService = $this->createMock(SearchOrchestratorService::class);
 
         $internalMergeService = $this->createMock(InternalVehicleMergeService::class);
@@ -147,6 +148,7 @@ class GatewaySearchServiceTest extends TestCase
         ]);
 
         $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $this->stubSicilyVehicleCollapse($presentationService);
         $searchOrchestratorService = $this->createMock(SearchOrchestratorService::class);
 
         $internalMergeService = $this->createMock(InternalVehicleMergeService::class);
@@ -245,6 +247,7 @@ class GatewaySearchServiceTest extends TestCase
         ]);
 
         $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $this->stubSicilyVehicleCollapse($presentationService);
         $searchOrchestratorService = $this->createMock(SearchOrchestratorService::class);
 
         $internalMergeService = $this->createMock(InternalVehicleMergeService::class);
@@ -303,7 +306,7 @@ class GatewaySearchServiceTest extends TestCase
     }
 
     #[Test]
-    public function it_keeps_all_sicily_by_car_gateway_rows_in_the_frontend_payload(): void
+    public function it_collapses_equivalent_sicily_by_car_gateway_rows_before_rendering_cards(): void
     {
         $locationSearchService = $this->createMock(LocationSearchService::class);
         $locationSearchService->method('resolveSearchLocation')->willReturn([
@@ -325,28 +328,34 @@ class GatewaySearchServiceTest extends TestCase
                 [
                     'id' => 'sbc-poa',
                     'source' => 'sicily_by_car',
+                    'provider_vehicle_id' => 'B',
                     'brand' => 'Fiat',
-                    'model' => 'Panda',
+                    'model' => 'Fiat Panda 1.2 or similar',
                     'category' => 'mini',
+                    'sipp_code' => 'MDMRS',
                     'currency' => 'EUR',
                     'total_price' => 120.00,
                     'price_per_day' => 24.00,
                     'provider_pickup_id' => 'IT011',
                     'provider_return_id' => 'IT011',
                     'payment_type' => 'PayOnArrival',
+                    'rate_id' => 'BASIC-POA',
                 ],
                 [
                     'id' => 'sbc-pre',
                     'source' => 'sicily_by_car',
+                    'provider_vehicle_id' => 'B',
                     'brand' => 'Fiat',
-                    'model' => 'Panda',
+                    'model' => 'Fiat Panda 1.2 or similar',
                     'category' => 'mini',
+                    'sipp_code' => 'MDMRS',
                     'currency' => 'EUR',
                     'total_price' => 120.00,
                     'price_per_day' => 24.00,
                     'provider_pickup_id' => 'IT011',
                     'provider_return_id' => 'IT011',
                     'payment_type' => 'Prepaid',
+                    'rate_id' => 'BASIC-PP',
                 ],
             ],
             'supplier_results' => [
@@ -362,8 +371,11 @@ class GatewaySearchServiceTest extends TestCase
         ]);
 
         $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
-        $presentationService->expects($this->never())
-            ->method('collapseEquivalentSicilyByCarVehicles');
+        $presentationService->expects($this->once())
+            ->method('collapseEquivalentSicilyByCarVehicles')
+            ->willReturnCallback(function (Collection $vehicles): Collection {
+                return (new GatewayVehiclePresentationService())->collapseEquivalentSicilyByCarVehicles($vehicles);
+            });
         $presentationService->expects($this->once())
             ->method('collapseEquivalentRenteonVehicles')
             ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
@@ -420,8 +432,8 @@ class GatewaySearchServiceTest extends TestCase
 
         $items = collect($props['vehicles']->items());
 
-        $this->assertCount(2, $items);
-        $this->assertSame(['sbc-poa', 'sbc-pre'], $items->pluck('id')->all());
+        $this->assertCount(1, $items);
+        $this->assertSame(['sbc-poa'], $items->pluck('id')->all());
     }
 
     #[Test]
@@ -489,6 +501,7 @@ class GatewaySearchServiceTest extends TestCase
         ]);
 
         $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $this->stubSicilyVehicleCollapse($presentationService);
         $presentationService->expects($this->once())
             ->method('collapseEquivalentRenteonVehicles')
             ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
@@ -596,6 +609,7 @@ class GatewaySearchServiceTest extends TestCase
         ]);
 
         $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $this->stubSicilyVehicleCollapse($presentationService);
         $presentationService->expects($this->once())
             ->method('collapseEquivalentRenteonVehicles')
             ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
@@ -703,6 +717,7 @@ class GatewaySearchServiceTest extends TestCase
         ]);
 
         $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $this->stubSicilyVehicleCollapse($presentationService);
         $presentationService->expects($this->once())
             ->method('collapseEquivalentRenteonVehicles')
             ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
@@ -808,6 +823,7 @@ class GatewaySearchServiceTest extends TestCase
         ]);
 
         $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $this->stubSicilyVehicleCollapse($presentationService);
         $presentationService->expects($this->once())
             ->method('collapseEquivalentRenteonVehicles')
             ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
@@ -933,6 +949,7 @@ class GatewaySearchServiceTest extends TestCase
         ]);
 
         $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $this->stubSicilyVehicleCollapse($presentationService);
         $presentationService->expects($this->once())
             ->method('collapseEquivalentRenteonVehicles')
             ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
@@ -1020,6 +1037,7 @@ class GatewaySearchServiceTest extends TestCase
         ]);
 
         $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $this->stubSicilyVehicleCollapse($presentationService);
         $searchOrchestratorService = $this->createMock(SearchOrchestratorService::class);
 
         $internalMergeService = $this->createMock(InternalVehicleMergeService::class);
@@ -1095,5 +1113,11 @@ class GatewaySearchServiceTest extends TestCase
         $items = collect($props['vehicles']->items());
 
         $this->assertSame(['internal-paid'], $items->pluck('id')->all());
+    }
+
+    private function stubSicilyVehicleCollapse(GatewayVehiclePresentationService $presentationService): void
+    {
+        $presentationService->method('collapseEquivalentSicilyByCarVehicles')
+            ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
     }
 }

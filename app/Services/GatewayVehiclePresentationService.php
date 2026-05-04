@@ -144,7 +144,8 @@ class GatewayVehiclePresentationService
 
     private function collapseKey(array $vehicle): ?string
     {
-        $providerVehicleId = trim((string) ($vehicle['provider_vehicle_id'] ?? ''));
+        $providerVehicleId = $this->normalizeSicilyProviderVehicleId($vehicle['provider_vehicle_id'] ?? null);
+        $rateFamily = $this->normalizeSicilyRateFamily($vehicle['rate_id'] ?? null);
         $currency = strtoupper(trim((string) ($vehicle['currency'] ?? '')));
         $total = round((float) ($vehicle['total_price'] ?? 0), 2);
 
@@ -157,11 +158,32 @@ class GatewayVehiclePresentationService
             trim((string) ($vehicle['provider_pickup_id'] ?? '')),
             trim((string) ($vehicle['provider_return_id'] ?? '')),
             $providerVehicleId,
+            $rateFamily,
             mb_strtolower(trim((string) ($vehicle['model'] ?? ''))),
             mb_strtolower(trim((string) ($vehicle['sipp_code'] ?? ''))),
             $currency,
             number_format($total, 2, '.', ''),
         ]);
+    }
+
+    private function normalizeSicilyProviderVehicleId(mixed $providerVehicleId): string
+    {
+        $normalized = strtoupper(trim((string) ($providerVehicleId ?? '')));
+        if ($normalized === '') {
+            return '';
+        }
+
+        return preg_replace('/_[^_]+-(?:POA|PP|PRE)$/', '', $normalized) ?? $normalized;
+    }
+
+    private function normalizeSicilyRateFamily(mixed $rateId): string
+    {
+        $normalized = strtoupper(trim((string) ($rateId ?? '')));
+        if ($normalized === '') {
+            return '';
+        }
+
+        return preg_replace('/-(?:POA|PP|PRE)$/', '', $normalized) ?? $normalized;
     }
 
     private function normalizePaymentType(mixed $paymentType, mixed $rateId): ?string

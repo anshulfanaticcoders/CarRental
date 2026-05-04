@@ -769,8 +769,12 @@ class StripeBookingService
         // Merge with the rest of the metadata structure
         $additionalMetadata = [
             'benefits' => array_filter($benefits, fn($v) => $v !== null),
-            'pickup_location_id' => $metadata->pickup_location_code ?? null,
-            'dropoff_location_id' => $metadata->return_location_code ?? $metadata->dropoff_location_code ?? $metadata->pickup_location_code ?? null,
+            'pickup_location_id' => $metadata->sbc_pickup_location_id ?? $metadata->pickup_location_code ?? null,
+            'dropoff_location_id' => $metadata->sbc_dropoff_location_id
+                ?? $metadata->return_location_code
+                ?? $metadata->dropoff_location_code
+                ?? $metadata->pickup_location_code
+                ?? null,
             'location' => $pickupLocationDetails,
             'pickup_location_details' => $pickupLocationDetails,
             'dropoff_location_details' => $dropoffLocationDetails,
@@ -784,6 +788,14 @@ class StripeBookingService
                 'availability_id' => $metadata->sbc_availability_id ?? null,
                 'rate_id' => $metadata->sbc_rate_id ?? null,
                 'vehicle_id' => $metadata->sbc_vehicle_id ?? null,
+                'request_id' => $metadata->sbc_request_id ?? null,
+                'vehicle_category_id' => $metadata->sbc_vehicle_category_id ?? null,
+                'pickup_location_id' => $metadata->sbc_pickup_location_id ?? $metadata->pickup_location_code ?? null,
+                'dropoff_location_id' => $metadata->sbc_dropoff_location_id
+                    ?? $metadata->return_location_code
+                    ?? $metadata->dropoff_location_code
+                    ?? $metadata->pickup_location_code
+                    ?? null,
                 'payment_type' => $metadata->sbc_payment_type ?? null,
                 'currency' => $metadata->sbc_currency ?? null,
                 'deposit' => $metadata->deposit ?? null,
@@ -1044,8 +1056,7 @@ class StripeBookingService
             }
 
             $nameParts = explode(' ', $metadata->customer_name ?? '', 2);
-
-            $result = $gateway->createBooking([
+            $reservationPayload = [
                 'vehicle_id' => $gatewayVehicleId,
                 'search_id' => $metadata->gateway_search_id ?? ($metadata->search_session_id ?? ''),
                 'driver' => [
@@ -1072,7 +1083,27 @@ class StripeBookingService
                 'dropoff_time' => $metadata->dropoff_time ?? '09:00',
                 'laravel_booking_id' => $booking->id,
                 'laravel_booking_number' => $booking->booking_number,
-            ]);
+            ];
+
+            if (($booking->provider_source ?? $metadata->vehicle_source ?? null) === 'sicily_by_car') {
+                $reservationPayload = array_merge($reservationPayload, array_filter([
+                    'availability_id' => $metadata->sbc_availability_id ?? null,
+                    'rate_id' => $metadata->sbc_rate_id ?? null,
+                    'provider_vehicle_id' => $metadata->sbc_vehicle_id ?? null,
+                    'vehicle_category_id' => $metadata->sbc_vehicle_category_id ?? null,
+                    'request_id' => $metadata->sbc_request_id ?? null,
+                    'pickup_location_id' => $metadata->sbc_pickup_location_id ?? $metadata->pickup_location_code ?? null,
+                    'dropoff_location_id' => $metadata->sbc_dropoff_location_id
+                        ?? $metadata->return_location_code
+                        ?? $metadata->dropoff_location_code
+                        ?? $metadata->pickup_location_code
+                        ?? null,
+                    'payment_type' => $metadata->sbc_payment_type ?? null,
+                    'currency' => $metadata->sbc_currency ?? $metadata->provider_currency ?? $metadata->currency ?? null,
+                ], static fn($value) => $value !== null && $value !== ''));
+            }
+
+            $result = $gateway->createBooking($reservationPayload);
 
             if ($result && !empty($result['supplier_booking_id'])) {
                 $providerBookingRef = $result['supplier_booking_id'];

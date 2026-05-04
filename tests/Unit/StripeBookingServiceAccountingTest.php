@@ -16,6 +16,7 @@ use App\Notifications\Booking\BookingCreatedVendorNotification;
 use App\Notifications\Booking\GuestBookingCreatedNotification;
 use App\Services\CurrencyConversionService;
 use App\Services\StripeBookingService;
+use App\Services\VrooemGatewayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Mockery;
@@ -558,6 +559,120 @@ class StripeBookingServiceAccountingTest extends TestCase
     }
 
     #[Test]
+    public function it_includes_sicily_by_car_supplier_context_in_gateway_reservation_requests(): void
+    {
+        $booking = $this->createExternalBooking([
+            'provider_source' => 'sicily_by_car',
+            'provider_vehicle_id' => 'B_BASIC-POA',
+        ]);
+
+        $gateway = Mockery::mock(VrooemGatewayService::class);
+        $gateway->shouldReceive('createBooking')
+            ->once()
+            ->withArgs(function (array $payload): bool {
+                $this->assertSame('gw_sbc_vehicle_1', $payload['vehicle_id'] ?? null);
+                $this->assertSame('search_sbc_1', $payload['search_id'] ?? null);
+                $this->assertSame('019df18130077d9d8cb3aeb4094b2576', $payload['availability_id'] ?? null);
+                $this->assertSame('BASIC-POA', $payload['rate_id'] ?? null);
+                $this->assertSame('B_BASIC-POA', $payload['provider_vehicle_id'] ?? null);
+                $this->assertSame('B', $payload['vehicle_category_id'] ?? null);
+                $this->assertSame('80009626-1003-4500-b63f-84710c7967bb', $payload['request_id'] ?? null);
+                $this->assertSame('IT014', $payload['pickup_location_id'] ?? null);
+                $this->assertSame('IT014', $payload['dropoff_location_id'] ?? null);
+                $this->assertSame('PayOnArrival', $payload['payment_type'] ?? null);
+                $this->assertSame('EUR', $payload['currency'] ?? null);
+
+                return true;
+            })
+            ->andReturn([
+                'id' => 'gw_booking_sbc_1',
+                'supplier_booking_id' => 'SBC-TEST-REF-1',
+                'status' => 'confirmed',
+                'supplier_id' => 'sicily_by_car',
+            ]);
+        app()->instance(VrooemGatewayService::class, $gateway);
+
+        $service = new class () extends StripeBookingService {
+            public function invokeTriggerGatewayReservation(Booking $booking, object $metadata): void
+            {
+                $this->triggerGatewayReservation($booking, $metadata);
+            }
+        };
+
+        $service->invokeTriggerGatewayReservation($booking, (object) [
+            'gateway_vehicle_id' => 'gw_sbc_vehicle_1',
+            'gateway_search_id' => 'search_sbc_1',
+            'customer_name' => 'Vikas Kumar',
+            'customer_email' => 'vikas@fanaticcoders.com',
+            'customer_phone' => '+919999999999',
+            'customer_driver_age' => 35,
+            'customer_address' => 'Demo Test Address',
+            'customer_city' => 'Milan',
+            'customer_postal_code' => '20100',
+            'customer_country' => 'IT',
+            'pickup_date' => '2026-06-24',
+            'pickup_time' => '09:00',
+            'dropoff_date' => '2026-06-26',
+            'dropoff_time' => '09:00',
+            'flight_number' => 'TEST123',
+            'pickup_location_code' => 'IT014',
+            'return_location_code' => 'IT014',
+            'sbc_availability_id' => '019df18130077d9d8cb3aeb4094b2576',
+            'sbc_rate_id' => 'BASIC-POA',
+            'sbc_vehicle_id' => 'B_BASIC-POA',
+            'sbc_payment_type' => 'PayOnArrival',
+            'sbc_currency' => 'EUR',
+            'sbc_request_id' => '80009626-1003-4500-b63f-84710c7967bb',
+            'sbc_vehicle_category_id' => 'B',
+            'sbc_pickup_location_id' => 'IT014',
+            'sbc_dropoff_location_id' => 'IT014',
+        ]);
+
+        $booking->refresh();
+
+        $this->assertSame('SBC-TEST-REF-1', $booking->provider_booking_ref);
+        $this->assertSame('gw_booking_sbc_1', data_get($booking->provider_metadata, 'gateway_booking_id'));
+    }
+
+    #[Test]
+    public function it_persists_extended_sicily_by_car_supplier_context_in_provider_metadata(): void
+    {
+        $booking = $this->createExternalBooking([
+            'provider_source' => 'sicily_by_car',
+            'provider_vehicle_id' => 'B_BASIC-POA',
+        ]);
+
+        $service = new class () extends StripeBookingService {
+            public function invokeBuildProviderMetadataFromSession(object $metadata, Booking $booking): array
+            {
+                return $this->buildProviderMetadataFromSession($metadata, $booking);
+            }
+        };
+
+        $providerMetadata = $service->invokeBuildProviderMetadataFromSession((object) [
+            'vehicle_source' => 'sicily_by_car',
+            'currency' => 'EUR',
+            'provider_currency' => 'EUR',
+            'pickup_location_code' => 'IT014',
+            'return_location_code' => 'IT014',
+            'sbc_availability_id' => '019df18130077d9d8cb3aeb4094b2576',
+            'sbc_rate_id' => 'BASIC-POA',
+            'sbc_vehicle_id' => 'B_BASIC-POA',
+            'sbc_payment_type' => 'PayOnArrival',
+            'sbc_currency' => 'EUR',
+            'sbc_request_id' => '80009626-1003-4500-b63f-84710c7967bb',
+            'sbc_vehicle_category_id' => 'B',
+            'sbc_pickup_location_id' => 'IT014',
+            'sbc_dropoff_location_id' => 'IT014',
+        ], $booking);
+
+        $this->assertSame('80009626-1003-4500-b63f-84710c7967bb', data_get($providerMetadata, 'sbc.request_id'));
+        $this->assertSame('B', data_get($providerMetadata, 'sbc.vehicle_category_id'));
+        $this->assertSame('IT014', data_get($providerMetadata, 'sbc.pickup_location_id'));
+        $this->assertSame('IT014', data_get($providerMetadata, 'sbc.dropoff_location_id'));
+    }
+
+    #[Test]
     public function it_snapshots_applied_offers_and_free_esim_on_booking_creation(): void
     {
         Notification::fake();
@@ -662,5 +777,44 @@ class StripeBookingServiceAccountingTest extends TestCase
             $booking->offers->pluck('effect_type')->sort()->values()->all()
         );
         $this->assertSame('Summer Discount', $booking->offers->firstWhere('effect_type', 'price_discount_percentage')?->name);
+    }
+
+    private function createExternalBooking(array $overrides = []): Booking
+    {
+        $customerUser = User::factory()->create();
+        $customer = Customer::create([
+            'user_id' => $customerUser->id,
+            'first_name' => 'Test',
+            'last_name' => 'Customer',
+            'email' => $customerUser->email,
+            'phone' => $customerUser->phone,
+            'driver_age' => 30,
+        ]);
+
+        return Booking::create(array_merge([
+            'booking_number' => 'BKGW-' . uniqid(),
+            'customer_id' => $customer->id,
+            'provider_source' => 'recordgo',
+            'provider_vehicle_id' => 'vehicle-1',
+            'provider_metadata' => [],
+            'vehicle_name' => 'Gateway Vehicle',
+            'pickup_date' => now()->addDay(),
+            'return_date' => now()->addDays(2),
+            'pickup_time' => '09:00',
+            'return_time' => '09:00',
+            'pickup_location' => 'Airport',
+            'return_location' => 'Airport',
+            'plan' => 'BAS',
+            'total_days' => 2,
+            'base_price' => 100,
+            'extra_charges' => 0,
+            'tax_amount' => 0,
+            'total_amount' => 100,
+            'pending_amount' => 100,
+            'amount_paid' => 0,
+            'booking_currency' => 'EUR',
+            'payment_status' => 'partial',
+            'booking_status' => 'confirmed',
+        ], $overrides));
     }
 }

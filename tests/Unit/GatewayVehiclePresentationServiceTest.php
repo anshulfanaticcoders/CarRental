@@ -100,6 +100,45 @@ class GatewayVehiclePresentationServiceTest extends TestCase
         $this->assertSame(['sicily-basic', 'sicily-plus'], $collapsed->pluck('id')->all());
     }
 
+    public function test_it_collapses_sicily_by_car_variants_when_provider_vehicle_id_only_differs_by_payment_suffix(): void
+    {
+        $service = new \App\Services\GatewayVehiclePresentationService();
+
+        $vehicles = new Collection([
+            [
+                'id' => 'sicily-poa-suffixed',
+                'source' => 'sicily_by_car',
+                'provider_vehicle_id' => 'B_BASIC-POA',
+                'provider_pickup_id' => 'IT014',
+                'provider_return_id' => 'IT014',
+                'model' => 'Panda 1.2',
+                'sipp_code' => 'MDMRS',
+                'currency' => 'EUR',
+                'total_price' => 112.70,
+                'payment_type' => 'PayOnArrival',
+                'rate_id' => 'BASIC-POA',
+            ],
+            [
+                'id' => 'sicily-prepaid-suffixed',
+                'source' => 'sicily_by_car',
+                'provider_vehicle_id' => 'B_BASIC-PP',
+                'provider_pickup_id' => 'IT014',
+                'provider_return_id' => 'IT014',
+                'model' => 'Panda 1.2',
+                'sipp_code' => 'MDMRS',
+                'currency' => 'EUR',
+                'total_price' => 112.70,
+                'payment_type' => 'Prepaid',
+                'rate_id' => 'BASIC-PP',
+            ],
+        ]);
+
+        $collapsed = $service->collapseEquivalentSicilyByCarVehicles($vehicles);
+
+        $this->assertCount(1, $collapsed);
+        $this->assertSame(['sicily-poa-suffixed'], $collapsed->pluck('id')->all());
+    }
+
     public function test_it_collapses_equivalent_renteon_cards_that_only_differ_by_gateway_id_and_pricelist(): void
     {
         $service = new \App\Services\GatewayVehiclePresentationService();
