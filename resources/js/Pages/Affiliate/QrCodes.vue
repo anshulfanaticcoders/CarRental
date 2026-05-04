@@ -335,6 +335,7 @@ import { useForm, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
 import { Toaster } from '@/Components/ui/sonner';
 import AffiliateHeader from '@/Layouts/AffiliateHeader.vue';
+import { loadGoogleMaps } from '@/lib/googleMapsLoader';
 import { MapPin, Link, Share2, Download, BarChart3, Plus, Copy, AlertCircle, QrCode, Info, X, Mail } from 'lucide-vue-next';
 
 import L from 'leaflet';
@@ -538,9 +539,11 @@ function handleClickOutside(e) {
 
 onMounted(async () => {
     document.addEventListener('click', handleClickOutside);
-    if (window.googleMapsReady) {
-        await window.googleMapsReady;
+    try {
+        await loadGoogleMaps();
         await google.maps.importLibrary('places');
+    } catch (error) {
+        console.error('Failed to load Google Maps SDK:', error);
     }
 });
 

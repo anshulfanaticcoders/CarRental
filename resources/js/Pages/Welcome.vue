@@ -2,31 +2,64 @@
 import SchemaInjector from '@/Components/SchemaInjector.vue';
 import SeoHead from '@/Components/SeoHead.vue';
 import heroImg from "../../assets/heroImage.jpg";
-import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 
 import WelcomeHero from '@/Components/Welcome/WelcomeHero.vue';
-import TopDestinations from '@/Components/Welcome/TopDestinations.vue';
-import WhyChooseUs from '@/Components/Welcome/WhyChooseUs.vue';
-import AdvertisementSection from '@/Components/AdvertisementSection.vue';
-import EsimSection from '@/Components/EsimSection.vue';
-import HowItWorks from "@/Components/ReusableComponents/HowItWorks.vue";
-import BlogSection from '@/Components/Welcome/BlogSection.vue';
-import TestimonialsSection from '@/Components/Welcome/TestimonialsSection.vue';
-import FaqSection from '@/Components/Welcome/FaqSection.vue';
 // Newsletter moved to Footer component
 // import NewsletterSection from '@/Components/Welcome/NewsletterSection.vue';
 
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, defineAsyncComponent, hydrateOnIdle, hydrateOnVisible, onBeforeUnmount, onMounted, ref } from "vue";
 import { usePage } from '@inertiajs/vue3';
 
+const AdvertisementSection = defineAsyncComponent({
+    loader: () => import('@/Components/AdvertisementSection.vue'),
+    hydrate: hydrateOnVisible({ rootMargin: '200px' }),
+});
+
+const TopDestinations = defineAsyncComponent({
+    loader: () => import('@/Components/Welcome/TopDestinations.vue'),
+    hydrate: hydrateOnVisible({ rootMargin: '200px' }),
+});
+
+const WhyChooseUs = defineAsyncComponent({
+    loader: () => import('@/Components/Welcome/WhyChooseUs.vue'),
+    hydrate: hydrateOnVisible({ rootMargin: '250px' }),
+});
+
+const EsimSection = defineAsyncComponent({
+    loader: () => import('@/Components/EsimSection.vue'),
+    hydrate: hydrateOnVisible({ rootMargin: '250px' }),
+});
+
+const HowItWorks = defineAsyncComponent({
+    loader: () => import('@/Components/ReusableComponents/HowItWorks.vue'),
+    hydrate: hydrateOnVisible({ rootMargin: '250px' }),
+});
+
+const TestimonialsSection = defineAsyncComponent({
+    loader: () => import('@/Components/Welcome/TestimonialsSection.vue'),
+    hydrate: hydrateOnVisible({ rootMargin: '300px' }),
+});
+
+const BlogSection = defineAsyncComponent({
+    loader: () => import('@/Components/Welcome/BlogSection.vue'),
+    hydrate: hydrateOnVisible({ rootMargin: '300px' }),
+});
+
+const FaqSection = defineAsyncComponent({
+    loader: () => import('@/Components/Welcome/FaqSection.vue'),
+    hydrate: hydrateOnVisible({ rootMargin: '300px' }),
+});
+
+const Footer = defineAsyncComponent({
+    loader: () => import('@/Components/Footer.vue'),
+    hydrate: hydrateOnIdle(2500),
+});
+
 const props = defineProps({
-    canLogin: { type: Boolean },
-    canRegister: { type: Boolean },
     blogs: Array,
     testimonials: Array,
     popularPlaces: Array,
-    faqs: Array,
     schema: Array,
     seo: Object,
     pages: Object,

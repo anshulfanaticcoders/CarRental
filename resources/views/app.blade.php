@@ -70,6 +70,9 @@
 
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @if(!empty(env('GOOGLE_MAPS_API_KEY')))
+        <meta name="google-maps-api-key" content="{{ env('GOOGLE_MAPS_API_KEY') }}">
+    @endif
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -77,17 +80,6 @@
     <link
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
         rel="stylesheet">
-
-    <!-- Google Maps SDK -->
-    <script>
-        window.googleMapsReady = new Promise((resolve) => {
-            window.initGoogleMaps = () => {
-                resolve();
-            };
-        }); 
-    </script>
-    <script
-        src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_MAPS_API_KEY') }}&libraries=places&loading=async&callback=initGoogleMaps"></script>
 
     <!-- Hreflang for SEO -->
     @php

@@ -12,15 +12,12 @@ use App\Models\Faq; // Added Faq model
 use App\Models\PopularPlace;
 use App\Models\SeoMeta;
 use App\Models\Testimonial;
-use App\Models\VehicleCategory; // Added for Schema
 use App\Services\Seo\SeoMetaResolver;
-use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App; // Added for slug generation
 use Illuminate\Support\Facades\Cache; // Added for locale access
-use Illuminate\Support\Facades\DB; // For Route::has()
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log; // Added for logging
-use Illuminate\Support\Facades\Route; // For Application::VERSION
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -659,9 +656,6 @@ class BlogController extends Controller
             $pageSchemas[] = $testimonialListSchema;
         }
 
-        // Fetch vehicle categories (still used for homepage content)
-        $categories = VehicleCategory::where('status', true)->get();
-
         // Fetch popular places (still used for homepage content)
         $popularPlaces = PopularPlace::all();
 
@@ -692,15 +686,9 @@ class BlogController extends Controller
         $heroImage = DB::table('homepage_settings')->where('key', 'hero_image')->value('value');
 
         return Inertia::render('Welcome', [
-            'canLogin' => Route::has('login'),
-            'canRegister' => Route::has('register'),
-            'laravelVersion' => Application::VERSION,
-            'phpVersion' => PHP_VERSION,
             'blogs' => LocaleHelper::sanitizeUtf8($blogs),
             'testimonials' => LocaleHelper::sanitizeUtf8($testimonials),
-            'categories' => LocaleHelper::sanitizeUtf8($categories),
             'popularPlaces' => LocaleHelper::sanitizeUtf8($popularPlaces),
-            'faqs' => LocaleHelper::sanitizeUtf8($faqs), // Pass FAQ data
             'schema' => LocaleHelper::sanitizeUtf8($pageSchemas),
             'seo' => LocaleHelper::sanitizeUtf8($seo),
             'pages' => LocaleHelper::sanitizeUtf8($pages),

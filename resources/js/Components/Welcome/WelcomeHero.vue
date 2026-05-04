@@ -21,7 +21,7 @@ const trustStats = [
 <template>
     <section class="hero">
         <div class="hero-bg">
-            <img :src="heroImage" alt="" aria-hidden="true" />
+            <img :src="heroImage" alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="async" />
             <div class="hero-overlay"></div>
         </div>
 

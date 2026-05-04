@@ -205,6 +205,10 @@ useScrollAnimation('.testi-section', '.testi-header, .testi-carousel, .testi-dot
     padding-inline: 1.25rem;
 }
 
+.testi-carousel :deep(.overflow-hidden) {
+    padding-top: 0.35rem;
+}
+
 .testi-carousel :deep(.testi-prev) {
     left: -0.85rem !important;
 }

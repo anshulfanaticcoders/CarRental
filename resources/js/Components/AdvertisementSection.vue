@@ -101,6 +101,8 @@ onUnmounted(() => {
                             <img
                                 :src="currentAd.image_path || heroImage"
                                 :alt="currentAd.title || 'Advertisement'"
+                                loading="lazy"
+                                decoding="async"
                                 class="ad-visual-img"
                             />
                             <div class="ad-visual-overlay"></div>

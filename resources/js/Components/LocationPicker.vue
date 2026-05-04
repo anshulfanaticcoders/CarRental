@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import { loadGoogleMaps } from '@/lib/googleMapsLoader';
 
 const props = defineProps({
   onLocationSelect: Function,
@@ -111,12 +112,8 @@ let autocompleteInstance = null; // To store the Google Autocomplete instance
 
 onMounted(async () => {
   try {
-    if (!window.googleMapsReady) {
-      console.error("Google Maps SDK readiness promise (window.googleMapsReady) not found.");
-      return;
-    }
-    await window.googleMapsReady;
-    
+    await loadGoogleMaps();
+
 
     if (typeof google === 'undefined' || !google.maps || !google.maps.importLibrary) {
       console.error("Google Maps 'google' object or 'importLibrary' is not available.");
