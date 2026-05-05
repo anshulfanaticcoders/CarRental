@@ -52,6 +52,13 @@ class NewPasswordController extends Controller
                 ])->save();
 
                 event(new PasswordReset($user));
+
+                \App\Helpers\ActivityLogHelper::log(
+                    'auth',
+                    'password_reset',
+                    "Password reset: {$user->email}",
+                    $user
+                );
             }
         );
 

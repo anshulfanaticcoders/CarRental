@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Helpers\ActivityLogHelper;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -31,6 +32,13 @@ class LogSuccessfulLogin
                     'last_login_at' => Carbon::now(),
                     // 'last_logout_at' => null, // Optional: clear last logout time
                 ]
+            );
+
+            ActivityLogHelper::log(
+                'auth',
+                'login',
+                "Logged in: {$event->user->email}",
+                $event->user
             );
         }
     }

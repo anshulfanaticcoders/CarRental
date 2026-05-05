@@ -155,6 +155,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::delete('/popular-places/bulk', [PopularPlacesController::class, 'bulkDestroy'])->name('popular-places.bulk-destroy');
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);
+    Route::delete('blogs/bulk', [BlogController::class, 'bulkDestroy'])->name('admin.blogs.bulk-destroy');
     Route::resource('blogs', BlogController::class)->names('admin.blogs');
     Route::get('/admin-dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 

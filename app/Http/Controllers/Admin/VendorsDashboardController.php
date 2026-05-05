@@ -70,6 +70,7 @@ class VendorsDashboardController extends Controller
             'status' => 'required|in:pending,approved,rejected',
         ]);
         $vendorProfile = VendorProfile::findOrFail($id);
+        $oldStatus = $vendorProfile->status;
         // Update the vendor status
         $vendorProfile->update([
             'status' => $request->status,
@@ -78,6 +79,16 @@ class VendorsDashboardController extends Controller
         // Notify the user
         $user = User::findOrFail($vendorProfile->user_id);
         $user->notify(new VendorStatusUpdatedNotification($vendorProfile, $user));
+
+        if ($oldStatus !== $request->status && in_array($request->status, ['approved', 'rejected'], true)) {
+            \App\Helpers\ActivityLogHelper::log(
+                'vendor',
+                $request->status,
+                "Vendor {$request->status}: {$vendorProfile->company_name}",
+                $vendorProfile,
+                ['from' => $oldStatus, 'to' => $request->status, 'user_email' => $user->email]
+            );
+        }
 
         return redirect()->route('vendors.index')->with('success', 'User updated successfully.');
     }
@@ -99,6 +110,14 @@ class VendorsDashboardController extends Controller
 
         $ids = array_values(array_unique($validated['ids']));
         $deleted = User::whereIn('id', $ids)->where('role', 'vendor')->delete();
+
+        \App\Helpers\ActivityLogHelper::log(
+            'vendor',
+            'bulk_deleted',
+            "Bulk deleted {$deleted} vendor(s)",
+            null,
+            ['count' => $deleted, 'ids' => $ids]
+        );
 
         return redirect()->route('vendors.index')->with('success', "{$deleted} vendor(s) deleted successfully.");
     }

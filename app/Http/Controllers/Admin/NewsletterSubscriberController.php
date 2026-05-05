@@ -75,6 +75,14 @@ class NewsletterSubscriberController extends Controller
         $ids = array_values(array_unique($validated['ids']));
         $deleted = NewsletterSubscription::whereIn('id', $ids)->delete();
 
+        \App\Helpers\ActivityLogHelper::log(
+            'content',
+            'bulk_deleted',
+            "Bulk deleted {$deleted} newsletter subscriber(s)",
+            null,
+            ['count' => $deleted, 'ids' => $ids]
+        );
+
         return redirect()->back()->with('success', "{$deleted} subscriber(s) deleted successfully.");
     }
 
@@ -92,6 +100,14 @@ class NewsletterSubscriberController extends Controller
                 'status' => 'unsubscribed',
                 'unsubscribed_at' => now(),
             ]);
+
+        \App\Helpers\ActivityLogHelper::log(
+            'content',
+            'bulk_updated',
+            "Bulk unsubscribed {$cancelled} newsletter subscriber(s)",
+            null,
+            ['count' => $cancelled, 'ids' => $ids]
+        );
 
         return redirect()->back()->with('success', "{$cancelled} subscription(s) cancelled successfully.");
     }

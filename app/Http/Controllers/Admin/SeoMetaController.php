@@ -28,14 +28,26 @@ class SeoMetaController extends Controller
      *
      * @return \Inertia\Response
      */
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
+        $search = $request->query('search');
+
         $seoMetas = SeoMeta::query()
             ->whereNotNull('route_name')
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($qq) use ($search) {
+                    $qq->where('route_name', 'like', "%{$search}%")
+                        ->orWhere('seo_title', 'like', "%{$search}%")
+                        ->orWhere('meta_description', 'like', "%{$search}%");
+                });
+            })
             ->latest()
-            ->paginate(10);
+            ->paginate(15)
+            ->withQueryString();
+
         return Inertia::render('AdminDashboardPages/SEO/index', [
             'seoMetas' => $seoMetas,
+            'filters' => $request->only(['search']),
         ]);
     }
 

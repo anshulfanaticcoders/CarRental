@@ -168,6 +168,14 @@ class VehicleDashboardController extends Controller
         $ids = array_values(array_unique($validated['ids']));
         $acceptedCount = count($ids);
 
+        \App\Helpers\ActivityLogHelper::log(
+            'vehicle',
+            'bulk_deleted',
+            "Bulk deletion started for {$acceptedCount} vehicle(s)",
+            null,
+            ['count' => $acceptedCount, 'ids' => $ids]
+        );
+
         dispatch(function () use ($ids) {
             $vehicles = Vehicle::query()
                 ->whereIn('id', $ids)

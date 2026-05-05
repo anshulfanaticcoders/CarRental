@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Helpers\ActivityLogHelper;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -31,9 +32,13 @@ class LogSuccessfulLogout
                     'last_logout_at' => Carbon::now(),
                 ]);
             }
-            // If no ChatStatus record exists, we might not need to do anything,
-            // or we could create one with offline status, but typically a logout event
-            // implies a previous login.
+
+            ActivityLogHelper::log(
+                'auth',
+                'logout',
+                "Logged out: {$event->user->email}",
+                $event->user
+            );
         }
     }
 }

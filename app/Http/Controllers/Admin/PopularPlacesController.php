@@ -188,6 +188,15 @@ class PopularPlacesController extends Controller
         }
 
         $count = $places->count();
+
+        \App\Helpers\ActivityLogHelper::log(
+            'content',
+            'bulk_deleted',
+            "Bulk deleted {$count} popular place(s)",
+            null,
+            ['count' => $count, 'ids' => $ids]
+        );
+
         return redirect()->route('popular-places.index')
             ->with('status', "{$count} place(s) deleted successfully");
     }

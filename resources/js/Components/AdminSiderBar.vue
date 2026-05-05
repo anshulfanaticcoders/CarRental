@@ -446,7 +446,7 @@ onMounted(() => {
           :href="route('admin.logout')"
           method="post"
           as="button"
-          class="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[13px] font-medium text-gray-500 border border-gray-200 transition-all duration-150 hover:bg-red-50 hover:border-red-200/50 hover:text-red-600 hover:shadow-[0_0_0_3px_rgba(239,68,68,0.06)]"
+          class="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[13px] font-medium text-red-600 bg-red-50 border border-red-100 transition-all duration-150 hover:bg-red-100 hover:border-red-200 hover:text-red-700 hover:shadow-[0_0_0_3px_rgba(239,68,68,0.08)]"
         >
           <LogOut :size="17" :stroke-width="1.8" />
           <span class="group-data-[collapsible=icon]:hidden">Log out</span>

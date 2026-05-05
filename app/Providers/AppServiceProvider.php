@@ -33,6 +33,24 @@ class AppServiceProvider extends ServiceProvider
         PageTranslation::observe(PageTranslationObserver::class);
         \App\Models\Vehicle::observe(\App\Observers\VehicleObserver::class);
 
+        // Generic activity logging — captures created/updated/deleted/restored
+        // for these models with field-diff in the `properties` JSON column.
+        $activityLogObserver = \App\Observers\ActivityLogObserver::class;
+        \App\Models\User::observe($activityLogObserver);
+        \App\Models\VendorProfile::observe($activityLogObserver);
+        \App\Models\Vehicle::observe($activityLogObserver);
+        \App\Models\Booking::observe($activityLogObserver);
+        \App\Models\BookingPayment::observe($activityLogObserver);
+        \App\Models\Faq::observe($activityLogObserver);
+        \App\Models\Testimonial::observe($activityLogObserver);
+        \App\Models\PopularPlace::observe($activityLogObserver);
+        \App\Models\Page::observe($activityLogObserver);
+        \App\Models\VehicleCategory::observe($activityLogObserver);
+        \App\Models\Plan::observe($activityLogObserver);
+        \App\Models\Offer::observe($activityLogObserver);
+        \App\Models\NewsletterCampaign::observe($activityLogObserver);
+        \App\Models\Affiliate\AffiliateBusiness::observe($activityLogObserver);
+
         if (env('APP_ENV') !== 'local') {
             URL::forceScheme('https'); // Force HTTPS for all routes
         }

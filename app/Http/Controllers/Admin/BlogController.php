@@ -40,7 +40,7 @@ class BlogController extends Controller
             })->orWhere('slug', 'like', "%{$search}%");
         }
 
-        $blogs = $query->latest()->paginate(6)->withQueryString();
+        $blogs = $query->latest()->paginate(10)->withQueryString();
 
         // The $blogs collection will automatically use the title accessor for the current locale
         return Inertia::render('AdminDashboardPages/Blogs/Index', [
@@ -583,6 +583,41 @@ class BlogController extends Controller
 
     public function destroy(Blog $blog)
     {
+        $this->deleteBlogWithSideEffects($blog);
+
+        return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog deleted successfully.');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:blogs,id'],
+        ]);
+
+        $ids = array_values(array_unique($validated['ids']));
+        $blogs = Blog::whereIn('id', $ids)->get();
+
+        foreach ($blogs as $blog) {
+            $this->deleteBlogWithSideEffects($blog);
+        }
+
+        $count = $blogs->count();
+
+        \App\Helpers\ActivityLogHelper::log(
+            'content',
+            'bulk_deleted',
+            "Bulk deleted {$count} blog(s)",
+            null,
+            ['count' => $count, 'ids' => $ids]
+        );
+
+        return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])
+            ->with('success', "{$count} blog(s) deleted successfully.");
+    }
+
+    private function deleteBlogWithSideEffects(Blog $blog): void
+    {
         $available_locales = config('app.available_locales', ['en']);
 
         if ($blog->image) {
@@ -599,13 +634,14 @@ class BlogController extends Controller
         SeoMeta::where('url_slug', 'blog/'.$blog->slug)->delete();
         SeoMeta::where('url_slug', $blog->slug)->delete();
 
+        $blogClass = get_class($blog);
+        $blogKey = $blog->getKey();
+
         $blog->delete();
 
         foreach ($available_locales as $locale) {
-            Cache::forget('seo:model:'.get_class($blog).':'.$blog->getKey().':'.$locale);
+            Cache::forget('seo:model:'.$blogClass.':'.$blogKey.':'.$locale);
         }
-
-        return redirect()->route('admin.blogs.index', ['locale' => App::getLocale()])->with('success', 'Blog deleted successfully.');
     }
 
     public function togglePublish(Request $request, Blog $blog)

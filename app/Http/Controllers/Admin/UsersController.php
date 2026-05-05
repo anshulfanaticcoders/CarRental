@@ -205,11 +205,19 @@ class UsersController extends Controller
         $users = User::whereIn('id', $ids)->where('role', '!=', 'admin')->get();
 
         foreach ($users as $user) {
-            ActivityLogHelper::logActivity('delete', 'User Deleted', $user);
             $user->delete();
         }
 
         $count = $users->count();
+
+        ActivityLogHelper::log(
+            'user',
+            'bulk_deleted',
+            "Bulk deleted {$count} user(s)",
+            null,
+            ['count' => $count, 'ids' => $ids]
+        );
+
         return redirect()->back()->with('success', "{$count} user(s) deleted successfully.");
     }
 }

@@ -10,12 +10,18 @@ class ActivityLog extends Model
     use HasFactory;
     protected $fillable = [
         'user_id',
+        'category',
         'activity_type',
         'activity_description',
+        'properties',
         'logable_id',
         'logable_type',
         'ip_address',
         'user_agent',
+    ];
+
+    protected $casts = [
+        'properties' => 'array',
     ];
 
     public function user()
