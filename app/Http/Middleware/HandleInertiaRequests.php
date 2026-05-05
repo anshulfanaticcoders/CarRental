@@ -13,6 +13,17 @@ use Tighten\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
 {
+    private const SSR_ROUTE_ALLOWLIST = [
+        'welcome',
+        'blog',
+        'blog.show',
+        'faq.show',
+        'destinations.index',
+        'pages.show',
+        'pages.custom',
+        'contact-us',
+    ];
+
     protected function shouldUseSsr(Request $request): bool
     {
         $route = $request->route();
@@ -32,7 +43,11 @@ class HandleInertiaRequests extends Middleware
             return false;
         }
 
-        return !Str::startsWith($routeName, 'admin.');
+        if ($routeName === '' || Str::startsWith($routeName, 'admin.')) {
+            return false;
+        }
+
+        return in_array($routeName, self::SSR_ROUTE_ALLOWLIST, true);
     }
 
     public function handle(Request $request, Closure $next)

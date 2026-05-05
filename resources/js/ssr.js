@@ -10,6 +10,18 @@ import TranslationPlugin from '../js/plugins/translation';
 import * as Sentry from '@sentry/vue';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Vrooem';
+const ssrPageModules = import.meta.glob([
+    './Pages/Welcome.vue',
+    './Pages/BlogPage.vue',
+    './Pages/SingleBlog.vue',
+    './Pages/Faq.vue',
+    './Pages/ContactUs.vue',
+    './Pages/Destinations/Index.vue',
+    './Pages/Frontend/Templates/DefaultPage.vue',
+    './Pages/Frontend/Templates/LegalPage.vue',
+    './Pages/Frontend/Templates/AboutUsPage.vue',
+    './Pages/Frontend/Templates/ContactUsPage.vue',
+]);
 
 createServer((page) =>
     createInertiaApp({
@@ -23,7 +35,7 @@ createServer((page) =>
                 : `${resolved} - ${appName}`;
         },
         resolve: (name) =>
-            resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
+            resolvePageComponent(`./Pages/${name}.vue`, ssrPageModules),
         setup({ App, props, plugin }) {
             const app = createSSRApp({
                 render: () => h(App, props),

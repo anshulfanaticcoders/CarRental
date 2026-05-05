@@ -5,7 +5,7 @@ import vue from '@vitejs/plugin-vue';
 export default defineConfig({
     build: {
         reportCompressedSize: false,
-        sourcemap: true,
+        sourcemap: false,
     },
     plugins: [
         laravel({
