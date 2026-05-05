@@ -168,6 +168,30 @@ class PopularPlacesController extends Controller
             ->with('status', 'Place deleted successfully');
     }
 
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:popular_places,id'],
+        ]);
+
+        $ids = array_values(array_unique($validated['ids']));
+        $places = PopularPlace::whereIn('id', $ids)->get();
+
+        $upcloudUrlPrefix = Storage::disk('upcloud')->url('');
+        foreach ($places as $place) {
+            if ($place->image) {
+                $oldImagePath = str_replace($upcloudUrlPrefix, '', $place->image);
+                Storage::disk('upcloud')->delete($oldImagePath);
+            }
+            $place->delete();
+        }
+
+        $count = $places->count();
+        return redirect()->route('popular-places.index')
+            ->with('status', "{$count} place(s) deleted successfully");
+    }
+
 
     public function footerSettings()
     {

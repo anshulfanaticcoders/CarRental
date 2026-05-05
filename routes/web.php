@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Admin\ActivityLogsController;
 use App\Http\Controllers\Admin\AdminAffiliateController;
-use App\Http\Controllers\Admin\AdminFeaturesController;
 use App\Http\Controllers\Admin\AdminMediaController;
 use App\Http\Controllers\Admin\AdminOfferController;
 use App\Http\Controllers\Admin\AdminReviewController;
@@ -134,9 +133,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/vehicles-categories/bulk-delete', [VehicleCategoriesController::class, 'bulkDelete'])->name('vehicles-categories.bulk-delete');
     Route::delete('/vendor-vehicles/bulk-delete', [VehicleDashboardController::class, 'bulkDelete'])->name('admin.vehicles.bulk-delete');
     Route::patch('/vehicles-categories/bulk-status', [VehicleCategoriesController::class, 'bulkUpdateStatus'])->name('vehicles-categories.bulk-status');
+    Route::delete('/vendors/bulk', [VendorsDashboardController::class, 'bulkDestroy'])->name('vendors.bulk-destroy');
     Route::resource('vendors', VendorsDashboardController::class)->except(['create', 'edit', 'show']);
     Route::put('/vendors/{vendorProfile}/status', [VendorsDashboardController::class, 'updateStatus'])->name('vendors.updateStatus');
 
+    Route::delete('/users/bulk', [UsersController::class, 'bulkDestroy'])->name('users.bulk-destroy');
     Route::resource('users', UsersController::class)->except(['create', 'edit', 'show']);
     Route::resource('vendor-vehicles', VehicleDashboardController::class)->except(['create', 'show'])->names([
         'edit' => 'admin.vehicles.edit',
@@ -152,6 +153,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
     Route::post('/customer-bookings/{id}/cancel', [BookingDashboardController::class, 'cancelBooking'])->name('customer-bookings.cancel');
 
+    Route::delete('/popular-places/bulk', [PopularPlacesController::class, 'bulkDestroy'])->name('popular-places.bulk-destroy');
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);
     Route::resource('blogs', BlogController::class)->names('admin.blogs');
     Route::get('/admin-dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
@@ -165,8 +167,14 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // Newsletter Subscribers
     Route::get('/admin/newsletter-subscribers', [NewsletterSubscriberController::class, 'index'])
         ->name('admin.newsletter-subscribers.index');
+    Route::delete('/admin/newsletter-subscribers/bulk', [NewsletterSubscriberController::class, 'bulkDestroy'])
+        ->name('admin.newsletter-subscribers.bulk-destroy');
+    Route::patch('/admin/newsletter-subscribers/bulk/cancel', [NewsletterSubscriberController::class, 'bulkCancel'])
+        ->name('admin.newsletter-subscribers.bulk-cancel');
     Route::patch('/admin/newsletter-subscribers/{subscription}/cancel', [NewsletterSubscriberController::class, 'cancel'])
         ->name('admin.newsletter-subscribers.cancel');
+    Route::delete('/admin/newsletter-subscribers/{subscription}', [NewsletterSubscriberController::class, 'destroy'])
+        ->name('admin.newsletter-subscribers.destroy');
 
     // Newsletter Campaigns
     Route::get('/admin/newsletter-campaigns', [NewsletterCampaignController::class, 'index'])
@@ -257,14 +265,6 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/reviews', [AdminReviewController::class, 'index'])->name('admin.reviews.index');
     Route::delete('/admin/reviews/{review}', [AdminReviewController::class, 'destroy'])->name('admin.reviews.destroy');
     Route::patch('/admin/reviews/{review}/status', [AdminReviewController::class, 'updateStatus'])->name('admin.reviews.update-status');
-
-    // Vehicle Features Routes
-    Route::get('features', [AdminFeaturesController::class, 'index'])->name('admin.features.index');
-    Route::get('features/create/{category}', [AdminFeaturesController::class, 'create'])->name('admin.features.create');
-    Route::post('features', [AdminFeaturesController::class, 'store'])->name('admin.features.store');
-    Route::get('features/{feature}/edit', [AdminFeaturesController::class, 'edit'])->name('admin.features.edit');
-    Route::put('features/{feature}', [AdminFeaturesController::class, 'update'])->name('admin.features.update');
-    Route::delete('features/{feature}', [AdminFeaturesController::class, 'destroy'])->name('admin.features.destroy');
 
     // Media Library Routes
     Route::get('media', [AdminMediaController::class, 'index'])->name('admin.media.index');

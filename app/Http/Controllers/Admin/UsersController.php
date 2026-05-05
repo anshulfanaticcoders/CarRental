@@ -193,4 +193,23 @@ class UsersController extends Controller
         $user->delete();
         return redirect()->route('users.index', ['locale' => app()->getLocale()])->with('success', 'User deleted successfully.');
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        $ids = array_values(array_unique($validated['ids']));
+        $users = User::whereIn('id', $ids)->where('role', '!=', 'admin')->get();
+
+        foreach ($users as $user) {
+            ActivityLogHelper::logActivity('delete', 'User Deleted', $user);
+            $user->delete();
+        }
+
+        $count = $users->count();
+        return redirect()->back()->with('success', "{$count} user(s) deleted successfully.");
+    }
 }

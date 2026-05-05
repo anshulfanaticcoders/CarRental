@@ -1,5 +1,5 @@
 <template>
-    <div v-if="links.length > 3" class="flex items-center justify-center mt-4 space-x-1">
+    <div v-if="links.length > 3" class="flex items-center justify-center mt-4 pb-4 space-x-1">
         <template v-for="(link, key) in links" :key="key">
             <div
                 v-if="link.url === null"

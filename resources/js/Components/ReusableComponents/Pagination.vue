@@ -1,5 +1,5 @@
 <template>
-    <div class="flex items-center gap-2" v-if="totalPages > 1">
+    <div class="flex items-center gap-2 pb-4" v-if="totalPages > 1">
         <Button
             variant="outline"
             :disabled="currentPage === 1"

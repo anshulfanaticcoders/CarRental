@@ -8,13 +8,6 @@
                 </div>
             </div>
 
-            <div v-if="flash?.success" class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-                {{ flash.success }}
-            </div>
-            <div v-if="flash?.error" class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-                {{ flash.error }}
-            </div>
-
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="rounded-xl border bg-white p-4">
                     <div class="text-sm text-slate-500">Subscribed</div>
@@ -60,11 +53,36 @@
                 </div>
             </div>
 
+            <div v-if="subscriptions?.data?.length" class="flex flex-wrap items-center gap-3 rounded-xl border bg-white px-4 py-3">
+                <Select v-model="bulkAction">
+                    <SelectTrigger class="w-48 h-10">
+                        <SelectValue placeholder="Bulk actions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="delete">Delete</SelectItem>
+                        <SelectItem value="cancel">Cancel subscription</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" @click="applyBulkAction" :disabled="!bulkAction">Apply</Button>
+                <span v-if="selectedIds.length > 0" class="text-sm text-slate-600">
+                    {{ selectedIds.length }} selected
+                </span>
+                <Button v-if="selectedIds.length > 0" variant="ghost" size="sm" @click="selectedIds = []">Clear</Button>
+            </div>
+
             <div v-if="subscriptions?.data?.length" class="rounded-xl border bg-white">
                 <div class="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead class="w-[50px] px-4 py-3">
+                                    <Checkbox
+                                        :checked="isAllOnPageSelected"
+                                        @update:checked="toggleSelectAllOnPage"
+                                        aria-label="Select all on page"
+                                    />
+                                </TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 w-[72px]">Sr No.</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3">Email</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3">Status</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3">Source</TableHead>
@@ -74,7 +92,17 @@
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="subscription in subscriptions.data" :key="subscription.id">
+                            <TableRow v-for="(subscription, index) in subscriptions.data" :key="subscription.id">
+                                <TableCell class="px-4 py-3">
+                                    <Checkbox
+                                        :checked="selectedIds.includes(subscription.id)"
+                                        @update:checked="(checked) => toggleRow(subscription.id, checked)"
+                                        :aria-label="`Select ${subscription.email}`"
+                                    />
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-700">
+                                    {{ (subscriptions.from || 1) + index }}
+                                </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="text-sm font-medium text-slate-900">{{ subscription.email }}</div>
                                 </TableCell>
@@ -93,14 +121,24 @@
                                     <div class="text-sm">{{ formatDate(subscription.created_at) }}</div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <Button
-                                        v-if="subscription.status !== 'unsubscribed'"
-                                        variant="destructive"
-                                        size="sm"
-                                        @click="cancelSubscription(subscription)"
-                                    >
-                                        Cancel
-                                    </Button>
+                                    <div class="flex items-center gap-2">
+                                        <Button
+                                            v-if="subscription.status !== 'unsubscribed'"
+                                            variant="outline"
+                                            size="sm"
+                                            @click="openCancelDialog(subscription)"
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            @click="openDeleteDialog(subscription)"
+                                        >
+                                            <Trash2 class="w-3 h-3 mr-1" />
+                                            Delete
+                                        </Button>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         </TableBody>
@@ -121,17 +159,94 @@
                     </div>
                 </div>
             </div>
+
+            <AlertDialog v-model:open="isBulkDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete selected subscribers?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete {{ selectedIds.length }} subscriber{{ selectedIds.length > 1 ? 's' : '' }}. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel :disabled="isBulkDeleting">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmBulkDelete" :disabled="isBulkDeleting">
+                            <span v-if="isBulkDeleting">Deleting...</span>
+                            <span v-else>Delete {{ selectedIds.length }} Subscriber{{ selectedIds.length > 1 ? 's' : '' }}</span>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog v-model:open="isBulkCancelDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel selected subscriptions?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Mark {{ selectedIds.length }} subscriber{{ selectedIds.length > 1 ? 's' : '' }} as unsubscribed. They will stop receiving newsletter emails.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel :disabled="isBulkCancelling">Keep subscribed</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmBulkCancel" :disabled="isBulkCancelling">
+                            <span v-if="isBulkCancelling">Cancelling...</span>
+                            <span v-else>Unsubscribe {{ selectedIds.length }}</span>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog v-model:open="isDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete subscriber?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            <template v-if="deleteTarget">
+                                This will permanently delete <span class="font-medium text-foreground">{{ deleteTarget.email }}</span>. This action cannot be undone.
+                            </template>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel :disabled="isDeleting">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
+                            <span v-if="isDeleting">Deleting...</span>
+                            <span v-else>Delete</span>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog v-model:open="isCancelDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            <template v-if="cancelTarget">
+                                Mark <span class="font-medium text-foreground">{{ cancelTarget.email }}</span> as unsubscribed? They will stop receiving newsletter emails.
+                            </template>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel :disabled="isCancelling">Keep subscribed</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmCancel" :disabled="isCancelling">
+                            <span v-if="isCancelling">Cancelling...</span>
+                            <span v-else>Unsubscribe</span>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     </AdminDashboardLayout>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
 import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
+import { Checkbox } from '@/Components/ui/checkbox';
 import {
     Select,
     SelectContent,
@@ -139,7 +254,18 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { Search, Mail } from 'lucide-vue-next';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/Components/ui/alert-dialog';
+import { Search, Mail, Trash2 } from 'lucide-vue-next';
+import { toast } from 'vue-sonner';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 
@@ -187,12 +313,131 @@ const badgeVariant = (statusValue) => {
     return 'destructive';
 };
 
-const cancelSubscription = (subscription) => {
-    const confirmed = window.confirm('Cancel this subscription?');
-    if (!confirmed) return;
+const isDeleteDialogOpen = ref(false);
+const deleteTarget = ref(null);
+const isDeleting = ref(false);
 
-    router.patch(`/admin/newsletter-subscribers/${subscription.id}/cancel`, {}, {
+const isCancelDialogOpen = ref(false);
+const cancelTarget = ref(null);
+const isCancelling = ref(false);
+
+const openDeleteDialog = (subscription) => {
+    deleteTarget.value = subscription;
+    isDeleteDialogOpen.value = true;
+};
+
+const confirmDelete = () => {
+    if (!deleteTarget.value) return;
+    isDeleting.value = true;
+    router.delete(`/admin/newsletter-subscribers/${deleteTarget.value.id}`, {
         preserveScroll: true,
+        onSuccess: () => {
+            toast.success(`Deleted ${deleteTarget.value.email}`);
+            isDeleteDialogOpen.value = false;
+            deleteTarget.value = null;
+        },
+        onError: () => toast.error('Failed to delete subscriber'),
+        onFinish: () => { isDeleting.value = false; },
     });
 };
+
+const openCancelDialog = (subscription) => {
+    cancelTarget.value = subscription;
+    isCancelDialogOpen.value = true;
+};
+
+const confirmCancel = () => {
+    if (!cancelTarget.value) return;
+    isCancelling.value = true;
+    router.patch(`/admin/newsletter-subscribers/${cancelTarget.value.id}/cancel`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast.success(`Unsubscribed ${cancelTarget.value.email}`);
+            isCancelDialogOpen.value = false;
+            cancelTarget.value = null;
+        },
+        onError: () => toast.error('Failed to cancel subscription'),
+        onFinish: () => { isCancelling.value = false; },
+    });
+};
+
+const selectedIds = ref([]);
+const bulkAction = ref('');
+const isBulkDeleteDialogOpen = ref(false);
+const isBulkDeleting = ref(false);
+const isBulkCancelDialogOpen = ref(false);
+const isBulkCancelling = ref(false);
+
+const applyBulkAction = () => {
+    if (!bulkAction.value) return;
+    if (selectedIds.value.length === 0) {
+        toast.error('Select at least one subscriber first');
+        return;
+    }
+    if (bulkAction.value === 'delete') isBulkDeleteDialogOpen.value = true;
+    else if (bulkAction.value === 'cancel') isBulkCancelDialogOpen.value = true;
+};
+
+const confirmBulkCancel = () => {
+    if (selectedIds.value.length === 0) return;
+    const count = selectedIds.value.length;
+    isBulkCancelling.value = true;
+    router.patch('/admin/newsletter-subscribers/bulk/cancel', { ids: [...selectedIds.value] }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast.success(`Unsubscribed ${count} subscriber${count > 1 ? 's' : ''}`);
+            selectedIds.value = [];
+            bulkAction.value = '';
+            isBulkCancelDialogOpen.value = false;
+        },
+        onError: () => toast.error('Failed to cancel selected subscriptions'),
+        onFinish: () => { isBulkCancelling.value = false; },
+    });
+};
+
+const visibleIds = computed(() => (props.subscriptions?.data || []).map((s) => s.id));
+const isAllOnPageSelected = computed(
+    () => visibleIds.value.length > 0 && visibleIds.value.every((id) => selectedIds.value.includes(id)),
+);
+
+const toggleRow = (id, checked) => {
+    if (checked) {
+        if (!selectedIds.value.includes(id)) selectedIds.value.push(id);
+    } else {
+        selectedIds.value = selectedIds.value.filter((x) => x !== id);
+    }
+};
+
+const toggleSelectAllOnPage = (checked) => {
+    if (checked) {
+        selectedIds.value = Array.from(new Set([...selectedIds.value, ...visibleIds.value]));
+    } else {
+        selectedIds.value = selectedIds.value.filter((id) => !visibleIds.value.includes(id));
+    }
+};
+
+const confirmBulkDelete = () => {
+    if (selectedIds.value.length === 0) return;
+    const count = selectedIds.value.length;
+    isBulkDeleting.value = true;
+    router.delete('/admin/newsletter-subscribers/bulk', {
+        data: { ids: [...selectedIds.value] },
+        preserveScroll: true,
+        onSuccess: () => {
+            toast.success(`Deleted ${count} subscriber${count > 1 ? 's' : ''}`);
+            selectedIds.value = [];
+            bulkAction.value = '';
+            isBulkDeleteDialogOpen.value = false;
+        },
+        onError: () => toast.error('Failed to delete selected subscribers'),
+        onFinish: () => { isBulkDeleting.value = false; },
+    });
+};
+
+watch(() => props.subscriptions?.current_page, () => {
+    selectedIds.value = [];
+});
+
+watch(() => props.flash?.success, (msg) => { if (msg) toast.success(msg); }, { immediate: true });
+watch(() => props.flash?.error, (msg) => { if (msg) toast.error(msg); }, { immediate: true });
 </script>

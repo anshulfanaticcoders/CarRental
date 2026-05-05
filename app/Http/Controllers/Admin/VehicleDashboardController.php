@@ -24,7 +24,7 @@ class VehicleDashboardController extends Controller
         $status = $request->query('status');
 
         // Build the vehicle query
-        $vehiclesQuery = Vehicle::with(['User', 'vendorProfileData', 'vendorLocation', 'images']);
+        $vehiclesQuery = Vehicle::with(['User', 'vendorProfile', 'vendorProfileData', 'vendorLocation', 'images']);
 
         // Apply search filter
         if ($search) {

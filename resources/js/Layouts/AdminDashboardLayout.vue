@@ -100,7 +100,6 @@ const routeTitles = {
   '/radiuses': 'Radius Management',
   '/admin/header-footer-scripts': 'Header and Footer Scripts',
   '/admin/settings/profile': 'Profile Setting',
-  '/features': 'Features',
   '/admin/settings/payable-amount': 'Payable Amount',
   '/admin/settings/homepage': 'Home Page Settings',
   '/admin/offers': 'Offers',

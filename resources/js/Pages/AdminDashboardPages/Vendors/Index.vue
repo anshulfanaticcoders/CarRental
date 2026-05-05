@@ -151,16 +151,41 @@
                 </AlertDialogContent>
             </AlertDialog>
 
+            <!-- Bulk Actions Bar (WordPress style) -->
+            <div v-if="users.data.length > 0" class="flex flex-wrap items-center gap-3 rounded-xl border bg-white px-4 py-3">
+                <Select v-model="bulkAction">
+                    <SelectTrigger class="w-48 h-10">
+                        <SelectValue placeholder="Bulk actions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="delete">Delete</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" @click="applyBulkAction" :disabled="!bulkAction">Apply</Button>
+                <span v-if="selectedIds.length > 0" class="text-sm text-slate-600">
+                    {{ selectedIds.length }} selected
+                </span>
+                <Button v-if="selectedIds.length > 0" variant="ghost" size="sm" @click="selectedIds = []">Clear</Button>
+            </div>
+
             <!-- Enhanced Vendors Table -->
             <div v-if="users.data.length > 0" class="rounded-xl border bg-card shadow-sm overflow-hidden">
                 <div class="overflow-x-auto max-w-full">
                     <Table>
                         <TableHeader>
                             <TableRow class="bg-muted/50">
+                                <TableHead class="w-[50px] px-4 py-3">
+                                    <Checkbox
+                                        :checked="isAllOnPageSelected"
+                                        @update:checked="toggleSelectAllOnPage"
+                                        aria-label="Select all on page"
+                                    />
+                                </TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Vendor Name</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Company Name</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Company Email</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Country</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Passport Front</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Passport Back</TableHead>
@@ -170,6 +195,13 @@
                         </TableHeader>
                         <TableBody>
                             <TableRow v-for="(user,index) in users.data" :key="user.id" class="hover:bg-muted/25 transition-colors">
+                                <TableCell class="px-4 py-3">
+                                    <Checkbox
+                                        :checked="selectedIds.includes(user.user_id)"
+                                        @update:checked="(checked) => toggleRow(user.user_id, checked)"
+                                        :aria-label="`Select ${user.user?.first_name} ${user.user?.last_name}`"
+                                    />
+                                </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
                                     {{ (users.current_page - 1) * users.per_page + index + 1 }}
                                 </TableCell>
@@ -179,6 +211,21 @@
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">{{ user.company_name || 'N/A' }}</TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">{{ user.company_email || 'N/A' }}</TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div v-if="vendorCountry(user).code" class="flex items-center gap-2">
+                                        <img
+                                            :src="`https://flagcdn.com/w20/${vendorCountry(user).code.toLowerCase()}.png`"
+                                            :alt="vendorCountry(user).name"
+                                            width="20"
+                                            height="15"
+                                            class="rounded-sm border border-slate-200"
+                                            loading="lazy"
+                                            @error="$event.target.style.visibility = 'hidden'"
+                                        />
+                                        <span class="text-sm">{{ vendorCountry(user).name }}</span>
+                                    </div>
+                                    <span v-else class="text-sm text-muted-foreground">—</span>
+                                </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <Badge :variant="getStatusBadgeVariant(user.status)" class="capitalize">
                                         {{ user.status || 'N/A' }}
@@ -259,12 +306,31 @@
                     </div>
                 </div>
             </div>
+
+            <AlertDialog v-model:open="isBulkDeleteDialogOpen">
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete selected vendors?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete {{ selectedIds.length }} vendor{{ selectedIds.length > 1 ? 's' : '' }}. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel :disabled="isBulkDeleting">Cancel</AlertDialogCancel>
+                        <AlertDialogAction @click="confirmBulkDelete" :disabled="isBulkDeleting">
+                            <span v-if="isBulkDeleting">Deleting...</span>
+                            <span v-else>Delete {{ selectedIds.length }} Vendor{{ selectedIds.length > 1 ? 's' : '' }}</span>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     </AdminDashboardLayout>
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
+import axios from "axios";
 import { router } from "@inertiajs/vue3";
 import { toast } from "vue-sonner";
 import Table from "@/Components/ui/table/Table.vue";
@@ -276,6 +342,7 @@ import TableCell from "@/Components/ui/table/TableCell.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import Badge from "@/Components/ui/badge/Badge.vue";
 import { Input } from "@/Components/ui/input";
+import { Checkbox } from "@/Components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -319,6 +386,86 @@ const props = defineProps({
 
 const search = ref(props.filters.search || ''); // Initialize search with the filter value
 const statusFilter = ref(props.filters?.status || 'all'); // Initialize status filter
+
+// Country lookup (name -> ISO code) for flag rendering
+const countriesByName = ref({});
+const countriesByCode = ref({});
+onMounted(async () => {
+    try {
+        const { data } = await axios.get('/countries.json');
+        if (Array.isArray(data)) {
+            data.forEach((c) => {
+                if (c.name) countriesByName.value[c.name.toLowerCase()] = { code: c.code, name: c.name };
+                if (c.code) countriesByCode.value[c.code.toLowerCase()] = { code: c.code, name: c.name };
+            });
+        }
+    } catch (e) { /* fallback handled by vendorCountry */ }
+});
+
+const vendorCountry = (vendor) => {
+    const raw = (vendor?.user?.profile?.country || '').toString().trim();
+    if (!raw) return { code: '', name: '' };
+    const lower = raw.toLowerCase();
+    if (raw.length === 2 && countriesByCode.value[lower]) return countriesByCode.value[lower];
+    if (countriesByName.value[lower]) return countriesByName.value[lower];
+    return { code: raw.length === 2 ? raw : '', name: raw };
+};
+
+// Bulk selection
+const selectedIds = ref([]);
+const bulkAction = ref('');
+const isBulkDeleteDialogOpen = ref(false);
+const isBulkDeleting = ref(false);
+
+const visibleIds = computed(() => (props.users?.data || []).map((v) => v.user_id).filter(Boolean));
+const isAllOnPageSelected = computed(
+    () => visibleIds.value.length > 0 && visibleIds.value.every((id) => selectedIds.value.includes(id)),
+);
+
+const toggleRow = (id, checked) => {
+    if (checked) {
+        if (!selectedIds.value.includes(id)) selectedIds.value.push(id);
+    } else {
+        selectedIds.value = selectedIds.value.filter((x) => x !== id);
+    }
+};
+
+const toggleSelectAllOnPage = (checked) => {
+    if (checked) {
+        selectedIds.value = Array.from(new Set([...selectedIds.value, ...visibleIds.value]));
+    } else {
+        selectedIds.value = selectedIds.value.filter((id) => !visibleIds.value.includes(id));
+    }
+};
+
+const applyBulkAction = () => {
+    if (!bulkAction.value) return;
+    if (selectedIds.value.length === 0) {
+        toast.error('Select at least one vendor first');
+        return;
+    }
+    if (bulkAction.value === 'delete') isBulkDeleteDialogOpen.value = true;
+};
+
+const confirmBulkDelete = () => {
+    if (selectedIds.value.length === 0) return;
+    const count = selectedIds.value.length;
+    isBulkDeleting.value = true;
+    router.delete('/vendors/bulk', {
+        data: { ids: [...selectedIds.value] },
+        preserveScroll: true,
+        onSuccess: () => {
+            toast.success(`Deleted ${count} vendor${count > 1 ? 's' : ''}`);
+            selectedIds.value = [];
+            bulkAction.value = '';
+            isBulkDeleteDialogOpen.value = false;
+        },
+        onError: () => toast.error('Failed to delete selected vendors'),
+        onFinish: () => { isBulkDeleting.value = false; },
+    });
+};
+
+watch(() => props.users?.current_page, () => { selectedIds.value = []; });
 const isEditDialogOpen = ref(false);
 const isViewDialogOpen = ref(false);
 const isImageModalOpen = ref(false)

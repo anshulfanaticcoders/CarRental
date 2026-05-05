@@ -106,17 +106,20 @@
                 </div>
             </div>
 
-            <div v-if="selectedVehicleIds.length > 0" class="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-                <span class="text-sm font-medium text-red-900">
-                    {{ selectedVehicleIds.length }} vehicle{{ selectedVehicleIds.length > 1 ? 's' : '' }} selected
+            <div v-if="users?.data?.length" class="flex flex-wrap items-center gap-3 rounded-xl border bg-white px-4 py-3">
+                <Select v-model="bulkAction">
+                    <SelectTrigger class="w-48 h-10">
+                        <SelectValue placeholder="Bulk actions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="delete">Delete</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" @click="applyBulkAction" :disabled="!bulkAction || isBulkDeleting">Apply</Button>
+                <span v-if="selectedVehicleIds.length > 0" class="text-sm text-slate-600">
+                    {{ selectedVehicleIds.length }} selected
                 </span>
-                <Button size="sm" variant="destructive" @click="openBulkDeleteDialog" :disabled="isBulkDeleting">
-                    <span v-if="isBulkDeleting">Deleting...</span>
-                    <span v-else>Delete Selected</span>
-                </Button>
-                <Button size="sm" variant="outline" @click="clearSelection">
-                    Clear Selection
-                </Button>
+                <Button v-if="selectedVehicleIds.length > 0" variant="ghost" size="sm" @click="clearSelection">Clear</Button>
             </div>
 
             <div v-if="pendingDeletionIds.length > 0" class="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
@@ -379,6 +382,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Vehicles/ViewUser.vue";
 import EditVehicleDialog from "@/Pages/AdminDashboardPages/Vehicles/EditVehicleDialog.vue";
+import { useCurrencyConversion } from "@/composables/useCurrencyConversion";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import {
   AlertDialog,
@@ -390,6 +394,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/Components/ui/alert-dialog'
+
+const { getCurrencySymbol } = useCurrencyConversion();
 
 const props = defineProps({
     users: Object,
@@ -415,6 +421,16 @@ const isDeleteDialogOpen = ref(false);
 const isBulkDeleteDialogOpen = ref(false);
 const isDeleting = ref(false);
 const isBulkDeleting = ref(false);
+const bulkAction = ref('');
+
+const applyBulkAction = () => {
+    if (!bulkAction.value) return;
+    if (selectedVehicleIds.value.length === 0) {
+        toast.error('Select at least one vehicle first');
+        return;
+    }
+    if (bulkAction.value === 'delete') isBulkDeleteDialogOpen.value = true;
+};
 const selectedImage = ref('');
 const viewForm = ref({});
 const editVehicleForm = ref({});
@@ -474,7 +490,8 @@ const officeAddress = (vehicle) => {
 };
 
 const vehicleCurrency = (vehicle) => {
-    return vehicle.vendor_profile_data?.currency || '$';
+    const code = vehicle.vendor_profile?.currency || vehicle.User?.profile?.currency;
+    return code ? getCurrencySymbol(code) : '$';
 };
 
 const buildQueryParams = (overrides = {}) => {
@@ -594,10 +611,6 @@ const clearSelection = () => {
     selectedVehicleIds.value = [];
 };
 
-const openBulkDeleteDialog = () => {
-    isBulkDeleteDialogOpen.value = true;
-};
-
 const confirmDelete = () => {
     isDeleting.value = true;
 
@@ -647,6 +660,7 @@ const confirmBulkDelete = () => {
 
             acceptDeletedVehicleIds(acceptedIds);
             isBulkDeleteDialogOpen.value = false;
+            bulkAction.value = '';
             toast.success(`Deletion started for ${acceptedCount} vehicle${acceptedCount > 1 ? 's' : ''}. The list will keep checking automatically.`);
             startDeletionPolling();
         } catch (error) {

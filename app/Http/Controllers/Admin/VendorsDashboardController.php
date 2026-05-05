@@ -22,7 +22,7 @@ class VendorsDashboardController extends Controller
         $status = $request->query('status');
 
         // Get vendor profiles with search and join with users
-        $vendorProfilesQuery = VendorProfile::with(['user', 'user.vendorDocument']);
+        $vendorProfilesQuery = VendorProfile::with(['user', 'user.profile', 'user.vendorDocument']);
 
         // Apply search filter
         if ($search) {
@@ -89,5 +89,18 @@ class VendorsDashboardController extends Controller
 
     return redirect()->route('vendors.index')->with('success', 'Vendor deleted successfully.');
 }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        $ids = array_values(array_unique($validated['ids']));
+        $deleted = User::whereIn('id', $ids)->where('role', 'vendor')->delete();
+
+        return redirect()->route('vendors.index')->with('success', "{$deleted} vendor(s) deleted successfully.");
+    }
 
 }
