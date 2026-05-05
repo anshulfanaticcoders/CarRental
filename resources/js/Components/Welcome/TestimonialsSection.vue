@@ -10,6 +10,9 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from '@/Components/ui/carousel';
+import Autoplay from 'embla-carousel-autoplay';
+
+const autoplayPlugins = [Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true })];
 
 const props = defineProps({
     initialTestimonials: {
@@ -132,6 +135,7 @@ useScrollAnimation('.testi-section', '.testi-header, .testi-carousel, .testi-dot
             <Carousel
                 class="testi-carousel sr-reveal"
                 :opts="{ align: 'start', loop: cards.length > 3 }"
+                :plugins="autoplayPlugins"
                 @init-api="onInitApi"
             >
                 <CarouselContent>

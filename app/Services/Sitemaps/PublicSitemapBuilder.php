@@ -22,11 +22,29 @@ class PublicSitemapBuilder
         ?string $baseUrl = null,
         int $maxUrlsPerSitemap = 45000
     ) {
-        $resolvedBaseUrl = $baseUrl ?? config('app.url');
+        // Prefer an explicit SITEMAP_BASE_URL so dev environments can't clobber
+        // production sitemaps with localhost URLs by accident.
+        $resolvedBaseUrl = $baseUrl
+            ?? env('SITEMAP_BASE_URL')
+            ?? config('app.url');
         $resolvedBaseUrl = rtrim((string) $resolvedBaseUrl, '/');
 
         if ($resolvedBaseUrl === '') {
             throw new RuntimeException('APP_URL is required to build sitemap URLs.');
+        }
+
+        // Refuse to generate a sitemap with a local hostname — Google can't fetch
+        // localhost, so emitting these into public/sitemap.xml would silently
+        // poison production. Set SITEMAP_BASE_URL=https://yourdomain.com to override.
+        $host = parse_url($resolvedBaseUrl, PHP_URL_HOST) ?: '';
+        $localPatterns = ['127.0.0.1', 'localhost', '::1', '.test', '.local'];
+        foreach ($localPatterns as $needle) {
+            if ($host !== '' && str_contains($host, $needle)) {
+                throw new RuntimeException(
+                    "Refusing to build sitemap with local base URL ({$resolvedBaseUrl}). "
+                    . "Set SITEMAP_BASE_URL=https://your-production-domain.com (or APP_URL) before running."
+                );
+            }
         }
 
         $this->baseUrl = $resolvedBaseUrl;

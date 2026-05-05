@@ -9,6 +9,9 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from '@/Components/ui/carousel';
+import Autoplay from 'embla-carousel-autoplay';
+
+const autoplayPlugins = [Autoplay({ delay: 4500, stopOnInteraction: false, stopOnMouseEnter: true })];
 
 const props = defineProps({
     popularPlaces: { type: Array, default: null },
@@ -115,6 +118,7 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
             <Carousel
                 class="dest-carousel sr-reveal"
                 :opts="{ align: 'start', loop: showCarouselControls }"
+                :plugins="autoplayPlugins"
                 @init-api="onInitApi"
             >
                 <CarouselContent>
