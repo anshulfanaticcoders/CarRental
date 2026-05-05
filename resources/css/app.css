@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* When scroll is locked (offcanvas / modal open), the body scrollbar disappears
+   and the viewport widens by ~15px. Fixed elements anchored to the viewport
+   then visually shift right. We expose --scrollbar-lock-pad from scrollLock.js
+   and add equivalent right-padding to the header + floating widget to keep
+   them visually pinned. */
+html[data-scroll-locked] .hdr,
+html[data-scroll-locked] header.hdr {
+    padding-right: var(--scrollbar-lock-pad, 0px);
+}
+
+html[data-scroll-locked] .floating-widget {
+    margin-right: var(--scrollbar-lock-pad, 0px);
+}
+
 @layer base {
   :root {
     /* Vrooem Design System */
