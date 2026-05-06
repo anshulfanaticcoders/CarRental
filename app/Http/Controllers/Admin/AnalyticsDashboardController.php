@@ -16,7 +16,13 @@ class AnalyticsDashboardController extends Controller
     public function index(Request $request)
     {
         $currency = config('currency.default', 'EUR');
-        $range = $request->get('range', 'week');
+        $request->validate([
+            'range' => 'nullable|string|in:day,week,month,year,custom',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+        ]);
+
+        $range = $request->get('range', 'year');
         [$start, $end] = $this->resolveDateRange($range, $request->get('start_date'), $request->get('end_date'));
 
         $periodDays = $start->diffInDays($end) + 1;
@@ -82,6 +88,10 @@ class AnalyticsDashboardController extends Controller
             return [$today->copy()->subDays(29)->startOfDay(), $today->copy()->endOfDay()];
         }
 
+        if ($range === 'year') {
+            return [$today->copy()->startOfYear(), $today->copy()->endOfDay()];
+        }
+
         if ($range === 'custom' && $startInput && $endInput) {
             try {
                 $start = Carbon::parse($startInput)->startOfDay();
@@ -95,7 +105,7 @@ class AnalyticsDashboardController extends Controller
             }
         }
 
-        return [$today->copy()->subDays(6)->startOfDay(), $today->copy()->endOfDay()];
+        return [$today->copy()->startOfYear(), $today->copy()->endOfDay()];
     }
 
     private function getBookingsByDate(Carbon $start, Carbon $end): array

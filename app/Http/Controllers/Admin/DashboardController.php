@@ -210,10 +210,25 @@ class DashboardController extends Controller
         $currentMonthSales = Booking::whereBetween('created_at', [$startDate, $endDate])->count();
 
         $formattedSales = $recentSales->map(function ($booking) {
+            $vehicleName = trim((string) ($booking->vehicle_name ?? ''));
+
+            if ($vehicleName === '') {
+                $vehicleName = trim((string) (optional($booking->vehicle)->name ?? ''));
+            }
+
+            if ($vehicleName === '') {
+                $vehicleName = trim(
+                    collect([
+                        optional($booking->vehicle)->brand,
+                        optional($booking->vehicle)->model,
+                    ])->filter()->implode(' ')
+                );
+            }
+
             return [
                 'booking_number' => $booking->booking_number,
                 'customer_name' => optional($booking->customer)->first_name . ' ' . optional($booking->customer)->last_name,
-                'vehicle' => optional($booking->vehicle)->name,
+                'vehicle' => $vehicleName !== '' ? $vehicleName : 'N/A',
                 'total_amount' => $booking->amounts->admin_total_amount ?? $booking->total_amount,
                 'currency' => $booking->amounts->admin_currency ?? 'EUR',
                 'payment_status' => optional($booking->payment)->status ?? 'Pending',
@@ -296,12 +311,26 @@ class DashboardController extends Controller
                 $customer = $booking->customer;
                 $adminCurrency = $booking->amounts->admin_currency ?? 'EUR';
                 $adminAmount = $booking->amounts->admin_total_amount ?? $booking->total_amount;
+                $vehicleName = trim((string) ($booking->vehicle_name ?? ''));
+
+                if ($vehicleName === '') {
+                    $vehicleName = trim(
+                        collect([
+                            optional($vehicle)->brand,
+                            optional($vehicle)->model,
+                        ])->filter()->implode(' ')
+                    );
+                }
+
+                if ($vehicleName === '') {
+                    $vehicleName = trim((string) (optional($vehicle)->name ?? ''));
+                }
 
                 return [
                     'booking_id' => $booking->id,
                     'customer_name' => optional($customer)->first_name . ' ' . optional($customer)->last_name,
                     'vendor_name' => $vendor ? trim($vendor->first_name . ' ' . $vendor->last_name) : 'N/A',
-                    'vehicle' => optional($vehicle)->brand . ' ' . optional($vehicle)->model,
+                    'vehicle' => $vehicleName !== '' ? $vehicleName : 'N/A',
                     'start_date' => $booking->pickup_date,
                     'end_date' => $booking->return_date,
                     'total_amount' => $adminCurrency . ' ' . number_format((float) $adminAmount, 2),

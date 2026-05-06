@@ -14,12 +14,19 @@ class PaymentDashboardController extends Controller
     {
         $currencyFilter = $request->currency ?: config('currency.default', 'EUR');
 
-        $paymentsQuery = BookingPayment::with(['booking.amounts'])
+        $paymentsQuery = BookingPayment::with(['booking.amounts', 'booking.customer'])
             ->when($request->search, function ($query, $search) {
-                $query->where('transaction_id', 'like', "%{$search}%")
-                    ->orWhere('payment_method', 'like', "%{$search}%")
-                    ->orWhere('amount', 'like', "%{$search}%")
-                    ->orWhere('payment_status', 'like', "%{$search}%");
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('transaction_id', 'like', "%{$search}%")
+                        ->orWhere('payment_method', 'like', "%{$search}%")
+                        ->orWhere('amount', 'like', "%{$search}%")
+                        ->orWhere('payment_status', 'like', "%{$search}%")
+                        ->orWhereHas('booking.customer', function ($customerQuery) use ($search) {
+                            $customerQuery->where('first_name', 'like', "%{$search}%")
+                                ->orWhere('last_name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        });
+                });
             })
             ->when($request->status, function ($query, $status) {
                 $query->where('payment_status', $status);

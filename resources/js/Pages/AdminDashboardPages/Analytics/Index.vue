@@ -17,7 +17,7 @@ const props = defineProps({
   breakdowns: Object,
 });
 
-const range = ref(props.filters?.range || 'week');
+const range = ref(props.filters?.range || 'year');
 const startDate = ref(props.filters?.start_date || '');
 const endDate = ref(props.filters?.end_date || '');
 
@@ -103,6 +103,7 @@ watch([range, startDate, endDate], () => {
               <SelectItem value="day">Today</SelectItem>
               <SelectItem value="week">Last 7 days</SelectItem>
               <SelectItem value="month">Last 30 days</SelectItem>
+              <SelectItem value="year">This Year</SelectItem>
               <SelectItem value="custom">Custom range</SelectItem>
             </SelectContent>
           </Select>

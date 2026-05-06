@@ -210,19 +210,27 @@ class BusinessReportsController extends Controller
 
     private function getBusinessReportTableData(Carbon $startDate, Carbon $endDate, string $adminCurrency)
     {
-        return Booking::with(['customer', 'vehicle.vendor', 'amounts'])
+        return Booking::with(['customer', 'vehicle.vendor', 'vehicle.vendorProfileData', 'amounts', 'vendorProfile'])
             ->whereBetween('created_at', [$startDate, $endDate])
             ->paginate(10, ['*'], 'page')
             ->through(function ($booking) use ($adminCurrency) {
                 $amounts = $booking->amounts;
                 $adminTotal = $amounts ? $amounts->admin_total_amount : $booking->total_amount;
+                $vendorName = optional(optional($booking->vehicle)->vendorProfileData)->company_name
+                    ?? optional($booking->vendorProfile)->company_name
+                    ?? trim((optional(optional($booking->vehicle)->vendor)->first_name ?? '') . ' ' . (optional(optional($booking->vehicle)->vendor)->last_name ?? ''));
+
+                $vehicleName = trim((string) ($booking->vehicle_name ?? ''));
+                if ($vehicleName === '') {
+                    $vehicleName = trim((optional($booking->vehicle)->brand ?? '') . ' ' . (optional($booking->vehicle)->model ?? ''));
+                }
 
                 return [
                     'id' => $booking->id,
                     'booking_number' => $booking->booking_number,
                     'customer_name' => trim((optional($booking->customer)->first_name ?? '') . ' ' . (optional($booking->customer)->last_name ?? '')),
-                    'vendor_name' => trim((optional(optional($booking->vehicle)->vendor)->first_name ?? '') . ' ' . (optional(optional($booking->vehicle)->vendor)->last_name ?? '')),
-                    'vehicle' => trim((optional($booking->vehicle)->brand ?? '') . ' ' . (optional($booking->vehicle)->model ?? '')),
+                    'vendor_name' => $vendorName !== '' ? $vendorName : 'N/A',
+                    'vehicle' => $vehicleName !== '' ? $vehicleName : 'N/A',
                     'total_amount' => round((float) $adminTotal, 2),
                     'currency' => $adminCurrency,
                     'payment_status' => $booking->payment_status ?? 'pending',

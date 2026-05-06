@@ -101,7 +101,7 @@
                         <Search class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
                             v-model="search"
-                            placeholder="Search payments by transaction ID, method..."
+                            placeholder="Search payments by transaction ID, customer, method..."
                             class="pl-10 pr-4 h-12 text-base"
                         />
                     </div>
@@ -141,6 +141,7 @@
                         <TableHeader>
                             <TableRow class="bg-muted/50">
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Customer</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Transaction ID</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Currency</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission Total</TableHead>
@@ -155,6 +156,14 @@
                             <TableRow v-for="(payment, index) in payments.data" :key="payment.id" class="hover:bg-muted/25 transition-colors">
                                 <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
                                     {{ (payments.current_page - 1) * payments.per_page + index + 1 }}
+                                </TableCell>
+                                <TableCell class="px-4 py-3 min-w-[220px]">
+                                    <div class="font-medium text-sm text-foreground">
+                                        {{ getCustomerName(payment) }}
+                                    </div>
+                                    <div class="text-xs text-muted-foreground">
+                                        {{ getCustomerEmail(payment) }}
+                                    </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 font-mono text-sm">
                                     {{ payment.transaction_id }}
@@ -325,6 +334,22 @@ const getAdminAmounts = (payment) => {
         paid: Number(payment.booking?.amount_paid || 0),
         pending: Number(payment.booking?.pending_amount || 0),
     };
+};
+
+const getCustomerName = (payment) => {
+    const customer = payment.booking?.customer;
+    if (!customer) return 'Unknown customer';
+
+    const fullName = [customer.first_name, customer.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+
+    return fullName || customer.email || 'Unknown customer';
+};
+
+const getCustomerEmail = (payment) => {
+    return payment.booking?.customer?.email || 'No email';
 };
 
 // Currency badge class

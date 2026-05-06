@@ -66,7 +66,7 @@
                             <SelectValue placeholder="All Status" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">All Status</SelectItem>
+                            <SelectItem :value="ALL_STATUS_VALUE">All Status</SelectItem>
                             <SelectItem value="draft">Draft</SelectItem>
                             <SelectItem value="scheduled">Scheduled</SelectItem>
                             <SelectItem value="sending">Sending</SelectItem>
@@ -181,21 +181,26 @@ const props = defineProps({
     flash: Object,
 });
 
+const ALL_STATUS_VALUE = 'all';
 const search = ref(props.filters?.search || '');
-const status = ref(props.filters?.status || '');
+const status = ref(props.filters?.status || ALL_STATUS_VALUE);
+
+const normalizedStatus = () => (
+    status.value === ALL_STATUS_VALUE ? '' : status.value
+);
 
 const handlePageChange = (page) => {
     router.get('/admin/newsletter-campaigns', {
         page,
         search: search.value,
-        status: status.value,
+        status: normalizedStatus(),
     }, { preserveState: true, replace: true });
 };
 
 const applyFilters = () => {
     router.get('/admin/newsletter-campaigns', {
         search: search.value,
-        status: status.value,
+        status: normalizedStatus(),
     }, { preserveState: true, replace: true });
 };
 
