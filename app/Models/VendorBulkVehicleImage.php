@@ -12,6 +12,7 @@ class VendorBulkVehicleImage extends Model
     protected $fillable = [
         'user_id',
         'image_path',
+        'thumbnail_path',
         'original_name',
     ];
 }

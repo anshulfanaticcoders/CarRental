@@ -161,7 +161,7 @@ class VehicleController extends Controller
             'operating_hours.*.close_time' => 'required_if:operating_hours.*.is_open,true|nullable|date_format:H:i',
             'primary_image_index' => 'required|numeric|min:0',
             'images' => 'required|array|min:5|max:20',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:10240',
+            'images.*' => 'image|mimes:jpeg,png,jpg|max:' . (int) config('vehicle_images.upload_max_kb', 5120),
 
             'selected_plans' => 'nullable|array|max:3',
             'selected_plans.*.plan_type' => 'required|string|in:Basic,Essential,Premium,Premium Plus',
@@ -423,26 +423,30 @@ class VehicleController extends Controller
                 $folderName = 'vehicle_images';
 
                 foreach ($request->file('images') as $index => $image) {
-                    $compressedImageUrl = ImageCompressionHelper::compressImage(
-                        $image,
-                        $folderName,
-                        quality: 80, // Adjust quality as needed
-                        maxWidth: 1200, // Optional: Set max width for vehicle images
-                        maxHeight: 900 // Optional: Set max height for vehicle images
-                    );
+                    $imageValidationError = ImageCompressionHelper::validateVehicleImageUpload($image);
+                    if ($imageValidationError !== null) {
+                        throw ValidationException::withMessages([
+                            'images' => $image->getClientOriginalName() . ': ' . $imageValidationError,
+                        ]);
+                    }
 
-                    if ($compressedImageUrl) {
+                    $compressedImageSet = ImageCompressionHelper::compressVehicleImageSet($image, $folderName);
+
+                    if ($compressedImageSet) {
                         // Determine image type
                         $imageType = ($index === $primaryImageIndex) ? 'primary' : 'gallery';
 
                         // Get the full URL for the stored image
-                        $fullImageUrl = Storage::disk('upcloud')->url($compressedImageUrl);
+                        $fullImageUrl = Storage::disk('upcloud')->url($compressedImageSet['image_path']);
+                        $thumbnailUrl = Storage::disk('upcloud')->url($compressedImageSet['thumbnail_path']);
 
                         // Create vehicle image record - store the relative path in image_path and full URL in image_url
                         VehicleImage::create([
                             'vehicle_id' => $vehicle->id,
-                            'image_path' => $compressedImageUrl, // Store the relative path
+                            'image_path' => $compressedImageSet['image_path'], // Store the relative path
                             'image_url' => $fullImageUrl,        // Store the full URL
+                            'thumbnail_path' => $compressedImageSet['thumbnail_path'],
+                            'thumbnail_url' => $thumbnailUrl,
                             'image_type' => $imageType,
                         ]);
                     } else {

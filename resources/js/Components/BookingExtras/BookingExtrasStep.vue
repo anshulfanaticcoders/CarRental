@@ -11,6 +11,7 @@ import {
     resolveSearchVehicleProviderLabel,
     resolveSearchVehicleSpecs,
 } from '@/features/search/utils/searchVehiclePresentation';
+import { resolveVehiclePreviewImageSource } from '@/utils/vehicleImageFallback';
 import check from "../../../assets/Check.svg";
 import carIcon from "../../../assets/carIcon.svg";
 import fuelIcon from "../../../assets/fuel.svg";
@@ -211,7 +212,10 @@ const {
 
 // ── Vehicle image / carousel ────────────────────────────────────────
 const vehicleImage = computed(() => {
-    return resolveSearchVehicleImage(props.vehicle);
+    return resolveVehiclePreviewImageSource({
+        ...props.vehicle,
+        image: resolveSearchVehicleImage(props.vehicle),
+    });
 });
 
 const heroImageIndex = ref(0);
@@ -221,8 +225,8 @@ const allHeroImages = computed(() => {
     const primary = legacyPayload.images.find(img => img.image_type === 'primary');
     const gallery = legacyPayload.images.filter(img => img.image_type === 'gallery') || [];
     const images = [];
-    if (primary) images.push(primary.image_url);
-    gallery.forEach(img => images.push(img.image_url));
+    if (primary) images.push(primary.thumbnail_url || primary.image_url);
+    gallery.forEach(img => images.push(img.thumbnail_url || img.image_url));
     return images;
 });
 const hasMultipleImages = computed(() => allHeroImages.value.length > 1);

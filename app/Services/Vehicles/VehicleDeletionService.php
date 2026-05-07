@@ -14,11 +14,8 @@ class VehicleDeletionService
         $vehicle->loadMissing(['images', 'bookings.damageProtection']);
 
         foreach ($vehicle->images as $image) {
-            $path = $image->image_path ?: $image->image_url;
-
-            if ($path) {
-                $this->deleteStoragePath($path);
-            }
+            $this->deleteStoragePath($image->image_path ?: $image->image_url);
+            $this->deleteStoragePath($image->thumbnail_path ?: $image->thumbnail_url);
         }
 
         foreach ($vehicle->bookings as $booking) {

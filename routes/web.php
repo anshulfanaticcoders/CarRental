@@ -37,7 +37,6 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailValidationController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\BookingController;
-use App\Http\Controllers\BulkVehicleUploadController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\EsimAccessController;
@@ -58,6 +57,7 @@ use App\Http\Controllers\Vendor\BlockingDateController;
 use App\Http\Controllers\Vendor\DamageProtectionController;
 use App\Http\Controllers\Vendor\VendorBookingController;
 use App\Http\Controllers\Vendor\VendorExternalBookingController;
+use App\Http\Controllers\Vendor\VendorBulkVehicleImportController;
 use App\Http\Controllers\Vendor\VendorLocationController;
 use App\Http\Controllers\Vendor\VendorOverviewController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
@@ -742,10 +742,21 @@ Route::group([
 
         Route::get('/vendor-status', [VendorController::class, 'status'])->name('vendor.status');
 
-        // Bulk Vehicle Upload Routes
-        Route::get('/vehicles/bulk-upload', [BulkVehicleUploadController::class, 'create'])->name('vehicles.bulk-upload.create');
-        Route::post('/vehicles/bulk-upload', [BulkVehicleUploadController::class, 'store'])->name('vehicles.bulk-upload.store');
-        Route::get('/vehicles/bulk-upload/template', [BulkVehicleUploadController::class, 'downloadTemplate'])->name('vehicles.bulk-upload.template');
+        // Bulk Vehicle Import Routes
+        Route::get('/vehicles/import', [VendorBulkVehicleImportController::class, 'index'])->middleware('vendor.status')->name('vendor.vehicles.bulk-import.index');
+        Route::get('/vehicles/import/template', [VendorBulkVehicleImportController::class, 'downloadTemplate'])->middleware('vendor.status')->name('vendor.vehicles.bulk-import.template');
+        Route::post('/vehicles/import/preview', [VendorBulkVehicleImportController::class, 'preview'])->middleware('vendor.status')->name('vendor.vehicles.bulk-import.preview');
+        Route::post('/vehicles/import/commit', [VendorBulkVehicleImportController::class, 'import'])->middleware('vendor.status')->name('vendor.vehicles.bulk-import.import');
+
+        // Legacy Bulk Vehicle Upload Routes (redirected to the rebuilt importer)
+        Route::get('/vehicles/bulk-upload', fn () => redirect()->route('vendor.vehicles.bulk-import.index', ['locale' => app()->getLocale()]))
+            ->name('vehicles.bulk-upload.create');
+        Route::post('/vehicles/bulk-upload', fn () => redirect()
+            ->route('vendor.vehicles.bulk-import.index', ['locale' => app()->getLocale()])
+            ->with('error', 'The legacy bulk upload flow has been retired. Please use the new bulk importer.'))
+            ->name('vehicles.bulk-upload.store');
+        Route::get('/vehicles/bulk-upload/template', fn () => redirect()->route('vendor.vehicles.bulk-import.template', ['locale' => app()->getLocale()]))
+            ->name('vehicles.bulk-upload.template');
 
         // Bulk Vehicle Image Routes
         Route::get('/bulk-vehicle-images', [VendorBulkImageController::class, 'index'])->name('vendor.bulk-vehicle-images.index');

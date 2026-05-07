@@ -13,6 +13,8 @@ class VehicleImage extends Model
         'vehicle_id',
         'image_path',
         'image_url',
+        'thumbnail_path',
+        'thumbnail_url',
         'image_type',
     ];
 

@@ -44,6 +44,7 @@ return [
         'error_missing_payment_intent' => 'L’ID de l’intention de paiement est manquant dans l’URL.',
         // Button
         'log_out' => 'Se déconnecter',
+        'logging_out' => 'Déconnexion...',
         'button_cancel' => 'Annuler',
 
         // Booking Details Page

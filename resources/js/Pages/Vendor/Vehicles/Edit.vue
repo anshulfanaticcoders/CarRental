@@ -752,12 +752,13 @@
                     <div v-if="!props.vehicle || !props.vehicle.images || props.vehicle.images.length < 20" class="vln-field-group">
                         <div class="vln-fg-header">
                             <div class="vln-fg-icon"><Upload :size="18" /></div>
-                            <div><div class="vln-fg-title">Upload New Images</div><div class="vln-fg-sub">JPG, PNG up to 10MB each</div></div>
+                            <div><div class="vln-fg-title">Upload New Images</div><div class="vln-fg-sub">{{ VEHICLE_IMAGE_UPLOAD_HINT }}</div></div>
                         </div>
                         <div class="vln-upload-zone" @dragenter="onDragEnter" @dragleave="onDragLeave" @dragover="onDragOver" @drop="onDrop">
                             <div class="vln-upload-icon"><Upload :size="22" /></div>
                             <div class="vln-upload-title">Drag & drop or <label for="images-edit" class="vln-upload-browse">browse files</label></div>
-                            <div class="vln-upload-hint">JPG, PNG up to 10MB each.</div>
+                            <div class="vln-upload-hint">{{ VEHICLE_IMAGE_UPLOAD_HINT }}</div>
+                            <div class="mt-2 text-xs text-gray-500">{{ VEHICLE_IMAGE_UPLOAD_DETAIL }}</div>
                             <input type="file" id="images-edit" ref="fileInput" @change="handleFileUpload" multiple class="hidden" accept="image/*" />
                         </div>
                         <div v-if="selectedFiles.length" class="vln-preview-grid mt-3">
@@ -823,6 +824,11 @@ import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import vehicleColorsFromJson from '../../../data/colors.json';
 import { suggestSippCode } from '@/utils/sippSuggestion';
+import {
+    VEHICLE_IMAGE_UPLOAD_DETAIL,
+    VEHICLE_IMAGE_UPLOAD_HINT,
+    validateVehicleImageFiles,
+} from '@/utils/vehicleImageValidation';
 import {
     CalendarDays, Clock, Copy, AlertCircle, Car, Wrench, CheckCircle2,
     MapPin, DollarSign, Shield, Package, Camera, ChevronRight, ArrowLeft,
@@ -1227,10 +1233,7 @@ const applyVendorLocation = (location) => {
 const getFlagUrl = (code) => `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
 const formatDate = (v) => { if (!v) { form.registration_date = null; return; } form.registration_date = new Date(v).toISOString().split('T')[0]; };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const VALID_FORMATS = ['image/jpeg', 'image/jpg', 'image/png'];
-
-const handleFileUpload = (e) => {
+const handleFileUpload = async (e) => {
     const newFiles = Array.from(e.target.files);
     const currentImagesCount = props.vehicle?.images?.length || 0;
     const totalAfterAdding = currentImagesCount + selectedFiles.value.length + newFiles.length;
@@ -1239,9 +1242,11 @@ const handleFileUpload = (e) => {
         showErrorDialog.value = true;
         return;
     }
-    for (const f of newFiles) {
-        if (!VALID_FORMATS.includes(f.type)) { errorMessage.value = 'Please upload only JPG or PNG images.'; showErrorDialog.value = true; return; }
-        if (f.size > MAX_FILE_SIZE) { errorMessage.value = 'Image size must be under 10MB.'; showErrorDialog.value = true; return; }
+    const validationError = await validateVehicleImageFiles(newFiles);
+    if (validationError) {
+        errorMessage.value = validationError;
+        showErrorDialog.value = true;
+        return;
     }
     selectedFiles.value = [...selectedFiles.value, ...newFiles];
     form.images = selectedFiles.value;
@@ -1290,7 +1295,7 @@ const closeErrorDialog = () => { showErrorDialog.value = false; errorMessage.val
 const onDragEnter = (e) => { e.preventDefault(); e.stopPropagation(); dragCounter.value++; };
 const onDragLeave = (e) => { e.preventDefault(); e.stopPropagation(); dragCounter.value--; };
 const onDragOver = (e) => { e.preventDefault(); e.stopPropagation(); };
-const onDrop = (e) => {
+const onDrop = async (e) => {
     e.preventDefault(); e.stopPropagation(); dragCounter.value = 0;
     const f = Array.from(e.dataTransfer.files);
     if (f.length) {
@@ -1301,9 +1306,11 @@ const onDrop = (e) => {
             showErrorDialog.value = true;
             return;
         }
-        for (const file of f) {
-            if (!VALID_FORMATS.includes(file.type)) { errorMessage.value = 'Please upload only JPG or PNG images.'; showErrorDialog.value = true; return; }
-            if (file.size > MAX_FILE_SIZE) { errorMessage.value = 'Image size must be under 10MB.'; showErrorDialog.value = true; return; }
+        const validationError = await validateVehicleImageFiles(f);
+        if (validationError) {
+            errorMessage.value = validationError;
+            showErrorDialog.value = true;
+            return;
         }
         selectedFiles.value = [...selectedFiles.value, ...f];
         form.images = selectedFiles.value;

@@ -44,6 +44,7 @@ return [
         'error_missing_payment_intent' => 'De betalingsintentie-ID ontbreekt in de URL.',
         // Button
         'log_out' => 'Uitloggen',
+        'logging_out' => 'Bezig met uitloggen...',
         'button_cancel' => 'Annuleren',
 
         // Booking Details Page

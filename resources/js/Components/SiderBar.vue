@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch, getCurrentInstance } from "vue";
-import { Link, usePage } from "@inertiajs/vue3";
+import { Link, router, usePage } from "@inertiajs/vue3";
 import chevronIcon from "../../assets/chaveronDown.svg";
 import profileIcon from "../../assets/userDashIcon.svg";
 import bookingsIcon from "../../assets/bookingIcon.svg";
@@ -139,7 +139,7 @@ const vendorMenus = [
       { name: _t('customerprofile', 'all_vehicles'), path: route('current-vendor-vehicles.index', { locale: usePage().props.locale }) },
       { name: _t('customerprofile', 'add_new_vehicle'), path: route('vehicles.create', { locale: usePage().props.locale }) },
       { name: 'Manage Vehicle Locations', path: route('vendor.locations.index', { locale: usePage().props.locale }) },
-      { name: _t('customerprofile', 'create_bulk_listing'), path: route('vehicles.bulk-upload.create', { locale: usePage().props.locale }) },
+      { name: _t('customerprofile', 'create_bulk_listing'), path: route('vendor.vehicles.bulk-import.index', { locale: usePage().props.locale }) },
     ],
   },
 ];
@@ -227,6 +227,8 @@ watch(() => page.url, () => {
 import axios from "axios";
 
 const unreadMessageCount = ref(0);
+const isLoggingOut = ref(false);
+const isLogoutDialogOpen = ref(false);
 
 const fetchUnreadMessageCount = async () => {
   try {
@@ -256,6 +258,21 @@ const handleSubmenuClick = (name) => {
     setOpenMobile(false);
   }
   setActiveSubmenu(name);
+};
+
+const handleLogout = () => {
+  if (isLoggingOut.value) {
+    return;
+  }
+
+  isLoggingOut.value = true;
+  isLogoutDialogOpen.value = false;
+
+  router.post(route('logout'), {}, {
+    onFinish: () => {
+      isLoggingOut.value = false;
+    },
+  });
 };
 
 
@@ -398,13 +415,16 @@ const leave = (el) => {
     </SidebarContent>
 
     <SidebarFooter>
-      <AlertDialog>
+      <AlertDialog v-model:open="isLogoutDialogOpen">
         <AlertDialogTrigger as-child>
           <SidebarMenuButton variant="outline" size="lg"
             class="profile-nav-button bg-rose-600 text-white hover:text-white hover:bg-rose-700 border-rose-600"
+            :disabled="isLoggingOut"
             :tooltip="_t('customerprofile', 'log_out')">
             <img :src="logoutIcon" alt="" class="h-5 w-5 nav-icon nav-icon--white" />
-            <span v-if="!isCollapsed" class="nav-label text-white">{{ _t('customerprofile', 'log_out') }}</span>
+            <span v-if="!isCollapsed" class="nav-label text-white">
+              {{ isLoggingOut ? (_t('customerprofile', 'logging_out') || 'Logging out...') : _t('customerprofile', 'log_out') }}
+            </span>
           </SidebarMenuButton>
         </AlertDialogTrigger>
         <AlertDialogContent>
@@ -416,10 +436,11 @@ const leave = (el) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{{ _t('customerprofile', 'button_cancel') || 'Cancel' }}</AlertDialogCancel>
-            <AlertDialogAction as-child>
-              <Link :href="route('logout')" method="post" as="button">
-                {{ _t('customerprofile', 'log_out') }}
-              </Link>
+            <AlertDialogAction
+              :disabled="isLoggingOut"
+              @click="handleLogout"
+            >
+              {{ _t('customerprofile', 'log_out') }}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

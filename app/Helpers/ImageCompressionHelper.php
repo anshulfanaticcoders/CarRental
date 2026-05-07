@@ -7,6 +7,59 @@ use Illuminate\Support\Facades\Storage;
 
 class ImageCompressionHelper
 {
+    public static function validateVehicleImageUpload(UploadedFile $imageFile): ?string
+    {
+        $dimensions = @getimagesize($imageFile->getPathname());
+
+        if ($dimensions === false) {
+            return 'We could not read the image dimensions.';
+        }
+
+        [$width, $height] = $dimensions;
+
+        if ($width < (int) config('vehicle_images.min_width', 1200) || $height < (int) config('vehicle_images.min_height', 900)) {
+            return 'Use images of at least 1200×900px.';
+        }
+
+        if ($width <= $height) {
+            return 'Use landscape photos where width is greater than height.';
+        }
+
+        return null;
+    }
+
+    public static function compressVehicleImageSet(UploadedFile $imageFile, string $folderName): array|false
+    {
+        $main = self::compressImage(
+            $imageFile,
+            $folderName,
+            quality: (int) config('vehicle_images.main.quality', 78),
+            maxWidth: (int) config('vehicle_images.main.max_width', 1200),
+            maxHeight: (int) config('vehicle_images.main.max_height', 900),
+        );
+
+        if (!$main) {
+            return false;
+        }
+
+        $thumbnail = self::compressImage(
+            $imageFile,
+            trim($folderName, '/').'/thumbnails',
+            quality: (int) config('vehicle_images.thumbnail.quality', 68),
+            maxWidth: (int) config('vehicle_images.thumbnail.max_width', 480),
+            maxHeight: (int) config('vehicle_images.thumbnail.max_height', 360),
+        );
+
+        if (!$thumbnail) {
+            return false;
+        }
+
+        return [
+            'image_path' => $main,
+            'thumbnail_path' => $thumbnail,
+        ];
+    }
+
     /**
      * Compress an image using GD Library and save it.
      *
@@ -23,7 +76,7 @@ class ImageCompressionHelper
         $imageMime = $imageFile->getMimeType();
         $imageExtension = $imageFile->getClientOriginalExtension();
 
-        list($width, $height) = getimagesize($imagePath);
+        [$width, $height] = getimagesize($imagePath);
 
         // Calculate new dimensions if maxWidth or maxHeight are provided
         $newWidth = $width;

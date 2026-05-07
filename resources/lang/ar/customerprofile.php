@@ -44,6 +44,7 @@ return [
         'error_missing_payment_intent' => 'معرف نية الدفع مفقود من الرابط.',
         // Button
         'log_out' => 'تسجيل الخروج',
+        'logging_out' => 'جاري تسجيل الخروج...',
         'button_cancel' => 'إلغاء',
 
         // Booking Details Page

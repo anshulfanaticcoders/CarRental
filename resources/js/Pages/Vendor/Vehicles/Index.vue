@@ -188,9 +188,19 @@
                                     <Badge variant="secondary" class="capitalize">{{ vehicle.fuel }}</Badge>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 max-w-xs">
-                                    <div class="flex items-center gap-1 truncate" :title="vehicle.full_vehicle_address">
-                                        <MapPin class="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                                        <span class="text-sm">{{ vehicle.full_vehicle_address }}</span>
+                                    <div class="flex items-start gap-1" :title="getVehicleLocationTitle(vehicle)">
+                                        <MapPin class="mt-0.5 w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                        <div class="min-w-0">
+                                            <div class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                {{ getVehicleLocationName(vehicle) }}
+                                            </div>
+                                            <div
+                                                v-if="getVehicleLocationSecondary(vehicle)"
+                                                class="truncate text-xs text-muted-foreground"
+                                            >
+                                                {{ getVehicleLocationSecondary(vehicle) }}
+                                            </div>
+                                        </div>
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
@@ -323,11 +333,19 @@
                         <!-- Location -->
                         <div class="mb-4">
                             <span class="text-xs font-medium text-muted-foreground block mb-1">Location</span>
-                            <div class="flex items-center gap-1">
+                            <div class="flex items-start gap-1">
                                 <MapPin class="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                                <span class="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{{
-                                    vehicle.full_vehicle_address
-                                    }}</span>
+                                <div class="min-w-0">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
+                                        {{ getVehicleLocationName(vehicle) }}
+                                    </div>
+                                    <div
+                                        v-if="getVehicleLocationSecondary(vehicle)"
+                                        class="text-sm text-gray-700 dark:text-gray-300 line-clamp-2"
+                                    >
+                                        {{ getVehicleLocationSecondary(vehicle) }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -543,11 +561,30 @@ const filteredVehicles = computed(() => {
             vehicle.model.toLowerCase().includes(query) ||
             vehicle.transmission.toLowerCase().includes(query) ||
             vehicle.fuel.toLowerCase().includes(query) ||
-            vehicle.full_vehicle_address.toLowerCase().includes(query) ||
+            getVehicleLocationTitle(vehicle).toLowerCase().includes(query) ||
             vehicle.status.toLowerCase().includes(query)
         );
     });
 });
+
+const getVehicleLocationName = (vehicle) => vehicle.vendor_location?.name || vehicle.vendorLocation?.name || vehicle.location || vehicle.full_vehicle_address || 'No location';
+
+const getVehicleLocationSecondary = (vehicle) => {
+    const fullAddress = vehicle.full_vehicle_address || '';
+    const primaryLocation = getVehicleLocationName(vehicle);
+
+    if (!fullAddress || fullAddress === primaryLocation) {
+        return '';
+    }
+
+    return fullAddress;
+};
+
+const getVehicleLocationTitle = (vehicle) => {
+    return [getVehicleLocationName(vehicle), getVehicleLocationSecondary(vehicle)]
+        .filter(Boolean)
+        .join(' • ');
+};
 
 watch(searchQuery, (newQuery) => {
     router.get(

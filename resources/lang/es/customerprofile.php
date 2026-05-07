@@ -44,6 +44,7 @@ return [
         'error_missing_payment_intent' => 'Falta el ID de Intención de Pago en la URL.',
         // Button
         'log_out' => 'Cerrar sesión',
+        'logging_out' => 'Cerrando sesión...',
         'button_cancel' => 'Cancelar',
 
         // Booking Details Page

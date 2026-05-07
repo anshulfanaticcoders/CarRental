@@ -22,6 +22,7 @@ use Inertia\Inertia;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Services\Vehicles\SippCodeSuggestionService;
+use App\Services\Vehicles\VehicleDeletionService;
 use App\Services\Vehicles\VendorLocationSyncService;
 
 class VendorVehicleController extends Controller
@@ -29,6 +30,7 @@ class VendorVehicleController extends Controller
     public function __construct(
         private readonly VendorLocationSyncService $vendorLocationSyncService,
         private readonly SippCodeSuggestionService $sippCodeSuggestionService,
+        private readonly VehicleDeletionService $vehicleDeletionService,
     ) {
     }
 
@@ -38,7 +40,7 @@ class VendorVehicleController extends Controller
         $searchQuery = $request->input('search', '');
         $vendorLocationId = $request->input('vendor_location_id');
 
-        $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile', 'benefits'])
+        $vehicles = Vehicle::with(['specifications', 'images', 'category', 'user', 'vendorProfile', 'benefits', 'vendorLocation'])
             ->where('vendor_id', $vendorId)
             ->when($vendorLocationId, fn ($query) => $query->where('vendor_location_id', $vendorLocationId))
             ->when($searchQuery, function ($query, $searchQuery) {
@@ -162,7 +164,7 @@ class VendorVehicleController extends Controller
             'vehicle_height' => 'nullable|numeric|min:0',
             'dealer_cost' => 'nullable|numeric|min:0',
             'phone_number' => 'required|string|max:15',
-            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:' . (int) config('vehicle_images.upload_max_kb', 5120),
             'primary_image_index' => 'nullable|integer|min:0',
             'existing_primary_image_id' => 'nullable|integer|exists:vehicle_images,id',
 
@@ -554,15 +556,16 @@ class VendorVehicleController extends Controller
 
             foreach ($request->file('images') as $index => $image) {
                 $folderName = 'vehicle_images';
-                $compressedImageUrl = ImageCompressionHelper::compressImage(
-                    $image,
-                    $folderName,
-                    quality: 80, // Adjust quality as needed (0-100)
-                    maxWidth: 1200, // Optional: Set max width
-                    maxHeight: 800 // Optional: Set max height
-                );
+                $imageValidationError = ImageCompressionHelper::validateVehicleImageUpload($image);
+                if ($imageValidationError !== null) {
+                    return redirect()->back()->withErrors([
+                        'images' => $image->getClientOriginalName() . ': ' . $imageValidationError,
+                    ])->withInput();
+                }
 
-                if (!$compressedImageUrl) {
+                $compressedImageSet = ImageCompressionHelper::compressVehicleImageSet($image, $folderName);
+
+                if (!$compressedImageSet) {
                     return redirect()->back()->with('error', 'Failed to compress image: ' . $image->getClientOriginalName());
                 }
 
@@ -578,12 +581,15 @@ class VendorVehicleController extends Controller
                 }
 
                 // Get the full URL for the stored image
-                $fullImageUrl = Storage::disk('upcloud')->url($compressedImageUrl);
+                $fullImageUrl = Storage::disk('upcloud')->url($compressedImageSet['image_path']);
+                $thumbnailUrl = Storage::disk('upcloud')->url($compressedImageSet['thumbnail_path']);
 
                 VehicleImage::create([
                     'vehicle_id' => $vehicle->id,
-                    'image_path' => $compressedImageUrl, // Store the relative path
+                    'image_path' => $compressedImageSet['image_path'], // Store the relative path
                     'image_url' => $fullImageUrl,        // Store the full URL
+                    'thumbnail_path' => $compressedImageSet['thumbnail_path'],
+                    'thumbnail_url' => $thumbnailUrl,
                     'image_type' => $imageType,
                 ]);
             }
@@ -712,16 +718,7 @@ class VendorVehicleController extends Controller
     {
         $vendorId = auth()->id();
         $vehicle = Vehicle::where('vendor_id', $vendorId)->findOrFail($id);
-
-        // Delete images from storage
-        foreach ($vehicle->images as $image) {
-            $path = $image->image_path ?: $image->image_url;
-            if ($path) {
-                Storage::disk('upcloud')->delete($path);
-            }
-        }
-
-        $vehicle->delete();
+        $this->vehicleDeletionService->delete($vehicle);
 
         return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
             ->with('success', 'Vehicle deleted successfully');
@@ -736,13 +733,12 @@ class VendorVehicleController extends Controller
             return response()->json(['message' => 'Image not found'], 404);
         }
 
-        $path = $image->image_path ?: $image->image_url;
-        if ($path) {
-
-            try {
-                Storage::disk('upcloud')->delete($path);
-            } catch (\Exception $e) {
-
+        foreach ([$image->image_path ?: $image->image_url, $image->thumbnail_path ?: $image->thumbnail_url] as $path) {
+            if ($path) {
+                try {
+                    Storage::disk('upcloud')->delete($path);
+                } catch (\Exception $e) {
+                }
             }
         }
 
@@ -774,22 +770,7 @@ class VendorVehicleController extends Controller
                              ->with('error', 'No vehicles found or you do not have permission to delete them.');
         }
 
-        $deletedCount = 0;
-        foreach ($vehicles as $vehicle) {
-            // Delete images from storage
-            foreach ($vehicle->images as $image) {
-                $path = $image->image_path ?: $image->image_url;
-                if ($path) {
-                    try {
-                        Storage::disk('upcloud')->delete($path);
-                    } catch (\Exception $e) {
-                        // Log error or handle as needed
-                    }
-                }
-            }
-            $vehicle->delete();
-            $deletedCount++;
-        }
+        $deletedCount = $this->vehicleDeletionService->deleteMany($vehicles);
 
         if ($deletedCount > 0) {
             return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])

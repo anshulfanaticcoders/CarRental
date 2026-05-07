@@ -22,6 +22,9 @@ class VendorBulkImageController extends Controller
             return [
                 'id' => $image->id,
                 'url' => Storage::disk('upcloud')->url($image->image_path),
+                'thumbnail_url' => $image->thumbnail_path
+                    ? Storage::disk('upcloud')->url($image->thumbnail_path)
+                    : Storage::disk('upcloud')->url($image->image_path),
                 'original_name' => $image->original_name,
                 'created_at' => $image->created_at->toFormattedDateString(),
             ];
@@ -35,7 +38,7 @@ class VendorBulkImageController extends Controller
     {
         $request->validate([
             'images' => 'required|array|max:50', // Max 50 images
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg', // Max 2MB per image
+            'images.*' => 'image|mimes:jpeg,png,jpg|max:' . (int) config('vehicle_images.upload_max_kb', 5120),
         ]);
 
         $user = Auth::user();
@@ -47,27 +50,28 @@ class VendorBulkImageController extends Controller
                 try {
                     $originalName = $imageFile->getClientOriginalName();
                     $folderName = 'vehicle_images/' . $user->id;
-                    $compressedImageUrl = ImageCompressionHelper::compressImage(
-                        $imageFile,
-                        $folderName,
-                        quality: 80, // Adjust quality as needed (0-100)
-                        maxWidth: 1200, // Optional: Set max width for vehicle images
-                        maxHeight: 900 // Optional: Set max height for vehicle images
-                    );
+                    $imageValidationError = ImageCompressionHelper::validateVehicleImageUpload($imageFile);
+                    if ($imageValidationError !== null) {
+                        throw new \Exception($imageValidationError);
+                    }
 
-                    if (!$compressedImageUrl) {
+                    $compressedImageSet = ImageCompressionHelper::compressVehicleImageSet($imageFile, $folderName);
+
+                    if (!$compressedImageSet) {
                         throw new \Exception("Failed to compress image: {$originalName}");
                     }
 
                     $image = VendorBulkVehicleImage::create([
                         'user_id' => $user->id,
-                        'image_path' => $compressedImageUrl,
+                        'image_path' => $compressedImageSet['image_path'],
+                        'thumbnail_path' => $compressedImageSet['thumbnail_path'],
                         'original_name' => $originalName,
                     ]);
 
                     $uploadedImages[] = [
                         'id' => $image->id,
                         'url' => Storage::disk('upcloud')->url($image->image_path),
+                        'thumbnail_url' => Storage::disk('upcloud')->url($image->thumbnail_path),
                         'original_name' => $image->original_name,
                     ];
                 } catch (\Exception $e) {
@@ -77,23 +81,19 @@ class VendorBulkImageController extends Controller
         }
 
         if (count($errors) > 0) {
-            $flashMessage = [
-                'type' => count($uploadedImages) > 0 ? 'warning' : 'error', // warning if some succeeded, error if all failed
-                'message' => 'Some images could not be uploaded. Please see details below.',
-                'uploaded_images_count' => count($uploadedImages),
-                'failed_images_details' => $errors,
-            ];
-            if (count($uploadedImages) > 0) {
-                $flashMessage['message'] = count($uploadedImages) . ' image(s) uploaded successfully. However, some images failed:';
-            }
-            return redirect()->back()->with('flash', $flashMessage);
+            $errorMessage = count($uploadedImages) > 0
+                ? count($uploadedImages) . ' image(s) uploaded successfully, but some images failed: ' . implode(' ', $errors)
+                : implode(' ', $errors);
+
+            return redirect()
+                ->back()
+                ->with(count($uploadedImages) > 0 ? 'success' : 'error', count($uploadedImages) > 0 ? count($uploadedImages) . ' image(s) uploaded successfully.' : $errorMessage)
+                ->with(count($uploadedImages) > 0 ? 'error' : 'info', count($uploadedImages) > 0 ? $errorMessage : null);
         }
 
-        return redirect()->back()->with('flash', [
-            'type' => 'success',
-            'message' => count($uploadedImages) . ' image(s) uploaded successfully.',
-            'uploaded_images_count' => count($uploadedImages),
-        ]);
+        return redirect()
+            ->back()
+            ->with('success', count($uploadedImages) . ' image(s) uploaded successfully.');
     }
 
     /**
@@ -108,6 +108,9 @@ class VendorBulkImageController extends Controller
 
         // Delete from storage
         Storage::disk('upcloud')->delete($image->image_path);
+        if ($image->thumbnail_path) {
+            Storage::disk('upcloud')->delete($image->thumbnail_path);
+        }
 
         // Delete from database
         $image->delete();
@@ -140,6 +143,9 @@ class VendorBulkImageController extends Controller
         // Delete images from storage
         foreach ($images as $image) {
             Storage::disk('upcloud')->delete($image->image_path);
+            if ($image->thumbnail_path) {
+                Storage::disk('upcloud')->delete($image->thumbnail_path);
+            }
         }
 
         // Delete from database

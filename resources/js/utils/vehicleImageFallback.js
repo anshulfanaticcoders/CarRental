@@ -140,3 +140,24 @@ export const resolveVehicleImageSource = (vehicle = {}) => {
 
     return buildVehiclePlaceholderDataUri(vehicle);
 };
+
+export const resolveVehiclePreviewImageSource = (vehicle = {}) => {
+    if (sanitizeText(vehicle?.thumbnail_url)) return vehicle.thumbnail_url;
+    if (sanitizeText(vehicle?.image_thumbnail_url)) return vehicle.image_thumbnail_url;
+
+    if (Array.isArray(vehicle?.images)) {
+        const primaryThumb = vehicle.images.find((image) => image?.image_type === 'primary')?.thumbnail_url;
+        if (sanitizeText(primaryThumb)) return primaryThumb;
+
+        const firstThumb = vehicle.images.find((image) => sanitizeText(image?.thumbnail_url))?.thumbnail_url;
+        if (sanitizeText(firstThumb)) return firstThumb;
+    }
+
+    const providerImages = vehicle?.booking_context?.provider_payload?.images;
+    if (Array.isArray(providerImages)) {
+        const primaryThumb = providerImages.find((image) => image?.image_type === 'primary')?.thumbnail_url;
+        if (sanitizeText(primaryThumb)) return primaryThumb;
+    }
+
+    return resolveVehicleImageSource(vehicle);
+};

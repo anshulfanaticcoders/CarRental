@@ -127,6 +127,7 @@ class InternalSearchVehicleFactory
             }
 
             $image['image_url'] = $resolved;
+            $image['thumbnail_url'] = $this->resolveThumbnailUrl($image) ?? $resolved;
 
             return $image;
         }, $images));
@@ -298,6 +299,20 @@ class InternalSearchVehicleFactory
         }
 
         $url = $this->nullableString($image['image_url'] ?? null);
+
+        return $url === null ? null : $this->normalizePublicUrl($url);
+    }
+
+    private function resolveThumbnailUrl(array $image): ?string
+    {
+        $path = $this->nullableString($image['thumbnail_path'] ?? null);
+        if ($path !== null) {
+            return $this->normalizePublicUrl(
+                Storage::disk('upcloud')->url(ltrim($path, '/'))
+            );
+        }
+
+        $url = $this->nullableString($image['thumbnail_url'] ?? null);
 
         return $url === null ? null : $this->normalizePublicUrl($url);
     }

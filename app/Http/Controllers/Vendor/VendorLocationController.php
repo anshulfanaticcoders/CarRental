@@ -3,18 +3,21 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
-use App\Models\ApiBooking;
-use App\Models\Vehicle;
 use App\Models\VendorLocation;
+use App\Services\Vehicles\VehicleDeletionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class VendorLocationController extends Controller
 {
+    public function __construct(
+        private readonly VehicleDeletionService $vehicleDeletionService,
+    ) {
+    }
+
     public function index()
     {
         $vendorId = auth()->id();
@@ -95,42 +98,8 @@ class VendorLocationController extends Controller
 
         $vehicles = $vendorLocation->vehicles()->with(['images', 'bookings.damageProtection'])->get();
 
-        foreach ($vehicles as $vehicle) {
-            foreach ($vehicle->images as $image) {
-                $path = $image->image_path ?: $image->image_url;
-
-                if ($path) {
-                    try {
-                        Storage::disk('upcloud')->delete($path);
-                    } catch (\Throwable $exception) {
-                    }
-                }
-            }
-
-            foreach ($vehicle->bookings as $booking) {
-                $damageProtection = $booking->damageProtection;
-
-                if (!$damageProtection) {
-                    continue;
-                }
-
-                foreach ($damageProtection->before_images ?? [] as $imageKey) {
-                    $this->deleteStoragePath('damage_protections/before/' . $imageKey);
-                }
-
-                foreach ($damageProtection->after_images ?? [] as $imageKey) {
-                    $this->deleteStoragePath('damage_protections/after/' . $imageKey);
-                }
-            }
-        }
-
         DB::transaction(function () use ($vendorLocation, $vehicles) {
-            $vehicleIds = $vehicles->pluck('id')->all();
-
-            if (!empty($vehicleIds)) {
-                ApiBooking::query()->whereIn('vehicle_id', $vehicleIds)->delete();
-                Vehicle::query()->whereIn('id', $vehicleIds)->delete();
-            }
+            $this->vehicleDeletionService->deleteMany($vehicles);
 
             $vendorLocation->delete();
         });

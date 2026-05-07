@@ -188,6 +188,7 @@ class InternalVehicleController extends Controller
                 return [
                     'image_type' => $image->image_type,
                     'image_url' => $image->image_url,
+                    'thumbnail_url' => $image->thumbnail_url ?: $image->image_url,
                 ];
             })->values()->all(),
         ];

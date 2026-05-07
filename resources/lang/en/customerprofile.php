@@ -44,6 +44,7 @@ return [
         'error_missing_payment_intent' => 'Payment Intent ID is missing from the URL.',
         // Button
         'log_out' => 'Log out',
+        'logging_out' => 'Logging out...',
         'button_cancel' => 'Cancel',
 
         // Booking Details Page
