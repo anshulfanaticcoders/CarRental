@@ -94,12 +94,19 @@ class VendorsDashboardController extends Controller
     }
 
     public function destroy($id)
-{
-    $vendor = User::where('id', $id)->where('role', 'vendor')->firstOrFail();
-    $vendor->delete();
+    {
+        $vendorProfile = VendorProfile::with('user')
+            ->where('id', $id)
+            ->firstOrFail();
 
-    return redirect()->route('vendors.index')->with('success', 'Vendor deleted successfully.');
-}
+        $vendor = $vendorProfile->user;
+
+        abort_unless($vendor && $vendor->role === 'vendor', 404);
+
+        $vendor->delete();
+
+        return redirect()->route('vendors.index')->with('success', 'Vendor deleted successfully.');
+    }
 
     public function bulkDestroy(Request $request)
     {

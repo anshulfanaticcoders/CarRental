@@ -141,11 +141,7 @@
                     <AlertDialogFooter>
                         <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
                         <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
-                            <span v-if="isDeleting" class="flex items-center gap-2">
-                                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Deleting...
-                            </span>
-                            <span v-else>Delete</span>
+                            Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -194,47 +190,47 @@
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="(user,index) in users.data" :key="user.id" class="hover:bg-muted/25 transition-colors">
+                            <TableRow v-for="(vendorProfile,index) in users.data" :key="vendorProfile.id" class="hover:bg-muted/25 transition-colors">
                                 <TableCell class="px-4 py-3">
                                     <Checkbox
-                                        :checked="selectedIds.includes(user.user_id)"
-                                        @update:checked="(checked) => toggleRow(user.user_id, checked)"
-                                        :aria-label="`Select ${user.user?.first_name} ${user.user?.last_name}`"
+                                        :checked="selectedIds.includes(vendorProfile.user_id)"
+                                        @update:checked="(checked) => toggleRow(vendorProfile.user_id, checked)"
+                                        :aria-label="`Select ${vendorProfile.user?.first_name} ${vendorProfile.user?.last_name}`"
                                     />
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
                                     {{ (users.current_page - 1) * users.per_page + index + 1 }}
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="font-medium">{{ user.user?.first_name }} {{ user.user?.last_name }}</div>
-                                    <div class="text-sm text-muted-foreground">ID: {{ user.user_id }}</div>
+                                    <div class="font-medium">{{ vendorProfile.user?.first_name }} {{ vendorProfile.user?.last_name }}</div>
+                                    <div class="text-sm text-muted-foreground">ID: {{ vendorProfile.user_id }}</div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">{{ user.company_name || 'N/A' }}</TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">{{ user.company_email || 'N/A' }}</TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">{{ vendorProfile.company_name || 'N/A' }}</TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">{{ vendorProfile.company_email || 'N/A' }}</TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div v-if="vendorCountry(user).code" class="flex items-center gap-2">
+                                    <div v-if="vendorCountry(vendorProfile).code" class="flex items-center gap-2">
                                         <img
-                                            :src="`https://flagcdn.com/w20/${vendorCountry(user).code.toLowerCase()}.png`"
-                                            :alt="vendorCountry(user).name"
+                                            :src="`https://flagcdn.com/w20/${vendorCountry(vendorProfile).code.toLowerCase()}.png`"
+                                            :alt="vendorCountry(vendorProfile).name"
                                             width="20"
                                             height="15"
                                             class="rounded-sm border border-slate-200"
                                             loading="lazy"
                                             @error="$event.target.style.visibility = 'hidden'"
                                         />
-                                        <span class="text-sm">{{ vendorCountry(user).name }}</span>
+                                        <span class="text-sm">{{ vendorCountry(vendorProfile).name }}</span>
                                     </div>
                                     <span v-else class="text-sm text-muted-foreground">—</span>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <Badge :variant="getStatusBadgeVariant(user.status)" class="capitalize">
-                                        {{ user.status || 'N/A' }}
+                                    <Badge :variant="getStatusBadgeVariant(vendorProfile.status)" class="capitalize">
+                                        {{ vendorProfile.status || 'N/A' }}
                                     </Badge>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div v-if="user.user?.vendor_document?.passport_front" class="relative group cursor-pointer" @click="openImageModal(user.user.vendor_document.passport_front)">
+                                    <div v-if="vendorProfile.user?.vendor_document?.passport_front" class="relative group cursor-pointer" @click="openImageModal(vendorProfile.user.vendor_document.passport_front)">
                                         <img
-                                            :src="user.user.vendor_document.passport_front"
+                                            :src="vendorProfile.user.vendor_document.passport_front"
                                             alt="Passport Front"
                                             class="w-20 h-16 object-cover rounded-lg border border-gray-200 hover:border-blue-400 transition-all pointer-events-none"
                                         />
@@ -247,9 +243,9 @@
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div v-if="user.user?.vendor_document?.passport_back" class="relative group cursor-pointer" @click="openImageModal(user.user.vendor_document.passport_back)">
+                                    <div v-if="vendorProfile.user?.vendor_document?.passport_back" class="relative group cursor-pointer" @click="openImageModal(vendorProfile.user.vendor_document.passport_back)">
                                         <img
-                                            :src="user.user.vendor_document.passport_back"
+                                            :src="vendorProfile.user.vendor_document.passport_back"
                                             alt="Passport Back"
                                             class="w-20 h-16 object-cover rounded-lg border border-gray-200 hover:border-blue-400 transition-all pointer-events-none"
                                         />
@@ -261,28 +257,38 @@
                                         No Image
                                     </div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">{{ formatDate(user.created_at) }}</TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">{{ formatDate(vendorProfile.created_at) }}</TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="flex justify-end gap-2">
-                                        <Button v-if="user.status === 'pending'" size="sm" class="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" @click="quickStatusUpdate(user, 'approved')">
+                                        <Button v-if="vendorProfile.status === 'pending'" size="sm" class="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" @click="quickStatusUpdate(vendorProfile, 'approved')">
                                             <UserCheck class="w-3 h-3" />
                                             Approve
                                         </Button>
-                                        <Button v-if="user.status === 'pending'" size="sm" variant="destructive" class="flex items-center gap-1" @click="quickStatusUpdate(user, 'rejected')">
+                                        <Button v-if="vendorProfile.status === 'pending'" size="sm" variant="destructive" class="flex items-center gap-1" @click="quickStatusUpdate(vendorProfile, 'rejected')">
                                             <UserX class="w-3 h-3" />
                                             Reject
                                         </Button>
-                                        <Button size="sm" variant="outline" @click="openViewDialog(user)" class="flex items-center gap-1">
+                                        <Button size="sm" variant="outline" @click="openViewDialog(vendorProfile)" class="flex items-center gap-1">
                                             <Eye class="w-3 h-3" />
                                             View
                                         </Button>
-                                        <Button size="sm" variant="outline" @click="openEditDialog(user)" class="flex items-center gap-1">
+                                        <Button size="sm" variant="outline" @click="openEditDialog(vendorProfile)" class="flex items-center gap-1">
                                             <Edit class="w-3 h-3" />
                                             Edit
                                         </Button>
-                                        <Button size="sm" variant="destructive" @click="openDeleteDialog(user.id)" class="flex items-center gap-1">
-                                            <Trash2 class="w-3 h-3" />
-                                            Delete
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            @click="openDeleteDialog(vendorProfile.id)"
+                                            class="flex items-center gap-1"
+                                            :disabled="isDeleting && deleteVendorProfileId === vendorProfile.id"
+                                        >
+                                            <div
+                                                v-if="isDeleting && deleteVendorProfileId === vendorProfile.id"
+                                                class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
+                                            ></div>
+                                            <Trash2 v-else class="w-3 h-3" />
+                                            {{ isDeleting && deleteVendorProfileId === vendorProfile.id ? 'Deleting...' : 'Delete' }}
                                         </Button>
                                     </div>
                                 </TableCell>
@@ -474,7 +480,7 @@ const isDeleting = ref(false)
 const selectedImage = ref('')
 const editForm = ref({});
 const viewForm = ref({});
-const deleteUserId = ref(null);
+const deleteVendorProfileId = ref(null);
 
 // Handle search input
 const handleSearch = () => {
@@ -548,22 +554,24 @@ const openImageModal = (imageUrl) => {
     isImageModalOpen.value = true
 }
 
-const openDeleteDialog = (id) => {
-    deleteUserId.value = id;
+const openDeleteDialog = (vendorProfileId) => {
+    deleteVendorProfileId.value = vendorProfileId;
     isDeleteDialogOpen.value = true;
 };
 
 const confirmDelete = () => {
     isDeleting.value = true;
-    router.delete(`/vendors/${deleteUserId.value}`, {
+    isDeleteDialogOpen.value = false;
+    router.delete(`/vendors/${deleteVendorProfileId.value}`, {
         onSuccess: () => {
             toast.success('Vendor deleted successfully');
-            isDeleteDialogOpen.value = false;
             isDeleting.value = false;
+            deleteVendorProfileId.value = null;
         },
         onError: (errors) => {
             toast.error('Failed to delete vendor');
             isDeleting.value = false;
+            deleteVendorProfileId.value = null;
         }
     });
 };
