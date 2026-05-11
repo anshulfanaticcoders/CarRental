@@ -131,3 +131,30 @@ Route::prefix('internal/provider')->middleware('gateway.token')->group(function 
 // Stripe Checkout Routes
 Route::post('/stripe/checkout', [\App\Http\Controllers\StripeCheckoutController::class, 'createSession'])->name('api.stripe.checkout');
 Route::post('/stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handle'])->name('api.stripe.webhook');
+
+// Mobile API Routes (Sanctum tokens)
+Route::prefix('mobile')->group(function () {
+    Route::post('/auth/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
+    Route::post('/auth/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
+    Route::post('/auth/check-availability', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'checkAvailability']);
+
+    Route::get('/locations/search', [\App\Http\Controllers\Api\Mobile\LocationController::class, 'search']);
+    Route::get('/locations/{id}', [\App\Http\Controllers\Api\Mobile\LocationController::class, 'show'])->whereNumber('id');
+
+    Route::post('/vehicles/search', [\App\Http\Controllers\Api\Mobile\VehicleSearchController::class, 'search']);
+
+    Route::get('/currencies', [\App\Http\Controllers\Api\Mobile\CurrencyController::class, 'index']);
+    Route::get('/currency-rates', [\App\Http\Controllers\Api\Mobile\CurrencyController::class, 'rates']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/auth/me', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'me']);
+        Route::post('/auth/logout', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'logout']);
+        Route::post('/profile', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'updateProfile']);
+        Route::post('/profile/password', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'changePassword']);
+        Route::delete('/profile', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'deleteAccount']);
+
+        Route::get('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'show']);
+        Route::post('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'upload']);
+        Route::delete('/documents/{field}', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'destroy']);
+    });
+});
