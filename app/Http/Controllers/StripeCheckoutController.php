@@ -1001,14 +1001,20 @@ class StripeCheckoutController extends Controller
                 $paymentMethodTypes = $availableMethods;
             }
 
+            $isMobileClient = strtolower((string) $request->header('X-Client')) === 'mobile';
+            $successUrl = $isMobileClient
+                ? 'vrooem://booking-confirmed?session_id={CHECKOUT_SESSION_ID}'
+                : route('booking.success', ['locale' => $currentLocale]).'?session_id={CHECKOUT_SESSION_ID}';
+            $cancelUrl = $isMobileClient
+                ? 'vrooem://booking-cancel'
+                : route('booking.cancel.page', ['locale' => $currentLocale]);
+
             $session = StripeSession::create([
                 'payment_method_types' => $paymentMethodTypes,
                 'line_items' => $lineItems,
                 'mode' => 'payment',
-                // Use route() to generate the correct URL with locale, but we need to append the session_id placeholder manually
-                // to avoid URL encoding issues with the curly braces.
-                'success_url' => route('booking.success', ['locale' => $currentLocale]).'?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => route('booking.cancel.page', ['locale' => $currentLocale]),
+                'success_url' => $successUrl,
+                'cancel_url' => $cancelUrl,
                 'customer_email' => $validated['customer']['email'] ?? null,
                 'metadata' => $metadata,
                 'payment_intent_data' => [

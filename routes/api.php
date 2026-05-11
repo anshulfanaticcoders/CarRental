@@ -153,6 +153,10 @@ Route::prefix('mobile')->group(function () {
         Route::post('/profile/password', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'changePassword']);
         Route::delete('/profile', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'deleteAccount']);
 
+        Route::get('/bookings', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'index']);
+        Route::get('/bookings/by-session', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'bySession']);
+        Route::get('/bookings/{id}', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'show'])->whereNumber('id');
+
         Route::get('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'show']);
         Route::post('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'upload']);
         Route::delete('/documents/{field}', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'destroy']);
