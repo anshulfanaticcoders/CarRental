@@ -185,6 +185,25 @@ Route::prefix('mobile')->group(function () {
         Route::get('/favorites/status', [\App\Http\Controllers\Api\Mobile\FavoriteController::class, 'status']);
         Route::post('/favorites/toggle', [\App\Http\Controllers\Api\Mobile\FavoriteController::class, 'toggle']);
 
+        // Vendor registration (customer → vendor upgrade)
+        Route::post('/vendor/register', [\App\Http\Controllers\Api\Mobile\VendorRegistrationController::class, 'store']);
+
+        // Vendor-only routes
+        Route::prefix('vendor')->group(function () {
+            Route::get('/overview', [\App\Http\Controllers\Api\Mobile\Vendor\OverviewController::class, 'index']);
+            Route::get('/bookings', [\App\Http\Controllers\Api\Mobile\Vendor\BookingsController::class, 'index']);
+            Route::get('/bookings/{id}', [\App\Http\Controllers\Api\Mobile\Vendor\BookingsController::class, 'show'])->whereNumber('id');
+            Route::post('/bookings/{id}/status', [\App\Http\Controllers\Api\Mobile\Vendor\BookingsController::class, 'updateStatus'])->whereNumber('id');
+
+            Route::get('/vehicles', [\App\Http\Controllers\Api\Mobile\Vendor\VehiclesController::class, 'index']);
+            Route::get('/vehicles/{id}', [\App\Http\Controllers\Api\Mobile\Vendor\VehiclesController::class, 'show'])->whereNumber('id');
+            Route::post('/vehicles/{id}/status', [\App\Http\Controllers\Api\Mobile\Vendor\VehiclesController::class, 'updateStatus'])->whereNumber('id');
+
+            Route::get('/vehicles/{vehicle}/blockings', [\App\Http\Controllers\Api\Mobile\Vendor\BlockingDatesController::class, 'index'])->whereNumber('vehicle');
+            Route::post('/vehicles/{vehicle}/blockings', [\App\Http\Controllers\Api\Mobile\Vendor\BlockingDatesController::class, 'store'])->whereNumber('vehicle');
+            Route::delete('/vehicles/{vehicle}/blockings/{id}', [\App\Http\Controllers\Api\Mobile\Vendor\BlockingDatesController::class, 'destroy'])->whereNumber('vehicle')->whereNumber('id');
+        });
+
         Route::get('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'show']);
         Route::post('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'upload']);
         Route::delete('/documents/{field}', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'destroy']);
