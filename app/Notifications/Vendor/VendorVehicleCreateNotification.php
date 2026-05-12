@@ -30,7 +30,7 @@ class VendorVehicleCreateNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database']; // Notify via email and save to database
+        return ['database', 'mail']; // Notify via email and save to database
     }
 
     /**

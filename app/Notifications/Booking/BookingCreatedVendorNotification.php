@@ -30,7 +30,28 @@ class BookingCreatedVendorNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['mail', 'database']; // Notify via email and save to database
+        $channels = ['database', 'mail'];
+        if (! empty($notifiable->expo_push_token)) {
+            $channels[] = \App\Notifications\Channels\ExpoPushChannel::class;
+        }
+        return $channels;
+    }
+
+    public function toExpoPush(object $notifiable): array
+    {
+        $bookingNumber = $this->booking->booking_number ?? '';
+        $customerName = trim(($this->customer->first_name ?? '').' '.($this->customer->last_name ?? ''));
+        return [
+            'title' => 'New booking received',
+            'body' => "Booking #{$bookingNumber} from ".($customerName ?: 'a customer'),
+            'data' => [
+                'type' => 'vendor_booking_created',
+                'booking_id' => $this->booking->id ?? null,
+                'booking_number' => $bookingNumber,
+                'route' => '/vendor-applied',
+            ],
+            'channelId' => 'bookings',
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage

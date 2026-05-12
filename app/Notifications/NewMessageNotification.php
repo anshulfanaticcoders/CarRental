@@ -29,7 +29,32 @@ class NewMessageNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        $channels = ['database', 'mail'];
+        if (! empty($notifiable->expo_push_token)) {
+            $channels[] = \App\Notifications\Channels\ExpoPushChannel::class;
+        }
+        return $channels;
+    }
+
+    public function toExpoPush(object $notifiable): array
+    {
+        $this->message->loadMissing(['sender', 'booking']);
+        $sender = $this->message->sender;
+        $senderName = $sender ? trim(($sender->first_name ?? '').' '.($sender->last_name ?? '')) : 'A user';
+        $preview = (string) ($this->message->message ?? '');
+        if (mb_strlen($preview) > 80) {
+            $preview = mb_substr($preview, 0, 77).'…';
+        }
+        return [
+            'title' => $senderName ?: 'New message',
+            'body' => $preview !== '' ? $preview : 'Sent you a new message.',
+            'data' => [
+                'type' => 'new_message',
+                'booking_id' => $this->message->booking_id ?? null,
+                'route' => '/chat/'.($this->message->booking_id ?? ''),
+            ],
+            'channelId' => 'messages',
+        ];
     }
 
     /**

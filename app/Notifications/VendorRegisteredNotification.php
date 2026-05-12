@@ -30,7 +30,7 @@ class VendorRegisteredNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database']; // Notify via email and store in database
+        return ['database', 'mail']; // Notify via email and store in database
     }
 
     /**

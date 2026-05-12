@@ -38,7 +38,7 @@ class BulkVehicleUploadAdminNotification extends Notification implements ShouldQ
      */
     public function via($notifiable)
     {
-        return ['mail', 'database'];
+        return ['database', 'mail'];
     }
 
     /**

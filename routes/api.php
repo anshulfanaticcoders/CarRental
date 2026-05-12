@@ -153,9 +153,25 @@ Route::prefix('mobile')->group(function () {
         Route::post('/profile/password', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'changePassword']);
         Route::delete('/profile', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'deleteAccount']);
 
+        Route::post('/push/register', [\App\Http\Controllers\Api\Mobile\PushController::class, 'register']);
+        Route::delete('/push/register', [\App\Http\Controllers\Api\Mobile\PushController::class, 'unregister']);
+
+        Route::get('/messages', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'inbox']);
+        Route::get('/messages/unread-count', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'unreadCount']);
+        Route::get('/messages/{booking_id}', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'thread'])->whereNumber('booking_id');
+        Route::post('/messages', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'send']);
+        Route::post('/messages/{booking_id}/read', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'markRead'])->whereNumber('booking_id');
+
+        Route::get('/notifications', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'unreadCount']);
+        Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'markAsRead']);
+        Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'markAllAsRead']);
+        Route::delete('/notifications', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'clearAll']);
+
         Route::get('/bookings', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'index']);
         Route::get('/bookings/by-session', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'bySession']);
         Route::get('/bookings/{id}', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'show'])->whereNumber('id');
+        Route::get('/bookings/{id}/receipt', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'downloadReceipt'])->whereNumber('id');
 
         Route::get('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'show']);
         Route::post('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'upload']);
