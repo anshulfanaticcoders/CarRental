@@ -298,6 +298,16 @@ class StripeCheckoutController extends Controller
      */
     public function createSession(Request $request)
     {
+        // Mobile clients authenticate via Sanctum bearer tokens; the route is
+        // not behind auth middleware so we must resolve the user manually.
+        if (strtolower((string) $request->header('X-Client')) === 'mobile' && ! $request->user()) {
+            $sanctumUser = auth('sanctum')->user();
+            if ($sanctumUser) {
+                auth()->setUser($sanctumUser);
+                $request->setUserResolver(fn () => $sanctumUser);
+            }
+        }
+
         // Only regular users can make bookings
         $user = auth()->user();
         if ($user && ! in_array($user->role, ['user', 'customer', null], true)) {
