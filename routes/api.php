@@ -202,6 +202,16 @@ Route::prefix('mobile')->group(function () {
             Route::get('/vehicles/{vehicle}/blockings', [\App\Http\Controllers\Api\Mobile\Vendor\BlockingDatesController::class, 'index'])->whereNumber('vehicle');
             Route::post('/vehicles/{vehicle}/blockings', [\App\Http\Controllers\Api\Mobile\Vendor\BlockingDatesController::class, 'store'])->whereNumber('vehicle');
             Route::delete('/vehicles/{vehicle}/blockings/{id}', [\App\Http\Controllers\Api\Mobile\Vendor\BlockingDatesController::class, 'destroy'])->whereNumber('vehicle')->whereNumber('id');
+
+            Route::get('/payments', [\App\Http\Controllers\Api\Mobile\Vendor\PaymentsController::class, 'index']);
+
+            Route::get('/reviews', [\App\Http\Controllers\Api\Mobile\Vendor\ReviewsController::class, 'index']);
+            Route::post('/reviews/{id}/status', [\App\Http\Controllers\Api\Mobile\Vendor\ReviewsController::class, 'updateStatus'])->whereNumber('id');
+            Route::post('/reviews/{id}/reply', [\App\Http\Controllers\Api\Mobile\Vendor\ReviewsController::class, 'reply'])->whereNumber('id');
+
+            Route::get('/external-bookings', [\App\Http\Controllers\Api\Mobile\Vendor\ExternalBookingsController::class, 'index']);
+            Route::get('/external-bookings/{id}', [\App\Http\Controllers\Api\Mobile\Vendor\ExternalBookingsController::class, 'show'])->whereNumber('id');
+            Route::post('/external-bookings/{id}/status', [\App\Http\Controllers\Api\Mobile\Vendor\ExternalBookingsController::class, 'updateStatus'])->whereNumber('id');
         });
 
         Route::get('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'show']);
