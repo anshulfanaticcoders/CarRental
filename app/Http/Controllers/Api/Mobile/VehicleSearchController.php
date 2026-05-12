@@ -205,8 +205,8 @@ class VehicleSearchController extends Controller
             'features' => $rawFeatures,
             'security_deposit' => $deposit,
             'plans' => $this->slimPlans($v['products'] ?? [], $markup, $rentalDays, $currency),
-            'extras' => $this->slimExtras($v['extras'] ?? ($v['extras_preview'] ?? []), $markup),
-            'protections' => $this->slimExtras($v['protections'] ?? [], $markup),
+            'extras' => $this->slimExtras($v['extras'] ?? ($v['extras_preview'] ?? []), $markup, $rentalDays),
+            'protections' => $this->slimExtras($v['protections'] ?? [], $markup, $rentalDays),
             'fuel_policy' => $v['fuel_policy'] ?? ($policies['fuel_policy'] ?? null),
             'cancellation_policy' => is_array($v['cancellation'] ?? null)
                 ? ($v['cancellation']['policy_text'] ?? null)
@@ -269,24 +269,20 @@ class VehicleSearchController extends Controller
     private function derivePerProviderProtectionPlans(array $v, float $markup, int $rentalDays, string $currency): array
     {
         $source = strtolower((string) ($v['source'] ?? ''));
-        $out = [];
 
         if ($source === 'adobe') {
-            // PLI mandatory, LDW + SPP optional. Each is per-rental amount.
-            foreach (['pli' => 'Liability Protection (PLI)', 'ldw' => 'Collision Damage Waiver (LDW)', 'spp' => 'Super Protection Plan (SPP)'] as $key => $name) {
-                $amount = $v[$key] ?? null;
-                if (! is_numeric($amount) || (float) $amount <= 0) continue;
-                $out[] = [
-                    'code' => strtoupper($key),
-                    'name' => $name,
-                    'description' => $key === 'pli' ? 'Mandatory liability cover added at checkout.' : null,
-                    'amount' => $this->grossUp((float) $amount, $markup),
-                    'currency' => $currency,
-                    'pricing_type' => 'per_rental',
-                    'max_quantity' => 1,
-                    'mandatory' => $key === 'pli',
-                    'included' => false,
-                ];
+            // Adobe: PLI/LDW/SPP live in `protections` array (built from insurance_options).
+            // Each has total_price (booking total) + daily_rate. PLI is mandatory.
+            $raw = is_array($v['protections'] ?? null) ? $v['protections'] : [];
+            $out = $this->slimExtras($raw, $markup, $rentalDays);
+            foreach ($out as &$plan) {
+                $code = strtoupper((string) ($plan['code'] ?? ''));
+                if ($code === 'PLI') {
+                    $plan['mandatory'] = true;
+                    if (empty($plan['description'])) {
+                        $plan['description'] = 'Mandatory liability cover required by law.';
+                    }
+                }
             }
             return $out;
         }
@@ -303,50 +299,25 @@ class VehicleSearchController extends Controller
                 '43'  => 'Personal Accident',
             ];
             $extras = is_array($v['extras'] ?? null) ? $v['extras'] : [];
-            foreach ($extras as $e) {
-                if (! is_array($e)) continue;
-                $code = (string) ($e['code'] ?? '');
-                if (! in_array($code, $codes, true)) continue;
-                $amount = $e['amount'] ?? $e['total'] ?? $e['total_price'] ?? $e['price'] ?? null;
-                if (! is_numeric($amount)) continue;
-                $out[] = [
-                    'code' => $code,
-                    'name' => $names[$code] ?? ($e['name'] ?? "Plan {$code}"),
-                    'description' => $e['description'] ?? null,
-                    'amount' => $this->grossUp((float) $amount, $markup),
-                    'currency' => $e['currency'] ?? $currency,
-                    'pricing_type' => 'per_rental',
-                    'max_quantity' => 1,
-                    'mandatory' => false,
-                    'included' => false,
-                ];
+            $filtered = array_values(array_filter($extras, function ($e) use ($codes) {
+                return is_array($e) && in_array((string) ($e['code'] ?? ''), $codes, true);
+            }));
+            $out = $this->slimExtras($filtered, $markup, $rentalDays);
+            foreach ($out as &$plan) {
+                $code = (string) ($plan['code'] ?? '');
+                if (isset($names[$code])) $plan['name'] = $names[$code];
             }
             return $out;
         }
 
         if ($source === 'renteon') {
+            // Renteon: insurance_options has daily_rate + total_price — use slimExtras
             $insurance = is_array($v['insurance_options'] ?? null) ? $v['insurance_options'] : [];
-            foreach ($insurance as $i) {
-                if (! is_array($i)) continue;
-                $amount = $i['amount'] ?? $i['price'] ?? $i['total'] ?? null;
-                if (! is_numeric($amount)) continue;
-                $out[] = [
-                    'code' => (string) ($i['code'] ?? $i['id'] ?? ''),
-                    'name' => (string) ($i['name'] ?? 'Insurance option'),
-                    'description' => $i['description'] ?? null,
-                    'amount' => $this->grossUp((float) $amount, $markup),
-                    'currency' => $i['currency'] ?? $currency,
-                    'pricing_type' => 'per_rental',
-                    'max_quantity' => 1,
-                    'mandatory' => (bool) ($i['mandatory'] ?? false),
-                    'included' => false,
-                ];
-            }
-            return $out;
+            return $this->slimExtras($insurance, $markup, $rentalDays);
         }
 
         // Generic: pass-through any provider-supplied protections
-        return $this->slimExtras($v['protections'] ?? [], $markup);
+        return $this->slimExtras($v['protections'] ?? [], $markup, $rentalDays);
     }
 
     private function deriveTaxBreakdown(array $v, float $totalNet): ?array
@@ -808,28 +779,43 @@ class VehicleSearchController extends Controller
         return $out;
     }
 
-    private function slimExtras(array $extras, float $markup): array
+    private function slimExtras(array $extras, float $markup, int $rentalDays = 1): array
     {
         $out = [];
         foreach ($extras as $e) {
             if (! is_array($e)) continue;
-            $amount = $e['amount']
-                ?? $e['total_for_booking']
-                ?? $e['total']
-                ?? $e['total_price']
-                ?? $e['price']
-                ?? $e['daily_rate']
-                ?? null;
-            if (! is_numeric($amount)) continue;
+
+            // Prefer total_for_booking / total_price (already × days). Fall back to daily_rate.
+            $totalForBooking = $e['total_for_booking'] ?? $e['total_price'] ?? $e['total'] ?? null;
+            $dailyRate = $e['daily_rate'] ?? $e['price_per_day'] ?? $e['unit_charge'] ?? null;
+            if (! is_numeric($dailyRate) && is_numeric($e['price'] ?? null) && (bool) ($e['per_day'] ?? false)) {
+                $dailyRate = $e['price'];
+            }
+
+            // Resolve booking-total amount: prefer total_for_booking, else daily × days, else flat price
+            if (is_numeric($totalForBooking) && (float) $totalForBooking > 0) {
+                $amountForBooking = (float) $totalForBooking;
+            } elseif (is_numeric($dailyRate) && (float) $dailyRate > 0) {
+                $amountForBooking = (float) $dailyRate * max(1, $rentalDays);
+            } elseif (is_numeric($e['amount'] ?? null)) {
+                $amountForBooking = (float) $e['amount'];
+            } elseif (is_numeric($e['price'] ?? null)) {
+                $amountForBooking = (float) $e['price'];
+            } else {
+                continue;
+            }
+
+            $hasDaily = is_numeric($dailyRate) && (float) $dailyRate > 0;
+            $pricingType = $e['pricing_type'] ?? ($hasDaily ? 'per_day' : 'per_rental');
+
             $out[] = [
                 'code' => (string) ($e['code'] ?? $e['id'] ?? ''),
                 'name' => (string) ($e['name'] ?? $e['description'] ?? 'Extra'),
                 'description' => $e['description'] ?? null,
-                'amount' => $this->grossUp((float) $amount, $markup),
+                'amount' => $this->grossUp($amountForBooking, $markup),
+                'daily_rate' => $hasDaily ? $this->grossUp((float) $dailyRate, $markup) : null,
                 'currency' => $e['currency'] ?? null,
-                'pricing_type' => $e['pricing_type']
-                    ?? $e['type']
-                    ?? (isset($e['daily_rate']) && ! isset($e['total_for_booking']) ? 'per_day' : 'per_rental'),
+                'pricing_type' => $pricingType,
                 'max_quantity' => isset($e['max_quantity']) && is_numeric($e['max_quantity']) ? (int) $e['max_quantity'] : 1,
                 'mandatory' => (bool) ($e['mandatory'] ?? false),
                 'included' => (bool) ($e['included'] ?? false),
