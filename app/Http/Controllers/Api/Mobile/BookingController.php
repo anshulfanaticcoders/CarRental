@@ -433,6 +433,12 @@ class BookingController extends Controller
             ],
             'provider_source' => $b->provider_source ?? null,
             'provider_booking_ref' => $b->provider_booking_ref ?? null,
+            'tax_breakdown' => is_array($metadata['tax_breakdown'] ?? null) ? $metadata['tax_breakdown'] : null,
+            'included_services' => is_array($metadata['included_services'] ?? null) ? $metadata['included_services'] : [],
+            'driver_policy' => is_array($metadata['driver_policy'] ?? null) ? $metadata['driver_policy'] : null,
+            'cancellation_summary' => is_array($metadata['cancellation_summary'] ?? null) ? $metadata['cancellation_summary'] : null,
+            'mandatory_amount' => is_numeric($metadata['mandatory_amount'] ?? null) ? (float) $metadata['mandatory_amount'] : 0.0,
+            'highlights' => is_array($metadata['highlights'] ?? null) ? $metadata['highlights'] : null,
             'vendor' => $vendor,
             'plan_details' => $planData,
             'references' => [

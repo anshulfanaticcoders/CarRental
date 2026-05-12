@@ -834,12 +834,28 @@ class StripeBookingService
                 'postal_code' => $metadata->customer_postal_code ?? null,
                 'country' => $metadata->customer_country ?? null,
                 'flight_number' => $metadata->flight_number ?? null,
+                'preferred_day' => $metadata->preferred_day ?? null,
                 'notes' => $metadata->notes ?? null,
             ],
         ];
 
-        // Merge provider metadata with additional fields
-        return array_merge($providerMetadata, $additionalMetadata);
+        // Persist per-provider mobile-adapter blocks from the original vehicle payload
+        // so the booking-confirmed and My Bookings screens can render the same
+        // sections as checkout did (taxes & fees, included services, driver policy,
+        // cancellation summary, cover codes, mandatory PLI, highlights kind).
+        $vehiclePayload = is_array($extrasPayload['vehicle'] ?? null) ? $extrasPayload['vehicle'] : [];
+        $perProviderBlocks = array_filter([
+            'tax_breakdown' => $vehiclePayload['tax_breakdown'] ?? null,
+            'included_services' => $vehiclePayload['included_services'] ?? null,
+            'driver_policy' => $vehiclePayload['driver_policy'] ?? null,
+            'cancellation_summary' => $vehiclePayload['cancellation_summary'] ?? null,
+            'cover_codes' => $vehiclePayload['cover_codes'] ?? null,
+            'mandatory_amount' => $vehiclePayload['mandatory_amount'] ?? null,
+            'highlights' => $vehiclePayload['highlights'] ?? null,
+            'protection_plans_offered' => $vehiclePayload['protection_plans'] ?? null,
+        ], fn ($v) => $v !== null && $v !== [] && $v !== '');
+
+        return array_merge($providerMetadata, $additionalMetadata, $perProviderBlocks);
     }
 
     protected function resolveAppliedOffersFromMetadata($metadata): array
