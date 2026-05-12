@@ -4,7 +4,12 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\User;
+use App\Models\VendorProfile;
+use App\Notifications\Booking\BookingCancelledNotification;
 use App\Services\StripeBookingService;
+use App\Services\VrooemGatewayService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -162,6 +167,165 @@ class BookingController extends Controller
         return $pdf->download("booking-{$booking->booking_number}.pdf");
     }
 
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'cancellation_reason' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
+        $booking = Booking::with(['vehicle', 'customer'])
+            ->where('id', $id)
+            ->whereHas('customer', fn ($q) => $q->where('user_id', $request->user()->id))
+            ->first();
+
+        if (! $booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+
+        if ($booking->booking_status === 'cancelled') {
+            return response()->json(['message' => 'Booking is already cancelled.'], 400);
+        }
+
+        $providerMetadata = $booking->provider_metadata ?? [];
+        $providerSource = $booking->provider_source ? strtolower($booking->provider_source) : null;
+        $isExternal = $providerSource !== null && $providerSource !== 'internal';
+
+        $deadline = $providerMetadata['cancellation_deadline'] ?? null;
+        if ($deadline) {
+            $deadlineDate = Carbon::parse($deadline);
+            if (now()->isAfter($deadlineDate)) {
+                return response()->json([
+                    'message' => 'Free cancellation period has expired (deadline '
+                        . $deadlineDate->format('M d, Y H:i') . '). Contact support for assistance.',
+                ], 422);
+            }
+        } elseif (! $isExternal) {
+            // Internal booking: derive deadline from vendor cancellation policy stored in benefits.
+            $benefits = $providerMetadata['benefits'] ?? [];
+            $allowed = (bool) ($benefits['cancellation_available_per_day']
+                ?? $benefits['cancellation_available_per_week']
+                ?? $benefits['cancellation_available_per_month']
+                ?? false);
+
+            if (! $allowed) {
+                return response()->json([
+                    'message' => 'This booking is non-refundable per the vendor cancellation policy.',
+                ], 422);
+            }
+
+            $daysBeforePickup = (int) (
+                $benefits['cancellation_available_per_day_date']
+                ?? $benefits['cancellation_available_per_week_date']
+                ?? $benefits['cancellation_available_per_month_date']
+                ?? 0
+            );
+            $pickupAt = $booking->pickup_date ? Carbon::parse($booking->pickup_date) : null;
+
+            if ($pickupAt && $daysBeforePickup > 0) {
+                $derivedDeadline = $pickupAt->copy()->subDays($daysBeforePickup);
+                if (now()->isAfter($derivedDeadline)) {
+                    return response()->json([
+                        'message' => "Free cancellation deadline ({$daysBeforePickup} day(s) before pickup) has passed.",
+                    ], 422);
+                }
+            } elseif ($pickupAt && now()->isAfter($pickupAt)) {
+                return response()->json([
+                    'message' => 'Pickup date has passed. Cancellation no longer available.',
+                ], 422);
+            }
+        }
+
+        if ($isExternal) {
+            $gatewayBookingId = (string) ($providerMetadata['gateway_booking_id'] ?? '');
+            $gatewaySupplierId = (string) ($providerMetadata['gateway_supplier_id']
+                ?? $this->mapProviderSourceToGatewaySupplierId($providerSource));
+
+            if ($gatewayBookingId === '' || $gatewaySupplierId === '' || empty($booking->provider_booking_ref)) {
+                return response()->json([
+                    'message' => 'Provider cancellation metadata is missing. Contact support.',
+                ], 422);
+            }
+
+            try {
+                $response = app(VrooemGatewayService::class)->cancelBooking(
+                    $gatewayBookingId,
+                    $gatewaySupplierId,
+                    (string) $booking->provider_booking_ref,
+                    $validated['cancellation_reason']
+                );
+
+                if ($response === null) {
+                    $booking->notes = trim(($booking->notes ?? '') . "\nGateway Cancel failed: empty response.");
+                    $booking->save();
+                    return response()->json([
+                        'message' => 'Failed to cancel reservation with provider. Try again or contact support.',
+                    ], 502);
+                }
+
+                $booking->notes = trim(($booking->notes ?? '') . "\nGateway Cancel: cancellation requested.");
+            } catch (\Throwable $e) {
+                Log::error('Mobile cancel: gateway failed', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+                $booking->notes = trim(($booking->notes ?? '') . "\nGateway Cancel failed: " . $e->getMessage());
+                $booking->save();
+                return response()->json([
+                    'message' => 'Failed to cancel reservation with provider. Try again or contact support.',
+                ], 502);
+            }
+        }
+
+        $booking->booking_status = 'cancelled';
+        $booking->cancellation_reason = $validated['cancellation_reason'];
+        $booking->save();
+
+        $vehicle = $booking->vehicle;
+        $customer = $booking->customer;
+
+        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $admin = User::where('email', $adminEmail)->first();
+        if ($admin && $customer) {
+            $admin->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'admin'));
+        }
+
+        if ($vehicle) {
+            $vendor = User::find($vehicle->vendor_id);
+            if ($vendor && $customer) {
+                $vendor->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'vendor'));
+            }
+
+            $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
+            if ($vendorProfile && $vendorProfile->company_email && $customer) {
+                $companyUser = User::where('email', $vendorProfile->company_email)->first();
+                if ($companyUser) {
+                    $companyUser->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'company'));
+                }
+            }
+        }
+
+        return response()->json([
+            'message' => 'Booking cancelled successfully.',
+            'booking' => $this->transform($booking->fresh([
+                'vehicle.images', 'vehicle.category', 'vehicle.vendorProfile.user',
+                'vehicle.vendor', 'vehicle.vendorLocation',
+                'extras', 'amounts', 'payments', 'customer', 'vendorProfile.user',
+            ])),
+        ]);
+    }
+
+    private function mapProviderSourceToGatewaySupplierId(?string $providerSource): string
+    {
+        return match ($providerSource) {
+            'greenmotion' => 'green_motion',
+            'usave' => 'u_save',
+            'adobe' => 'adobe_car',
+            'okmobility' => 'ok_mobility',
+            'recordgo' => 'record_go',
+            default => (string) ($providerSource ?? ''),
+        };
+    }
+
     public function index(Request $request): JsonResponse
     {
         $bookings = Booking::with(['vehicle.images'])
@@ -189,8 +353,12 @@ class BookingController extends Controller
         $vehicleModel = null;
         if ($b->vehicle && $b->vehicle->images) {
             $primary = $b->vehicle->images->firstWhere('image_type', 'primary') ?? $b->vehicle->images->first();
-            if ($primary?->image_path) {
-                $primaryImage = $absolutize('storage/'.ltrim($primary->image_path, '/'));
+            if ($primary) {
+                $primaryImage = ! empty($primary->image_url)
+                    ? $absolutize($primary->image_url)
+                    : (! empty($primary->image_path)
+                        ? $absolutize('storage/'.ltrim($primary->image_path, '/'))
+                        : null);
             }
             $vehicleBrand = $b->vehicle->brand ?? null;
             $vehicleModel = $b->vehicle->model ?? null;
@@ -368,12 +536,28 @@ class BookingController extends Controller
             ];
         }
 
+        $providerSource = $b->provider_source ? strtolower($b->provider_source) : null;
+        $isInternalBooking = $providerSource === null || $providerSource === 'internal';
+        $existingReview = $isInternalBooking
+            ? \App\Models\Review::where('booking_id', $b->id)
+                ->where('user_id', $b->customer?->user_id)
+                ->first(['id', 'rating', 'review_text', 'status', 'created_at'])
+            : null;
+
         return [
             'id' => $b->id,
             'booking_number' => $b->booking_number,
             'status' => $b->booking_status ?? $b->status ?? 'pending',
             'booking_status' => $b->booking_status,
             'payment_status' => $b->payment_status ?? null,
+            'review_eligible' => $isInternalBooking,
+            'review' => $existingReview ? [
+                'id' => $existingReview->id,
+                'rating' => $existingReview->rating,
+                'review_text' => $existingReview->review_text,
+                'status' => $existingReview->status,
+                'created_at' => $existingReview->created_at?->toIso8601String(),
+            ] : null,
             'pickup_date' => $b->pickup_date,
             'pickup_time' => $b->pickup_time,
             'return_date' => $b->return_date,
@@ -490,8 +674,12 @@ class BookingController extends Controller
         $image = null;
         if ($b->vehicle?->images?->isNotEmpty()) {
             $primary = $b->vehicle->images->firstWhere('image_type', 'primary') ?? $b->vehicle->images->first();
-            if ($primary?->image_path) {
-                $image = $absolutize('storage/'.ltrim($primary->image_path, '/'));
+            if ($primary) {
+                $image = ! empty($primary->image_url)
+                    ? $absolutize($primary->image_url)
+                    : (! empty($primary->image_path)
+                        ? $absolutize('storage/'.ltrim($primary->image_path, '/'))
+                        : null);
             }
         }
         if (! $image && $b->vehicle_image) {

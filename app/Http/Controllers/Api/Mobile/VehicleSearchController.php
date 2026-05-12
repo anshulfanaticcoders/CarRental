@@ -19,6 +19,19 @@ class VehicleSearchController extends Controller
 {
     private const DEFAULT_MARKUP_PERCENT = 15.0;
 
+    private const ONE_WAY_PROVIDERS = [
+        'greenmotion',
+        'usave',
+        'adobe',
+        'click2rent',
+        'easirent',
+        'locauto_rent',
+        'recordgo',
+        'renteon',
+        'surprice',
+        'sicily_by_car',
+    ];
+
     public function __construct(
         private LocationSearchService $locationSearchService,
         private GatewaySearchParamsBuilder $paramsBuilder,
@@ -92,11 +105,22 @@ class VehicleSearchController extends Controller
             ], 503);
         }
 
+        $dropoffUnifiedId = $validated['dropoff_unified_location_id'] ?? null;
+        $isOneWay = ! empty($dropoffUnifiedId)
+            && (string) $dropoffUnifiedId !== (string) $validated['unified_location_id'];
+
         $rawVehicles = $gatewayResult['vehicles'] ?? [];
         $transformed = [];
         foreach ($rawVehicles as $gv) {
             try {
-                $transformed[] = $this->transformer->transform($gv, $rentalDays);
+                $tv = $this->transformer->transform($gv, $rentalDays);
+                if ($isOneWay) {
+                    $src = strtolower(trim((string) ($tv['source'] ?? '')));
+                    if (! in_array($src, self::ONE_WAY_PROVIDERS, true)) {
+                        continue;
+                    }
+                }
+                $transformed[] = $tv;
             } catch (\Throwable $e) {
                 Log::warning('Mobile vehicle search: transform failed', [
                     'vehicle_id' => $gv['id'] ?? 'unknown',
@@ -105,8 +129,10 @@ class VehicleSearchController extends Controller
             }
         }
 
-        // Fetch internal vehicles for the same location
-        $internalTransformed = $this->fetchInternalVehicles($location, $validated, $rentalDays);
+        // Internal vendor vehicles do not support one-way rentals — match web behavior.
+        $internalTransformed = $isOneWay
+            ? []
+            : $this->fetchInternalVehicles($location, $validated, $rentalDays);
         $combined = array_merge($internalTransformed, $transformed);
 
         $markup = $this->markupRate();
@@ -116,13 +142,15 @@ class VehicleSearchController extends Controller
         )));
 
         $providerStatus = $this->mapProviderStatus($gatewayResult);
-        $providerStatus[] = [
-            'provider' => 'internal',
-            'status' => 'ok',
-            'vehicles' => count($internalTransformed),
-            'response_time_ms' => null,
-            'error' => null,
-        ];
+        if (! $isOneWay) {
+            $providerStatus[] = [
+                'provider' => 'internal',
+                'status' => 'ok',
+                'vehicles' => count($internalTransformed),
+                'response_time_ms' => null,
+                'error' => null,
+            ];
+        }
 
         return response()->json([
             'vehicles' => $vehicles,
@@ -215,6 +243,12 @@ class VehicleSearchController extends Controller
                 ?? $v['full_vehicle_address']
                 ?? ($pickupLocation['name'] ?? ($pickupLocation['full_address'] ?? null)),
             'pickup_address' => $v['pickup_address'] ?? ($pickupLocation['address'] ?? null),
+            'pickup_latitude' => is_numeric($v['latitude'] ?? null) && (float) $v['latitude'] !== 0.0
+                ? (float) $v['latitude']
+                : (is_numeric($pickupLocation['latitude'] ?? null) ? (float) $pickupLocation['latitude'] : null),
+            'pickup_longitude' => is_numeric($v['longitude'] ?? null) && (float) $v['longitude'] !== 0.0
+                ? (float) $v['longitude']
+                : (is_numeric($pickupLocation['longitude'] ?? null) ? (float) $pickupLocation['longitude'] : null),
             'pickup_phone' => $v['location_details']['telephone']
                 ?? ($providerPayload['location_phone'] ?? null),
             'pickup_email' => $v['location_details']['email'] ?? null,
@@ -690,6 +724,99 @@ class VehicleSearchController extends Controller
         }
         if (! is_array($val)) return [];
         return array_values(array_filter(array_map(fn ($v) => is_string($v) ? $v : null, $val)));
+    }
+
+    public function checkAvailability(Request $request, int $vehicleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'pickup_date' => ['required', 'date_format:Y-m-d'],
+            'dropoff_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:pickup_date'],
+            'pickup_time' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            'dropoff_time' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            'driver_age' => ['required', 'integer', 'min:18', 'max:99'],
+        ]);
+
+        $start = Carbon::parse("{$validated['pickup_date']} {$validated['pickup_time']}");
+        $end = Carbon::parse("{$validated['dropoff_date']} {$validated['dropoff_time']}");
+        if ($end->lessThanOrEqualTo($start)) {
+            return response()->json([
+                'available' => false,
+                'reason' => 'Drop-off must be after pickup.',
+            ], 422);
+        }
+        $rentalDays = max(1, (int) ceil($start->diffInMinutes($end) / 1440));
+
+        $query = Vehicle::query()
+            ->with(['images', 'vendor.profile', 'vendorProfile', 'vendorProfileData', 'benefits', 'vendorPlans', 'addons'])
+            ->where('id', $vehicleId);
+
+        $this->availability->apply($query, [
+            'pickup_date' => $validated['pickup_date'],
+            'pickup_time' => $validated['pickup_time'],
+            'dropoff_date' => $validated['dropoff_date'],
+            'dropoff_time' => $validated['dropoff_time'],
+        ]);
+
+        $vehicle = $query->first();
+        if (! $vehicle) {
+            // Fallback: load without availability filter to distinguish 404 vs not-available
+            $exists = Vehicle::find($vehicleId);
+            if (! $exists) {
+                return response()->json([
+                    'available' => false,
+                    'reason' => 'Vehicle not found.',
+                ], 404);
+            }
+            return response()->json([
+                'available' => false,
+                'reason' => 'Not available for the selected dates.',
+            ]);
+        }
+
+        try {
+            $payload = $vehicle->toArray();
+            $payload['images'] = $vehicle->images?->toArray() ?? [];
+            $payload['vendorPlans'] = $vehicle->vendorPlans?->toArray() ?? [];
+            $payload['vendorProfile'] = $vehicle->vendorProfile?->toArray() ?? [];
+            $payload['vendorProfileData'] = $vehicle->vendorProfileData?->toArray() ?? [];
+            $payload['benefits'] = $vehicle->benefits?->toArray() ?? [];
+            $payload['addons'] = $vehicle->addons?->toArray() ?? [];
+
+            $transformed = $this->internalFactory->make($payload, $rentalDays, [
+                'pickup_location_id' => null,
+                'dropoff_location_id' => null,
+                'pickup_latitude' => null,
+                'pickup_longitude' => null,
+            ]);
+
+            $markup = $this->markupRate();
+            $slim = $this->slimVehicle($transformed, $markup, $rentalDays);
+
+            if (! $slim) {
+                return response()->json([
+                    'available' => false,
+                    'reason' => 'Pricing unavailable for the selected dates.',
+                ]);
+            }
+
+            return response()->json([
+                'available' => true,
+                'vehicle' => $slim,
+                'meta' => [
+                    'rental_days' => $rentalDays,
+                    'provider_markup_percent' => $markup * 100,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Mobile availability check: transform failed', [
+                'vehicle_id' => $vehicleId,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'available' => false,
+                'reason' => 'Could not compute live quote. Try again.',
+            ], 500);
+        }
     }
 
     private function fetchInternalVehicles(array $location, array $validated, int $rentalDays): array

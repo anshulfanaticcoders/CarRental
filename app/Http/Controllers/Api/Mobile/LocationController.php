@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Services\LocationSearchService;
+use App\Services\VrooemGatewayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class LocationController extends Controller
 {
-    public function __construct(private LocationSearchService $locationSearchService) {}
+    public function __construct(
+        private LocationSearchService $locationSearchService,
+        private VrooemGatewayService $gateway,
+    ) {}
 
     public function search(Request $request): JsonResponse
     {
@@ -39,6 +43,57 @@ class LocationController extends Controller
         }
 
         return response()->json(['location' => $this->transform($location)]);
+    }
+
+    public function dropoffsFor(int $id): JsonResponse
+    {
+        $pickup = $this->locationSearchService->getLocationByUnifiedId($id);
+
+        if (! $pickup) {
+            return response()->json(['results' => []]);
+        }
+
+        $countryCode = $pickup['country_code'] ?? null;
+        $candidates = [];
+
+        foreach ($pickup['providers'] ?? [] as $entry) {
+            $provider = $entry['provider'] ?? null;
+            if (! is_string($provider) || $provider === '') {
+                continue;
+            }
+
+            $seededIds = is_array($entry['dropoffs'] ?? null) ? $entry['dropoffs'] : [];
+            if (! empty($seededIds)) {
+                foreach ($seededIds as $dropoffId) {
+                    $loc = $this->locationSearchService->getLocationByProviderId((string) $dropoffId, $provider);
+                    if (is_array($loc) && ! empty($loc['unified_location_id'])) {
+                        $candidates[(int) $loc['unified_location_id']] = $loc;
+                    }
+                }
+                continue;
+            }
+
+            $list = $this->gateway->listDropoffCandidates(
+                provider: $provider,
+                pickupUnifiedId: $id,
+                countryCode: is_string($countryCode) ? $countryCode : null,
+            );
+            foreach ($list as $loc) {
+                if (! is_array($loc)) {
+                    continue;
+                }
+                $uid = (int) ($loc['unified_location_id'] ?? 0);
+                if ($uid > 0 && ! isset($candidates[$uid])) {
+                    $candidates[$uid] = $loc;
+                }
+            }
+        }
+
+        unset($candidates[$id]);
+
+        return response()->json([
+            'results' => array_values(array_map(fn ($l) => $this->transform($l), $candidates)),
+        ]);
     }
 
     private function transform(array $l): array

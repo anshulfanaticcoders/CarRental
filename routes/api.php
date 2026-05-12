@@ -139,12 +139,17 @@ Route::prefix('mobile')->group(function () {
     Route::post('/auth/check-availability', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'checkAvailability']);
 
     Route::get('/locations/search', [\App\Http\Controllers\Api\Mobile\LocationController::class, 'search']);
+    Route::get('/locations/{id}/dropoffs', [\App\Http\Controllers\Api\Mobile\LocationController::class, 'dropoffsFor'])->whereNumber('id');
     Route::get('/locations/{id}', [\App\Http\Controllers\Api\Mobile\LocationController::class, 'show'])->whereNumber('id');
 
     Route::post('/vehicles/search', [\App\Http\Controllers\Api\Mobile\VehicleSearchController::class, 'search']);
+    Route::post('/vehicles/{id}/availability', [\App\Http\Controllers\Api\Mobile\VehicleSearchController::class, 'checkAvailability'])->whereNumber('id');
 
     Route::get('/currencies', [\App\Http\Controllers\Api\Mobile\CurrencyController::class, 'index']);
     Route::get('/currency-rates', [\App\Http\Controllers\Api\Mobile\CurrencyController::class, 'rates']);
+
+    Route::get('/home/popular-places', [\App\Http\Controllers\Api\Mobile\HomeController::class, 'popularPlaces']);
+    Route::get('/home/offers', [\App\Http\Controllers\Api\Mobile\HomeController::class, 'offers']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'me']);
@@ -172,6 +177,13 @@ Route::prefix('mobile')->group(function () {
         Route::get('/bookings/by-session', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'bySession']);
         Route::get('/bookings/{id}', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'show'])->whereNumber('id');
         Route::get('/bookings/{id}/receipt', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'downloadReceipt'])->whereNumber('id');
+        Route::post('/bookings/{id}/cancel', [\App\Http\Controllers\Api\Mobile\BookingController::class, 'cancel'])->whereNumber('id');
+        Route::post('/bookings/{id}/review', [\App\Http\Controllers\Api\Mobile\ReviewController::class, 'store'])->whereNumber('id');
+        Route::get('/reviews', [\App\Http\Controllers\Api\Mobile\ReviewController::class, 'index']);
+
+        Route::get('/favorites', [\App\Http\Controllers\Api\Mobile\FavoriteController::class, 'index']);
+        Route::get('/favorites/status', [\App\Http\Controllers\Api\Mobile\FavoriteController::class, 'status']);
+        Route::post('/favorites/toggle', [\App\Http\Controllers\Api\Mobile\FavoriteController::class, 'toggle']);
 
         Route::get('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'show']);
         Route::post('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'upload']);
