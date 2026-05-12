@@ -252,6 +252,7 @@ class VehicleSearchController extends Controller
             'at_airport' => (bool) ($v['at_airport'] ?? false),
             'provider_code' => $v['provider_code'] ?? ($isInternal ? 'Vrooem' : null),
             'gateway_vehicle_id' => $v['gateway_vehicle_id'] ?? null,
+            'provider_markup_percent' => round($markup * 100, 2),
             'office_address' => $v['office_address'] ?? null,
             'office_phone' => $v['office_phone'] ?? null,
             'office_schedule' => $v['office_schedule'] ?? null,
