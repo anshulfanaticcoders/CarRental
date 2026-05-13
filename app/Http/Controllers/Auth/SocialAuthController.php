@@ -33,6 +33,13 @@ class SocialAuthController extends Controller
         $locale = $request->route('locale') ?? $request->query('locale') ?? config('app.fallback_locale', 'en');
         $request->session()->put('oauth.locale', $locale);
 
+        // Detect mobile clients so the callback can redirect to a deep link with a Sanctum token.
+        if ($request->boolean('mobile')) {
+            $request->session()->put('oauth.mobile', true);
+        } else {
+            $request->session()->forget('oauth.mobile');
+        }
+
         $driver = Socialite::driver($provider);
         if ($provider === 'facebook') {
             $driver->scopes(['email'])->fields(['name', 'email']);
@@ -63,6 +70,10 @@ class SocialAuthController extends Controller
                 'error' => $exception->getMessage(),
             ]);
 
+            if ((bool) $request->session()->pull('oauth.mobile', false)) {
+                return redirect()->away('vrooem://auth-callback?error=' . rawurlencode('Login failed. Please try again.'));
+            }
+
             return redirect()
                 ->route('login', ['locale' => $locale])
                 ->withErrors(['oauth' => 'Login failed. Please try again.']);
@@ -70,6 +81,10 @@ class SocialAuthController extends Controller
 
         $email = $socialUser->getEmail();
         if (!$email) {
+            if ((bool) $request->session()->pull('oauth.mobile', false)) {
+                return redirect()->away('vrooem://auth-callback?error=' . rawurlencode('No email returned from provider.'));
+            }
+
             return redirect()
                 ->route('login', ['locale' => $locale])
                 ->withErrors(['email' => 'No email returned from provider.']);
@@ -138,6 +153,20 @@ class SocialAuthController extends Controller
         $affiliateService = new AffiliateQrCodeService();
         $affiliateService->updateCustomerInAffiliateScans($user->id);
 
+        // Mobile flow: issue a Sanctum token and redirect back to the app via deep link.
+        $isMobile = (bool) $request->session()->pull('oauth.mobile', false);
+        if ($isMobile) {
+            $user->load(['profile', 'vendorProfile']);
+            $token = $user->createToken('mobile-social')->plainTextToken;
+            $userPayload = base64_encode(json_encode($this->mobileUserPayload($user)));
+            $deepLink = sprintf(
+                'vrooem://auth-callback?token=%s&user=%s',
+                rawurlencode($token),
+                rawurlencode($userPayload),
+            );
+            return redirect()->away($deepLink);
+        }
+
         $statusMessage = $wasCreated
             ? 'Account created successfully. Please complete your profile.'
             : 'Welcome back!';
@@ -145,6 +174,46 @@ class SocialAuthController extends Controller
         return redirect()
             ->route('profile.edit', ['locale' => $locale])
             ->with('status', $statusMessage);
+    }
+
+    private function mobileUserPayload(User $user): array
+    {
+        $profile = $user->profile;
+        $vendorProfile = $user->role === 'vendor' ? $user->vendorProfile : null;
+
+        return [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->role,
+            'status' => $user->status,
+            'profile' => $profile ? [
+                'avatar' => $profile->avatar,
+                'title' => $profile->title,
+                'gender' => $profile->gender,
+                'date_of_birth' => $profile->date_of_birth,
+                'about' => $profile->about,
+                'address_line1' => $profile->address_line1,
+                'address_line2' => $profile->address_line2,
+                'city' => $profile->city,
+                'state' => $profile->state,
+                'country' => $profile->country,
+                'postal_code' => $profile->postal_code,
+                'tax_identification' => $profile->tax_identification,
+                'currency' => $profile->currency,
+                'languages' => $profile->languages,
+            ] : null,
+            'vendor_profile' => $vendorProfile ? [
+                'company_name' => $vendorProfile->company_name,
+                'company_email' => $vendorProfile->company_email,
+                'company_phone_number' => $vendorProfile->company_phone_number,
+                'company_address' => $vendorProfile->company_address,
+                'company_gst_number' => $vendorProfile->company_gst_number,
+                'status' => $vendorProfile->status,
+            ] : null,
+        ];
     }
 
     private function createUserFromProvider($socialUser, ?string $resolvedPhoneCode): User

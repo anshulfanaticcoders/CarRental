@@ -24,7 +24,7 @@ class BookingController extends Controller
             'session_id' => ['required', 'string', 'max:191'],
         ]);
 
-        $booking = Booking::with(['vehicle.images', 'extras', 'amounts', 'payments'])
+        $booking = Booking::with(['vehicle.images', 'extras', 'amounts', 'payments', 'offers'])
             ->where('stripe_session_id', $data['session_id'])
             ->first();
 
@@ -44,7 +44,7 @@ class BookingController extends Controller
                 }
 
                 $booking = $bookingService->createBookingFromSession($session);
-                $booking = Booking::with(['vehicle.images', 'extras', 'amounts', 'payments'])
+                $booking = Booking::with(['vehicle.images', 'extras', 'amounts', 'payments', 'offers'])
                     ->find($booking->id);
             } catch (\Throwable $e) {
                 Log::warning('Mobile bySession: stripe fallback failed', [
@@ -93,6 +93,7 @@ class BookingController extends Controller
             'payments',
             'customer',
             'vendorProfile.user',
+            'offers',
         ])
             ->where('id', $id)
             ->whereHas('customer', fn ($q) => $q->where('user_id', $request->user()->id))
@@ -582,6 +583,17 @@ class BookingController extends Controller
             'driver_license_number' => $customer->driver_license_number ?? null,
             'discount_code' => $b->discount_code,
             'discount_amount' => $b->discount_amount !== null ? (float) $b->discount_amount : 0,
+            'offers' => ($b->offers ?? collect())->map(fn ($o) => [
+                'id' => $o->id,
+                'offer_id' => $o->offer_id,
+                'name' => $o->name,
+                'title' => $o->title,
+                'slug' => $o->slug,
+                'effect_type' => $o->effect_type,
+                'effect_payload' => is_array($o->effect_payload) ? $o->effect_payload : (is_string($o->effect_payload) ? (json_decode($o->effect_payload, true) ?: []) : []),
+                'discount_amount' => $o->discount_amount !== null ? (float) $o->discount_amount : 0,
+                'description' => is_array($o->metadata ?? null) ? ($o->metadata['description'] ?? null) : null,
+            ])->values(),
             'stripe_session_id' => $b->stripe_session_id,
             'stripe_payment_intent_id' => $b->stripe_payment_intent_id,
             'security_deposit' => $displayDeposit,
