@@ -26,6 +26,7 @@ class OverviewController extends Controller
         $totalBookings = $vendorBookingIds->count();
         $confirmedBookings = Booking::whereIn('id', $vendorBookingIds)->where('booking_status', 'confirmed')->count();
         $pendingBookings = Booking::whereIn('id', $vendorBookingIds)->where('booking_status', 'pending')->count();
+        $activeBookings = Booking::whereIn('id', $vendorBookingIds)->where('booking_status', 'active')->count();
         $completedBookings = Booking::whereIn('id', $vendorBookingIds)->where('booking_status', 'completed')->count();
         $cancelledBookings = Booking::whereIn('id', $vendorBookingIds)->where('booking_status', 'cancelled')->count();
 
@@ -61,6 +62,7 @@ class OverviewController extends Controller
                 'total_bookings' => $totalBookings,
                 'pending_bookings' => $pendingBookings,
                 'confirmed_bookings' => $confirmedBookings,
+                'active_bookings' => $activeBookings,
                 'completed_bookings' => $completedBookings,
                 'cancelled_bookings' => $cancelledBookings,
                 'today_bookings' => $todayBookings,

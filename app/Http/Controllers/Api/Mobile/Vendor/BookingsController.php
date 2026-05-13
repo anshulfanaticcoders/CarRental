@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile\Vendor;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\User;
+use App\Models\VendorVehiclePlan;
 use App\Notifications\Booking\BookingStatusUpdatedCustomerNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,7 +45,7 @@ class BookingsController extends Controller
     public function show(Request $request, int $id): JsonResponse
     {
         $vendorId = $request->user()->id;
-        $booking = Booking::with(['vehicle.images', 'vehicle.category', 'customer', 'extras', 'amounts', 'payments'])
+        $booking = Booking::with(['vehicle.images', 'vehicle.category', 'vehicle.benefits', 'customer', 'extras', 'amounts', 'payments'])
             ->where('id', $id)
             ->whereHas('vehicle', fn ($q) => $q->where('vendor_id', $vendorId))
             ->first();
@@ -56,6 +57,44 @@ class BookingsController extends Controller
         return response()->json([
             'booking' => $this->transformDetail($booking, $request),
         ]);
+    }
+
+    private function parsePaymentMethods($raw): array
+    {
+        $list = $raw;
+        if (is_string($list)) {
+            $decoded = json_decode($list, true);
+            $list = is_array($decoded) ? $decoded : [$list];
+        }
+        if (! is_array($list)) return [];
+        $labels = [
+            'credit_card' => 'Credit card',
+            'debit_card' => 'Debit card',
+            'card' => 'Card',
+            'cash' => 'Cash',
+            'bank_wire' => 'Bank transfer',
+            'bank_transfer' => 'Bank transfer',
+            'upi' => 'UPI',
+            'crypto' => 'Crypto',
+            'paypal' => 'PayPal',
+            'stripe' => 'Stripe',
+        ];
+        return array_values(array_filter(array_map(function ($m) use ($labels) {
+            $key = strtolower(trim((string) $m));
+            if ($key === '') return null;
+            return $labels[$key] ?? ucfirst(str_replace('_', ' ', $key));
+        }, $list)));
+    }
+
+    private function fuelPolicyLabel(?string $code): ?string
+    {
+        if (! $code) return null;
+        return match ($code) {
+            'full_to_full' => 'Full to full',
+            'same_to_same' => 'Same to same',
+            'pre_purchase' => 'Pre-purchase',
+            default => ucfirst(str_replace('_', ' ', $code)),
+        };
     }
 
     public function updateStatus(Request $request, int $id): JsonResponse
@@ -165,7 +204,31 @@ class BookingsController extends Controller
     {
         $base = $this->transformList($b, $request);
         $metadata = is_string($b->provider_metadata) ? (json_decode($b->provider_metadata, true) ?: []) : ($b->provider_metadata ?: []);
-        $amount = $b->amounts?->first();
+        $amount = $b->amounts;
+        $vehicle = $b->vehicle;
+        $benefit = $vehicle?->benefits;
+
+        // Lookup plan features (internal vehicles only — external plans aren't stored locally)
+        $planFeatures = [];
+        $planDescription = null;
+        if ($b->vehicle_id && $b->plan) {
+            $vendorPlan = VendorVehiclePlan::query()
+                ->where('vehicle_id', $b->vehicle_id)
+                ->where('plan_type', $b->plan)
+                ->first();
+            if ($vendorPlan) {
+                $rawFeatures = $vendorPlan->features;
+                // Some rows are double-JSON-encoded (cast decodes once, value is still a JSON string).
+                if (is_string($rawFeatures)) {
+                    $decoded = json_decode($rawFeatures, true);
+                    $rawFeatures = is_array($decoded) ? $decoded : [];
+                }
+                $planFeatures = is_array($rawFeatures)
+                    ? array_values(array_filter(array_map(fn ($v) => trim((string) $v), $rawFeatures), fn ($v) => $v !== ''))
+                    : [];
+                $planDescription = $vendorPlan->plan_description;
+            }
+        }
 
         return array_merge($base, [
             'plan' => $b->plan,
@@ -185,12 +248,41 @@ class BookingsController extends Controller
             ])->values(),
             'plan_details' => [
                 'name' => $b->plan,
+                'description' => $planDescription,
+                'features' => $planFeatures,
                 'protection_code' => $metadata['protection_code'] ?? null,
                 'protection_amount' => isset($metadata['protection_amount']) ? (float) $metadata['protection_amount'] : null,
                 'package' => $metadata['package'] ?? null,
                 'selected_deposit_type' => $metadata['selected_deposit_type'] ?? null,
                 'mandatory_amount' => isset($metadata['mandatory_amount']) ? (float) $metadata['mandatory_amount'] : null,
-                'fuel_policy' => $metadata['fuel_policy'] ?? null,
+                'fuel_policy' => $this->fuelPolicyLabel($vehicle?->fuel_policy ?? ($metadata['fuel_policy'] ?? null)),
+            ],
+            'vehicle_details' => [
+                'transmission' => $vehicle?->transmission,
+                'fuel' => $vehicle?->fuel,
+                'seating_capacity' => $vehicle?->seating_capacity,
+                'luggage_capacity' => $vehicle?->luggage_capacity,
+                'mileage' => $vehicle?->mileage !== null ? (float) $vehicle->mileage : null,
+                'mileage_unit' => 'km/litre',
+                'security_deposit' => $vehicle?->security_deposit !== null ? (float) $vehicle->security_deposit : null,
+                'pickup_instructions' => $vehicle?->pickup_instructions,
+                'dropoff_instructions' => $vehicle?->dropoff_instructions,
+                'guidelines' => $vehicle?->guidelines,
+                'rental_policy' => $vehicle?->rental_policy,
+                'terms_policy' => $vehicle?->terms_policy,
+                'minimum_driver_age' => $benefit?->minimum_driver_age ?? null,
+                'cancellation_available' => (bool) ($vehicle?->cancellation_available ?? false),
+                'limited_km_per_day' => (bool) ($benefit?->limited_km_per_day ?? false),
+                'limited_km_per_day_range' => $benefit?->limited_km_per_day_range !== null ? (float) $benefit->limited_km_per_day_range : null,
+                'price_per_km_per_day' => $benefit?->price_per_km_per_day !== null ? (float) $benefit->price_per_km_per_day : null,
+                'cancellation_fee_per_day' => $benefit?->cancellation_fee_per_day !== null ? (float) $benefit->cancellation_fee_per_day : null,
+                'cancellation_deadline_hours' => $benefit?->cancellation_available_per_day_date,
+            ],
+            'pickup_payment_summary' => [
+                'rental_balance' => $amount?->vendor_total_amount !== null ? (float) $amount->vendor_total_amount : null,
+                'security_deposit' => $vehicle?->security_deposit !== null ? (float) $vehicle->security_deposit : null,
+                'currency' => $amount?->vendor_currency ?? $b->booking_currency ?? 'EUR',
+                'deposit_payment_methods' => $this->parsePaymentMethods($vehicle?->payment_method),
             ],
             'base_price' => $b->base_price !== null ? (float) $b->base_price : null,
             'extra_charges' => $b->extra_charges !== null ? (float) $b->extra_charges : null,
