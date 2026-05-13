@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
 use App\Services\GatewaySearchParamsBuilder;
 use App\Services\LocationSearchService;
+use App\Services\PriceVerificationService;
 use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\GatewayVehicleTransformer;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
@@ -136,8 +137,9 @@ class VehicleSearchController extends Controller
         $combined = array_merge($internalTransformed, $transformed);
 
         $markup = $this->markupRate();
+        $gatewaySearchId = $gatewayResult['search_id'] ?? null;
         $vehicles = array_values(array_filter(array_map(
-            fn ($v) => $this->slimVehicle($v, $markup, $rentalDays),
+            fn ($v) => $this->slimVehicle($v, $markup, $rentalDays, $gatewaySearchId),
             $combined,
         )));
 
@@ -152,20 +154,43 @@ class VehicleSearchController extends Controller
             ];
         }
 
+        // Seed PriceVerificationService cache so checkout can verify against stored prices.
+        // Mirrors GatewaySearchService::search() lines 196-260: stamp price_hash onto each
+        // slim vehicle so mobile can pass it back to verifyPrices at checkout time.
+        $searchSessionId = 'mobile_' . ($request->user()?->id ?? 'guest') . '_' . now()->timestamp;
+        $priceMap = [];
+        try {
+            $priceMap = app(PriceVerificationService::class)->storeOriginalPrices($searchSessionId, $combined);
+        } catch (\Throwable $e) {
+            Log::warning('Mobile search: failed to seed price verification cache', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        foreach ($vehicles as &$slim) {
+            $id = $slim['id'] ?? null;
+            if ($id !== null && isset($priceMap[$id])) {
+                $slim['price_hash'] = $priceMap[$id]['price_hash'];
+                $slim['vehicle_id_hash'] = $priceMap[$id]['vehicle_id_hash'] ?? null;
+            }
+        }
+        unset($slim);
+
         return response()->json([
             'vehicles' => $vehicles,
             'provider_status' => $providerStatus,
+            'search_session_id' => $searchSessionId,
             'meta' => [
                 'total' => count($vehicles),
                 'location_name' => $location['name'] ?? null,
                 'rental_days' => $rentalDays,
-                'gateway_search_id' => $gatewayResult['search_id'] ?? null,
+                'gateway_search_id' => $gatewaySearchId,
                 'provider_markup_percent' => $markup * 100,
             ],
         ]);
     }
 
-    private function slimVehicle(array $v, float $markup, int $rentalDays): ?array
+    private function slimVehicle(array $v, float $markup, int $rentalDays, ?string $gatewaySearchId = null): ?array
     {
         // Internal vehicles use nested pricing/specs/policies; gateway uses flat keys.
         $pricing = is_array($v['pricing'] ?? null) ? $v['pricing'] : [];
@@ -217,6 +242,10 @@ class VehicleSearchController extends Controller
             'model' => $v['model'] ?? null,
             'category' => $v['category'] ?? null,
             'image' => $v['image'] ?? null,
+            // RAW (net) values exposed under field names PriceVerificationService reads first
+            // (see PriceVerificationService.php line 130 + storeOriginalPrices line 40).
+            'total' => $totalNet,
+            'price_per_day' => $dailyNet,
             'total_price' => $totalGross,
             'total_price_net' => $totalNet,
             'daily_rate' => $dailyGross,
@@ -297,8 +326,35 @@ class VehicleSearchController extends Controller
             'cancellation_summary' => $this->deriveCancellationSummary($v),
             'cover_codes' => $this->deriveCoverCodes($v),
             'mandatory_amount' => $this->deriveMandatoryAmount($v, $markup),
+            'mandatory_amount_net' => $this->deriveMandatoryAmountNet($v),
             'highlights' => $this->deriveHighlights($v, $providerPayload, $rawBenefits ?? []),
+            // Web-parity fields used by StripeCheckoutController validation + provider_metadata persistence.
+            'quoteid' => $v['quoteid'] ?? ($v['quote_id'] ?? null),
+            'rentalCode' => $v['rentalCode'] ?? ($v['rental_code'] ?? null),
+            'gateway_search_id' => $v['gateway_search_id'] ?? $gatewaySearchId,
+            'provider_markup_rate' => round($markup, 4),
+            'pickup_location_details' => is_array($v['location_details'] ?? null) ? $v['location_details'] : (is_array($pickupLocation) && ! empty($pickupLocation) ? $pickupLocation : null),
+            'dropoff_location_details' => is_array($v['dropoff_location_details'] ?? null) ? $v['dropoff_location_details'] : null,
+            'protection_code' => $this->deriveDefaultProtectionCode($v),
         ];
+    }
+
+    /**
+     * Default protection code per provider — mirrors web's adapter defaults so checkout can
+     * pass the right `protection_code` without forcing the user to pick.
+     */
+    private function deriveDefaultProtectionCode(array $v): ?string
+    {
+        $source = strtolower((string) ($v['source'] ?? ''));
+        if ($source === 'adobe') return 'PLI';
+        if ($source === 'locauto_rent') return null; // user selects from 7 codes
+        // Default: first product/plan code if any.
+        $products = is_array($v['products'] ?? null) ? $v['products'] : [];
+        foreach ($products as $p) {
+            if (is_array($p) && ! empty($p['code'])) return (string) $p['code'];
+            if (is_array($p) && ! empty($p['type'])) return (string) $p['type'];
+        }
+        return null;
     }
 
     private function derivePerProviderProtectionPlans(array $v, float $markup, int $rentalDays, string $currency): array
@@ -496,6 +552,14 @@ class VehicleSearchController extends Controller
         if ($source !== 'adobe') return 0.0;
         $pli = $v['pli'] ?? null;
         return is_numeric($pli) ? $this->grossUp((float) $pli, $markup) : 0.0;
+    }
+
+    private function deriveMandatoryAmountNet(array $v): float
+    {
+        $source = strtolower((string) ($v['source'] ?? ''));
+        if ($source !== 'adobe') return 0.0;
+        $pli = $v['pli'] ?? null;
+        return is_numeric($pli) ? round((float) $pli, 2) : 0.0;
     }
 
     private function deriveHighlights(array $v, array $providerPayload, array $rawBenefits): ?array
@@ -893,7 +957,9 @@ class VehicleSearchController extends Controller
                 'code' => (string) ($p['type'] ?? 'BAS'),
                 'name' => (string) ($p['name'] ?? 'Basic'),
                 'total' => $this->grossUp($totalNet, $markup),
+                'total_net' => round($totalNet, 2),
                 'daily_rate' => $this->grossUp($dailyNet, $markup),
+                'daily_rate_net' => round($dailyNet, 2),
                 'currency' => $p['currency'] ?? $currency,
                 // Deposit and excess are held/refunded by vendor at pickup — NOT marked up (matches web's formatPrice vs formatRentalPrice rule)
                 'excess' => isset($p['excess']) && is_numeric($p['excess']) ? round((float) $p['excess'], 2) : null,
@@ -938,10 +1004,13 @@ class VehicleSearchController extends Controller
 
             $out[] = [
                 'code' => (string) ($e['code'] ?? $e['id'] ?? ''),
+                'id' => (string) ($e['id'] ?? $e['code'] ?? ''),
                 'name' => (string) ($e['name'] ?? $e['description'] ?? 'Extra'),
                 'description' => $e['description'] ?? null,
                 'amount' => $this->grossUp($amountForBooking, $markup),
+                'amount_net' => round($amountForBooking, 2),
                 'daily_rate' => $hasDaily ? $this->grossUp((float) $dailyRate, $markup) : null,
+                'daily_rate_net' => $hasDaily ? round((float) $dailyRate, 2) : null,
                 'currency' => $e['currency'] ?? null,
                 'pricing_type' => $pricingType,
                 'max_quantity' => isset($e['max_quantity']) && is_numeric($e['max_quantity']) ? (int) $e['max_quantity'] : 1,
