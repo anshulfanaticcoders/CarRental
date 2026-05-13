@@ -48,7 +48,7 @@ class BookingCreatedVendorNotification extends Notification
                 'type' => 'vendor_booking_created',
                 'booking_id' => $this->booking->id ?? null,
                 'booking_number' => $bookingNumber,
-                'route' => '/vendor-applied',
+                'route' => '/(vendor)/booking/'.($this->booking->id ?? ''),
             ],
             'channelId' => 'bookings',
         ];

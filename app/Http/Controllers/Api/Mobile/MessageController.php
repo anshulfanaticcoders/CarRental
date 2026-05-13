@@ -15,17 +15,29 @@ class MessageController extends Controller
 {
     public function inbox(Request $request): JsonResponse
     {
-        $user = $request->user();
+        return $this->buildInbox($request->user(), 'customer');
+    }
 
-        // Find all booking IDs the user participates in (as customer)
-        $customerBookings = Booking::with(['vehicle.vendor', 'customer'])
-            ->whereHas('customer', fn ($q) => $q->where('user_id', $user->id))
-            ->whereHas('vehicle')
-            ->get();
+    public function vendorInbox(Request $request): JsonResponse
+    {
+        return $this->buildInbox($request->user(), 'vendor');
+    }
+
+    private function buildInbox(User $user, string $role): JsonResponse
+    {
+        $query = Booking::with(['vehicle.vendor', 'customer'])->whereHas('vehicle');
+
+        if ($role === 'vendor') {
+            $query->whereHas('vehicle', fn ($q) => $q->where('vendor_id', $user->id));
+        } else {
+            $query->whereHas('customer', fn ($q) => $q->where('user_id', $user->id));
+        }
+
+        $bookings = $query->get();
 
         $threads = [];
-        foreach ($customerBookings as $b) {
-            $otherUserId = $b->vehicle?->vendor_id;
+        foreach ($bookings as $b) {
+            $otherUserId = $role === 'vendor' ? $b->customer?->user_id : $b->vehicle?->vendor_id;
             if (! $otherUserId) continue;
 
             $lastMessage = Message::where('booking_id', $b->id)
@@ -41,13 +53,14 @@ class MessageController extends Controller
             if (! $lastMessage && ! in_array($b->booking_status, ['confirmed', 'completed'], true)) continue;
 
             $other = User::with('profile')->find($otherUserId);
+            $defaultName = $role === 'vendor' ? 'Customer' : 'Vendor';
             $threads[] = [
                 'booking_id' => $b->id,
                 'booking_number' => $b->booking_number,
                 'vehicle_name' => $b->vehicle_name ?? trim(($b->vehicle?->brand ?? '').' '.($b->vehicle?->model ?? '')),
                 'other_user' => $other ? [
                     'id' => $other->id,
-                    'name' => trim(($other->first_name ?? '').' '.($other->last_name ?? '')) ?: 'Vendor',
+                    'name' => trim(($other->first_name ?? '').' '.($other->last_name ?? '')) ?: $defaultName,
                     'avatar' => $other->profile?->avatar,
                 ] : null,
                 'last_message' => $lastMessage ? [

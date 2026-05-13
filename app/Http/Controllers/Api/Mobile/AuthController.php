@@ -104,7 +104,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'user' => $this->transformUser($user->fresh('profile')),
+            'user' => $this->transformUser($user->fresh(['profile','vendorProfile'])),
         ], 201);
     }
 
@@ -134,13 +134,13 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'user' => $this->transformUser($user->fresh('profile')),
+            'user' => $this->transformUser($user->fresh(['profile','vendorProfile'])),
         ]);
     }
 
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user()->load('profile');
+        $user = $request->user()->load(['profile','vendorProfile']);
 
         return response()->json([
             'user' => $this->transformUser($user),
@@ -214,7 +214,7 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'user' => $this->transformUser($user->fresh('profile')),
+            'user' => $this->transformUser($user->fresh(['profile','vendorProfile'])),
         ]);
     }
 
@@ -284,6 +284,7 @@ class AuthController extends Controller
     private function transformUser(User $user): array
     {
         $profile = $user->profile;
+        $vendorProfile = $user->role === 'vendor' ? $user->vendorProfile : null;
 
         return [
             'id' => $user->id,
@@ -308,6 +309,14 @@ class AuthController extends Controller
                 'tax_identification' => $profile->tax_identification,
                 'currency' => $profile->currency,
                 'languages' => $profile->languages,
+            ] : null,
+            'vendor_profile' => $vendorProfile ? [
+                'company_name' => $vendorProfile->company_name,
+                'company_email' => $vendorProfile->company_email,
+                'company_phone_number' => $vendorProfile->company_phone_number,
+                'company_address' => $vendorProfile->company_address,
+                'company_gst_number' => $vendorProfile->company_gst_number,
+                'status' => $vendorProfile->status,
             ] : null,
         ];
     }

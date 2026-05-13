@@ -212,6 +212,8 @@ Route::prefix('mobile')->group(function () {
             Route::get('/external-bookings', [\App\Http\Controllers\Api\Mobile\Vendor\ExternalBookingsController::class, 'index']);
             Route::get('/external-bookings/{id}', [\App\Http\Controllers\Api\Mobile\Vendor\ExternalBookingsController::class, 'show'])->whereNumber('id');
             Route::post('/external-bookings/{id}/status', [\App\Http\Controllers\Api\Mobile\Vendor\ExternalBookingsController::class, 'updateStatus'])->whereNumber('id');
+
+            Route::get('/messages', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'vendorInbox']);
         });
 
         Route::get('/documents', [\App\Http\Controllers\Api\Mobile\DocumentController::class, 'show']);

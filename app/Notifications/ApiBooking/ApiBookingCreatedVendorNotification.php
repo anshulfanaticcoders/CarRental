@@ -26,7 +26,25 @@ class ApiBookingCreatedVendorNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        $channels = ['database', 'mail'];
+        if (! empty($notifiable->expo_push_token)) {
+            $channels[] = \App\Notifications\Channels\ExpoPushChannel::class;
+        }
+        return $channels;
+    }
+
+    public function toExpoPush(object $notifiable): array
+    {
+        return [
+            'title' => 'New external booking',
+            'body' => '#'.$this->booking->booking_number.' from '.$this->consumer->name,
+            'data' => [
+                'type' => 'vendor_external_booking_created',
+                'booking_id' => $this->booking->id,
+                'route' => '/(vendor)/external-bookings',
+            ],
+            'channelId' => 'bookings',
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage
