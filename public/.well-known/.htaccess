@@ -1,0 +1,15 @@
+# Serve the Apple App Site Association file (no extension) as JSON.
+<Files "apple-app-site-association">
+    ForceType application/json
+    Header set Content-Type "application/json"
+</Files>
+
+<Files "assetlinks.json">
+    ForceType application/json
+    Header set Content-Type "application/json"
+</Files>
+
+# Never let Laravel's front controller rewrite these static verification files.
+<IfModule mod_rewrite.c>
+    RewriteEngine Off
+</IfModule>
