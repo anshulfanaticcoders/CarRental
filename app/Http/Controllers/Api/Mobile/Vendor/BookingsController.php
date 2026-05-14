@@ -42,6 +42,60 @@ class BookingsController extends Controller
         ]);
     }
 
+    public function calendar(Request $request): JsonResponse
+    {
+        $vendorId = $request->user()->id;
+        $validated = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+
+        $from = isset($validated['from']) ? \Carbon\Carbon::createFromFormat('Y-m-d', $validated['from']) : \Carbon\Carbon::today();
+        $to = isset($validated['to']) ? \Carbon\Carbon::createFromFormat('Y-m-d', $validated['to']) : $from->copy()->addMonths(3);
+        if ($to->lt($from)) {
+            [$from, $to] = [$to, $from];
+        }
+        $from = $from->copy()->startOfDay();
+        $to = $to->copy()->endOfDay();
+
+        $bookings = Booking::with(['vehicle:id,brand,model'])
+            ->whereHas('vehicle', fn ($q) => $q->where('vendor_id', $vendorId))
+            ->whereIn('booking_status', ['pending', 'confirmed', 'active'])
+            ->where(function ($q) use ($from, $to) {
+                $q->whereBetween('pickup_date', [$from, $to])
+                    ->orWhereBetween('return_date', [$from, $to])
+                    ->orWhere(function ($q2) use ($from, $to) {
+                        $q2->where('pickup_date', '<', $from)->where('return_date', '>', $to);
+                    });
+            })
+            ->orderBy('pickup_date')
+            ->get();
+
+        $items = $bookings->map(function (Booking $b) {
+            return [
+                'id' => $b->id,
+                'booking_number' => $b->booking_number,
+                'booking_status' => $b->booking_status,
+                'pickup_date' => $b->pickup_date instanceof \Carbon\Carbon ? $b->pickup_date->toDateString() : substr((string) $b->pickup_date, 0, 10),
+                'pickup_time' => substr((string) $b->pickup_time, 0, 5),
+                'return_date' => $b->return_date instanceof \Carbon\Carbon ? $b->return_date->toDateString() : substr((string) $b->return_date, 0, 10),
+                'return_time' => substr((string) $b->return_time, 0, 5),
+                'vehicle' => [
+                    'id' => $b->vehicle?->id,
+                    'brand' => $b->vehicle?->brand,
+                    'model' => $b->vehicle?->model,
+                ],
+                'driver_name' => $b->driver_name,
+            ];
+        })->values();
+
+        return response()->json([
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'bookings' => $items,
+        ]);
+    }
+
     public function show(Request $request, int $id): JsonResponse
     {
         $vendorId = $request->user()->id;

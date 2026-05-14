@@ -151,6 +151,8 @@ Route::prefix('mobile')->group(function () {
     Route::get('/home/popular-places', [\App\Http\Controllers\Api\Mobile\HomeController::class, 'popularPlaces']);
     Route::get('/home/offers', [\App\Http\Controllers\Api\Mobile\HomeController::class, 'offers']);
 
+    Route::get('/pages/{slug}', [\App\Http\Controllers\Api\Mobile\PageController::class, 'show']);
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'me']);
         Route::post('/auth/logout', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'logout']);
@@ -192,6 +194,7 @@ Route::prefix('mobile')->group(function () {
         Route::prefix('vendor')->group(function () {
             Route::get('/overview', [\App\Http\Controllers\Api\Mobile\Vendor\OverviewController::class, 'index']);
             Route::get('/bookings', [\App\Http\Controllers\Api\Mobile\Vendor\BookingsController::class, 'index']);
+            Route::get('/bookings-calendar', [\App\Http\Controllers\Api\Mobile\Vendor\BookingsController::class, 'calendar']);
             Route::get('/bookings/{id}', [\App\Http\Controllers\Api\Mobile\Vendor\BookingsController::class, 'show'])->whereNumber('id');
             Route::post('/bookings/{id}/status', [\App\Http\Controllers\Api\Mobile\Vendor\BookingsController::class, 'updateStatus'])->whereNumber('id');
 
