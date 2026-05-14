@@ -3,13 +3,20 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\UserProfile;
+use Firebase\JWT\JWK;
+use Firebase\JWT\JWT;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -145,6 +152,177 @@ class AuthController extends Controller
         return response()->json([
             'user' => $this->transformUser($user),
         ]);
+    }
+
+    /**
+     * Native "Sign in with Apple" — the app sends the Apple identity token (a JWT).
+     * We verify its signature against Apple's published JWKS, confirm the issuer
+     * and audience, then find or create the user keyed on the Apple `sub` claim.
+     */
+    public function appleSignIn(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'identity_token' => ['required', 'string'],
+            'raw_nonce' => ['required', 'string', 'max:255'],
+            'full_name' => ['nullable', 'string', 'max:160'],
+            'device_name' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $clientId = config('services.apple.client_id');
+        if (! $clientId) {
+            Log::error('Apple Sign-In attempted but services.apple.client_id is not configured.');
+
+            return response()->json(['message' => 'Apple Sign-In is not available right now.'], 503);
+        }
+
+        try {
+            $jwks = Cache::remember('apple_auth_jwks', now()->addDay(), function () {
+                $response = Http::timeout(10)->get('https://appleid.apple.com/auth/keys');
+                if (! $response->successful()) {
+                    throw new \RuntimeException('Unable to fetch Apple public keys.');
+                }
+
+                return $response->json();
+            });
+
+            JWT::$leeway = 60; // tolerate minor clock skew on exp/iat
+            $payload = JWT::decode($data['identity_token'], JWK::parseKeySet($jwks));
+        } catch (\Throwable $e) {
+            // A stale cached key set can fail a freshly rotated token — drop it so the next try refetches.
+            Cache::forget('apple_auth_jwks');
+            Log::warning('Apple identity token verification failed', ['error' => $e->getMessage()]);
+
+            throw ValidationException::withMessages([
+                'identity_token' => ['Could not verify your Apple sign-in. Please try again.'],
+            ]);
+        }
+
+        if (($payload->iss ?? null) !== 'https://appleid.apple.com') {
+            throw ValidationException::withMessages([
+                'identity_token' => ['Invalid Apple token issuer.'],
+            ]);
+        }
+
+        $aud = $payload->aud ?? null;
+        $audMatches = is_array($aud) ? in_array($clientId, $aud, true) : ($aud === $clientId);
+        if (! $audMatches) {
+            throw ValidationException::withMessages([
+                'identity_token' => ['Apple token was not issued for this app.'],
+            ]);
+        }
+
+        // Bind the token to the nonce the client generated for this request.
+        // The app hashes its raw nonce with SHA-256 and passes it to Apple,
+        // which echoes the hash back inside the token's `nonce` claim.
+        $expectedNonce = hash('sha256', $data['raw_nonce']);
+        if (! hash_equals($expectedNonce, (string) ($payload->nonce ?? ''))) {
+            throw ValidationException::withMessages([
+                'identity_token' => ['Apple sign-in could not be verified. Please try again.'],
+            ]);
+        }
+
+        $appleId = (string) ($payload->sub ?? '');
+        if ($appleId === '') {
+            throw ValidationException::withMessages([
+                'identity_token' => ['Apple token is missing a subject.'],
+            ]);
+        }
+
+        // Trust the email ONLY from the verified token, never from the request body —
+        // a client-supplied email could be used to hijack an existing account.
+        $email = isset($payload->email) ? (string) $payload->email : null;
+        $emailVerified = filter_var($payload->email_verified ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        $user = DB::transaction(function () use ($appleId, $email, $emailVerified, $data) {
+            $account = SocialAccount::where('provider', 'apple')
+                ->where('provider_id', $appleId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($account) {
+                return User::whereKey($account->user_id)->lockForUpdate()->firstOrFail();
+            }
+
+            // Link to an existing account only when Apple itself vouches for the email.
+            $user = ($email && $emailVerified)
+                ? User::where('email', $email)->lockForUpdate()->first()
+                : null;
+
+            if (! $user) {
+                [$firstName, $lastName] = $this->splitAppleName($data['full_name'] ?? null, $email);
+
+                $user = User::create([
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'email' => $email ?: ('apple_' . $appleId . '@privaterelay.appleid.com'),
+                    'phone' => $this->generateUniquePhone(),
+                    'password' => Hash::make(Str::random(40)),
+                    'role' => 'customer',
+                    'status' => 'active',
+                    'email_verified_at' => ($email && $emailVerified) ? now() : null,
+                ]);
+
+                UserProfile::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'country' => 'Unknown',
+                        'currency' => 'EUR',
+                        'address_line1' => '',
+                        'address_line2' => '',
+                        'city' => '',
+                        'state' => '',
+                        'postal_code' => '',
+                    ],
+                );
+            }
+
+            SocialAccount::create([
+                'provider' => 'apple',
+                'provider_id' => $appleId,
+                'user_id' => $user->id,
+                'provider_email' => $email,
+            ]);
+
+            return $user;
+        });
+
+        if (($user->status ?? 'active') !== 'active') {
+            throw ValidationException::withMessages([
+                'email' => ['Your account is not active. Contact support.'],
+            ]);
+        }
+
+        $user->forceFill(['last_login_at' => now()])->save();
+
+        $token = $user->createToken($data['device_name'] ?? 'mobile-apple')->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'user' => $this->transformUser($user->fresh(['profile', 'vendorProfile'])),
+        ]);
+    }
+
+    private function splitAppleName(?string $fullName, ?string $email): array
+    {
+        $fullName = trim((string) $fullName);
+        if ($fullName !== '') {
+            $parts = preg_split('/\s+/', $fullName, 2);
+
+            return [$parts[0] ?: 'Apple', $parts[1] ?? 'User'];
+        }
+
+        $first = $email ? explode('@', $email)[0] : 'Apple';
+
+        return [$first ?: 'Apple', 'User'];
+    }
+
+    private function generateUniquePhone(): string
+    {
+        do {
+            $phone = '9' . str_pad((string) random_int(0, 99999999999), 11, '0', STR_PAD_LEFT);
+        } while (User::where('phone', $phone)->exists());
+
+        return $phone;
     }
 
     public function updateProfile(Request $request): JsonResponse

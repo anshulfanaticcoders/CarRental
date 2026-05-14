@@ -136,6 +136,7 @@ Route::post('/stripe/webhook', [\App\Http\Controllers\StripeWebhookController::c
 Route::prefix('mobile')->group(function () {
     Route::post('/auth/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
     Route::post('/auth/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
+    Route::post('/auth/apple', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'appleSignIn']);
     Route::post('/auth/check-availability', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'checkAvailability']);
 
     Route::get('/locations/search', [\App\Http\Controllers\Api\Mobile\LocationController::class, 'search']);

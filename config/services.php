@@ -156,6 +156,11 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
+    'apple' => [
+        // iOS bundle identifier — the `aud` claim of the native Sign in with Apple identity token.
+        'client_id' => env('APPLE_CLIENT_ID'),
+    ],
+
     'proxy' => [
         'http' => env('PROXY_HTTP'),
         'https' => env('PROXY_HTTPS'),
