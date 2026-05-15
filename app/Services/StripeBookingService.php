@@ -20,8 +20,10 @@ use App\Services\BookingAmountService;
 use App\Services\Bookings\InternalBookingSnapshotService;
 use App\Services\CurrencyConversionService;
 use App\Services\CheckoutIdentityGuardService;
+use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use App\Services\VrooemGatewayService;
 use App\Jobs\SendAwinConversion;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -92,6 +94,28 @@ class StripeBookingService
             return $existingBooking;
         }
 
+        // Serialize concurrent webhook + success-URL inserts that target the SAME
+        // internal vehicle so two customers can't both win the same date window.
+        // External-provider inventory is owned by the supplier's gateway and is
+        // checked in TriggerProviderReservationJob.
+        $availabilityLock = null;
+        $lockedVehicleId = null;
+        if (($metadata->vehicle_source ?? '') === 'internal' && !empty($metadata->vehicle_id)) {
+            $lockedVehicleId = (int) $metadata->vehicle_id;
+            $availabilityLock = Cache::lock("booking-vehicle-{$lockedVehicleId}", 30);
+            if (! $availabilityLock->block(10)) {
+                Log::error('StripeBookingService: Could not acquire availability lock', [
+                    'session_id' => $session->id,
+                    'vehicle_id' => $lockedVehicleId,
+                ]);
+                $this->refundStripePayment(
+                    $session->payment_intent ?? null,
+                    'Could not reserve vehicle inventory in time'
+                );
+                throw new \RuntimeException('Availability lock timeout for vehicle '.$lockedVehicleId);
+            }
+        }
+
         // Start Transaction
         DB::beginTransaction();
 
@@ -106,6 +130,43 @@ class StripeBookingService
             if (($metadata->vehicle_source ?? '') === 'internal' && !empty($metadata->vehicle_id)) {
                 $vehicleId = (int) $metadata->vehicle_id;
                 $internalVehicle = Vehicle::with(['vendorLocation', 'vendorProfileData', 'vendor'])->find($vehicleId);
+            }
+
+            // Re-check availability INSIDE the lock — covers (a) two simultaneous
+            // checkouts for the same vehicle/date, (b) stale Stripe links opened
+            // 30 min ago after someone else booked, (c) vendor blocks added while
+            // the customer was mid-checkout.
+            if ($internalVehicle && !empty($metadata->pickup_date) && !empty($metadata->dropoff_date)) {
+                $stillAvailable = app(InternalVehicleAvailabilityService::class)
+                    ->isVehicleAvailable($internalVehicle, [
+                        'pickup_date' => $metadata->pickup_date,
+                        'dropoff_date' => $metadata->dropoff_date,
+                        'pickup_time' => $metadata->pickup_time ?? null,
+                        'dropoff_time' => $metadata->dropoff_time ?? null,
+                    ]);
+                if (! $stillAvailable) {
+                    DB::rollBack();
+                    Log::warning('StripeBookingService: Vehicle no longer available — issuing refund', [
+                        'session_id' => $session->id,
+                        'vehicle_id' => $internalVehicle->id,
+                        'pickup_date' => $metadata->pickup_date,
+                        'dropoff_date' => $metadata->dropoff_date,
+                    ]);
+
+                    if ($existingBooking) {
+                        $existingBooking->update([
+                            'booking_status' => 'rejected',
+                            'payment_status' => 'refund_pending',
+                        ]);
+                    }
+
+                    $this->refundStripePayment(
+                        $session->payment_intent ?? null,
+                        'Vehicle no longer available for the requested dates'
+                    );
+                    $availabilityLock?->release();
+                    return null;
+                }
             }
 
             $bookingCurrency = $this->normalizeCurrencyCode($metadata->currency ?? 'EUR');
@@ -408,6 +469,53 @@ class StripeBookingService
                 'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
+        } finally {
+            $availabilityLock?->release();
+        }
+    }
+
+    /**
+     * Public proxy callable from the reservation-failed job's failed() handler.
+     */
+    public function issueRefundForFailedReservation(?string $paymentIntentId, string $reason): bool
+    {
+        return $this->refundStripePayment($paymentIntentId, $reason);
+    }
+
+    /**
+     * Issue a Stripe refund for a payment that cleared but for which we cannot
+     * fulfil the booking (e.g. inventory race). Best-effort: failures are logged
+     * but do not bubble — manual reconciliation in Stripe dashboard remains.
+     */
+    private function refundStripePayment(?string $paymentIntentId, string $reason): bool
+    {
+        if (! $paymentIntentId) {
+            Log::error('StripeBookingService: Cannot refund — no payment_intent ID', ['reason' => $reason]);
+            return false;
+        }
+        try {
+            \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
+            $refund = \Stripe\Refund::create([
+                'payment_intent' => $paymentIntentId,
+                'reason' => 'requested_by_customer',
+                'metadata' => [
+                    'internal_reason' => substr($reason, 0, 500),
+                    'refunded_at' => now()->toIso8601String(),
+                ],
+            ]);
+            Log::info('StripeBookingService: Refund issued', [
+                'payment_intent_id' => $paymentIntentId,
+                'refund_id' => $refund->id,
+                'reason' => $reason,
+            ]);
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('StripeBookingService: Stripe refund failed — manual reconciliation required', [
+                'payment_intent_id' => $paymentIntentId,
+                'reason' => $reason,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
         }
     }
 
@@ -1192,23 +1300,27 @@ class StripeBookingService
                     'notes' => ($booking->notes ? $booking->notes . "\n" : '')
                         . 'Gateway Conf: ' . $providerBookingRef,
                 ]);
-            } else {
-                Log::error('VrooemGateway: Reservation failed - no booking ref returned', [
-                    'booking_id' => $booking->id,
-                    'result' => $result,
-                ]);
-                $booking->update([
-                    'provider_metadata' => array_merge(
-                        $booking->provider_metadata ?? [],
-                        ['gateway_error' => 'No booking reference returned']
-                    ),
-                ]);
+                return;
             }
+
+            Log::error('VrooemGateway: Reservation failed - no booking ref returned', [
+                'booking_id' => $booking->id,
+                'result' => $result,
+            ]);
+            $booking->update([
+                'provider_metadata' => array_merge(
+                    $booking->provider_metadata ?? [],
+                    ['gateway_error' => 'No booking reference returned']
+                ),
+            ]);
+            // Throw so the queue job retries; failed() handler refunds after exhaustion.
+            throw new \RuntimeException(
+                'Gateway returned no supplier_booking_id for booking '.$booking->id
+            );
         } catch (\Exception $e) {
             Log::error('VrooemGateway: Reservation error', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
             $booking->update([
                 'provider_metadata' => array_merge(
@@ -1216,6 +1328,7 @@ class StripeBookingService
                     ['gateway_error' => $e->getMessage()]
                 ),
             ]);
+            throw $e;
         }
     }
 }

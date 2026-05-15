@@ -659,6 +659,7 @@ class StripeBookingServiceAccountingTest extends TestCase
     public function it_snapshots_applied_offers_and_free_esim_on_booking_creation(): void
     {
         Notification::fake();
+        Bus::fake([TriggerProviderReservationJob::class]);
 
         config([
             'currency.base_currency' => 'EUR',

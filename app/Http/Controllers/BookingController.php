@@ -374,6 +374,20 @@ class BookingController extends Controller
             return response()->json(['error' => 'Booking not found'], 404);
         }
 
+        // Authz: an authenticated user may only read their own booking via this
+        // endpoint. Anonymous access remains allowed for the immediate post-Stripe
+        // success page (guest checkouts have no auth context yet), but only when
+        // the booking belongs to a guest (no linked user) — registered-user
+        // bookings require login to inspect via the Stripe identifiers.
+        $bookingOwnerId = $booking->customer?->user_id;
+        $authUserId = auth()->id();
+        if ($bookingOwnerId !== null && $authUserId !== null && $bookingOwnerId !== $authUserId) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        if ($bookingOwnerId !== null && $authUserId === null) {
+            return response()->json(['error' => 'Authentication required to view this booking'], 401);
+        }
+
         if ($booking->vehicle) {
             $booking->provider_metadata = app(InternalBookingSnapshotService::class)->mergeMissingIntoMetadata(
                 $booking->provider_metadata,
