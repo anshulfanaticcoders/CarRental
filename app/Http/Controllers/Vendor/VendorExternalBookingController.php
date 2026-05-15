@@ -17,9 +17,38 @@ class VendorExternalBookingController extends Controller
         $search = $request->input('search', '');
         $statusFilter = $request->input('status', '');
 
-        $bookings = ApiBooking::with(['consumer', 'vehicle'])
+        $base = ApiBooking::query()
             ->whereHas('vehicle', fn($q) => $q->where('vendor_id', $vendorId))
-            ->where('is_test', false)
+            ->where('is_test', false);
+
+        $statusCounts = (clone $base)
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        $totalRevenue = (clone $base)
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->sum('total_amount');
+
+        $thisMonthRevenue = (clone $base)
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->sum('total_amount');
+
+        $analytics = [
+            'total_bookings' => (clone $base)->count(),
+            'pending_count' => $statusCounts['pending'] ?? 0,
+            'confirmed_count' => $statusCounts['confirmed'] ?? 0,
+            'completed_count' => $statusCounts['completed'] ?? 0,
+            'cancelled_count' => $statusCounts['cancelled'] ?? 0,
+            'total_revenue' => (float) $totalRevenue,
+            'this_month_revenue' => (float) $thisMonthRevenue,
+        ];
+
+        $bookings = $base
+            ->with(['consumer', 'vehicle'])
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('booking_number', 'like', '%' . $search . '%')
@@ -42,6 +71,7 @@ class VendorExternalBookingController extends Controller
                 'total' => $bookings->total(),
             ],
             'filters' => ['search' => $search, 'status' => $statusFilter],
+            'analytics' => $analytics,
         ]);
     }
 

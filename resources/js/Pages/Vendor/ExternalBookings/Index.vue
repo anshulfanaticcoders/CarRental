@@ -1,6 +1,54 @@
 <template>
     <MyProfileLayout>
         <div class="space-y-5">
+            <!-- KPI strip -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="rounded-xl border border-[var(--gray-200)] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--gray-500)] font-semibold">
+                        <TrendingUp class="w-3.5 h-3.5" /> Lifetime revenue
+                    </div>
+                    <div class="mt-1.5 text-xl font-bold text-[var(--gray-900)]">
+                        {{ formatNumber(props.analytics.total_revenue) }}
+                    </div>
+                    <div class="text-[11px] text-[var(--gray-400)] mt-0.5">
+                        From confirmed + completed bookings
+                    </div>
+                </div>
+                <div class="rounded-xl border border-[var(--gray-200)] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--gray-500)] font-semibold">
+                        <BarChart3 class="w-3.5 h-3.5" /> This month
+                    </div>
+                    <div class="mt-1.5 text-xl font-bold text-[var(--gray-900)]">
+                        {{ formatNumber(props.analytics.this_month_revenue) }}
+                    </div>
+                    <div class="text-[11px] text-[var(--gray-400)] mt-0.5">
+                        Revenue in current month
+                    </div>
+                </div>
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-amber-700 font-semibold">
+                        <Clock class="w-3.5 h-3.5" /> Pending action
+                    </div>
+                    <div class="mt-1.5 text-xl font-bold text-amber-900">
+                        {{ props.analytics.pending_count }}
+                    </div>
+                    <div class="text-[11px] text-amber-600 mt-0.5">
+                        Awaiting confirmation
+                    </div>
+                </div>
+                <div class="rounded-xl border border-[var(--gray-200)] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--gray-500)] font-semibold">
+                        <CheckCircle2 class="w-3.5 h-3.5" /> Confirmed / Completed
+                    </div>
+                    <div class="mt-1.5 text-xl font-bold text-[var(--gray-900)]">
+                        {{ props.analytics.confirmed_count + props.analytics.completed_count }}
+                    </div>
+                    <div class="text-[11px] text-[var(--gray-400)] mt-0.5">
+                        {{ props.analytics.total_bookings }} total &middot; {{ props.analytics.cancelled_count }} cancelled
+                    </div>
+                </div>
+            </div>
+
             <!-- Header -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -173,12 +221,24 @@ import { router, usePage } from '@inertiajs/vue3';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { Input } from '@/Components/ui/input';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/Components/ui/tooltip';
-import { Search, Eye, Globe } from 'lucide-vue-next';
+import { Search, Eye, Globe, TrendingUp, Clock, CheckCircle2, BarChart3 } from 'lucide-vue-next';
 
 const props = defineProps({
     bookings: { type: Array, required: true },
     pagination: { type: Object, required: true },
     filters: { type: Object, default: () => ({}) },
+    analytics: {
+        type: Object,
+        default: () => ({
+            total_bookings: 0,
+            pending_count: 0,
+            confirmed_count: 0,
+            completed_count: 0,
+            cancelled_count: 0,
+            total_revenue: 0,
+            this_month_revenue: 0,
+        }),
+    },
 });
 
 const searchQuery = ref(props.filters.search || '');
