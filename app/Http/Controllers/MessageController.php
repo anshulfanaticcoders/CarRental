@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage; // Added import for Storage
 use App\Events\MessageDeleted; // Added import
 use App\Events\MessageRestored; // Added import
@@ -487,6 +488,18 @@ public function show($locale, $bookingId)
     $message->load(['sender', 'receiver']); // Ensure sender/receiver are loaded for the event
     broadcast(new NewMessage($message))->toOthers();
 
+    // DB bell + native push for the receiver. Pusher already covers the real-time
+    // in-chat update; this notification feeds the inbox icon and offline push.
+    if ($message->receiver) {
+        try {
+            $message->receiver->notify(new NewMessageNotification($message));
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send NewMessageNotification', [
+                'message_id' => $message->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 
     return response()->json(['message' => $message]);
 }

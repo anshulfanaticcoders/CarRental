@@ -27,7 +27,27 @@ class CustomerPaymentFailedNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        $channels = ['database', 'mail'];
+        if (! empty($notifiable->expo_push_token)) {
+            $channels[] = \App\Notifications\Channels\ExpoPushChannel::class;
+        }
+        return $channels;
+    }
+
+    public function toExpoPush(object $notifiable): array
+    {
+        $bookingNumber = $this->booking->booking_number ?? '';
+        return [
+            'title' => 'Payment failed',
+            'body' => "Your payment for booking #{$bookingNumber} did not go through. Please try again.",
+            'data' => [
+                'type' => 'payment_failed',
+                'booking_id' => $this->booking->id ?? null,
+                'booking_number' => $bookingNumber,
+                'route' => '/(tabs)/bookings',
+            ],
+            'channelId' => 'bookings',
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage

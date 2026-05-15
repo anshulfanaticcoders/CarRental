@@ -28,7 +28,30 @@ class BookingStatusUpdatedCustomerNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        $channels = ['database', 'mail'];
+        if (! empty($notifiable->expo_push_token)) {
+            $channels[] = \App\Notifications\Channels\ExpoPushChannel::class;
+        }
+        return $channels;
+    }
+
+    public function toExpoPush(object $notifiable): array
+    {
+        $bookingNumber = $this->booking->booking_number ?? '';
+        $status = ucfirst((string) ($this->booking->booking_status ?? 'updated'));
+        $vehicleName = trim(($this->vehicle->brand ?? '').' '.($this->vehicle->model ?? '')) ?: 'your booking';
+        return [
+            'title' => 'Booking status updated',
+            'body' => "{$vehicleName} #{$bookingNumber} is now {$status}.",
+            'data' => [
+                'type' => 'booking_status_updated',
+                'booking_id' => $this->booking->id ?? null,
+                'booking_number' => $bookingNumber,
+                'status' => $this->booking->booking_status ?? null,
+                'route' => '/(tabs)/bookings',
+            ],
+            'channelId' => 'bookings',
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage

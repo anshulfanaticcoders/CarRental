@@ -360,9 +360,14 @@ class StripeBookingService
 
             $shouldTriggerProvider = empty($booking->provider_booking_ref);
 
-            // Unified provider flow: all external providers reserve through the gateway.
+            // Unified provider flow: all external providers reserve through the gateway,
+            // queued via a retrying job so a transient provider failure doesn't kill the
+            // booking after the customer's payment has already cleared.
             if ($booking->provider_source !== 'internal' && $shouldTriggerProvider) {
-                $this->triggerGatewayReservation($booking, $metadata);
+                \App\Jobs\TriggerProviderReservationJob::dispatch(
+                    $booking->id,
+                    (array) $metadata,
+                );
             } elseif ($booking->provider_source === 'internal') {
                 // Internal vehicles don't require external API reservation
                 Log::info('StripeBookingService: Internal vehicle booking confirmed', [
@@ -375,6 +380,26 @@ class StripeBookingService
 
             return $booking;
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            // SQLSTATE 23000 (integrity constraint violation) on stripe_session_id
+            // means a concurrent webhook/redirect already inserted this booking —
+            // re-fetch and return the winning row instead of bubbling a 500.
+            if ($e->getCode() === '23000') {
+                $existing = Booking::where('stripe_session_id', $session->id)->first();
+                if ($existing) {
+                    Log::info('StripeBookingService: Concurrent insert collapsed onto existing booking', [
+                        'session_id' => $session->id,
+                        'booking_id' => $existing->id,
+                    ]);
+                    return $existing;
+                }
+            }
+            Log::error('StripeBookingService: DB error creating booking - Transaction Rolled Back', [
+                'session_id' => $session->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('StripeBookingService: Error creating booking - Transaction Rolled Back', [
@@ -602,12 +627,19 @@ class StripeBookingService
 
     protected function buildProviderMetadataFromSession($metadata, Booking $booking, ?Vehicle $vehicle = null): array
     {
+        $tracking = array_filter([
+            'search_session_id' => $metadata->search_session_id ?? null,
+            'gateway_search_id' => $metadata->gateway_search_id ?? null,
+            'selected_deposit_type' => $metadata->selected_deposit_type ?? null,
+        ], static fn ($v) => $v !== null && $v !== '');
+
         if (($booking->provider_source ?? $metadata->vehicle_source ?? null) === 'internal' && $vehicle) {
-            return app(InternalBookingSnapshotService::class)->buildForVehicle($vehicle, [
+            $snapshot = app(InternalBookingSnapshotService::class)->buildForVehicle($vehicle, [
                 'pickup_location' => $booking->pickup_location,
                 'return_location' => $booking->return_location,
                 'booking_currency' => $booking->booking_currency,
             ]);
+            return array_merge($snapshot, $tracking);
         }
 
         $normalizeValue = static function ($value) {
@@ -855,7 +887,7 @@ class StripeBookingService
             'protection_plans_offered' => $vehiclePayload['protection_plans'] ?? null,
         ], fn ($v) => $v !== null && $v !== [] && $v !== '');
 
-        return array_merge($providerMetadata, $additionalMetadata, $perProviderBlocks);
+        return array_merge($providerMetadata, $additionalMetadata, $perProviderBlocks, $tracking);
     }
 
     protected function resolveAppliedOffersFromMetadata($metadata): array
@@ -945,73 +977,91 @@ class StripeBookingService
 
     protected function notifyBookingCreated(Booking $booking, Customer $customer, ?string $tempPassword = null): void
     {
-        try {
-            $vehicle = $booking->vehicle ?? null;
-            $isInternalBooking = ($booking->provider_source ?? null) === 'internal';
+        $vehicle = $booking->vehicle ?? null;
+        $isInternalBooking = ($booking->provider_source ?? null) === 'internal';
 
-            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
-            $admin = User::where('email', $adminEmail)->first();
-            if ($admin) {
-                $admin->notify(new BookingCreatedAdminNotification($booking, $customer, $vehicle));
-            }
+        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $admin = User::where('email', $adminEmail)->first();
+        if ($admin) {
+            $this->safeNotify($booking, 'admin', fn () => $admin->notify(
+                new BookingCreatedAdminNotification($booking, $customer, $vehicle)
+            ));
+        } else {
+            Log::warning('StripeBookingService: Admin user not found for booking notification', [
+                'booking_id' => $booking->id,
+                'admin_email_env' => $adminEmail,
+            ]);
+        }
 
-            if (!$isInternalBooking) {
-                Log::info('StripeBookingService: Skipping customer/vendor booking-created notifications for external provider booking', [
-                    'booking_id' => $booking->id,
-                    'provider_source' => $booking->provider_source,
-                ]);
+        if (!$isInternalBooking) {
+            Log::info('StripeBookingService: Skipping customer/vendor booking-created notifications for external provider booking', [
+                'booking_id' => $booking->id,
+                'provider_source' => $booking->provider_source,
+            ]);
+            return;
+        }
 
-                return;
-            }
+        $vendor = null;
+        $vendorProfile = null;
+        if ($booking->vehicle_id && $vehicle) {
+            $vendor = User::find($vehicle->vendor_id);
+            $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
+        }
 
-            $vendor = null;
-            $vendorProfile = null;
+        if ($vendor) {
+            $this->safeNotify($booking, 'vendor', fn () => $vendor->notify(
+                new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor)
+            ));
+        }
 
-            if ($booking->vehicle_id && $vehicle) {
-                $vendor = User::find($vehicle->vendor_id);
-                $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
-            }
+        if ($vendorProfile && $vendorProfile->company_email) {
+            $this->safeNotify($booking, 'company', fn () => Notification::route('mail', $vendorProfile->company_email)
+                ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile)));
+        }
 
-            // Notify vendor (use direct notify() so notification stores with correct notifiable_id)
-            if ($vendor) {
-                $vendor->notify(new BookingCreatedVendorNotification($booking, $customer, $vehicle, $vendor));
-            }
-
-            // Company notification (mail only, no database storage needed)
-            if ($vendorProfile && $vendorProfile->company_email) {
-                Notification::route('mail', $vendorProfile->company_email)
-                    ->notify(new BookingCreatedCompanyNotification($booking, $customer, $vehicle, $vendorProfile));
-            }
-
-            // Notify customer - use User model so notification stores with correct notifiable_id
-            if ($tempPassword) {
-                if (!empty($customer->email) && !str_starts_with($customer->email, 'guest_')) {
-                    $customerUser = $customer->user;
+        if ($tempPassword) {
+            if (!empty($customer->email) && !str_starts_with($customer->email, 'guest_')) {
+                $customerUser = $customer->user;
+                $this->safeNotify($booking, 'guest_customer', function () use ($customerUser, $customer, $booking, $vehicle, $tempPassword) {
                     if ($customerUser) {
                         $customerUser->notify(new GuestBookingCreatedNotification($booking, $customer, $vehicle, $tempPassword));
                     } else {
                         Notification::route('mail', $customer->email)
                             ->notify(new GuestBookingCreatedNotification($booking, $customer, $vehicle, $tempPassword));
                     }
-                } else {
-                    Log::warning('StripeBookingService: Guest account created without deliverable email', [
-                        'booking_id' => $booking->id,
-                        'customer_id' => $customer->id,
-                        'email' => $customer->email,
-                    ]);
-                }
+                });
             } else {
-                $customerUser = $customer->user;
+                Log::warning('StripeBookingService: Guest account created without deliverable email', [
+                    'booking_id' => $booking->id,
+                    'customer_id' => $customer->id,
+                    'email' => $customer->email,
+                ]);
+            }
+        } else {
+            $customerUser = $customer->user;
+            $this->safeNotify($booking, 'customer', function () use ($customerUser, $customer, $booking, $vehicle) {
                 if ($customerUser) {
                     $customerUser->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
                 } else {
                     Notification::route('mail', $customer->email)
                         ->notify(new BookingCreatedCustomerNotification($booking, $customer, $vehicle));
                 }
-            }
-        } catch (\Exception $e) {
-            Log::warning('StripeBookingService: Failed to send booking notifications', [
+            });
+        }
+    }
+
+    /**
+     * Send one notification in isolation — a mail-channel rate limit or transient
+     * SMTP failure on any single recipient must not cascade and skip the rest.
+     */
+    private function safeNotify(Booking $booking, string $role, \Closure $fn): void
+    {
+        try {
+            $fn();
+        } catch (\Throwable $e) {
+            Log::warning('StripeBookingService: Failed to send booking notification', [
                 'booking_id' => $booking->id,
+                'role' => $role,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -1052,7 +1102,7 @@ class StripeBookingService
     /**
      * Trigger reservation via Vrooem Gateway (replaces all provider-specific trigger methods).
      */
-    protected function triggerGatewayReservation($booking, $metadata)
+    public function triggerGatewayReservation($booking, $metadata)
     {
         Log::info('VrooemGateway: Triggering reservation for booking', [
             'booking_id' => $booking->id,

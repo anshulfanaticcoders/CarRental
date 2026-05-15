@@ -150,9 +150,32 @@ class VendorBulkVehicleImportController extends Controller
         $this->storageService->delete($storedPath);
         $request->session()->forget(['bulk_vehicle_import_preview', 'bulk_vehicle_import_draft']);
 
+        $this->dispatchBulkUploadNotifications($result, $request->user());
+
         return redirect()
             ->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
             ->with('message', $result['created_count'].' vehicle(s) imported successfully.')
             ->with('type', 'success');
+    }
+
+    private function dispatchBulkUploadNotifications(array $result, $user): void
+    {
+        try {
+            $vehicleIds = $result['vehicle_ids'] ?? [];
+            $vehicles = \App\Models\Vehicle::whereIn('id', $vehicleIds)->get();
+
+            $user->notify(new \App\Notifications\BulkVehicleUploadNotification($vehicles, $user));
+
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = \App\Models\User::where('email', $adminEmail)->first();
+            if ($admin) {
+                $admin->notify(new \App\Notifications\BulkVehicleUploadAdminNotification($vehicles, $user));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to send bulk upload notifications', [
+                'user_id' => $user->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

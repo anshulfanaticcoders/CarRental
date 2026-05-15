@@ -29,7 +29,10 @@ class NewMessageNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        $channels = ['database', 'mail'];
+        // Per-message email would spam; MessageReminderNotification batches an email
+        // for unread chats. Real-time channel is Pusher (broadcast). This notification
+        // covers the in-app bell + native push.
+        $channels = ['database'];
         if (! empty($notifiable->expo_push_token)) {
             $channels[] = \App\Notifications\Channels\ExpoPushChannel::class;
         }

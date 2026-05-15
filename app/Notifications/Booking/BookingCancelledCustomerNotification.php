@@ -31,7 +31,27 @@ class BookingCancelledCustomerNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        $channels = ['database', 'mail'];
+        if (! empty($notifiable->expo_push_token)) {
+            $channels[] = \App\Notifications\Channels\ExpoPushChannel::class;
+        }
+        return $channels;
+    }
+
+    public function toExpoPush(object $notifiable): array
+    {
+        $bookingNumber = $this->booking->booking_number ?? '';
+        return [
+            'title' => 'Booking cancelled',
+            'body' => "Booking #{$bookingNumber} was cancelled. ".$this->cancellationReason,
+            'data' => [
+                'type' => 'booking_cancelled',
+                'booking_id' => $this->booking->id ?? null,
+                'booking_number' => $bookingNumber,
+                'route' => '/(tabs)/bookings',
+            ],
+            'channelId' => 'bookings',
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage

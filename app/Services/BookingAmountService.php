@@ -49,14 +49,20 @@ class BookingAmountService
         $vendorRate = null;
 
         if ($vendorCurrency && $providerAmounts) {
-            // Use provider's ORIGINAL amounts directly (in vendor's currency)
+            // Provider already returned amounts in vendor currency, but record the
+            // actual booking→vendor FX rate so the column reflects reality (not 1.0).
             $vendorNormalized = $this->normalizeAmounts($providerAmounts);
             $vendorAmounts = [
                 'success' => true,
                 'values' => $vendorNormalized,
-                'rate' => 1.0, // No conversion needed - already in vendor's currency
+                'rate' => null,
             ];
-            $vendorRate = 1.0;
+            if ($vendorCurrency === $bookingCurrency) {
+                $vendorRate = 1.0;
+            } else {
+                $probe = $conversionService->convert(1.0, $bookingCurrency, $vendorCurrency);
+                $vendorRate = ($probe['success'] ?? false) ? (float) ($probe['rate'] ?? $probe['converted_amount'] ?? 0) : null;
+            }
         } elseif ($vendorCurrency) {
             // Convert from booking currency to vendor currency
             $vendorAmounts = $this->convertAmounts(

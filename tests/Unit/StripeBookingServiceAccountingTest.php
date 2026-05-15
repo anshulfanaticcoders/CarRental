@@ -13,11 +13,13 @@ use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
+use App\Jobs\TriggerProviderReservationJob;
 use App\Notifications\Booking\GuestBookingCreatedNotification;
 use App\Services\CurrencyConversionService;
 use App\Services\StripeBookingService;
 use App\Services\VrooemGatewayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
@@ -485,27 +487,11 @@ class StripeBookingServiceAccountingTest extends TestCase
             'vrooem.enabled' => false,
         ]);
 
-        $service = new class () extends StripeBookingService {
-            public array $reservationTriggers = [];
+        Bus::fake([TriggerProviderReservationJob::class]);
 
+        $service = new class () extends StripeBookingService {
             protected function notifyBookingCreated($booking, $customer, ?string $tempPassword = null): void
             {
-            }
-
-            protected function triggerGatewayReservation($booking, $metadata)
-            {
-                $this->reservationTriggers[] = [
-                    'type' => 'gateway',
-                    'provider_source' => $booking->provider_source,
-                ];
-            }
-
-            protected function triggerRecordGoReservation($booking, $metadata)
-            {
-                $this->reservationTriggers[] = [
-                    'type' => 'legacy_recordgo',
-                    'provider_source' => $booking->provider_source,
-                ];
             }
         };
 
@@ -550,12 +536,9 @@ class StripeBookingServiceAccountingTest extends TestCase
 
         $service->createBookingFromSession($session);
 
-        $this->assertSame([
-            [
-                'type' => 'gateway',
-                'provider_source' => 'recordgo',
-            ],
-        ], $service->reservationTriggers);
+        Bus::assertDispatched(TriggerProviderReservationJob::class, function ($job) {
+            return ($job->metadata['vehicle_source'] ?? null) === 'recordgo';
+        });
     }
 
     #[Test]

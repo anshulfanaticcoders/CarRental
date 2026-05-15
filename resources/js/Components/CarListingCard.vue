@@ -51,6 +51,24 @@ const isKeyBenefit = (text) => {
         lower.includes('free') ||
         lower.includes('unlimited');
 };
+
+// Renteon sub-provider name pretty-print (snake_case / camelCase → Title Case).
+const PROVIDER_DISPLAY_NAMES = {
+    luxgoo: 'LuxGoo',
+    capitalcarrental: 'Capital Car Rental',
+    capital_car_rental: 'Capital Car Rental',
+    alquicoche: 'Alquicoche',
+    letsdrive: "Let's Drive",
+    lets_drive: "Let's Drive",
+};
+const formatProviderName = (code) => {
+    if (!code) return '';
+    const key = String(code).toLowerCase().replace(/[\s-]/g, '_');
+    if (PROVIDER_DISPLAY_NAMES[key]) return PROVIDER_DISPLAY_NAMES[key];
+    const compact = key.replace(/_/g, '');
+    if (PROVIDER_DISPLAY_NAMES[compact]) return PROVIDER_DISPLAY_NAMES[compact];
+    return code.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+};
 // Note: If some icons are missing, I'll use text or generic replacements for now.
 
 const props = defineProps({
@@ -658,6 +676,9 @@ onUnmounted(() => {
                 <span v-if="vehicle.category" class="car-badge category">
                     {{ vehicle.category }}
                 </span>
+                <span v-if="vehicle.source === 'renteon' && vehicle.provider_code" class="car-badge provider">
+                    {{ formatProviderName(vehicle.provider_code) }}
+                </span>
                 <span v-if="vehicle.special_offer || isKeyBenefit(vehicle.special_offer)" class="car-badge deal">
                     {{ vehicle.special_offer || 'Best Deal' }}
                 </span>
@@ -970,6 +991,13 @@ onUnmounted(() => {
     background: var(--success-500);
     color: var(--white);
     box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+}
+
+.car-badge.provider {
+    background: rgba(34, 211, 238, 0.92);
+    color: #0b2230;
+    box-shadow: 0 2px 6px rgba(21, 59, 79, 0.18);
+    backdrop-filter: blur(4px);
 }
 
 .car-favorite {

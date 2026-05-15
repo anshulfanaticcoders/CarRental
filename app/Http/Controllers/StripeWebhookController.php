@@ -4,8 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\BookingPayment;
+use App\Models\User;
+use App\Notifications\Payment\AdminPaymentFailedNotification;
+use App\Notifications\Payment\CustomerPaymentFailedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
 use Stripe\Webhook;
@@ -89,7 +93,12 @@ class StripeWebhookController extends Controller
 
             $this->bookingService->createBookingFromSession($freshSession);
         } catch (\Exception $e) {
-            Log::error('Webhook handler failed to create booking', ['error' => $e->getMessage()]);
+            Log::error('Webhook handler failed to create booking', [
+                'session_id' => $session->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            // Rethrow so the top-level handler responds non-2xx and Stripe retries.
+            throw $e;
         }
     }
 
@@ -115,7 +124,11 @@ class StripeWebhookController extends Controller
 
             $this->bookingService->createBookingFromSession($freshSession);
         } catch (\Exception $e) {
-            Log::error('Async payment handler failed to create booking', ['error' => $e->getMessage()]);
+            Log::error('Async payment handler failed to create booking', [
+                'session_id' => $session->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
         }
     }
 
@@ -163,18 +176,63 @@ class StripeWebhookController extends Controller
     {
         Log::info('Payment failed', ['payment_intent_id' => $paymentIntent->id]);
 
-        $booking = Booking::where('stripe_payment_intent_id', $paymentIntent->id)->first();
-        if ($booking) {
-            $booking->update([
-                'payment_status' => 'failed',
-            ]);
+        $booking = Booking::with(['customer', 'vehicle'])
+            ->where('stripe_payment_intent_id', $paymentIntent->id)
+            ->first();
 
-            // Update payment record
-            BookingPayment::where('transaction_id', $paymentIntent->id)->update([
-                'payment_status' => 'failed',
-            ]);
+        if (! $booking) {
+            return;
+        }
 
-            Log::info('Booking payment marked as failed', ['booking_id' => $booking->id]);
+        // Out-of-order events: if the booking already succeeded (paid/partial),
+        // a late payment_failed event must not regress its state. Only allow the
+        // failed transition from pending / null payment_status.
+        if (in_array($booking->payment_status, ['paid', 'partial'], true)) {
+            Log::warning('Ignoring payment_failed event for booking already in paid/partial state', [
+                'booking_id' => $booking->id,
+                'current_status' => $booking->payment_status,
+                'payment_intent_id' => $paymentIntent->id,
+            ]);
+            return;
+        }
+
+        $booking->update(['payment_status' => 'failed']);
+
+        BookingPayment::where('transaction_id', $paymentIntent->id)
+            ->whereNotIn('payment_status', ['paid', 'partial'])
+            ->update(['payment_status' => 'failed']);
+
+        Log::info('Booking payment marked as failed', ['booking_id' => $booking->id]);
+
+        $customer = $booking->customer;
+        $vehicle = $booking->vehicle;
+        $customerUser = $customer?->user;
+
+        try {
+            if ($customerUser) {
+                $customerUser->notify(new CustomerPaymentFailedNotification($booking, $customer, $vehicle));
+            } elseif ($customer?->email) {
+                Notification::route('mail', $customer->email)
+                    ->notify(new CustomerPaymentFailedNotification($booking, $customer, $vehicle));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send customer payment-failed notification', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $admin = User::where('email', $adminEmail)->first();
+            if ($admin) {
+                $admin->notify(new AdminPaymentFailedNotification($booking, $customer, $vehicle));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send admin payment-failed notification', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

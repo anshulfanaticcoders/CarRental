@@ -632,7 +632,10 @@ class StripeCheckoutController extends Controller
                     'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
                     'ip' => $request->ip(),
                 ]);
-                // Continue anyway for backward compatibility, but log warning
+                return response()->json([
+                    'error' => 'Pricing context expired. Please refresh your search and try again.',
+                    'code' => 'MISSING_SEARCH_SESSION',
+                ], 422);
             }
 
             // Normalize currency (symbols to ISO codes)
@@ -927,7 +930,7 @@ class StripeCheckoutController extends Controller
                             'description' => $validated['package'].' Package - '.$validated['number_of_days'].' day(s)',
                             'images' => $vehicleImage ? [$vehicleImage] : [],
                         ],
-                        'unit_amount' => (int) ($payableAmount * 100), // Stripe uses cents
+                        'unit_amount' => $this->toStripeMinorUnits($payableAmount, $currencyCode),
                     ],
                     'quantity' => 1,
                 ],
@@ -937,6 +940,7 @@ class StripeCheckoutController extends Controller
             // All provider-specific keys are stored in extras_payload.full_metadata
             $metadata = [
                 'user_id' => $request->user()?->id,
+                'search_session_id' => $searchSessionId ?? null,
                 'vehicle_id' => $validated['vehicle']['id'] ?? '',
                 'vehicle_source' => $validated['vehicle']['source'] ?? 'greenmotion',
                 'vehicle_brand' => $validated['vehicle']['brand'] ?? '',
@@ -1019,6 +1023,15 @@ class StripeCheckoutController extends Controller
                 ? 'vrooem://booking-cancel'
                 : route('booking.cancel.page', ['locale' => $currentLocale]);
 
+            // Bind the idempotency key to the unique extras_payload row when present —
+            // genuine network retries of the same submission reuse the row → same key,
+            // but fresh user attempts create a new row → fresh key (so Stripe doesn't
+            // reject the second click with "params differ for same key"). Fall back
+            // to a UUID when no payload row exists.
+            $idempotencyKey = 'co_'.($extrasPayloadId
+                ? (string) $extrasPayloadId.'_'.hash('sha256', (string) $payableAmount.'|'.$currencyCode)
+                : (string) \Illuminate\Support\Str::uuid());
+
             $session = StripeSession::create([
                 'payment_method_types' => $paymentMethodTypes,
                 'line_items' => $lineItems,
@@ -1030,6 +1043,8 @@ class StripeCheckoutController extends Controller
                 'payment_intent_data' => [
                     'metadata' => $metadata,
                 ],
+            ], [
+                'idempotency_key' => $idempotencyKey,
             ]);
 
             if ($extrasPayloadId) {
@@ -1077,7 +1092,7 @@ class StripeCheckoutController extends Controller
 
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => 'Checkout could not be started. Please try again.',
             ], 500);
         }
     }
@@ -1648,6 +1663,32 @@ class StripeCheckoutController extends Controller
         return round($total, 2);
     }
 
+    /**
+     * Convert a major-unit amount (e.g. 12.34 EUR) to Stripe's minor-unit integer
+     * with correct exponent per currency. JPY/KRW/etc. are zero-decimal; BHD/KWD/etc.
+     * are three-decimal and Stripe requires rounding to the nearest 10.
+     */
+    private function toStripeMinorUnits(float $amount, string $currencyCode): int
+    {
+        $code = strtoupper(trim($currencyCode));
+
+        $zeroDecimal = [
+            'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA',
+            'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+        ];
+        $threeDecimal = ['BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND'];
+
+        if (in_array($code, $zeroDecimal, true)) {
+            return (int) round($amount);
+        }
+        if (in_array($code, $threeDecimal, true)) {
+            // Stripe requires three-decimal currencies be rounded to the nearest 10
+            // (i.e. last digit of the minor-unit integer must be 0).
+            return (int) (round($amount * 100) * 10);
+        }
+        return (int) round($amount * 100);
+    }
+
     private function normalizeCurrencyCode($currency): string
     {
         $value = $currency ?? 'EUR';
@@ -1782,6 +1823,22 @@ class StripeCheckoutController extends Controller
 
             // Re-fetch with relations to be sure
             $booking = Booking::where('id', $booking->id)->with(['customer', 'payments', 'extras', 'offers'])->first();
+
+            // Authz: only block when an authenticated user tries to view a booking
+            // that belongs to a different registered user. Anonymous visitors hitting
+            // the Stripe-issued success_url (with the unguessable session_id) are by
+            // design — guest checkouts and just-finished payments must reach this
+            // page without being bounced to login.
+            $bookingOwnerId = $booking->customer?->user_id;
+            $authUserId = auth()->id();
+            if ($bookingOwnerId !== null && $authUserId !== null && $bookingOwnerId !== $authUserId) {
+                Log::warning('Booking success page accessed by non-owner', [
+                    'booking_id' => $booking->id,
+                    'owner_user_id' => $bookingOwnerId,
+                    'requesting_user_id' => $authUserId,
+                ]);
+                abort(403);
+            }
 
             // Prepare props for Success.vue
             $vehicleData = [
