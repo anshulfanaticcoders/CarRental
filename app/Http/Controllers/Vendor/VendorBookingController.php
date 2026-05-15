@@ -95,7 +95,7 @@ class VendorBookingController extends Controller
         $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
 
         // Notify Admin
-        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $adminEmail = config('admin.email');
         $admin = User::where('email', $adminEmail)->first();
         $adminNotification = new BookingStatusUpdatedAdminNotification($booking, $customer, $vehicle, $vendor);
         if ($admin) {
@@ -153,7 +153,7 @@ class VendorBookingController extends Controller
         $vendorProfile = VendorProfile::where('user_id', $vehicle->vendor_id)->first();
 
         // Notify Admin
-        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $adminEmail = config('admin.email');
         $admin = User::where('email', $adminEmail)->first();
         $adminNotification = new BookingStatusUpdatedAdminNotification($booking, $customer, $vehicle, $vendor);
         if ($admin) {

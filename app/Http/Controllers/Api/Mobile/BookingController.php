@@ -33,7 +33,7 @@ class BookingController extends Controller
         // booking on the fly if Stripe says the payment succeeded.
         if (! $booking) {
             try {
-                Stripe::setApiKey(config('services.stripe.secret') ?: env('STRIPE_SECRET'));
+                Stripe::setApiKey(config('services.stripe.secret') ?: config('services.stripe.secret'));
                 $session = StripeSession::retrieve($data['session_id']);
 
                 if (($session->payment_status ?? null) !== 'paid') {
@@ -284,7 +284,7 @@ class BookingController extends Controller
         $vehicle = $booking->vehicle;
         $customer = $booking->customer;
 
-        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $adminEmail = config('admin.email');
         $admin = User::where('email', $adminEmail)->first();
         if ($admin && $customer) {
             $admin->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'admin'));

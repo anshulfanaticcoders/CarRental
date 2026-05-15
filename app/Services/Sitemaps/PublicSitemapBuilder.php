@@ -25,7 +25,7 @@ class PublicSitemapBuilder
         // Prefer an explicit SITEMAP_BASE_URL so dev environments can't clobber
         // production sitemaps with localhost URLs by accident.
         $resolvedBaseUrl = $baseUrl
-            ?? env('SITEMAP_BASE_URL')
+            ?? config('services.sitemap.base_url')
             ?? config('app.url');
         $resolvedBaseUrl = rtrim((string) $resolvedBaseUrl, '/');
 

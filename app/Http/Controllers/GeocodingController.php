@@ -9,7 +9,7 @@ class GeocodingController extends Controller
 {
     public function autocomplete(Request $request)
     {
-        $apiKey = env('VITE_STADIA_MAPS_API_KEY');
+        $apiKey = config('services.stadia_maps.api_key');
         $response = Http::get('https://api.stadiamaps.com/geocoding/v1/autocomplete', [
             'api_key' => $apiKey,
             'text' => $request->query('text')
@@ -21,7 +21,7 @@ class GeocodingController extends Controller
 
     public function reverse(Request $request)
     {
-        $apiKey = env('VITE_STADIA_MAPS_API_KEY');
+        $apiKey = config('services.stadia_maps.api_key');
         
         // Validate input parameters
         $request->validate([

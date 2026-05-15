@@ -42,7 +42,7 @@ class StripeCheckoutController extends Controller
 
     private function resolveProviderMarkupPercent(): float
     {
-        $raw = env('PROVIDER_MARKUP_PERCENT');
+        $raw = config('services.pricing.provider_markup_percent');
         $percent = is_numeric($raw) ? (float) $raw : self::DEFAULT_PROVIDER_MARKUP_PERCENT;
         if ($percent < 0) {
             $percent = 0.0;

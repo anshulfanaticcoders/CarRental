@@ -38,7 +38,7 @@ class ContactFormController extends Controller
 
         // Verify Cloudflare Turnstile token
         $turnstileResponse = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-            'secret' => env('TURNSTILE_SECRET_KEY'),
+            'secret' => config('services.turnstile.secret_key'),
             'response' => $request->input('cf_turnstile_response'),
             'remoteip' => $request->ip(),
         ]);

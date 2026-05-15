@@ -325,7 +325,7 @@ class SocialAuthController extends Controller
     {
         try {
             $admin = null;
-            $adminEmail = env('VITE_ADMIN_EMAIL');
+            $adminEmail = config('admin.email');
 
             if ($adminEmail) {
                 $admin = User::where('email', $adminEmail)->first();

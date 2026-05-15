@@ -166,7 +166,7 @@ class VendorBulkVehicleImportController extends Controller
 
             $user->notify(new \App\Notifications\BulkVehicleUploadNotification($vehicles, $user));
 
-            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $adminEmail = config('admin.email');
             $admin = \App\Models\User::where('email', $adminEmail)->first();
             if ($admin) {
                 $admin->notify(new \App\Notifications\BulkVehicleUploadAdminNotification($vehicles, $user));

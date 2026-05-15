@@ -51,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\NewsletterCampaign::observe($activityLogObserver);
         \App\Models\Affiliate\AffiliateBusiness::observe($activityLogObserver);
 
-        if (env('APP_ENV') !== 'local') {
+        if (! app()->environment('local')) {
             URL::forceScheme('https'); // Force HTTPS for all routes
         }
 

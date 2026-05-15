@@ -153,7 +153,7 @@ class BookingDashboardController extends Controller
             }
 
             // Notify Admin (DB notification for in-app dashboard)
-            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $adminEmail = config('admin.email');
             $admin = User::where('email', $adminEmail)->first();
             if ($admin) {
                 $admin->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'admin'));

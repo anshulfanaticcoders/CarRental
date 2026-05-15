@@ -980,7 +980,7 @@ class StripeBookingService
         $vehicle = $booking->vehicle ?? null;
         $isInternalBooking = ($booking->provider_source ?? null) === 'internal';
 
-        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $adminEmail = config('admin.email');
         $admin = User::where('email', $adminEmail)->first();
         if ($admin) {
             $this->safeNotify($booking, 'admin', fn () => $admin->notify(

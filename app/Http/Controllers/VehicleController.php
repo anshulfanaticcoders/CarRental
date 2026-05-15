@@ -478,7 +478,7 @@ class VehicleController extends Controller
 
         // Notify the admin
         try {
-            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $adminEmail = config('admin.email');
             $admin = User::where('email', $adminEmail)->first();
             if ($admin) {
                 $admin->notify(new VehicleCreatedNotification($vehicle));
@@ -646,7 +646,7 @@ class VehicleController extends Controller
                 ];
             }),
             'schema' => SchemaBuilder::singleVehicle($vehicle), // Add vehicle schema
-            'appUrl' => env('APP_URL'),
+            'appUrl' => config('app.url'),
             'locale' => app()->getLocale(),
             'filters' => [
                 'currency' => $request->query('currency', 'USD'),

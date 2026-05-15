@@ -33,6 +33,21 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->ip());
         });
 
+        // General mobile-app traffic — keyed by Sanctum user id when authenticated,
+        // otherwise by IP. 120/min handles a busy search session (filters, refresh)
+        // while still throttling abusive clients.
+        RateLimiter::for('mobile', function (Request $request) {
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Tighter limit for auth endpoints to slow credential stuffing.
+        RateLimiter::for('mobile-auth', function (Request $request) {
+            return [
+                Limit::perMinute(10)->by($request->ip()),
+                Limit::perMinute(20)->by((string) $request->input('email', '')),
+            ];
+        });
+
         $this->routes(function () {
             Route::middleware('api')
                 ->prefix('api')

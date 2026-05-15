@@ -113,7 +113,7 @@ class VendorController extends Controller
             $user->save();
 
             // Notify the admin
-            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $adminEmail = config('admin.email');
             $admin = User::where('email', $adminEmail)->first(); // Replace with your admin email
             if ($admin) {
                 $admin->notify(new VendorRegisteredNotification($vendorProfile, $user));

@@ -22,8 +22,8 @@ class CurrencyConversionService
 
     public function __construct()
     {
-        $exchangeRateKey = env('EXCHANGERATE_API_KEY', env('VITE_EXCHANGERATE_API_KEY'));
-        $exchangeRateBaseUrl = env('EXCHANGERATE_API_BASE_URL', env('VITE_EXCHANGERATE_API_BASE_URL', 'https://v6.exchangerate-api.com'));
+        $exchangeRateKey = config('services.exchangerate.api_key');
+        $exchangeRateBaseUrl = config('services.exchangerate.base_url');
 
         // Optimized ExchangeRate-API configuration
         $this->exchangeRateProviders = [];

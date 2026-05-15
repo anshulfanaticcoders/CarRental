@@ -274,7 +274,7 @@ class BookingController extends Controller
 
             // Send notifications after successful payment
             // Notify Admin
-            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $adminEmail = config('admin.email');
             $admin = User::where('email', $adminEmail)->first();
             if ($admin) {
                 $admin->notify(new BookingCreatedAdminNotification($booking, $customer, $vehicle));
@@ -923,7 +923,7 @@ class BookingController extends Controller
         $vehicle = $booking->vehicle_id ? Vehicle::find($booking->vehicle_id) : null;
 
         // Send notifications
-        $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+        $adminEmail = config('admin.email');
         $admin = User::where('email', $adminEmail)->first();
         if ($admin) {
             $admin->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'admin'));

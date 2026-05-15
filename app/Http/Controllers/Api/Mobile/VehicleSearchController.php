@@ -44,7 +44,7 @@ class VehicleSearchController extends Controller
 
     private function markupRate(): float
     {
-        $raw = env('PROVIDER_MARKUP_PERCENT');
+        $raw = config('services.pricing.provider_markup_percent');
         $percent = is_numeric($raw) ? (float) $raw : self::DEFAULT_MARKUP_PERCENT;
         return $percent / 100;
     }

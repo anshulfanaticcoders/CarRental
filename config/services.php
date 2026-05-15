@@ -166,4 +166,27 @@ return [
         'https' => env('PROXY_HTTPS'),
     ],
 
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
+    'stadia_maps' => [
+        'api_key' => env('VITE_STADIA_MAPS_API_KEY'),
+    ],
+
+    'exchangerate' => [
+        'api_key' => env('EXCHANGERATE_API_KEY', env('VITE_EXCHANGERATE_API_KEY')),
+        'base_url' => env('EXCHANGERATE_API_BASE_URL', env('VITE_EXCHANGERATE_API_BASE_URL', 'https://v6.exchangerate-api.com')),
+    ],
+
+    'pricing' => [
+        // Platform markup applied to gateway + internal vehicles. 0.15 = 15%.
+        'provider_markup_percent' => (float) env('PROVIDER_MARKUP_PERCENT', 0.15),
+    ],
+
+    'sitemap' => [
+        'base_url' => env('SITEMAP_BASE_URL'),
+    ],
+
 ];

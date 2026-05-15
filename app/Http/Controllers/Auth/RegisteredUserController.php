@@ -104,7 +104,7 @@ class RegisteredUserController extends Controller
 
         // Notify the admin - wrapped in try-catch to prevent errors on screen
         try {
-            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $adminEmail = config('admin.email');
             $admin = User::where('email', $adminEmail)->first();
             if ($admin) {
                 $admin->notify(new AccountCreatedNotification($user));

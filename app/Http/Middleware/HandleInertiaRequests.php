@@ -137,7 +137,7 @@ class HandleInertiaRequests extends Middleware
 
         $sharedData['currency'] = session('currency', 'USD');
 
-        $rawMarkup = env('PROVIDER_MARKUP_PERCENT');
+        $rawMarkup = config('services.pricing.provider_markup_percent');
         $markupPercent = is_numeric($rawMarkup) ? (float) $rawMarkup : 15.0;
         if ($markupPercent < 0) {
             $markupPercent = 0.0;

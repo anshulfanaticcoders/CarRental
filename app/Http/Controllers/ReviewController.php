@@ -50,7 +50,7 @@ class ReviewController extends Controller
 
         try {
             // Notify the admin
-            $adminEmail = env('VITE_ADMIN_EMAIL', 'default@admin.com');
+            $adminEmail = config('admin.email');
             $admin = User::where('email', $adminEmail)->first();
             if ($admin) {
                 $admin->notify(new ReviewSubmittedAdminNotification($review, $vehicle));
