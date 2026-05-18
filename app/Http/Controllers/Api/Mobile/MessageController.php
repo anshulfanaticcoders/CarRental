@@ -205,6 +205,18 @@ class MessageController extends Controller
         ], 201);
     }
 
+    public function typing(Request $request, int $bookingId): JsonResponse
+    {
+        $isTyping = filter_var($request->input('is_typing', true), FILTER_VALIDATE_BOOLEAN);
+        $user = $request->user();
+        try {
+            broadcast(new \App\Events\TypingIndicator($user, $bookingId, $isTyping))->toOthers();
+        } catch (\Throwable $e) {
+            // ignore broadcast failures
+        }
+        return response()->json(['success' => true]);
+    }
+
     public function destroy(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
