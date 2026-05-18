@@ -171,6 +171,8 @@ Route::prefix('mobile')->middleware('throttle:mobile')->group(function () {
         Route::get('/messages/{booking_id}', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'thread'])->whereNumber('booking_id');
         Route::post('/messages', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'send']);
         Route::post('/messages/{booking_id}/read', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'markRead'])->whereNumber('booking_id');
+        Route::delete('/messages/{id}', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'destroy'])->whereNumber('id');
+        Route::post('/messages/{id}/restore', [\App\Http\Controllers\Api\Mobile\MessageController::class, 'restore'])->whereNumber('id');
 
         Route::get('/notifications', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'index']);
         Route::get('/notifications/unread-count', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'unreadCount']);

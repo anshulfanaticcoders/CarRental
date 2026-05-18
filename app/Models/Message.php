@@ -32,6 +32,12 @@ class Message extends Model
      */
     protected $dates = ['deleted_at', 'reminder_sent_at']; // Ensure deleted_at and reminder_sent_at are Carbon instances
 
+    protected $casts = [
+        'read_at' => 'datetime',
+        'reminder_sent_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
+
     protected $appends = ['file_url', 'voice_note_url']; // Append file_url and voice_note_url accessors to JSON output
 
     public function sender()

@@ -1,0 +1,30 @@
+name: Guard against env() outside config
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  no-env-outside-config:
+    runs-on: ubuntu-latest
+    name: Reject env() calls in app/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for env() calls in app/
+        run: |
+          set -e
+          # All env() calls must live in config/*.php. Reading env() from app/
+          # silently breaks `php artisan config:cache` (the call returns null
+          # once the config is cached) — see docs/ops/deploy.md.
+          # Allowed exception: ChangeMeIfAdding-allowlist below.
+          ALLOWLIST='app/Providers/AppServiceProvider.php'
+          MATCHES=$(grep -rn "env(['\"]" app/ || true)
+          OFFENDERS=$(echo "$MATCHES" | grep -v -F "$ALLOWLIST" || true)
+          if [ -n "$OFFENDERS" ]; then
+            echo "::error::env() calls found outside config/*.php. Move them into a config file and read via config('…')."
+            echo "$OFFENDERS"
+            exit 1
+          fi
+          echo "OK — no env() calls outside config."
