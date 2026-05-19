@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\BookingHold;
 use App\Models\BookingPayment;
 use App\Models\User;
 use App\Notifications\Payment\AdminPaymentFailedNotification;
@@ -179,6 +180,10 @@ class StripeWebhookController extends Controller
             ]);
             Log::info('Booking marked as expired', ['booking_id' => $booking->id]);
         }
+
+        BookingHold::where('stripe_session_id', $session->id)
+            ->where('status', 'active')
+            ->update(['status' => 'released']);
     }
 
     /**
@@ -214,6 +219,10 @@ class StripeWebhookController extends Controller
         BookingPayment::where('transaction_id', $paymentIntent->id)
             ->whereNotIn('payment_status', ['paid', 'partial'])
             ->update(['payment_status' => 'failed']);
+
+        BookingHold::where('stripe_session_id', $booking->stripe_session_id)
+            ->where('status', 'active')
+            ->update(['status' => 'released']);
 
         Log::info('Booking payment marked as failed', ['booking_id' => $booking->id]);
 

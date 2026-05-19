@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Console\Commands\AutoCompleteInternalBookings;
+use App\Console\Commands\ExpireBookingHolds;
 use App\Console\Commands\SendChatMessageReminders;
 use App\Console\Commands\SendPendingBookingReminders;
 use App\Console\Commands\GeneratePublicSitemaps;
@@ -22,6 +23,7 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->command(AutoCompleteInternalBookings::class)->everyMinute()->withoutOverlapping();
+        $schedule->command(ExpireBookingHolds::class)->everyFiveMinutes()->withoutOverlapping();
         $schedule->command(SendChatMessageReminders::class)->everyFiveMinutes();
         $schedule->command(SendPendingBookingReminders::class)->twiceDaily();
         $schedule->command(RefreshCurrencyRates::class)->everyTwoHours();

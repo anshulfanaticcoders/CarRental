@@ -156,6 +156,11 @@ class Vehicle extends Model
         return $this->hasMany(BlockingDate::class, 'vehicle_id');
     }
 
+    public function bookingHolds()
+    {
+        return $this->hasMany(BookingHold::class, 'vehicle_id');
+    }
+
     public function apiBookings()
     {
         return $this->hasMany(ApiBooking::class, 'vehicle_id');

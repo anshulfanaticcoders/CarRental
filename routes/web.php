@@ -447,6 +447,7 @@ Route::group([
 
     // Booking Flow Routes (Public)
     Route::get('/booking/success', [\App\Http\Controllers\StripeCheckoutController::class, 'success'])->name('booking.success');
+    Route::get('/booking/status', [\App\Http\Controllers\StripeCheckoutController::class, 'status'])->name('booking.status');
 
     Route::get('/booking/cancel', function () {
         return Inertia::render('Booking/Cancel');

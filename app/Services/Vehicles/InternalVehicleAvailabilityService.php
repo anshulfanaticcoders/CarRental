@@ -9,13 +9,14 @@ use Illuminate\Database\Eloquent\Builder;
 class InternalVehicleAvailabilityService
 {
     private const NON_BLOCKING_BOOKING_STATUSES = ['cancelled', 'rejected', 'expired', 'completed'];
+
     private const NON_BLOCKING_API_BOOKING_STATUSES = ['cancelled'];
 
     public function apply(Builder $query, array $window): Builder
     {
         $normalized = $this->normalizeWindow($window);
 
-        if (!$normalized['is_valid_window']) {
+        if (! $normalized['is_valid_window']) {
             $query->whereRaw('1 = 0');
 
             return $query;
@@ -60,6 +61,22 @@ class InternalVehicleAvailabilityService
                 ->whereDate('blocking_end_date', '>=', $normalized['pickup_date']);
         });
 
+        $query->whereDoesntHave('bookingHolds', function (Builder $holdQuery) use ($normalized) {
+            $holdQuery
+                ->active()
+                ->when($normalized['ignore_hold_id'], fn (Builder $q, int $holdId) => $q->whereKeyNot($holdId))
+                ->where(function (Builder $overlapQuery) use ($normalized) {
+                    $this->applyDateTimeOverlap(
+                        $overlapQuery,
+                        'pickup_date',
+                        'pickup_time',
+                        'dropoff_date',
+                        'dropoff_time',
+                        $normalized
+                    );
+                });
+        });
+
         if ($normalized['has_times']) {
             $query->where(function (Builder $hoursQuery) use ($normalized) {
                 $hoursQuery
@@ -102,8 +119,8 @@ class InternalVehicleAvailabilityService
         $pickupTime = isset($window['pickup_time']) ? trim((string) $window['pickup_time']) : null;
         $dropoffTime = isset($window['dropoff_time']) ? trim((string) $window['dropoff_time']) : null;
         $hasTimes = $pickupTime !== null && $pickupTime !== '' && $dropoffTime !== null && $dropoffTime !== '';
-        $pickupDateTime = Carbon::parse($pickupDate . ' ' . ($hasTimes ? $pickupTime : '00:00'));
-        $dropoffDateTime = Carbon::parse($dropoffDate . ' ' . ($hasTimes ? $dropoffTime : '23:59'));
+        $pickupDateTime = Carbon::parse($pickupDate.' '.($hasTimes ? $pickupTime : '00:00'));
+        $dropoffDateTime = Carbon::parse($dropoffDate.' '.($hasTimes ? $dropoffTime : '23:59'));
 
         return [
             'pickup_date' => $pickupDate,
@@ -114,6 +131,7 @@ class InternalVehicleAvailabilityService
             'dropoff_day_of_week' => Carbon::parse($dropoffDate)->dayOfWeekIso - 1,
             'has_times' => $hasTimes,
             'is_valid_window' => $dropoffDateTime->greaterThan($pickupDateTime),
+            'ignore_hold_id' => isset($window['ignore_hold_id']) ? (int) $window['ignore_hold_id'] : null,
         ];
     }
 

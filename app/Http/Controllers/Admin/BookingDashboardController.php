@@ -8,8 +8,8 @@ use App\Models\Customer;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VendorProfile;
-use App\Notifications\Booking\BookingCancelledNotification;
 use App\Notifications\Booking\BookingCancelledCustomerNotification;
+use App\Notifications\Booking\BookingCancelledNotification;
 use App\Services\VrooemGatewayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +20,7 @@ class BookingDashboardController extends Controller
 {
     public function index(Request $request)
     {
-        return $this->getBookings($request, 'all'); 
+        return $this->getBookings($request, 'all');
     }
 
     public function pending(Request $request)
@@ -37,11 +37,11 @@ class BookingDashboardController extends Controller
     {
         return $this->getBookings($request, 'completed');
     }
-        public function cancelled(Request $request)
+
+    public function cancelled(Request $request)
     {
         return $this->getBookings($request, 'cancelled');
     }
-
 
     /**
      * Admin cancels a booking (internal or external provider).
@@ -78,7 +78,7 @@ class BookingDashboardController extends Controller
         // Send notifications
         $this->sendCancellationNotifications($booking, $customer, $vehicle, $reason);
 
-        return back()->with('success', 'Booking #' . $booking->booking_number . ' cancelled successfully.');
+        return back()->with('success', 'Booking #'.$booking->booking_number.' cancelled successfully.');
     }
 
     /**
@@ -87,7 +87,7 @@ class BookingDashboardController extends Controller
      */
     private function cancelWithProvider(Booking $booking, ?string $providerSource, string $reason): ?string
     {
-        if (!$providerSource || $providerSource === 'internal') {
+        if (! $providerSource || $providerSource === 'internal') {
             return null;
         }
 
@@ -108,7 +108,7 @@ class BookingDashboardController extends Controller
                 return 'Failed to cancel reservation with provider gateway.';
             }
 
-            $booking->notes = trim(($booking->notes ? $booking->notes . "\n" : '') . 'Gateway Cancel: cancellation requested.');
+            $booking->notes = trim(($booking->notes ? $booking->notes."\n" : '').'Gateway Cancel: cancellation requested.');
         } catch (\Exception $e) {
             Log::error('Admin cancel - provider cancellation failed', [
                 'booking_id' => $booking->id,
@@ -117,7 +117,8 @@ class BookingDashboardController extends Controller
                 'gateway_supplier_id' => $gatewaySupplierId,
                 'error' => $e->getMessage(),
             ]);
-            return 'Provider cancellation failed: ' . $e->getMessage();
+
+            return 'Provider cancellation failed: '.$e->getMessage();
         }
 
         return null;
@@ -209,7 +210,15 @@ class BookingDashboardController extends Controller
                 });
         });
 
-        if ($statusFilter !== 'all') { // Filter by status if not 'all'
+        if ($statusFilter === 'provider_pending') {
+            $bookings
+                ->whereNotNull('provider_source')
+                ->where('provider_source', '!=', 'internal')
+                ->whereNull('provider_booking_ref')
+                ->whereIn('booking_status', ['pending', 'confirmed']);
+        } elseif ($statusFilter === 'refund_pending') {
+            $bookings->where('payment_status', 'refund_pending');
+        } elseif ($statusFilter !== 'all') { // Filter by status if not 'all'
             $bookings->where('booking_status', $statusFilter);
         }
 
@@ -224,6 +233,13 @@ class BookingDashboardController extends Controller
             'confirmed' => Booking::where('booking_status', 'confirmed')->count(),
             'completed' => Booking::where('booking_status', 'completed')->count(),
             'cancelled' => Booking::where('booking_status', 'cancelled')->count(),
+            'reservation_failed' => Booking::where('booking_status', 'reservation_failed')->count(),
+            'refund_pending' => Booking::where('payment_status', 'refund_pending')->count(),
+            'provider_pending' => Booking::whereNotNull('provider_source')
+                ->where('provider_source', '!=', 'internal')
+                ->whereNull('provider_booking_ref')
+                ->whereIn('booking_status', ['pending', 'confirmed'])
+                ->count(),
         ];
 
         return Inertia::render('AdminDashboardPages/Bookings/Index', [
@@ -231,7 +247,7 @@ class BookingDashboardController extends Controller
             'statusCounts' => $statusCounts,
             'filters' => $request->only(['search', 'status']), // Include status filter
             'currentStatus' => $statusFilter, // Pass current status to the view
-            'flash' => session()->only(['success', 'error'])
+            'flash' => session()->only(['success', 'error']),
         ]);
     }
 }

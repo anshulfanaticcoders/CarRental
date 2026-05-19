@@ -15,6 +15,30 @@ const awinTestMode = ['1', 1, true, 'true'].includes(props.awin_test_mode) ? '1'
 
 const pickupDetails = computed(() => booking?.provider_metadata?.pickup_location_details || null);
 const dropoffDetails = computed(() => booking?.provider_metadata?.dropoff_location_details || null);
+const isSupplierPending = computed(() => {
+  return booking?.provider_source
+    && booking.provider_source !== 'internal'
+    && !booking.provider_booking_ref;
+});
+const outcomeCopy = computed(() => {
+  if (isSupplierPending.value) {
+    return {
+      title: 'Payment Received',
+      subtitle: 'We are confirming your reservation with the supplier.',
+      status: 'Supplier confirmation pending',
+      badgeClass: 'bg-amber-100 text-amber-700',
+      dotClass: 'bg-amber-500',
+    };
+  }
+
+  return {
+    title: 'Booking Confirmed!',
+    subtitle: 'Your reservation is all set. Have a great trip!',
+    status: 'Confirmed',
+    badgeClass: 'bg-emerald-100 text-emerald-700',
+    dotClass: 'bg-emerald-500',
+  };
+});
 
 const successAnimationData = (() => {
   const cloned = JSON.parse(JSON.stringify(paymentSuccessAnimation));
@@ -98,8 +122,8 @@ onMounted(() => {
               :loop="false"
             />
           </div>
-          <h2 class="text-2xl font-extrabold text-white tracking-tight">Booking Confirmed!</h2>
-          <p class="mt-1.5 text-emerald-100 text-sm">Your reservation is all set. Have a great trip!</p>
+          <h2 class="text-2xl font-extrabold text-white tracking-tight">{{ outcomeCopy.title }}</h2>
+          <p class="mt-1.5 text-emerald-100 text-sm">{{ outcomeCopy.subtitle }}</p>
         </div>
 
         <!-- Body -->
@@ -161,11 +185,18 @@ onMounted(() => {
             </div>
             <div class="text-right">
               <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</p>
-              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                Confirmed
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold" :class="outcomeCopy.badgeClass">
+                <span class="w-1.5 h-1.5 rounded-full" :class="outcomeCopy.dotClass"></span>
+                {{ outcomeCopy.status }}
               </span>
             </div>
+          </div>
+
+          <div v-if="isSupplierPending" class="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200">
+            <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+            <p class="text-xs text-amber-800 leading-relaxed">
+              Your payment is safe. The supplier reference is still being confirmed, and we will update your booking when it is ready.
+            </p>
           </div>
 
           <!-- Discount savings notice -->

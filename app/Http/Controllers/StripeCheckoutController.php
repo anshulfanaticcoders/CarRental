@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\BookingHold;
 use App\Models\Customer;
 use App\Models\PayableSetting;
 use App\Models\StripeCheckoutPayload;
@@ -14,7 +15,9 @@ use App\Services\CurrencyConversionService;
 use App\Services\OfferService;
 use App\Services\PriceVerificationService;
 use App\Services\StripeBookingService;
+use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Stripe\Checkout\Session as StripeSession;
 use Stripe\Stripe;
@@ -30,6 +33,166 @@ class StripeCheckoutController extends Controller
     public function __construct(private StripeBookingService $bookingService)
     {
         Stripe::setApiKey(config('services.stripe.secret'));
+    }
+
+    private function bookingStatusRedirect(string $state, ?string $sessionId = null)
+    {
+        $params = ['locale' => app()->getLocale(), 'state' => $state];
+        if ($sessionId) {
+            $params['session_id'] = $sessionId;
+        }
+
+        return redirect()->route('booking.status', $params);
+    }
+
+    private function buildCheckoutAttemptHash(
+        Request $request,
+        array $validated,
+        ?string $searchSessionId,
+        float $payableAmount,
+        string $currencyCode
+    ): string {
+        $vehicle = $validated['vehicle'] ?? [];
+        $fingerprint = [
+            'user_id' => $request->user()?->id,
+            'customer_email' => strtolower((string) ($validated['customer']['email'] ?? '')),
+            'search_session_id' => $searchSessionId,
+            'vehicle_id' => $vehicle['id'] ?? $vehicle['gateway_vehicle_id'] ?? $vehicle['provider_vehicle_id'] ?? null,
+            'vehicle_source' => $vehicle['source'] ?? null,
+            'package' => $validated['package'] ?? null,
+            'pickup_date' => $validated['pickup_date'] ?? null,
+            'pickup_time' => $validated['pickup_time'] ?? null,
+            'dropoff_date' => $validated['dropoff_date'] ?? null,
+            'dropoff_time' => $validated['dropoff_time'] ?? null,
+            'pickup_location' => $validated['pickup_location'] ?? null,
+            'dropoff_location' => $validated['dropoff_location'] ?? null,
+            'payable_amount' => number_format($payableAmount, 2, '.', ''),
+            'currency' => strtoupper($currencyCode),
+            'extras' => $this->normalizeCheckoutExtrasForFingerprint($validated['detailed_extras'] ?? []),
+        ];
+
+        return hash('sha256', json_encode($fingerprint, JSON_UNESCAPED_SLASHES));
+    }
+
+    private function normalizeCheckoutExtrasForFingerprint(array $extras): array
+    {
+        $normalized = [];
+        foreach ($extras as $extra) {
+            if (! is_array($extra)) {
+                continue;
+            }
+
+            $id = $extra['id']
+                ?? $extra['option_id']
+                ?? $extra['optionID']
+                ?? $extra['extra_id']
+                ?? $extra['extraId']
+                ?? $extra['code']
+                ?? null;
+
+            if ($id === null || trim((string) $id) === '') {
+                continue;
+            }
+
+            $normalized[] = [
+                'id' => trim((string) $id),
+                'quantity' => max(1, (int) ($extra['qty'] ?? $extra['quantity'] ?? 1)),
+            ];
+        }
+
+        usort($normalized, fn (array $a, array $b) => [$a['id'], $a['quantity']] <=> [$b['id'], $b['quantity']]);
+
+        return $normalized;
+    }
+
+    private function reserveInternalVehicleForCheckout(Request $request, array $validated, ?string $searchSessionId): array
+    {
+        $vehicle = $validated['vehicle'] ?? [];
+        if (($vehicle['source'] ?? null) !== 'internal' || empty($vehicle['id'])) {
+            return ['success' => true, 'hold' => null];
+        }
+
+        $vehicleId = (int) $vehicle['id'];
+        $window = [
+            'pickup_date' => $validated['pickup_date'],
+            'pickup_time' => $validated['pickup_time'],
+            'dropoff_date' => $validated['dropoff_date'],
+            'dropoff_time' => $validated['dropoff_time'],
+        ];
+
+        $existingHold = BookingHold::active()
+            ->where('vehicle_id', $vehicleId)
+            ->where('search_session_id', $searchSessionId)
+            ->where('customer_email', strtolower((string) ($validated['customer']['email'] ?? '')))
+            ->whereDate('pickup_date', $window['pickup_date'])
+            ->where('pickup_time', $window['pickup_time'])
+            ->whereDate('dropoff_date', $window['dropoff_date'])
+            ->where('dropoff_time', $window['dropoff_time'])
+            ->first();
+
+        if ($existingHold) {
+            return ['success' => true, 'hold' => $existingHold];
+        }
+
+        $lock = Cache::lock("booking-hold-vehicle-{$vehicleId}", 10);
+        $lockAcquired = false;
+
+        try {
+            $lock->block(5);
+            $lockAcquired = true;
+
+            $vehicleModel = Vehicle::find($vehicleId);
+            if (! $vehicleModel) {
+                return [
+                    'success' => false,
+                    'error' => 'This vehicle is no longer available. Please refresh your search.',
+                    'code' => 'VEHICLE_UNAVAILABLE',
+                ];
+            }
+
+            $available = app(InternalVehicleAvailabilityService::class)->isVehicleAvailable($vehicleModel, $window);
+            if (! $available) {
+                return [
+                    'success' => false,
+                    'error' => 'This vehicle is no longer available for the selected dates. Please choose another vehicle.',
+                    'code' => 'VEHICLE_UNAVAILABLE',
+                ];
+            }
+
+            $hold = BookingHold::create([
+                'vehicle_id' => $vehicleId,
+                'user_id' => $request->user()?->id,
+                'search_session_id' => $searchSessionId,
+                'customer_email' => strtolower((string) ($validated['customer']['email'] ?? '')),
+                'pickup_date' => $window['pickup_date'],
+                'pickup_time' => $window['pickup_time'],
+                'dropoff_date' => $window['dropoff_date'],
+                'dropoff_time' => $window['dropoff_time'],
+                'expires_at' => now()->addMinutes(15),
+                'status' => 'active',
+            ]);
+
+            return ['success' => true, 'hold' => $hold];
+        } catch (\Throwable $e) {
+            Log::warning('Checkout hold could not be created', [
+                'vehicle_id' => $vehicleId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'We could not reserve this vehicle in time. Please try again.',
+                'code' => 'HOLD_UNAVAILABLE',
+            ];
+        } finally {
+            if ($lockAcquired) {
+                try {
+                    $lock->release();
+                } catch (\Throwable) {
+                    // Lock may already be released by the cache driver.
+                }
+            }
+        }
     }
 
     private function isExternalProviderSource(?string $source): bool
@@ -650,6 +813,7 @@ class StripeCheckoutController extends Controller
                     'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
                     'ip' => $request->ip(),
                 ]);
+
                 return response()->json([
                     'error' => 'Pricing context expired. Please refresh your search and try again.',
                     'code' => 'MISSING_SEARCH_SESSION',
@@ -719,6 +883,15 @@ class StripeCheckoutController extends Controller
                 }
             }
 
+            $holdResult = $this->reserveInternalVehicleForCheckout($request, $validated, $searchSessionId ?? null);
+            if (! ($holdResult['success'] ?? false)) {
+                return response()->json([
+                    'error' => $holdResult['error'] ?? 'Vehicle is no longer available.',
+                    'code' => $holdResult['code'] ?? 'VEHICLE_UNAVAILABLE',
+                ], 422);
+            }
+            $bookingHold = $holdResult['hold'] ?? null;
+
             $extrasPayloadId = null;
 
             // Extract vehicle benefits/policies for storage in provider_metadata
@@ -762,6 +935,7 @@ class StripeCheckoutController extends Controller
                 // Core
                 'user_id' => $request->user()?->id,
                 'vehicle_id' => $validated['vehicle']['id'] ?? '',
+                'booking_hold_id' => $bookingHold?->id,
                 'gateway_vehicle_id' => $selectedVehicleContext['gateway_vehicle_id'] ?? ($validated['vehicle']['gateway_vehicle_id'] ?? null),
                 'gateway_search_id' => $validated['gateway_search_id'] ?? null,
                 'vehicle_source' => $vehicleSource,
@@ -907,6 +1081,7 @@ class StripeCheckoutController extends Controller
                 'extras' => $validated['extras'] ?? [],
                 'vehicle_source' => $vehicleSource,
                 'vehicle_id' => $validated['vehicle']['id'] ?? null,
+                'booking_hold_id' => $bookingHold?->id,
                 'provider_currency' => $providerCurrency,
                 'booking_currency' => $currencyCode,
                 'location_details' => $pickupLocationDetails,
@@ -930,12 +1105,63 @@ class StripeCheckoutController extends Controller
 
             // Always save payload since it now contains vehicle benefits
             $payloadHasContent = true;
+            $checkoutAttemptHash = $this->buildCheckoutAttemptHash($request, $validated, $searchSessionId ?? null, $payableAmount, $currencyCode);
+            $checkoutAttemptCacheKey = "stripe_checkout_attempt:{$checkoutAttemptHash}";
 
             if ($payloadHasContent) {
-                $payloadRecord = StripeCheckoutPayload::create([
-                    'payload' => $extrasPayload,
-                ]);
-                $extrasPayloadId = $payloadRecord->id;
+                $attemptLock = Cache::lock("stripe_checkout_attempt_lock:{$checkoutAttemptHash}", 15);
+                $lockAcquired = false;
+                try {
+                    $attemptLock->block(5);
+                    $lockAcquired = true;
+                    $cachedPayloadId = Cache::get($checkoutAttemptCacheKey);
+                    $payloadRecord = $cachedPayloadId ? StripeCheckoutPayload::find($cachedPayloadId) : null;
+
+                    if ($payloadRecord && $payloadRecord->stripe_session_id) {
+                        try {
+                            $existingSession = StripeSession::retrieve($payloadRecord->stripe_session_id);
+                            if (($existingSession->status ?? null) === 'open' && ! empty($existingSession->url)) {
+                                return response()->json([
+                                    'success' => true,
+                                    'session_id' => $existingSession->id,
+                                    'url' => $existingSession->url,
+                                ]);
+                            }
+                        } catch (\Exception $e) {
+                            Log::warning('Stripe Checkout: Existing session lookup failed, creating a new session', [
+                                'payload_id' => $payloadRecord->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+
+                    if (! $payloadRecord) {
+                        $payloadRecord = StripeCheckoutPayload::create([
+                            'payload' => $extrasPayload,
+                        ]);
+                        Cache::put($checkoutAttemptCacheKey, $payloadRecord->id, now()->addMinutes(30));
+                    }
+
+                    $extrasPayloadId = $payloadRecord->id;
+                } catch (\Throwable $e) {
+                    Log::warning('Stripe Checkout: Attempt lock failed', [
+                        'attempt_hash' => $checkoutAttemptHash,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    return response()->json([
+                        'error' => 'Checkout is already being prepared. Please wait a moment and try again.',
+                        'code' => 'checkout_in_progress',
+                    ], 409);
+                } finally {
+                    try {
+                        if ($lockAcquired) {
+                            $attemptLock?->release();
+                        }
+                    } catch (\Throwable) {
+                        // Lock may already be released by the cache driver.
+                    }
+                }
             }
 
             // Build line items for Stripe
@@ -960,6 +1186,7 @@ class StripeCheckoutController extends Controller
                 'user_id' => $request->user()?->id,
                 'search_session_id' => $searchSessionId ?? null,
                 'vehicle_id' => $validated['vehicle']['id'] ?? '',
+                'booking_hold_id' => $bookingHold?->id,
                 'vehicle_source' => $validated['vehicle']['source'] ?? 'greenmotion',
                 'vehicle_brand' => $validated['vehicle']['brand'] ?? '',
                 'vehicle_model' => $validated['vehicle']['model'] ?? '',
@@ -1039,16 +1266,9 @@ class StripeCheckoutController extends Controller
                 : route('booking.success', ['locale' => $currentLocale]).'?session_id={CHECKOUT_SESSION_ID}';
             $cancelUrl = $isMobileClient
                 ? 'vrooem://booking-cancel'
-                : route('booking.cancel.page', ['locale' => $currentLocale]);
+                : route('booking.status', ['locale' => $currentLocale, 'state' => 'payment_cancelled']);
 
-            // Bind the idempotency key to the unique extras_payload row when present —
-            // genuine network retries of the same submission reuse the row → same key,
-            // but fresh user attempts create a new row → fresh key (so Stripe doesn't
-            // reject the second click with "params differ for same key"). Fall back
-            // to a UUID when no payload row exists.
-            $idempotencyKey = 'co_'.($extrasPayloadId
-                ? (string) $extrasPayloadId.'_'.hash('sha256', (string) $payableAmount.'|'.$currencyCode)
-                : (string) \Illuminate\Support\Str::uuid());
+            $idempotencyKey = 'co_'.$checkoutAttemptHash;
 
             $session = StripeSession::create([
                 'payment_method_types' => $paymentMethodTypes,
@@ -1070,6 +1290,9 @@ class StripeCheckoutController extends Controller
                     StripeCheckoutPayload::whereKey($extrasPayloadId)->update([
                         'stripe_session_id' => $session->id,
                     ]);
+                    if ($bookingHold) {
+                        $bookingHold->update(['stripe_session_id' => $session->id]);
+                    }
                 } catch (\Exception $e) {
                     Log::warning('Stripe Checkout: Failed to update payload session id', [
                         'payload_id' => $extrasPayloadId,
@@ -1704,6 +1927,7 @@ class StripeCheckoutController extends Controller
             // (i.e. last digit of the minor-unit integer must be 0).
             return (int) (round($amount * 100) * 10);
         }
+
         return (int) round($amount * 100);
     }
 
@@ -1791,7 +2015,7 @@ class StripeCheckoutController extends Controller
         if (! $sessionId) {
             Log::warning('Success page accessed without session_id');
 
-            return redirect('/')->with('error', 'Invalid session.');
+            return $this->bookingStatusRedirect('invalid_session');
         }
 
         Log::info('Success page accessed', ['session_id' => $sessionId]);
@@ -1818,7 +2042,7 @@ class StripeCheckoutController extends Controller
                     } else {
                         Log::warning('Session not paid', ['session_id' => $sessionId, 'status' => $session->payment_status]);
 
-                        return redirect('/')->with('error', 'Payment not completed.');
+                        return $this->bookingStatusRedirect('payment_not_completed', $sessionId);
                     }
                 } else {
                     Log::info('Booking found locally', ['booking_id' => $booking->id]);
@@ -1835,8 +2059,14 @@ class StripeCheckoutController extends Controller
                 } else {
                     Log::warning('Session not paid', ['session_id' => $sessionId, 'status' => $session->payment_status]);
 
-                    return redirect('/')->with('error', 'Payment not completed.');
+                    return $this->bookingStatusRedirect('payment_not_completed', $sessionId);
                 }
+            }
+
+            if (! $booking) {
+                Log::warning('Paid session did not produce a booking', ['session_id' => $sessionId]);
+
+                return $this->bookingStatusRedirect('refund_pending', $sessionId);
             }
 
             // Re-fetch with relations to be sure
@@ -1882,8 +2112,77 @@ class StripeCheckoutController extends Controller
         } catch (\Exception $e) {
             Log::error('Success page error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
-            return redirect('/')->with('error', 'Could not retrieve booking details. Please contact support with reference: '.$sessionId);
+            return $this->bookingStatusRedirect('support_review', $sessionId);
         }
+    }
+
+    public function status(Request $request)
+    {
+        $state = (string) $request->query('state', 'support_review');
+        $sessionId = (string) $request->query('session_id', '');
+        $booking = null;
+
+        if ($sessionId !== '') {
+            $booking = Booking::where('stripe_session_id', $sessionId)
+                ->with(['customer', 'payments'])
+                ->first();
+        }
+
+        if ($booking) {
+            $bookingOwnerId = $booking->customer?->user_id;
+            $authUserId = auth()->id();
+            if ($bookingOwnerId !== null && $authUserId !== null && $bookingOwnerId !== $authUserId) {
+                Log::warning('Booking status page accessed by non-owner', [
+                    'booking_id' => $booking->id,
+                    'owner_user_id' => $bookingOwnerId,
+                    'requesting_user_id' => $authUserId,
+                ]);
+                abort(403);
+            }
+
+            $state = $this->resolveBookingOutcomeState($booking, $state);
+        }
+
+        return inertia('Booking/Status', [
+            'state' => $state,
+            'session_id' => $sessionId !== '' ? $sessionId : null,
+            'booking' => $booking ? [
+                'booking_number' => $booking->booking_number,
+                'booking_status' => $booking->booking_status,
+                'payment_status' => $booking->payment_status,
+                'provider_source' => $booking->provider_source,
+                'provider_booking_ref' => $booking->provider_booking_ref,
+                'total_amount' => $booking->total_amount,
+                'amount_paid' => $booking->amount_paid,
+                'booking_currency' => $booking->booking_currency,
+            ] : null,
+        ]);
+    }
+
+    private function resolveBookingOutcomeState(Booking $booking, string $fallback): string
+    {
+        if ($booking->booking_status === 'reservation_failed') {
+            return 'reservation_failed';
+        }
+
+        if ($booking->payment_status === 'refund_pending' || $booking->booking_status === 'rejected') {
+            return 'refund_pending';
+        }
+
+        if (
+            $booking->provider_source
+            && $booking->provider_source !== 'internal'
+            && empty($booking->provider_booking_ref)
+            && in_array($booking->booking_status, ['confirmed', 'pending'], true)
+        ) {
+            return 'pending_supplier_confirmation';
+        }
+
+        if (in_array($booking->booking_status, ['confirmed', 'completed'], true)) {
+            return 'confirmed';
+        }
+
+        return $fallback;
     }
 
     /**
@@ -1922,7 +2221,7 @@ class StripeCheckoutController extends Controller
             $matches['phone_user'] ?? null
         );
 
-        if (!$conflict) {
+        if (! $conflict) {
             return null;
         }
 
@@ -1932,7 +2231,7 @@ class StripeCheckoutController extends Controller
             'error_code' => $conflict['code'],
         ];
 
-        if (!empty($conflict['show_login'])) {
+        if (! empty($conflict['show_login'])) {
             $payload['login_url'] = route('login', ['locale' => app()->getLocale()]);
         }
 

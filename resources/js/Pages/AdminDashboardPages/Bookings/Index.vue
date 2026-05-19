@@ -126,8 +126,29 @@
                             <SelectItem value="confirmed">Confirmed</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
+                            <SelectItem value="reservation_failed">Reservation Failed</SelectItem>
+                            <SelectItem value="refund_pending">Refund Pending</SelectItem>
+                            <SelectItem value="provider_pending">Provider Pending</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+            </div>
+
+            <div
+                v-if="(statusCounts?.reservation_failed || 0) + (statusCounts?.refund_pending || 0) + (statusCounts?.provider_pending || 0) > 0"
+                class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+            >
+                <div class="font-semibold">Booking rescue queue</div>
+                <div class="mt-1 flex flex-wrap gap-3">
+                    <button class="underline" @click="statusFilter = 'provider_pending'">
+                        Provider pending: {{ statusCounts?.provider_pending || 0 }}
+                    </button>
+                    <button class="underline" @click="statusFilter = 'reservation_failed'">
+                        Reservation failed: {{ statusCounts?.reservation_failed || 0 }}
+                    </button>
+                    <button class="underline" @click="statusFilter = 'refund_pending'">
+                        Refund pending: {{ statusCounts?.refund_pending || 0 }}
+                    </button>
                 </div>
             </div>
 
@@ -211,8 +232,14 @@
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <Badge :variant="getStatusBadgeBooking(booking.booking_status)" class="capitalize">
-                                        {{ booking.booking_status }}
+                                        {{ formatStatusLabel(booking.booking_status) }}
                                     </Badge>
+                                    <div v-if="isProviderPending(booking)" class="mt-1 text-xs font-semibold text-amber-700">
+                                        Provider ref missing
+                                    </div>
+                                    <div v-if="booking.payment_status === 'refund_pending'" class="mt-1 text-xs font-semibold text-red-700">
+                                        Refund pending
+                                    </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <Button
@@ -432,11 +459,25 @@ const getStatusBadgeBooking = (status) => {
             return 'default';
         case 'cancelled':
             return 'destructive';
+        case 'reservation_failed':
+        case 'rejected':
+            return 'destructive';
         case 'failed':
             return 'destructive';
         default:
             return 'default';
     }
+};
+
+const formatStatusLabel = (status) => {
+    return String(status || '').replace(/_/g, ' ');
+};
+
+const isProviderPending = (booking) => {
+    return booking?.provider_source
+        && booking.provider_source !== 'internal'
+        && !booking.provider_booking_ref
+        && ['pending', 'confirmed'].includes(booking.booking_status);
 };
 
 const getPaymentBadgeVariant = (paymentStatus) => {
@@ -446,6 +487,8 @@ const getPaymentBadgeVariant = (paymentStatus) => {
         case 'pending':
             return 'secondary';
         case 'failed':
+            return 'destructive';
+        case 'refund_pending':
             return 'destructive';
         case 'refunded':
             return 'outline';

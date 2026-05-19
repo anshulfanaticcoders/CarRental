@@ -19,6 +19,34 @@ const error = ref(null);
 const loginUrl = ref(null);
 const errorCode = ref(null);
 
+const bookingStatusUrl = (state) => {
+    try {
+        return route('booking.status', { state });
+    } catch {
+        const pathLocale = window.location.pathname.split('/').filter(Boolean)[0] || 'en';
+        return `/${pathLocale}/booking/status?state=${encodeURIComponent(state)}`;
+    }
+};
+
+const checkoutFailureState = (responseData) => {
+    const code = responseData.code || responseData.error_code || '';
+    const message = `${responseData.error || ''}`.toLowerCase();
+
+    if (
+        ['MISSING_SEARCH_SESSION', 'VEHICLE_UNAVAILABLE', 'HOLD_UNAVAILABLE'].includes(code)
+        || message.includes('expired')
+        || message.includes('price verification')
+    ) {
+        return 'quote_expired';
+    }
+
+    if (message.includes('not available') || message.includes('no longer available')) {
+        return 'quote_expired';
+    }
+
+    return null;
+};
+
 const handleCheckout = async () => {
     isLoading.value = true;
     error.value = null;
@@ -50,7 +78,15 @@ const handleCheckout = async () => {
     } catch (err) {
         console.error('Checkout error:', err);
         const responseData = err.response?.data || {};
-        error.value = responseData.error || err.message || 'Payment initialization failed.';
+        const redirectState = checkoutFailureState(responseData);
+        if (redirectState) {
+            window.location.href = bookingStatusUrl(redirectState);
+            return;
+        }
+
+        error.value = responseData.error_code === 'checkout_login_required'
+            ? (responseData.error || 'Please log in to continue.')
+            : 'We could not start secure payment. Please try again.';
         loginUrl.value = responseData.login_url || null;
         errorCode.value = responseData.error_code || null;
     } finally {

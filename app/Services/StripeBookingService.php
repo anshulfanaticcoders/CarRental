@@ -2,31 +2,28 @@
 
 namespace App\Services;
 
+use App\Jobs\SendAwinConversion;
 use App\Models\Booking;
-use App\Models\BookingPayment;
 use App\Models\BookingExtra;
+use App\Models\BookingHold;
+use App\Models\BookingPayment;
 use App\Models\Customer;
 use App\Models\StripeCheckoutPayload;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Vehicle;
+use App\Models\VendorProfile;
 use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
-use App\Notifications\Booking\GuestBookingCreatedNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
-use App\Models\VendorProfile;
-use App\Services\BookingAmountService;
+use App\Notifications\Booking\GuestBookingCreatedNotification;
 use App\Services\Bookings\InternalBookingSnapshotService;
-use App\Services\CurrencyConversionService;
-use App\Services\CheckoutIdentityGuardService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
-use App\Services\VrooemGatewayService;
-use App\Jobs\SendAwinConversion;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
@@ -50,6 +47,7 @@ class StripeBookingService
 
         return $this->findOrCreateCustomer($metadata);
     }
+
     /**
      * Create a booking from a Stripe Checkout Session
      */
@@ -64,10 +62,10 @@ class StripeBookingService
         if ($extrasPayloadId) {
             try {
                 $payloadRecord = StripeCheckoutPayload::find($extrasPayloadId);
-                if ($payloadRecord && !empty($payloadRecord->payload['full_metadata'])) {
+                if ($payloadRecord && ! empty($payloadRecord->payload['full_metadata'])) {
                     $fullMeta = $payloadRecord->payload['full_metadata'];
                     // Use toArray() — (array) cast on Stripe\StripeObject gives internal properties, not key-values
-                    $stripeKeys = array_filter($metadata->toArray(), fn($v) => $v !== null && $v !== '');
+                    $stripeKeys = array_filter($metadata->toArray(), fn ($v) => $v !== null && $v !== '');
                     // Stripe keys take precedence, full_metadata fills in the rest
                     $merged = array_merge($fullMeta, $stripeKeys);
                     $metadata = (object) $merged;
@@ -86,11 +84,12 @@ class StripeBookingService
 
         // Idempotency check
         $existingBooking = Booking::where('stripe_session_id', $session->id)->first();
-        if (!$existingBooking && !empty($metadata->booking_id)) {
+        if (! $existingBooking && ! empty($metadata->booking_id)) {
             $existingBooking = Booking::find($metadata->booking_id);
         }
         if ($existingBooking && in_array($existingBooking->booking_status, ['confirmed', 'completed'], true)) {
             Log::info('StripeBookingService: Booking already confirmed', ['booking_id' => $existingBooking->id]);
+
             return $existingBooking;
         }
 
@@ -100,7 +99,7 @@ class StripeBookingService
         // checked in TriggerProviderReservationJob.
         $availabilityLock = null;
         $lockedVehicleId = null;
-        if (($metadata->vehicle_source ?? '') === 'internal' && !empty($metadata->vehicle_id)) {
+        if (($metadata->vehicle_source ?? '') === 'internal' && ! empty($metadata->vehicle_id)) {
             $lockedVehicleId = (int) $metadata->vehicle_id;
             $availabilityLock = Cache::lock("booking-vehicle-{$lockedVehicleId}", 30);
             if (! $availabilityLock->block(10)) {
@@ -127,7 +126,7 @@ class StripeBookingService
 
             $vehicleId = null;
             $internalVehicle = null;
-            if (($metadata->vehicle_source ?? '') === 'internal' && !empty($metadata->vehicle_id)) {
+            if (($metadata->vehicle_source ?? '') === 'internal' && ! empty($metadata->vehicle_id)) {
                 $vehicleId = (int) $metadata->vehicle_id;
                 $internalVehicle = Vehicle::with(['vendorLocation', 'vendorProfileData', 'vendor'])->find($vehicleId);
             }
@@ -136,13 +135,14 @@ class StripeBookingService
             // checkouts for the same vehicle/date, (b) stale Stripe links opened
             // 30 min ago after someone else booked, (c) vendor blocks added while
             // the customer was mid-checkout.
-            if ($internalVehicle && !empty($metadata->pickup_date) && !empty($metadata->dropoff_date)) {
+            if ($internalVehicle && ! empty($metadata->pickup_date) && ! empty($metadata->dropoff_date)) {
                 $stillAvailable = app(InternalVehicleAvailabilityService::class)
                     ->isVehicleAvailable($internalVehicle, [
                         'pickup_date' => $metadata->pickup_date,
                         'dropoff_date' => $metadata->dropoff_date,
                         'pickup_time' => $metadata->pickup_time ?? null,
                         'dropoff_time' => $metadata->dropoff_time ?? null,
+                        'ignore_hold_id' => $metadata->booking_hold_id ?? null,
                     ]);
                 if (! $stillAvailable) {
                     DB::rollBack();
@@ -159,12 +159,16 @@ class StripeBookingService
                             'payment_status' => 'refund_pending',
                         ]);
                     }
+                    if (! empty($metadata->booking_hold_id)) {
+                        BookingHold::whereKey($metadata->booking_hold_id)->update(['status' => 'released']);
+                    }
 
                     $this->refundStripePayment(
                         $session->payment_intent ?? null,
                         'Vehicle no longer available for the requested dates'
                     );
                     $availabilityLock?->release();
+
                     return null;
                 }
             }
@@ -185,7 +189,7 @@ class StripeBookingService
                     'provider_source' => $booking->provider_source ?? ($metadata->vehicle_source ?? 'greenmotion'),
                     'provider_vehicle_id' => $booking->provider_vehicle_id ?? ($metadata->vehicle_id ?? null),
                     'provider_grand_total' => (float) ($metadata->provider_grand_total ?? $metadata->total_amount_net ?? $booking->provider_grand_total ?? 0),
-                    'vehicle_name' => $booking->vehicle_name ?: (($metadata->vehicle_brand ?? '') . ' ' . ($metadata->vehicle_model ?? '')),
+                    'vehicle_name' => $booking->vehicle_name ?: (($metadata->vehicle_brand ?? '').' '.($metadata->vehicle_model ?? '')),
                     'vehicle_image' => $booking->vehicle_image ?: ($metadata->vehicle_image ?? null),
                     'pickup_date' => $metadata->pickup_date ?? $booking->pickup_date,
                     'pickup_time' => $metadata->pickup_time ?? $booking->pickup_time,
@@ -220,7 +224,7 @@ class StripeBookingService
                     'provider_source' => $metadata->vehicle_source ?? 'greenmotion',
                     'provider_vehicle_id' => $metadata->vehicle_id ?? null,
                     'provider_grand_total' => (float) ($metadata->provider_grand_total ?? $metadata->total_amount_net ?? 0),
-                    'vehicle_name' => ($metadata->vehicle_brand ?? '') . ' ' . ($metadata->vehicle_model ?? ''),
+                    'vehicle_name' => ($metadata->vehicle_brand ?? '').' '.($metadata->vehicle_model ?? ''),
                     'vehicle_image' => $metadata->vehicle_image ?? null,
                     'pickup_date' => $metadata->pickup_date,
                     'pickup_time' => $metadata->pickup_time,
@@ -264,7 +268,7 @@ class StripeBookingService
             $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
             $extrasTotal = (float) ($metadata->extras_total ?? 0);
             $extrasData = $extrasPayload['detailed_extras'] ?? [];
-            if ($extrasTotal <= 0 && !empty($extrasData)) {
+            if ($extrasTotal <= 0 && ! empty($extrasData)) {
                 foreach ($extrasData as $extraItem) {
                     $extrasTotal += (float) ($extraItem['total'] ?? 0);
                 }
@@ -277,7 +281,7 @@ class StripeBookingService
             }
 
             // If vendor currency not found in profile, try metadata
-            if (!$vendorCurrency && !empty($metadata->provider_currency)) {
+            if (! $vendorCurrency && ! empty($metadata->provider_currency)) {
                 $vendorCurrency = $this->normalizeCurrencyCode($metadata->provider_currency);
             }
 
@@ -290,7 +294,7 @@ class StripeBookingService
             $providerAmounts = null;
             $providerGrandTotal = (float) ($metadata->provider_grand_total ?? 0);
             if ($providerGrandTotal > 0) {
-                $providerVehicleTotal = (float) ($metadata->provider_vehicle_total ?? $providerGrandTotal - (float)($metadata->provider_extras_total ?? 0));
+                $providerVehicleTotal = (float) ($metadata->provider_vehicle_total ?? $providerGrandTotal - (float) ($metadata->provider_extras_total ?? 0));
                 $providerExtrasTotal = (float) ($metadata->provider_extras_total ?? 0);
 
                 $providerAmounts = [
@@ -324,7 +328,7 @@ class StripeBookingService
                 ->where('transaction_id', $session->payment_intent)
                 ->first();
 
-            if (!$existingPayment) {
+            if (! $existingPayment) {
                 BookingPayment::create([
                     'booking_id' => $booking->id,
                     'payment_method' => $metadata->payment_method ?? 'stripe',
@@ -336,10 +340,10 @@ class StripeBookingService
                 ]);
             }
 
-            if (!$booking->extras()->exists()) {
+            if (! $booking->extras()->exists()) {
                 $extrasData = $extrasPayload['detailed_extras'] ?? [];
 
-                if (!empty($extrasData)) {
+                if (! empty($extrasData)) {
                     $providerCurrency = $metadata->provider_currency ?? $metadata->currency ?? null;
                     $bookingCurrency = $metadata->currency ?? null;
                     foreach ($extrasData as $extraItem) {
@@ -362,7 +366,7 @@ class StripeBookingService
                     }
                 } else {
                     $extras = $extrasPayload['extras'] ?? [];
-                    if (!empty($extras)) {
+                    if (! empty($extras)) {
                         $addonIds = array_keys($extras);
                         $addons = \App\Models\BookingAddon::whereIn('id', $addonIds)->get()->keyBy('id');
 
@@ -388,12 +392,19 @@ class StripeBookingService
             DB::commit();
             Log::info('StripeBookingService: Transaction committed successfully', ['booking_id' => $booking->id]);
 
+            if (! empty($metadata->booking_hold_id)) {
+                BookingHold::whereKey($metadata->booking_hold_id)->update([
+                    'status' => 'converted',
+                    'stripe_session_id' => $session->id,
+                ]);
+            }
+
             $awcValue = $metadata->awc ?? null;
             if (config('awin.enabled')) {
                 Log::channel('awin')->info('StripeBookingService: Dispatching Awin conversion', [
                     'booking_id' => $booking->id,
                     'booking_number' => $booking->booking_number,
-                    'has_awc' => !empty($awcValue),
+                    'has_awc' => ! empty($awcValue),
                 ]);
 
                 SendAwinConversion::dispatch($booking->id, $awcValue);
@@ -453,6 +464,7 @@ class StripeBookingService
                         'session_id' => $session->id,
                         'booking_id' => $existing->id,
                     ]);
+
                     return $existing;
                 }
             }
@@ -491,6 +503,7 @@ class StripeBookingService
     {
         if (! $paymentIntentId) {
             Log::error('StripeBookingService: Cannot refund — no payment_intent ID', ['reason' => $reason]);
+
             return false;
         }
         try {
@@ -508,6 +521,7 @@ class StripeBookingService
                 'refund_id' => $refund->id,
                 'reason' => $reason,
             ]);
+
             return true;
         } catch (\Throwable $e) {
             Log::error('StripeBookingService: Stripe refund failed — manual reconciliation required', [
@@ -515,6 +529,7 @@ class StripeBookingService
                 'reason' => $reason,
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -533,7 +548,7 @@ class StripeBookingService
         $tempPassword = null;
         $user = null;
 
-        if (!$userId) {
+        if (! $userId) {
             $identityGuard = app(CheckoutIdentityGuardService::class);
             $matches = $identityGuard->findExistingUsers($email, $phone);
 
@@ -547,12 +562,12 @@ class StripeBookingService
                 throw new \RuntimeException($conflict['message']);
             }
 
-            $safePhone = $phone ?: 'guest_' . now()->timestamp . '_' . Str::random(6);
+            $safePhone = $phone ?: 'guest_'.now()->timestamp.'_'.Str::random(6);
             $tempPassword = Str::random(10);
             $user = User::create([
                 'first_name' => $firstName,
                 'last_name' => $lastName,
-                'email' => $email ?? 'guest_' . now()->timestamp . '_' . Str::random(6) . '@temp.com',
+                'email' => $email ?? 'guest_'.now()->timestamp.'_'.Str::random(6).'@temp.com',
                 'phone' => $safePhone,
                 'password' => Hash::make($tempPassword),
                 'role' => 'customer',
@@ -602,7 +617,7 @@ class StripeBookingService
             'user_id' => $userId,
             'first_name' => $firstName,
             'last_name' => $lastName,
-            'email' => $email ?? 'guest_' . time() . '@temp.com',
+            'email' => $email ?? 'guest_'.time().'@temp.com',
             'phone' => $phone,
             'flight_number' => $metadata->flight_number ?? null,
             'driver_age' => $metadata->customer_driver_age ?? null,
@@ -621,7 +636,7 @@ class StripeBookingService
         }
 
         $country = $metadata->customer_country ?? $metadata->country ?? null;
-        if (!$country) {
+        if (! $country) {
             $country = 'us';
         }
 
@@ -648,7 +663,7 @@ class StripeBookingService
             return $value;
         }
 
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return [];
         }
 
@@ -658,6 +673,7 @@ class StripeBookingService
         }
 
         $decoded = json_decode($trimmed, true);
+
         return is_array($decoded) ? $decoded : [];
     }
 
@@ -747,11 +763,12 @@ class StripeBookingService
                 'return_location' => $booking->return_location,
                 'booking_currency' => $booking->booking_currency,
             ]);
+
             return array_merge($snapshot, $tracking);
         }
 
         $normalizeValue = static function ($value) {
-            if (!is_string($value)) {
+            if (! is_string($value)) {
                 return $value;
             }
 
@@ -775,27 +792,27 @@ class StripeBookingService
 
         $pickupLocationDetails = $normalizeValue($metadata->location_details ?? null);
         $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
-        if (empty($pickupLocationDetails) && !empty($extrasPayload['location_details'])) {
+        if (empty($pickupLocationDetails) && ! empty($extrasPayload['location_details'])) {
             $pickupLocationDetails = $extrasPayload['location_details'];
         }
 
         $dropoffLocationDetails = $normalizeValue($metadata->dropoff_location_details ?? null);
-        if (empty($dropoffLocationDetails) && !empty($extrasPayload['dropoff_location_details'])) {
+        if (empty($dropoffLocationDetails) && ! empty($extrasPayload['dropoff_location_details'])) {
             $dropoffLocationDetails = $extrasPayload['dropoff_location_details'];
         }
 
         $locationInstructions = $metadata->location_instructions ?? null;
-        if (empty($locationInstructions) && !empty($extrasPayload['location_instructions'])) {
+        if (empty($locationInstructions) && ! empty($extrasPayload['location_instructions'])) {
             $locationInstructions = $extrasPayload['location_instructions'];
         }
 
         $driverRequirements = $normalizeValue($metadata->driver_requirements ?? null);
-        if (empty($driverRequirements) && !empty($extrasPayload['driver_requirements'])) {
+        if (empty($driverRequirements) && ! empty($extrasPayload['driver_requirements'])) {
             $driverRequirements = $extrasPayload['driver_requirements'];
         }
 
         $terms = $normalizeValue($metadata->terms ?? null);
-        if (empty($terms) && !empty($extrasPayload['terms'])) {
+        if (empty($terms) && ! empty($extrasPayload['terms'])) {
             $terms = $extrasPayload['terms'];
         }
 
@@ -908,7 +925,7 @@ class StripeBookingService
 
         // Merge with the rest of the metadata structure
         $additionalMetadata = [
-            'benefits' => array_filter($benefits, fn($v) => $v !== null),
+            'benefits' => array_filter($benefits, fn ($v) => $v !== null),
             'pickup_location_id' => $metadata->sbc_pickup_location_id ?? $metadata->pickup_location_code ?? null,
             'dropoff_location_id' => $metadata->sbc_dropoff_location_id
                 ?? $metadata->return_location_code
@@ -1011,7 +1028,7 @@ class StripeBookingService
             }
         }
 
-        if (!empty($appliedOffers) && is_array($appliedOffers)) {
+        if (! empty($appliedOffers) && is_array($appliedOffers)) {
             return array_values(array_filter($appliedOffers, 'is_array'));
         }
 
@@ -1080,6 +1097,7 @@ class StripeBookingService
         }
 
         $upper = strtoupper((string) $value);
+
         return $upper !== '' ? $upper : 'EUR';
     }
 
@@ -1101,11 +1119,12 @@ class StripeBookingService
             ]);
         }
 
-        if (!$isInternalBooking) {
+        if (! $isInternalBooking) {
             Log::info('StripeBookingService: Skipping customer/vendor booking-created notifications for external provider booking', [
                 'booking_id' => $booking->id,
                 'provider_source' => $booking->provider_source,
             ]);
+
             return;
         }
 
@@ -1128,7 +1147,7 @@ class StripeBookingService
         }
 
         if ($tempPassword) {
-            if (!empty($customer->email) && !str_starts_with($customer->email, 'guest_')) {
+            if (! empty($customer->email) && ! str_starts_with($customer->email, 'guest_')) {
                 $customerUser = $customer->user;
                 $this->safeNotify($booking, 'guest_customer', function () use ($customerUser, $customer, $booking, $vehicle, $tempPassword) {
                     if ($customerUser) {
@@ -1182,7 +1201,7 @@ class StripeBookingService
 
         $summary = [];
         foreach ($selectedExtras as $extra) {
-            if (!is_array($extra)) {
+            if (! is_array($extra)) {
                 continue;
             }
 
@@ -1221,7 +1240,7 @@ class StripeBookingService
             $gateway = app(VrooemGatewayService::class);
 
             $gatewayVehicleId = $metadata->gateway_vehicle_id ?? null;
-            if (!$gatewayVehicleId) {
+            if (! $gatewayVehicleId) {
                 Log::warning('VrooemGateway: No gateway_vehicle_id in metadata, falling back to vehicle_id', [
                     'booking_id' => $booking->id,
                     'vehicle_id' => $metadata->vehicle_id ?? 'N/A',
@@ -1274,12 +1293,12 @@ class StripeBookingService
                         ?? null,
                     'payment_type' => $metadata->sbc_payment_type ?? null,
                     'currency' => $metadata->sbc_currency ?? $metadata->provider_currency ?? $metadata->currency ?? null,
-                ], static fn($value) => $value !== null && $value !== ''));
+                ], static fn ($value) => $value !== null && $value !== ''));
             }
 
             $result = $gateway->createBooking($reservationPayload);
 
-            if ($result && !empty($result['supplier_booking_id'])) {
+            if ($result && ! empty($result['supplier_booking_id'])) {
                 $providerBookingRef = $result['supplier_booking_id'];
                 Log::info('VrooemGateway: Reservation successful', [
                     'booking_id' => $booking->id,
@@ -1297,9 +1316,10 @@ class StripeBookingService
                             'gateway_supplier_id' => $result['supplier_id'] ?? null,
                         ]
                     ),
-                    'notes' => ($booking->notes ? $booking->notes . "\n" : '')
-                        . 'Gateway Conf: ' . $providerBookingRef,
+                    'notes' => ($booking->notes ? $booking->notes."\n" : '')
+                        .'Gateway Conf: '.$providerBookingRef,
                 ]);
+
                 return;
             }
 
