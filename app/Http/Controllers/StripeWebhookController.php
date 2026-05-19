@@ -7,14 +7,14 @@ use App\Models\BookingPayment;
 use App\Models\User;
 use App\Notifications\Payment\AdminPaymentFailedNotification;
 use App\Notifications\Payment\CustomerPaymentFailedNotification;
+use App\Services\StripeBookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
-use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
-use Stripe\Webhook;
 use Stripe\Exception\SignatureVerificationException;
-use App\Services\StripeBookingService;
+use Stripe\Stripe;
+use Stripe\Webhook;
 
 class StripeWebhookController extends Controller
 {
@@ -35,13 +35,21 @@ class StripeWebhookController extends Controller
         $sigHeader = $request->header('Stripe-Signature');
         $webhookSecret = config('services.stripe.webhook_secret');
 
+        if (! $webhookSecret) {
+            Log::critical('Stripe Webhook: Missing webhook secret');
+
+            return response('Webhook unavailable', 500);
+        }
+
         try {
             $event = Webhook::constructEvent($payload, $sigHeader, $webhookSecret);
         } catch (\UnexpectedValueException $e) {
             Log::error('Stripe Webhook: Invalid payload', ['error' => $e->getMessage()]);
+
             return response('Invalid payload', 400);
         } catch (SignatureVerificationException $e) {
             Log::error('Stripe Webhook: Invalid signature', ['error' => $e->getMessage()]);
+
             return response('Invalid signature', 400);
         }
 
@@ -79,7 +87,7 @@ class StripeWebhookController extends Controller
         try {
             $freshSession = $this->retrieveSession($session);
 
-            if (!$freshSession) {
+            if (! $freshSession) {
                 return;
             }
 
@@ -88,6 +96,7 @@ class StripeWebhookController extends Controller
                     'session_id' => $freshSession->id,
                     'payment_status' => $freshSession->payment_status,
                 ]);
+
                 return;
             }
 
@@ -110,7 +119,7 @@ class StripeWebhookController extends Controller
         try {
             $freshSession = $this->retrieveSession($session);
 
-            if (!$freshSession) {
+            if (! $freshSession) {
                 return;
             }
 
@@ -119,6 +128,7 @@ class StripeWebhookController extends Controller
                     'session_id' => $freshSession->id,
                     'payment_status' => $freshSession->payment_status,
                 ]);
+
                 return;
             }
 
@@ -135,8 +145,9 @@ class StripeWebhookController extends Controller
     protected function retrieveSession($session)
     {
         $sessionId = $session->id ?? null;
-        if (!$sessionId) {
+        if (! $sessionId) {
             Log::warning('Stripe webhook session missing id');
+
             return null;
         }
 
@@ -147,6 +158,7 @@ class StripeWebhookController extends Controller
                 'session_id' => $sessionId,
                 'error' => $e->getMessage(),
             ]);
+
             return $session;
         }
     }
@@ -193,6 +205,7 @@ class StripeWebhookController extends Controller
                 'current_status' => $booking->payment_status,
                 'payment_intent_id' => $paymentIntent->id,
             ]);
+
             return;
         }
 

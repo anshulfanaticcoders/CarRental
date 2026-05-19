@@ -1,28 +1,27 @@
 <?php
 
 use App\Http\Controllers\Admin\BlogController;
+use App\Http\Controllers\Admin\ContactUsPageController;
 use App\Http\Controllers\Admin\FaqController;
+use App\Http\Controllers\Admin\PayableSettingController;
 use App\Http\Controllers\Api\CategoryFeaturesController;
-use App\Http\Controllers\Api\FooterController;
+use App\Http\Controllers\Api\SeoMetaController;
 use App\Http\Controllers\BookingAddonController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\MessageController;
-use App\Http\Controllers\PlanController;
-use App\Http\Controllers\RadiusApiController;
-use App\Http\Controllers\ReviewController;
-use App\Http\Controllers\UserDocumentController;
-use App\Http\Controllers\VehicleController;
-use App\Http\Controllers\VehicleCategoryController;
-use App\Http\Controllers\PopularPlacesController;
-use App\Http\Controllers\Api\SeoMetaController; // Added for SEO Meta
-use App\Http\Controllers\Admin\PayableSettingController; // Import PayableSettingController
-use App\Http\Controllers\ProviderLocationController;
-use App\Http\Controllers\Vendor\VendorOverviewController; // Import VendorOverviewController
-use App\Http\Controllers\Admin\ContactUsPageController;
 use App\Http\Controllers\NewsletterSubscriptionController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\PlanController;
+use App\Http\Controllers\PopularPlacesController;
+use App\Http\Controllers\ProviderLocationController;
+use App\Http\Controllers\RadiusApiController; // Added for SEO Meta
+use App\Http\Controllers\ReviewController; // Import PayableSettingController
+use App\Http\Controllers\UserDocumentController;
+use App\Http\Controllers\VehicleCategoryController; // Import VendorOverviewController
+use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\Vendor\VendorOverviewController;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -54,8 +53,6 @@ Route::get('/popular-places', [PopularPlacesController::class, 'index']);
 
 Route::middleware('auth:sanctum')->get('/user-documents', [UserDocumentController::class, 'getUserDocuments']);
 
-
-
 // Internal API for Vrooem Gateway (authenticated via bearer token)
 Route::get('/internal/locations', [\App\Http\Controllers\Api\InternalLocationController::class, 'index'])
     ->middleware('gateway.token');
@@ -67,14 +64,21 @@ Route::get('/internal/vehicles', [\App\Http\Controllers\Api\InternalVehicleContr
 Route::get('/plans', [PlanController::class, 'index']);
 Route::get('/booking-addons', [BookingAddonController::class, 'index']);
 
+Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    Route::get('/user-count', function () {
+        return response()->json(['count' => User::count()]);
+    });
 
-Route::get('/user-count', function () {
-    return response()->json(['count' => User::count()]);
-});
+    Route::get('/users', function () {
+        $users = User::query()
+            ->select(['id', 'first_name', 'last_name', 'email', 'phone', 'phone_code', 'role', 'status', 'created_at'])
+            ->orderByDesc('created_at')
+            ->get();
 
-Route::get('/users', function () {
-    $users = User::all();
-    return response()->json($users);
+        return response()->json($users);
+    });
+
+    Route::get('/admin/profile', [App\Http\Controllers\AdminProfileController::class, 'getAdminProfile']);
 });
 Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
 Route::get('/currencies', [CurrencyController::class, 'index']);
@@ -82,8 +86,6 @@ Route::get('/currency-rates', [CurrencyController::class, 'rates'])->name('api.c
 // Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');
 // In your api.php routes file
 Route::get('/vendors/{vendorProfileId}/reviews', [ReviewController::class, 'getApprovedReviews']);
-
-
 
 // this is for recent blogs
 Route::get('/recent-blogs', [BlogController::class, 'getRecentBlogs']);
@@ -99,8 +101,6 @@ Route::get('/radius', [RadiusApiController::class, 'getRadius']);
 // SEO Meta Route
 Route::get('/seo-meta', [SeoMetaController::class, 'getMetaBySlug'])->name('api.seo-meta.get');
 
-Route::get('/admin/profile', [App\Http\Controllers\AdminProfileController::class, 'getAdminProfile']);
-
 // Public API for fetching payment percentage
 Route::get('/payment-percentage', [PayableSettingController::class, 'getPercentage'])->name('api.payment-percentage');
 
@@ -108,7 +108,6 @@ Route::get('/{provider}/dropoff-locations/{location_id}', [ProviderLocationContr
 
 // Route for unified location search
 Route::get('/unified-locations', [App\Http\Controllers\SearchController::class, 'searchUnifiedLocations'])->name('api.unified-locations.search');
-
 
 // Vendor API routes - Note: Moved to web.php for proper authentication
 Route::get('/offers', [\App\Http\Controllers\OfferController::class, 'index']);
@@ -129,7 +128,9 @@ Route::prefix('internal/provider')->middleware('gateway.token')->group(function 
 });
 
 // Stripe Checkout Routes
-Route::post('/stripe/checkout', [\App\Http\Controllers\StripeCheckoutController::class, 'createSession'])->name('api.stripe.checkout');
+Route::post('/stripe/checkout', [\App\Http\Controllers\StripeCheckoutController::class, 'createSession'])
+    ->middleware('throttle:checkout')
+    ->name('api.stripe.checkout');
 Route::post('/stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handle'])->name('api.stripe.webhook');
 
 // Mobile API Routes (Sanctum tokens)

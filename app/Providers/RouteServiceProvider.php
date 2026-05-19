@@ -18,6 +18,7 @@ class RouteServiceProvider extends ServiceProvider
      * @var string
      */
     public const HOME = '/';
+
     public const HOMEPAGE = '/';
 
     /**
@@ -36,15 +37,43 @@ class RouteServiceProvider extends ServiceProvider
         // General mobile-app traffic — keyed by Sanctum user id when authenticated,
         // otherwise by IP. 120/min handles a busy search session (filters, refresh)
         // while still throttling abusive clients.
+        RateLimiter::for('web-auth', function (Request $request) {
+            $identifier = strtolower(trim((string) $request->input('email', 'missing')));
+
+            return [
+                Limit::perMinute(10)->by($request->ip()),
+                Limit::perMinute(10)->by($identifier.'|'.$request->ip()),
+            ];
+        });
+
+        RateLimiter::for('checkout', function (Request $request) {
+            return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('message-send', function (Request $request) {
+            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('form-validation', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
+
         RateLimiter::for('mobile', function (Request $request) {
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 
         // Tighter limit for auth endpoints to slow credential stuffing.
         RateLimiter::for('mobile-auth', function (Request $request) {
+            $identifier = strtolower(trim((string) $request->input('email', '')));
+            if ($identifier === '') {
+                $phone = preg_replace('/\D+/', '', (string) $request->input('phone', ''));
+                $phoneCode = preg_replace('/\D+/', '', (string) $request->input('phone_code', ''));
+                $identifier = $phone !== '' ? $phoneCode.':'.$phone : 'missing';
+            }
+
             return [
                 Limit::perMinute(10)->by($request->ip()),
-                Limit::perMinute(20)->by((string) $request->input('email', '')),
+                Limit::perMinute(10)->by($identifier.'|'.$request->ip()),
             ];
         });
 

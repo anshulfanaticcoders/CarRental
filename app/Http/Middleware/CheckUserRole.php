@@ -23,6 +23,10 @@ class CheckUserRole
             return $next($request);
         }
 
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
         // Redirect or abort if the user does not have the required role
         return redirect('/'); // Change this to your desired redirect
     }

@@ -21,6 +21,7 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        \App\Http\Middleware\SecurityHeaders::class,
         \App\Http\Middleware\HandleSeoRedirects::class,
     ];
 
@@ -72,9 +73,10 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'set_locale' => \App\Http\Middleware\SetLocale::class,
-         'redirect.country' => \App\Http\Middleware\RedirectCountry::class,
-         'share.country' => \App\Http\Middleware\ShareCountryFromUrl::class,
-         'gateway.token' => \App\Http\Middleware\VerifyGatewayToken::class,
+        'redirect.country' => \App\Http\Middleware\RedirectCountry::class,
+        'share.country' => \App\Http\Middleware\ShareCountryFromUrl::class,
+        'gateway.token' => \App\Http\Middleware\VerifyGatewayToken::class,
+        'local.debug' => \App\Http\Middleware\LocalDebugOnly::class,
     ];
 
     protected $routeMiddleware = [

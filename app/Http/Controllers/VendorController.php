@@ -1,16 +1,18 @@
 <?php
+
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Models\VendorDocument;
 use App\Models\VendorProfile;
 use App\Notifications\VendorRegisteredNotification;
 use App\Notifications\VendorRegisteredUserConfirmation;
-use Illuminate\Support\Facades\Notification;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use App\Models\User;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class VendorController extends Controller
@@ -31,10 +33,10 @@ class VendorController extends Controller
         try {
             // Validate the incoming request
             $request->validate([
-                'driving_license_front' => 'nullable|file|mimes:jpg,png,pdf',
-                'driving_license_back' => 'nullable|file|mimes:jpg,png,pdf',
-                'passport_front' => 'nullable|file|mimes:jpg,png,pdf',
-                'passport_back' => 'nullable|file|mimes:jpg,png,pdf',
+                'driving_license_front' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'driving_license_back' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'passport_front' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'passport_back' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
                 'company_name' => 'required|string|max:255',
                 'company_phone_number' => 'required|string|max:15',
                 'company_email' => 'required|email|max:255',
@@ -126,20 +128,20 @@ class VendorController extends Controller
             // Return a JSON response for Inertia
             return redirect(RouteServiceProvider::HOMEPAGE)->with([
                 'message' => 'Vendor registration completed successfully!',
-                'type' => 'success'
+                'type' => 'success',
             ]);
 
         } catch (\Exception $e) {
             // Log the error for debugging
-            \Log::error('Vendor Registration Error: ' . $e->getMessage());
+            \Log::error('Vendor Registration Error: '.$e->getMessage());
 
             // Return error response
             return back()->with([
                 'message' => 'Something went wrong during registration. Please try again.',
-                'type' => 'error'
+                'type' => 'error',
             ])->withErrors([
-                        'error' => 'Registration failed. Please try again.'
-                    ]);
+                'error' => 'Registration failed. Please try again.',
+            ]);
         }
     }
 
@@ -173,10 +175,10 @@ class VendorController extends Controller
         try {
             // Validate the incoming request
             $request->validate([
-                'driving_license_front' => 'nullable|file|mimes:jpg,png,pdf',
-                'driving_license_back' => 'nullable|file|mimes:jpg,png,pdf',
-                'passport_front' => 'nullable|file|mimes:jpg,png,pdf',
-                'passport_back' => 'nullable|file|mimes:jpg,png,pdf',
+                'driving_license_front' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'driving_license_back' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'passport_front' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'passport_back' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
                 'company_name' => 'required|string|max:255',
                 'company_phone_number' => 'required|string|max:15',
                 'company_email' => 'required|email|max:255',
@@ -249,21 +251,20 @@ class VendorController extends Controller
 
             return back()->with([
                 'message' => 'Vendor documents updated successfully!',
-                'type' => 'success'
+                'type' => 'success',
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Vendor Document Update Error: ' . $e->getMessage());
+            \Log::error('Vendor Document Update Error: '.$e->getMessage());
 
             return back()->with([
                 'message' => 'Something went wrong during update. Please try again.',
-                'type' => 'error'
+                'type' => 'error',
             ])->withErrors([
-                        'error' => 'Update failed. Please try again.'
-                    ]);
+                'error' => 'Update failed. Please try again.',
+            ]);
         }
     }
-
 
     public function status()
     {
@@ -286,9 +287,6 @@ class VendorController extends Controller
     /**
      * Handle document upload with image compression and filename preservation
      *
-     * @param UploadedFile $file
-     * @param string $folderName
-     * @return string
      * @throws \Exception
      */
     private function handleDocumentUpload(UploadedFile $file, string $folderName): string
@@ -297,17 +295,10 @@ class VendorController extends Controller
 
         // Handle PDF files without compression
         if ($fileExtension === 'pdf') {
-            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-            $filename = $originalName . '.' . $fileExtension;
-
-            // Handle duplicate filenames
-            $counter = 1;
-            while (Storage::disk('upcloud')->exists($folderName . '/' . $filename)) {
-                $filename = $originalName . $counter . '.' . $fileExtension;
-                $counter++;
-            }
-
+            $originalName = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'document';
+            $filename = $originalName.'-'.now()->timestamp.'-'.Str::random(8).'.'.$fileExtension;
             $path = $file->storeAs($folderName, $filename, 'upcloud');
+
             return Storage::disk('upcloud')->url($path);
         }
 
@@ -323,8 +314,8 @@ class VendorController extends Controller
             maxHeight: 900
         );
 
-        if (!$compressedPath) {
-            throw new \Exception('Image compression failed for: ' . $file->getClientOriginalName());
+        if (! $compressedPath) {
+            throw new \Exception('Image compression failed for: '.$file->getClientOriginalName());
         }
 
         return Storage::disk('upcloud')->url($compressedPath);
@@ -332,9 +323,6 @@ class VendorController extends Controller
 
     /**
      * Delete old document file from storage
-     *
-     * @param string $fileUrl
-     * @return void
      */
     private function deleteOldDocument(string $fileUrl): void
     {
@@ -344,9 +332,7 @@ class VendorController extends Controller
                 Storage::disk('upcloud')->delete($filePath);
             }
         } catch (\Exception $e) {
-            \Log::warning('Failed to delete old vendor document: ' . $fileUrl . ' - ' . $e->getMessage());
+            \Log::warning('Failed to delete old vendor document: '.$fileUrl.' - '.$e->getMessage());
         }
     }
-
-
 }

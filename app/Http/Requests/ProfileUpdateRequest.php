@@ -17,13 +17,13 @@ class ProfileUpdateRequest extends FormRequest
                 'string',
                 'email',
                 'max:255',
-                Rule::unique('users')->ignore($this->user()->id)
+                Rule::unique('users')->ignore($this->user()->id),
             ],
             'phone' => [
                 'required',
                 'string',
                 'max:20',
-                Rule::unique('users')->ignore($this->user()->id)
+                Rule::unique('users')->ignore($this->user()->id),
             ],
             'date_of_birth' => ['nullable', 'date', 'before:today'],
             'address_line1' => ['nullable', 'string', 'max:255'],
@@ -37,10 +37,9 @@ class ProfileUpdateRequest extends FormRequest
             'title' => ['nullable', 'string', Rule::in(['Mr.', 'Miss'])],
             'gender' => ['nullable', 'string', Rule::in(['male', 'female'])],
             'currency' => ['nullable', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
-            // 'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ];
     }
-
 
     public function messages(): array
     {
@@ -53,5 +52,4 @@ class ProfileUpdateRequest extends FormRequest
             'date_of_birth.before' => 'Date of birth must be in the past',
         ];
     }
-
 }

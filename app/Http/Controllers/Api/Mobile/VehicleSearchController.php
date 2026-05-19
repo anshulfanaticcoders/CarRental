@@ -71,6 +71,13 @@ class VehicleSearchController extends Controller
         $end = Carbon::parse("{$validated['dropoff_date']} {$validated['dropoff_time']}");
         $rentalDays = max(1, (int) ceil($start->diffInMinutes($end) / 1440));
 
+        if ($start->lessThanOrEqualTo(now())) {
+            return response()->json([
+                'message' => 'Pickup time must be in the future.',
+                'errors' => ['pickup_date' => ['Pickup time must be in the future.']],
+            ], 422);
+        }
+
         if ($end->lessThanOrEqualTo($start)) {
             return response()->json([
                 'message' => 'Drop-off time must be after pickup time.',
@@ -802,6 +809,13 @@ class VehicleSearchController extends Controller
 
         $start = Carbon::parse("{$validated['pickup_date']} {$validated['pickup_time']}");
         $end = Carbon::parse("{$validated['dropoff_date']} {$validated['dropoff_time']}");
+        if ($start->lessThanOrEqualTo(now())) {
+            return response()->json([
+                'available' => false,
+                'reason' => 'Pickup time must be in the future.',
+            ], 422);
+        }
+
         if ($end->lessThanOrEqualTo($start)) {
             return response()->json([
                 'available' => false,

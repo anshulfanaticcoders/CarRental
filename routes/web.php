@@ -56,8 +56,8 @@ use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\Vendor\BlockingDateController;
 use App\Http\Controllers\Vendor\DamageProtectionController;
 use App\Http\Controllers\Vendor\VendorBookingController;
-use App\Http\Controllers\Vendor\VendorExternalBookingController;
 use App\Http\Controllers\Vendor\VendorBulkVehicleImportController;
+use App\Http\Controllers\Vendor\VendorExternalBookingController;
 use App\Http\Controllers\Vendor\VendorLocationController;
 use App\Http\Controllers\Vendor\VendorOverviewController;
 use App\Http\Controllers\Vendor\VendorVehicleController;
@@ -111,7 +111,7 @@ Route::get('/force-currency-detection', function () {
         'message' => 'Currency detection forced. Refresh page to see automatic detection.',
         'session_cleared' => true,
     ]);
-});
+})->middleware('local.debug');
 
 Route::get('/', function () {
     $request = request();
@@ -391,7 +391,7 @@ Route::group([
         Route::get('/customer-chat-partners', [MessageController::class, 'getCustomerChatPartners'])->name('messages.customer.partners');
         Route::get('/messages/vendor', [MessageController::class, 'vendorIndex'])->name('messages.vendor.index');
         Route::get('/messages/{booking}', [MessageController::class, 'show'])->name('messages.show');
-        Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
+        Route::post('/messages', [MessageController::class, 'store'])->middleware('throttle:message-send')->name('messages.store');
         Route::get('/messages/unread', [MessageController::class, 'getUnreadCount'])->name('messages.unread');
         Route::get('/messages/{booking}/last', [MessageController::class, 'getLastMessage'])->name('messages.last');
         Route::delete('/messages/{id}', [MessageController::class, 'destroy'])->name('messages.destroy');
@@ -404,7 +404,7 @@ Route::group([
         Route::get('/messages/{booking}/typing-users', [MessageController::class, 'getTypingUsers'])->name('messages.typing.users');
 
         // DEBUG route
-        Route::get('/messages/debug', [MessageController::class, 'debugChatPartners'])->name('messages.debug');
+        Route::get('/messages/debug', [MessageController::class, 'debugChatPartners'])->middleware('local.debug')->name('messages.debug');
 
         // Notification routes
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -426,8 +426,8 @@ Route::group([
     Route::post('/api/esim/order', [EsimAccessController::class, 'order'])->name('api.esim.order');
     Route::get('/page/{slug}', [PageController::class, 'showPublic'])->name('pages.show');
     Route::get('/faq', [FaqController::class, 'showPublicFaqPage'])->name('faq.show');
-    Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->name('validate-email');
-    Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->name('validate-contact');
+    Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->middleware('throttle:form-validation')->name('validate-email');
+    Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->middleware('throttle:form-validation')->name('validate-contact');
 
     // Dynamic page custom slugs (managed via admin Pages > custom_slug field)
     Route::get('/{customSlug}', [\App\Http\Controllers\Admin\PageController::class, 'showByCustomSlug'])
@@ -460,7 +460,7 @@ Route::group([
 
     // Public affiliate registration
     Route::get('/affiliate/register', [\App\Http\Controllers\Affiliate\AffiliateRegisteredController::class, 'create'])->name('affiliate.register');
-    Route::post('/affiliate/register', [\App\Http\Controllers\Affiliate\AffiliateRegisteredController::class, 'store'])->name('affiliate.register.store');
+    Route::post('/affiliate/register', [\App\Http\Controllers\Affiliate\AffiliateRegisteredController::class, 'store'])->middleware('throttle:web-auth')->name('affiliate.register.store');
 
     // Auth-based affiliate routes
     Route::middleware(['auth', 'affiliate'])->prefix('affiliate')->group(function () {
@@ -483,7 +483,7 @@ Route::group([
             'session_country' => session('country'),
             'all_session_data' => session()->all(),
         ]);
-    });
+    })->middleware('local.debug');
 
     // Test route to verify unified IP detection (currency + country)
     Route::get('/test-unified-detection', function () {
@@ -496,7 +496,7 @@ Route::group([
                 : '❌ Unified detection not complete. Check SetCurrency middleware.',
             'all_session_data' => session()->all(),
         ]);
-    });
+    })->middleware('local.debug');
 
     // Test route to verify comprehensive country coverage
     Route::get('/test-country-coverage/{country}', function ($country) {
@@ -563,7 +563,7 @@ Route::group([
                 ? "✅ {$country} → {$detectedCurrency}"
                 : "❌ {$country} → Not supported, defaults to USD",
         ]);
-    });
+    })->middleware('local.debug');
 
     // Test route to check blog filtering
     Route::get('/debug-blog-filtering', function () {
@@ -603,7 +603,7 @@ Route::group([
             'sql_query' => $blogsQuery->toSql(),
             'session_data' => session()->all(),
         ]);
-    });
+    })->middleware('local.debug');
 
     // Debug route to test geolocation
     Route::get('/debug-location', function () {
@@ -662,7 +662,7 @@ Route::group([
             'location_driver' => config('location.driver'),
             'all_session_data' => session()->all(),
         ]);
-    });
+    })->middleware('local.debug');
 
     Route::get('/blog', function ($locale) {
         $country = session('country', 'us');
@@ -875,7 +875,7 @@ Route::get('/test-business-debug/{token}', function ($token) {
     } else {
         return response()->json(['found' => false, 'total_businesses' => \App\Models\Affiliate\AffiliateBusiness::count()]);
     }
-});
+})->middleware('local.debug');
 
 // llms.txt for AI tools (ChatGPT, Gemini, Perplexity)
 Route::get('/llms.txt', function () {

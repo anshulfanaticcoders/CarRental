@@ -2,17 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AdminProfile;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\DB;
 
 class AdminProfileController extends Controller
 {
@@ -33,72 +32,75 @@ class AdminProfileController extends Controller
      * Update the admin profile information.
      */
     public function update(Request $request): RedirectResponse
-{
-    DB::beginTransaction();
+    {
+        DB::beginTransaction();
 
-    try {
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
 
-        // Validate all fields
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
-            'phone' => 'nullable|string|max:20',
-            'company_name' => 'nullable|string|max:255',
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'current_password' => 'nullable|required_with:password|string',
-            'password' => 'nullable|string|min:8|confirmed',
-            'password_confirmation' => 'nullable|string',
-        ]);
-
-        // Update user data
-        $user->update([
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-        ]);
-
-        // Handle password update
-        if ($request->filled('password')) {
-            if (!Hash::check($validated['current_password'], $user->password)) {
-                throw new \Exception('The provided current password does not match your actual password.');
-            }
-            $user->update([
-                'password' => Hash::make($validated['password']),
+            // Validate all fields
+            $validated = $request->validate([
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
+                'phone' => 'nullable|string|max:20',
+                'company_name' => 'nullable|string|max:255',
+                'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+                'current_password' => 'nullable|required_with:password|string',
+                'password' => 'nullable|string|min:8|confirmed',
+                'password_confirmation' => 'nullable|string',
             ]);
+
+            // Update user data
+            $user->update([
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+            ]);
+
+            // Handle password update
+            if ($request->filled('password')) {
+                if (! Hash::check($validated['current_password'], $user->password)) {
+                    DB::rollBack();
+
+                    return back()->withErrors(['current_password' => 'The provided current password is incorrect.']);
+                }
+                $user->update([
+                    'password' => Hash::make($validated['password']),
+                ]);
+            }
+
+            // Handle avatar upload
+            $avatarPath = null;
+            if ($request->hasFile('avatar')) {
+                $folderName = 'avatars';
+                $path = $request->file('avatar')->store($folderName, 'upcloud');
+                Storage::disk('upcloud')->setVisibility($path, 'public');
+                $avatarPath = Storage::disk('upcloud')->url($path);
+            }
+
+            // Update or create admin profile
+            $user->adminProfile()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'company_name' => $validated['company_name'] ?? null,
+                    'avatar' => $avatarPath ?? $user->adminProfile->avatar ?? null,
+                ]
+            );
+
+            DB::commit();
+
+            return Redirect::route('admin.settings.profile')
+                ->with('success', 'Profile updated successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Failed to update admin profile', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
+
+            return back()->with('error', 'Failed to update profile. Please try again.');
         }
-
-        // Handle avatar upload
-        $avatarPath = null;
-        if ($request->hasFile('avatar')) {
-            $filePath = $request->file('avatar')->getClientOriginalName();
-            $folderName = 'avatars';
-            $path = $request->file('avatar')->store($folderName, 'upcloud');
-            Storage::disk('upcloud')->setVisibility($path, 'public');
-            $avatarPath = Storage::disk('upcloud')->url($path);
-        }
-
-        // Update or create admin profile
-        $user->adminProfile()->updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'company_name' => $validated['company_name'] ?? null,
-                'avatar' => $avatarPath ?? $user->adminProfile->avatar ?? null,
-            ]
-        );
-
-        DB::commit();
-
-        return Redirect::route('admin.settings.profile')
-            ->with('success', 'Profile updated successfully.');
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->with('error', 'Failed to update profile: ' . $e->getMessage());
     }
-}
 
     /**
      * Get the admin profile data.

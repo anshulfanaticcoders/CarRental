@@ -322,10 +322,10 @@ class StripeCheckoutController extends Controller
                 'package' => 'required|string',
                 'extras' => 'nullable|array',
                 'customer' => 'required|array',
-                'pickup_date' => 'required|string',
-                'pickup_time' => 'required|string',
-                'dropoff_date' => 'required|string',
-                'dropoff_time' => 'required|string',
+                'pickup_date' => 'required|date_format:Y-m-d',
+                'pickup_time' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+                'dropoff_date' => 'required|date_format:Y-m-d|after_or_equal:pickup_date',
+                'dropoff_time' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
                 'pickup_location' => 'required|string',
                 'dropoff_location' => 'nullable|string',
                 'total_amount' => 'required|numeric',
@@ -347,6 +347,24 @@ class StripeCheckoutController extends Controller
                 'terms' => 'nullable|array',
                 'gateway_search_id' => 'nullable|string',
             ]);
+
+            $start = \Carbon\Carbon::parse("{$validated['pickup_date']} {$validated['pickup_time']}");
+            $end = \Carbon\Carbon::parse("{$validated['dropoff_date']} {$validated['dropoff_time']}");
+            if ($start->lessThanOrEqualTo(now())) {
+                return response()->json([
+                    'error' => 'Pickup time must be in the future.',
+                    'errors' => ['pickup_date' => ['Pickup time must be in the future.']],
+                ], 422);
+            }
+
+            if ($end->lessThanOrEqualTo($start)) {
+                return response()->json([
+                    'error' => 'Drop-off time must be after pickup time.',
+                    'errors' => ['dropoff_time' => ['Drop-off must be after pickup.']],
+                ], 422);
+            }
+
+            $validated['number_of_days'] = max(1, (int) ceil($start->diffInMinutes($end) / 1440));
 
             $vehicle = $validated['vehicle'] ?? [];
             $providerSource = strtolower((string) ($vehicle['source'] ?? ''));

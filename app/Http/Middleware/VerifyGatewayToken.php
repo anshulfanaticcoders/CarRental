@@ -18,7 +18,7 @@ class VerifyGatewayToken
             ?: $request->header('X-Internal-Token');
         $expected = config('vrooem.internal_api_token');
 
-        if (!$token || !$expected || $token !== $expected) {
+        if (!$token || !$expected || !hash_equals((string) $expected, (string) $token)) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 

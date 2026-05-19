@@ -2,42 +2,43 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\MessageDeleted;
+use App\Events\MessageRead;
+use App\Events\MessageRestored;
 use App\Events\NewMessage;
 use App\Events\TypingIndicator;
-use App\Events\MessageRead;
-use App\Models\Message;
-use App\Models\User;
 use App\Models\Booking;
 use App\Models\ChatTypingStatus;
+use App\Models\Message;
 use App\Models\MessageReadReceipt;
+use App\Models\User;
 use App\Notifications\NewMessageNotification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage; // Added import for Storage
-use App\Events\MessageDeleted; // Added import
-use App\Events\MessageRestored; // Added import
+use Illuminate\Support\Facades\Schema; // Added import for Storage
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str; // Added import
+use Inertia\Inertia; // Added import
 
 class MessageController extends Controller
 {
     /**
      * Validate if a booking is eligible for chat functionality
      *
-     * @param Booking $booking
-     * @param User $user
+     * @param  Booking  $booking
+     * @param  User  $user
      * @return array
      */
     private function validateBookingChatEligibility($booking, $user)
     {
         $allowedStatuses = ['pending', 'confirmed'];
 
-        if (!in_array($booking->booking_status, $allowedStatuses)) {
+        if (! in_array($booking->booking_status, $allowedStatuses)) {
             return [
                 'allowed' => false,
-                'reason' => 'Chat is not available for ' . $booking->booking_status . ' bookings',
-                'readOnly' => true
+                'reason' => 'Chat is not available for '.$booking->booking_status.' bookings',
+                'readOnly' => true,
             ];
         }
 
@@ -45,7 +46,7 @@ class MessageController extends Controller
             return [
                 'allowed' => false,
                 'reason' => 'Unauthorized access',
-                'readOnly' => false
+                'readOnly' => false,
             ];
         }
 
@@ -82,13 +83,13 @@ class MessageController extends Controller
             // by selecting the latest created customer ID.
             $query->select('id')->from('customers')->where('user_id', $customerId)->latest()->limit(1);
         })
-        ->with(['vehicle.vendor.profile', 'vehicle.vendor.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images']) // Eager load more vehicle data
-        ->orderBy('created_at', 'desc') // Get latest bookings first for a vendor
-        ->get()
-        ->filter(function ($booking) {
-            // Only include bookings that have a vehicle (internal bookings only)
-            return $booking->vehicle !== null && $booking->vehicle->vendor_id !== null;
-        });
+            ->with(['vehicle.vendor.profile', 'vehicle.vendor.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images']) // Eager load more vehicle data
+            ->orderBy('created_at', 'desc') // Get latest bookings first for a vendor
+            ->get()
+            ->filter(function ($booking) {
+                // Only include bookings that have a vehicle (internal bookings only)
+                return $booking->vehicle !== null && $booking->vehicle->vendor_id !== null;
+            });
 
         // Group bookings by vendor to get unique vendors
         // vehicle.vendor_id is the user_id of the vendor
@@ -118,11 +119,11 @@ class MessageController extends Controller
                 ->count();
 
             // Get the last message exchanged with this vendor across all their bookings
-            $lastMessage = Message::where(function($q) use ($customerId, $vendorUser) {
-                    $q->where('sender_id', $customerId)->where('receiver_id', $vendorUser->id);
-                })->orWhere(function($q) use ($customerId, $vendorUser) {
-                    $q->where('sender_id', $vendorUser->id)->where('receiver_id', $customerId);
-                })
+            $lastMessage = Message::where(function ($q) use ($customerId, $vendorUser) {
+                $q->where('sender_id', $customerId)->where('receiver_id', $vendorUser->id);
+            })->orWhere(function ($q) use ($customerId, $vendorUser) {
+                $q->where('sender_id', $vendorUser->id)->where('receiver_id', $customerId);
+            })
                 ->whereIn('booking_id', $vendorBookings->pluck('id'))
                 ->orderBy('created_at', 'desc')
                 ->first();
@@ -188,9 +189,9 @@ class MessageController extends Controller
                         'can_send_messages' => $activeBooking ? in_array($activeBooking->booking_status, ['pending', 'confirmed']) : false,
                         'reason' => ($activeBooking && in_array($activeBooking->booking_status, ['pending', 'confirmed']))
                             ? null
-                            : 'Chat is not available for ' . ($activeBooking ? $activeBooking->booking_status : 'completed') . ' bookings',
-                        'read_only' => $activeBooking ? !in_array($activeBooking->booking_status, ['pending', 'confirmed']) : true
-                    ]
+                            : 'Chat is not available for '.($activeBooking ? $activeBooking->booking_status : 'completed').' bookings',
+                        'read_only' => $activeBooking ? ! in_array($activeBooking->booking_status, ['pending', 'confirmed']) : true,
+                    ],
                 ],
                 // NEW: Include all bookings for booking selection modal
                 'bookings' => $allBookings,
@@ -208,187 +209,185 @@ class MessageController extends Controller
     }
 
     public function vendorIndex($locale)
-{
-    $vendorId = auth()->id();
+    {
+        $vendorId = auth()->id();
 
-    // Get all bookings where the authenticated user is the vendor
-    $bookings = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
-        $query->where('vendor_id', $vendorId);
-    })
-    ->with(['customer.user.profile', 'customer.user.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images']) // Eager load more vehicle data
-    ->orderBy('created_at', 'desc') // Get latest bookings first for a customer
-    ->get();
+        // Get all bookings where the authenticated user is the vendor
+        $bookings = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
+            $query->where('vendor_id', $vendorId);
+        })
+            ->with(['customer.user.profile', 'customer.user.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images']) // Eager load more vehicle data
+            ->orderBy('created_at', 'desc') // Get latest bookings first for a customer
+            ->get();
 
-    // Group bookings by customer to get unique customers
-    $customersData = $bookings->groupBy('customer.user_id')->map(function ($customerBookings) use ($vendorId) {
-        $latestBooking = $customerBookings->first(); // The first one due to orderBy desc
-        $customerUser = $latestBooking->customer->user;
+        // Group bookings by customer to get unique customers
+        $customersData = $bookings->groupBy('customer.user_id')->map(function ($customerBookings) use ($vendorId) {
+            $latestBooking = $customerBookings->first(); // The first one due to orderBy desc
+            $customerUser = $latestBooking->customer->user;
 
-        // Separate active and completed bookings
-        $activeBookings = $customerBookings->filter(function ($booking) {
-            return in_array($booking->booking_status, ['pending', 'confirmed']);
-        });
-        $completedBookings = $customerBookings->filter(function ($booking) {
-            return in_array($booking->booking_status, ['completed', 'cancelled']);
-        });
+            // Separate active and completed bookings
+            $activeBookings = $customerBookings->filter(function ($booking) {
+                return in_array($booking->booking_status, ['pending', 'confirmed']);
+            });
+            $completedBookings = $customerBookings->filter(function ($booking) {
+                return in_array($booking->booking_status, ['completed', 'cancelled']);
+            });
 
-        // Get the most recent active booking
-        $activeBooking = $activeBookings->first();
+            // Get the most recent active booking
+            $activeBooking = $activeBookings->first();
 
-        // Get the most recent completed booking (for Recent tab context)
-        $latestCompletedBooking = $completedBookings->first();
+            // Get the most recent completed booking (for Recent tab context)
+            $latestCompletedBooking = $completedBookings->first();
 
-        // Calculate unread messages from this specific customer to the vendor
-        // across all bookings with this customer.
-        $unreadCount = Message::where('sender_id', $customerUser->id)
-            ->where('receiver_id', $vendorId)
-            ->whereIn('booking_id', $customerBookings->pluck('id'))
-            ->whereNull('read_at')
-            ->count();
+            // Calculate unread messages from this specific customer to the vendor
+            // across all bookings with this customer.
+            $unreadCount = Message::where('sender_id', $customerUser->id)
+                ->where('receiver_id', $vendorId)
+                ->whereIn('booking_id', $customerBookings->pluck('id'))
+                ->whereNull('read_at')
+                ->count();
 
-        // Get the last message exchanged with this customer across all their bookings
-        $lastMessage = Message::where(function($q) use ($vendorId, $customerUser) {
+            // Get the last message exchanged with this customer across all their bookings
+            $lastMessage = Message::where(function ($q) use ($vendorId, $customerUser) {
                 $q->where('sender_id', $vendorId)->where('receiver_id', $customerUser->id);
-            })->orWhere(function($q) use ($vendorId, $customerUser) {
+            })->orWhere(function ($q) use ($vendorId, $customerUser) {
                 $q->where('sender_id', $customerUser->id)->where('receiver_id', $vendorId);
             })
-            ->whereIn('booking_id', $customerBookings->pluck('id'))
-            ->orderBy('created_at', 'desc')
-            ->first();
+                ->whereIn('booking_id', $customerBookings->pluck('id'))
+                ->orderBy('created_at', 'desc')
+                ->first();
 
-        // Prepare vehicle image (prioritize active booking, fallback to latest completed)
-        $vehicleImage = null;
-        $imageSourceBooking = $activeBooking ?? $latestCompletedBooking;
+            // Prepare vehicle image (prioritize active booking, fallback to latest completed)
+            $vehicleImage = null;
+            $imageSourceBooking = $activeBooking ?? $latestCompletedBooking;
 
-        if ($imageSourceBooking && $imageSourceBooking->vehicle && $imageSourceBooking->vehicle->images && $imageSourceBooking->vehicle->images->isNotEmpty()) {
-            $vehicleImage = $imageSourceBooking->vehicle->images->first()->image_url;
-        }
-
-        // NEW: Build array of only ACTIVE bookings for this customer (for booking selection dropdown)
-        $allBookings = $activeBookings->map(function ($booking) {
-            $bookingVehicleImage = null;
-            if ($booking->vehicle->images && $booking->vehicle->images->isNotEmpty()) {
-                $bookingVehicleImage = $booking->vehicle->images->first()->image_url;
+            if ($imageSourceBooking && $imageSourceBooking->vehicle && $imageSourceBooking->vehicle->images && $imageSourceBooking->vehicle->images->isNotEmpty()) {
+                $vehicleImage = $imageSourceBooking->vehicle->images->first()->image_url;
             }
 
+            // NEW: Build array of only ACTIVE bookings for this customer (for booking selection dropdown)
+            $allBookings = $activeBookings->map(function ($booking) {
+                $bookingVehicleImage = null;
+                if ($booking->vehicle->images && $booking->vehicle->images->isNotEmpty()) {
+                    $bookingVehicleImage = $booking->vehicle->images->first()->image_url;
+                }
+
+                return [
+                    'id' => $booking->id,
+                    'vehicle' => [
+                        'id' => $booking->vehicle->id,
+                        'name' => $booking->vehicle->name,
+                        'brand' => $booking->vehicle->brand,
+                        'model' => $booking->vehicle->model,
+                        'category' => $booking->vehicle->category->name ?? 'Unknown',
+                        'image' => $bookingVehicleImage,
+                    ],
+                    'booking_status' => $booking->booking_status,
+                    'pickup_date' => $booking->pickup_date,
+                    'return_date' => $booking->return_date,
+                    'pickup_time' => $booking->pickup_time,
+                    'return_time' => $booking->return_time,
+                    'total_amount' => $booking->total_amount,
+                    'amount_paid' => $booking->amount_paid,
+                ];
+            })->toArray();
+
             return [
-                'id' => $booking->id,
+                'user' => $customerUser->load(['profile', 'chatStatus']), // Pass the customer's user model with profile and chatStatus
+                'latest_booking_id' => $latestBooking->id, // ID of the latest booking for linking
+                'active_booking_id' => $activeBooking ? $activeBooking->id : null, // ID of the active booking for context
+                'latest_completed_booking_id' => $latestCompletedBooking ? $latestCompletedBooking->id : null, // ID of the latest completed booking
                 'vehicle' => [
-                    'id' => $booking->vehicle->id,
-                    'name' => $booking->vehicle->name,
-                    'brand' => $booking->vehicle->brand,
-                    'model' => $booking->vehicle->model,
-                    'category' => $booking->vehicle->category->name ?? 'Unknown',
-                    'image' => $bookingVehicleImage,
+                    'id' => $activeBooking ? $activeBooking->vehicle->id : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->id : null),
+                    'name' => $activeBooking ? $activeBooking->vehicle->name : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->name : null),
+                    'brand' => $activeBooking ? $activeBooking->vehicle->brand : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->brand : null),
+                    'model' => $activeBooking ? $activeBooking->vehicle->model : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->model : null),
+                    'category' => ($activeBooking ? $activeBooking->vehicle->category : $latestCompletedBooking->vehicle->category)->name ?? 'Unknown',
+                    'image' => $vehicleImage,
                 ],
-                'booking_status' => $booking->booking_status,
-                'pickup_date' => $booking->pickup_date,
-                'return_date' => $booking->return_date,
-                'pickup_time' => $booking->pickup_time,
-                'return_time' => $booking->return_time,
-                'total_amount' => $booking->total_amount,
-                'amount_paid' => $booking->amount_paid,
+                'booking' => [
+                    'id' => $activeBooking ? $activeBooking->id : ($latestCompletedBooking ? $latestCompletedBooking->id : null),
+                    'status' => $activeBooking ? $activeBooking->booking_status : ($latestCompletedBooking ? $latestCompletedBooking->booking_status : null),
+                    'pickup_date' => $activeBooking ? $activeBooking->pickup_date : ($latestCompletedBooking ? $latestCompletedBooking->pickup_date : null),
+                    'return_date' => $activeBooking ? $activeBooking->return_date : ($latestCompletedBooking ? $latestCompletedBooking->return_date : null),
+                    'pickup_time' => $activeBooking ? $activeBooking->pickup_time : ($latestCompletedBooking ? $latestCompletedBooking->pickup_time : null),
+                    'return_time' => $activeBooking ? $activeBooking->return_time : ($latestCompletedBooking ? $latestCompletedBooking->return_time : null),
+                    'total_amount' => $activeBooking ? $activeBooking->total_amount : ($latestCompletedBooking ? $latestCompletedBooking->total_amount : null),
+                    'amount_paid' => $activeBooking ? $activeBooking->amount_paid : ($latestCompletedBooking ? $latestCompletedBooking->amount_paid : null),
+                    'chat_allowed' => $activeBooking ? in_array($activeBooking->booking_status, ['pending', 'confirmed']) : false,
+                    'chat_restrictions' => [
+                        'can_send_messages' => $activeBooking ? in_array($activeBooking->booking_status, ['pending', 'confirmed']) : false,
+                        'reason' => ($activeBooking && in_array($activeBooking->booking_status, ['pending', 'confirmed']))
+                            ? null
+                            : 'Chat is not available for '.($activeBooking ? $activeBooking->booking_status : 'completed').' bookings',
+                        'read_only' => $activeBooking ? ! in_array($activeBooking->booking_status, ['pending', 'confirmed']) : true,
+                    ],
+                ],
+                // NEW: Include all bookings for booking selection modal
+                'bookings' => $allBookings,
+                'has_multiple_active_bookings' => $activeBookings->count() > 1, // NEW: Flag for multiple active bookings
+                'has_active_bookings' => $activeBookings->count() > 0,
+                'active_bookings_count' => $activeBookings->count(),
+                'completed_bookings_count' => $completedBookings->count(),
+                'last_message_at' => $lastMessage ? $lastMessage->created_at : $latestBooking->created_at,
+                'last_message_preview' => $lastMessage ? \Illuminate\Support\Str::limit($lastMessage->message, 30) : 'No messages yet.',
+                'unread_count' => $unreadCount,
             ];
-        })->toArray();
+        })->sortByDesc('last_message_at')->values(); // Sort customers by last message time and re-index
 
-        return [
-            'user' => $customerUser->load(['profile', 'chatStatus']), // Pass the customer's user model with profile and chatStatus
-            'latest_booking_id' => $latestBooking->id, // ID of the latest booking for linking
-            'active_booking_id' => $activeBooking ? $activeBooking->id : null, // ID of the active booking for context
-            'latest_completed_booking_id' => $latestCompletedBooking ? $latestCompletedBooking->id : null, // ID of the latest completed booking
-            'vehicle' => [
-                'id' => $activeBooking ? $activeBooking->vehicle->id : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->id : null),
-                'name' => $activeBooking ? $activeBooking->vehicle->name : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->name : null),
-                'brand' => $activeBooking ? $activeBooking->vehicle->brand : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->brand : null),
-                'model' => $activeBooking ? $activeBooking->vehicle->model : ($latestCompletedBooking ? $latestCompletedBooking->vehicle->model : null),
-                'category' => ($activeBooking ? $activeBooking->vehicle->category : $latestCompletedBooking->vehicle->category)->name ?? 'Unknown',
-                'image' => $vehicleImage,
-            ],
-            'booking' => [
-                'id' => $activeBooking ? $activeBooking->id : ($latestCompletedBooking ? $latestCompletedBooking->id : null),
-                'status' => $activeBooking ? $activeBooking->booking_status : ($latestCompletedBooking ? $latestCompletedBooking->booking_status : null),
-                'pickup_date' => $activeBooking ? $activeBooking->pickup_date : ($latestCompletedBooking ? $latestCompletedBooking->pickup_date : null),
-                'return_date' => $activeBooking ? $activeBooking->return_date : ($latestCompletedBooking ? $latestCompletedBooking->return_date : null),
-                'pickup_time' => $activeBooking ? $activeBooking->pickup_time : ($latestCompletedBooking ? $latestCompletedBooking->pickup_time : null),
-                'return_time' => $activeBooking ? $activeBooking->return_time : ($latestCompletedBooking ? $latestCompletedBooking->return_time : null),
-                'total_amount' => $activeBooking ? $activeBooking->total_amount : ($latestCompletedBooking ? $latestCompletedBooking->total_amount : null),
-                'amount_paid' => $activeBooking ? $activeBooking->amount_paid : ($latestCompletedBooking ? $latestCompletedBooking->amount_paid : null),
-                'chat_allowed' => $activeBooking ? in_array($activeBooking->booking_status, ['pending', 'confirmed']) : false,
-                'chat_restrictions' => [
-                    'can_send_messages' => $activeBooking ? in_array($activeBooking->booking_status, ['pending', 'confirmed']) : false,
-                    'reason' => ($activeBooking && in_array($activeBooking->booking_status, ['pending', 'confirmed']))
-                        ? null
-                        : 'Chat is not available for ' . ($activeBooking ? $activeBooking->booking_status : 'completed') . ' bookings',
-                    'read_only' => $activeBooking ? !in_array($activeBooking->booking_status, ['pending', 'confirmed']) : true
-                ]
-            ],
-            // NEW: Include all bookings for booking selection modal
-            'bookings' => $allBookings,
-            'has_multiple_active_bookings' => $activeBookings->count() > 1, // NEW: Flag for multiple active bookings
-            'has_active_bookings' => $activeBookings->count() > 0,
-            'active_bookings_count' => $activeBookings->count(),
-            'completed_bookings_count' => $completedBookings->count(),
-            'last_message_at' => $lastMessage ? $lastMessage->created_at : $latestBooking->created_at,
-            'last_message_preview' => $lastMessage ? \Illuminate\Support\Str::limit($lastMessage->message, 30) : 'No messages yet.',
-            'unread_count' => $unreadCount,
-        ];
-    })->sortByDesc('last_message_at')->values(); // Sort customers by last message time and re-index
-
-    return Inertia::render('Messages/VendorIndex', [
-        'chatPartners' => $customersData // Changed from 'bookings' to 'chatPartners'
-    ]);
-}
-
-
-public function show($locale, $bookingId)
-{
-    $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
-
-    $user = Auth::user();
-    $customerId = $booking->customer->user_id;
-    $vendorId = $booking->vehicle->vendor_id;
-
-    if ($user->id !== $customerId && $user->id !== $vendorId) {
-        abort(403, 'Unauthorized access to this conversation');
-    }
-
-    $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
-    $otherUser = User::select('id', 'first_name', 'last_name', 'role')
-        ->with(['profile', 'chatStatus'])
-        ->find($otherUserId);
-
-    $messages = Message::where('booking_id', $bookingId)
-        ->where(function ($query) use ($user, $otherUserId) {
-            $query->where(function ($subQuery) use ($user, $otherUserId) {
-                $subQuery->where('sender_id', $user->id)
-                       ->where('receiver_id', $otherUserId);
-            })
-            ->orWhere(function ($subQuery) use ($user, $otherUserId) {
-                $subQuery->where('sender_id', $otherUserId)
-                       ->where('receiver_id', $user->id);
-            });
-        })
-        ->with(['sender', 'receiver'])
-        ->orderBy('created_at', 'asc')
-        ->get();
-
-  
-    if (request()->ajax()) {
-        return response()->json([
-            'props' => [
-                'booking' => $booking,
-                'messages' => $messages,
-                'otherUser' => $otherUser
-            ]
+        return Inertia::render('Messages/VendorIndex', [
+            'chatPartners' => $customersData, // Changed from 'bookings' to 'chatPartners'
         ]);
     }
 
-    return Inertia::render('Messages/Show', [
-        'booking' => $booking,
-        'messages' => $messages,
-        'otherUser' => $otherUser
-    ]);
-}
+    public function show($locale, $bookingId)
+    {
+        $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
+
+        $user = Auth::user();
+        $customerId = $booking->customer->user_id;
+        $vendorId = $booking->vehicle->vendor_id;
+
+        if ($user->id !== $customerId && $user->id !== $vendorId) {
+            abort(403, 'Unauthorized access to this conversation');
+        }
+
+        $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
+        $otherUser = User::select('id', 'first_name', 'last_name', 'role')
+            ->with(['profile', 'chatStatus'])
+            ->find($otherUserId);
+
+        $messages = Message::where('booking_id', $bookingId)
+            ->where(function ($query) use ($user, $otherUserId) {
+                $query->where(function ($subQuery) use ($user, $otherUserId) {
+                    $subQuery->where('sender_id', $user->id)
+                        ->where('receiver_id', $otherUserId);
+                })
+                    ->orWhere(function ($subQuery) use ($user, $otherUserId) {
+                        $subQuery->where('sender_id', $otherUserId)
+                            ->where('receiver_id', $user->id);
+                    });
+            })
+            ->with(['sender', 'receiver'])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        if (request()->ajax()) {
+            return response()->json([
+                'props' => [
+                    'booking' => $booking,
+                    'messages' => $messages,
+                    'otherUser' => $otherUser,
+                ],
+            ]);
+        }
+
+        return Inertia::render('Messages/Show', [
+            'booking' => $booking,
+            'messages' => $messages,
+            'otherUser' => $otherUser,
+        ]);
+    }
 
     public function getLastMessage($bookingId)
     {
@@ -412,97 +411,115 @@ public function show($locale, $bookingId)
             ->first();
 
         return response()->json([
-            'message' => $message
+            'message' => $message,
         ]);
     }
 
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        'booking_id' => 'required|exists:bookings,id',
-        'receiver_id' => 'required|exists:users,id',
-        'message' => 'nullable|string', // Message can be nullable if a file or voice note is sent
-        'parent_id' => 'nullable|exists:messages,id',
-        'file' => 'nullable|file|max:10240|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xls,xlsx,txt', // Max 10MB, common file types
-        'voice_note' => 'nullable|file|max:10240|mimes:mp3,wav,ogg,webm', // Max 10MB, common audio types
-    ]);
+    {
+        $validated = $request->validate([
+            'booking_id' => 'required|exists:bookings,id',
+            'receiver_id' => 'required|exists:users,id',
+            'message' => 'nullable|string', // Message can be nullable if a file or voice note is sent
+            'parent_id' => 'nullable|exists:messages,id',
+            'file' => 'nullable|file|max:10240|mimes:jpeg,png,jpg,gif,pdf,doc,docx,xls,xlsx,txt', // Max 10MB, common file types
+            'voice_note' => 'nullable|file|max:10240|mimes:mp3,wav,ogg,webm', // Max 10MB, common audio types
+        ]);
 
-    // Ensure either message, file, or voice note is present
-    if (empty($validated['message']) && !$request->hasFile('file') && !$request->hasFile('voice_note')) {
-        return response()->json(['error' => 'Message content, a file, or a voice note is required.'], 422);
-    }
-
-    $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($validated['booking_id']);
-    $user = Auth::user();
-
-    // Check chat eligibility before allowing message
-    $eligibility = $this->validateBookingChatEligibility($booking, $user);
-    if (!$eligibility['allowed']) {
-        return response()->json([
-            'error' => $eligibility['reason'],
-            'chat_allowed' => false,
-            'read_only' => $eligibility['readOnly']
-        ], 403);
-    }
-
-    if ($user->id !== $booking->customer->user_id && $user->id !== $booking->vehicle->vendor_id) {
-        abort(403, 'Unauthorized access to this conversation');
-    }
-
-    $messageData = [
-        'sender_id' => $user->id,
-        'receiver_id' => $validated['receiver_id'],
-        'booking_id' => $validated['booking_id'],
-        'message' => $validated['message'] ?? null,
-        'parent_id' => $validated['parent_id'] ?? null
-    ];
-
-    // Handle file upload if present
-    if ($request->hasFile('file')) {
-        $file = $request->file('file');
-        $folderName = 'chat_attachments';
-        $fileName = time() . '_' . $file->getClientOriginalName();
-        $filePath = $file->storeAs($folderName, $fileName, 'upcloud');
-
-        $messageData['file_path'] = $filePath;
-        $messageData['file_name'] = $file->getClientOriginalName();
-        $messageData['file_type'] = $file->getMimeType();
-        $messageData['file_size'] = $file->getSize();
-    }
-
-    // Handle voice note upload if present
-    if ($request->hasFile('voice_note')) {
-        $voiceNote = $request->file('voice_note');
-        $folderName = 'voice_notes';
-        $fileName = 'voice_note_' . time() . '.' . $voiceNote->getClientOriginalExtension();
-        $filePath = $voiceNote->storeAs($folderName, $fileName, 'upcloud');
-
-        $messageData['voice_note_path'] = $filePath;
-        // You might want to store voice note specific metadata here if needed, e.g., duration
-    }
-
-    $message = Message::create($messageData);
-
-    // Broadcast the new message
-    // Load file_url and voice_note_url accessors for broadcasting
-    $message->load(['sender', 'receiver']); // Ensure sender/receiver are loaded for the event
-    broadcast(new NewMessage($message))->toOthers();
-
-    // DB bell + native push for the receiver. Pusher already covers the real-time
-    // in-chat update; this notification feeds the inbox icon and offline push.
-    if ($message->receiver) {
-        try {
-            $message->receiver->notify(new NewMessageNotification($message));
-        } catch (\Throwable $e) {
-            Log::warning('Failed to send NewMessageNotification', [
-                'message_id' => $message->id,
-                'error' => $e->getMessage(),
-            ]);
+        // Ensure either message, file, or voice note is present
+        if (empty($validated['message']) && ! $request->hasFile('file') && ! $request->hasFile('voice_note')) {
+            return response()->json(['error' => 'Message content, a file, or a voice note is required.'], 422);
         }
-    }
 
-    return response()->json(['message' => $message]);
-}
+        $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($validated['booking_id']);
+        $user = Auth::user();
+
+        // Check chat eligibility before allowing message
+        $eligibility = $this->validateBookingChatEligibility($booking, $user);
+        if (! $eligibility['allowed']) {
+            return response()->json([
+                'error' => $eligibility['reason'],
+                'chat_allowed' => false,
+                'read_only' => $eligibility['readOnly'],
+            ], 403);
+        }
+
+        if ($user->id !== $booking->customer->user_id && $user->id !== $booking->vehicle->vendor_id) {
+            abort(403, 'Unauthorized access to this conversation');
+        }
+
+        $expectedReceiverId = $user->id === $booking->customer->user_id
+            ? $booking->vehicle->vendor_id
+            : $booking->customer->user_id;
+
+        if ((int) $validated['receiver_id'] !== (int) $expectedReceiverId) {
+            return response()->json(['error' => 'Invalid message recipient.'], 422);
+        }
+
+        if (! empty($validated['parent_id'])) {
+            $parentBelongsToBooking = Message::where('id', $validated['parent_id'])
+                ->where('booking_id', $booking->id)
+                ->exists();
+
+            if (! $parentBelongsToBooking) {
+                return response()->json(['error' => 'Invalid parent message.'], 422);
+            }
+        }
+
+        $messageData = [
+            'sender_id' => $user->id,
+            'receiver_id' => $validated['receiver_id'],
+            'booking_id' => $validated['booking_id'],
+            'message' => $validated['message'] ?? null,
+            'parent_id' => $validated['parent_id'] ?? null,
+        ];
+
+        // Handle file upload if present
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $folderName = 'chat_attachments';
+            $fileName = 'attachment_'.now()->timestamp.'_'.Str::random(12).'.'.strtolower($file->getClientOriginalExtension());
+            $filePath = $file->storeAs($folderName, $fileName, 'upcloud');
+
+            $messageData['file_path'] = $filePath;
+            $messageData['file_name'] = $file->getClientOriginalName();
+            $messageData['file_type'] = $file->getMimeType();
+            $messageData['file_size'] = $file->getSize();
+        }
+
+        // Handle voice note upload if present
+        if ($request->hasFile('voice_note')) {
+            $voiceNote = $request->file('voice_note');
+            $folderName = 'voice_notes';
+            $fileName = 'voice_note_'.time().'.'.$voiceNote->getClientOriginalExtension();
+            $filePath = $voiceNote->storeAs($folderName, $fileName, 'upcloud');
+
+            $messageData['voice_note_path'] = $filePath;
+            // You might want to store voice note specific metadata here if needed, e.g., duration
+        }
+
+        $message = Message::create($messageData);
+
+        // Broadcast the new message
+        // Load file_url and voice_note_url accessors for broadcasting
+        $message->load(['sender', 'receiver']); // Ensure sender/receiver are loaded for the event
+        broadcast(new NewMessage($message))->toOthers();
+
+        // DB bell + native push for the receiver. Pusher already covers the real-time
+        // in-chat update; this notification feeds the inbox icon and offline push.
+        if ($message->receiver) {
+            try {
+                $message->receiver->notify(new NewMessageNotification($message));
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send NewMessageNotification', [
+                    'message_id' => $message->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json(['message' => $message]);
+    }
 
     public function getUnreadCount()
     {
@@ -513,263 +530,264 @@ public function show($locale, $bookingId)
             ->count();
 
         return response()->json([
-            'unread_count' => $unreadCount
+            'unread_count' => $unreadCount,
         ]);
     }
 
-
-
-// ... (other methods)
+    // ... (other methods)
 
     public function destroy($locale, $id)
-{
-    $message = Message::findOrFail($id);
+    {
+        $message = Message::findOrFail($id);
 
-    // Ensure only the sender can delete the message
-    if (auth()->id() !== $message->sender_id) {
-        return response()->json(['error' => 'Unauthorized'], 403);
+        // Ensure only the sender can delete the message
+        if (auth()->id() !== $message->sender_id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $message->delete(); // This now performs a soft delete
+
+        // Broadcast the event
+        // Ensure the message has necessary relations loaded if broadcastWith needs them,
+        // or that booking_id is directly available.
+        // $message->loadMissing('booking'); // Example if booking relation is needed for channel name and not always loaded
+        broadcast(new MessageDeleted($message->fresh()))->toOthers(); // fresh() to get the model with deleted_at
+
+        return response()->json([
+            'success' => 'Message deleted successfully',
+            'message' => $message->fresh(), // Return the soft-deleted message model
+        ]);
     }
-
-    $message->delete(); // This now performs a soft delete
-
-    // Broadcast the event
-    // Ensure the message has necessary relations loaded if broadcastWith needs them,
-    // or that booking_id is directly available.
-    // $message->loadMissing('booking'); // Example if booking relation is needed for channel name and not always loaded
-    broadcast(new MessageDeleted($message->fresh()))->toOthers(); // fresh() to get the model with deleted_at
-
-    return response()->json([
-        'success' => 'Message deleted successfully',
-        'message' => $message->fresh() // Return the soft-deleted message model
-    ]);
-}
 
     public function restore($locale, $id)
-{
-    $message = Message::withTrashed()->findOrFail($id);
+    {
+        $message = Message::withTrashed()->findOrFail($id);
 
-    // Ensure only the sender can restore the message, or implement other authorization
-    if (auth()->id() !== $message->sender_id) {
-        return response()->json(['error' => 'Unauthorized to restore this message'], 403);
+        // Ensure only the sender can restore the message, or implement other authorization
+        if (auth()->id() !== $message->sender_id) {
+            return response()->json(['error' => 'Unauthorized to restore this message'], 403);
+        }
+
+        // Optional: Add a time limit for undo, e.g., within 10-15 seconds of deletion
+        // if ($message->deleted_at && $message->deleted_at->diffInSeconds(now()) > 15) {
+        //     return response()->json(['error' => 'Undo time limit exceeded'], 403);
+        // }
+
+        $message->restore();
+
+        broadcast(new MessageRestored($message->fresh()->load(['sender', 'receiver'])))->toOthers();
+
+        return response()->json([
+            'success' => 'Message restored successfully',
+            'message' => $message->fresh()->load(['sender', 'receiver']), // Return the restored message model
+        ]);
     }
 
-    // Optional: Add a time limit for undo, e.g., within 10-15 seconds of deletion
-    // if ($message->deleted_at && $message->deleted_at->diffInSeconds(now()) > 15) {
-    //     return response()->json(['error' => 'Undo time limit exceeded'], 403);
-    // }
+    public function markMessagesAsRead($locale, $bookingId)
+    {
+        $user = Auth::user();
 
-    $message->restore();
+        // Find the booking to ensure the user is a participant
+        $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
 
-    broadcast(new MessageRestored($message->fresh()->load(['sender', 'receiver'])))->toOthers();
+        $customerId = $booking->customer->user_id;
+        $vendorId = $booking->vehicle->vendor_id;
 
-    return response()->json([
-        'success' => 'Message restored successfully',
-        'message' => $message->fresh()->load(['sender', 'receiver']) // Return the restored message model
-    ]);
-}
+        if ($user->id !== $customerId && $user->id !== $vendorId) {
+            return response()->json(['error' => 'Unauthorized to mark messages as read for this booking'], 403);
+        }
 
-public function markMessagesAsRead($locale, $bookingId)
-{
-    $user = Auth::user();
+        // Get unread messages for this user in this booking
+        $unreadMessages = Message::where('receiver_id', $user->id)
+            ->where('booking_id', $bookingId)
+            ->whereNull('read_at')
+            ->get();
 
-    // Find the booking to ensure the user is a participant
-    $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
+        \Log::info('Chat mark-as-read invoked', [
+            'booking_id' => $bookingId,
+            'user_id' => $user->id,
+            'unread_count' => $unreadMessages->count(),
+        ]);
 
-    $customerId = $booking->customer->user_id;
-    $vendorId = $booking->vehicle->vendor_id;
+        if ($unreadMessages->isEmpty()) {
+            return response()->json(['success' => 'No unread messages to mark.']);
+        }
 
-    if ($user->id !== $customerId && $user->id !== $vendorId) {
-        return response()->json(['error' => 'Unauthorized to mark messages as read for this booking'], 403);
-    }
+        // Mark messages as read using both the legacy method and the new read receipts system
+        $now = now();
 
-    // Get unread messages for this user in this booking
-    $unreadMessages = Message::where('receiver_id', $user->id)
-        ->where('booking_id', $bookingId)
-        ->whereNull('read_at')
-        ->get();
+        // Update legacy read_at field
+        Message::where('receiver_id', $user->id)
+            ->where('booking_id', $bookingId)
+            ->whereNull('read_at')
+            ->update(['read_at' => $now]);
 
-    \Log::info('Chat mark-as-read invoked', [
-        'booking_id' => $bookingId,
-        'user_id' => $user->id,
-        'unread_count' => $unreadMessages->count()
-    ]);
-
-    if ($unreadMessages->isEmpty()) {
-        return response()->json(['success' => 'No unread messages to mark.']);
-    }
-
-    // Mark messages as read using both the legacy method and the new read receipts system
-    $now = now();
-
-    // Update legacy read_at field
-    Message::where('receiver_id', $user->id)
-        ->where('booking_id', $bookingId)
-        ->whereNull('read_at')
-        ->update(['read_at' => $now]);
-
-    // Create detailed read receipts for each message with error handling
-    // Only try to use MessageReadReceipt if the table exists
-    if (Schema::hasTable('message_read_receipts')) {
-        foreach ($unreadMessages as $message) {
-            try {
-                MessageReadReceipt::markAsRead($message->id, $user->id);
-            } catch (\Exception $e) {
-                \Log::error('Failed to create read receipt for message ' . $message->id . ': ' . $e->getMessage());
-                // Continue even if individual read receipt fails
+        // Create detailed read receipts for each message with error handling
+        // Only try to use MessageReadReceipt if the table exists
+        if (Schema::hasTable('message_read_receipts')) {
+            foreach ($unreadMessages as $message) {
+                try {
+                    MessageReadReceipt::markAsRead($message->id, $user->id);
+                } catch (\Exception $e) {
+                    \Log::error('Failed to create read receipt for message '.$message->id.': '.$e->getMessage());
+                    // Continue even if individual read receipt fails
+                }
             }
         }
-    }
 
-    // Broadcast read status update for other participants
-    $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
+        // Broadcast read status update for other participants
+        $otherUserId = ($user->id === $customerId) ? $vendorId : $customerId;
 
-    foreach ($unreadMessages as $message) {
-        try {
-            $message->read_at = $now;
-            broadcast(new MessageRead($message, $user, $otherUserId))->toOthers();
-            \Log::info('Chat message.read broadcast', [
-                'message_id' => $message->id,
-                'booking_id' => $bookingId,
-                'reader_id' => $user->id,
-                'recipient_id' => $otherUserId
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Failed to broadcast MessageRead event: ' . $e->getMessage());
-        }
-    }
-
-    return response()->json([
-        'success' => 'Messages marked as read.',
-        'messages_marked' => $unreadMessages->count(),
-        'marked_at' => $now->toISOString()
-    ]);
-}
-
-/**
- * Start typing indicator for a booking chat
- */
-public function startTyping(Request $request, $locale)
-{
-    try {
-        $validated = $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-        ]);
-
-        $user = Auth::user();
-        $bookingId = $validated['booking_id'];
-
-        // Verify user is a participant in this booking
-        $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
-        $customerId = $booking->customer->user_id;
-        $vendorId = $booking->vehicle->vendor_id;
-
-        if ($user->id !== $customerId && $user->id !== $vendorId) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        // Update typing status with error handling
-        try {
-            ChatTypingStatus::startTyping($user->id, $bookingId);
-        } catch (\Exception $e) {
-            \Log::error('Failed to start typing status: ' . $e->getMessage());
-            // Continue without typing status if table doesn't exist
-        }
-
-        // Broadcast typing event with error handling
-        try {
-            broadcast(new TypingIndicator($user, $bookingId, true))->toOthers();
-        } catch (\Exception $e) {
-            \Log::error('Failed to broadcast typing indicator: ' . $e->getMessage());
-            // Continue without broadcasting if broadcasting fails
-        }
-
-        return response()->json(['success' => 'Typing indicator started']);
-    } catch (\Exception $e) {
-        \Log::error('Start typing error: ' . $e->getMessage());
-        return response()->json(['error' => 'Failed to start typing: ' . $e->getMessage()], 500);
-    }
-}
-
-/**
- * Stop typing indicator for a booking chat
- */
-public function stopTyping(Request $request, $locale)
-{
-    try {
-        $validated = $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-        ]);
-
-        $user = Auth::user();
-        $bookingId = $validated['booking_id'];
-
-        // Verify user is a participant in this booking
-        $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
-        $customerId = $booking->customer->user_id;
-        $vendorId = $booking->vehicle->vendor_id;
-
-        if ($user->id !== $customerId && $user->id !== $vendorId) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        // Update typing status with error handling
-        try {
-            ChatTypingStatus::stopTyping($user->id, $bookingId);
-        } catch (\Exception $e) {
-            \Log::error('Failed to stop typing status: ' . $e->getMessage());
-            // Continue without typing status if table doesn't exist
-        }
-
-        // Broadcast stop typing event with error handling
-        try {
-            broadcast(new TypingIndicator($user, $bookingId, false))->toOthers();
-        } catch (\Exception $e) {
-            \Log::error('Failed to broadcast stop typing indicator: ' . $e->getMessage());
-            // Continue without broadcasting if broadcasting fails
-        }
-
-        return response()->json(['success' => 'Typing indicator stopped']);
-    } catch (\Exception $e) {
-        \Log::error('Stop typing error: ' . $e->getMessage());
-        return response()->json(['error' => 'Failed to stop typing: ' . $e->getMessage()], 500);
-    }
-}
-
-/**
- * Get current typing users for a booking
- */
-public function getTypingUsers(Request $request, $locale, $bookingId)
-{
-    try {
-        $user = Auth::user();
-
-        // Verify user is a participant in this booking
-        $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
-        $customerId = $booking->customer->user_id;
-        $vendorId = $booking->vehicle->vendor_id;
-
-        if ($user->id !== $customerId && $user->id !== $vendorId) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        // Get currently typing users (excluding current user) with error handling
-        try {
-            $typingUsers = ChatTypingStatus::getTypingUsers($bookingId, $user->id);
-        } catch (\Exception $e) {
-            \Log::error('Failed to get typing users: ' . $e->getMessage());
-            // Return empty typing users if table doesn't exist
-            $typingUsers = collect([]);
+        foreach ($unreadMessages as $message) {
+            try {
+                $message->read_at = $now;
+                broadcast(new MessageRead($message, $user, $otherUserId))->toOthers();
+                \Log::info('Chat message.read broadcast', [
+                    'message_id' => $message->id,
+                    'booking_id' => $bookingId,
+                    'reader_id' => $user->id,
+                    'recipient_id' => $otherUserId,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to broadcast MessageRead event: '.$e->getMessage());
+            }
         }
 
         return response()->json([
-            'typing_users' => $typingUsers,
-            'is_anyone_typing' => $typingUsers->count() > 0
+            'success' => 'Messages marked as read.',
+            'messages_marked' => $unreadMessages->count(),
+            'marked_at' => $now->toISOString(),
         ]);
-    } catch (\Exception $e) {
-        \Log::error('Get typing users error: ' . $e->getMessage());
-        return response()->json(['error' => 'Failed to get typing users: ' . $e->getMessage()], 500);
     }
-}
+
+    /**
+     * Start typing indicator for a booking chat
+     */
+    public function startTyping(Request $request, $locale)
+    {
+        try {
+            $validated = $request->validate([
+                'booking_id' => 'required|exists:bookings,id',
+            ]);
+
+            $user = Auth::user();
+            $bookingId = $validated['booking_id'];
+
+            // Verify user is a participant in this booking
+            $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
+            $customerId = $booking->customer->user_id;
+            $vendorId = $booking->vehicle->vendor_id;
+
+            if ($user->id !== $customerId && $user->id !== $vendorId) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Update typing status with error handling
+            try {
+                ChatTypingStatus::startTyping($user->id, $bookingId);
+            } catch (\Exception $e) {
+                \Log::error('Failed to start typing status: '.$e->getMessage());
+                // Continue without typing status if table doesn't exist
+            }
+
+            // Broadcast typing event with error handling
+            try {
+                broadcast(new TypingIndicator($user, $bookingId, true))->toOthers();
+            } catch (\Exception $e) {
+                \Log::error('Failed to broadcast typing indicator: '.$e->getMessage());
+                // Continue without broadcasting if broadcasting fails
+            }
+
+            return response()->json(['success' => 'Typing indicator started']);
+        } catch (\Exception $e) {
+            \Log::error('Start typing error: '.$e->getMessage());
+
+            return response()->json(['error' => 'Failed to start typing.'], 500);
+        }
+    }
+
+    /**
+     * Stop typing indicator for a booking chat
+     */
+    public function stopTyping(Request $request, $locale)
+    {
+        try {
+            $validated = $request->validate([
+                'booking_id' => 'required|exists:bookings,id',
+            ]);
+
+            $user = Auth::user();
+            $bookingId = $validated['booking_id'];
+
+            // Verify user is a participant in this booking
+            $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
+            $customerId = $booking->customer->user_id;
+            $vendorId = $booking->vehicle->vendor_id;
+
+            if ($user->id !== $customerId && $user->id !== $vendorId) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Update typing status with error handling
+            try {
+                ChatTypingStatus::stopTyping($user->id, $bookingId);
+            } catch (\Exception $e) {
+                \Log::error('Failed to stop typing status: '.$e->getMessage());
+                // Continue without typing status if table doesn't exist
+            }
+
+            // Broadcast stop typing event with error handling
+            try {
+                broadcast(new TypingIndicator($user, $bookingId, false))->toOthers();
+            } catch (\Exception $e) {
+                \Log::error('Failed to broadcast stop typing indicator: '.$e->getMessage());
+                // Continue without broadcasting if broadcasting fails
+            }
+
+            return response()->json(['success' => 'Typing indicator stopped']);
+        } catch (\Exception $e) {
+            \Log::error('Stop typing error: '.$e->getMessage());
+
+            return response()->json(['error' => 'Failed to stop typing.'], 500);
+        }
+    }
+
+    /**
+     * Get current typing users for a booking
+     */
+    public function getTypingUsers(Request $request, $locale, $bookingId)
+    {
+        try {
+            $user = Auth::user();
+
+            // Verify user is a participant in this booking
+            $booking = Booking::with(['vehicle.vendor', 'customer'])->findOrFail($bookingId);
+            $customerId = $booking->customer->user_id;
+            $vendorId = $booking->vehicle->vendor_id;
+
+            if ($user->id !== $customerId && $user->id !== $vendorId) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Get currently typing users (excluding current user) with error handling
+            try {
+                $typingUsers = ChatTypingStatus::getTypingUsers($bookingId, $user->id);
+            } catch (\Exception $e) {
+                \Log::error('Failed to get typing users: '.$e->getMessage());
+                // Return empty typing users if table doesn't exist
+                $typingUsers = collect([]);
+            }
+
+            return response()->json([
+                'typing_users' => $typingUsers,
+                'is_anyone_typing' => $typingUsers->count() > 0,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Get typing users error: '.$e->getMessage());
+
+            return response()->json(['error' => 'Failed to get typing users.'], 500);
+        }
+    }
 
     /**
      * DEBUG: Get raw chat partners data with detailed counts
@@ -784,11 +802,11 @@ public function getTypingUsers(Request $request, $locale, $bookingId)
             $bookings = Booking::whereHas('vehicle', function ($query) use ($vendorId) {
                 $query->where('vendor_id', $vendorId);
             })
-            ->with(['customer.user.profile', 'customer.user.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+                ->with(['customer.user.profile', 'customer.user.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images'])
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-            $customersData = $bookings->groupBy('customer.user_id')->map(function ($customerBookings) use ($vendorId) {
+            $customersData = $bookings->groupBy('customer.user_id')->map(function ($customerBookings) {
                 $latestBooking = $customerBookings->first();
                 $customerUser = $latestBooking->customer->user;
 
@@ -801,7 +819,7 @@ public function getTypingUsers(Request $request, $locale, $bookingId)
 
                 return [
                     'debug_info' => [
-                        'customer_name' => $customerUser->first_name . ' ' . $customerUser->last_name,
+                        'customer_name' => $customerUser->first_name.' '.$customerUser->last_name,
                         'total_bookings' => $customerBookings->count(),
                         'active_bookings_count' => $activeBookings->count(),
                         'completed_bookings_count' => $completedBookings->count(),
@@ -824,11 +842,11 @@ public function getTypingUsers(Request $request, $locale, $bookingId)
             $bookings = Booking::where('customer_id', function ($query) use ($customerId) {
                 $query->select('id')->from('customers')->where('user_id', $customerId)->latest()->limit(1);
             })
-            ->with(['vehicle.vendor.profile', 'vehicle.vendor.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+                ->with(['vehicle.vendor.profile', 'vehicle.vendor.chatStatus', 'vehicle', 'vehicle.category', 'vehicle.images'])
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-            $vendorsData = $bookings->groupBy('vehicle.vendor_id')->map(function ($vendorBookings) use ($customerId) {
+            $vendorsData = $bookings->groupBy('vehicle.vendor_id')->map(function ($vendorBookings) {
                 $latestBooking = $vendorBookings->first();
                 $vendorUser = $latestBooking->vehicle->vendor;
 
@@ -841,7 +859,7 @@ public function getTypingUsers(Request $request, $locale, $bookingId)
 
                 return [
                     'debug_info' => [
-                        'vendor_name' => $vendorUser->first_name . ' ' . $vendorUser->last_name,
+                        'vendor_name' => $vendorUser->first_name.' '.$vendorUser->last_name,
                         'total_bookings' => $vendorBookings->count(),
                         'active_bookings_count' => $activeBookings->count(),
                         'completed_bookings_count' => $completedBookings->count(),

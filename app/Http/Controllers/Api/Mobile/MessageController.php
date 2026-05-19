@@ -10,6 +10,7 @@ use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
@@ -136,7 +137,7 @@ class MessageController extends Controller
             'message' => ['nullable', 'string', 'max:5000'],
             'parent_id' => ['nullable', 'integer'],
             'voice_note' => ['nullable', 'file', 'max:10240', 'mimes:mp3,wav,ogg,webm,m4a,aac,mp4'],
-            'file' => ['nullable', 'file', 'max:10240', 'mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xls,xlsx,txt'],
+            'file' => ['nullable', 'file', 'max:10240', 'mimes:jpeg,png,jpg,gif,pdf,doc,docx,xls,xlsx,txt'],
         ]);
 
         $hasText = ! empty(trim((string) ($data['message'] ?? '')));
@@ -183,7 +184,7 @@ class MessageController extends Controller
 
         if ($hasFile) {
             $file = $request->file('file');
-            $name = time() . '_' . $file->getClientOriginalName();
+            $name = 'attachment_' . now()->timestamp . '_' . Str::random(12) . '.' . $file->getClientOriginalExtension();
             $stored = $file->storeAs('chat_attachments', $name, 'upcloud');
             $payload['file_path'] = $stored;
             $payload['file_name'] = $file->getClientOriginalName();

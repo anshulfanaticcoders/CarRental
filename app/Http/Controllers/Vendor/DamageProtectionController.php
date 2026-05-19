@@ -12,6 +12,8 @@ class DamageProtectionController extends Controller
 {
     public function index($locale, Booking $booking)
     {
+        $this->authorizeVendorBooking($booking);
+
         // Fetch existing damage protection record without creating a new one
         $damageProtection = DamageProtection::where('booking_id', $booking->id)->first();
 
@@ -23,17 +25,19 @@ class DamageProtectionController extends Controller
 
     public function uploadBeforeImages(Request $request, $locale, Booking $booking)
     {
+        $this->authorizeVendorBooking($booking);
+
         $request->validate([
             'images' => 'required|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
-    
+
         $damageProtection = DamageProtection::firstOrCreate([
-            'booking_id' => $booking->id
+            'booking_id' => $booking->id,
         ]);
-    
+
         $beforeImages = $damageProtection->before_images ?? [];
-    
+
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
                 $folderName = 'damage_protections/before';
@@ -50,35 +54,36 @@ class DamageProtectionController extends Controller
                     $beforeImages[] = $url;
                 } else {
                     // Handle compression failure, e.g., log error or return an error response
-                    return back()->withErrors(['images' => 'Failed to compress image: ' . $image->getClientOriginalName()]);
+                    return back()->withErrors(['images' => 'Failed to compress image: '.$image->getClientOriginalName()]);
                 }
             }
         }
-    
+
         // // Debugging
         // print_r([
         //     'beforeImages' => $beforeImages,
         //     'damageProtection' => $damageProtection->toArray(),
         // ]);
         // die();
-    
+
         $damageProtection->update([
-            'before_images' => $beforeImages
+            'before_images' => $beforeImages,
         ]);
-    
+
         return back()->with('success', 'Before images uploaded successfully')->with('damageProtection', $damageProtection);
     }
-    
 
     public function uploadAfterImages(Request $request, $locale, Booking $booking)
     {
+        $this->authorizeVendorBooking($booking);
+
         $request->validate([
             'images' => 'required|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $damageProtection = DamageProtection::firstOrCreate([
-            'booking_id' => $booking->id
+            'booking_id' => $booking->id,
         ]);
 
         $afterImages = $damageProtection->after_images ?? [];
@@ -99,13 +104,13 @@ class DamageProtectionController extends Controller
                     $afterImages[] = $url;
                 } else {
                     // Handle compression failure, e.g., log error or return an error response
-                    return back()->withErrors(['images' => 'Failed to compress image: ' . $image->getClientOriginalName()]);
+                    return back()->withErrors(['images' => 'Failed to compress image: '.$image->getClientOriginalName()]);
                 }
             }
         }
 
         $damageProtection->update([
-            'after_images' => $afterImages
+            'after_images' => $afterImages,
         ]);
 
         return back()->with('success', 'After images uploaded successfully')->with('damageProtection', $damageProtection);
@@ -113,6 +118,8 @@ class DamageProtectionController extends Controller
 
     public function deleteBeforeImages($locale, Booking $booking)
     {
+        $this->authorizeVendorBooking($booking);
+
         $damageProtection = DamageProtection::where('booking_id', $booking->id)->first();
 
         if ($damageProtection) {
@@ -120,14 +127,14 @@ class DamageProtectionController extends Controller
             $beforeImages = $damageProtection->before_images ?? [];
             foreach ($beforeImages as $imageUrl) {
                 $imageKey = basename($imageUrl);
-                if (Storage::disk('upcloud')->exists('damage_protections/before/' . $imageKey)) {
-                    Storage::disk('upcloud')->delete('damage_protections/before/' . $imageKey);
+                if (Storage::disk('upcloud')->exists('damage_protections/before/'.$imageKey)) {
+                    Storage::disk('upcloud')->delete('damage_protections/before/'.$imageKey);
                 }
             }
 
             // Update the damage protection record
             $damageProtection->update([
-                'before_images' => []
+                'before_images' => [],
             ]);
 
             return back()->with('success', 'All before images deleted successfully')->with('damageProtection', $damageProtection);
@@ -138,6 +145,8 @@ class DamageProtectionController extends Controller
 
     public function deleteAfterImages($locale, Booking $booking)
     {
+        $this->authorizeVendorBooking($booking);
+
         $damageProtection = DamageProtection::where('booking_id', $booking->id)->first();
 
         if ($damageProtection) {
@@ -145,14 +154,14 @@ class DamageProtectionController extends Controller
             $afterImages = $damageProtection->after_images ?? [];
             foreach ($afterImages as $imageUrl) {
                 $imageKey = basename($imageUrl);
-                if (Storage::disk('upcloud')->exists('damage_protections/after/' . $imageKey)) {
-                    Storage::disk('upcloud')->delete('damage_protections/after/' . $imageKey);
+                if (Storage::disk('upcloud')->exists('damage_protections/after/'.$imageKey)) {
+                    Storage::disk('upcloud')->delete('damage_protections/after/'.$imageKey);
                 }
             }
 
             // Update the damage protection record
             $damageProtection->update([
-                'after_images' => []
+                'after_images' => [],
             ]);
 
             return back()->with('success', 'All after images deleted successfully')->with('damageProtection', $damageProtection);
@@ -165,5 +174,14 @@ class DamageProtectionController extends Controller
     public function getImageUrl($imagePath)
     {
         return Storage::disk('upcloud')->url($imagePath);
+    }
+
+    private function authorizeVendorBooking(Booking $booking): void
+    {
+        $booking->loadMissing('vehicle');
+
+        if (! $booking->vehicle || (int) $booking->vehicle->vendor_id !== (int) auth()->id()) {
+            abort(403);
+        }
     }
 }
