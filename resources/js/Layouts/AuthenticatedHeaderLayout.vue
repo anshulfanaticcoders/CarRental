@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, watch, onUnmounted } from "vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import Dropdown from "@/Components/Dropdown.vue";
+import CurrencySelector from "@/Components/CurrencySelector.vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
 import axios from "axios";
 import { useCurrency } from '@/composables/useCurrency';
@@ -15,7 +16,6 @@ import flagFr from '../../assets/flag-fr.svg';
 import flagNl from '../../assets/flag-nl.svg';
 import flagEs from '../../assets/flag-es.svg';
 import flagAr from '../../assets/flag-ar.svg';
-import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
 import FloatingSocialIcons from '@/Components/FloatingSocialIcons.vue';
 
 // Get page properties
@@ -211,85 +211,6 @@ const handleNotificationClick = async (notification) => {
     router.visit(link);
   }
   showingNotificationDropdown.value = false; // Close dropdown after click
-};
-
-// Currency names mapping for better display
-const currencyNames = {
-  'USD': 'United States Dollar',
-  'EUR': 'Euro',
-  'GBP': 'British Pound Sterling',
-  'JPY': 'Japanese Yen',
-  'AUD': 'Australian Dollar',
-  'CAD': 'Canadian Dollar',
-  'CHF': 'Swiss Franc',
-  'CNH': 'Chinese Yuan',
-  'HKD': 'Hong Kong Dollar',
-  'SGD': 'Singapore Dollar',
-  'SEK': 'Swedish Krona',
-  'KRW': 'South Korean Won',
-  'NOK': 'Norwegian Krone',
-  'NZD': 'New Zealand Dollar',
-  'INR': 'Indian Rupee',
-  'MXN': 'Mexican Peso',
-  'BRL': 'Brazilian Real',
-  'RUB': 'Russian Ruble',
-  'ZAR': 'South African Rand',
-  'AED': 'United Arab Emirates Dirham',
-  'MAD': 'Moroccan Dirham',
-  'TRY': 'Turkish Lira',
-  'JOD': 'Jordanian Dinar',
-  'ISK': 'Iceland Krona',
-  'AZN': 'Azerbaijanian Manat',
-  'MYR': 'Malaysian Ringgit',
-  'OMR': 'Rial Omani',
-  'UGX': 'Uganda Shilling',
-  'NIO': 'Nicaragua Cordoba Oro'
-};
-
-// Currency symbols mapping
-const currencySymbols = {
-  'USD': '$',
-  'EUR': '€',
-  'GBP': '£',
-  'JPY': '¥',
-  'AUD': 'A$',
-  'CAD': 'C$',
-  'CHF': 'Fr',
-  'CNH': '¥',
-  'HKD': 'HK$',
-  'SGD': 'S$',
-  'SEK': 'kr',
-  'KRW': '₩',
-  'NOK': 'kr',
-  'NZD': 'NZ$',
-  'INR': '₹',
-  'MXN': '$',
-  'BRL': 'R$',
-  'RUB': '₽',
-  'ZAR': 'R',
-  'AED': 'د.إ',
-  'MAD': 'د.م.‏',
-  'TRY': '₺',
-  'JOD': 'د.ا.‏',
-  'ISK': 'kr.',
-  'AZN': '₼',
-  'MYR': 'RM',
-  'OMR': '﷼',
-  'UGX': 'USh',
-  'NIO': 'C$'
-};
-
-// Function to format currency display
-const formatCurrencyDisplay = (currency) => {
-  const name = currencyNames[currency] || currency;
-  const symbol = currencySymbols[currency] || '';
-  return `${currency}(${name})${symbol}`;
-};
-
-// Function to format currency display for the trigger
-const formatCurrencyTriggerDisplay = (currency) => {
-  const symbol = currencySymbols[currency] || '';
-  return `${currency}(${symbol})`;
 };
 
 // Computed properties
@@ -533,22 +454,14 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
 
           <!-- Currency & Language (desktop) -->
           <div class="hidden lg:flex items-center gap-1.5">
-            <Dropdown align="right" width="max">
-              <template #trigger>
-                <button type="button" class="hdr-trigger" :disabled="currencyLoading" aria-label="Change currency">
-                  <img :src="moneyExchangeSymbol" alt="" aria-hidden="true" class="w-5 h-5" :class="[{ 'opacity-60': currencyLoading }, heroTransparent ? 'brightness-0 invert' : '']">
-                  <span :class="{ 'opacity-60': currencyLoading }">{{ formatCurrencyTriggerDisplay(selectedCurrency) }}</span>
-                </button>
-              </template>
-              <template #content>
-                <div class="max-h-64 overflow-y-auto currency-scrollbar">
-                  <div v-for="currency in supportedCurrencies" :key="currency" @click="changeCurrency(currency)" class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer" :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }">
-                    <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                    {{ formatCurrencyDisplay(currency) }}
-                  </div>
-                </div>
-              </template>
-            </Dropdown>
+            <CurrencySelector
+              :selected-currency="selectedCurrency"
+              :supported-currencies="supportedCurrencies"
+              :loading="currencyLoading"
+              variant="header"
+              :hero="heroTransparent"
+              @select="changeCurrency"
+            />
 
             <Dropdown align="right" width="48">
               <template #trigger>
@@ -646,25 +559,13 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
           <!-- Settings Section -->
           <div class="oc-section">
             <div class="oc-label">Settings</div>
-            <Dropdown align="right" width="max">
-              <template #trigger>
-                <button type="button" class="oc-item w-full" :disabled="currencyLoading">
-                  <span class="flex items-center gap-2">
-                    <img :src="moneyExchangeSymbol" alt="Currency" class="w-5 h-5" :class="{ 'opacity-60': currencyLoading }">
-                    {{ formatCurrencyTriggerDisplay(selectedCurrency) }}
-                  </span>
-                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                </button>
-              </template>
-              <template #content>
-                <div class="max-h-64 overflow-y-auto currency-scrollbar">
-                  <div v-for="currency in supportedCurrencies" :key="currency" @click="changeCurrency(currency)" class="flex min-w-max items-center px-4 py-2 text-left text-sm leading-5 text-white hover:text-white hover:bg-gray-600 transition duration-150 ease-in-out cursor-pointer" :class="{ 'bg-white !text-[#153B4F] font-bold': selectedCurrency === currency }">
-                    <span v-if="selectedCurrency === currency" class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                    {{ formatCurrencyDisplay(currency) }}
-                  </div>
-                </div>
-              </template>
-            </Dropdown>
+            <CurrencySelector
+              :selected-currency="selectedCurrency"
+              :supported-currencies="supportedCurrencies"
+              :loading="currencyLoading"
+              variant="offcanvas"
+              @select="changeCurrency"
+            />
             <Dropdown align="right" width="48">
               <template #trigger>
                 <button type="button" class="oc-item w-full">

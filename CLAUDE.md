@@ -151,6 +151,8 @@ Invoke the MATCHING skill based on the file type you're about to edit:
 - If editing MULTIPLE file types, invoke ALL matching skills
 - If no domain skill matches, proceed without one
 - **For ANY frontend UI work**, ALWAYS read `resources/js/design-system.md` first for brand colors, typography, buttons, spacing, shadows, and component patterns. Every new page MUST follow this design system.
+- **For ANY frontend design/redesign/polish task**, Claude is the primary UI implementer and MUST use Impeccable (`pbakaus/impeccable`) before coding. Use Impeccable `shape` to decide the design direction, `audit`/`critique` to identify inconsistencies, and `polish` before completion. Do not ship generic UI, mismatched spacing, isolated one-off styling, or pages that ignore existing Vrooem homepage/component patterns.
+- **For UI/UX Pro Max or premium design requests**, use the Impeccable command playbook: `shape -> critique -> layout -> typeset -> colorize -> animate -> adapt -> harden -> optimize -> polish`. Use `craft` only after the user approves the direction, `live` for browser iteration, `teach`/`document` when product/design context is missing, and `extract` when a pattern should become reusable.
 
 **Step 6b - Security Review (for sensitive code)**
 ```
@@ -863,6 +865,37 @@ git log --oneline -10
 | `frontend-design` | Creating web components, pages, UI |
 | `impeccable:*` | Design quality suite (critique, polish, animate, adapt, etc.) |
 | `elements-of-style:writing-clearly-and-concisely` | Prose quality for UI text, docs |
+
+### Impeccable Command Playbook
+Use these commands through `/impeccable` for design tasks:
+
+| Command | What it does |
+|---|---|
+| `/impeccable craft` | Full shape-then-build flow with visual iteration |
+| `/impeccable teach` | One-time setup: gather design context, write root PRODUCT.md and DESIGN.md |
+| `/impeccable document` | Generate root DESIGN.md from existing project code |
+| `/impeccable extract` | Pull reusable components and tokens into the design system |
+| `/impeccable shape` | Plan UX/UI before writing code |
+| `/impeccable critique` | UX design review: hierarchy, clarity, emotional resonance |
+| `/impeccable audit` | Technical quality checks: accessibility, performance, responsive behavior |
+| `/impeccable polish` | Final pass, design system alignment, shipping readiness |
+| `/impeccable bolder` | Amplify boring designs |
+| `/impeccable quieter` | Tone down overly bold designs |
+| `/impeccable distill` | Strip to essence |
+| `/impeccable harden` | Error handling, i18n, text overflow, edge cases |
+| `/impeccable onboard` | First-run flows, empty states, activation paths |
+| `/impeccable animate` | Add purposeful motion |
+| `/impeccable colorize` | Introduce strategic color |
+| `/impeccable typeset` | Fix font choices, hierarchy, sizing |
+| `/impeccable layout` | Fix layout, spacing, visual rhythm |
+| `/impeccable delight` | Add moments of joy |
+| `/impeccable overdrive` | Add technically extraordinary effects |
+| `/impeccable clarify` | Improve unclear UX copy |
+| `/impeccable adapt` | Adapt for different devices |
+| `/impeccable optimize` | Performance improvements |
+| `/impeccable live` | Visual variant mode: iterate on elements in the browser |
+
+Default for premium Vrooem UI: `shape -> critique -> layout -> typeset -> colorize -> animate -> adapt -> harden -> optimize -> polish`. For approved build work, run `craft` and then browser-verify. Preserve Vrooem theme before experimenting: homepage rhythm, brand teal, cyan accents, `full-w-container`, header/footer patterns, Plus Jakarta Sans headings, IBM Plex Sans body, Lucide icons, targeted transitions.
 
 ### Browser & Testing Skills
 | Skill | When to Use |

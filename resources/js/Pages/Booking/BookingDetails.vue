@@ -1159,10 +1159,8 @@ const vendorInitials = computed(() => {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
-
 .booking-details-page {
-  font-family: 'DM Sans', sans-serif;
+  font-family: "IBM Plex Sans", serif;
 }
 
 .booking-details-page :deep(h1),
@@ -1171,7 +1169,7 @@ const vendorInitials = computed(() => {
 .booking-details-page :deep(.font-extrabold),
 .booking-details-page :deep(.font-bold),
 .booking-details-page :deep(.amount-xl) {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--jakarta-font-family);
 }
 
 /* Hero highlight card */
@@ -1218,7 +1216,7 @@ const vendorInitials = computed(() => {
 .amount-xl {
   font-size: 28px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 1;
 }
 
@@ -1240,7 +1238,7 @@ const vendorInitials = computed(() => {
   font-size: 15px;
   font-weight: 700;
   color: var(--gray-800, #153b4f);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 .bd-card-body { padding: 20px; }
 

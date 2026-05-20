@@ -453,6 +453,10 @@ Route::group([
         return Inertia::render('Booking/Cancel');
     })->name('booking.cancel.page');
 
+    Route::get('/booking-unsuccess', function () {
+        return Inertia::render('Booking/Unsuccess');
+    })->name('booking.unsuccess');
+
     // Booking Details Route - moved to authenticated customer routes with locale prefix (line 849)
 
     // Public QR Code Tracking Routes (with locale prefix)
@@ -803,7 +807,6 @@ Route::group([
         Route::get('/booking/{id}/download-pdf', [BookingController::class, 'downloadPDF'])->name('booking.download.pdf');
         Route::post('/booking/allow-access', [BookingController::class, 'allowAccess'])->name('booking.allow_access');
         Route::post('/booking/cancel', [BookingController::class, 'cancelBooking'])->name('booking.cancel');
-        Route::inertia('/booking-unsuccess', 'Booking/Unsuccess');
         Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
         Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
         Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');

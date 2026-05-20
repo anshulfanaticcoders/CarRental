@@ -103,14 +103,14 @@ onMounted(() => {
 <template>
   <AuthenticatedHeaderLayout />
 
-  <div class="booking-success-page min-h-[80vh] flex items-center justify-center bg-gradient-to-br from-gray-50 to-emerald-50/30 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="booking-success-page min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-xl w-full">
 
       <!-- Success Card -->
-      <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+      <div class="success-card bg-white rounded-2xl overflow-hidden">
 
-        <!-- Green header strip -->
-        <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-8 text-center">
+        <!-- Header strip -->
+        <div class="success-hero-strip px-6 py-8 text-center">
           <div class="mb-4 flex justify-center success-lottie-wrap">
             <Vue3Lottie
               class="success-lottie"
@@ -269,10 +269,9 @@ onMounted(() => {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
-
 .booking-success-page {
-  font-family: 'DM Sans', sans-serif;
+  background: linear-gradient(180deg, var(--gray-50) 0%, var(--white) 52%, var(--gray-50) 100%);
+  font-family: "IBM Plex Sans", serif;
 }
 
 .booking-success-page :deep(h1),
@@ -280,7 +279,18 @@ onMounted(() => {
 .booking-success-page :deep(h3),
 .booking-success-page :deep(.font-extrabold),
 .booking-success-page :deep(.font-bold) {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--jakarta-font-family);
+}
+
+.success-card {
+  border: 1px solid rgba(21, 59, 79, 0.08);
+  box-shadow: var(--shadow-xl);
+}
+
+.success-hero-strip {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(34, 211, 238, 0.16), transparent 44%),
+    linear-gradient(135deg, #0a1d28 0%, #153b4f 52%, #0c2535 100%);
 }
 
 .success-lottie-wrap {

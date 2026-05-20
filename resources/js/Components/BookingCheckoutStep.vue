@@ -189,8 +189,14 @@ const providerMarkupRate = computed(() => {
 });
 
 const effectivePaymentPercentage = computed(() => {
-    if (isRenteon.value) return providerMarkupRate.value * 100;
-    // Default to 15% if not provided, to prevent "Pay 0" bug
+    const grand = parseFloat(props.totals?.grandTotal || 0);
+    const payable = parseFloat(props.totals?.payableAmount || 0);
+    if (Number.isFinite(grand) && grand > 0 && Number.isFinite(payable) && payable > 0) {
+        return Math.round((payable / grand) * 10000) / 100;
+    }
+
+    if (isRenteon.value) return Math.round(providerMarkupRate.value * 10000) / 100;
+    // Default to 15% if totals are still loading, to prevent "Pay 0" bug
     return props.paymentPercentage || 15;
 });
 
@@ -825,7 +831,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                             <div class="flex justify-between items-center">
                                 <div>
                                     <div class="text-sm font-semibold text-emerald-800">Pay Now ({{ effectivePaymentPercentage }}%)</div>
-                                    <div class="text-xs text-emerald-600">Secure deposit</div>
+                                    <div class="text-xs text-emerald-600">Secure online payment</div>
                                 </div>
                                 <span class="text-2xl font-bold text-emerald-700">{{ formatTotalPrice(totals.payableAmount) }}</span>
                             </div>

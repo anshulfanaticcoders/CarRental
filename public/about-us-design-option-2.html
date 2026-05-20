@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About Us Preview Option 2 | Vrooem</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brand: #153b4f;
+      --brand-dark: #0a1d28;
+      --brand-mid: #1c4d66;
+      --cyan: #22d3ee;
+      --cyan-deep: #0891b2;
+      --paper: #fbfdfe;
+      --wash: #f0f8fc;
+      --line: #dceef6;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --shadow: 0 24px 60px rgba(21, 59, 79, .14);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    .wrap { width: min(92%, 1440px); margin-inline: auto; }
+    .preview-note {
+      position: fixed;
+      z-index: 50;
+      left: 1rem;
+      bottom: 1rem;
+      padding: .65rem .9rem;
+      border-radius: 999px;
+      background: rgba(10, 29, 40, .9);
+      color: #e6f8fb;
+      font-size: .78rem;
+      box-shadow: 0 12px 32px rgba(10, 29, 40, .22);
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(251, 253, 254, .9);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(220, 238, 246, .82);
+    }
+    .topbar-inner {
+      min-height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: .65rem;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-weight: 800;
+      color: var(--brand-dark);
+    }
+    .brand-mark {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 10px;
+      background: var(--brand);
+      color: #f7fdff;
+      display: grid;
+      place-items: center;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      color: var(--brand-mid);
+      font-size: .92rem;
+      font-weight: 600;
+    }
+    .login {
+      border: 1px solid var(--brand);
+      border-radius: 999px;
+      padding: .62rem 1rem;
+    }
+    h1, h2, h3 {
+      margin: 0;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      letter-spacing: 0;
+    }
+    .hero {
+      background:
+        linear-gradient(180deg, #fbfdfe 0%, #f0f8fc 100%);
+      overflow: hidden;
+      position: relative;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero-grid {
+      min-height: calc(100vh - 74px);
+      display: grid;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+      gap: clamp(2rem, 5vw, 5rem);
+      align-items: center;
+      padding: clamp(4rem, 8vw, 7rem) 0;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: .55rem;
+      color: var(--cyan-deep);
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      font-size: .78rem;
+      margin-bottom: 1.2rem;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 1.5rem;
+      height: 2px;
+      background: var(--cyan-deep);
+    }
+    .hero h1 {
+      font-size: clamp(2.8rem, 5.3vw, 5.4rem);
+      line-height: .98;
+      color: var(--brand-dark);
+      font-weight: 800;
+      max-width: 10.5ch;
+    }
+    .hero p {
+      margin: 1.35rem 0 0;
+      max-width: 560px;
+      color: var(--muted);
+      line-height: 1.78;
+      font-size: 1.08rem;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .85rem;
+      margin-top: 2rem;
+    }
+    .btn {
+      min-height: 3rem;
+      padding: .86rem 1.35rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary {
+      color: #f7fdff;
+      background: var(--brand);
+      box-shadow: 0 14px 32px rgba(21, 59, 79, .2);
+    }
+    .btn-secondary {
+      color: var(--brand);
+      border: 1px solid var(--brand);
+      background: transparent;
+    }
+    .image-board {
+      position: relative;
+      min-height: 610px;
+    }
+    .photo-main {
+      position: absolute;
+      inset: 0 9% 12% 0;
+      border-radius: 32px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      border: 1px solid #dceef6;
+    }
+    .photo-main img,
+    .photo-small img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .photo-small {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 46%;
+      aspect-ratio: 1;
+      border-radius: 26px;
+      overflow: hidden;
+      border: 8px solid var(--paper);
+      box-shadow: var(--shadow);
+    }
+    .service-tag {
+      position: absolute;
+      left: -1rem;
+      bottom: 18%;
+      max-width: 280px;
+      padding: 1rem 1.1rem;
+      border-radius: 20px;
+      background: var(--brand-dark);
+      color: #f7fdff;
+      box-shadow: var(--shadow);
+    }
+    .service-tag strong {
+      display: block;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 1.7rem;
+      color: var(--cyan);
+      line-height: 1;
+      margin-bottom: .45rem;
+    }
+    .service-tag span {
+      color: rgba(247, 253, 255, .72);
+      line-height: 1.55;
+      font-size: .92rem;
+    }
+    .section {
+      padding: clamp(4.5rem, 8vw, 7rem) 0;
+    }
+    .intro-grid {
+      display: grid;
+      grid-template-columns: .75fr 1.25fr;
+      gap: clamp(2rem, 6vw, 5rem);
+      align-items: start;
+    }
+    .section-label {
+      color: var(--cyan-deep);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      font-size: .78rem;
+      font-weight: 800;
+      margin-bottom: .75rem;
+    }
+    .section-title {
+      color: var(--brand-dark);
+      font-size: clamp(2rem, 3.6vw, 3.45rem);
+      line-height: 1.08;
+      font-weight: 800;
+    }
+    .copy {
+      color: var(--muted);
+      line-height: 1.85;
+      font-size: 1.03rem;
+      max-width: 72ch;
+    }
+    .copy p { margin: 0 0 1rem; }
+    .timeline {
+      background: var(--brand-dark);
+      color: #f7fdff;
+      position: relative;
+      overflow: hidden;
+    }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(34,211,238,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34,211,238,.04) 1px, transparent 1px);
+      background-size: 72px 72px;
+    }
+    .timeline-inner { position: relative; }
+    .timeline .section-title { color: #f7fdff; max-width: 760px; }
+    .timeline-row {
+      margin-top: 3rem;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 24px;
+      overflow: hidden;
+      background: rgba(255,255,255,.045);
+    }
+    .mile {
+      min-height: 240px;
+      padding: 1.35rem;
+      border-right: 1px solid rgba(255,255,255,.12);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .mile:last-child { border-right: 0; }
+    .mile-num {
+      color: var(--cyan);
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-weight: 800;
+      font-size: .85rem;
+    }
+    .mile h3 {
+      color: #f7fdff;
+      font-size: 1.12rem;
+      margin-top: 4rem;
+    }
+    .mile p {
+      margin: .65rem 0 0;
+      color: rgba(247,253,255,.62);
+      line-height: 1.62;
+      font-size: .93rem;
+    }
+    .proof {
+      background: linear-gradient(180deg, #fbfdfe 0%, #f0f8fc 100%);
+    }
+    .proof-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 2.4rem;
+    }
+    .proof-item {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fbfdfe;
+      padding: 1.35rem;
+      min-height: 210px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 12px 28px rgba(21,59,79,.055);
+    }
+    .proof-kicker {
+      color: var(--cyan-deep);
+      font-weight: 800;
+      font-size: .82rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .proof-item h3 {
+      color: var(--brand);
+      font-size: 1.18rem;
+      margin-top: 2.2rem;
+    }
+    .proof-item p {
+      color: var(--muted);
+      line-height: 1.65;
+      margin: .5rem 0 0;
+      font-size: .94rem;
+    }
+    .support {
+      background: var(--paper);
+    }
+    .support-grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: clamp(2rem, 6vw, 5rem);
+      align-items: center;
+    }
+    .support-panel {
+      border-radius: 28px;
+      overflow: hidden;
+      min-height: 480px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+      position: relative;
+    }
+    .support-panel img {
+      width: 100%;
+      height: 100%;
+      min-height: 480px;
+      object-fit: cover;
+    }
+    .quote {
+      padding: 1.3rem;
+      border-radius: 22px;
+      background: var(--wash);
+      color: var(--brand);
+      font-weight: 700;
+      line-height: 1.65;
+      border: 1px solid var(--line);
+      margin-top: 1.6rem;
+    }
+    .cta {
+      text-align: center;
+      background: linear-gradient(155deg, #0a1d28 0%, #153b4f 48%, #0f2936 100%);
+      color: #f7fdff;
+    }
+    .cta .section-title {
+      color: #f7fdff;
+      max-width: 760px;
+      margin-inline: auto;
+    }
+    .cta .copy {
+      margin: 1rem auto 0;
+      color: rgba(247,253,255,.66);
+      max-width: 620px;
+    }
+    .cta .btn-primary {
+      margin-top: 1.6rem;
+      background: var(--cyan);
+      color: var(--brand-dark);
+      box-shadow: none;
+    }
+
+    @media (max-width: 1000px) {
+      .hero-grid, .intro-grid, .support-grid { grid-template-columns: 1fr; }
+      .image-board { min-height: 520px; }
+      .timeline-row { grid-template-columns: repeat(2, 1fr); }
+      .mile:nth-child(2) { border-right: 0; }
+      .mile:nth-child(1), .mile:nth-child(2) { border-bottom: 1px solid rgba(255,255,255,.12); }
+      .proof-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .nav a:not(.login) { display: none; }
+      .hero h1 { font-size: 2.45rem; }
+      .actions { flex-direction: column; }
+      .btn { width: 100%; }
+      .image-board { min-height: 430px; }
+      .photo-main { inset: 0 0 18% 0; }
+      .photo-small { width: 52%; border-width: 6px; }
+      .service-tag { left: .75rem; right: .75rem; bottom: 1rem; max-width: none; }
+      .timeline-row { grid-template-columns: 1fr; }
+      .mile { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.12); min-height: 210px; }
+      .mile:last-child { border-bottom: 0; }
+      .preview-note { left: .75rem; right: .75rem; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-note">Preview only: Option 2, Premium Concierge Brand Page</div>
+
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="/en"><span class="brand-mark">V</span> Vrooem</a>
+      <nav class="nav" aria-label="Preview navigation">
+        <a href="/en">Home</a>
+        <a href="/en/page/about-us">Current About</a>
+        <a href="/about-us-design-option-1.html">Option 1</a>
+        <a href="/en/login" class="login">Log in</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <div class="eyebrow">About Vrooem</div>
+          <h1>Travel support, shaped like a rental platform.</h1>
+          <p>Vrooem brings comparison, secure booking, and human help into one calm experience, so choosing a car feels less like paperwork and more like the start of the trip.</p>
+          <div class="actions">
+            <a class="btn btn-primary" href="/en">Start searching</a>
+            <a class="btn btn-secondary" href="#journey">See the journey</a>
+          </div>
+        </div>
+        <div class="image-board" aria-label="Vrooem travel collage">
+          <figure class="photo-main">
+            <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1400&q=80" alt="Car driving on a scenic road">
+          </figure>
+          <figure class="photo-small">
+            <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80" alt="Customer support team">
+          </figure>
+          <div class="service-tag"><strong>24/7</strong><span>Support that stays visible when the trip needs attention.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap intro-grid">
+        <div>
+          <div class="section-label">Why we exist</div>
+          <h2 class="section-title">The rental desk should not be the hardest part of a journey.</h2>
+        </div>
+        <div class="copy">
+          <p>Vrooem began with a practical belief: people should know what they are booking, what they are paying, and who can help before they reach the counter.</p>
+          <p>The new About page would make that belief visible through stronger storytelling, fewer generic cards, and a more premium composition.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section timeline" id="journey">
+      <div class="wrap timeline-inner">
+        <div class="section-label">From search to keys</div>
+        <h2 class="section-title">A concierge-like story for every important booking moment.</h2>
+        <div class="timeline-row">
+          <article class="mile">
+            <div class="mile-num">01</div>
+            <div><h3>Find the right car</h3><p>Search feels guided, not crowded. The user sees relevant vehicles and locations.</p></div>
+          </article>
+          <article class="mile">
+            <div class="mile-num">02</div>
+            <div><h3>Understand the price</h3><p>Clear payment expectations reduce anxiety before checkout.</p></div>
+          </article>
+          <article class="mile">
+            <div class="mile-num">03</div>
+            <div><h3>Book securely</h3><p>Secure payment, clean status pages, and no technical noise after checkout.</p></div>
+          </article>
+          <article class="mile">
+            <div class="mile-num">04</div>
+            <div><h3>Stay supported</h3><p>When a booking needs review, the customer knows Vrooem is still handling it.</p></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section proof">
+      <div class="wrap">
+        <div class="section-label">Brand proof</div>
+        <h2 class="section-title">Trust points with more weight and less clutter.</h2>
+        <div class="proof-grid">
+          <article class="proof-item">
+            <div class="proof-kicker">Fair pricing</div>
+            <div><h3>No hidden-fee feeling</h3><p>Copy and layout should reassure customers that the platform values transparency.</p></div>
+          </article>
+          <article class="proof-item">
+            <div class="proof-kicker">Supplier network</div>
+            <div><h3>Choice without chaos</h3><p>The page should make vehicle variety feel curated, not overwhelming.</p></div>
+          </article>
+          <article class="proof-item">
+            <div class="proof-kicker">Human backup</div>
+            <div><h3>Support is part of the offer</h3><p>Customer care appears as a promise, not only a footer link.</p></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section support">
+      <div class="wrap support-grid">
+        <figure class="support-panel">
+          <img src="https://images.unsplash.com/photo-1533750349088-cd871a92f312?auto=format&fit=crop&w=1300&q=80" alt="Travel planning with laptop and notes">
+        </figure>
+        <div>
+          <div class="section-label">Customer confidence</div>
+          <h2 class="section-title">Designed for users who are about to trust us with a real trip.</h2>
+          <div class="copy">
+            <p>This direction feels more premium and editorial. It gives the About page a stronger brand voice, but still keeps clear CTAs back to search.</p>
+          </div>
+          <div class="quote">Best if you want Vrooem to feel like a travel partner, not only a booking comparison tool.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section cta">
+      <div class="wrap">
+        <div class="section-label">Ready to drive</div>
+        <h2 class="section-title">Compare, book, and pick up with confidence.</h2>
+        <p class="copy">A premium About page should end by bringing the user back to the real product: finding the right car.</p>
+        <a class="btn btn-primary" href="/en">Book your ride today</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

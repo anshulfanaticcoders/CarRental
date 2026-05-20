@@ -179,17 +179,18 @@ export function usePricingCalculation({
         return pkgPrice + mandatoryExtra + extrasTotal.value;
     });
 
+    const shouldUseCommissionOnly = computed(() => {
+        return Boolean(`${props.vehicle?.source ?? ''}`.trim()) && providerMarkupRate.value > 0;
+    });
+
     const bookingChargeBreakdown = computed(() => {
-        // Single source of truth: DB `payable_settings.payment_percentage`
-        // (admin-configurable, fetched server-side and passed via props).
-        // Matches backend StripeCheckoutController which charges
-        // grandTotal × payment_percentage at booking.
+        // Markup flows charge the markup upfront; non-markup flows use the configured deposit percentage.
         const percent = props.paymentPercentage && props.paymentPercentage > 0 ? props.paymentPercentage : 15;
         return computeBookingChargeBreakdown({
             netTotal: parseFloat(netGrandTotal.value || 0),
             markupRate: providerMarkupRate.value,
             depositPercentage: percent,
-            useCommissionOnly: false,
+            useCommissionOnly: shouldUseCommissionOnly.value,
         });
     });
 
@@ -200,7 +201,12 @@ export function usePricingCalculation({
     const pendingAmount = computed(() => bookingChargeBreakdown.value.pendingAmount.toFixed(2));
 
     const effectivePaymentPercentage = computed(() => {
-        // Always read DB-configured payment percentage (single source of truth).
+        const grand = parseFloat(bookingChargeBreakdown.value.grandTotal || 0);
+        const payable = parseFloat(bookingChargeBreakdown.value.payableAmount || 0);
+        if (Number.isFinite(grand) && grand > 0 && Number.isFinite(payable) && payable > 0) {
+            return Math.round((payable / grand) * 10000) / 100;
+        }
+
         const percent = props.paymentPercentage && props.paymentPercentage > 0 ? props.paymentPercentage : 15;
         return Math.round(percent * 100) / 100;
     });
