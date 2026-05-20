@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CurrencyRate;
+use App\Support\CurrencyRegistry;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -41,7 +42,7 @@ class CurrencyConversionService
         $this->maxRetries = config('currency.max_retries', 3);
         $this->retryDelay = config('currency.retry_delay', 1000); // milliseconds
         $this->cacheTtl = config('currency.cache_ttl', 3600); // 1 hour
-        $this->defaultBaseCurrency = config('currency.base_currency', 'USD');
+        $this->defaultBaseCurrency = app(CurrencyRegistry::class)->baseCurrency();
 
         // Initialize circuit breaker state
         $this->circuitBreakerState = [];
@@ -232,73 +233,7 @@ class CurrencyConversionService
      */
     private function normalizeCurrencyCode(string $currency): string
     {
-        $raw = trim($currency);
-        if ($raw === '') {
-            return 'USD';
-        }
-
-        $symbolToCode = [
-            '$' => 'USD',
-            '€' => 'EUR',
-            '£' => 'GBP',
-            '¥' => 'JPY',
-            '₹' => 'INR',
-            '₽' => 'RUB',
-            '₩' => 'KRW',
-            '₺' => 'TRY',
-            '₨' => 'PKR',
-            '₦' => 'NGN',
-            '₡' => 'CRC',
-            '₴' => 'UAH',
-            '₫' => 'VND',
-            '₭' => 'LAK',
-            '₮' => 'MNT',
-            '₲' => 'PYG',
-            '₱' => 'PHP',
-            '﷼' => 'IRR',
-            '៛' => 'KHR',
-            '₪' => 'ILS',
-            '؋' => 'AFN',
-            '₸' => 'KZT',
-            '₼' => 'AZN',
-            'R' => 'ZAR',
-            'RM' => 'MYR',
-            'C$' => 'CAD',
-            'A$' => 'AUD',
-            'HK$' => 'HKD',
-            'S$' => 'SGD',
-            'NZ$' => 'NZD',
-            'FR' => 'CHF',
-            'د.إ' => 'AED',
-        ];
-
-        if (isset($symbolToCode[$raw])) {
-            return $symbolToCode[$raw];
-        }
-
-        $upper = strtoupper($raw);
-        $aliasToCode = [
-            'EURO' => 'EUR',
-            'TL' => 'TRY',
-            'US$' => 'USD',
-            'USD$' => 'USD',
-            'RMB' => 'CNY',
-        ];
-
-        if (isset($aliasToCode[$upper])) {
-            return $aliasToCode[$upper];
-        }
-
-        if (strlen($upper) === 3 && ctype_alpha($upper)) {
-            return $upper;
-        }
-
-        Log::warning('Unknown currency symbol, defaulting to USD', [
-            'original_currency' => $raw,
-            'normalized_currency' => 'USD',
-        ]);
-
-        return 'USD';
+        return app(CurrencyRegistry::class)->normalize($currency, $this->defaultBaseCurrency);
     }
 
     /**
@@ -754,7 +689,7 @@ class CurrencyConversionService
      */
     private function isValidCurrencyCode(string $code): bool
     {
-        return strlen($code) === 3 && ctype_alpha($code);
+        return app(CurrencyRegistry::class)->isKnown($code);
     }
 
     /**

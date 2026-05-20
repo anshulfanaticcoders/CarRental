@@ -1,18 +1,11 @@
-import { computed } from 'vue';
+﻿import { computed } from 'vue';
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 import { computeBookingChargeBreakdown } from '@/utils/platformPricing';
 import { getSicilyByCarExtraTotal } from '@/utils/sicilyByCarExtras';
-
-const CURRENCY_SYMBOL_MAP = {
-    '€': 'EUR', '$': 'USD', '£': 'GBP', '₹': 'INR', '₽': 'RUB',
-    'A$': 'AUD', 'C$': 'CAD', 'د.إ': 'AED', '¥': 'JPY',
-    'EURO': 'EUR', 'TL': 'TRY',
-};
+import { normalizeCurrencyCode as registryNormalizeCurrencyCode } from '@/utils/currencyRegistry';
 
 export function normalizeCurrencyCode(currency) {
-    if (!currency) return 'EUR';
-    const trimmed = `${currency}`.trim();
-    return (CURRENCY_SYMBOL_MAP[trimmed] || trimmed).toUpperCase();
+    return registryNormalizeCurrencyCode(currency, 'EUR');
 }
 
 export function stripHtml(value) {
@@ -57,7 +50,7 @@ export function usePricingCalculation({
 }) {
     const { convertPrice, getSelectedCurrencySymbol } = useCurrencyConversion();
 
-    // ── Currency resolution ──────────────────────────────────────────
+    // â”€â”€ Currency resolution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const pricingCurrency = computed(() => {
         return resolveVehicleCurrency(currentProduct.value, props.vehicle);
@@ -67,7 +60,7 @@ export function usePricingCalculation({
         return resolveVehicleCurrency(currentProduct.value, props.vehicle);
     });
 
-    // ── Formatting helpers ───────────────────────────────────────────
+    // â”€â”€ Formatting helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const formatPrice = (val) => {
         const currencyCode = pricingCurrency.value;
@@ -80,7 +73,7 @@ export function usePricingCalculation({
         return formatPrice(numeric * providerGrossMultiplier.value);
     };
 
-    // ── Per-extra price helpers ──────────────────────────────────────
+    // â”€â”€ Per-extra price helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const getExtraTotal = (extra) => {
         if (!extra) return 0;
@@ -113,7 +106,7 @@ export function usePricingCalculation({
             .reduce((sum, slot) => sum + getSicilyByCarExtraTotal(slot), 0);
     };
 
-    // ── Totals ───────────────────────────────────────────────────────
+    // â”€â”€ Totals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const isSicilyByCar = computed(() => props.vehicle?.source === 'sicily_by_car');
 
@@ -201,12 +194,6 @@ export function usePricingCalculation({
     const pendingAmount = computed(() => bookingChargeBreakdown.value.pendingAmount.toFixed(2));
 
     const effectivePaymentPercentage = computed(() => {
-        const grand = parseFloat(bookingChargeBreakdown.value.grandTotal || 0);
-        const payable = parseFloat(bookingChargeBreakdown.value.payableAmount || 0);
-        if (Number.isFinite(grand) && grand > 0 && Number.isFinite(payable) && payable > 0) {
-            return Math.round((payable / grand) * 10000) / 100;
-        }
-
         const percent = props.paymentPercentage && props.paymentPercentage > 0 ? props.paymentPercentage : 15;
         return Math.round(percent * 100) / 100;
     });

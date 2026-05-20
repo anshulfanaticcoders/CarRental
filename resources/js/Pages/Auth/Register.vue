@@ -7,6 +7,7 @@ import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
 import { ref, watch, computed, onMounted } from "vue";
 import { Toaster } from "@/Components/ui/sonner";
 import { toast } from "vue-sonner";
+import { getCurrencyOptions } from '@/utils/currencyRegistry';
 import registerBg from "../../../assets/registerbgimage.jpg";
 import {
     Select,
@@ -260,7 +261,7 @@ const submit = () => {
 };
 
 const countries = ref([]);
-const currencies = ref([]);
+const currencies = ref(getCurrencyOptions(page.props.currency_supported || undefined));
 
 const selectedCurrency = computed({
     get() { return form.currency || ''; },
@@ -292,13 +293,8 @@ const fetchCountries = async () => {
     }
 };
 
-const fetchCurrencies = async () => {
-    try {
-        const response = await fetch("/currency.json");
-        currencies.value = await response.json();
-    } catch (error) {
-        console.error("Error loading currencies:", error);
-    }
+const fetchCurrencies = () => {
+    currencies.value = getCurrencyOptions(page.props.currency_supported || undefined);
 };
 
 onMounted(fetchCountries);

@@ -1,17 +1,18 @@
 import { computed, ref } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
+import { selectableCurrencyCodes } from '@/utils/currencyRegistry';
 
 export function useCurrency() {
     const page = usePage();
     const loading = ref(false);
 
-    const selectedCurrency = computed(() => page.props.currency);
+    const selectedCurrency = computed(() => page.props.currency || page.props.currency_base || 'EUR');
 
-    const supportedCurrencies = [
-        'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNH', 'HKD', 'SGD',
-        'SEK', 'KRW', 'NOK', 'NZD', 'INR', 'MXN', 'BRL', 'RUB', 'ZAR', 'AED',
-        'MAD', 'TRY', 'JOD', 'ISK', 'AZN', 'MYR', 'OMR', 'UGX', 'NIO'
-    ];
+    const supportedCurrencies = computed(() => {
+        return page.props.currency_supported?.length
+            ? page.props.currency_supported
+            : selectableCurrencyCodes;
+    });
 
     const changeCurrency = (newCurrency) => {
         loading.value = true;

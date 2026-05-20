@@ -1,6 +1,7 @@
-<script setup>
+﻿<script setup>
 import { computed } from 'vue';
 import { X, Printer, MapPin, Calendar, Clock, Car, CreditCard } from 'lucide-vue-next';
+import { getCurrencySymbol } from '@/utils/currencyRegistry';
 
 const props = defineProps({
   show: Boolean,
@@ -17,11 +18,7 @@ const downloadPdf = () => {
 
 // Helper for currency extraction
 const currencySymbol = computed(() => {
-    const currency = props.booking?.booking_currency || 'USD';
-    const symbols = {
-        'USD': '$', 'EUR': '€', 'GBP': '£', 'AED': 'AED'
-    };
-    return symbols[currency] || currency;
+    return getCurrencySymbol(props.booking?.booking_currency || 'EUR');
 });
 
 const formatMoney = (amount) => {

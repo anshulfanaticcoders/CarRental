@@ -4,14 +4,12 @@ namespace App\Services;
 
 class LocationSearchService
 {
-    public function __construct(private VrooemGatewayService $gatewayService)
-    {
-    }
+    public function __construct(private VrooemGatewayService $gatewayService) {}
 
     /**
      * Normalize a string by removing diacritics and converting to lowercase.
      *
-     * @param string|null $string
+     * @param  string|null  $string
      * @return string
      */
     public function normalizeString($string)
@@ -36,7 +34,7 @@ class LocationSearchService
         do {
             $batch = $this->gatewayService->listLocations($chunkSize, $offset);
 
-            if (!is_array($batch) || $batch === []) {
+            if (! is_array($batch) || $batch === []) {
                 break;
             }
 
@@ -79,7 +77,7 @@ class LocationSearchService
     {
         $location = $this->gatewayService->getLocation($unifiedLocationId);
 
-        if (!is_array($location)) {
+        if (! is_array($location)) {
             return null;
         }
 
@@ -90,16 +88,12 @@ class LocationSearchService
 
     /**
      * Get location information by provider ID.
-     *
-     * @param string $providerId
-     * @param string $provider
-     * @return array|null
      */
     public function getLocationByProviderId(string $providerId, string $provider): ?array
     {
         $location = $this->gatewayService->getLocationByProvider($provider, $providerId);
 
-        if (!is_array($location)) {
+        if (! is_array($location)) {
             return null;
         }
 
@@ -123,25 +117,28 @@ class LocationSearchService
         }
 
         $providerPickupId = (string) ($validated['provider_pickup_id'] ?? '');
-        if ($providerPickupId === '') {
-            return null;
-        }
+        if ($providerPickupId !== '') {
+            $provider = (string) ($validated['provider'] ?? '');
+            if ($provider !== '' && $provider !== 'mixed') {
+                $location = $this->getLocationByProviderId($providerPickupId, $provider);
+                if ($location) {
+                    return $location;
+                }
+            }
 
-        $provider = (string) ($validated['provider'] ?? '');
-        if ($provider !== '' && $provider !== 'mixed') {
-            $location = $this->getLocationByProviderId($providerPickupId, $provider);
+            $location = $this->getLocationByAnyProviderPickupId($providerPickupId);
             if ($location) {
                 return $location;
             }
         }
 
-        return $this->getLocationByAnyProviderPickupId($providerPickupId);
+        return $this->resolveLocationFromSearchText($validated);
     }
 
     public function getLocationByAnyProviderPickupId(string $providerPickupId): ?array
     {
         return collect($this->getAllLocations(250))->first(function ($location) use ($providerPickupId) {
-            if (!isset($location['providers']) || !is_array($location['providers'])) {
+            if (! isset($location['providers']) || ! is_array($location['providers'])) {
                 return false;
             }
 
@@ -149,6 +146,122 @@ class LocationSearchService
                 return (string) ($providerInfo['pickup_id'] ?? '') === $providerPickupId;
             });
         });
+    }
+
+    private function resolveLocationFromSearchText(array $validated): ?array
+    {
+        $bestLocation = null;
+        $bestScore = 0;
+
+        foreach ($this->locationSearchTermsFromValidated($validated) as $term) {
+            foreach ($this->searchLocations($term, 20) as $candidate) {
+                $score = $this->scoreLocationCandidate($candidate, $validated, $term);
+                if ($score > $bestScore) {
+                    $bestLocation = $candidate;
+                    $bestScore = $score;
+                }
+            }
+        }
+
+        if (! $bestLocation || $bestScore < 45) {
+            return null;
+        }
+
+        return $this->augmentEquivalentAirportProviders($bestLocation);
+    }
+
+    private function locationSearchTermsFromValidated(array $validated): array
+    {
+        $terms = collect([
+            $validated['where'] ?? null,
+            $validated['location'] ?? null,
+            $validated['pickup_location'] ?? null,
+            trim((string) ($validated['city'] ?? '').' '.(string) ($validated['country'] ?? '')),
+            $validated['city'] ?? null,
+        ]);
+
+        $iata = $this->extractIataCode(implode(' ', $terms->filter()->all()));
+        if ($iata !== null) {
+            $terms->push($iata);
+        }
+
+        return $terms
+            ->filter(fn ($term) => is_string($term) && strlen(trim($term)) >= 2)
+            ->map(fn ($term) => trim((string) $term))
+            ->unique(fn ($term) => $this->normalizeString($term))
+            ->values()
+            ->all();
+    }
+
+    private function scoreLocationCandidate(array $candidate, array $validated, string $term): int
+    {
+        $score = 0;
+        $termSignature = $this->normalizeString($term);
+        $candidateName = $this->normalizeString($candidate['name'] ?? '');
+        $candidateCity = $this->normalizeString($candidate['city'] ?? '');
+        $candidateCountry = $this->normalizeString($candidate['country'] ?? '');
+
+        if ($termSignature !== '' && $candidateName !== '') {
+            if (str_contains($candidateName, $termSignature) || str_contains($termSignature, $candidateName)) {
+                $score += 30;
+            }
+        }
+
+        foreach ($candidate['aliases'] ?? [] as $alias) {
+            $aliasSignature = $this->normalizeString($alias);
+            if ($aliasSignature !== '' && $termSignature !== '' && (str_contains($aliasSignature, $termSignature) || str_contains($termSignature, $aliasSignature))) {
+                $score += 20;
+                break;
+            }
+        }
+
+        $requestedIata = $this->extractIataCode($term) ?? $this->extractIataCode((string) ($validated['where'] ?? ''));
+        if ($requestedIata !== null && $requestedIata === strtoupper((string) ($candidate['iata'] ?? ''))) {
+            $score += 80;
+        }
+
+        $requestedCity = $this->normalizeString($validated['city'] ?? '');
+        if ($requestedCity !== '' && $candidateCity !== '' && $requestedCity === $candidateCity) {
+            $score += 25;
+        }
+
+        $requestedCountry = trim((string) ($validated['country'] ?? ''));
+        $requestedCountryCode = strtoupper($requestedCountry);
+        if (! preg_match('/^[A-Z]{2}$/', $requestedCountryCode)) {
+            $requestedCountryCode = CountryCodeResolver::resolve($requestedCountry);
+        }
+
+        if ($requestedCountryCode !== '' && $requestedCountryCode === strtoupper((string) ($candidate['country_code'] ?? ''))) {
+            $score += 25;
+        } elseif ($requestedCountry !== '' && $candidateCountry !== '' && $this->normalizeString($requestedCountry) === $candidateCountry) {
+            $score += 20;
+        }
+
+        if (($candidate['location_type'] ?? null) === 'airport' && (str_contains($termSignature, 'airport') || $requestedIata !== null)) {
+            $score += 10;
+        }
+
+        $score += min(15, (int) ($candidate['provider_count'] ?? 0));
+
+        return $score;
+    }
+
+    private function extractIataCode(?string $value): ?string
+    {
+        $value = strtoupper(trim((string) $value));
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/\(([A-Z]{3})\)/', $value, $matches)) {
+            return $matches[1];
+        }
+
+        if (preg_match('/\b([A-Z]{3})\b/', $value, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     private function normalizeLocationRecord(array $location): array
@@ -185,7 +298,7 @@ class LocationSearchService
         }
 
         $location['providers'] = collect($location['providers'] ?? [])
-            ->filter(fn ($provider) => is_array($provider) && !empty($provider['provider']) && array_key_exists('pickup_id', $provider))
+            ->filter(fn ($provider) => is_array($provider) && ! empty($provider['provider']) && array_key_exists('pickup_id', $provider))
             ->map(function (array $provider): array {
                 $providerCountryCode = strtoupper(trim((string) ($provider['country_code'] ?? '')));
                 $providerIata = strtoupper(trim((string) ($provider['iata'] ?? '')));
@@ -229,6 +342,7 @@ class LocationSearchService
         foreach ($locations as $location) {
             if (($location['location_type'] ?? null) !== 'airport') {
                 $collapsed[] = $location;
+
                 continue;
             }
 
@@ -242,6 +356,7 @@ class LocationSearchService
 
             if ($matchedIndex === null) {
                 $collapsed[] = $location;
+
                 continue;
             }
 
@@ -262,7 +377,7 @@ class LocationSearchService
 
         foreach ($this->airportSearchTerms($location) as $term) {
             foreach ($this->searchLocations($term, 20) as $candidate) {
-                if (!$this->airportsAreEquivalent($location, $candidate)) {
+                if (! $this->airportsAreEquivalent($location, $candidate)) {
                     continue;
                 }
 
@@ -296,7 +411,7 @@ class LocationSearchService
         $aliases = collect($merged['aliases'] ?? [])
             ->merge($secondary['aliases'] ?? [])
             ->when(
-                !empty($secondary['name']) && $secondary['name'] !== ($merged['name'] ?? null),
+                ! empty($secondary['name']) && $secondary['name'] !== ($merged['name'] ?? null),
                 fn ($collection) => $collection->push($secondary['name'])
             )
             ->filter()
@@ -306,8 +421,8 @@ class LocationSearchService
 
         $providers = collect($merged['providers'] ?? [])
             ->merge($secondary['providers'] ?? [])
-            ->filter(fn ($provider) => is_array($provider) && !empty($provider['provider']) && array_key_exists('pickup_id', $provider))
-            ->unique(fn ($provider) => strtolower(trim((string) $provider['provider'])) . '|' . (string) $provider['pickup_id'])
+            ->filter(fn ($provider) => is_array($provider) && ! empty($provider['provider']) && array_key_exists('pickup_id', $provider))
+            ->unique(fn ($provider) => strtolower(trim((string) $provider['provider'])).'|'.(string) $provider['pickup_id'])
             ->values()
             ->all();
 
@@ -325,7 +440,7 @@ class LocationSearchService
             return null;
         }
 
-        return 'iata:' . $iata;
+        return 'iata:'.$iata;
     }
 
     private function airportsAreEquivalent(array $primary, array $secondary): bool
@@ -344,7 +459,7 @@ class LocationSearchService
             return false;
         }
 
-        return !empty(array_intersect(
+        return ! empty(array_intersect(
             $this->airportLocationSignatures($primary),
             $this->airportLocationSignatures($secondary)
         ));
@@ -385,8 +500,8 @@ class LocationSearchService
 
         $displayName = null;
         if (class_exists(\Locale::class)) {
-            $displayName = \Locale::getDisplayRegion('-' . $countryCode, 'en');
-            if (!is_string($displayName) || trim($displayName) === '' || strtoupper(trim($displayName)) === $countryCode) {
+            $displayName = \Locale::getDisplayRegion('-'.$countryCode, 'en');
+            if (! is_string($displayName) || trim($displayName) === '' || strtoupper(trim($displayName)) === $countryCode) {
                 $displayName = null;
             }
         }

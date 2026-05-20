@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
  import { Link, useForm, usePage, router } from "@inertiajs/vue3";
 import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import axios from 'axios';
@@ -43,6 +43,7 @@ import moneyExchangeSymbol from '../../assets/money-exchange-symbol.svg';
 
 import { useCurrency } from '@/composables/useCurrency';
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
+import { getCurrencyName, getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 import { resolveProviderMarkupRate } from '@/utils/platformPricing';
 import { resolveSearchCurrency } from '@/utils/searchCurrency';
 import { computeVehicleDisplayDailyPrice } from '@/utils/vehicleSearchPricing';
@@ -80,85 +81,16 @@ const getInflatedPrice = (basePrice) => {
     return basePrice * (1 + promoMarkupRate.value);
 };
 
-// Currency names mapping for better display
-const currencyNames = {
-    'USD': 'United States Dollar',
-    'EUR': 'Euro',
-    'GBP': 'British Pound Sterling',
-    'JPY': 'Japanese Yen',
-    'AUD': 'Australian Dollar',
-    'CAD': 'Canadian Dollar',
-    'CHF': 'Swiss Franc',
-    'CNH': 'Chinese Yuan',
-    'HKD': 'Hong Kong Dollar',
-    'SGD': 'Singapore Dollar',
-    'SEK': 'Swedish Krona',
-    'KRW': 'South Korean Won',
-    'NOK': 'Norwegian Krone',
-    'NZD': 'New Zealand Dollar',
-    'INR': 'Indian Rupee',
-    'MXN': 'Mexican Peso',
-    'BRL': 'Brazilian Real',
-    'RUB': 'Russian Ruble',
-    'ZAR': 'South African Rand',
-    'AED': 'United Arab Emirates Dirham',
-    'MAD': 'Moroccan Dirham',
-    'TRY': 'Turkish Lira',
-    'JOD': 'Jordanian Dinar',
-    'ISK': 'Iceland Krona',
-    'AZN': 'Azerbaijanian Manat',
-    'MYR': 'Malaysian Ringgit',
-    'OMR': 'Rial Omani',
-    'UGX': 'Uganda Shilling',
-    'NIO': 'Nicaragua Cordoba Oro'
-};
-
-// Currency symbols mapping
-const currencySymbols = {
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥',
-    'AUD': 'A$',
-    'CAD': 'C$',
-    'CHF': 'Fr',
-    'CNH': '¥',
-    'HKD': 'HK$',
-    'SGD': 'S$',
-    'SEK': 'kr',
-    'KRW': '₩',
-    'NOK': 'kr',
-    'NZD': 'NZ$',
-    'INR': '₹',
-    'MXN': '$',
-    'BRL': 'R$',
-    'RUB': '₽',
-    'ZAR': 'R',
-    'AED': 'د.إ',
-    'MAD': 'د.م.‏',
-    'TRY': '₺',
-    'JOD': 'د.ا.‏',
-    'ISK': 'kr.',
-    'AZN': '₼',
-    'MYR': 'RM',
-    'OMR': '﷼',
-    'UGX': 'USh',
-    'NIO': 'C$'
-};
-
-// Function to format currency display
+// Currency display helpers come from the shared registry.
 const formatCurrencyDisplay = (currency) => {
-    const name = currencyNames[currency] || currency;
-    const symbol = currencySymbols[currency] || '';
+    const name = getCurrencyName(currency);
+    const symbol = registryCurrencySymbol(currency);
     return `${currency}(${name})${symbol}`;
 };
 
-// Function to format currency display for the trigger
 const formatCurrencyTriggerDisplay = (currency) => {
-    const symbol = currencySymbols[currency] || '';
-    return `${currency}(${symbol})`;
+    return `${currency}(${registryCurrencySymbol(currency)})`;
 };
-
 const convertCurrency = (price, fromCurrency) => {
     const numericPrice = parseFloat(price);
     if (isNaN(numericPrice)) {
@@ -318,7 +250,7 @@ const handleBackToExtras = () => {
     nextTick(() => window.scrollTo({ top: 0, behavior: 'instant' }));
 };
 
-// ── Browser back button support ─────────────────────────────────────
+// â”€â”€ Browser back button support â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Push history entries when stepping forward so the browser back button
 // navigates within the booking flow instead of leaving the page.
 const pushStepHistory = (step) => {
@@ -332,7 +264,7 @@ const onPopState = (event) => {
     } else if (target === 'results' && (bookingStep.value === 'extras' || bookingStep.value === 'checkout')) {
         handleBackToResults();
     } else if (!target && bookingStep.value !== 'results') {
-        // User pressed back past all our pushed states → go to results
+        // User pressed back past all our pushed states â†’ go to results
         handleBackToResults();
     }
 };
@@ -345,32 +277,12 @@ onUnmounted(() => window.removeEventListener('popstate', onPopState));
 
 const loadCurrencyData = async () => {
     await fetchExchangeRates();
-    try {
-        const response = await fetch('/currency.json');
-        const data = await response.json();
-        const fetchedSymbols = data.reduce((acc, curr) => {
-            acc[curr.code] = curr.symbol;
-            return acc;
-        }, {});
-        // Merge with existing currencySymbols, overriding any duplicates
-        Object.assign(currencySymbols, fetchedSymbols);
-
-        // Update map markers with correct currency once data is loaded
-        if (map) {
-            addMarkers();
-        }
-
-    } catch (error) {
-        console.error("Error loading currency symbols:", error);
+    if (map) {
+        addMarkers();
     }
 };
 
-const getCurrencySymbol = (code) => {
-    if (!currencySymbols) {
-        return '$';
-    }
-    return currencySymbols[code] || '$'; // Use fetched symbol or default to '$'
-};
+const getCurrencySymbol = (code) => registryCurrencySymbol(code);
 
 
 
@@ -2023,7 +1935,7 @@ watch(
                                                     class="w-full pl-6 pr-2 py-2.5 text-sm border border-gray-200 rounded-lg focus:border-[#245f7d] focus:ring-1 focus:ring-[#245f7d] outline-none price-range-input" />
                                             </div>
                                         </div>
-                                        <span class="text-gray-300 pb-2.5">–</span>
+                                        <span class="text-gray-300 pb-2.5">â€“</span>
                                         <div class="flex-1 min-w-0">
                                             <label class="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Max</label>
                                             <div class="relative">
@@ -2159,7 +2071,7 @@ watch(
                     </div>
                 </div>
 
-                <!-- Connector 1→2 -->
+                <!-- Connector 1â†’2 -->
                 <div class="stepper-line flex-1 mx-3">
                     <div class="stepper-line-fill" :style="{ width: '100%' }"></div>
                 </div>
@@ -2176,7 +2088,7 @@ watch(
                     </div>
                 </div>
 
-                <!-- Connector 2→3 -->
+                <!-- Connector 2â†’3 -->
                 <div class="stepper-line flex-1 mx-3">
                     <div class="stepper-line-fill" :style="{ width: bookingStep === 'checkout' ? '100%' : '0%' }"></div>
                 </div>
@@ -2209,7 +2121,7 @@ watch(
                     </div>
                     <div class="search-location-text">
                         <h1>Car Rental in {{ form.where || 'Selected Location' }}</h1>
-                        <p>{{ form.country || 'Morocco' }} • {{ vehicles?.total || clientFilteredVehicles?.length || 0
+                        <p>{{ form.country || 'Morocco' }} â€¢ {{ vehicles?.total || clientFilteredVehicles?.length || 0
                         }} cars available</p>
                     </div>
                 </div>
@@ -2312,7 +2224,7 @@ watch(
                                                 class="w-full pl-6 pr-2 py-2.5 text-sm border border-gray-200 rounded-lg focus:border-[#245f7d] focus:ring-1 focus:ring-[#245f7d] outline-none price-range-input" />
                                         </div>
                                     </div>
-                                    <span class="text-gray-300 pb-2.5">–</span>
+                                    <span class="text-gray-300 pb-2.5">â€“</span>
                                     <div class="flex-1 min-w-0">
                                         <label class="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Max</label>
                                         <div class="relative">
@@ -2644,7 +2556,7 @@ watch(
 .price-range-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .price-range-input { -moz-appearance: textfield; }
 
-/* Scroll-to-top floating button — brand teal gradient, cyan hover accent */
+/* Scroll-to-top floating button â€” brand teal gradient, cyan hover accent */
 .scroll-top-btn {
     position: fixed;
     right: clamp(16px, 3vw, 28px);

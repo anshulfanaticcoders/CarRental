@@ -10,6 +10,7 @@ use App\Notifications\AccountCreatedNotification;
 use App\Notifications\AccountCreatedUserConfirmation;
 use App\Providers\RouteServiceProvider;
 use App\Services\Affiliate\AffiliateQrCodeService;
+use App\Support\CurrencyRegistry;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,18 +51,10 @@ class RegisteredUserController extends Controller
             'postcode' => 'required|string|max:10',
             'city' => 'required|string|max:255',
             'country' => 'required|string|max:255',
-            'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
+            'currency' => ['required', 'string', 'max:8'],
         ]);
 
-        $currencyMap = [
-            '€' => 'EUR',
-            '$' => 'USD',
-            '£' => 'GBP',
-            'د.إ' => 'AED',
-            '₹' => 'INR',
-            '¥' => 'JPY',
-        ];
-        $validated['currency'] = $currencyMap[$validated['currency']] ?? strtoupper($validated['currency']);
+        $validated['currency'] = app(CurrencyRegistry::class)->normalize($validated['currency'], 'EUR');
 
         // Create user
         $user = User::create([

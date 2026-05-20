@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\CurrencyRegistry;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Stevebauman\Location\Facades\Location;
@@ -12,22 +13,8 @@ use Exception;
 
 class CurrencyDetectionService
 {
-    private array $countryCurrencyMap;
-
-    public function __construct()
+    public function __construct(private CurrencyRegistry $currencies)
     {
-        $this->countryCurrencyMap = [
-            'US' => 'USD', 'CA' => 'CAD', 'GB' => 'GBP', 'DE' => 'EUR', 'FR' => 'EUR',
-            'IT' => 'EUR', 'ES' => 'EUR', 'NL' => 'EUR', 'BE' => 'EUR', 'AT' => 'EUR',
-            'JP' => 'JPY', 'AU' => 'AUD', 'NZ' => 'NZD', 'CH' => 'CHF', 'SE' => 'SEK',
-            'NO' => 'NOK', 'DK' => 'DKK', 'SG' => 'SGD', 'HK' => 'HKD', 'IN' => 'INR',
-            'CN' => 'CNY', 'KR' => 'KRW', 'MX' => 'MXN', 'BR' => 'BRL', 'RU' => 'RUB',
-            'ZA' => 'ZAR', 'AE' => 'AED', 'SA' => 'SAR', 'IL' => 'ILS', 'TH' => 'THB',
-            'MY' => 'MYR', 'PH' => 'PHP', 'ID' => 'IDR', 'VN' => 'VND', 'EG' => 'EGP',
-            'QA' => 'QAR', 'KW' => 'KWD', 'BH' => 'BHD', 'OM' => 'OMR', 'JO' => 'JOD',
-            'PL' => 'PLN', 'CZ' => 'CZK', 'HU' => 'HUF', 'RO' => 'RON', 'BG' => 'BGN',
-            'TR' => 'TRY', 'UA' => 'UAH',
-        ];
     }
 
     public function detectCurrencyByIp(?string $ipAddress = null): array
@@ -45,7 +32,7 @@ class CurrencyDetectionService
 
             if ($location && $location->countryCode) {
                 $countryCode = strtoupper($location->countryCode);
-                $currency = $this->countryCurrencyMap[$countryCode] ?? 'USD';
+                $currency = $this->currencies->currencyForCountry($countryCode);
 
                 $result = [
                     'success' => true,
@@ -77,9 +64,9 @@ class CurrencyDetectionService
         try {
             $localeParts = explode('-', $locale);
             $countryCode = strtoupper(end($localeParts));
-            $currency = $this->countryCurrencyMap[$countryCode] ?? null;
+            $currency = $this->currencies->currencyForCountry($countryCode);
 
-            if ($currency) {
+            if ($this->currencies->isKnown($currency)) {
                 return [
                     'success' => true,
                     'currency' => $currency,
@@ -98,27 +85,9 @@ class CurrencyDetectionService
     public function getSupportedCurrencies(): array
     {
         return Cache::remember('supported_currencies', 86400, function () {
-            return [
-                'USD' => ['symbol' => '$', 'name' => 'US Dollar', 'code' => 'USD'],
-                'EUR' => ['symbol' => '€', 'name' => 'Euro', 'code' => 'EUR'],
-                'GBP' => ['symbol' => '£', 'name' => 'British Pound', 'code' => 'GBP'],
-                'JPY' => ['symbol' => '¥', 'name' => 'Japanese Yen', 'code' => 'JPY'],
-                'AUD' => ['symbol' => 'A$', 'name' => 'Australian Dollar', 'code' => 'AUD'],
-                'CAD' => ['symbol' => 'C$', 'name' => 'Canadian Dollar', 'code' => 'CAD'],
-                'CHF' => ['symbol' => 'Fr', 'name' => 'Swiss Franc', 'code' => 'CHF'],
-                'HKD' => ['symbol' => 'HK$', 'name' => 'Hong Kong Dollar', 'code' => 'HKD'],
-                'SGD' => ['symbol' => 'S$', 'name' => 'Singapore Dollar', 'code' => 'SGD'],
-                'SEK' => ['symbol' => 'kr', 'name' => 'Swedish Krona', 'code' => 'SEK'],
-                'KRW' => ['symbol' => '₩', 'name' => 'South Korean Won', 'code' => 'KRW'],
-                'NOK' => ['symbol' => 'kr', 'name' => 'Norwegian Krone', 'code' => 'NOK'],
-                'NZD' => ['symbol' => 'NZ$', 'name' => 'New Zealand Dollar', 'code' => 'NZD'],
-                'INR' => ['symbol' => '₹', 'name' => 'Indian Rupee', 'code' => 'INR'],
-                'MXN' => ['symbol' => 'Mex$', 'name' => 'Mexican Peso', 'code' => 'MXN'],
-                'BRL' => ['symbol' => 'R$', 'name' => 'Brazilian Real', 'code' => 'BRL'],
-                'RUB' => ['symbol' => '₽', 'name' => 'Russian Ruble', 'code' => 'RUB'],
-                'ZAR' => ['symbol' => 'R', 'name' => 'South African Rand', 'code' => 'ZAR'],
-                'AED' => ['symbol' => 'AED', 'name' => 'UAE Dirham', 'code' => 'AED'],
-            ];
+            return collect($this->currencies->publicPayload())
+                ->mapWithKeys(fn (array $currency) => [$currency['code'] => $currency])
+                ->all();
         });
     }
 

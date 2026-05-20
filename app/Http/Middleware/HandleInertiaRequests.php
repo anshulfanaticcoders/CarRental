@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Middleware;
 use App\Models\UserDocument;
+use App\Support\CurrencyRegistry;
 use Tighten\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
@@ -135,7 +136,14 @@ class HandleInertiaRequests extends Middleware
             ]);
         }
 
-        $sharedData['currency'] = session('currency', 'USD');
+        $currencyRegistry = app(CurrencyRegistry::class);
+        $supportedCurrencies = $currencyRegistry->selectableCodes();
+
+        $sharedData['currency'] = session('currency', $currencyRegistry->defaultCurrency());
+        $sharedData['currency_supported'] = $supportedCurrencies;
+        $sharedData['currency_meta'] = $currencyRegistry->publicPayload($supportedCurrencies);
+        $sharedData['currency_popular'] = $currencyRegistry->popularCodes($supportedCurrencies);
+        $sharedData['currency_base'] = $currencyRegistry->baseCurrency();
 
         $rawMarkup = config('services.pricing.provider_markup_percent');
         $markupPercent = is_numeric($rawMarkup) ? (float) $rawMarkup : 15.0;

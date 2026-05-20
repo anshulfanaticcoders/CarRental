@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingAmount;
 use App\Models\Vehicle;
+use App\Support\CurrencyRegistry;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,11 +41,7 @@ class OverviewController extends Controller
             ->count();
 
         $vendorCurrencyRaw = $request->user()->profile?->currency ?? 'EUR';
-        $currencyMap = [
-            '€' => 'EUR', '$' => 'USD', '£' => 'GBP',
-            'د.إ' => 'AED', '₹' => 'INR', '¥' => 'JPY',
-        ];
-        $currency = $currencyMap[$vendorCurrencyRaw] ?? strtoupper($vendorCurrencyRaw);
+        $currency = app(CurrencyRegistry::class)->normalize($vendorCurrencyRaw, 'EUR');
 
         $totalRevenue = (float) BookingAmount::whereIn('booking_id', $vendorBookingIds)
             ->sum('vendor_total_amount');

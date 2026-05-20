@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
@@ -6,6 +6,7 @@ import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
 import carIcon from '../../../../assets/carIcon.svg';
 import { getCurrentInstance } from 'vue';
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
@@ -46,25 +47,25 @@ const getStatusBadge = (status) => {
       bg: 'bg-amber-50',
       text: 'text-amber-700',
       border: 'border-amber-200',
-      icon: '○'
+      icon: 'â—‹'
     },
     confirmed: {
       bg: 'bg-emerald-50',
       text: 'text-emerald-700',
       border: 'border-emerald-200',
-      icon: '✓'
+      icon: 'âœ“'
     },
     completed: {
       bg: 'bg-blue-50',
       text: 'text-blue-700',
       border: 'border-blue-200',
-      icon: '●'
+      icon: 'â—'
     },
     cancelled: {
       bg: 'bg-rose-50',
       text: 'text-rose-700',
       border: 'border-rose-200',
-      icon: '✕'
+      icon: 'âœ•'
     }
   };
 
@@ -108,16 +109,7 @@ const formatTime = (timeString) => {
   return `${formattedHour}:${minutes} ${ampm}`;
 };
 
-const getCurrencySymbol = (currency) => {
-  const symbols = {
-    'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
-    'AUD': 'A$', 'CAD': 'C$', 'CHF': 'Fr', 'HKD': 'HK$',
-    'SGD': 'S$', 'SEK': 'kr', 'KRW': '₩', 'NOK': 'kr',
-    'NZD': 'NZ$', 'INR': '₹', 'MXN': 'Mex$', 'ZAR': 'R',
-    'AED': 'AED', 'MAD': 'د.م.', 'TRY': '₺'
-  };
-  return symbols[currency] || '$';
-};
+const getCurrencySymbol = (currency) => registryCurrencySymbol(currency);
 
 const getBookingCurrency = (booking) => {
   return booking.amounts?.booking_currency || booking.booking_currency || 'EUR';
@@ -444,9 +436,9 @@ const getCardDelay = (index) => {
                   <img :src="carIcon" alt="" class="w-5 h-5 opacity-60" />
                   <span class="capitalize">{{ booking.vehicle.transmission }}</span>
                 </div>
-                <span class="text-gray-300">•</span>
+                <span class="text-gray-300">â€¢</span>
                 <span class="capitalize">{{ booking.vehicle.fuel }}</span>
-                <span class="text-gray-300">•</span>
+                <span class="text-gray-300">â€¢</span>
                 <span>{{ booking.vehicle.seating_capacity }} {{ _t('customerbooking', 'seats_suffix') }}</span>
               </div>
 

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <MyProfileLayout>
     <div class="p-0 md:p-0 lg:p-6 space-y-6">
       <!-- Enhanced Header -->
@@ -275,6 +275,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Badge } from '@/Components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/Components/ui/avatar';
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 import {
   Table,
   TableHeader,
@@ -332,29 +333,7 @@ const formatDate = (date) => {
 }
 
 // Get currency symbol
-const getCurrencySymbol = (currency) => {
-  const symbols = {
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥',
-    'AUD': 'A$',
-    'CAD': 'C$',
-    'CHF': 'Fr',
-    'HKD': 'HK$',
-    'SGD': 'S$',
-    'SEK': 'kr',
-    'KRW': '₩',
-    'NOK': 'kr',
-    'NZD': 'NZ$',
-    'INR': '₹',
-    'MXN': 'Mex$',
-    'ZAR': 'R',
-    'AED': 'AED',
-    'MAD': 'MAD'
-  };
-  return symbols[currency] || currency || '$';
-};
+const getCurrencySymbol = (currency) => registryCurrencySymbol(currency);
 
 const getVendorCurrency = (payment) => {
   return payment.booking?.amounts?.vendor_currency

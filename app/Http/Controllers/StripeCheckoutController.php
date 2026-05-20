@@ -16,6 +16,7 @@ use App\Services\OfferService;
 use App\Services\PriceVerificationService;
 use App\Services\StripeBookingService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
+use App\Support\CurrencyRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -361,7 +362,7 @@ class StripeCheckoutController extends Controller
             ?: ($vehicle['location'] ?? null);
 
         // Only fall back to the pickup-level coords for the PICKUP leg. For the dropoff leg,
-        // leave lat/lng null if the provider didn't give us a distinct dropoff — so the
+        // leave lat/lng null if the provider didn't give us a distinct dropoff â€” so the
         // BookingDetails map can correctly distinguish round-trip from one-way.
         if ($isDropoff) {
             $latitude = $this->normalizeLocationCoordinate($vehicle['dropoff_latitude'] ?? null)
@@ -552,7 +553,7 @@ class StripeCheckoutController extends Controller
                         $hours = $internalVehicle->getOperatingHoursForDay($pickupDay);
                         $dayName = VehicleOperatingHour::DAY_NAMES[$pickupDay] ?? 'this day';
                         $msg = $hours && $hours->is_open
-                            ? "Pickup is not available on {$dayName} at {$validated['pickup_time']}. Operating hours: {$hours->open_time}–{$hours->close_time}."
+                            ? "Pickup is not available on {$dayName} at {$validated['pickup_time']}. Operating hours: {$hours->open_time}â€“{$hours->close_time}."
                             : "This vehicle is not available for pickup on {$dayName}s.";
 
                         return response()->json(['error' => $msg], 422);
@@ -562,7 +563,7 @@ class StripeCheckoutController extends Controller
                         $hours = $internalVehicle->getOperatingHoursForDay($returnDay);
                         $dayName = VehicleOperatingHour::DAY_NAMES[$returnDay] ?? 'this day';
                         $msg = $hours && $hours->is_open
-                            ? "Return is not available on {$dayName} at {$validated['dropoff_time']}. Operating hours: {$hours->open_time}–{$hours->close_time}."
+                            ? "Return is not available on {$dayName} at {$validated['dropoff_time']}. Operating hours: {$hours->open_time}â€“{$hours->close_time}."
                             : "This vehicle is not available for return on {$dayName}s.";
 
                         return response()->json(['error' => $msg], 422);
@@ -930,7 +931,7 @@ class StripeCheckoutController extends Controller
             );
             $vehicleProviderPayload = $this->resolveVehicleLegacyPayload($validated['vehicle'] ?? []);
 
-            // Build the FULL metadata (no Stripe key limit here — stored in our DB)
+            // Build the FULL metadata (no Stripe key limit here â€” stored in our DB)
             $fullMetadata = [
                 // Core
                 'user_id' => $request->user()?->id,
@@ -1099,7 +1100,7 @@ class StripeCheckoutController extends Controller
                 'fuel_type' => $validated['vehicle']['fuel_type'] ?? $validated['vehicle']['fuel'] ?? ($validated['vehicle']['specs']['fuel'] ?? null),
                 'mileage' => $validated['vehicle']['mileage'] ?? ($validated['vehicle']['policies']['mileage_limit_km'] ?? null),
                 'transmission' => $validated['vehicle']['transmission'] ?? ($validated['vehicle']['specs']['transmission'] ?? null),
-                // Store full metadata here — StripeBookingService merges this back
+                // Store full metadata here â€” StripeBookingService merges this back
                 'full_metadata' => array_filter($fullMetadata, fn ($v) => $v !== null && $v !== ''),
             ];
 
@@ -1516,7 +1517,7 @@ class StripeCheckoutController extends Controller
         $extrasTotalRaw = $this->resolveExtrasTotal($validated['detailed_extras'] ?? [], $days);
 
         // Protection amount: provider-priced add-on (net).
-        // Locauto: daily rate × days. Adobe: total amount (PLI + selected protections).
+        // Locauto: daily rate Ã— days. Adobe: total amount (PLI + selected protections).
         $providerProtectionTotal = 0.0;
         if ($vehicleSource === 'locauto_rent') {
             $protectionDaily = (float) ($validated['protection_amount'] ?? 0);
@@ -1911,20 +1912,13 @@ class StripeCheckoutController extends Controller
      */
     private function toStripeMinorUnits(float $amount, string $currencyCode): int
     {
-        $code = strtoupper(trim($currencyCode));
+        $minorUnit = app(CurrencyRegistry::class)->minorUnit($currencyCode);
 
-        $zeroDecimal = [
-            'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA',
-            'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
-        ];
-        $threeDecimal = ['BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND'];
-
-        if (in_array($code, $zeroDecimal, true)) {
+        if ($minorUnit === 0) {
             return (int) round($amount);
         }
-        if (in_array($code, $threeDecimal, true)) {
-            // Stripe requires three-decimal currencies be rounded to the nearest 10
-            // (i.e. last digit of the minor-unit integer must be 0).
+
+        if ($minorUnit === 3) {
             return (int) (round($amount * 100) * 10);
         }
 
@@ -1933,40 +1927,7 @@ class StripeCheckoutController extends Controller
 
     private function normalizeCurrencyCode($currency): string
     {
-        $value = $currency ?? 'EUR';
-        $raw = trim((string) $value);
-        if ($raw === '') {
-            return 'EUR';
-        }
-
-        $symbolMap = [
-            "\u{20AC}" => 'EUR',
-            "\u{00A3}" => 'GBP',
-            "\u{20B9}" => 'INR',
-            "\u{20BD}" => 'RUB',
-            'A$' => 'AUD',
-            '$' => 'USD',
-            'د.إ' => 'AED',
-        ];
-
-        if (array_key_exists($raw, $symbolMap)) {
-            return $symbolMap[$raw];
-        }
-
-        $upper = strtoupper($raw);
-        $aliasMap = [
-            'EURO' => 'EUR',
-            'TL' => 'TRY',
-            'US$' => 'USD',
-            'USD$' => 'USD',
-            'RMB' => 'CNY',
-        ];
-
-        if (array_key_exists($upper, $aliasMap)) {
-            return $aliasMap[$upper];
-        }
-
-        return $upper;
+        return app(CurrencyRegistry::class)->normalize((string) ($currency ?? ''), 'EUR');
     }
 
     /**
@@ -2075,7 +2036,7 @@ class StripeCheckoutController extends Controller
             // Authz: only block when an authenticated user tries to view a booking
             // that belongs to a different registered user. Anonymous visitors hitting
             // the Stripe-issued success_url (with the unguessable session_id) are by
-            // design — guest checkouts and just-finished payments must reach this
+            // design â€” guest checkouts and just-finished payments must reach this
             // page without being bounced to login.
             $bookingOwnerId = $booking->customer?->user_id;
             $authUserId = auth()->id();

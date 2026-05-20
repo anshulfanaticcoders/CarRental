@@ -1,6 +1,7 @@
-<script setup>
+﻿<script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Check, ChevronDown, Globe2, Search, X } from 'lucide-vue-next';
+import { getCurrencyFlagCountry, getCurrencyMeta, selectableCurrencyCodes } from '@/utils/currencyRegistry';
 
 const props = defineProps({
     selectedCurrency: { type: String, default: 'EUR' },
@@ -14,51 +15,19 @@ const emit = defineEmits(['select']);
 
 const POPULAR = ['EUR', 'USD', 'GBP', 'INR', 'AED', 'AUD', 'CAD', 'JPY'];
 
-const CURRENCY_META = {
-    USD: { symbol: '$', name: 'US Dollar', flagCode: 'us' },
-    EUR: { symbol: '€', name: 'Euro', flagCode: 'eu' },
-    GBP: { symbol: '£', name: 'British Pound', flagCode: 'gb' },
-    JPY: { symbol: '¥', name: 'Japanese Yen', flagCode: 'jp' },
-    AUD: { symbol: 'A$', name: 'Australian Dollar', flagCode: 'au' },
-    CAD: { symbol: 'CA$', name: 'Canadian Dollar', flagCode: 'ca' },
-    CHF: { symbol: 'CHF', name: 'Swiss Franc', flagCode: 'ch' },
-    CNH: { symbol: '¥', name: 'Chinese Yuan (Offshore)', flagCode: 'cn' },
-    HKD: { symbol: 'HK$', name: 'Hong Kong Dollar', flagCode: 'hk' },
-    SGD: { symbol: 'S$', name: 'Singapore Dollar', flagCode: 'sg' },
-    SEK: { symbol: 'kr', name: 'Swedish Krona', flagCode: 'se' },
-    KRW: { symbol: '₩', name: 'South Korean Won', flagCode: 'kr' },
-    NOK: { symbol: 'kr', name: 'Norwegian Krone', flagCode: 'no' },
-    NZD: { symbol: 'NZ$', name: 'New Zealand Dollar', flagCode: 'nz' },
-    INR: { symbol: '₹', name: 'Indian Rupee', flagCode: 'in' },
-    MXN: { symbol: 'Mex$', name: 'Mexican Peso', flagCode: 'mx' },
-    BRL: { symbol: 'R$', name: 'Brazilian Real', flagCode: 'br' },
-    RUB: { symbol: '₽', name: 'Russian Ruble', flagCode: 'ru' },
-    ZAR: { symbol: 'R', name: 'South African Rand', flagCode: 'za' },
-    AED: { symbol: 'AED', name: 'UAE Dirham', flagCode: 'ae' },
-    MAD: { symbol: 'MAD', name: 'Moroccan Dirham', flagCode: 'ma' },
-    TRY: { symbol: '₺', name: 'Turkish Lira', flagCode: 'tr' },
-    JOD: { symbol: 'JD', name: 'Jordanian Dinar', flagCode: 'jo' },
-    ISK: { symbol: 'kr', name: 'Icelandic Krona', flagCode: 'is' },
-    AZN: { symbol: '₼', name: 'Azerbaijani Manat', flagCode: 'az' },
-    MYR: { symbol: 'RM', name: 'Malaysian Ringgit', flagCode: 'my' },
-    OMR: { symbol: 'OMR', name: 'Omani Rial', flagCode: 'om' },
-    UGX: { symbol: 'USh', name: 'Ugandan Shilling', flagCode: 'ug' },
-    NIO: { symbol: 'C$', name: 'Nicaraguan Cordoba', flagCode: 'ni' },
-};
-
 const root = ref(null);
 const searchInput = ref(null);
 const open = ref(false);
 const query = ref('');
 
-const supported = computed(() => props.supportedCurrencies?.length ? props.supportedCurrencies : Object.keys(CURRENCY_META));
+const supported = computed(() => props.supportedCurrencies?.length ? props.supportedCurrencies : selectableCurrencyCodes);
 
-const currencyMeta = (code) => CURRENCY_META[code] || { symbol: code, name: code, flagCode: null };
+const currencyMeta = (code) => getCurrencyMeta(code);
 const flagUrl = (code, size = 40) => {
-    const flagCode = currencyMeta(code).flagCode;
+    const flagCode = getCurrencyFlagCountry(code);
     return flagCode ? `https://flagcdn.com/w${size}/${flagCode}.png` : null;
 };
-const flagFallback = (code) => (currencyMeta(code).flagCode || code.slice(0, 2)).toUpperCase();
+const flagFallback = (code) => (getCurrencyFlagCountry(code) || String(code).slice(0, 2)).toUpperCase();
 
 const selectedMeta = computed(() => currencyMeta(props.selectedCurrency));
 

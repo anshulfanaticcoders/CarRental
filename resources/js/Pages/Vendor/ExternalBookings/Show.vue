@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <MyProfileLayout>
         <div class="space-y-5">
             <!-- Back + Header -->
@@ -372,6 +372,7 @@ import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import BookingLocationBlock from '@/Components/Booking/BookingLocationBlock.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 import {
     ArrowLeft, Car, MapPin, Mail, Phone, Plane,
     User as UserIcon, FileText, Receipt, Globe,
@@ -387,16 +388,7 @@ const props = defineProps({
 const isLoading = ref(false);
 
 // --- Currency helpers ---
-const getCurrencySymbol = (currency) => {
-    const symbols = {
-        'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
-        'AUD': 'A$', 'CAD': 'C$', 'CHF': 'Fr', 'HKD': 'HK$',
-        'SGD': 'S$', 'SEK': 'kr', 'KRW': '₩', 'NOK': 'kr',
-        'NZD': 'NZ$', 'INR': '₹', 'MXN': 'Mex$', 'ZAR': 'R',
-        'AED': 'AED', 'MAD': 'MAD',
-    };
-    return symbols[currency] || currency || '$';
-};
+const getCurrencySymbol = (currency) => registryCurrencySymbol(currency);
 
 const currSym = computed(() => getCurrencySymbol(props.booking.currency));
 

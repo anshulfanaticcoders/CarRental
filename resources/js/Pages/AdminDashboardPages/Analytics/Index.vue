@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
@@ -8,6 +8,7 @@ import { LineChart } from '@/Components/ui/chart-line';
 import { BarChart } from '@/Components/ui/chart-bar';
 import PieChart from '@/Components/ui/chart-pie/PieChart.vue';
 import { CalendarDays, TrendingUp, Wallet, BadgeCheck, WalletCards, AlertTriangle } from 'lucide-vue-next';
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const props = defineProps({
   filters: Object,
@@ -43,28 +44,7 @@ const formatNumber = (value) => {
   }).format(Number(value || 0));
 };
 
-const getCurrencySymbol = (currency) => {
-  const symbols = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    JPY: '¥',
-    AUD: 'A$',
-    CAD: 'C$',
-    CHF: 'Fr',
-    HKD: 'HK$',
-    SGD: 'S$',
-    SEK: 'kr',
-    KRW: '₩',
-    NOK: 'kr',
-    NZD: 'NZ$',
-    INR: '₹',
-    MXN: 'Mex$',
-    ZAR: 'R',
-    AED: 'AED',
-  };
-  return symbols[currency] || '$';
-};
+const getCurrencySymbol = (currency) => registryCurrencySymbol(currency);
 
 const formatCurrency = (value) => `${getCurrencySymbol(props.currency)}${formatNumber(value)}`;
 

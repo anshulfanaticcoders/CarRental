@@ -1,5 +1,9 @@
-import { computed, ref } from 'vue';
+﻿import { ref } from 'vue';
 import { useCurrency } from './useCurrency';
+import {
+    getCurrencySymbol as registryCurrencySymbol,
+    normalizeCurrencyCode as registryNormalizeCurrencyCode,
+} from '@/utils/currencyRegistry';
 
 const exchangeRates = ref(null);
 const loading = ref(false);
@@ -8,77 +12,8 @@ let fetchPromise = null;
 export function useCurrencyConversion() {
     const { selectedCurrency } = useCurrency();
 
-    // Currency symbols mapping
-    const currencySymbols = {
-        'USD': '$',
-        'EUR': '€',
-        'GBP': '£',
-        'JPY': '¥',
-        'AUD': 'A$',
-        'CAD': 'C$',
-        'CHF': 'Fr',
-        'CNH': '¥',
-        'HKD': 'HK$',
-        'SGD': 'S$',
-        'SEK': 'kr',
-        'KRW': '₩',
-        'NOK': 'kr',
-        'NZD': 'NZ$',
-        'INR': '₹',
-        'MXN': '$',
-        'BRL': 'R$',
-        'RUB': '₽',
-        'ZAR': 'R',
-        'AED': 'د.إ',
-        'MAD': 'د.م.',
-        'TRY': '₺',
-        'JOD': 'د.ا.',
-        'ISK': 'kr.',
-        'AZN': '₼',
-        'MYR': 'RM',
-        'OMR': '﷼',
-        'UGX': 'USh',
-        'NIO': 'C$',
-        'ALL': 'L'
-    };
+    const normalizeCurrencyCode = (currency) => registryNormalizeCurrencyCode(currency, 'EUR');
 
-    const normalizeCurrencyCode = (currency) => {
-        const raw = `${currency ?? ''}`.trim();
-        if (!raw) return 'USD';
-
-        const symbolMap = {
-            '$': 'USD',
-            '€': 'EUR',
-            '£': 'GBP',
-            '¥': 'JPY',
-            '₹': 'INR',
-            '₽': 'RUB',
-            '₺': 'TRY',
-            'د.إ': 'AED',
-            'A$': 'AUD',
-            'C$': 'CAD',
-            'S$': 'SGD',
-            'HK$': 'HKD',
-            'NZ$': 'NZD',
-            'RM': 'MYR',
-            'Fr': 'CHF'
-        };
-
-        if (symbolMap[raw]) return symbolMap[raw];
-
-        const upper = raw.toUpperCase();
-        const aliasMap = {
-            EURO: 'EUR',
-            TL: 'TRY',
-            'US$': 'USD',
-            'USD$': 'USD',
-            RMB: 'CNY',
-        };
-
-        return aliasMap[upper] || upper;
-    };
-
-    // Fetch exchange rates
     const fetchExchangeRates = async () => {
         if (exchangeRates.value) return exchangeRates.value;
         if (fetchPromise) return fetchPromise;
@@ -106,7 +41,6 @@ export function useCurrencyConversion() {
         return fetchPromise;
     };
 
-    // Convert price from one currency to another
     const convertPrice = (price, fromCurrency) => {
         const numericPrice = parseFloat(price);
         if (isNaN(numericPrice)) return 0;
@@ -118,7 +52,6 @@ export function useCurrencyConversion() {
         const fromCurrencyCode = normalizeCurrencyCode(fromCurrency);
         const toCurrencyCode = normalizeCurrencyCode(selectedCurrency.value);
 
-        // If same currency, no conversion needed
         if (fromCurrencyCode === toCurrencyCode) {
             return numericPrice;
         }
@@ -130,20 +63,17 @@ export function useCurrencyConversion() {
             return (numericPrice / rateFrom) * rateTo;
         }
 
-        return numericPrice; // Fallback to original price
+        return numericPrice;
     };
 
-    // Get currency symbol for selected currency
     const getSelectedCurrencySymbol = () => {
-        if (!selectedCurrency.value) return '$';
-        return currencySymbols[selectedCurrency.value.toUpperCase()] || selectedCurrency.value;
+        if (!selectedCurrency.value) return registryCurrencySymbol('EUR');
+        return registryCurrencySymbol(selectedCurrency.value);
     };
 
-    // Get currency symbol for a specific currency code
     const getCurrencySymbol = (currencyCode) => {
-        if (!currencyCode) return '$';
-        const normalized = normalizeCurrencyCode(currencyCode);
-        return currencySymbols[normalized] || normalized;
+        if (!currencyCode) return registryCurrencySymbol('EUR');
+        return registryCurrencySymbol(currencyCode);
     };
 
     return {
@@ -154,6 +84,6 @@ export function useCurrencyConversion() {
         getSelectedCurrencySymbol,
         getCurrencySymbol,
         normalizeCurrencyCode,
-        fetchExchangeRates
+        fetchExchangeRates,
     };
 }

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Head, Link } from '@inertiajs/vue3'
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue'
@@ -8,6 +8,7 @@ import BookingExtrasStep from '@/Components/BookingExtras/BookingExtrasStep.vue'
 import BookingCheckoutStep from '@/Components/BookingCheckoutStep.vue'
 import OfferMediaSummary from '@/Components/Skyscanner/OfferMediaSummary.vue'
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion'
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry'
 
 type Luggage = {
   small?: number | null
@@ -260,23 +261,12 @@ const formatDateTime = (date?: string | null, time?: string | null) => {
 
 const formatLocationMeta = (details: LocationDetails) => {
   const parts = [details.location_type, details.iata, details.country_code].filter(Boolean)
-  return parts.length > 0 ? parts.join(' • ') : 'Location details available'
+  return parts.length > 0 ? parts.join(' â€¢ ') : 'Location details available'
 }
 
 const quotePrice = (quote: Quote) => formatDisplayAmount(quote.pricing?.total_price, quote.pricing?.currency || props.offerResults.search?.currency)
 
-const resolveCurrencySymbol = (currency: string) => {
-  const symbolMap: Record<string, string> = {
-    EUR: '€',
-    USD: '$',
-    GBP: '£',
-    AED: 'د.إ',
-    MAD: 'د.م',
-    INR: '₹',
-  }
-
-  return symbolMap[currency] ?? currency
-}
+const resolveCurrencySymbol = (currency: string) => registryCurrencySymbol(currency)
 
 const startBooking = (quoteId: string) => {
   if (isExpired.value) {
@@ -384,14 +374,14 @@ onMounted(() => {
           <p>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
             <span>{{ [pickupLocation.city, pickupLocation.country].filter(Boolean).join(', ') || 'Pickup location' }}</span>
-            <span class="or-hero-sep">•</span>
+            <span class="or-hero-sep">â€¢</span>
             <span>{{ displayedQuotes.length }} {{ displayedQuotes.length === 1 ? 'offer' : 'offers' }} available</span>
           </p>
         </div>
         <div class="or-hero-dates">
           <div class="or-date-card">
             <span class="or-date-label">Pickup</span>
-            <span class="or-date-value">{{ search.pickup_date || '—' }}</span>
+            <span class="or-date-value">{{ search.pickup_date || 'â€”' }}</span>
             <span class="or-date-time">{{ search.pickup_time || '' }}</span>
           </div>
           <div class="or-date-arrow" aria-hidden="true">
@@ -399,7 +389,7 @@ onMounted(() => {
           </div>
           <div class="or-date-card">
             <span class="or-date-label">Return</span>
-            <span class="or-date-value">{{ search.dropoff_date || '—' }}</span>
+            <span class="or-date-value">{{ search.dropoff_date || 'â€”' }}</span>
             <span class="or-date-time">{{ search.dropoff_time || '' }}</span>
           </div>
           <div class="or-days-pill">{{ currentBookingContext?.number_of_days || 1 }} days</div>
@@ -479,7 +469,7 @@ onMounted(() => {
                 <div class="or-spec-grid">
                   <div class="or-spec">
                     <div class="or-spec-icon or-icon-fuel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22V4a2 2 0 012-2h8a2 2 0 012 2v18M3 22h12M6 7h6M18 8l3-3v11a2 2 0 01-4 0V8a2 2 0 012-2"/></svg></div>
-                    <div class="or-spec-text"><span>Fuel</span><strong>{{ vehicle.fuel_type || '—' }}</strong></div>
+                    <div class="or-spec-text"><span>Fuel</span><strong>{{ vehicle.fuel_type || 'â€”' }}</strong></div>
                   </div>
                   <div class="or-spec">
                     <div class="or-spec-icon or-icon-ac"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg></div>
@@ -495,7 +485,7 @@ onMounted(() => {
                   </div>
                   <div class="or-spec">
                     <div class="or-spec-icon or-icon-trans"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8M6 8h12a2 2 0 012 2v6"/></svg></div>
-                    <div class="or-spec-text"><span>Transmission</span><strong>{{ vehicle.transmission || '—' }}</strong></div>
+                    <div class="or-spec-text"><span>Transmission</span><strong>{{ vehicle.transmission || 'â€”' }}</strong></div>
                   </div>
                   <div class="or-spec">
                     <div class="or-spec-icon or-icon-lug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="7" width="14" height="13" rx="2"/><path d="M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M9 12v5M15 12v5"/></svg></div>
@@ -603,8 +593,8 @@ onMounted(() => {
                     <h4>{{ offer.vehicle?.display_name || 'Vehicle offer' }}</h4>
                     <p>
                       <span v-if="offer.vehicle?.sipp_code">{{ offer.vehicle.sipp_code }}</span>
-                      <span v-if="offer.vehicle?.transmission"> · {{ offer.vehicle.transmission }}</span>
-                      <span v-if="offer.vehicle?.fuel_type"> · {{ offer.vehicle.fuel_type }}</span>
+                      <span v-if="offer.vehicle?.transmission"> Â· {{ offer.vehicle.transmission }}</span>
+                      <span v-if="offer.vehicle?.fuel_type"> Â· {{ offer.vehicle.fuel_type }}</span>
                     </p>
                   </div>
                   <div class="or-alt-price">
@@ -667,7 +657,7 @@ onMounted(() => {
 
               <p class="or-summary-note">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                Secure checkout · Instant confirmation
+                Secure checkout Â· Instant confirmation
               </p>
             </div>
           </aside>
@@ -752,7 +742,7 @@ onMounted(() => {
   min-height: 60vh;
 }
 
-/* ── Stepper bar ─────────────────────────── */
+/* â”€â”€ Stepper bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .or-stepper-bar {
   background: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
   border-bottom: 1px solid #e2e8f0;
@@ -771,7 +761,7 @@ onMounted(() => {
 .or-step-line { height: 3px; background: #e2e8f0; border-radius: 9999px; overflow: hidden; }
 .or-step-line-fill { height: 100%; background: linear-gradient(90deg, #059669, #10b981); border-radius: 9999px; transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
 
-/* ── Hero header ─────────────────────────── */
+/* â”€â”€ Hero header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .or-hero {
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   position: relative;
@@ -871,7 +861,7 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-/* ── Body ──────────────────────────────── */
+/* â”€â”€ Body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .or-body { padding: 32px 0 48px; }
 .or-body-inner { display: flex; flex-direction: column; gap: 20px; }
 
@@ -931,7 +921,7 @@ onMounted(() => {
 }
 .or-col-main { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 
-/* ── Vehicle hero card ─────────────────── */
+/* â”€â”€ Vehicle hero card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .or-vehicle {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -1074,7 +1064,7 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-/* ── Buttons ─────────────────────────── */
+/* â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .or-btn-primary {
   display: inline-flex;
   align-items: center;
@@ -1119,7 +1109,7 @@ onMounted(() => {
 .or-btn-ghost svg { width: 14px; height: 14px; transition: transform var(--or-dur) var(--or-ease); }
 .or-btn-ghost:hover:not(:disabled) svg { transform: translateX(2px); }
 
-/* ── Panels (Trip, Offices, Alternatives) ── */
+/* â”€â”€ Panels (Trip, Offices, Alternatives) â”€â”€ */
 .or-panel {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -1249,7 +1239,7 @@ onMounted(() => {
 
 .or-empty { font-size: 13px; color: #94a3b8; text-align: center; padding: 24px; background: #f8fafc; border: 1px dashed #e2e8f0; border-radius: 12px; margin: 0; }
 
-/* ── Price summary sidebar ─────────────── */
+/* â”€â”€ Price summary sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .or-summary {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -1322,7 +1312,7 @@ onMounted(() => {
 }
 .or-summary-note svg { width: 13px; height: 13px; color: #10b981; }
 
-/* ── Mobile ─────────────────────────── */
+/* â”€â”€ Mobile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 1023px) {
   .or-hero { padding: 22px 0 30px; }
   .or-hero-grid { flex-direction: column; align-items: flex-start; }

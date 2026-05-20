@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\CurrencyRate;
+use App\Support\CurrencyRegistry;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -15,16 +16,20 @@ class RefreshCurrencyRates extends Command
 
     public function handle(): int
     {
-        $baseCurrency = strtoupper($this->option('base') ?: config('currency.base_currency', 'USD'));
-        $supported = array_unique(array_map('strtoupper', config('currency.supported_currencies', [])));
+        $registry = app(CurrencyRegistry::class);
+        $baseCurrency = $registry->normalize($this->option('base') ?: $registry->baseCurrency(), 'EUR');
+        $supported = array_unique(array_map('strtoupper', $registry->rateSyncCodes()));
 
         if (empty($supported)) {
-            $this->error('No supported currencies configured.');
+            $this->error('No rate-sync currencies configured.');
             return Command::FAILURE;
         }
 
         $targets = array_values(array_filter($supported, fn ($code) => $code !== $baseCurrency));
         $now = Carbon::now();
+
+        $synced = 0;
+        $skipped = 0;
 
         foreach ($targets as $targetCurrency) {
             $url = "https://hexarate.paikama.co/api/rates/{$baseCurrency}/{$targetCurrency}/latest";
@@ -37,6 +42,7 @@ class RefreshCurrencyRates extends Command
                         'target' => $targetCurrency,
                         'status' => $response->status(),
                     ]);
+                    $skipped++;
                     continue;
                 }
 
@@ -50,6 +56,7 @@ class RefreshCurrencyRates extends Command
                         'target' => $targetCurrency,
                         'response' => $data,
                     ]);
+                    $skipped++;
                     continue;
                 }
 
@@ -62,16 +69,18 @@ class RefreshCurrencyRates extends Command
                     'fetched_at' => Carbon::parse($timestamp),
                     'updated_at' => $now,
                 ]);
+                $synced++;
             } catch (\Throwable $e) {
                 Log::warning('HexaRate request error', [
                     'base' => $baseCurrency,
                     'target' => $targetCurrency,
                     'error' => $e->getMessage(),
                 ]);
+                $skipped++;
             }
         }
 
-        $this->info('Currency rates refresh complete.');
+        $this->info("Currency rates refresh complete. Synced: {$synced}. Skipped: {$skipped}.");
 
         return Command::SUCCESS;
     }

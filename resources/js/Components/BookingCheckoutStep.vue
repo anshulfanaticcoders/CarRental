@@ -1,8 +1,9 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted, unref, watch } from 'vue';
 import StripeCheckoutButton from './StripeCheckoutButton.vue';
 import { usePage } from '@inertiajs/vue3';
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
+import { normalizeCurrencyCode as registryNormalizeCurrencyCode } from '@/utils/currencyRegistry';
 import {
     getSearchVehicleLegacyPayload,
     resolveSearchVehicleDisplayName,
@@ -78,16 +79,16 @@ const selectedPaymentMethod = ref('card');
 const availablePaymentMethods = computed(() => {
     const currency = checkoutCurrency.value;
     const methods = [
-        { id: 'card', name: 'Credit / Debit Card', icon: '💳', logos: ['visa', 'mastercard', 'amex', 'applepay', 'googlepay'] }
+        { id: 'card', name: 'Credit / Debit Card', icon: 'ðŸ’³', logos: ['visa', 'mastercard', 'amex', 'applepay', 'googlepay'] }
     ];
 
     if (currency === 'EUR') {
-        methods.push({ id: 'bancontact', name: 'Bancontact', icon: '🇧🇪', logos: ['bancontact'] });
+        methods.push({ id: 'bancontact', name: 'Bancontact', icon: 'ðŸ‡§ðŸ‡ª', logos: ['bancontact'] });
     }
 
     const klarnaCurrencies = ['EUR', 'USD', 'GBP', 'DKK', 'NOK', 'SEK', 'CHF'];
     if (klarnaCurrencies.includes(currency)) {
-        methods.push({ id: 'klarna', name: 'Klarna', icon: '🎯', logos: ['klarna'] });
+        methods.push({ id: 'klarna', name: 'Klarna', icon: 'ðŸŽ¯', logos: ['klarna'] });
     }
 
     return methods;
@@ -176,28 +177,9 @@ const isGreenMotion = computed(() => {
     return source === 'greenmotion' || source === 'usave';
 });
 
-const isRenteon = computed(() => {
-    return props.vehicle?.source === 'renteon';
-});
-
-const providerMarkupRate = computed(() => {
-    const rawRate = parseFloat(page.props.provider_markup_rate ?? '');
-    if (Number.isFinite(rawRate) && rawRate >= 0) return rawRate;
-    const rawPercent = parseFloat(page.props.provider_markup_percent ?? '');
-    if (Number.isFinite(rawPercent) && rawPercent >= 0) return rawPercent / 100;
-    return 0.15;
-});
-
 const effectivePaymentPercentage = computed(() => {
-    const grand = parseFloat(props.totals?.grandTotal || 0);
-    const payable = parseFloat(props.totals?.payableAmount || 0);
-    if (Number.isFinite(grand) && grand > 0 && Number.isFinite(payable) && payable > 0) {
-        return Math.round((payable / grand) * 10000) / 100;
-    }
-
-    if (isRenteon.value) return Math.round(providerMarkupRate.value * 10000) / 100;
-    // Default to 15% if totals are still loading, to prevent "Pay 0" bug
-    return props.paymentPercentage || 15;
+    const percent = props.paymentPercentage && props.paymentPercentage > 0 ? props.paymentPercentage : 15;
+    return Math.round(percent * 100) / 100;
 });
 
 const isInternal = computed(() => {
@@ -208,27 +190,7 @@ const displayVehicleName = computed(() => {
     return resolveSearchVehicleDisplayName(props.vehicle);
 });
 
-const normalizeCurrencyCode = (currency) => {
-    if (!currency) return 'EUR';
-    const currencyMap = {
-        '€': 'EUR',
-        '$': 'USD',
-        '£': 'GBP',
-        '₹': 'INR',
-        '₽': 'RUB',
-        'A$': 'AUD',
-        'C$': 'CAD',
-        'د.إ': 'AED',
-        '¥': 'JPY',
-        'EURO': 'EUR',
-        'TL': 'TRY',
-        'US$': 'USD',
-        'USD$': 'USD',
-        'RMB': 'CNY',
-    };
-    const trimmed = `${currency}`.trim();
-    return (currencyMap[trimmed] || trimmed).toUpperCase();
-};
+const normalizeCurrencyCode = (currency) => registryNormalizeCurrencyCode(currency, 'EUR');
 
 const resolvePackageCurrency = () => {
     const packageType = props.package;

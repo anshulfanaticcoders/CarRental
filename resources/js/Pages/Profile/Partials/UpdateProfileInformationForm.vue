@@ -7,6 +7,7 @@ import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch, getCurrentInstance } from 'vue';
 import { toast } from 'vue-sonner';
+import { getCurrencyOptions, normalizeCurrencyCode } from '@/utils/currencyRegistry';
 import { Toaster } from "@/Components/ui/sonner";
 import {
     Select,
@@ -98,7 +99,7 @@ const handleSubmit = () => {
     });
 };
 
-const currencies = ref([]);
+const currencies = ref(getCurrencyOptions(usePage().props.currency_supported || undefined));
 const selectedCurrency = computed({
     get() {
         return form.currency || '';
@@ -110,20 +111,12 @@ const selectedCurrency = computed({
 
 const normalizeCurrencyValue = () => {
     if (!form.currency || currencies.value.length === 0) return;
-    const bySymbol = currencies.value.find(c => c.symbol === form.currency);
-    if (bySymbol) {
-        form.currency = bySymbol.code;
-    }
+    form.currency = normalizeCurrencyCode(form.currency, 'EUR');
 };
 
-const fetchCurrencies = async () => {
-    try {
-        const response = await fetch('/currency.json'); // Ensure it's in /public
-        currencies.value = await response.json();
-        normalizeCurrencyValue();
-    } catch (error) {
-        console.error("Error loading currencies:", error);
-    }
+const fetchCurrencies = () => {
+    currencies.value = getCurrencyOptions(usePage().props.currency_supported || undefined);
+    normalizeCurrencyValue();
 };
 
 onMounted(fetchCurrencies);

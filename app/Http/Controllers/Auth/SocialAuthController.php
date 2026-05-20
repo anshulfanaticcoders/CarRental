@@ -10,6 +10,8 @@ use App\Models\UserProfile;
 use App\Notifications\AccountCreatedNotification;
 use App\Notifications\AccountCreatedUserConfirmation;
 use App\Services\Affiliate\AffiliateQrCodeService;
+use App\Services\CountryCodeResolver;
+use App\Support\CurrencyRegistry;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +28,7 @@ class SocialAuthController extends Controller
 
     public function redirect(Request $request, string $provider): RedirectResponse
     {
-        if (!in_array($provider, self::PROVIDERS, true)) {
+        if (! in_array($provider, self::PROVIDERS, true)) {
             abort(404);
         }
 
@@ -50,7 +52,7 @@ class SocialAuthController extends Controller
 
     public function callback(Request $request, string $provider): RedirectResponse
     {
-        if (!in_array($provider, self::PROVIDERS, true)) {
+        if (! in_array($provider, self::PROVIDERS, true)) {
             abort(404);
         }
 
@@ -71,7 +73,7 @@ class SocialAuthController extends Controller
             ]);
 
             if ((bool) $request->session()->pull('oauth.mobile', false)) {
-                return redirect()->away('vrooem://auth-callback?error=' . rawurlencode('Login failed. Please try again.'));
+                return redirect()->away('vrooem://auth-callback?error='.rawurlencode('Login failed. Please try again.'));
             }
 
             return redirect()
@@ -80,9 +82,9 @@ class SocialAuthController extends Controller
         }
 
         $email = $socialUser->getEmail();
-        if (!$email) {
+        if (! $email) {
             if ((bool) $request->session()->pull('oauth.mobile', false)) {
-                return redirect()->away('vrooem://auth-callback?error=' . rawurlencode('No email returned from provider.'));
+                return redirect()->away('vrooem://auth-callback?error='.rawurlencode('No email returned from provider.'));
             }
 
             return redirect()
@@ -90,8 +92,8 @@ class SocialAuthController extends Controller
                 ->withErrors(['email' => 'No email returned from provider.']);
         }
 
-        $defaultCurrency = 'EUR';
         $resolvedCountry = $this->resolveCountryFromRequest($request);
+        $defaultCurrency = $this->resolveCurrencyFromRequest($request, $resolvedCountry);
         $resolvedPhoneCode = $this->resolvePhoneCodeFromCountry($resolvedCountry);
         [$user, $wasCreated] = DB::transaction(function () use (
             $provider,
@@ -113,7 +115,7 @@ class SocialAuthController extends Controller
             } else {
                 $user = User::where('email', $email)->lockForUpdate()->first();
 
-                if (!$user) {
+                if (! $user) {
                     $user = $this->createUserFromProvider($socialUser, $resolvedPhoneCode);
                     $wasCreated = true;
                 }
@@ -132,7 +134,7 @@ class SocialAuthController extends Controller
 
             $this->upsertSocialProfile($user, $resolvedCountry, $defaultCurrency, $socialUser->getAvatar());
 
-            if (!$user->phone_code && $resolvedPhoneCode) {
+            if (! $user->phone_code && $resolvedPhoneCode) {
                 $user->phone_code = $resolvedPhoneCode;
                 $user->save();
             }
@@ -150,7 +152,7 @@ class SocialAuthController extends Controller
         $user->last_login_at = now();
         $user->save();
 
-        $affiliateService = new AffiliateQrCodeService();
+        $affiliateService = new AffiliateQrCodeService;
         $affiliateService->updateCustomerInAffiliateScans($user->id);
 
         // Mobile flow: issue a Sanctum token and redirect back to the app via deep link.
@@ -164,6 +166,7 @@ class SocialAuthController extends Controller
                 rawurlencode($token),
                 rawurlencode($userPayload),
             );
+
             return redirect()->away($deepLink);
         }
 
@@ -229,7 +232,7 @@ class SocialAuthController extends Controller
             $lastName = $parts[1] ?? '';
         }
 
-        if (!$firstName) {
+        if (! $firstName) {
             $firstName = $email ? explode('@', $email)[0] : 'User';
         }
 
@@ -271,14 +274,15 @@ class SocialAuthController extends Controller
 
         $profile = $user->profile;
 
-        if (!$profile) {
+        if (! $profile) {
             UserProfile::create(array_merge(['user_id' => $user->id], $profileDefaults));
+
             return;
         }
 
         $updates = [];
 
-        if (!$profile->currency) {
+        if (! $profile->currency) {
             $updates['currency'] = $currency;
         }
 
@@ -286,7 +290,7 @@ class SocialAuthController extends Controller
             $updates['country'] = $safeCountry;
         }
 
-        if (!$profile->avatar) {
+        if (! $profile->avatar) {
             $updates['avatar'] = $profileDefaults['avatar'];
         }
 
@@ -296,7 +300,7 @@ class SocialAuthController extends Controller
             }
         }
 
-        if (!empty($updates)) {
+        if (! empty($updates)) {
             $profile->fill($updates);
             $profile->save();
         }
@@ -304,7 +308,7 @@ class SocialAuthController extends Controller
 
     private function sanitizeAvatarUrl(?string $avatarUrl): ?string
     {
-        if (!$avatarUrl) {
+        if (! $avatarUrl) {
             return null;
         }
 
@@ -331,7 +335,7 @@ class SocialAuthController extends Controller
                 $admin = User::where('email', $adminEmail)->first();
             }
 
-            if (!$admin) {
+            if (! $admin) {
                 $admin = User::where('role', 'admin')->orderBy('id')->first();
             }
 
@@ -346,7 +350,7 @@ class SocialAuthController extends Controller
 
             $user->notify(new AccountCreatedUserConfirmation($user));
         } catch (\Exception $exception) {
-            Log::error('Social registration notification failed: ' . $exception->getMessage(), [
+            Log::error('Social registration notification failed: '.$exception->getMessage(), [
                 'user_id' => $user->id,
                 'email' => $user->email,
             ]);
@@ -356,7 +360,7 @@ class SocialAuthController extends Controller
     private function generateUniquePhone(): string
     {
         do {
-            $phone = '9' . str_pad((string) random_int(0, 99999999999), 11, '0', STR_PAD_LEFT);
+            $phone = '9'.str_pad((string) random_int(0, 99999999999), 11, '0', STR_PAD_LEFT);
         } while (User::where('phone', $phone)->exists());
 
         return $phone;
@@ -368,7 +372,17 @@ class SocialAuthController extends Controller
             $sessionCountry = $request->session()->get('country');
             if ($sessionCountry) {
                 $normalized = strtoupper(trim((string) $sessionCountry));
-                return $normalized !== '' ? $normalized : 'Unknown';
+                if ($normalized === '') {
+                    return 'Unknown';
+                }
+
+                if (preg_match('/^[A-Z]{2}$/', $normalized)) {
+                    return $normalized;
+                }
+
+                $resolvedCode = CountryCodeResolver::resolve((string) $sessionCountry);
+
+                return $resolvedCode !== '' ? $resolvedCode : $normalized;
             }
 
             $location = \Stevebauman\Location\Facades\Location::get($request->ip());
@@ -384,9 +398,43 @@ class SocialAuthController extends Controller
         return 'Unknown';
     }
 
+    private function resolveCurrencyFromRequest(Request $request, ?string $countryCode): string
+    {
+        $registry = app(CurrencyRegistry::class);
+
+        $sessionCurrency = $registry->normalize($request->session()->get('currency'), '');
+        if ($sessionCurrency !== '' && $registry->isSelectable($sessionCurrency)) {
+            return $sessionCurrency;
+        }
+
+        $countryCurrency = $registry->currencyForCountry($this->normalizeCountryCode($countryCode));
+        if ($registry->isSelectable($countryCurrency)) {
+            return $countryCurrency;
+        }
+
+        return $registry->defaultCurrency();
+    }
+
+    private function normalizeCountryCode(?string $country): ?string
+    {
+        $country = trim((string) $country);
+        if ($country === '' || strtoupper($country) === 'UNKNOWN') {
+            return null;
+        }
+
+        $upperCountry = strtoupper($country);
+        if (preg_match('/^[A-Z]{2}$/', $upperCountry)) {
+            return $upperCountry;
+        }
+
+        $resolved = CountryCodeResolver::resolve($country);
+
+        return $resolved !== '' ? $resolved : null;
+    }
+
     private function resolvePhoneCodeFromCountry(?string $countryCode): ?string
     {
-        if (!$countryCode) {
+        if (! $countryCode) {
             return null;
         }
 
@@ -409,11 +457,12 @@ class SocialAuthController extends Controller
         }
 
         $path = base_path('public/countries.json');
-        if (!is_file($path)) {
+        if (! is_file($path)) {
             Log::warning('Countries file not found for phone code lookup', [
                 'path' => $path,
             ]);
             $cache = [];
+
             return $cache;
         }
 
@@ -424,15 +473,17 @@ class SocialAuthController extends Controller
                     'path' => $path,
                 ]);
                 $cache = [];
+
                 return $cache;
             }
 
             $data = json_decode($json, true);
-            if (!is_array($data)) {
+            if (! is_array($data)) {
                 Log::warning('Invalid countries file for phone code lookup', [
                     'path' => $path,
                 ]);
                 $cache = [];
+
                 return $cache;
             }
 
@@ -447,6 +498,7 @@ class SocialAuthController extends Controller
             }
 
             $cache = $map;
+
             return $cache;
         } catch (\Exception $exception) {
             Log::warning('Failed to parse countries file for phone code lookup', [
@@ -456,6 +508,7 @@ class SocialAuthController extends Controller
         }
 
         $cache = [];
+
         return $cache;
     }
 }

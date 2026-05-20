@@ -1,4 +1,4 @@
-/**
+﻿/**
  * useBookingData Composable
  *
  * Normalizes booking data from all providers (internal + 11 external providers)
@@ -19,6 +19,7 @@
  */
 
 import { computed } from 'vue';
+import { getCurrencySymbol } from '@/utils/currencyRegistry';
 
 export function useBookingData(booking, vehicle, payment) {
   // Provider metadata
@@ -476,14 +477,7 @@ export function useBookingData(booking, vehicle, payment) {
   // Format currency
   const formatCurrency = (amount, currency = null) => {
     const curr = currency || booking?.booking_currency || 'EUR';
-    const symbols = {
-      USD: '$', EUR: '€', GBP: '£', JPY: '¥',
-      AUD: 'A$', CAD: 'C$', CHF: 'Fr', HKD: 'HK$',
-      SGD: 'S$', SEK: 'kr', NOK: 'kr', NZD: 'NZ$',
-      INR: '₹', MXN: 'Mex$', ZAR: 'R', AED: 'AED',
-      MAD: 'د.م.', TRY: '₺'
-    };
-    const symbol = symbols[curr] || '€';
+    const symbol = getCurrencySymbol(curr);
     const formattedAmount = new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2

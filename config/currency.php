@@ -20,7 +20,7 @@ return [
     | This should be a valid 3-letter ISO 4217 currency code.
     |
     */
-    'default' => env('CURRENCY_DEFAULT', 'USD'),
+    'default' => env('CURRENCY_DEFAULT', 'EUR'),
 
     /*
     |--------------------------------------------------------------------------
@@ -31,7 +31,7 @@ return [
     | rates will be fetched relative to this currency.
     |
     */
-    'base_currency' => env('CURRENCY_BASE', 'USD'),
+    'base_currency' => env('CURRENCY_BASE', 'EUR'),
 
     /*
     |--------------------------------------------------------------------------

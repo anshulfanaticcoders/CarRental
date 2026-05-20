@@ -20,6 +20,7 @@ use App\Notifications\Booking\BookingCreatedVendorNotification;
 use App\Notifications\Booking\GuestBookingCreatedNotification;
 use App\Services\Bookings\InternalBookingSnapshotService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
+use App\Support\CurrencyRegistry;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -631,16 +632,34 @@ class StripeBookingService
 
     protected function ensureUserProfile(User $user, $metadata): void
     {
-        if ($user->profile()->exists()) {
-            return;
-        }
-
         $country = $metadata->customer_country ?? $metadata->country ?? null;
         if (! $country) {
             $country = 'us';
         }
 
+        $profileCurrency = $this->resolveProfileCurrencyFromMetadata($metadata, $country);
+
         try {
+            $profile = $user->profile;
+            if ($profile) {
+                $updates = [];
+
+                if (trim((string) $profile->currency) === '') {
+                    $updates['currency'] = $profileCurrency;
+                }
+
+                if (trim((string) $profile->country) === '') {
+                    $updates['country'] = $country;
+                }
+
+                if (! empty($updates)) {
+                    $profile->fill($updates);
+                    $profile->save();
+                }
+
+                return;
+            }
+
             UserProfile::firstOrCreate([
                 'user_id' => $user->id,
             ], [
@@ -648,6 +667,7 @@ class StripeBookingService
                 'city' => $metadata->customer_city ?? null,
                 'postal_code' => $metadata->customer_postal_code ?? null,
                 'country' => $country,
+                'currency' => $profileCurrency,
             ]);
         } catch (\Exception $e) {
             Log::warning('StripeBookingService: Failed to create user profile', [
@@ -655,6 +675,40 @@ class StripeBookingService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function resolveProfileCurrencyFromMetadata($metadata, ?string $country): string
+    {
+        $registry = app(CurrencyRegistry::class);
+
+        $metadataCurrency = $registry->normalize($metadata->currency ?? null, '');
+        if ($metadataCurrency !== '' && $registry->isSelectable($metadataCurrency)) {
+            return $metadataCurrency;
+        }
+
+        $countryCurrency = $registry->currencyForCountry($this->countryCodeForCurrency($country));
+        if ($registry->isSelectable($countryCurrency)) {
+            return $countryCurrency;
+        }
+
+        return $registry->defaultCurrency();
+    }
+
+    private function countryCodeForCurrency(?string $country): ?string
+    {
+        $country = trim((string) $country);
+        if ($country === '') {
+            return null;
+        }
+
+        $upperCountry = strtoupper($country);
+        if (preg_match('/^[A-Z]{2}$/', $upperCountry)) {
+            return $upperCountry;
+        }
+
+        $resolved = CountryCodeResolver::resolve($country);
+
+        return $resolved !== '' ? $resolved : null;
     }
 
     private function decodeJsonArray($value): array

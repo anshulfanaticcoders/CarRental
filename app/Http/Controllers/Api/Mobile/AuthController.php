@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Support\CurrencyRegistry;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 use Illuminate\Http\JsonResponse;
@@ -71,16 +72,7 @@ class AuthController extends Controller
             'phone.unique' => 'This phone is already registered.',
         ]);
 
-        $currencyMap = [
-            '€' => 'EUR',
-            '$' => 'USD',
-            '£' => 'GBP',
-            'د.إ' => 'AED',
-            '₹' => 'INR',
-            '¥' => 'JPY',
-        ];
-        $currency = $data['currency'] ?? 'EUR';
-        $currency = $currencyMap[$currency] ?? strtoupper($currency);
+        $currency = app(CurrencyRegistry::class)->normalize($data['currency'] ?? 'EUR', 'EUR');
 
         $user = DB::transaction(function () use ($data, $currency) {
             $user = User::create([
@@ -155,7 +147,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Native "Sign in with Apple" — the app sends the Apple identity token (a JWT).
+     * Native "Sign in with Apple" â€” the app sends the Apple identity token (a JWT).
      * We verify its signature against Apple's published JWKS, confirm the issuer
      * and audience, then find or create the user keyed on the Apple `sub` claim.
      */
@@ -188,7 +180,7 @@ class AuthController extends Controller
             JWT::$leeway = 60; // tolerate minor clock skew on exp/iat
             $payload = JWT::decode($data['identity_token'], JWK::parseKeySet($jwks));
         } catch (\Throwable $e) {
-            // A stale cached key set can fail a freshly rotated token — drop it so the next try refetches.
+            // A stale cached key set can fail a freshly rotated token â€” drop it so the next try refetches.
             Cache::forget('apple_auth_jwks');
             Log::warning('Apple identity token verification failed', ['error' => $e->getMessage()]);
 
@@ -228,7 +220,7 @@ class AuthController extends Controller
             ]);
         }
 
-        // Trust the email ONLY from the verified token, never from the request body —
+        // Trust the email ONLY from the verified token, never from the request body â€”
         // a client-supplied email could be used to hijack an existing account.
         $email = isset($payload->email) ? (string) $payload->email : null;
         $emailVerified = filter_var($payload->email_verified ?? false, FILTER_VALIDATE_BOOLEAN);
@@ -349,15 +341,7 @@ class AuthController extends Controller
         ]);
 
         if (! empty($validated['currency'])) {
-            $currencyMap = [
-                '€' => 'EUR',
-                '$' => 'USD',
-                '£' => 'GBP',
-                'د.إ' => 'AED',
-                '₹' => 'INR',
-                '¥' => 'JPY',
-            ];
-            $validated['currency'] = $currencyMap[$validated['currency']] ?? strtoupper($validated['currency']);
+            $validated['currency'] = app(CurrencyRegistry::class)->normalize($validated['currency'], 'EUR');
         }
 
         if ($request->hasFile('avatar')) {

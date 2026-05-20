@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, reactive, onMounted, nextTick, computed } from "vue";
 import { Link, usePage, Head } from "@inertiajs/vue3";
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
@@ -8,6 +8,7 @@ import MapPin from "../../../assets/MapPin.svg";
 import Footer from "@/Components/Footer.vue";
 import { getCurrentInstance } from 'vue';
 import { useBookingData } from '@/composables/useBookingData';
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
@@ -122,7 +123,7 @@ const buildMarkerIcon = (variant) => {
 
 // Resolve dropoff coordinates from the raw booking payload, skipping the
 // normalizer which falls back to pickup metadata when per-location fields are
-// missing — that fallback would silently mask a real one-way dropoff by
+// missing â€” that fallback would silently mask a real one-way dropoff by
 // reporting pickup coordinates for both markers.
 const resolveRawDropoffCoords = () => {
   const candidates = [
@@ -210,16 +211,7 @@ onMounted(() => {
   }
 });
 
-const getCurrencySymbol = (currency) => {
-  const symbols = {
-    'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
-    'AUD': 'A$', 'CAD': 'C$', 'CHF': 'Fr', 'HKD': 'HK$',
-    'SGD': 'S$', 'SEK': 'kr', 'KRW': '₩', 'NOK': 'kr',
-    'NZD': 'NZ$', 'INR': '₹', 'MXN': 'Mex$', 'ZAR': 'R',
-    'AED': 'AED', 'MAD': 'د.م.', 'TRY': '₺'
-  };
-  return symbols[currency] || currency || '$';
-};
+const getCurrencySymbol = (currency) => registryCurrencySymbol(currency);
 
 const formatNumber = (number) => {
   return new Intl.NumberFormat('en-US', {
@@ -971,11 +963,11 @@ const vendorInitials = computed(() => {
                 </div>
                 <div v-if="bookingData.policies.damageExcess" class="p-3 rounded-xl bg-gray-50 border border-gray-100">
                   <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Damage Excess</p>
-                  <p class="text-sm font-bold text-gray-800 mt-1">€{{ bookingData.policies.damageExcess }}</p>
+                  <p class="text-sm font-bold text-gray-800 mt-1">â‚¬{{ bookingData.policies.damageExcess }}</p>
                 </div>
                 <div v-if="bookingData.policies.theftExcess" class="p-3 rounded-xl bg-gray-50 border border-gray-100">
                   <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Theft Excess</p>
-                  <p class="text-sm font-bold text-gray-800 mt-1">€{{ bookingData.policies.theftExcess }}</p>
+                  <p class="text-sm font-bold text-gray-800 mt-1">â‚¬{{ bookingData.policies.theftExcess }}</p>
                 </div>
                 <div v-if="bookingData.policies.gracePeriodPickup" class="p-3 rounded-xl bg-gray-50 border border-gray-100">
                   <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Grace Period</p>

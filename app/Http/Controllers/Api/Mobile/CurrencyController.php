@@ -4,22 +4,32 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\CurrencyRate;
+use App\Support\CurrencyRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CurrencyController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(CurrencyRegistry $currencies): JsonResponse
     {
+        $supported = $currencies->selectableCodes();
+
         return response()->json([
-            'supported' => config('currency.supported_currencies', ['EUR', 'USD', 'GBP']),
-            'base' => config('currency.base_currency', 'USD'),
+            'supported' => $supported,
+            'base' => $currencies->baseCurrency(),
+            'currencies' => $currencies->publicPayload($supported),
+            'popular' => $currencies->popularCodes($supported),
+            'default' => $currencies->defaultCurrency(),
+            'version' => 'currency-registry-v1',
         ]);
     }
 
     public function rates(Request $request): JsonResponse
     {
-        $base = strtoupper($request->query('base', config('currency.base_currency', 'USD')));
+        $base = app(CurrencyRegistry::class)->normalize(
+            $request->query('base', config('currency.base_currency', 'EUR')),
+            config('currency.base_currency', 'EUR')
+        );
 
         $rates = CurrencyRate::where('base_currency', $base)->get(['target_currency', 'rate']);
 

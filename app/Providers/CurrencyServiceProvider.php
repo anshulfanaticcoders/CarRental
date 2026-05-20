@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Services\CurrencyDetectionService;
 use App\Services\CurrencyConversionService;
+use App\Support\CurrencyRegistry;
 use Illuminate\Support\Facades\Log;
 
 class CurrencyServiceProvider extends ServiceProvider
@@ -16,7 +17,7 @@ class CurrencyServiceProvider extends ServiceProvider
     {
         // Register Currency Detection Service as singleton
         $this->app->singleton(CurrencyDetectionService::class, function ($app) {
-            return new CurrencyDetectionService();
+            return new CurrencyDetectionService($app->make(CurrencyRegistry::class));
         });
 
         // Register Currency Conversion Service as singleton
@@ -47,7 +48,7 @@ class CurrencyServiceProvider extends ServiceProvider
         Log::info('Currency service provider initialized', [
             'detection_service_enabled' => config('currency.geolocation.enabled', true),
             'conversion_service_enabled' => config('currency.exchange_providers.primary.enabled', true),
-            'default_currency' => config('currency.default', 'USD'),
+            'default_currency' => config('currency.default', 'EUR'),
             'cache_ttl' => config('currency.cache_ttl', 3600)
         ]);
     }

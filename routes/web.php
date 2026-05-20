@@ -304,7 +304,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/settings/payable-amount', [PayableSettingController::class, 'index'])->name('admin.settings.payable-amount.index');
     Route::post('/admin/settings/payable-amount', [PayableSettingController::class, 'update'])->name('admin.settings.payable-amount.update');
 
-    // Affiliate Business Model Settings (kept — already clean)
+    // Affiliate Business Model Settings (kept â€” already clean)
     Route::get('/admin/affiliate/business-model', [AffiliateBusinessModelController::class, 'index'])->name('admin.affiliate.business-model.index');
     Route::get('/admin/affiliate/global-settings', [AffiliateBusinessModelController::class, 'getGlobalSettings'])->name('admin.affiliate.global-settings');
     Route::post('/admin/affiliate/global-settings', [AffiliateBusinessModelController::class, 'updateGlobalSettings'])->name('admin.affiliate.global-settings.update');
@@ -312,7 +312,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/admin/affiliate/businesses/{businessId}/model', [AffiliateBusinessModelController::class, 'deleteBusinessModel'])->name('admin.affiliate.businesses.model.delete');
     Route::get('/admin/affiliate/businesses', [AffiliateBusinessModelController::class, 'getBusinesses'])->name('admin.affiliate.businesses');
 
-    // Business Verification Actions (kept — used by partner detail page)
+    // Business Verification Actions (kept â€” used by partner detail page)
     Route::post('/admin/affiliate/businesses/{businessId}/verify', [AffiliateBusinessModelController::class, 'verifyBusiness'])->name('admin.affiliate.businesses.verify');
     Route::post('/admin/affiliate/businesses/{businessId}/reject', [AffiliateBusinessModelController::class, 'rejectBusiness'])->name('admin.affiliate.businesses.reject');
     Route::post('/admin/affiliate/businesses/{businessId}/suspend', [AffiliateBusinessModelController::class, 'suspendBusiness'])->name('admin.affiliate.businesses.suspend');
@@ -326,7 +326,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/affiliate/commissions', [AdminAffiliateController::class, 'commissions'])->name('admin.affiliate.commissions');
     Route::patch('/admin/affiliate/commissions/{id}/status', [AdminAffiliateController::class, 'updateCommissionStatus'])->name('admin.affiliate.commissions.status.update');
 
-    // Scout Payout Management (kept — already clean)
+    // Scout Payout Management (kept â€” already clean)
     Route::get('/admin/affiliate/payouts', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'index'])->name('admin.affiliate.payouts');
     Route::post('/admin/affiliate/payouts', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'createPayout'])->name('admin.affiliate.payouts.create');
     Route::post('/admin/affiliate/payouts/{payout}/mark-paid', [\App\Http\Controllers\Admin\AffiliateScoutPayoutController::class, 'markAsPaid'])->name('admin.affiliate.payouts.mark-paid');
@@ -497,76 +497,21 @@ Route::group([
             'session_country' => session('country', 'not set'),
             'unified_detection_working' => (session('currency') && session('country')),
             'message' => session('currency') && session('country')
-                ? '✅ Unified IP detection working! Both currency and country detected.'
-                : '❌ Unified detection not complete. Check SetCurrency middleware.',
+                ? 'âœ… Unified IP detection working! Both currency and country detected.'
+                : 'âŒ Unified detection not complete. Check SetCurrency middleware.',
             'all_session_data' => session()->all(),
         ]);
     })->middleware('local.debug');
 
     // Test route to verify comprehensive country coverage
     Route::get('/test-country-coverage/{country}', function ($country) {
-        // Test the exact mapping logic from SetCurrency middleware
-        $detectedCurrency = match (strtoupper($country)) {
-            // North America
-            'US' => 'USD',
-            'CA' => 'CAD',
-            'MX' => 'MXN',
-            'NI' => 'NIO',
-            'CR' => 'CRC',
-            'PA' => 'PAB',
-            'GT' => 'GTQ',
-            'HN' => 'HNL',
-            'SV' => 'SVC',
-            'BZ' => 'BZD',
-            'JM' => 'JMD',
-            'BB' => 'BBD',
-            'TT' => 'TTD',
-            'DO' => 'DOP',
-            'HT' => 'HTG',
-            'AG' => 'XCD',
-            'DM' => 'XCD',
-            'GD' => 'XCD',
-            'KN' => 'XCD',
-            'LC' => 'XCD',
-            'VC' => 'XCD',
-
-            // Europe - Eurozone (All 20 countries)
-            'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'FI', 'IE',
-            'GR', 'CY', 'MT', 'SK', 'SI', 'EE', 'LV', 'LT', 'LU', 'HR' => 'EUR',
-
-            // Europe - Non-Eurozone
-            'GB' => 'GBP',
-            'CH' => 'CHF',
-            'SE' => 'SEK',
-            'NO' => 'NOK',
-            'DK' => 'DKK',
-            'IS' => 'ISK',
-            'PL' => 'PLN',
-            'CZ' => 'CZK',
-            'HU' => 'HUF',
-            'RO' => 'RON',
-            'BG' => 'BGN',
-
-            // Key countries people will test
-            'IN' => 'INR',
-            'MA' => 'MAD',
-            'RU' => 'RUB',
-            'TR' => 'TRY',
-            'CN' => 'CNY',
-            'JP' => 'JPY',
-            'AU' => 'AUD',
-            'NZ' => 'NZD',
-
-            default => 'USD',
-        };
+        $detectedCurrency = app(\App\Support\CurrencyRegistry::class)->currencyForCountry($country);
 
         return response()->json([
             'test_country' => $country,
             'detected_currency' => $detectedCurrency,
-            'supported' => $detectedCurrency !== 'USD' || strtoupper($country) === 'US',
-            'message' => $detectedCurrency !== 'USD' || strtoupper($country) === 'US'
-                ? "✅ {$country} → {$detectedCurrency}"
-                : "❌ {$country} → Not supported, defaults to USD",
+            'supported' => app(\App\Support\CurrencyRegistry::class)->isKnown($detectedCurrency),
+            'message' => "{$country} -> {$detectedCurrency}",
         ]);
     })->middleware('local.debug');
 
@@ -911,7 +856,7 @@ Route::get('/sitemaps/{filename}', function ($filename) {
 // 410/301 redirects are handled by HandleSeoRedirects middleware + seo_redirects DB table.
 // Run: php artisan seo:seed-legacy-redirects (one time after migration)
 
-// Unknown URL → hard 404. Without an explicit status code, Inertia renders
+// Unknown URL â†’ hard 404. Without an explicit status code, Inertia renders
 // the Error page with HTTP 200, which Google treats as a soft-404 and may
 // still index the URL. Setting the status ensures crawlers drop it.
 Route::fallback(function () {

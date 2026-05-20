@@ -225,10 +225,9 @@
                                         <div class="mb-4">
                                             <label class="af-label">Payout Currency</label>
                                             <select v-model="form.currency" class="af-select">
-                                                <option value="EUR">EUR - Euro</option>
-                                                <option value="GBP">GBP - British Pound</option>
-                                                <option value="USD">USD - US Dollar</option>
-                                                <option value="CHF">CHF - Swiss Franc</option>
+                                                <option v-for="currency in payoutCurrencyOptions" :key="currency.code" :value="currency.code">
+                                                    {{ currency.code }} - {{ currency.name }}
+                                                </option>
                                                 <option value="SEK">SEK - Swedish Krona</option>
                                                 <option value="NOK">NOK - Norwegian Krone</option>
                                                 <option value="DKK">DKK - Danish Krone</option>
@@ -418,6 +417,7 @@
 import { ref, computed } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
+import { getCurrencyOptions } from '@/utils/currencyRegistry';
 import { Toaster } from '@/Components/ui/sonner';
 import SeoHead from '@/Components/SeoHead.vue';
 import axios from 'axios';
@@ -431,6 +431,8 @@ const props = defineProps({
         default: () => ({}),
     },
 });
+
+const payoutCurrencyOptions = computed(() => getCurrencyOptions(usePage().props.currency_supported || undefined));
 
 const page = usePage();
 const locale = computed(() => page.props.locale || 'en');

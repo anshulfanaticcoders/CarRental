@@ -6,6 +6,7 @@ use App\Helpers\ActivityLogHelper;
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\UserProfile;
 use App\Models\User;
+use App\Support\CurrencyRegistry;
 use Illuminate\Http\RedirectResponse;
 use App\Helpers\ImageCompressionHelper;
 use Illuminate\Http\Request; // Make sure to import this
@@ -53,15 +54,7 @@ class ProfileController extends Controller
 
             $validated = $request->validated();
             if (!empty($validated['currency'])) {
-                $currencyMap = [
-                    '€' => 'EUR',
-                    '$' => 'USD',
-                    '£' => 'GBP',
-                    'د.إ' => 'AED',
-                    '₹' => 'INR',
-                    '¥' => 'JPY',
-                ];
-                $validated['currency'] = $currencyMap[$validated['currency']] ?? strtoupper($validated['currency']);
+                $validated['currency'] = app(CurrencyRegistry::class)->normalize($validated['currency'], 'EUR');
             }
 
             if ($request->hasFile('avatar')) {
@@ -130,7 +123,7 @@ class ProfileController extends Controller
 
             $user = Auth::user();
 
-            // Social auth users (Google, etc.) don't have a known password — skip password check
+            // Social auth users (Google, etc.) don't have a known password â€” skip password check
             $hasSocialAccount = \App\Models\SocialAccount::where('user_id', $user->id)->exists();
             if (!$hasSocialAccount) {
                 $request->validate([

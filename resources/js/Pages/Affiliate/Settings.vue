@@ -186,10 +186,9 @@
                                 <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Payout Currency</label>
                                 <select v-model="bankForm.payout_currency"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 outline-none transition-all duration-200 hover:border-[#153b4f] focus:ring-2 focus:ring-[#2ea7ad] focus:border-transparent focus:bg-white">
-                                    <option value="EUR">EUR - Euro</option>
-                                    <option value="GBP">GBP - British Pound</option>
-                                    <option value="USD">USD - US Dollar</option>
-                                    <option value="CHF">CHF - Swiss Franc</option>
+                                    <option v-for="currency in payoutCurrencyOptions" :key="currency.code" :value="currency.code">
+                                        {{ currency.code }} - {{ currency.name }}
+                                    </option>
                                     <option value="SEK">SEK - Swedish Krona</option>
                                     <option value="NOK">NOK - Norwegian Krone</option>
                                     <option value="DKK">DKK - Danish Krone</option>
@@ -300,11 +299,13 @@ import { toast } from 'vue-sonner';
 import { Toaster } from '@/Components/ui/sonner';
 import AffiliateHeader from '@/Layouts/AffiliateHeader.vue';
 import { AlertCircle, CheckCircle2 } from 'lucide-vue-next';
+import { getCurrencyOptions } from '@/utils/currencyRegistry';
 
 
 const page = usePage();
 const locale = computed(() => page.props.locale || 'en');
 const isVerified = computed(() => page.props.affiliateVerificationStatus === 'verified');
+const payoutCurrencyOptions = computed(() => getCurrencyOptions(page.props.currency_supported || undefined));
 
 watch(() => page.props.flash, (flash) => {
     if (flash?.success) toast.success(flash.success);

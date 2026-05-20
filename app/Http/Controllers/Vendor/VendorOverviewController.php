@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingAmount;
 use App\Models\Vehicle;
+use App\Support\CurrencyRegistry;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -34,15 +35,7 @@ class VendorOverviewController extends Controller
 
         // Get vendor's currency from profile
         $vendorCurrencyRaw = auth()->user()->profile?->currency ?? 'EUR';
-        $currencyMap = [
-            '€' => 'EUR',
-            '$' => 'USD',
-            '£' => 'GBP',
-            'د.إ' => 'AED',
-            '₹' => 'INR',
-            '¥' => 'JPY',
-        ];
-        $currency = $currencyMap[$vendorCurrencyRaw] ?? strtoupper($vendorCurrencyRaw);
+        $currency = app(CurrencyRegistry::class)->normalize($vendorCurrencyRaw, 'EUR');
 
         // Revenue: Use vendor_total_amount from booking_amounts (vendor's actual earnings in their currency)
         $vendorBookingIds = Booking::whereHas('vehicle', function ($query) use ($vendorId) {

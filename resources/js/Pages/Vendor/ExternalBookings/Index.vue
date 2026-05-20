@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <MyProfileLayout>
         <div class="space-y-5">
             <!-- KPI strip -->
@@ -222,6 +222,7 @@ import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { Input } from '@/Components/ui/input';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/Components/ui/tooltip';
 import { Search, Eye, Globe, TrendingUp, Clock, CheckCircle2, BarChart3 } from 'lucide-vue-next';
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const props = defineProps({
     bookings: { type: Array, required: true },
@@ -245,16 +246,7 @@ const searchQuery = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');
 
 // --- Currency helpers ---
-const getCurrencySymbol = (currency) => {
-    const symbols = {
-        'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
-        'AUD': 'A$', 'CAD': 'C$', 'CHF': 'Fr', 'HKD': 'HK$',
-        'SGD': 'S$', 'SEK': 'kr', 'KRW': '₩', 'NOK': 'kr',
-        'NZD': 'NZ$', 'INR': '₹', 'MXN': 'Mex$', 'ZAR': 'R',
-        'AED': 'AED', 'MAD': 'MAD',
-    };
-    return symbols[currency] || currency || '$';
-};
+const getCurrencySymbol = (currency) => registryCurrencySymbol(currency);
 
 const formatNumber = (number) => {
     return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number);

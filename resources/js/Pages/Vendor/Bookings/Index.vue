@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <MyProfileLayout>
         <!-- Loader Overlay -->
         <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm">
@@ -187,6 +187,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/Comp
 import { useToast } from 'vue-toastification';
 import loaderVariant from '../../../../assets/loader-variant.svg';
 import { Search, Eye, ShieldCheck, Ban, CalendarX2 } from 'lucide-vue-next';
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
@@ -202,16 +203,7 @@ const searchQuery = ref('');
 const isLoading = ref(false);
 
 // --- Currency helpers ---
-const getCurrencySymbol = (currency) => {
-    const symbols = {
-        'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
-        'AUD': 'A$', 'CAD': 'C$', 'CHF': 'Fr', 'HKD': 'HK$',
-        'SGD': 'S$', 'SEK': 'kr', 'KRW': '₩', 'NOK': 'kr',
-        'NZD': 'NZ$', 'INR': '₹', 'MXN': 'Mex$', 'ZAR': 'R',
-        'AED': 'AED', 'MAD': 'MAD',
-    };
-    return symbols[currency] || currency || '$';
-};
+const getCurrencySymbol = (currency) => registryCurrencySymbol(currency);
 
 const getVendorCurrency = (booking) => {
     return booking.amounts?.vendor_currency

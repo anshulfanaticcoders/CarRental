@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <AdminDashboardLayout>
         <div class="container mx-auto p-6 space-y-6">
             <!-- Header -->
@@ -229,6 +229,7 @@ import { router } from '@inertiajs/vue3';
 import {Table, TableHeader, TableRow, TableHead, TableBody, TableCell} from "@/Components/ui/table";
 import { Badge } from "@/Components/ui/badge";
 import { Input } from "@/Components/ui/input";
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 import {
     Select,
     SelectContent,
@@ -289,28 +290,7 @@ const formatNumber = (number) => {
 };
 
 // Currency symbol function
-const getCurrencySymbol = (currency) => {
-    const symbols = {
-        'USD': '$',
-        'EUR': '€',
-        'GBP': '£',
-        'JPY': '¥',
-        'AUD': 'A$',
-        'CAD': 'C$',
-        'CHF': 'Fr',
-        'HKD': 'HK$',
-        'SGD': 'S$',
-        'SEK': 'kr',
-        'KRW': '₩',
-        'NOK': 'kr',
-        'NZD': 'NZ$',
-        'INR': '₹',
-        'MXN': 'Mex$',
-        'ZAR': 'R',
-        'AED': 'AED'
-    };
-    return symbols[currency] || '$';
-};
+const getCurrencySymbol = (currency) => registryCurrencySymbol(currency);
 
 // Format currency with symbol
 const formatCurrency = (amount, currency) => {

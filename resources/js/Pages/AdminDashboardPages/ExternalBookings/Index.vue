@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <AdminDashboardLayout>
         <div class="py-12 px-4 sm:px-6 lg:px-8">
             <div class="mx-auto">
@@ -121,6 +121,7 @@ import { Input } from '@/Components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { Eye } from 'lucide-vue-next';
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const props = defineProps({
     bookings: Object,
@@ -168,10 +169,7 @@ const statusDotClass = (status) => ({
     'bg-red-500': status === 'cancelled',
 }[status] || 'bg-gray-400');
 
-const getCurrencySymbol = (currency) => {
-    const symbols = { 'USD': '$', 'EUR': '\u20ac', 'GBP': '\u00a3', 'CHF': 'Fr', 'AED': 'AED', 'MAD': 'MAD' };
-    return symbols[currency] || currency || '$';
-};
+const getCurrencySymbol = (currency) => registryCurrencySymbol(currency);
 
 const formatNumber = (number) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number);
 

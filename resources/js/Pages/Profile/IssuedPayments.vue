@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <MyProfileLayout>
         <!-- Loader Overlay -->
         <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
@@ -71,6 +71,7 @@ import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router } from '@inertiajs/vue3';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const props = defineProps({
     payments: {
@@ -110,16 +111,7 @@ const formatNumber = (number) => {
     }).format(number);
 };
 
-const getCurrencySymbol = (currency) => {
-    const symbols = {
-        'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
-        'AUD': 'A$', 'CAD': 'C$', 'CHF': 'Fr', 'HKD': 'HK$',
-        'SGD': 'S$', 'SEK': 'kr', 'KRW': '₩', 'NOK': 'kr',
-        'NZD': 'NZ$', 'INR': '₹', 'MXN': 'Mex$', 'ZAR': 'R',
-        'AED': 'AED', 'MAD': 'د.م.', 'TRY': '₺'
-    };
-    return symbols[currency] || '$';
-};
+const getCurrencySymbol = (currency) => registryCurrencySymbol(currency);
 
 const getBookingCurrency = (payment) => {
     return payment.booking?.amounts?.booking_currency || payment.booking?.booking_currency || 'EUR';
