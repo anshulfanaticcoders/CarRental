@@ -145,7 +145,7 @@ class GatewaySearchParamsBuilderTest extends TestCase
         $this->assertSame('greenmotion', $params['provider_locations'][0]['provider']);
     }
 
-    public function test_it_filters_provider_locations_to_the_exact_selected_pickup_id_when_present(): void
+    public function test_it_keeps_internal_provider_locations_out_of_gateway_params(): void
     {
         $locationSearchService = $this->createMock(LocationSearchService::class);
         $locationSearchService->expects($this->once())
@@ -181,8 +181,6 @@ class GatewaySearchParamsBuilderTest extends TestCase
         ]);
 
         $this->assertSame('BE', $params['country_code']);
-        $this->assertCount(1, $params['provider_locations']);
-        $this->assertSame('internal', $params['provider_locations'][0]['provider']);
-        $this->assertSame('2', $params['provider_locations'][0]['pickup_id']);
+        $this->assertSame([], $params['provider_locations']);
     }
 }

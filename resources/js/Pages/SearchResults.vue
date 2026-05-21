@@ -116,6 +116,7 @@ const props = defineProps({
     locale: String, // Added locale prop
     providerStatus: Array,
     searchError: String,
+    recommendedLocations: { type: Array, default: () => [] },
     optionalExtras: Array, // GreenMotion optional extras
     locationName: String, // Location Name
     // Price verification props
@@ -128,6 +129,9 @@ const props = defineProps({
 
 const searchErrorMessage = computed(() => `${props.searchError || ''}`.trim());
 const hasSearchError = computed(() => searchErrorMessage.value.length > 0);
+const nearbyLocationSuggestions = computed(() => Array.isArray(props.recommendedLocations) ? props.recommendedLocations : []);
+const searchLocationTitle = computed(() => form.where || props.locationName || 'Selected Location');
+const searchCountryLabel = computed(() => form.country || props.filters?.country || 'Selected area');
 
 // SPA Booking State
 const bookingStep = ref('results'); // 'results' | 'extras' | 'checkout'
@@ -1138,6 +1142,44 @@ const resetFilters = () => {
     submitFilters();
 };
 
+const searchNearbyLocation = (location) => {
+    const params = {
+        date_from: form.date_from,
+        date_to: form.date_to,
+        where: location.name || 'Selected Location',
+        location: location.name || '',
+        latitude: location.latitude || null,
+        longitude: location.longitude || null,
+        radius: form.radius || 50000,
+        package_type: form.package_type || null,
+        city: location.city || '',
+        state: '',
+        country: location.country || '',
+        matched_field: location.location_type === 'airport' ? 'location' : 'city',
+        provider: location.recommended_provider || 'mixed',
+        provider_pickup_id: location.recommended_provider_pickup_id || null,
+        unified_location_id: location.unified_location_id || null,
+        start_time: form.start_time || '09:00',
+        end_time: form.end_time || '09:00',
+        age: form.age || 35,
+        rentalCode: form.rentalCode || '1',
+        currency: resolveSearchCurrency({
+            currentCurrency: form.currency,
+            selectedCurrency: selectedCurrency.value,
+        }),
+        fuel: form.fuel || null,
+    };
+
+    router.get(
+        `/${page.props.locale}/s`,
+        Object.fromEntries(Object.entries(params).filter(([, value]) => value !== null && value !== undefined && value !== '')),
+        {
+            preserveState: false,
+            preserveScroll: false,
+        }
+    );
+};
+
 const createPopupContent = (vehicle, primaryImage, popupPrice) => {
     const popupName = resolveSearchVehicleDisplayName(vehicle);
 
@@ -2120,8 +2162,8 @@ watch(
                         </svg>
                     </div>
                     <div class="search-location-text">
-                        <h1>Car Rental in {{ form.where || 'Selected Location' }}</h1>
-                        <p>{{ form.country || 'Morocco' }} â€¢ {{ vehicles?.total || clientFilteredVehicles?.length || 0
+                        <h1>Car Rental in {{ searchLocationTitle }}</h1>
+                        <p>{{ searchCountryLabel }} &middot; {{ vehicles?.total || clientFilteredVehicles?.length || 0
                         }} cars available</p>
                     </div>
                 </div>
@@ -2157,22 +2199,6 @@ watch(
             </div>
         </div>
     </section>
-
-    <div v-if="bookingStep === 'results' && hasSearchError"
-        class="main-container mx-auto px-4 pb-2">
-        <div
-            class="rounded-xl border border-rose-200 bg-rose-50 text-rose-900 px-4 py-3 text-sm flex items-start gap-3 mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M12 9v4m0 4h.01M10.29 3.86l-7.09 12.27A2 2 0 0 0 4.91 19h14.18a2 2 0 0 0 1.72-2.87L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            </svg>
-            <div>
-                <div class="font-semibold">Search is unavailable right now.</div>
-                <div class="text-rose-800">{{ searchErrorMessage }}</div>
-            </div>
-        </div>
-    </div>
 
     <!-- Main Content -->
     <div id="results-breadcrumb-section" class="main-container mx-auto px-4 py-4" v-if="bookingStep === 'results'">
@@ -2444,21 +2470,40 @@ watch(
             </div>
 
             <!-- No Results State -->
-            <div v-else
-                class="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100 mt-6 col-span-full">
-                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-gray-400" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+            <div v-else class="no-results-panel mt-6 col-span-full">
+                <div class="no-results-visual">
+                    <img :src="noVehicleIcon" alt="" loading="lazy">
                 </div>
-                <h3 class="text-lg font-bold text-gray-900 mb-2">No vehicles found</h3>
-                <p class="text-gray-500 mb-6">Try adjusting your filters.</p>
-                <button @click="resetFilters"
-                    class="px-6 py-2.5 bg-[#153b4f] text-white rounded-lg font-medium hover:bg-[#0f2936] transition-colors">
-                    Reset Filters
-                </button>
+                <p class="no-results-kicker">Exact location checked</p>
+                <h3>No cars available at this pickup location</h3>
+                <p v-if="hasSearchError" class="no-results-copy">{{ searchErrorMessage }}</p>
+                <p v-else class="no-results-copy">
+                    No fallback cars are being shown. Try nearby pickup locations, reset vehicle filters, or change your date and time.
+                </p>
+
+                <div class="no-results-actions">
+                    <button type="button" class="no-results-primary" @click="scrollToTop">
+                        Search another location
+                    </button>
+                    <button type="button" class="no-results-secondary" @click="resetFilters">
+                        Reset filters
+                    </button>
+                </div>
+
+                <div v-if="nearbyLocationSuggestions.length" class="nearby-location-list">
+                    <div class="nearby-location-heading">
+                        <span>Recommended nearby locations</span>
+                        <small>Separate searches, not fallback results</small>
+                    </div>
+                    <button v-for="location in nearbyLocationSuggestions" :key="location.unified_location_id" type="button"
+                        class="nearby-location-card" @click="searchNearbyLocation(location)">
+                        <span>
+                            <strong>{{ location.name }}</strong>
+                            <small>{{ [location.city, location.country].filter(Boolean).join(', ') }}</small>
+                        </span>
+                        <em>{{ location.distance_km }} km</em>
+                    </button>
+                </div>
             </div>
 
             <!-- Load More Button -->
@@ -3917,6 +3962,172 @@ h6 {
 .car-listings.list-view {
     display: flex;
     flex-direction: column;
+}
+
+.no-results-panel {
+    background: #fbfdff;
+    border: 1px solid rgba(21, 59, 79, 0.12);
+    border-radius: 20px;
+    box-shadow: 0 12px 32px rgba(21, 59, 79, 0.08);
+    padding: clamp(28px, 5vw, 48px);
+    text-align: center;
+}
+
+.no-results-visual {
+    width: min(180px, 52vw);
+    aspect-ratio: 1.25;
+    margin: 0 auto 18px;
+    display: grid;
+    place-items: center;
+}
+
+.no-results-visual img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.no-results-kicker {
+    margin: 0 0 8px;
+    color: #0891b2;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.no-results-panel h3 {
+    margin: 0;
+    color: #153b4f;
+    font-family: var(--jakarta-font-family);
+    font-size: clamp(22px, 3vw, 32px);
+    font-weight: 800;
+    line-height: 1.15;
+}
+
+.no-results-copy {
+    max-width: 640px;
+    margin: 14px auto 0;
+    color: #475569;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.no-results-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.no-results-primary,
+.no-results-secondary {
+    min-height: 44px;
+    border-radius: 999px;
+    padding: 0 22px;
+    font-size: 14px;
+    font-weight: 700;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.no-results-primary {
+    background: #153b4f;
+    border: 1px solid #153b4f;
+    color: #fbfdff;
+    box-shadow: 0 12px 24px rgba(21, 59, 79, 0.18);
+}
+
+.no-results-secondary {
+    background: #fbfdff;
+    border: 1px solid rgba(21, 59, 79, 0.18);
+    color: #153b4f;
+}
+
+.no-results-primary:hover,
+.no-results-secondary:hover,
+.nearby-location-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(21, 59, 79, 0.14);
+}
+
+.nearby-location-list {
+    max-width: 760px;
+    margin: 28px auto 0;
+    display: grid;
+    gap: 10px;
+    text-align: left;
+}
+
+.nearby-location-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    color: #153b4f;
+    font-family: var(--jakarta-font-family);
+    font-weight: 800;
+}
+
+.nearby-location-heading small {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.nearby-location-card {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    background: #fbfdff;
+    border: 1px solid rgba(21, 59, 79, 0.1);
+    border-radius: 14px;
+    color: #153b4f;
+    text-align: left;
+    box-shadow: 0 4px 12px rgba(21, 59, 79, 0.06);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nearby-location-card strong,
+.nearby-location-card small {
+    display: block;
+}
+
+.nearby-location-card strong {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.nearby-location-card small {
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.nearby-location-card em {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #cffafe;
+    color: #0f2936;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 800;
+    padding: 6px 10px;
+}
+
+@media (max-width: 640px) {
+    .nearby-location-heading,
+    .nearby-location-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }
 
 /* Mobile Responsive Adjustments */

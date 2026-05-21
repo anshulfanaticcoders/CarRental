@@ -208,7 +208,6 @@ class LocationSearchServiceTest extends TestCase
         $this->assertSame(3, $results[0]['provider_count']);
     }
 
-
     public function test_it_collapses_equivalent_airport_results_when_aliases_overlap_without_iata(): void
     {
         config([
@@ -620,6 +619,136 @@ class LocationSearchServiceTest extends TestCase
         $this->assertCount(1, $locations);
         $this->assertSame(3385755165, $locations[0]['unified_location_id']);
         $this->assertSame('Dubai Airport (DXB)', $locations[0]['name']);
+    }
+
+    public function test_search_execution_does_not_resolve_stale_unified_id_from_free_text(): void
+    {
+        config([
+            'vrooem.enabled' => true,
+            'vrooem.url' => 'http://gateway.test',
+            'vrooem.api_key' => 'test-key',
+        ]);
+
+        Http::fake([
+            'http://gateway.test/api/v1/locations/999999' => Http::response(['detail' => 'Not found'], 404),
+            'http://gateway.test/api/v1/locations/search*' => Http::response([
+                'query' => 'Dubai Airport',
+                'results' => [
+                    [
+                        'location' => [
+                            'unified_location_id' => 3385755165,
+                            'name' => 'Dubai Airport (DXB)',
+                            'city' => 'Dubai',
+                            'country' => 'United Arab Emirates',
+                            'country_code' => 'AE',
+                            'location_type' => 'airport',
+                            'iata' => 'DXB',
+                            'providers' => [
+                                ['provider' => 'surprice', 'pickup_id' => 'DXB:DXBA01'],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $service = app(LocationSearchService::class);
+
+        $location = $service->resolveSearchLocation([
+            'unified_location_id' => 999999,
+            'where' => 'Dubai Airport',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+        ]);
+
+        $this->assertNull($location);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/locations/search'));
+    }
+
+    public function test_search_execution_rejects_unified_id_when_requested_iata_conflicts(): void
+    {
+        config([
+            'vrooem.enabled' => true,
+            'vrooem.url' => 'http://gateway.test',
+            'vrooem.api_key' => 'test-key',
+        ]);
+
+        Http::fake([
+            'http://gateway.test/api/v1/locations/3385755165' => Http::response([
+                'unified_location_id' => 3385755165,
+                'name' => 'Dubai Airport (DXB)',
+                'city' => 'Dubai',
+                'country' => 'United Arab Emirates',
+                'country_code' => 'AE',
+                'location_type' => 'airport',
+                'iata' => 'DXB',
+                'providers' => [
+                    ['provider' => 'surprice', 'pickup_id' => 'DXB:DXBA01', 'iata' => 'DXB'],
+                ],
+            ], 200),
+            'http://gateway.test/api/v1/locations/search*' => Http::response([
+                'query' => 'DXB',
+                'results' => [],
+                'total' => 0,
+            ], 200),
+        ]);
+
+        $service = app(LocationSearchService::class);
+
+        $location = $service->resolveSearchLocation([
+            'unified_location_id' => 3385755165,
+            'where' => 'Dubai Airport (DWC)',
+            'location' => 'Dubai Airport (DWC)',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+        ]);
+
+        $this->assertNull($location);
+    }
+
+    public function test_search_execution_allows_exact_provider_pickup_fallback_only(): void
+    {
+        config([
+            'vrooem.enabled' => true,
+            'vrooem.url' => 'http://gateway.test',
+            'vrooem.api_key' => 'test-key',
+        ]);
+
+        Http::fake([
+            'http://gateway.test/api/v1/locations/999999' => Http::response(['detail' => 'Not found'], 404),
+            'http://gateway.test/api/v1/locations/by-provider*' => Http::response([
+                'unified_location_id' => 961653316,
+                'name' => 'Dubai Airport (DWC)',
+                'city' => 'Dubai',
+                'country' => 'United Arab Emirates',
+                'country_code' => 'AE',
+                'location_type' => 'airport',
+                'iata' => 'DWC',
+                'providers' => [
+                    ['provider' => 'surprice', 'pickup_id' => 'DWC:DWCA01', 'iata' => 'DWC'],
+                ],
+            ], 200),
+            'http://gateway.test/api/v1/locations/search*' => Http::response([
+                'query' => 'DWC',
+                'results' => [],
+                'total' => 0,
+            ], 200),
+        ]);
+
+        $service = app(LocationSearchService::class);
+
+        $location = $service->resolveSearchLocation([
+            'unified_location_id' => 999999,
+            'provider' => 'surprice',
+            'provider_pickup_id' => 'DWC:DWCA01',
+            'where' => 'Dubai Airport',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+        ]);
+
+        $this->assertNotNull($location);
+        $this->assertSame(961653316, $location['unified_location_id']);
+        $this->assertSame('DWC', $location['iata']);
     }
 
     public function test_location_search_service_source_is_gateway_only(): void

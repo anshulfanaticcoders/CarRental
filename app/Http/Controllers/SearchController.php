@@ -162,6 +162,7 @@ class SearchController extends Controller
                 'locale' => App::getLocale(),
                 'optionalExtras' => [],
                 'locationName' => null,
+                'recommendedLocations' => $this->locationSearchService->nearbyLocations($validated),
             ]);
         };
 
@@ -169,6 +170,67 @@ class SearchController extends Controller
             Log::info('No location provided - returning empty vehicle results');
 
             return $emptyResultsResponse();
+        }
+
+        $originalUnifiedLocationId = (int) ($validated['unified_location_id'] ?? 0);
+        $resolvedSearchLocation = $this->locationSearchService->resolveSearchLocation($validated);
+        $requestedProvider = strtolower(trim((string) ($validated['provider'] ?? '')));
+        $blockInternalProviderForResolvedLocation = false;
+        $hasResolvedSearchLocation = false;
+        $internalProviderPickupId = null;
+
+        if (empty($resolvedSearchLocation['unified_location_id'])) {
+            Log::warning('Search location could not be verified; returning exact empty result set.', [
+                'requested_unified_location_id' => $originalUnifiedLocationId,
+                'provider' => $validated['provider'] ?? null,
+                'provider_pickup_id' => $validated['provider_pickup_id'] ?? null,
+                'where' => $validated['where'] ?? null,
+            ]);
+
+            return $emptyResultsResponse('We could not verify this pickup location. Please choose a location from the search suggestions.');
+        }
+
+        if (! empty($resolvedSearchLocation['unified_location_id'])) {
+            $hasResolvedSearchLocation = true;
+            $resolvedUnifiedLocationId = (int) $resolvedSearchLocation['unified_location_id'];
+
+            if ($originalUnifiedLocationId > 0 && $originalUnifiedLocationId !== $resolvedUnifiedLocationId) {
+                Log::info('Search location id normalized from stale request data.', [
+                    'requested_unified_location_id' => $originalUnifiedLocationId,
+                    'resolved_unified_location_id' => $resolvedUnifiedLocationId,
+                    'where' => $validated['where'] ?? null,
+                ]);
+            }
+
+            $validated['unified_location_id'] = $resolvedUnifiedLocationId;
+
+            if (
+                ! empty($validated['dropoff_unified_location_id'])
+                && (int) $validated['dropoff_unified_location_id'] === $originalUnifiedLocationId
+            ) {
+                $validated['dropoff_unified_location_id'] = $resolvedUnifiedLocationId;
+            }
+
+            foreach ([
+                'city' => 'city',
+                'country' => 'country',
+                'latitude' => 'latitude',
+                'longitude' => 'longitude',
+            ] as $filterKey => $locationKey) {
+                if (empty($validated[$filterKey]) && ! empty($resolvedSearchLocation[$locationKey])) {
+                    $validated[$filterKey] = $resolvedSearchLocation[$locationKey];
+                }
+            }
+
+            $internalProviderPickupId = $this->internalProviderPickupId($resolvedSearchLocation);
+            if ($requestedProvider === 'internal') {
+                if ($internalProviderPickupId !== null) {
+                    $validated['provider_pickup_id'] = $internalProviderPickupId;
+                } else {
+                    $blockInternalProviderForResolvedLocation = true;
+                    unset($validated['provider_pickup_id']);
+                }
+            }
         }
 
         $internalVehiclesQuery = Vehicle::query()
@@ -186,165 +248,45 @@ class SearchController extends Controller
         }
 
         // Apply location filters for internal vehicles based on search parameters
-        if (! empty($validated['provider_pickup_id']) && (! isset($validated['provider']) || $validated['provider'] !== 'internal')) {
-            // For mixed/provider searches: match internal vehicles by city first,
-            // then fall back to a generous radius (50km) to include vendors near airports
-            $cityMatched = false;
-            if (! empty($validated['city'])) {
-                $cityCheck = Vehicle::query()->whereIn('status', Vehicle::searchableStatuses())
-                    ->where('city', $validated['city'])->exists();
-                if ($cityCheck) {
-                    $internalVehiclesQuery->where('city', $validated['city']);
-                    $cityMatched = true;
-                }
-            }
-            if (! $cityMatched && ! empty($validated['latitude']) && ! empty($validated['longitude'])) {
-                $lat = $validated['latitude'];
-                $lon = $validated['longitude'];
-                $radius = max(($validated['radius'] ?? 5000) / 1000, 50); // minimum 50km for internal
-
-                $internalVehiclesQuery->whereRaw('
-                    6371 * acos(
-                        cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
-                        sin(radians(?)) * sin(radians(latitude))
-                    ) <= ?
-                ', [$lat, $lon, $lat, $radius]);
-            } elseif (! $cityMatched) {
+        if ($hasResolvedSearchLocation && $requestedProvider === 'mixed') {
+            if ($internalProviderPickupId !== null) {
+                $this->applyInternalGroupedLocationFilter($internalVehiclesQuery, $internalProviderPickupId);
+            } else {
                 $internalVehiclesQuery->whereRaw('1 = 0');
             }
+        } elseif (! empty($validated['provider_pickup_id']) && (! isset($validated['provider']) || $validated['provider'] !== 'internal')) {
+            $internalVehiclesQuery->whereRaw('1 = 0');
         } elseif (! empty($validated['provider'])) {
             if ($validated['provider'] === 'internal') {
                 $appliedExactInternalLocationFilter = false;
 
-                if (! empty($validated['provider_pickup_id'])) {
+                if ($blockInternalProviderForResolvedLocation) {
+                    $internalVehiclesQuery->whereRaw('1 = 0');
+                    $appliedExactInternalLocationFilter = true;
+                } elseif (! empty($validated['provider_pickup_id'])) {
                     $appliedExactInternalLocationFilter = $this->applyInternalGroupedLocationFilter(
                         $internalVehiclesQuery,
                         $validated['provider_pickup_id']
                     );
                 }
 
-                if (! $appliedExactInternalLocationFilter && ! empty($validated['matched_field'])) {
-                    $fieldToQuery = null;
-                    $valueToQuery = null;
-
-                    switch ($validated['matched_field']) {
-                        case 'location':
-                            if (! empty($validated['location'])) {
-                                $fieldToQuery = 'location';
-                                $valueToQuery = $validated['location'];
-                            }
-                            break;
-                        case 'city':
-                            if (! empty($validated['city'])) {
-                                $fieldToQuery = 'city';
-                                $valueToQuery = $validated['city'];
-                            }
-                            break;
-                        case 'state':
-                            if (! empty($validated['state'])) {
-                                $fieldToQuery = 'state';
-                                $valueToQuery = $validated['state'];
-                            }
-                            break;
-                        case 'country':
-                            if (! empty($validated['country'])) {
-                                $fieldToQuery = 'country';
-                                $valueToQuery = $validated['country'];
-                            }
-                            break;
-                    }
-                    if ($fieldToQuery && $valueToQuery) {
-                        $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
-                    }
-                } elseif (! $appliedExactInternalLocationFilter && ! empty($validated['latitude']) && ! empty($validated['longitude']) && ! empty($validated['radius'])) {
-                    $lat = $validated['latitude'];
-                    $lon = $validated['longitude'];
-                    $radius = $validated['radius'] / 1000;
-
-                    $internalVehiclesQuery->whereRaw('
-                        6371 * acos(
-                            cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
-                            sin(radians(?)) * sin(radians(latitude))
-                        ) <= ?
-                    ', [$lat, $lon, $lat, $radius]);
-                } elseif (! $appliedExactInternalLocationFilter && ! empty($validated['where'])) {
-                    $searchTerm = $validated['where'];
-                    $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
-                        $q->where('location', 'LIKE', "%{$searchTerm}%")
-                            ->orWhere('city', 'LIKE', "%{$searchTerm}%")
-                            ->orWhere('state', 'LIKE', "%{$searchTerm}%")
-                            ->orWhere('country', 'LIKE', "%{$searchTerm}%");
-                    });
-                }
-            } else {
-                if (! empty($validated['latitude']) && ! empty($validated['longitude']) && ! empty($validated['radius'])) {
-                    $lat = $validated['latitude'];
-                    $lon = $validated['longitude'];
-                    $radius = $validated['radius'] / 1000;
-
-                    $internalVehiclesQuery->whereRaw('
-                        6371 * acos(
-                            cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
-                            sin(radians(?)) * sin(radians(latitude))
-                        ) <= ?
-                    ', [$lat, $lon, $lat, $radius]);
-                } else {
+                if (! $appliedExactInternalLocationFilter) {
                     $internalVehiclesQuery->whereRaw('1 = 0');
                 }
+            } else {
+                $internalVehiclesQuery->whereRaw('1 = 0');
             }
-        } else { // If no provider is specified, apply broad internal filters
-            if (! empty($validated['matched_field'])) {
-                $fieldToQuery = null;
-                $valueToQuery = null;
+        } else {
+            $appliedExactInternalLocationFilter = false;
+            if ($hasResolvedSearchLocation && $internalProviderPickupId !== null) {
+                $appliedExactInternalLocationFilter = $this->applyInternalGroupedLocationFilter(
+                    $internalVehiclesQuery,
+                    $internalProviderPickupId
+                );
+            }
 
-                switch ($validated['matched_field']) {
-                    case 'location':
-                        if (! empty($validated['location'])) {
-                            $fieldToQuery = 'location';
-                            $valueToQuery = $validated['location'];
-                        }
-                        break;
-                    case 'city':
-                        if (! empty($validated['city'])) {
-                            $fieldToQuery = 'city';
-                            $valueToQuery = $validated['city'];
-                        }
-                        break;
-                    case 'state':
-                        if (! empty($validated['state'])) {
-                            $fieldToQuery = 'state';
-                            $valueToQuery = $validated['state'];
-                        }
-                        break;
-                    case 'country':
-                        if (! empty($validated['country'])) {
-                            $fieldToQuery = 'country';
-                            $valueToQuery = $validated['country'];
-                        }
-                        break;
-                }
-                if ($fieldToQuery && $valueToQuery) {
-                    $internalVehiclesQuery->where($fieldToQuery, $valueToQuery);
-                }
-            } elseif (! empty($validated['latitude']) && ! empty($validated['longitude']) && ! empty($validated['radius'])) {
-                $lat = $validated['latitude'];
-                $lon = $validated['longitude'];
-                $radius = $validated['radius'] / 1000;
-
-                $internalVehiclesQuery->whereRaw('
-                    6371 * acos(
-                        cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
-                        sin(radians(?)) * sin(radians(latitude))
-                    ) <= ?
-                ', [$lat, $lon, $lat, $radius]);
-            } elseif (! empty($validated['where'])) {
-                $searchTerm = $validated['where'];
-                $internalVehiclesQuery->where(function ($q) use ($searchTerm) {
-                    $q->where('location', 'LIKE', "%{$searchTerm}%")
-                        ->orWhere('city', 'LIKE', "%{$searchTerm}%")
-                        ->orWhere('state', 'LIKE', "%{$searchTerm}%")
-                        ->orWhere('country', 'LIKE', "%{$searchTerm}%");
-                });
+            if (! $appliedExactInternalLocationFilter) {
+                $internalVehiclesQuery->whereRaw('1 = 0');
             }
         }
 
@@ -567,6 +509,25 @@ class SearchController extends Controller
             );
 
         return true;
+    }
+
+    private function internalProviderPickupId(?array $location): ?string
+    {
+        foreach (($location['providers'] ?? []) as $provider) {
+            if (! is_array($provider)) {
+                continue;
+            }
+
+            if (strtolower(trim((string) ($provider['provider'] ?? ''))) !== 'internal') {
+                continue;
+            }
+
+            $pickupId = trim((string) ($provider['pickup_id'] ?? ''));
+
+            return $pickupId !== '' ? $pickupId : null;
+        }
+
+        return null;
     }
 
     public function searchUnifiedLocations(Request $request)

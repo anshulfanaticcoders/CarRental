@@ -22,8 +22,7 @@ class GatewaySearchService
         private readonly SearchOrchestratorService $searchOrchestratorService,
         private readonly InternalVehicleMergeService $internalVehicleMergeService,
         private readonly PriceVerificationService $priceVerificationService,
-    ) {
-    }
+    ) {}
 
     public function buildPageProps(
         Request $request,
@@ -36,13 +35,23 @@ class GatewaySearchService
     ): array {
         $locationName = $validated['where'] ?? 'Selected Location';
         $matchedLocation = $this->locationSearchService->resolveSearchLocation($validated);
-        if (!empty($validated['unified_location_id'])) {
-            $selectedLocation = $this->locationSearchService->getLocationByUnifiedId((int) $validated['unified_location_id']);
+        if (! empty($validated['unified_location_id'])) {
+            $selectedLocation = $matchedLocation ?: $this->locationSearchService->getLocationByUnifiedId((int) $validated['unified_location_id']);
             $locationName = $selectedLocation['name'] ?? $locationName;
         }
 
-        $gatewayParams = $this->gatewaySearchParamsBuilder->build($validated);
-        $gatewayResult = $this->gatewayService->searchVehicles($gatewayParams);
+        $gatewayParams = [];
+        $gatewayResult = ['vehicles' => [], 'provider_status' => [], 'search_id' => null];
+
+        if ($matchedLocation) {
+            $gatewayParams = $this->gatewaySearchParamsBuilder->build($validated);
+            $gatewayResult = $this->gatewayService->searchVehicles($gatewayParams);
+        } else {
+            Log::warning('VrooemGateway: Skipping provider search because location could not be verified', [
+                'unified_location_id' => $validated['unified_location_id'] ?? null,
+                'provider_pickup_id' => $validated['provider_pickup_id'] ?? null,
+            ]);
+        }
 
         if (empty($gatewayResult) || empty($gatewayResult['vehicles'])) {
             Log::info('VrooemGateway: No vehicles returned or gateway error');
@@ -57,11 +66,12 @@ class GatewaySearchService
                     return $transformVehicle($gatewayVehicle, $rentalDays);
                 } catch (\Throwable $e) {
                     $transformErrors[] = ['vehicle_id' => $gatewayVehicle['id'] ?? 'unknown', 'error' => $e->getMessage()];
+
                     return null;
                 }
             })->filter()->values();
 
-            if (!empty($transformErrors)) {
+            if (! empty($transformErrors)) {
                 Log::warning('VrooemGateway: Transform errors', ['errors' => $transformErrors]);
             }
 
@@ -81,7 +91,7 @@ class GatewaySearchService
 
             $transformedVehicles = $transformedVehicles->map(function ($vehicle) use ($fallbackLatitude, $fallbackLongitude, &$fallbackAppliedCount) {
                 $v = is_array($vehicle) ? $vehicle : (array) $vehicle;
-                if (!$this->requiresCoordinateFallback($v) || !$this->isUsableCoordinatePair($fallbackLatitude, $fallbackLongitude)) {
+                if (! $this->requiresCoordinateFallback($v) || ! $this->isUsableCoordinatePair($fallbackLatitude, $fallbackLongitude)) {
                     return $v;
                 }
 
@@ -122,13 +132,24 @@ class GatewaySearchService
 
         $filteredProviderVehicles = $providerVehicles->filter(function ($vehicle) use ($validated) {
             $v = is_array($vehicle) ? $vehicle : (array) $vehicle;
-            if (!empty($validated['seating_capacity']) && ($v['seating_capacity'] ?? null) != $validated['seating_capacity']) return false;
-            if (!empty($validated['brand']) && strcasecmp($v['brand'] ?? '', $validated['brand']) != 0) return false;
-            if (!empty($validated['transmission']) && strcasecmp($v['transmission'] ?? '', $validated['transmission']) != 0) return false;
-            if (!empty($validated['fuel']) && strcasecmp($v['fuel'] ?? '', $validated['fuel']) != 0) return false;
-            if (!empty($validated['category_id']) && !is_numeric($validated['category_id'])) {
-                if (strcasecmp($v['category'] ?? '', $validated['category_id']) != 0) return false;
+            if (! empty($validated['seating_capacity']) && ($v['seating_capacity'] ?? null) != $validated['seating_capacity']) {
+                return false;
             }
+            if (! empty($validated['brand']) && strcasecmp($v['brand'] ?? '', $validated['brand']) != 0) {
+                return false;
+            }
+            if (! empty($validated['transmission']) && strcasecmp($v['transmission'] ?? '', $validated['transmission']) != 0) {
+                return false;
+            }
+            if (! empty($validated['fuel']) && strcasecmp($v['fuel'] ?? '', $validated['fuel']) != 0) {
+                return false;
+            }
+            if (! empty($validated['category_id']) && ! is_numeric($validated['category_id'])) {
+                if (strcasecmp($v['category'] ?? '', $validated['category_id']) != 0) {
+                    return false;
+                }
+            }
+
             return true;
         });
 
@@ -147,8 +168,15 @@ class GatewaySearchService
             ]),
         ]);
 
-        $isOneWay = !empty($validated['dropoff_unified_location_id'])
-            && $validated['dropoff_unified_location_id'] != $validated['unified_location_id'];
+        $resolvedPickupUnifiedId = (int) ($gatewayParams['unified_location_id']
+            ?? $matchedLocation['unified_location_id']
+            ?? $validated['unified_location_id']);
+        $resolvedDropoffUnifiedId = (int) ($gatewayParams['dropoff_unified_location_id']
+            ?? $validated['dropoff_unified_location_id']
+            ?? 0);
+        $isOneWay = $resolvedDropoffUnifiedId > 0
+            && $resolvedPickupUnifiedId > 0
+            && $resolvedDropoffUnifiedId !== $resolvedPickupUnifiedId;
         $internalForMerge = $this->internalVehicleMergeService->forGatewayMerge(
             $internalVehiclesCollection,
             $validated,
@@ -166,6 +194,10 @@ class GatewaySearchService
             'combined' => $combinedVehicles->count(),
             'isOneWay' => $isOneWay,
         ]);
+
+        $recommendedLocations = $combinedVehicles->isEmpty()
+            ? $this->locationSearchService->nearbyLocations($validated, $matchedLocation)
+            : [];
 
         $perPage = 500;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
@@ -193,7 +225,7 @@ class GatewaySearchService
             ->values()->all();
         $categories = collect(array_merge($pageMeta['categories'] ?? [], $providerCategories))->unique('id')->values()->all();
 
-        $searchSessionId = 'search_' . session()->getId() . '_' . now()->timestamp;
+        $searchSessionId = 'search_'.session()->getId().'_'.now()->timestamp;
         $allVehicles = [];
 
         foreach ($vehicles->getCollection() as $vehicle) {
@@ -217,6 +249,7 @@ class GatewaySearchService
                         $vehicle->price_hash = $priceMap[$vehicleId]['price_hash'];
                     }
                 }
+
                 return $vehicle;
             }),
             $vehicles->total(),
@@ -255,6 +288,7 @@ class GatewaySearchService
             'via_gateway' => true,
             'gateway_search_id' => $gatewayResult['search_id'] ?? null,
             'gateway_response_time_ms' => $gatewayResult['response_time_ms'] ?? null,
+            'recommendedLocations' => $recommendedLocations,
         ];
     }
 
@@ -263,7 +297,7 @@ class GatewaySearchService
         $lat = $vehicle['latitude'] ?? null;
         $lng = $vehicle['longitude'] ?? null;
 
-        if (!$this->isNumericCoordinate($lat) || !$this->isNumericCoordinate($lng)) {
+        if (! $this->isNumericCoordinate($lat) || ! $this->isNumericCoordinate($lng)) {
             return true;
         }
 
@@ -275,7 +309,7 @@ class GatewaySearchService
 
     private function isUsableCoordinatePair(mixed $lat, mixed $lng): bool
     {
-        if (!$this->isNumericCoordinate($lat) || !$this->isNumericCoordinate($lng)) {
+        if (! $this->isNumericCoordinate($lat) || ! $this->isNumericCoordinate($lng)) {
             return false;
         }
 
@@ -286,7 +320,7 @@ class GatewaySearchService
             return false;
         }
 
-        return !(abs($lat) < 0.000001 && abs($lng) < 0.000001);
+        return ! (abs($lat) < 0.000001 && abs($lng) < 0.000001);
     }
 
     private function isNumericCoordinate(mixed $value): bool
@@ -306,7 +340,7 @@ class GatewaySearchService
                     ?? $v['provider_vehicle_id']
                     ?? md5(json_encode($v));
 
-                return $source . '|' . (string) $identity;
+                return $source.'|'.(string) $identity;
             })
             ->values();
     }
@@ -334,7 +368,7 @@ class GatewaySearchService
         ];
 
         foreach ($candidates as $candidate) {
-            if (!is_numeric($candidate)) {
+            if (! is_numeric($candidate)) {
                 continue;
             }
 
@@ -360,7 +394,7 @@ class GatewaySearchService
                 ->values()
                 ->all();
 
-            if (!isset($aggregate[$provider])) {
+            if (! isset($aggregate[$provider])) {
                 $aggregate[$provider] = [
                     'provider' => $provider,
                     'status' => ($status['status'] ?? 'ok') === 'error' ? 'error' : 'ok',
@@ -390,7 +424,7 @@ class GatewaySearchService
                 || array_key_exists('provider_code', $status)
                 || array_key_exists('retryable', $status);
 
-            if ($isStructuredFailure && !empty($normalizedErrors)) {
+            if ($isStructuredFailure && ! empty($normalizedErrors)) {
                 $existing['errors'] = $normalizedErrors;
             } else {
                 $existing['errors'] = collect(array_merge($existing['errors'], $normalizedErrors))
@@ -406,7 +440,7 @@ class GatewaySearchService
             }
 
             foreach (['failure_type', 'stage', 'http_status', 'provider_code'] as $field) {
-                if (!empty($status[$field])) {
+                if (! empty($status[$field])) {
                     $existing[$field] = $status[$field];
                 }
             }
@@ -423,7 +457,7 @@ class GatewaySearchService
                     'status' => empty($supplierResult['error']) ? 'ok' : 'error',
                     'vehicles' => $supplierResult['vehicle_count'] ?? 0,
                     'ms' => $supplierResult['response_time_ms'] ?? null,
-                    'errors' => !empty($supplierResult['error']) ? [$supplierResult['error']] : [],
+                    'errors' => ! empty($supplierResult['error']) ? [$supplierResult['error']] : [],
                 ]);
             });
 

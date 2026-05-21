@@ -13,8 +13,8 @@ class GatewaySearchParamsBuilder
 
     public function build(array $validated): array
     {
-        // Resolve first so stale web URLs can recover from an old unified_location_id
-        // using the visible search text before we call the provider gateway.
+        // Resolve exact selected location metadata before calling the provider
+        // gateway. Free-text fallback is intentionally not used for execution.
         $location = $this->locationSearchService->resolveSearchLocation($validated);
         $resolvedUnifiedLocationId = $location['unified_location_id'] ?? $validated['unified_location_id'];
 

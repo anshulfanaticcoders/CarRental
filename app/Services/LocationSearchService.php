@@ -103,15 +103,15 @@ class LocationSearchService
     }
 
     /**
-     * Resolve a location for search flows. The unified gateway path should normally provide a
-     * valid unified_location_id, but we keep provider pickup lookup as a narrow fallback.
+     * Resolve a location for search execution. The search results page must not
+     * infer another airport/city from free text when the selected ID is stale.
      */
     public function resolveSearchLocation(array $validated): ?array
     {
         $unifiedLocationId = (int) ($validated['unified_location_id'] ?? 0);
         if ($unifiedLocationId > 0) {
             $location = $this->getLocationByUnifiedId($unifiedLocationId);
-            if ($location) {
+            if ($location && $this->searchRequestMatchesLocation($location, $validated)) {
                 return $location;
             }
         }
@@ -121,18 +121,59 @@ class LocationSearchService
             $provider = (string) ($validated['provider'] ?? '');
             if ($provider !== '' && $provider !== 'mixed') {
                 $location = $this->getLocationByProviderId($providerPickupId, $provider);
-                if ($location) {
+                if ($location && $this->searchRequestMatchesLocation($location, $validated)) {
                     return $location;
                 }
             }
 
             $location = $this->getLocationByAnyProviderPickupId($providerPickupId);
-            if ($location) {
+            if ($location && $this->searchRequestMatchesLocation($location, $validated)) {
                 return $location;
             }
         }
 
-        return $this->resolveLocationFromSearchText($validated);
+        return null;
+    }
+
+    public function nearbyLocations(array $validated, ?array $originLocation = null, int $limit = 4): array
+    {
+        $latitude = $originLocation['latitude'] ?? $validated['latitude'] ?? null;
+        $longitude = $originLocation['longitude'] ?? $validated['longitude'] ?? null;
+
+        if (! $this->hasUsableCoordinatePair($latitude, $longitude)) {
+            return [];
+        }
+
+        $countryCode = strtoupper(trim((string) ($originLocation['country_code'] ?? '')));
+        if ($countryCode === '') {
+            $requestedCountry = trim((string) ($validated['country'] ?? ''));
+            $countryCode = preg_match('/^[A-Z]{2}$/', strtoupper($requestedCountry))
+                ? strtoupper($requestedCountry)
+                : CountryCodeResolver::resolve($requestedCountry);
+        }
+
+        $excludeIds = collect([
+            $originLocation['unified_location_id'] ?? null,
+            $validated['unified_location_id'] ?? null,
+        ])->filter()->map(fn ($id) => (int) $id)->unique()->all();
+
+        return collect($this->getAllLocations(500))
+            ->filter(fn (array $location): bool => $this->isNearbyRecommendationCandidate($location, $excludeIds, $countryCode))
+            ->map(function (array $location) use ($latitude, $longitude): array {
+                $location['distance_km'] = $this->distanceKm(
+                    (float) $latitude,
+                    (float) $longitude,
+                    (float) $location['latitude'],
+                    (float) $location['longitude']
+                );
+
+                return $location;
+            })
+            ->sortBy('distance_km')
+            ->take(max(1, $limit))
+            ->map(fn (array $location): array => $this->formatNearbyLocation($location))
+            ->values()
+            ->all();
     }
 
     public function getLocationByAnyProviderPickupId(string $providerPickupId): ?array
@@ -168,6 +209,106 @@ class LocationSearchService
         }
 
         return $this->augmentEquivalentAirportProviders($bestLocation);
+    }
+
+    private function isNearbyRecommendationCandidate(array $location, array $excludeIds, string $countryCode): bool
+    {
+        $unifiedLocationId = (int) ($location['unified_location_id'] ?? 0);
+        if ($unifiedLocationId <= 0 || in_array($unifiedLocationId, $excludeIds, true)) {
+            return false;
+        }
+
+        if ($countryCode !== '' && strtoupper((string) ($location['country_code'] ?? '')) !== $countryCode) {
+            return false;
+        }
+
+        return $this->hasUsableCoordinatePair($location['latitude'] ?? null, $location['longitude'] ?? null)
+            && ! empty($location['providers']);
+    }
+
+    private function searchRequestMatchesLocation(array $location, array $validated): bool
+    {
+        $requestedIata = $this->extractIataCode(implode(' ', array_filter([
+            $validated['where'] ?? null,
+            $validated['location'] ?? null,
+        ])));
+
+        if ($requestedIata !== null) {
+            $locationIata = strtoupper(trim((string) ($location['iata'] ?? '')));
+            if ($locationIata === '' || $locationIata !== $requestedIata) {
+                return false;
+            }
+        }
+
+        $requestedCountry = trim((string) ($validated['country'] ?? ''));
+        if ($requestedCountry === '') {
+            return true;
+        }
+
+        $requestedCountryCode = preg_match('/^[A-Z]{2}$/', strtoupper($requestedCountry))
+            ? strtoupper($requestedCountry)
+            : CountryCodeResolver::resolve($requestedCountry);
+        $locationCountryCode = strtoupper(trim((string) ($location['country_code'] ?? '')));
+
+        if ($requestedCountryCode !== '' && $locationCountryCode !== '' && $requestedCountryCode !== $locationCountryCode) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function formatNearbyLocation(array $location): array
+    {
+        $providers = collect($location['providers'] ?? [])
+            ->filter(fn ($provider) => is_array($provider))
+            ->values();
+        $externalProvider = $providers->first(fn (array $provider): bool => strtolower(trim((string) ($provider['provider'] ?? ''))) !== 'internal');
+        $internalProvider = $providers->first(fn (array $provider): bool => strtolower(trim((string) ($provider['provider'] ?? ''))) === 'internal');
+        $preferredProvider = $externalProvider ?: $internalProvider;
+
+        return [
+            'unified_location_id' => (int) $location['unified_location_id'],
+            'name' => $location['name'] ?? null,
+            'city' => $location['city'] ?? null,
+            'country' => $location['country'] ?? null,
+            'country_code' => $location['country_code'] ?? null,
+            'latitude' => $location['latitude'] ?? null,
+            'longitude' => $location['longitude'] ?? null,
+            'location_type' => $location['location_type'] ?? null,
+            'iata' => $location['iata'] ?? null,
+            'provider_count' => (int) ($location['provider_count'] ?? $providers->count()),
+            'distance_km' => round((float) ($location['distance_km'] ?? 0), 1),
+            'recommended_provider' => $externalProvider ? 'mixed' : 'internal',
+            'recommended_provider_pickup_id' => $preferredProvider['pickup_id'] ?? null,
+        ];
+    }
+
+    private function hasUsableCoordinatePair(mixed $latitude, mixed $longitude): bool
+    {
+        if (! is_numeric($latitude) || ! is_numeric($longitude)) {
+            return false;
+        }
+
+        $latitude = (float) $latitude;
+        $longitude = (float) $longitude;
+
+        if ($latitude < -90.0 || $latitude > 90.0 || $longitude < -180.0 || $longitude > 180.0) {
+            return false;
+        }
+
+        return ! (abs($latitude) < 0.000001 && abs($longitude) < 0.000001);
+    }
+
+    private function distanceKm(float $fromLatitude, float $fromLongitude, float $toLatitude, float $toLongitude): float
+    {
+        $earthRadiusKm = 6371;
+        $latDelta = deg2rad($toLatitude - $fromLatitude);
+        $lonDelta = deg2rad($toLongitude - $fromLongitude);
+
+        $a = sin($latDelta / 2) ** 2
+            + cos(deg2rad($fromLatitude)) * cos(deg2rad($toLatitude)) * sin($lonDelta / 2) ** 2;
+
+        return $earthRadiusKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
     private function locationSearchTermsFromValidated(array $validated): array
