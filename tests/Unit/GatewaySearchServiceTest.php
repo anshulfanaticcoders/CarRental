@@ -1115,6 +1115,44 @@ class GatewaySearchServiceTest extends TestCase
         $this->assertSame(['internal-paid'], $items->pluck('id')->all());
     }
 
+    #[Test]
+    public function it_filters_cached_gateway_one_way_vehicles_without_distinct_dropoff(): void
+    {
+        $service = new GatewaySearchService(
+            $this->createMock(LocationSearchService::class),
+            $this->createMock(GatewaySearchParamsBuilder::class),
+            $this->createMock(VrooemGatewayService::class),
+            $this->createMock(GatewayVehiclePresentationService::class),
+            $this->createMock(SearchOrchestratorService::class),
+            $this->createMock(InternalVehicleMergeService::class),
+            $this->createMock(PriceVerificationService::class)
+        );
+
+        $method = new \ReflectionMethod($service, 'filterVehiclesWithDistinctOneWayDropoff');
+        $method->setAccessible(true);
+
+        $vehicles = collect([
+            [
+                'id' => 'surprice-stale',
+                'provider_pickup_id' => 'DXB:DXBA01',
+                'provider_return_id' => 'DXB:DXBA01',
+                'pickup_station_name' => 'Dubai Airport',
+                'dropoff_station_name' => 'Dubai Airport',
+                'total_price' => 113.43,
+            ],
+            [
+                'id' => 'greenmotion-valid',
+                'provider_pickup_id' => '59610',
+                'provider_return_id' => '60160',
+                'total_price' => 132.47,
+            ],
+        ]);
+
+        $filtered = $method->invoke($service, $vehicles);
+
+        $this->assertSame(['greenmotion-valid'], $filtered->pluck('id')->all());
+    }
+
     private function stubSicilyVehicleCollapse(GatewayVehiclePresentationService $presentationService): void
     {
         $presentationService->method('collapseEquivalentSicilyByCarVehicles')

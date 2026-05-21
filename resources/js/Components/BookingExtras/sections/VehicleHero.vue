@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { Leaf } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, Expand, Leaf, MapPinned, Route } from 'lucide-vue-next';
 
 const props = defineProps({
     vehicleImage: String,
@@ -30,11 +30,11 @@ defineExpose({ vehicleMapRef });
 </script>
 
 <template>
-    <section class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden fade-in-up">
+    <section class="bg-white rounded-2xl border border-[#153b4f]/10 shadow-[0_18px_42px_rgba(21,59,79,0.08)] overflow-hidden fade-in-up">
         <!-- Fixed-height row: both halves equal -->
         <div class="flex flex-col md:flex-row h-auto md:h-[240px]">
             <!-- Left: Vehicle Image with carousel for internal -->
-            <div class="relative w-full md:w-1/2 h-[220px] md:h-[240px] bg-gray-50 overflow-hidden group">
+            <div class="relative w-full md:w-1/2 h-[220px] md:h-[240px] bg-gradient-to-br from-slate-50 to-[#f0f8fc] overflow-hidden group">
                 <!-- Carousel image (internal) or single image -->
                 <img v-if="hasMultipleImages" :src="currentHeroImage" :alt="displayVehicleName" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300" />
                 <img v-else-if="vehicleImage" :src="vehicleImage" :alt="displayVehicleName" class="absolute inset-0 w-full h-full object-cover" />
@@ -43,11 +43,11 @@ defineExpose({ vehicleMapRef });
                 </div>
                 <!-- Prev / Next arrows (show on hover) -->
                 <template v-if="hasMultipleImages">
-                    <button @click.stop="emit('hero-prev')" class="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+                    <button @click.stop="emit('hero-prev')" class="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#153b4f]/70 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#153b4f]">
+                        <ChevronLeft class="w-4 h-4" />
                     </button>
-                    <button @click.stop="emit('hero-next')" class="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                    <button @click.stop="emit('hero-next')" class="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#153b4f]/70 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#153b4f]">
+                        <ChevronRight class="w-4 h-4" />
                     </button>
                     <!-- Dot indicators -->
                     <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
@@ -58,36 +58,43 @@ defineExpose({ vehicleMapRef });
                     </div>
                 </template>
                 <!-- Lightbox enlarge button -->
-                <button v-if="vehicleImage" @click.stop="emit('show-lightbox')" class="absolute bottom-3 right-3 z-20 w-8 h-8 rounded-lg bg-black/40 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/60 transition-colors" :class="{ 'bottom-8': hasMultipleImages }" title="View fullscreen">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                <button v-if="vehicleImage" @click.stop="emit('show-lightbox')" class="absolute bottom-3 right-3 z-20 w-8 h-8 rounded-lg bg-[#153b4f]/70 backdrop-blur-sm text-white flex items-center justify-center hover:bg-[#153b4f] transition-colors" :class="{ 'bottom-8': hasMultipleImages }" title="View fullscreen">
+                    <Expand class="w-4 h-4" />
                 </button>
                 <!-- Provider badge -->
                 <div v-if="providerBadge" class="provider-ribbon" :class="providerBadge.ribbonClassName">
                     {{ providerBadge.label }}
                 </div>
                 <div class="absolute bottom-3 left-3 flex items-center gap-1.5" :class="{ 'bottom-8': hasMultipleImages }">
-                    <span v-if="vehicleSpecs.acriss" class="bg-black/40 backdrop-blur text-white text-[11px] font-bold px-2 py-1 rounded">{{ vehicleSpecs.acriss }}</span>
-                    <span v-if="vehicle?.category" class="bg-black/40 backdrop-blur text-white text-[11px] font-medium px-2 py-1 rounded">{{ vehicle.category }}</span>
+                    <span v-if="vehicleSpecs.acriss" class="bg-[#153b4f]/75 backdrop-blur text-white text-[11px] font-bold px-2 py-1 rounded">{{ vehicleSpecs.acriss }}</span>
+                    <span v-if="vehicle?.category" class="bg-[#153b4f]/75 backdrop-blur text-white text-[11px] font-medium px-2 py-1 rounded">{{ vehicle.category }}</span>
                 </div>
             </div>
             <!-- Right: Map — 50% width, same fixed height -->
             <div v-if="hasVehicleCoords" class="relative w-full md:w-1/2 h-[200px] md:h-[240px] border-t md:border-t-0 md:border-l border-gray-200">
                 <div ref="vehicleMapRef" class="absolute inset-0 w-full h-full"></div>
+                <div class="absolute top-2 left-2 z-[1000] inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-bold text-[#153b4f] shadow-sm backdrop-blur">
+                    <MapPinned class="w-3.5 h-3.5 text-[#0891b2]" />
+                    Pickup map
+                </div>
                 <div v-if="isDifferentDropoff" class="absolute bottom-2 left-2 z-[1000] flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded px-2 py-1 shadow-sm text-[10px] font-medium text-gray-600">
                     <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Pickup</span>
                     <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Dropoff</span>
                 </div>
                 <button @click="emit('show-map')" class="absolute bottom-2 right-2 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg p-1.5 shadow hover:bg-white hover:shadow-md transition-all" title="Expand map">
-                    <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                    <Expand class="w-4 h-4 text-gray-700" />
                 </button>
             </div>
         </div>
         <!-- Vehicle name + specs inline below -->
-        <div class="px-5 py-4 border-t border-gray-100">
+        <div class="px-5 py-4 border-t border-[#153b4f]/10 bg-gradient-to-r from-white to-[#f8fafc]">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <h2 class="text-xl font-bold text-[#1e3a5f] leading-tight">{{ displayVehicleName }}</h2>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ vehicle?.category || 'Economy' }} &middot; {{ vehicleSpecs.transmission || 'Manual' }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+                        <Route class="w-3.5 h-3.5 text-[#0891b2]" />
+                        {{ vehicle?.category || 'Economy' }} &middot; {{ vehicleSpecs.transmission || 'Manual' }}
+                    </p>
                 </div>
                 <div class="bg-[#1e3a5f]/5 border border-[#1e3a5f]/15 rounded-lg px-3 py-2 text-center flex-shrink-0">
                     <span class="text-lg font-bold text-[#1e3a5f] block leading-none">{{ numberOfDays }}</span>

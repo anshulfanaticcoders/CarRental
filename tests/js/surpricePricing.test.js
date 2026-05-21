@@ -152,3 +152,37 @@ test('surprice pricing never returns $0.00 when vehicle has valid total_price', 
     assert.ok(netTotal > 0, `netTotal should be > 0 but got ${netTotal}`);
     assert.equal(netTotal, 245.50);
 });
+
+test('surprice location data ignores pickup office repeated as one-way dropoff', () => {
+    const props = reactive({
+        vehicle: makeSurpriceVehicle({
+            supplier_data: {
+                pickup_station_name: 'Dubai Airport',
+                return_station_name: 'Dubai Airport',
+                pickup_office: {
+                    name: 'Dubai Airport',
+                    address: '34 24 St - Hor Al Anz East - Dubai - United Arab Emirates',
+                    town: 'Dubai',
+                    postal_code: '99070',
+                },
+                dropoff_office: {
+                    name: 'Dubai Airport',
+                    address: '34 24 St - Hor Al Anz East - Dubai - United Arab Emirates',
+                    town: 'Dubai',
+                    postal_code: '99070',
+                },
+            },
+        }),
+        pickupLocation: 'Dubai Airport (DXB)',
+        dropoffLocation: 'Dubai Downtown',
+        numberOfDays: 4,
+    });
+
+    const adapter = createSurpriceAdapter(props);
+    const locationData = adapter.locationData.value;
+
+    assert.equal(locationData.pickupStation, 'Dubai Airport');
+    assert.equal(locationData.dropoffStation, null);
+    assert.deepEqual(locationData.dropoffLines, []);
+    assert.equal(locationData.sameLocation, false);
+});

@@ -1,165 +1,204 @@
 <script setup>
-const props = defineProps({
-    pickupLocation: String,
-    dropoffLocation: String,
-    locationName: String,
-    vehicleLocationText: String,
-    hasOneWayDropoff: Boolean,
-    isAdobeCars: Boolean,
-    vehicle: Object,
-    locationDetailLines: { type: Array, default: () => [] },
-    locationContact: Object,
-    hasLocationHours: Boolean,
-    isOkMobility: Boolean,
-    okMobilityPickupStation: String,
-    okMobilityPickupAddress: String,
-    okMobilityDropoffStation: String,
-    okMobilityDropoffAddress: String,
-    isRenteon: Boolean,
-    renteonPickupOffice: Object,
-    renteonDropoffOffice: Object,
-    renteonSameOffice: Boolean,
-    renteonPickupLines: { type: Array, default: () => [] },
-    renteonDropoffLines: { type: Array, default: () => [] },
-    renteonPickupInstructions: String,
-    renteonDropoffInstructions: String,
-    adapterLocationData: { type: Object, default: null },
-});
-
 import { computed } from 'vue';
+import {
+    CheckCircle2,
+    Clock,
+    Info,
+    Mail,
+    MapPin,
+    ParkingCircle,
+    Phone,
+    Route,
+} from 'lucide-vue-next';
 
-const vehicleAddress = computed(() => {
-    const loc = props.adapterLocationData;
-    if (!loc) return null;
-    const parts = [loc.pickupStation, loc.pickupAddress, ...(loc.pickupLines || [])].filter(Boolean);
-    return parts.length ? parts.join(', ') : null;
+const props = defineProps({
+    locationDisplay: {
+        type: Object,
+        default: () => ({
+            pickup: {},
+            dropoff: {},
+            hasAnyDetails: false,
+        }),
+    },
+    hasLocationHours: Boolean,
 });
-
-const vehiclePhone = computed(() => props.adapterLocationData?.pickupPhone || null);
-const vehicleEmail = computed(() => props.adapterLocationData?.pickupEmail || null);
-const pickupInstructions = computed(() => props.adapterLocationData?.pickupInstructions || null);
-const dropoffInstructions = computed(() => props.adapterLocationData?.dropoffInstructions || null);
 
 defineEmits(['show-location-hours']);
+
+const pickup = computed(() => props.locationDisplay?.pickup || {});
+const dropoff = computed(() => props.locationDisplay?.dropoff || {});
+
+const contactItems = (point) => [
+    { key: 'phone', value: point?.contact?.phone, icon: Phone },
+    { key: 'email', value: point?.contact?.email, icon: Mail },
+].filter((item) => item.value);
+
+const pickupContactItems = computed(() => contactItems(pickup.value));
+const dropoffContactItems = computed(() => contactItems(dropoff.value));
+
+const hasPickupMeta = computed(() => Boolean(
+    pickup.value?.addressLines?.length
+    || pickup.value?.parkingAddress
+    || pickup.value?.instructions
+    || pickupContactItems.value.length
+    || props.hasLocationHours
+));
+
+const hasDropoffGuidance = computed(() => Boolean(
+    dropoff.value?.instructions
+    || dropoffContactItems.value.length
+    || dropoff.value?.parkingAddress
+    || dropoff.value?.addressLines?.length
+));
+
+const hasSeparateDropoffPanel = computed(() => Boolean(
+    !dropoff.value?.isSameAsPickup
+    && (dropoff.value?.label || hasDropoffGuidance.value)
+));
+
+const returnLocationLabel = computed(() => (
+    dropoff.value?.label
+    || pickup.value?.label
+    || 'Pickup location'
+));
 </script>
 
 <template>
-    <section class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 fade-in-up" style="animation-delay:0.2s">
-        <h3 class="text-base font-bold text-[#1e3a5f] mb-3 flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            Location Details
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <!-- Pickup -->
-            <div class="bg-emerald-50/60 rounded-xl p-4 border border-emerald-100">
-                <span class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Pick-up Location</span>
-                <p class="text-sm font-semibold text-gray-900 mt-2">{{ pickupLocation || locationName }}</p>
-                <p v-if="vehicleLocationText" class="text-xs text-gray-500 mt-1">{{ vehicleLocationText }}</p>
-                <!-- Vehicle / Parking Address (all providers) -->
-                <div v-if="vehicleAddress && !isAdobeCars && !isOkMobility && !isRenteon" class="mt-2 bg-white rounded-lg p-2.5 border border-emerald-200/60">
-                    <span class="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Vehicle Address</span>
-                    <p class="text-xs text-gray-700 mt-1">{{ vehicleAddress }}</p>
-                    <div v-if="vehiclePhone || vehicleEmail" class="mt-2 pt-2 border-t border-emerald-100 space-y-1">
-                        <div v-if="vehiclePhone" class="flex items-center gap-2 text-xs text-gray-600">
-                            <svg class="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                            <span>{{ vehiclePhone }}</span>
-                        </div>
-                        <div v-if="vehicleEmail" class="flex items-center gap-2 text-xs text-gray-600">
-                            <svg class="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                            <span>{{ vehicleEmail }}</span>
-                        </div>
+    <section class="bg-white rounded-2xl border border-[#153b4f]/10 shadow-[0_14px_34px_rgba(21,59,79,0.07)] overflow-hidden fade-in-up" style="animation-delay:0.2s">
+        <div class="px-5 py-4 border-b border-[#153b4f]/10 bg-gradient-to-r from-[#f0f8fc] via-white to-[#f8fafc]">
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#0891b2]">
+                        <Route class="w-4 h-4" />
+                        Rental logistics
                     </div>
-                    <p v-if="pickupInstructions" class="text-xs text-gray-400 mt-2 italic">{{ pickupInstructions }}</p>
+                    <h3 class="mt-1 text-lg font-bold text-[#153b4f]">Pickup & return details</h3>
                 </div>
-                <!-- Adobe location details -->
-                <template v-if="isAdobeCars">
-                    <p v-if="vehicle.office_address" class="text-xs text-gray-500 mt-1">{{ vehicle.office_address }}</p>
-                    <div class="mt-3 pt-3 border-t border-emerald-200/50 space-y-1.5">
-                        <div v-if="vehicle.office_phone" class="flex items-center gap-2 text-xs text-gray-600">
-                            <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                            <span>{{ vehicle.office_phone }}</span>
-                        </div>
-                        <div v-if="vehicle.office_schedule && vehicle.office_schedule.length === 2" class="flex items-center gap-2 text-xs text-gray-600">
-                            <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span>Open {{ vehicle.office_schedule[0] }} – {{ vehicle.office_schedule[1] }}</span>
-                        </div>
-                        <div v-if="vehicle.at_airport" class="flex items-center gap-2 text-xs text-gray-600">
-                            <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>
-                            <span>Airport location</span>
-                        </div>
-                    </div>
-                </template>
-                <!-- Generic location details -->
-                <template v-if="!isOkMobility && !isRenteon && !isAdobeCars">
-                    <div v-if="locationDetailLines.length" class="mt-2 space-y-0.5">
-                        <p v-for="(line, i) in locationDetailLines" :key="i" class="text-xs text-gray-500">{{ line }}</p>
-                    </div>
-                    <div v-if="locationContact.phone || locationContact.email" class="mt-3 pt-3 border-t border-emerald-200/50 space-y-1.5">
-                        <div v-if="locationContact.phone" class="flex items-center gap-2 text-xs text-gray-600">
-                            <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                            <span>{{ locationContact.phone }}</span>
-                        </div>
-                        <div v-if="locationContact.email" class="flex items-center gap-2 text-xs text-gray-600">
-                            <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                            <span>{{ locationContact.email }}</span>
-                        </div>
-                    </div>
-                    <button v-if="hasLocationHours" @click="$emit('show-location-hours')"
-                        class="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#1e3a5f] hover:underline">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        View hours & policies
-                    </button>
-                </template>
-                <!-- OkMobility details -->
-                <template v-if="isOkMobility">
-                    <p v-if="okMobilityPickupStation" class="text-xs text-gray-500 mt-1">{{ okMobilityPickupStation }}</p>
-                    <p v-if="okMobilityPickupAddress" class="text-xs text-gray-500">{{ okMobilityPickupAddress }}</p>
-                </template>
-                <!-- Renteon details -->
-                <template v-if="isRenteon && renteonPickupOffice">
-                    <p v-if="renteonPickupOffice.name" class="text-xs text-gray-500 mt-1">{{ renteonPickupOffice.name }}</p>
-                    <div v-if="renteonPickupLines.length" class="mt-1 space-y-0.5">
-                        <p v-for="(line, i) in renteonPickupLines" :key="i" class="text-xs text-gray-500">{{ line }}</p>
-                    </div>
-                    <div v-if="renteonPickupOffice.phone || renteonPickupOffice.email" class="mt-3 pt-3 border-t border-emerald-200/50 space-y-1.5">
-                        <div v-if="renteonPickupOffice.phone" class="flex items-center gap-2 text-xs text-gray-600">
-                            <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                            <span>{{ renteonPickupOffice.phone }}</span>
-                        </div>
-                        <div v-if="renteonPickupOffice.email" class="flex items-center gap-2 text-xs text-gray-600">
-                            <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                            <span>{{ renteonPickupOffice.email }}</span>
-                        </div>
-                    </div>
-                    <p v-if="renteonPickupInstructions" class="text-xs text-gray-400 mt-2 italic">{{ renteonPickupInstructions }}</p>
-                </template>
+                <span class="hidden sm:inline-flex items-center gap-2 rounded-full border border-[#153b4f]/12 bg-white px-3 py-1.5 text-xs font-semibold text-[#153b4f]">
+                    Supplier details
+                </span>
             </div>
-            <!-- Dropoff -->
-            <div class="bg-rose-50/60 rounded-xl p-4 border border-rose-100">
-                <span class="text-[11px] font-bold text-rose-600 uppercase tracking-wider">Drop-off Location</span>
-                <template v-if="hasOneWayDropoff">
-                    <p class="text-sm font-semibold text-gray-900 mt-2">{{ dropoffLocation }}</p>
-                    <template v-if="isOkMobility">
-                        <p v-if="okMobilityDropoffStation" class="text-xs text-gray-500 mt-1">{{ okMobilityDropoffStation }}</p>
-                        <p v-if="okMobilityDropoffAddress" class="text-xs text-gray-500">{{ okMobilityDropoffAddress }}</p>
-                    </template>
-                    <template v-if="isRenteon && renteonDropoffOffice && !renteonSameOffice">
-                        <p v-if="renteonDropoffOffice.name" class="text-xs text-gray-500 mt-1">{{ renteonDropoffOffice.name }}</p>
-                        <div v-if="renteonDropoffLines.length" class="mt-1 space-y-0.5">
-                            <p v-for="(line, i) in renteonDropoffLines" :key="i" class="text-xs text-gray-500">{{ line }}</p>
+        </div>
+
+        <div class="p-5">
+            <div
+                class="grid grid-cols-1 gap-4 lg:items-start"
+                :class="hasSeparateDropoffPanel ? 'lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.78fr)]' : ''"
+            >
+                <article class="rounded-xl border border-[#b0d4e6]/80 bg-[#f8fbfd] p-4 sm:p-5">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-[#22d3ee] text-[#0b2230] flex items-center justify-center shadow-[0_8px_18px_rgba(34,211,238,0.28)]">
+                            <CheckCircle2 class="w-5 h-5" />
                         </div>
-                        <div v-if="renteonDropoffOffice.phone || renteonDropoffOffice.email" class="mt-3 pt-3 border-t border-rose-200/50 space-y-1.5">
-                            <div v-if="renteonDropoffOffice.phone" class="flex items-center gap-2 text-xs text-gray-600">
-                                <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                                <span>{{ renteonDropoffOffice.phone }}</span>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#0891b2]">Pickup location</div>
+                            <p class="mt-1 text-base font-bold text-slate-950 leading-snug">{{ pickup.label || 'Pickup location' }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="hasPickupMeta" class="mt-4 grid grid-cols-1 gap-3" :class="pickup.addressLines?.length && pickup.parkingAddress ? 'md:grid-cols-2' : ''">
+                        <div v-if="pickup.addressLines?.length" class="rounded-lg bg-white border border-[#153b4f]/10 p-3">
+                            <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#153b4f]">
+                                <MapPin class="w-3.5 h-3.5 text-[#0891b2]" />
+                                Full address
+                            </div>
+                            <div class="mt-2 space-y-1">
+                                <p v-for="line in pickup.addressLines" :key="line" class="text-sm text-slate-700 leading-relaxed">{{ line }}</p>
                             </div>
                         </div>
-                        <p v-if="renteonDropoffInstructions" class="text-xs text-gray-400 mt-2 italic">{{ renteonDropoffInstructions }}</p>
-                    </template>
-                </template>
-                <template v-else>
-                    <p class="text-sm font-semibold text-gray-900 mt-2">Same as pick-up location</p>
-                </template>
+
+                        <div v-if="pickup.parkingAddress" class="rounded-lg bg-white border border-[#153b4f]/10 p-3">
+                            <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#153b4f]">
+                                <ParkingCircle class="w-3.5 h-3.5 text-[#0891b2]" />
+                                Vehicle / parking address
+                            </div>
+                            <p class="mt-2 text-sm text-slate-700 leading-relaxed">{{ pickup.parkingAddress }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="pickup.instructions" class="mt-3 flex items-start gap-3 rounded-lg border border-[#153b4f]/12 bg-white p-3">
+                        <div class="mt-0.5 w-7 h-7 rounded-full bg-[#f0f8fc] text-[#153b4f] flex items-center justify-center shrink-0">
+                            <Info class="w-4 h-4" />
+                        </div>
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-[0.15em] text-[#153b4f]">Pickup guidelines</div>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-700 whitespace-pre-line">{{ pickup.instructions }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="pickupContactItems.length || hasLocationHours" class="mt-4 flex flex-wrap gap-2">
+                        <div v-for="item in pickupContactItems" :key="item.key" class="inline-flex items-center gap-1.5 rounded-full border border-[#22d3ee]/35 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+                            <component :is="item.icon" class="w-3.5 h-3.5 text-[#0891b2]" />
+                            {{ item.value }}
+                        </div>
+                        <button v-if="hasLocationHours" type="button" @click="$emit('show-location-hours')"
+                            class="inline-flex items-center gap-1.5 rounded-full border border-[#153b4f]/15 bg-white px-3 py-1.5 text-xs font-semibold text-[#153b4f] hover:border-[#153b4f]/35 hover:bg-[#f0f8fc] transition-colors">
+                            <Clock class="w-3.5 h-3.5" />
+                            Hours & policies
+                        </button>
+                    </div>
+
+                    <div v-if="dropoff.isSameAsPickup" class="mt-4 flex flex-col gap-3 rounded-xl border border-[#153b4f]/10 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-start gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-[#f0f8fc] text-[#153b4f] flex items-center justify-center shrink-0">
+                                <Route class="w-4 h-4" />
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Return location</div>
+                                <p class="text-sm font-bold text-slate-950">Same as pickup</p>
+                                <p class="mt-0.5 text-xs text-slate-500">{{ returnLocationLabel }}</p>
+                            </div>
+                        </div>
+                        <span class="inline-flex w-fit items-center rounded-full bg-[#22d3ee]/16 px-3 py-1 text-xs font-bold text-[#0b2230]">
+                            Return to same location
+                        </span>
+                    </div>
+                </article>
+
+                <article v-if="hasSeparateDropoffPanel" class="rounded-xl border border-rose-200/70 bg-white p-4 sm:p-5">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center">
+                            <MapPin class="w-5 h-5" />
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[11px] font-bold uppercase tracking-[0.16em] text-rose-600">Return location</div>
+                            <p class="mt-1 text-base font-bold text-slate-950 leading-snug">{{ returnLocationLabel }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="dropoff.addressLines?.length" class="mt-4 rounded-lg bg-rose-50/40 border border-rose-100 p-3">
+                        <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-rose-700">
+                            <MapPin class="w-3.5 h-3.5" />
+                            Full address
+                        </div>
+                        <div class="mt-2 space-y-1">
+                            <p v-for="line in dropoff.addressLines" :key="line" class="text-sm text-slate-700 leading-relaxed">{{ line }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="dropoff.parkingAddress" class="mt-3 rounded-lg bg-rose-50/40 border border-rose-100 p-3">
+                        <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-rose-700">
+                            <ParkingCircle class="w-3.5 h-3.5" />
+                            Return parking address
+                        </div>
+                        <p class="mt-2 text-sm text-slate-700 leading-relaxed">{{ dropoff.parkingAddress }}</p>
+                    </div>
+
+                    <div v-if="dropoff.instructions" class="mt-3 flex items-start gap-3 rounded-lg border border-rose-100 bg-rose-50/40 p-3">
+                        <Info class="mt-0.5 w-4 h-4 text-rose-600 shrink-0" />
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-700">Return guidelines</div>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-700 whitespace-pre-line">{{ dropoff.instructions }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="dropoffContactItems.length" class="mt-4 flex flex-wrap gap-2">
+                        <div v-for="item in dropoffContactItems" :key="item.key" class="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+                            <component :is="item.icon" class="w-3.5 h-3.5 text-rose-600" />
+                            {{ item.value }}
+                        </div>
+                    </div>
+                </article>
             </div>
         </div>
     </section>

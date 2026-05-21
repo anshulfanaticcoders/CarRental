@@ -1,6 +1,20 @@
 import { computed } from 'vue';
 import { resolveStandardPackages } from './shared.js';
 
+const normalizeLocationKey = (value) => `${value ?? ''}`.trim().toLowerCase().replace(/\s+/g, ' ');
+const sameLocationValue = (left, right) => {
+    const leftKey = normalizeLocationKey(left);
+    const rightKey = normalizeLocationKey(right);
+    return leftKey !== '' && rightKey !== '' && leftKey === rightKey;
+};
+const sameOffice = (left = {}, right = {}) => {
+    const nameMatches = sameLocationValue(left?.name, right?.name);
+    const addressMatches = sameLocationValue(left?.address, right?.address);
+    const cityMatches = sameLocationValue(left?.town || left?.city, right?.town || right?.city);
+
+    return (nameMatches && (addressMatches || cityMatches)) || (addressMatches && cityMatches);
+};
+
 /**
  * @param {{ vehicle: Object, numberOfDays: number }} props
  * @returns {import('./types').AdapterResult}
@@ -136,23 +150,30 @@ export function createSurpriceAdapter(props, { currentPackage } = {}) {
         const sd = props.vehicle?.supplier_data || {};
         const pickup = sd.pickup_office || {};
         const dropoff = sd.dropoff_office || {};
+        const requestedOneWay = Boolean(
+            props.dropoffLocation
+            && props.pickupLocation
+            && normalizeLocationKey(props.dropoffLocation) !== normalizeLocationKey(props.pickupLocation)
+        );
+        const dropoffRepeatsPickup = requestedOneWay && sameOffice(dropoff, pickup);
+        const usableDropoff = dropoffRepeatsPickup ? {} : dropoff;
         return {
             pickupStation: pickup.name || sd.pickup_station_name || null,
             pickupAddress: pickup.address || null,
             pickupLines: [pickup.town, pickup.postal_code].filter(Boolean),
             pickupPhone: pickup.phone || null,
             pickupEmail: pickup.email || null,
-            dropoffStation: dropoff.name || sd.return_station_name || null,
-            dropoffAddress: dropoff.address || null,
-            dropoffLines: [dropoff.town, dropoff.postal_code].filter(Boolean),
-            dropoffPhone: dropoff.phone || null,
-            dropoffEmail: dropoff.email || null,
-            sameLocation: !dropoff.name || pickup.name === dropoff.name,
+            dropoffStation: usableDropoff.name || (dropoffRepeatsPickup ? null : sd.return_station_name) || null,
+            dropoffAddress: usableDropoff.address || null,
+            dropoffLines: [usableDropoff.town, usableDropoff.postal_code].filter(Boolean),
+            dropoffPhone: usableDropoff.phone || null,
+            dropoffEmail: usableDropoff.email || null,
+            sameLocation: !requestedOneWay && (!dropoff.name || pickup.name === dropoff.name),
             fuelPolicy: null,
             cancellation: null,
             officeHours: null,
             pickupInstructions: pickup.pickup_instructions || sd.pickup_additional_info || null,
-            dropoffInstructions: dropoff.dropoff_instructions || null,
+            dropoffInstructions: usableDropoff.dropoff_instructions || null,
         };
     });
 

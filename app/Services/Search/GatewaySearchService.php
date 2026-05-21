@@ -177,6 +177,10 @@ class GatewaySearchService
         $isOneWay = $resolvedDropoffUnifiedId > 0
             && $resolvedPickupUnifiedId > 0
             && $resolvedDropoffUnifiedId !== $resolvedPickupUnifiedId;
+        if ($isOneWay) {
+            $providerVehicles = $this->filterVehiclesWithDistinctOneWayDropoff($providerVehicles);
+            $filteredProviderVehicles = $this->filterVehiclesWithDistinctOneWayDropoff($filteredProviderVehicles);
+        }
         $internalForMerge = $this->internalVehicleMergeService->forGatewayMerge(
             $internalVehiclesCollection,
             $validated,
@@ -354,6 +358,62 @@ class GatewaySearchService
                 return $total !== null && $total > 0;
             })
             ->values();
+    }
+
+    private function filterVehiclesWithDistinctOneWayDropoff(Collection $vehicles): Collection
+    {
+        return $vehicles
+            ->filter(fn ($vehicle): bool => $this->hasDistinctOneWayDropoff(is_array($vehicle) ? $vehicle : (array) $vehicle))
+            ->values();
+    }
+
+    private function hasDistinctOneWayDropoff(array $vehicle): bool
+    {
+        $pickupId = $this->normalizeLocationToken($vehicle['provider_pickup_id'] ?? null);
+        $dropoffId = $this->normalizeLocationToken(
+            $vehicle['provider_return_id']
+                ?? $vehicle['provider_dropoff_id']
+                ?? ($vehicle['location']['dropoff']['provider_location_id'] ?? null)
+        );
+
+        if ($pickupId !== '' && $dropoffId !== '' && $pickupId !== $dropoffId) {
+            return true;
+        }
+
+        $pickupName = $this->normalizeLocationToken(
+            $vehicle['pickup_station_name']
+                ?? ($vehicle['location']['pickup']['name'] ?? null)
+                ?? ($vehicle['pickup_office']['name'] ?? null)
+        );
+        $dropoffName = $this->normalizeLocationToken(
+            $vehicle['dropoff_station_name']
+                ?? ($vehicle['location']['dropoff']['name'] ?? null)
+                ?? ($vehicle['dropoff_office']['name'] ?? null)
+        );
+
+        if ($pickupName !== '' && $dropoffName !== '' && $pickupName !== $dropoffName) {
+            return true;
+        }
+
+        $pickupLat = $vehicle['latitude'] ?? ($vehicle['location']['pickup']['latitude'] ?? null);
+        $pickupLng = $vehicle['longitude'] ?? ($vehicle['location']['pickup']['longitude'] ?? null);
+        $dropoffLat = $vehicle['dropoff_latitude'] ?? ($vehicle['location']['dropoff']['latitude'] ?? null);
+        $dropoffLng = $vehicle['dropoff_longitude'] ?? ($vehicle['location']['dropoff']['longitude'] ?? null);
+
+        if (
+            $this->isUsableCoordinatePair($pickupLat, $pickupLng)
+            && $this->isUsableCoordinatePair($dropoffLat, $dropoffLng)
+        ) {
+            return abs((float) $pickupLat - (float) $dropoffLat) > 0.0001
+                || abs((float) $pickupLng - (float) $dropoffLng) > 0.0001;
+        }
+
+        return false;
+    }
+
+    private function normalizeLocationToken(mixed $value): string
+    {
+        return strtolower(trim((string) ($value ?? '')));
     }
 
     private function extractVehicleTotal(mixed $vehicle): ?float

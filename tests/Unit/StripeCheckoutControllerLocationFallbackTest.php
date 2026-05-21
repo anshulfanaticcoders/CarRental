@@ -115,11 +115,35 @@ class StripeCheckoutControllerLocationFallbackTest extends TestCase
         [$pickup, $dropoff] = $this->resolveCheckoutLocationDetails($controller, $validated);
 
         $this->assertSame($pickupOffice['name'], $pickup['name']);
-        $this->assertSame($pickupOffice['address'], $pickup['address']);
+        $this->assertSame($pickupOffice['address'], $pickup['address_1']);
         $this->assertSame(40.656685, $pickup['latitude']);
         $this->assertSame(-4.681208, $pickup['longitude']);
         $this->assertSame($pickup['latitude'], $dropoff['latitude']);
         $this->assertSame($pickup['longitude'], $dropoff['longitude']);
+    }
+
+    public function test_it_does_not_copy_pickup_details_to_one_way_dropoff(): void
+    {
+        $controller = $this->makeController();
+
+        $validated = [
+            'pickup_location' => 'Dubai Airport (DXB)',
+            'dropoff_location' => 'Dubai Downtown',
+            'vehicle' => [
+                'source' => 'surprice',
+                'pickup_station_name' => 'Dubai Airport',
+                'pickup_address' => '34 24 St - Hor Al Anz East - Dubai - United Arab Emirates',
+                'dropoff_station_name' => 'Dubai Airport',
+                'dropoff_address' => '34 24 St - Hor Al Anz East - Dubai - United Arab Emirates',
+                'latitude' => 25.2815459,
+                'longitude' => 55.3519485,
+            ],
+        ];
+
+        [$pickup, $dropoff] = $this->resolveCheckoutLocationDetails($controller, $validated);
+
+        $this->assertSame('Dubai Airport', $pickup['name']);
+        $this->assertNull($dropoff);
     }
 
     private function makeController(): StripeCheckoutController

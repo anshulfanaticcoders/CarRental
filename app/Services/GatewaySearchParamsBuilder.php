@@ -42,6 +42,8 @@ class GatewaySearchParamsBuilder
             $providerLocations = $location['providers'];
             $requestedProvider = strtolower(trim((string) ($validated['provider'] ?? 'mixed')));
             $requestedPickupId = trim((string) ($validated['provider_pickup_id'] ?? ''));
+            $requestedPickupUnifiedId = (int) ($resolvedUnifiedLocationId ?? $validated['unified_location_id'] ?? 0);
+            $requestedDropoffUnifiedId = (int) ($params['dropoff_unified_location_id'] ?? 0);
 
             if ($requestedProvider !== '' && $requestedProvider !== 'mixed') {
                 $providerLocations = array_values(array_filter($providerLocations, function (array $providerLocation) use ($requestedProvider) {
@@ -60,6 +62,17 @@ class GatewaySearchParamsBuilder
             }
 
             // Exclude 'internal' provider — internal vehicles are already queried directly from MySQL
+            if ($requestedDropoffUnifiedId > 0 && $requestedPickupUnifiedId > 0 && $requestedDropoffUnifiedId !== $requestedPickupUnifiedId) {
+                $dropoffLocation = $this->locationSearchService->getLocationByUnifiedId($requestedDropoffUnifiedId);
+                $dropoffProviders = $this->providerIds($dropoffLocation['providers'] ?? []);
+
+                $providerLocations = array_values(array_filter($providerLocations, function (array $providerLocation) use ($dropoffProviders) {
+                    $provider = strtolower(trim((string) ($providerLocation['provider'] ?? '')));
+
+                    return $provider !== '' && in_array($provider, $dropoffProviders, true);
+                }));
+            }
+
             $providerLocations = array_values(array_filter($providerLocations, function (array $pl) {
                 return strtolower(trim($pl['provider'] ?? '')) !== 'internal';
             }));
@@ -69,5 +82,18 @@ class GatewaySearchParamsBuilder
         }
 
         return $params;
+    }
+
+    private function providerIds(array $providers): array
+    {
+        $ids = [];
+        foreach ($providers as $provider) {
+            $id = strtolower(trim((string) ($provider['provider'] ?? '')));
+            if ($id !== '') {
+                $ids[] = $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 }

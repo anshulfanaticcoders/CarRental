@@ -7,6 +7,8 @@ const isValidCoordinate = (coord) => {
     return !isNaN(num) && isFinite(num);
 };
 
+const normalizeKey = (value) => `${value ?? ''}`.trim().toLowerCase().replace(/\s+/g, ' ');
+
 export function useVehicleMap(props) {
     const vehicleMapRef = ref(null);
     const mapModalRef = ref(null);
@@ -19,13 +21,37 @@ export function useVehicleMap(props) {
         return isValidCoordinate(props.vehicle?.latitude) && isValidCoordinate(props.vehicle?.longitude);
     });
 
+    const isOneWayForm = computed(() => {
+        const pickup = normalizeKey(props.pickupLocation);
+        const dropoff = normalizeKey(props.dropoffLocation);
+
+        return Boolean(pickup && dropoff && pickup !== dropoff);
+    });
+
+    const providerDropoffRepeatsPickup = computed(() => {
+        if (!isOneWayForm.value || !hasVehicleCoords.value) return false;
+
+        const pickupId = normalizeKey(props.vehicle?.provider_pickup_id);
+        const dropoffId = normalizeKey(props.vehicle?.provider_return_id || props.vehicle?.provider_dropoff_id || props.vehicle?.location?.dropoff?.provider_location_id);
+        if (pickupId && dropoffId && pickupId === dropoffId) return true;
+
+        const providerLat = props.vehicle?.location?.dropoff?.latitude;
+        const providerLng = props.vehicle?.location?.dropoff?.longitude;
+        if (!isValidCoordinate(providerLat) || !isValidCoordinate(providerLng)) return false;
+
+        return Math.abs(parseFloat(props.vehicle.latitude) - parseFloat(providerLat)) <= 0.0001
+            && Math.abs(parseFloat(props.vehicle.longitude) - parseFloat(providerLng)) <= 0.0001;
+    });
+
     // Prefer provider-reported dropoff coords (`vehicle.location.dropoff`) from the
     // gateway Vehicle payload over the form-supplied dropoff, because the form may
     // still hold the pickup coords when the user hasn't picked a distinct dropoff
     // from the search dropdown. Falls back to form-supplied values.
     const resolvedDropoffLat = computed(() => {
+        if (!isOneWayForm.value) return null;
+
         const providerLat = props.vehicle?.location?.dropoff?.latitude;
-        if (isValidCoordinate(providerLat)) return parseFloat(providerLat);
+        if (!providerDropoffRepeatsPickup.value && isValidCoordinate(providerLat)) return parseFloat(providerLat);
         const detailsLat = props.dropoffLocationDetails?.latitude;
         if (isValidCoordinate(detailsLat)) return parseFloat(detailsLat);
         if (isValidCoordinate(props.dropoffLatitude)) return parseFloat(props.dropoffLatitude);
@@ -33,8 +59,10 @@ export function useVehicleMap(props) {
     });
 
     const resolvedDropoffLng = computed(() => {
+        if (!isOneWayForm.value) return null;
+
         const providerLng = props.vehicle?.location?.dropoff?.longitude;
-        if (isValidCoordinate(providerLng)) return parseFloat(providerLng);
+        if (!providerDropoffRepeatsPickup.value && isValidCoordinate(providerLng)) return parseFloat(providerLng);
         const detailsLng = props.dropoffLocationDetails?.longitude;
         if (isValidCoordinate(detailsLng)) return parseFloat(detailsLng);
         if (isValidCoordinate(props.dropoffLongitude)) return parseFloat(props.dropoffLongitude);
@@ -46,6 +74,7 @@ export function useVehicleMap(props) {
     });
 
     const isDifferentDropoff = computed(() => {
+        if (!isOneWayForm.value) return false;
         if (!hasDropoffCoords.value || !hasVehicleCoords.value) return false;
         const pickupLat = parseFloat(props.vehicle.latitude);
         const pickupLng = parseFloat(props.vehicle.longitude);

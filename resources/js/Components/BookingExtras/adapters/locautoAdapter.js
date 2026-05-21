@@ -17,6 +17,10 @@ import { useEmptyLocationData } from './shared.js';
  */
 export function createLocautoAdapter(props) {
     const protectionCodes = ['136', '147', '145', '140', '146', '6', '43'];
+    const normalizeInitialProtectionCodes = (code) => {
+        if (Array.isArray(code)) return code.filter(Boolean);
+        return code ? [code] : [];
+    };
 
     const locautoProtectionPlans = computed(() => {
         const extras = props.vehicle?.extras || [];
@@ -25,9 +29,7 @@ export function createLocautoAdapter(props) {
         );
     });
 
-    const selectedLocautoProtections = ref(
-        props.initialProtectionCode ? [props.initialProtectionCode] : []
-    );
+    const selectedLocautoProtections = ref(normalizeInitialProtectionCodes(props.initialProtectionCode));
 
     const toggleLocautoProtection = (code) => {
         const idx = selectedLocautoProtections.value.indexOf(code);
@@ -39,7 +41,7 @@ export function createLocautoAdapter(props) {
     };
 
     watch(() => props.initialProtectionCode, (newCode) => {
-        selectedLocautoProtections.value = newCode ? [newCode] : [];
+        selectedLocautoProtections.value = normalizeInitialProtectionCodes(newCode);
     });
 
     const locautoSmartCoverPlan = computed(() => {

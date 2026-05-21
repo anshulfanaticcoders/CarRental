@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { BadgeCheck, Check, ShieldCheck, Sparkles, X } from 'lucide-vue-next';
+
+const props = defineProps({
     availablePackages: Array,
     selectedPackageType: String,
     isLocautoRent: Boolean,
@@ -18,101 +20,146 @@ defineProps({
 });
 
 const emit = defineEmits(['select-package', 'toggle-adobe-protection', 'toggle-locauto-protection']);
+
+const isPackageSelected = (pkg) => props.isAdobeCars && pkg.isAddOn
+    ? props.isAdobeProtectionSelected(pkg)
+    : props.selectedPackageType === pkg.type;
+
+const packageBenefits = (pkg) => props.getBenefits(pkg).slice(0, 5);
+
+const selectPackage = (pkg) => {
+    if (props.isAdobeCars && pkg.isAddOn) {
+        emit('toggle-adobe-protection', pkg);
+        return;
+    }
+
+    emit('select-package', pkg.type);
+};
+
+const locautoSelected = (code) => props.selectedLocautoProtections.includes(code);
 </script>
 
 <template>
-    <!-- ═══ PACKAGE / RATE SELECTION ═══ -->
-    <section v-if="!isLocautoRent && availablePackages.length > 0" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 fade-in-up" style="animation-delay:0.4s" id="extras-package-section">
-        <h3 class="text-lg font-bold text-[#1e3a5f] mb-2 flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-            Choose Your Package
-        </h3>
-        <p class="text-sm text-gray-500 mb-5">Select the rental package that best fits your needs</p>
+    <section v-if="!isLocautoRent && availablePackages.length > 0" class="bg-white rounded-2xl border border-[#153b4f]/10 shadow-[0_18px_42px_rgba(21,59,79,0.08)] overflow-hidden fade-in-up" style="animation-delay:0.4s" id="extras-package-section">
+        <div class="px-5 py-4 border-b border-[#153b4f]/10 bg-gradient-to-r from-[#f0f8fc] via-white to-[#f8fafc]">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#0891b2]">
+                        <Sparkles class="w-4 h-4" />
+                        Rental package
+                    </div>
+                    <h3 class="mt-1 text-lg font-bold text-[#153b4f]">Choose your cover level</h3>
+                </div>
+                <span class="hidden sm:inline-flex rounded-full border border-[#153b4f]/15 bg-white px-3 py-1.5 text-xs font-semibold text-[#153b4f]">
+                    {{ availablePackages.length }} options
+                </span>
+            </div>
+        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div v-for="pkg in availablePackages" :key="pkg.type"
-                @click="isAdobeCars && pkg.isAddOn ? emit('toggle-adobe-protection', pkg) : emit('select-package', pkg.type)"
-                class="plan-card rounded-2xl border-2 p-5 relative cursor-pointer"
-                :class="(isAdobeCars && pkg.isAddOn ? isAdobeProtectionSelected(pkg) : selectedPackageType === pkg.type) ? 'selected' : 'border-gray-200 hover:border-gray-300 transition-colors'">
-                <!-- Radio/Check at top-right -->
-                <div class="absolute top-3 right-3">
-                    <template v-if="isAdobeCars && pkg.isAddOn">
-                        <div class="w-5 h-5 rounded border-2 flex items-center justify-center"
-                            :class="isAdobeProtectionSelected(pkg) ? 'border-[#1e3a5f] bg-[#1e3a5f]' : 'border-gray-300'">
-                            <svg v-if="isAdobeProtectionSelected(pkg)" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+        <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button v-for="pkg in availablePackages" :key="pkg.type" type="button"
+                @click="selectPackage(pkg)"
+                class="plan-card group text-left rounded-2xl border-2 p-5 relative"
+                :class="isPackageSelected(pkg) ? 'selected' : 'border-slate-200 hover:border-[#22d3ee]'">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h4 class="text-base font-bold text-slate-950">{{ pkg.name || getPackageDisplayName(pkg.type) }}</h4>
+                            <span v-if="isPackageSelected(pkg)" class="inline-flex items-center gap-1 rounded-full bg-[#22d3ee] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0b2230]">
+                                <Check class="w-3 h-3" />
+                                Selected
+                            </span>
+                            <span v-else-if="pkg.type === 'PMP' || pkg.isBestValue" class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                                <BadgeCheck class="w-3 h-3" />
+                                {{ pkg.isBestValue ? 'Recommended' : 'Popular' }}
+                            </span>
                         </div>
-                    </template>
-                    <template v-else>
-                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
-                            :class="selectedPackageType === pkg.type ? 'border-[#1e3a5f]' : 'border-gray-300'">
-                            <div v-if="selectedPackageType === pkg.type" class="w-2.5 h-2.5 rounded-full bg-[#1e3a5f] radio-dot"></div>
-                        </div>
-                    </template>
+                        <p class="mt-1 text-sm text-slate-500">{{ pkg.subtitle || getPackageSubtitle(pkg.type) }}</p>
+                    </div>
+                    <div class="shrink-0 rounded-full border-2 p-1"
+                        :class="isPackageSelected(pkg) ? 'border-[#22d3ee] bg-[#22d3ee]' : 'border-slate-300 bg-white group-hover:border-[#22d3ee]'">
+                        <Check v-if="isPackageSelected(pkg)" class="w-3.5 h-3.5 text-[#0b2230]" />
+                        <div v-else class="w-3.5 h-3.5 rounded-full"></div>
+                    </div>
                 </div>
-                <!-- Popular badge -->
-                <div v-if="pkg.type === 'PMP' || pkg.isBestValue" class="absolute top-3 left-4">
-                    <span class="bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">{{ pkg.isBestValue ? 'Recommended' : 'Popular' }}</span>
+
+                <div v-if="pkg.deposit || pkg.excess || pkg.mileage" class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div v-if="pkg.deposit" class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
+                        <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Deposit</div>
+                        <div class="text-xs font-semibold text-slate-800">{{ formatPrice(pkg.deposit) }}</div>
+                    </div>
+                    <div v-if="pkg.excess" class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
+                        <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Excess</div>
+                        <div class="text-xs font-semibold text-slate-800">{{ formatPrice(pkg.excess) }}</div>
+                    </div>
+                    <div v-if="pkg.mileage" class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
+                        <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Mileage</div>
+                        <div class="text-xs font-semibold text-slate-800">{{ pkg.mileage }}</div>
+                    </div>
                 </div>
-                <h4 class="text-base font-bold text-gray-900" :class="{'mt-4': pkg.type === 'PMP' || pkg.isBestValue}">{{ pkg.name || getPackageDisplayName(pkg.type) }}</h4>
-                <p class="text-xs text-gray-500 mt-1">{{ pkg.subtitle || getPackageSubtitle(pkg.type) }}</p>
-                <!-- Cover features (OKMobility style: included/excluded) -->
-                <ul v-if="pkg.coverFeatures?.length" class="mt-3 space-y-1.5">
-                    <li v-for="(feature, idx) in pkg.coverFeatures" :key="idx" class="flex items-center gap-2 text-xs" :class="feature.included ? 'text-gray-700' : 'text-gray-400'">
-                        <svg v-if="feature.included" class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                        <svg v-else class="w-3.5 h-3.5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+
+                <ul v-if="pkg.coverFeatures?.length" class="mt-4 space-y-2">
+                    <li v-for="(feature, idx) in pkg.coverFeatures.slice(0, 5)" :key="idx" class="flex items-start gap-2 text-sm" :class="feature.included ? 'text-slate-700' : 'text-slate-400'">
+                        <Check v-if="feature.included" class="mt-0.5 w-4 h-4 text-emerald-500 shrink-0" />
+                        <X v-else class="mt-0.5 w-4 h-4 text-slate-300 shrink-0" />
                         <span :class="{ 'line-through': !feature.included }">{{ feature.label }}</span>
                     </li>
                 </ul>
-                <!-- Standard benefits list -->
-                <ul v-else-if="getBenefits(pkg).length || pkg.deposit || pkg.excess" class="mt-3 space-y-1.5">
-                    <li v-for="(benefit, idx) in getBenefits(pkg)" :key="idx" class="flex items-center gap-2 text-xs text-gray-600">
-                        <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                        {{ benefit }}
-                    </li>
-                    <li v-if="pkg.deposit" class="flex items-center gap-2 text-xs text-gray-600">
-                        <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                        Deposit: {{ formatPrice(pkg.deposit) }}
-                    </li>
-                    <li v-if="pkg.excess" class="flex items-center gap-2 text-xs text-gray-600">
-                        <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                        Excess: {{ formatPrice(pkg.excess) }}
+
+                <ul v-else-if="packageBenefits(pkg).length" class="mt-4 space-y-2">
+                    <li v-for="benefit in packageBenefits(pkg)" :key="benefit" class="flex items-start gap-2 text-sm text-slate-700">
+                        <Check class="mt-0.5 w-4 h-4 text-emerald-500 shrink-0" />
+                        <span>{{ benefit }}</span>
                     </li>
                 </ul>
-                <div class="mt-4 pt-3 border-t border-gray-200">
-                    <span class="text-xl font-bold text-[#1e3a5f]">{{ formatRentalPrice(pkg.total) }}</span>
-                    <span class="text-xs text-gray-500 ml-1">total</span>
+
+                <div class="mt-5 flex items-end justify-between gap-3 border-t border-slate-100 pt-4">
+                    <div>
+                        <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Rental total</div>
+                        <div class="text-2xl font-bold text-[#153b4f]">{{ formatRentalPrice(pkg.total) }}</div>
+                    </div>
+                    <span class="rounded-full px-4 py-2 text-xs font-bold"
+                        :class="isPackageSelected(pkg) ? 'bg-[#22d3ee] text-[#0b2230]' : 'bg-[#f0f8fc] text-[#153b4f] group-hover:bg-[#dceef6]'">
+                        {{ isPackageSelected(pkg) ? 'Current choice' : 'Choose package' }}
+                    </span>
                 </div>
-            </div>
+            </button>
         </div>
     </section>
 
-    <!-- LocautoRent Protection Plans -->
-    <section v-if="isLocautoRent && locautoProtectionPlans.length > 0" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 fade-in-up" id="extras-package-section">
-        <h3 class="text-lg font-bold text-[#1e3a5f] mb-2 flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-            Protection Plans
-        </h3>
-        <p class="text-sm text-gray-500 mb-5">Add protection to reduce your liability — select as many as you need</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Protection Plans (multi-select) -->
-            <div v-for="protection in locautoProtectionPlans" :key="protection.code"
+    <section v-if="isLocautoRent && locautoProtectionPlans.length > 0" class="bg-white rounded-2xl border border-[#153b4f]/10 shadow-[0_18px_42px_rgba(21,59,79,0.08)] overflow-hidden fade-in-up" id="extras-package-section">
+        <div class="px-5 py-4 border-b border-[#153b4f]/10 bg-gradient-to-r from-[#f0f8fc] via-white to-[#f8fafc]">
+            <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#0891b2]">
+                <ShieldCheck class="w-4 h-4" />
+                Protection
+            </div>
+            <h3 class="mt-1 text-lg font-bold text-[#153b4f]">Select protection plans</h3>
+        </div>
+
+        <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button v-for="protection in locautoProtectionPlans" :key="protection.code" type="button"
                 @click="emit('toggle-locauto-protection', protection.code)"
-                class="plan-card rounded-2xl border-2 p-5 relative cursor-pointer"
-                :class="selectedLocautoProtections.includes(protection.code) ? 'selected' : 'border-gray-200 hover:border-gray-300 transition-colors'">
-                <div class="absolute top-3 right-3">
-                    <div class="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200"
-                        :class="selectedLocautoProtections.includes(protection.code) ? 'border-[#1e3a5f] bg-[#1e3a5f]' : 'border-gray-300'">
-                        <svg v-if="selectedLocautoProtections.includes(protection.code)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                class="plan-card group text-left rounded-2xl border-2 p-5 relative"
+                :class="locautoSelected(protection.code) ? 'selected' : 'border-slate-200 hover:border-[#22d3ee]'">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h4 class="text-base font-bold text-slate-950">{{ getShortProtectionName(protection.description) }}</h4>
+                        <p class="mt-1 text-sm text-slate-500">{{ protection.description }}</p>
+                    </div>
+                    <div class="shrink-0 rounded-md border-2 p-1"
+                        :class="locautoSelected(protection.code) ? 'border-[#22d3ee] bg-[#22d3ee]' : 'border-slate-300 bg-white group-hover:border-[#22d3ee]'">
+                        <Check v-if="locautoSelected(protection.code)" class="w-3.5 h-3.5 text-[#0b2230]" />
+                        <div v-else class="w-3.5 h-3.5"></div>
                     </div>
                 </div>
-                <h4 class="text-base font-bold text-gray-900">{{ getShortProtectionName(protection.description) }}</h4>
-                <p class="text-xs text-gray-500 mt-1">{{ protection.description }}</p>
-                <div class="mt-4 pt-3 border-t border-gray-200 flex items-baseline gap-1">
-                    <span class="text-lg font-bold text-[#1e3a5f]">{{ formatRentalPrice(protection.amount) }}</span>
-                    <span class="text-xs text-gray-500">/day</span>
-                    <span class="text-xs text-gray-400 ml-auto">{{ formatRentalPrice(protection.amount * numberOfDays) }} total</span>
+                <div class="mt-5 flex items-end justify-between gap-3 border-t border-slate-100 pt-4">
+                    <div>
+                        <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Daily price</div>
+                        <div class="text-xl font-bold text-[#153b4f]">{{ formatRentalPrice(protection.amount) }}<span class="text-xs font-medium text-slate-500">/day</span></div>
+                    </div>
+                    <span class="text-xs font-semibold text-slate-500">{{ formatRentalPrice(protection.amount * numberOfDays) }} total</span>
                 </div>
-            </div>
+            </button>
         </div>
     </section>
 </template>

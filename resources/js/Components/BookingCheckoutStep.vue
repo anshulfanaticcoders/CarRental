@@ -29,6 +29,11 @@ const props = defineProps({
         default: null
     },
     locationInstructions: String,
+    dropoffLocationDetails: {
+        type: Object,
+        default: null
+    },
+    dropoffInstructions: String,
     driverRequirements: {
         type: Object,
         default: null
@@ -275,6 +280,21 @@ const vehicleImage = computed(() => {
     return resolveSearchVehicleImage(props.vehicle) || '/images/dummyCarImaage.png';
 });
 
+const checkoutDropoffLocationDetails = computed(() => {
+    if (props.dropoffLocationDetails) {
+        return {
+            ...props.dropoffLocationDetails,
+            dropoff_instructions: props.dropoffLocationDetails.dropoff_instructions || props.dropoffInstructions || null,
+        };
+    }
+
+    if (props.dropoffInstructions) {
+        return { dropoff_instructions: props.dropoffInstructions };
+    }
+
+    return null;
+});
+
 const bookingData = computed(() => {
     const pickupTime = isOkMobility.value
         ? (props.vehicle?.ok_mobility_pickup_time || props.pickupTime)
@@ -292,6 +312,7 @@ const bookingData = computed(() => {
         detailed_extras: props.detailedExtras,
         optional_extras: props.optionalExtras || [],
         location_details: props.locationDetails || null,
+        dropoff_location_details: checkoutDropoffLocationDetails.value,
         location_instructions: props.locationInstructions || null,
         driver_requirements: props.driverRequirements || null,
         terms: props.terms || null,

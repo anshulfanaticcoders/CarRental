@@ -32,6 +32,7 @@ import {
 import { useProviderAdapter } from './composables/useProviderAdapter';
 import { useExtrasState } from './composables/useExtrasState';
 import { useVehicleMap } from './composables/useVehicleMap';
+import { createBookingLocationDisplay } from './composables/useBookingLocationDisplay';
 import { usePricingCalculation, stripHtml } from './composables/usePricingCalculation';
 
 // ── Section Components ──────────────────────────────────────────────
@@ -58,7 +59,9 @@ import LocationHoursModal from './modals/LocationHoursModal.vue';
 const props = defineProps({
     vehicle: Object,
     initialPackage: String,
-    initialProtectionCode: String,
+    initialProtectionCode: [String, Array],
+    initialExtras: { type: Object, default: () => ({}) },
+    initialSelectedDepositType: { type: String, default: null },
     optionalExtras: { type: Array, default: () => [] },
     currencySymbol: { type: String, default: '€' },
     locationName: String,
@@ -103,6 +106,15 @@ const {
 // ── Extras state ────────────────────────────────────────────────────
 const { selectedExtras, isRequiredExtra, getMaxQuantity, setExtraQuantity, updateExtraQuantity, toggleExtra } = useExtrasState();
 
+const cloneExtrasSelection = (extras) => {
+    if (!extras || typeof extras !== 'object') return {};
+    return Object.fromEntries(Object.entries(extras));
+};
+
+watch(() => props.initialExtras, (extras) => {
+    selectedExtras.value = cloneExtrasSelection(extras);
+}, { immediate: true });
+
 // ── Map ─────────────────────────────────────────────────────────────
 const {
     vehicleMapRef, mapModalRef, showMapModal, hasVehicleCoords, hasDropoffCoords,
@@ -127,7 +139,10 @@ const vehicleHeroRef = ref(null);
 const mapModalCompRef = ref(null);
 
 // ── Deposit type (internal vehicles) ────────────────────────────────
-const selectedDepositType = ref(null);
+const selectedDepositType = ref(props.initialSelectedDepositType || null);
+watch(() => props.initialSelectedDepositType, (newType) => {
+    selectedDepositType.value = newType || null;
+});
 const availableDepositTypes = computed(() => {
     const method = props.vehicle?.payment_method;
     if (!method) return [];
@@ -187,11 +202,15 @@ const locautoSmartCoverPlan = adapter.locautoSmartCoverPlan ?? computed(() => nu
 const locautoDontWorryPlan = adapter.locautoDontWorryPlan ?? computed(() => null);
 const locautoBaseTotal = adapter.locautoBaseDaily ? computed(() => adapter.baseTotal?.value ?? 0) : computed(() => 0);
 const locautoBaseDaily = adapter.locautoBaseDaily ?? computed(() => 0);
+const normalizeProtectionCodes = (code) => {
+    if (Array.isArray(code)) return code.filter(Boolean);
+    return code ? [code] : [];
+};
 watch(() => props.initialProtectionCode, (newCode) => {
     if (adapter.selectedLocautoProtections) {
-        adapter.selectedLocautoProtections.value = newCode ? [newCode] : [];
+        adapter.selectedLocautoProtections.value = normalizeProtectionCodes(newCode);
     }
-});
+}, { immediate: true });
 
 // ── Pricing ─────────────────────────────────────────────────────────
 const {
@@ -316,7 +335,13 @@ const formatHourWindow = (window) => {
     return [first, second].filter(Boolean).join(' / ');
 };
 
-const hasOneWayDropoff = computed(() => props.dropoffLocation && props.pickupLocation && props.dropoffLocation !== props.pickupLocation);
+const normalizeLocationKey = (value) => `${value ?? ''}`.trim().toLowerCase().replace(/\s+/g, ' ');
+const hasOneWayDropoff = computed(() => {
+    const pickup = normalizeLocationKey(props.pickupLocation);
+    const dropoff = normalizeLocationKey(props.dropoffLocation);
+
+    return Boolean(pickup && dropoff && pickup !== dropoff);
+});
 const vehicleLocationTitle = computed(() => { if (isInternal.value) return 'Vehicle Location'; if (isDifferentDropoff.value) return 'Pickup & Dropoff Locations'; return 'Pickup Location'; });
 
 // ── Driver requirements ─────────────────────────────────────────────
@@ -405,6 +430,77 @@ const renteonDropoffInstructions = adapter.renteonDropoffInstructions ?? compute
 const renteonHasOfficeDetails = adapter.renteonHasOfficeDetails ?? computed(() => false);
 const renteonTaxBreakdown = adapter.renteonTaxBreakdown ?? computed(() => null);
 const hasRenteonTaxBreakdown = adapter.hasRenteonTaxBreakdown ?? computed(() => false);
+
+const pickupProviderDetails = computed(() => {
+    if (isAdobeCars.value) {
+        return {
+            addressLines: [props.vehicle?.office_address],
+            contact: { phone: props.vehicle?.office_phone },
+        };
+    }
+
+    if (isOkMobility.value) {
+        return {
+            label: okMobilityPickupStation.value,
+            addressLines: [okMobilityPickupAddress.value],
+        };
+    }
+
+    if (isRenteon.value) {
+        return {
+            label: renteonPickupOffice.value?.name,
+            addressLines: renteonPickupLines.value,
+            contact: {
+                phone: renteonPickupOffice.value?.phone,
+                email: renteonPickupOffice.value?.email,
+            },
+            instructions: renteonPickupInstructions.value,
+        };
+    }
+
+    return {};
+});
+
+const dropoffProviderDetails = computed(() => {
+    if (isOkMobility.value) {
+        return {
+            label: okMobilityDropoffStation.value,
+            addressLines: [okMobilityDropoffAddress.value],
+        };
+    }
+
+    if (isRenteon.value && renteonDropoffOffice.value && !renteonSameOffice.value) {
+        return {
+            label: renteonDropoffOffice.value?.name,
+            addressLines: renteonDropoffLines.value,
+            contact: {
+                phone: renteonDropoffOffice.value?.phone,
+                email: renteonDropoffOffice.value?.email,
+            },
+            instructions: renteonDropoffInstructions.value,
+        };
+    }
+
+    return {};
+});
+
+const bookingLocationDisplay = computed(() => createBookingLocationDisplay({
+    vehicle: props.vehicle,
+    pickupLocation: props.pickupLocation,
+    dropoffLocation: props.dropoffLocation,
+    locationName: props.locationName,
+    locationDetails: props.locationDetails,
+    dropoffLocationDetails: props.dropoffLocationDetails,
+    locationInstructions: props.locationInstructions,
+    dropoffInstructions: props.dropoffInstructions,
+    adapterLocationData: adapter.locationData?.value,
+    vehicleLocationText: vehicleLocationText.value,
+    locationDetailLines: locationDetailLines.value,
+    locationContact: locationContact.value,
+    pickupProviderDetails: pickupProviderDetails.value,
+    dropoffProviderDetails: dropoffProviderDetails.value,
+    sameLocation: !hasOneWayDropoff.value || (isOkMobility.value && okMobilitySameLocation.value) || (isRenteon.value && renteonSameOffice.value),
+}));
 
 // ── SicilyByCar-specific ────────────────────────────────────────────
 const sicilyByCarIncludedServices = adapter.sicilyByCarIncludedServices ?? computed(() => []);
@@ -665,30 +761,6 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
             <!-- ═══════ LEFT COLUMN ═══════ -->
             <div class="flex-1 min-w-0 space-y-4">
 
-                <!-- Location Instructions -->
-                <div v-if="locationInstructions"
-                    class="rounded-xl p-4 flex items-start gap-3 relative overflow-hidden bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f] text-white">
-                    <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-sm font-bold mb-0.5">Pickup Instructions</h4>
-                        <p class="text-xs text-white/85 leading-relaxed">{{ locationInstructions }}</p>
-                    </div>
-                </div>
-
-                <!-- Dropoff Instructions (only when distinct dropoff provided) -->
-                <div v-if="dropoffInstructions && isDifferentDropoff"
-                    class="rounded-xl p-4 flex items-start gap-3 relative overflow-hidden bg-gradient-to-r from-[#0b2230] to-[#1c4d66] text-white">
-                    <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-sm font-bold mb-0.5">Dropoff Instructions</h4>
-                        <p class="text-xs text-white/85 leading-relaxed">{{ dropoffInstructions }}</p>
-                    </div>
-                </div>
-
                 <!-- ═══ 1. VEHICLE HERO ═══ -->
                 <VehicleHero
                     ref="vehicleHeroRef"
@@ -726,35 +798,14 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
                     :pickup-time="pickupTime"
                     :dropoff-date="dropoffDate"
                     :dropoff-time="dropoffTime"
+                    :is-one-way="hasOneWayDropoff"
                 />
 
                 <!-- ═══ 3. LOCATION DETAILS ═══ -->
                 <LocationDetails
-                    v-if="vehicleLocationText || hasVehicleCoords || (isOkMobility && okMobilityInfoAvailable) || (isRenteon && renteonHasOfficeDetails) || (isAdobeCars && vehicle.office_address) || adapter.locationData?.value?.pickupStation"
-                    :pickup-location="pickupLocation"
-                    :dropoff-location="dropoffLocation"
-                    :location-name="locationName"
-                    :vehicle-location-text="vehicleLocationText"
-                    :has-one-way-dropoff="hasOneWayDropoff"
-                    :is-adobe-cars="isAdobeCars"
-                    :vehicle="vehicle"
-                    :location-detail-lines="locationDetailLines"
-                    :location-contact="locationContact"
+                    v-if="bookingLocationDisplay.hasAnyDetails || hasVehicleCoords || (isOkMobility && okMobilityInfoAvailable) || (isRenteon && renteonHasOfficeDetails)"
+                    :location-display="bookingLocationDisplay"
                     :has-location-hours="hasLocationHours"
-                    :is-ok-mobility="isOkMobility"
-                    :ok-mobility-pickup-station="okMobilityPickupStation"
-                    :ok-mobility-pickup-address="okMobilityPickupAddress"
-                    :ok-mobility-dropoff-station="okMobilityDropoffStation"
-                    :ok-mobility-dropoff-address="okMobilityDropoffAddress"
-                    :is-renteon="isRenteon"
-                    :renteon-pickup-office="renteonPickupOffice"
-                    :renteon-dropoff-office="renteonDropoffOffice"
-                    :renteon-same-office="renteonSameOffice"
-                    :renteon-pickup-lines="renteonPickupLines"
-                    :renteon-dropoff-lines="renteonDropoffLines"
-                    :renteon-pickup-instructions="renteonPickupInstructions"
-                    :renteon-dropoff-instructions="renteonDropoffInstructions"
-                    :adapter-location-data="adapter.locationData?.value"
                     @show-location-hours="showLocationHoursModal = true"
                 />
 
@@ -892,6 +943,7 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
                     :pickup-location="pickupLocation"
                     :dropoff-location="dropoffLocation"
                     :location-name="locationName"
+                    :is-one-way="hasOneWayDropoff"
                     :current-package-label="currentPackageLabel"
                     :is-locauto-rent="isLocautoRent"
                     :is-ok-mobility="isOkMobility"
@@ -1024,13 +1076,27 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
 
 /* Plan/Package card */
 .plan-card {
-    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease;
     cursor: pointer;
 }
+.plan-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(21, 59, 79, 0.08);
+}
 .plan-card.selected {
-    border-color: #1e3a5f;
-    background: #f0f4f8;
-    box-shadow: 0 0 0 2px #1e3a5f;
+    border-color: #22d3ee;
+    background-color: #f0fbfc;
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.14), 0 10px 26px rgba(21, 59, 79, 0.08);
+}
+.plan-card.selected::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: #22d3ee;
 }
 
 /* Card hover lift */

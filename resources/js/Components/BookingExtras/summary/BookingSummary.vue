@@ -11,6 +11,7 @@ const props = defineProps({
     pickupLocation: String,
     dropoffLocation: String,
     locationName: String,
+    isOneWay: Boolean,
     currentPackageLabel: String,
     isLocautoRent: Boolean,
     isOkMobility: Boolean,
@@ -69,10 +70,13 @@ const emit = defineEmits(['show-details-modal', 'proceed-to-checkout', 'back']);
                         </div>
                     </div>
                     <div class="flex items-start gap-3">
-                        <div class="w-2 h-2 rounded-full bg-rose-500 mt-1.5 flex-shrink-0 ring-4 ring-rose-50"></div>
+                        <div
+                            class="w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ring-4"
+                            :class="isOneWay ? 'bg-rose-500 ring-rose-50' : 'bg-emerald-500 ring-emerald-50'"
+                        ></div>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">{{ dropoffDate }} &middot; {{ dropoffTime }}</p>
-                            <p class="text-xs text-gray-500">{{ dropoffLocation || pickupLocation || locationName }}</p>
+                            <p class="text-xs text-gray-500">{{ isOneWay ? (dropoffLocation || pickupLocation || locationName) : 'Same as pickup' }}</p>
                         </div>
                     </div>
                 </div>

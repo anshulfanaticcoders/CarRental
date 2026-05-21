@@ -1,5 +1,8 @@
 <script setup>
-defineProps({
+import { computed } from 'vue';
+import { Check, Minus, Plus, ShieldCheck } from 'lucide-vue-next';
+
+const props = defineProps({
     plans: Array,
     selectedExtras: Object,
     isRenteon: Boolean,
@@ -12,53 +15,96 @@ defineProps({
 });
 
 const emit = defineEmits(['toggle-extra', 'update-extra-quantity']);
+
+const isSelected = (extra) => Boolean(props.selectedExtras?.[extra.id]);
+const selectedQuantity = (extra) => props.selectedExtras?.[extra.id] || (extra.required ? 1 : 0);
+const planPrice = (extra) => {
+    if (props.isSicilyByCar) return props.getExtraPerDay(extra);
+    return extra.total_for_booking != null ? extra.total_for_booking : (extra.daily_rate != null ? extra.daily_rate : (extra.price / props.numberOfDays));
+};
+const selectedCount = computed(() => (props.plans || []).reduce((sum, extra) => sum + (isSelected(extra) ? selectedQuantity(extra) : 0), 0));
 </script>
 
 <template>
-    <!-- ═══ PROTECTION PLANS / INSURANCE ═══ -->
-    <section v-if="plans.length > 0" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 fade-in-up" style="animation-delay:0.45s">
-        <h3 class="text-lg font-bold text-[#1e3a5f] mb-2 flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-            Protection Plans
-        </h3>
-        <p class="text-sm text-gray-500 mb-5">Add insurance to reduce your liability</p>
+    <section v-if="(plans || []).length > 0" class="bg-white rounded-2xl border border-[#153b4f]/10 shadow-[0_18px_42px_rgba(21,59,79,0.08)] overflow-hidden fade-in-up" style="animation-delay:0.45s">
+        <div class="px-5 py-4 border-b border-[#153b4f]/10 bg-gradient-to-r from-[#f0f8fc] via-white to-[#f8fafc]">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#0891b2]">
+                        <ShieldCheck class="w-4 h-4" />
+                        Protection plans
+                    </div>
+                    <h3 class="mt-1 text-lg font-bold text-[#153b4f]">Reduce your rental liability</h3>
+                </div>
+                <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-[#153b4f]/15 bg-white px-3 py-1.5 text-xs font-semibold text-[#153b4f]">
+                    <template v-if="selectedCount > 0">
+                        <Check class="w-3.5 h-3.5 text-[#0891b2]" />
+                        {{ selectedCount }} added
+                    </template>
+                    <template v-else>
+                        Optional
+                    </template>
+                </span>
+            </div>
+        </div>
 
-        <div class="space-y-3">
-            <label v-for="extra in plans" :key="extra.id"
+        <div class="p-5 space-y-3">
+            <article v-for="extra in plans" :key="extra.id"
+                role="button"
+                tabindex="0"
                 @click="emit('toggle-extra', extra)"
-                class="plan-card flex items-start gap-4 rounded-2xl border-2 p-5 cursor-pointer"
-                :class="selectedExtras[extra.id] ? 'selected' : 'border-gray-200 hover:border-gray-300 transition-colors'">
-                <div class="flex-shrink-0 mt-0.5">
-                    <div class="w-5 h-5 rounded border-2 flex items-center justify-center"
-                        :class="selectedExtras[extra.id] ? 'border-[#1e3a5f] bg-[#1e3a5f]' : 'border-gray-300'">
-                        <svg v-if="selectedExtras[extra.id]" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                @keydown.enter.prevent="emit('toggle-extra', extra)"
+                @keydown.space.prevent="emit('toggle-extra', extra)"
+                class="plan-card group rounded-2xl border-2 p-5 cursor-pointer"
+                :class="isSelected(extra) ? 'selected' : 'border-slate-200 hover:border-[#22d3ee]'">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+                    <div class="flex items-start gap-3 flex-1 min-w-0">
+                        <div class="mt-0.5 rounded-md border-2 p-1 shrink-0"
+                            :class="isSelected(extra) ? 'border-[#22d3ee] bg-[#22d3ee]' : 'border-slate-300 bg-white group-hover:border-[#22d3ee]'">
+                            <Check v-if="isSelected(extra)" class="w-3.5 h-3.5 text-[#0b2230]" />
+                            <div v-else class="w-3.5 h-3.5"></div>
+                        </div>
+
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h4 class="text-base font-bold text-slate-950">{{ getProviderExtraLabel(extra) }}</h4>
+                                <span v-if="extra.required" class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-rose-600">Required</span>
+                                <span v-if="isSelected(extra)" class="rounded-full bg-[#22d3ee]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0b2230]">Added</span>
+                            </div>
+                            <p v-if="extra.description" class="mt-1 text-sm text-slate-500 protection-desc" v-html="extra.description"></p>
+                            <p v-if="extra.excess != null" class="mt-2 text-xs text-slate-500">
+                                Excess: <span class="font-semibold text-slate-800">{{ formatPrice(extra.excess) }}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="sm:text-right shrink-0">
+                        <div class="text-xl font-bold text-[#153b4f]">
+                            {{ formatRentalPrice(planPrice(extra)) }}<span class="text-xs font-medium text-slate-500">{{ extra.total_for_booking != null ? '' : '/day' }}</span>
+                        </div>
+                        <div class="text-[11px] font-medium text-slate-400">Protection price</div>
                     </div>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between gap-2">
-                        <h4 class="text-sm font-bold text-gray-900">{{ getProviderExtraLabel(extra) }}</h4>
-                        <span class="text-sm font-bold text-[#1e3a5f] whitespace-nowrap">
-                            <template v-if="isSicilyByCar">{{ formatRentalPrice(getExtraPerDay(extra)) }}/day</template>
-                            <template v-else>{{ formatRentalPrice(extra.total_for_booking != null ? extra.total_for_booking : (extra.daily_rate != null ? extra.daily_rate : (extra.price / numberOfDays))) }}{{ extra.total_for_booking != null ? '' : '/day' }}</template>
-                        </span>
-                    </div>
-                    <p v-if="extra.description" class="text-xs text-gray-500 mt-1 protection-desc" v-html="extra.description"></p>
-                    <p v-if="extra.excess != null" class="text-xs text-gray-500 mt-0.5">Excess: <span class="font-semibold text-gray-700">{{ formatPrice(extra.excess) }}</span></p>
-                    <div v-if="extra.numberAllowed && extra.numberAllowed > 1" class="flex items-center gap-2 mt-2" @click.stop>
-                        <button type="button" class="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors" @click.stop="emit('update-extra-quantity', extra, -1)" :disabled="selectedExtras[extra.id] <= (extra.required ? 1 : 0)">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
-                        </button>
-                        <span class="w-6 text-center text-sm font-bold text-gray-900">{{ selectedExtras[extra.id] || (extra.required ? 1 : 0) }}</span>
-                        <button type="button" class="w-7 h-7 rounded-lg bg-[#1e3a5f] text-white flex items-center justify-center hover:bg-[#2d5a8f] transition-colors" @click.stop="emit('update-extra-quantity', extra, 1)" :disabled="selectedExtras[extra.id] >= extra.numberAllowed">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"/></svg>
-                        </button>
-                    </div>
+
+                <div v-if="extra.numberAllowed && extra.numberAllowed > 1" class="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-4" @click.stop>
+                    <button type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-slate-600 transition-colors"
+                        @click.stop="emit('update-extra-quantity', extra, -1)"
+                        :disabled="selectedQuantity(extra) <= (extra.required ? 1 : 0)">
+                        <Minus class="w-4 h-4" />
+                    </button>
+                    <span class="w-8 text-center text-sm font-bold text-slate-900">{{ selectedQuantity(extra) }}</span>
+                    <button type="button" class="w-8 h-8 rounded-full bg-[#22d3ee] text-[#0b2230] flex items-center justify-center hover:bg-[#67e8f9] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        @click.stop="emit('update-extra-quantity', extra, 1)"
+                        :disabled="selectedQuantity(extra) >= extra.numberAllowed">
+                        <Plus class="w-4 h-4" />
+                    </button>
                 </div>
-            </label>
+            </article>
         </div>
     </section>
-    <section v-else-if="isRenteon" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 fade-in-up">
-        <h3 class="text-lg font-bold text-[#1e3a5f] mb-2">Protection Plans</h3>
-        <p class="text-sm text-gray-500">No protection plans were provided by the supplier for this offer.</p>
+
+    <section v-else-if="isRenteon" class="bg-white rounded-2xl border border-[#153b4f]/10 shadow-sm p-5 fade-in-up">
+        <h3 class="text-lg font-bold text-[#153b4f] mb-2">Protection Plans</h3>
+        <p class="text-sm text-slate-500">No protection plans were provided by the supplier for this offer.</p>
     </section>
 </template>

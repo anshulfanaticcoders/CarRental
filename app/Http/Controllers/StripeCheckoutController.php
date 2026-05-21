@@ -401,6 +401,7 @@ class StripeCheckoutController extends Controller
     {
         $vehicle = $validated['vehicle'] ?? [];
         $providerSource = strtolower((string) ($vehicle['source'] ?? ''));
+        $isOneWayRental = $this->isOneWayRentalRequest($validated);
 
         $pickupLocationDetails = $validated['location_details'] ?? ($vehicle['location_details'] ?? null);
         $dropoffLocationDetails = $validated['dropoff_location_details'] ?? ($vehicle['dropoff_location_details'] ?? null);
@@ -422,7 +423,7 @@ class StripeCheckoutController extends Controller
         if (empty($dropoffLocationDetails)) {
             $dropoffLocationDetails = $this->buildFallbackLocationDetailsFromVehicle($vehicle, 'dropoff');
         }
-        if (empty($dropoffLocationDetails) && ! empty($pickupLocationDetails)) {
+        if (! $isOneWayRental && empty($dropoffLocationDetails) && ! empty($pickupLocationDetails)) {
             $dropoffLocationDetails = $pickupLocationDetails;
         }
 
@@ -434,7 +435,53 @@ class StripeCheckoutController extends Controller
         $pickupLocationDetails = LocationDetailsNormalizer::normalize($pickupLocationDetails);
         $dropoffLocationDetails = LocationDetailsNormalizer::normalize($dropoffLocationDetails);
 
+        if (! $isOneWayRental && ! empty($pickupLocationDetails) && ! LocationDetailsNormalizer::isDistinctLocation($pickupLocationDetails, $dropoffLocationDetails)) {
+            $dropoffLocationDetails = $pickupLocationDetails;
+        } elseif ($isOneWayRental && $this->locationDetailsLookSame($pickupLocationDetails, $dropoffLocationDetails)) {
+            $dropoffLocationDetails = null;
+        }
+
         return [$pickupLocationDetails, $dropoffLocationDetails];
+    }
+
+    private function isOneWayRentalRequest(array $validated): bool
+    {
+        $pickup = $this->normalizeLocationText($validated['pickup_location'] ?? null);
+        $dropoff = $this->normalizeLocationText($validated['dropoff_location'] ?? null);
+
+        return $pickup !== '' && $dropoff !== '' && $pickup !== $dropoff;
+    }
+
+    private function locationDetailsLookSame(?array $pickup, ?array $dropoff): bool
+    {
+        if (empty($pickup) || empty($dropoff)) {
+            return false;
+        }
+
+        $pickupLat = $pickup['latitude'] ?? null;
+        $pickupLng = $pickup['longitude'] ?? null;
+        $dropoffLat = $dropoff['latitude'] ?? null;
+        $dropoffLng = $dropoff['longitude'] ?? null;
+        if (is_numeric($pickupLat) && is_numeric($pickupLng) && is_numeric($dropoffLat) && is_numeric($dropoffLng)) {
+            return abs((float) $pickupLat - (float) $dropoffLat) <= 0.0001
+                && abs((float) $pickupLng - (float) $dropoffLng) <= 0.0001;
+        }
+
+        $pickupAddress = $this->normalizeLocationText($pickup['address_1'] ?? null);
+        $dropoffAddress = $this->normalizeLocationText($dropoff['address_1'] ?? null);
+        if ($pickupAddress !== '' && $dropoffAddress !== '' && $pickupAddress === $dropoffAddress) {
+            return true;
+        }
+
+        $pickupName = $this->normalizeLocationText($pickup['name'] ?? null);
+        $dropoffName = $this->normalizeLocationText($dropoff['name'] ?? null);
+
+        return $pickupName !== '' && $dropoffName !== '' && $pickupName === $dropoffName;
+    }
+
+    private function normalizeLocationText(mixed $value): string
+    {
+        return strtolower(trim(preg_replace('/\s+/', ' ', (string) ($value ?? '')) ?? ''));
     }
 
     private function enrichLocationDetailsFromVehicle(mixed $details, array $vehicle, string $leg = 'pickup'): mixed

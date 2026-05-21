@@ -141,6 +141,8 @@ const selectedProtectionCode = ref(null);
 let savedScrollPosition = 0;
 
 const selectedBookingExtras = ref({});
+const selectedBookingDepositType = ref(null);
+const selectedCheckoutData = ref(null);
 const locationInstructions = ref(null);
 const locationDetails = ref(null);
 const dropoffInstructions = ref(null);
@@ -157,6 +159,101 @@ const scrollToSection = async (id) => {
     element.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
+const cloneBookingExtras = (extras) => {
+    if (!extras || typeof extras !== 'object') return {};
+    return Object.fromEntries(Object.entries(extras));
+};
+
+const normalizeLocationKey = (value) => `${value ?? ''}`.trim().toLowerCase().replace(/\s+/g, ' ');
+const sameLocationValue = (left, right) => {
+    const leftKey = normalizeLocationKey(left);
+    const rightKey = normalizeLocationKey(right);
+    return leftKey !== '' && rightKey !== '' && leftKey === rightKey;
+};
+const hasLocationSignal = (location = {}) => Boolean(
+    location?.provider_location_id
+    || location?.supplier_location_id
+    || location?.name
+    || location?.address
+    || location?.city
+    || location?.latitude
+    || location?.longitude
+);
+const hasCoordinatePair = (location = {}) => {
+    const lat = parseFloat(location?.latitude);
+    const lng = parseFloat(location?.longitude);
+
+    return Number.isFinite(lat) && Number.isFinite(lng);
+};
+const sameCoordinatePair = (left = {}, right = {}) => {
+    if (!hasCoordinatePair(left) || !hasCoordinatePair(right)) return false;
+
+    return Math.abs(parseFloat(left.latitude) - parseFloat(right.latitude)) <= 0.0001
+        && Math.abs(parseFloat(left.longitude) - parseFloat(right.longitude)) <= 0.0001;
+};
+const officeLooksLikePickup = (dropoffOffice = {}, pickupOffice = {}) => {
+    if (!dropoffOffice || !pickupOffice) return false;
+
+    const nameMatches = sameLocationValue(dropoffOffice.name, pickupOffice.name);
+    const addressMatches = sameLocationValue(dropoffOffice.address, pickupOffice.address);
+    const cityMatches = sameLocationValue(dropoffOffice.town || dropoffOffice.city, pickupOffice.town || pickupOffice.city);
+
+    return (nameMatches && (addressMatches || cityMatches)) || (addressMatches && cityMatches);
+};
+const isOneWaySearch = () => Boolean(
+    normalizeLocationKey(form.dropoff_where)
+    && normalizeLocationKey(form.where)
+    && normalizeLocationKey(form.dropoff_where) !== normalizeLocationKey(form.where)
+);
+const buildDropoffLocationDetails = (vehicle = {}) => {
+    const dropoffCanonical = vehicle?.location?.dropoff || null;
+    const pickupCanonical = vehicle?.location?.pickup || null;
+    const dropoffOffice = vehicle?.dropoff_office || vehicle?.supplier_data?.dropoff_office || null;
+    const pickupOffice = vehicle?.pickup_office || vehicle?.supplier_data?.pickup_office || null;
+    const hasCanonicalDropoff = hasLocationSignal(dropoffCanonical);
+    const canonicalProviderMatches = sameLocationValue(dropoffCanonical?.provider_location_id, pickupCanonical?.provider_location_id);
+    const canonicalNameAndAddressMatch = sameLocationValue(dropoffCanonical?.name, pickupCanonical?.name)
+        && sameLocationValue(dropoffCanonical?.address, pickupCanonical?.address);
+    const canonicalLooksLikePickup = hasCanonicalDropoff && (
+        canonicalProviderMatches
+        || sameCoordinatePair(dropoffCanonical, pickupCanonical)
+        || canonicalNameAndAddressMatch
+    );
+    const pickupAddress = vehicle?.pickup_address || pickupOffice?.address || pickupCanonical?.address || null;
+    const dropoffAddress = vehicle?.dropoff_address || dropoffOffice?.address || dropoffCanonical?.address || null;
+    const providerDropoffLooksLikePickup = isOneWaySearch() && (
+        officeLooksLikePickup(dropoffOffice, pickupOffice)
+        || sameLocationValue(dropoffAddress, pickupAddress)
+        || canonicalLooksLikePickup
+    );
+
+    if (providerDropoffLooksLikePickup) {
+        return null;
+    }
+
+    if (!hasCanonicalDropoff && !dropoffOffice && !vehicle?.dropoff_address) {
+        return null;
+    }
+
+    return {
+        name: dropoffCanonical?.name
+            || vehicle?.dropoff_station_name
+            || dropoffOffice?.name
+            || null,
+        address_1: vehicle?.dropoff_address
+            || dropoffOffice?.address
+            || null,
+        address_city: dropoffCanonical?.city || dropoffOffice?.town || null,
+        address_postcode: dropoffOffice?.postal_code || null,
+        telephone: dropoffOffice?.phone || null,
+        email: dropoffOffice?.email || null,
+        latitude: dropoffCanonical?.latitude ?? dropoffOffice?.latitude ?? null,
+        longitude: dropoffCanonical?.longitude ?? dropoffOffice?.longitude ?? null,
+        opening_hours: dropoffOffice?.opening_hours || null,
+        out_of_hours: dropoffOffice?.out_of_hours || null,
+        dropoff_instructions: vehicle?.dropoff_instructions || null,
+    };
+};
 
 const handlePackageSelection = (event) => {
     // Attach price_hash from price_map to vehicle for verification
@@ -172,6 +269,9 @@ const handlePackageSelection = (event) => {
     selectedVehicle.value = vehicleWithPriceHash;
     selectedPackage.value = event.package;
     selectedProtectionCode.value = event.protection_code || null;
+    selectedBookingExtras.value = {};
+    selectedBookingDepositType.value = null;
+    selectedCheckoutData.value = null;
     bookingStep.value = 'extras';
     pushStepHistory('extras');
 
@@ -191,30 +291,7 @@ const handlePackageSelection = (event) => {
         locationInstructions.value = event.vehicle.location_instructions || null;
     }
     dropoffInstructions.value = event.vehicle.dropoff_instructions || null;
-    // Assemble dropoff details from gateway canonical payload + flat fallbacks
-    // so the extras page can render address, hours, and map pin.
-    const dropoffCanonical = event.vehicle?.location?.dropoff || null;
-    const dropoffOffice = event.vehicle?.dropoff_office || null;
-    if (dropoffCanonical || dropoffOffice || event.vehicle?.dropoff_address) {
-        dropoffLocationDetails.value = {
-            name: dropoffCanonical?.name
-                || event.vehicle?.dropoff_station_name
-                || dropoffOffice?.name
-                || null,
-            address_1: event.vehicle?.dropoff_address
-                || dropoffOffice?.address
-                || null,
-            address_city: dropoffCanonical?.city || dropoffOffice?.town || null,
-            address_postcode: dropoffOffice?.postal_code || null,
-            telephone: dropoffOffice?.phone || null,
-            email: dropoffOffice?.email || null,
-            latitude: dropoffCanonical?.latitude ?? dropoffOffice?.latitude ?? null,
-            longitude: dropoffCanonical?.longitude ?? dropoffOffice?.longitude ?? null,
-            opening_hours: dropoffOffice?.opening_hours || null,
-            out_of_hours: dropoffOffice?.out_of_hours || null,
-            dropoff_instructions: event.vehicle?.dropoff_instructions || null,
-        };
-    }
+    dropoffLocationDetails.value = buildDropoffLocationDetails(event.vehicle);
     driverRequirements.value = event.vehicle.driver_requirements || null;
     termsData.value = Array.isArray(event.vehicle.terms) ? event.vehicle.terms : null;
 
@@ -227,6 +304,9 @@ const handleBackToResults = () => {
     selectedVehicle.value = null;
     selectedPackage.value = null;
     selectedProtectionCode.value = null;
+    selectedBookingExtras.value = {};
+    selectedBookingDepositType.value = null;
+    selectedCheckoutData.value = null;
     locationDetails.value = null;
     locationInstructions.value = null;
     dropoffInstructions.value = null;
@@ -234,12 +314,18 @@ const handleBackToResults = () => {
     nextTick(() => window.scrollTo({ top: savedScrollPosition, behavior: 'instant' }));
 };
 
-const selectedCheckoutData = ref(null);
-
 const handleProceedToCheckout = (data) => {
     const vehicleTotal = data.vehicle_total ?? selectedVehicle.value?.total_price ?? 0;
+    const extrasSelection = cloneBookingExtras(data.extras);
+
+    selectedPackage.value = data.package || selectedPackage.value;
+    selectedProtectionCode.value = data.protection_code || null;
+    selectedBookingExtras.value = extrasSelection;
+    selectedBookingDepositType.value = data.selected_deposit_type || null;
+
     selectedCheckoutData.value = {
         ...data,
+        extras: extrasSelection,
         vehicle_total: vehicleTotal
     };
     bookingStep.value = 'checkout';
@@ -263,8 +349,7 @@ const pushStepHistory = (step) => {
 const onPopState = (event) => {
     const target = event.state?.bookingStep;
     if (target === 'extras' && bookingStep.value === 'checkout') {
-        bookingStep.value = 'extras';
-        window.scrollTo({ top: 0, behavior: 'instant' });
+        handleBackToExtras();
     } else if (target === 'results' && (bookingStep.value === 'extras' || bookingStep.value === 'checkout')) {
         handleBackToResults();
     } else if (!target && bookingStep.value !== 'results') {
@@ -2119,7 +2204,7 @@ watch(
                 </div>
 
                 <!-- Step 2: Customize -->
-                <div class="flex items-center gap-2.5" :class="bookingStep === 'checkout' ? 'cursor-pointer' : ''" @click="bookingStep === 'checkout' ? bookingStep = 'extras' : null">
+                <div class="flex items-center gap-2.5" :class="bookingStep === 'checkout' ? 'cursor-pointer' : ''" @click="bookingStep === 'checkout' ? handleBackToExtras() : null">
                     <div class="stepper-dot" :class="bookingStep === 'checkout' ? 'stepper-done' : bookingStep === 'extras' ? 'stepper-active' : 'stepper-pending'">
                         <svg v-if="bookingStep === 'checkout'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                         <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
@@ -2523,7 +2608,8 @@ watch(
         <!-- Booking Steps -->
         <BookingExtrasStep v-else-if="bookingStep === 'extras' && selectedVehicle" class="w-full"
             :vehicle="selectedVehicle" :initial-package="selectedPackage"
-            :initial-protection-code="selectedProtectionCode" :optional-extras="optionalExtras"
+            :initial-protection-code="selectedProtectionCode" :initial-extras="selectedBookingExtras"
+            :initial-selected-deposit-type="selectedBookingDepositType" :optional-extras="optionalExtras"
             :currency-symbol="getCurrencySymbol(selectedCurrency)" :location-name="locationName"
             :pickup-location="form.where" :dropoff-location="form.dropoff_where || form.where"
             :dropoff-latitude="form.dropoff_latitude" :dropoff-longitude="form.dropoff_longitude"
@@ -2549,7 +2635,10 @@ watch(
             :vehicle-total="selectedCheckoutData.vehicle_total"
             :vehicle-total-currency="selectedCheckoutData.vehicle_total_currency"
             :location-details="locationDetails"
-            :location-instructions="locationInstructions" :driver-requirements="driverRequirements" :terms="termsData"
+            :location-instructions="locationInstructions"
+            :dropoff-location-details="dropoffLocationDetails"
+            :dropoff-instructions="dropoffInstructions"
+            :driver-requirements="driverRequirements" :terms="termsData"
             :search-session-id="props.search_session_id"
             :gateway-search-id="props.gateway_search_id"
             :selected-deposit-type="selectedCheckoutData?.selected_deposit_type || null"

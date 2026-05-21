@@ -145,6 +145,53 @@ class GatewaySearchParamsBuilderTest extends TestCase
         $this->assertSame('greenmotion', $params['provider_locations'][0]['provider']);
     }
 
+    public function test_it_filters_one_way_provider_locations_to_providers_present_at_dropoff(): void
+    {
+        $locationSearchService = $this->createMock(LocationSearchService::class);
+        $locationSearchService->expects($this->once())
+            ->method('resolveSearchLocation')
+            ->willReturn([
+                'unified_location_id' => 15783,
+                'country_code' => 'AE',
+                'providers' => [
+                    [
+                        'provider' => 'greenmotion',
+                        'pickup_id' => '59610',
+                        'original_name' => 'Dubai Airport Terminal 1',
+                    ],
+                    [
+                        'provider' => 'surprice',
+                        'pickup_id' => 'DXB:DXBA01',
+                        'original_name' => 'Dubai Airport',
+                    ],
+                ],
+            ]);
+        $locationSearchService->expects($this->once())
+            ->method('getLocationByUnifiedId')
+            ->with(15962)
+            ->willReturn([
+                'unified_location_id' => 15962,
+                'providers' => [
+                    [
+                        'provider' => 'greenmotion',
+                        'pickup_id' => '60160',
+                        'original_name' => 'Dubai Downtown',
+                    ],
+                ],
+            ]);
+
+        $builder = new GatewaySearchParamsBuilder($locationSearchService);
+
+        $params = $builder->build([
+            'unified_location_id' => 15783,
+            'dropoff_unified_location_id' => 15962,
+            'provider' => 'mixed',
+        ]);
+
+        $this->assertCount(1, $params['provider_locations']);
+        $this->assertSame('greenmotion', $params['provider_locations'][0]['provider']);
+    }
+
     public function test_it_keeps_internal_provider_locations_out_of_gateway_params(): void
     {
         $locationSearchService = $this->createMock(LocationSearchService::class);
