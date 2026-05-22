@@ -87,7 +87,7 @@ const returnLocationLabel = computed(() => (
             >
                 <article class="rounded-xl border border-[#b0d4e6]/80 bg-[#f8fbfd] p-4 sm:p-5">
                     <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-[#22d3ee] text-[#0b2230] flex items-center justify-center shadow-[0_8px_18px_rgba(34,211,238,0.28)]">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f] text-white flex items-center justify-center shadow-[0_8px_18px_rgba(30,58,95,0.28)]">
                             <CheckCircle2 class="w-5 h-5" />
                         </div>
                         <div class="min-w-0 flex-1">
@@ -127,7 +127,7 @@ const returnLocationLabel = computed(() => (
                     </div>
 
                     <div v-if="pickupContactItems.length || hasLocationHours" class="mt-4 flex flex-wrap gap-2">
-                        <div v-for="item in pickupContactItems" :key="item.key" class="inline-flex items-center gap-1.5 rounded-full border border-[#22d3ee]/35 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+                        <div v-for="item in pickupContactItems" :key="item.key" class="inline-flex items-center gap-1.5 rounded-full border border-[#153b4f]/20 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
                             <component :is="item.icon" class="w-3.5 h-3.5 text-[#0891b2]" />
                             {{ item.value }}
                         </div>
@@ -149,7 +149,7 @@ const returnLocationLabel = computed(() => (
                                 <p class="mt-0.5 text-xs text-slate-500">{{ returnLocationLabel }}</p>
                             </div>
                         </div>
-                        <span class="inline-flex w-fit items-center rounded-full bg-[#22d3ee]/16 px-3 py-1 text-xs font-bold text-[#0b2230]">
+                        <span class="inline-flex w-fit items-center rounded-full bg-[#153b4f]/10 px-3 py-1 text-xs font-bold text-[#153b4f]">
                             Return to same location
                         </span>
                     </div>

@@ -56,12 +56,12 @@ const selectedCount = computed(() => (props.plans || []).reduce((sum, extra) => 
                 @keydown.enter.prevent="emit('toggle-extra', extra)"
                 @keydown.space.prevent="emit('toggle-extra', extra)"
                 class="plan-card group rounded-2xl border-2 p-5 cursor-pointer"
-                :class="isSelected(extra) ? 'selected' : 'border-slate-200 hover:border-[#22d3ee]'">
+                :class="isSelected(extra) ? 'selected' : 'border-slate-200 hover:border-[#2d5a8f]'">
                 <div class="flex flex-col sm:flex-row sm:items-start gap-4">
                     <div class="flex items-start gap-3 flex-1 min-w-0">
                         <div class="mt-0.5 rounded-md border-2 p-1 shrink-0"
-                            :class="isSelected(extra) ? 'border-[#22d3ee] bg-[#22d3ee]' : 'border-slate-300 bg-white group-hover:border-[#22d3ee]'">
-                            <Check v-if="isSelected(extra)" class="w-3.5 h-3.5 text-[#0b2230]" />
+                            :class="isSelected(extra) ? 'border-[#2d5a8f] bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f]' : 'border-slate-300 bg-white group-hover:border-[#2d5a8f]'">
+                            <Check v-if="isSelected(extra)" class="w-3.5 h-3.5 text-white" />
                             <div v-else class="w-3.5 h-3.5"></div>
                         </div>
 
@@ -69,7 +69,7 @@ const selectedCount = computed(() => (props.plans || []).reduce((sum, extra) => 
                             <div class="flex flex-wrap items-center gap-2">
                                 <h4 class="text-base font-bold text-slate-950">{{ getProviderExtraLabel(extra) }}</h4>
                                 <span v-if="extra.required" class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-rose-600">Required</span>
-                                <span v-if="isSelected(extra)" class="rounded-full bg-[#22d3ee]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0b2230]">Added</span>
+                                <span v-if="isSelected(extra)" class="rounded-full bg-[#153b4f]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#153b4f]">Added</span>
                             </div>
                             <p v-if="extra.description" class="mt-1 text-sm text-slate-500 protection-desc" v-html="extra.description"></p>
                             <p v-if="extra.excess != null" class="mt-2 text-xs text-slate-500">
@@ -93,7 +93,7 @@ const selectedCount = computed(() => (props.plans || []).reduce((sum, extra) => 
                         <Minus class="w-4 h-4" />
                     </button>
                     <span class="w-8 text-center text-sm font-bold text-slate-900">{{ selectedQuantity(extra) }}</span>
-                    <button type="button" class="w-8 h-8 rounded-full bg-[#22d3ee] text-[#0b2230] flex items-center justify-center hover:bg-[#67e8f9] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    <button type="button" class="w-8 h-8 rounded-full bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f] text-white flex items-center justify-center hover:shadow-md hover:shadow-[#1e3a5f]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                         @click.stop="emit('update-extra-quantity', extra, 1)"
                         :disabled="selectedQuantity(extra) >= extra.numberAllowed">
                         <Plus class="w-4 h-4" />

@@ -67,19 +67,18 @@ const serviceSuffix = (extra) => props.isSicilyByCar || extra.total_for_booking 
                     @keydown.enter.prevent="emit('toggle-extra', extra)"
                     @keydown.space.prevent="emit('toggle-extra', extra)"
                     class="card-hover group rounded-2xl border-2 p-4 bg-white cursor-pointer transition-all"
-                    :class="isSelected(extra) ? 'border-[#22d3ee] bg-[#f0fbfc] shadow-[0_10px_24px_rgba(34,211,238,0.18)]' : 'border-slate-200 hover:border-[#22d3ee]'">
+                    :class="isSelected(extra) ? 'border-[#2d5a8f] bg-[#f0f8fc] shadow-[0_10px_24px_rgba(30,58,95,0.18)]' : 'border-slate-200 hover:border-[#2d5a8f]'">
                     <div class="flex items-start gap-3">
                         <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                            :class="getIconBackgroundClass(serviceTitle(extra))"
-                            :style="isSelected(extra) ? { backgroundColor: '#22d3ee' } : null">
+                            :class="isSelected(extra) ? 'bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f]' : getIconBackgroundClass(serviceTitle(extra))">
                             <component :is="getExtraIcon(serviceTitle(extra))" class="w-5 h-5"
-                                :class="isSelected(extra) ? 'text-[#0b2230]' : getIconColorClass(serviceTitle(extra))" />
+                                :class="isSelected(extra) ? 'text-white' : getIconColorClass(serviceTitle(extra))" />
                         </div>
                         <div class="min-w-0 flex-1">
                             <div class="flex items-start justify-between gap-2">
                                 <h4 class="text-sm font-bold text-slate-950 leading-snug">{{ serviceTitle(extra) }}</h4>
                                 <span v-if="extra.required" class="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-600 shrink-0">Required</span>
-                                <span v-else-if="isSelected(extra)" class="rounded-full bg-[#22d3ee]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0b2230] shrink-0">Added</span>
+                                <span v-else-if="isSelected(extra)" class="rounded-full bg-[#153b4f]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#153b4f] shrink-0">Added</span>
                             </div>
                             <p v-if="(isSicilyByCar || isRecordGo) && extra.description" class="mt-1 text-xs text-slate-500 line-clamp-2">{{ extra.description }}</p>
                         </div>
@@ -100,7 +99,7 @@ const serviceSuffix = (extra) => props.isSicilyByCar || extra.total_for_booking 
                                 <Minus class="w-4 h-4" />
                             </button>
                             <span class="w-7 text-center text-sm font-bold text-slate-900">{{ selectedQuantity(extra) }}</span>
-                            <button type="button" class="w-8 h-8 rounded-full bg-[#22d3ee] text-[#0b2230] flex items-center justify-center hover:bg-[#67e8f9] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            <button type="button" class="w-8 h-8 rounded-full bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f] text-white flex items-center justify-center hover:shadow-md hover:shadow-[#1e3a5f]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                                 @click.stop="emit('update-extra-quantity', extra, 1)"
                                 :disabled="selectedQuantity(extra) >= extra.numberAllowed">
                                 <Plus class="w-4 h-4" />
@@ -108,7 +107,7 @@ const serviceSuffix = (extra) => props.isSicilyByCar || extra.total_for_booking 
                         </div>
 
                         <button v-else-if="!isSelected(extra)" type="button"
-                            class="rounded-full bg-[#22d3ee] px-4 py-2 text-xs font-bold text-[#0b2230] border border-transparent shadow-[0_6px_14px_rgba(34,211,238,0.24)] hover:bg-[#67e8f9] transition-colors"
+                            class="rounded-full bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f] px-4 py-2 text-xs font-bold text-white border border-transparent shadow-[0_6px_14px_rgba(30,58,95,0.24)] hover:shadow-md hover:shadow-[#1e3a5f]/25 transition-all"
                             @click.stop="emit('toggle-extra', extra)">
                             Add
                         </button>

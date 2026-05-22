@@ -1087,16 +1087,16 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
     box-shadow: 0 10px 24px rgba(21, 59, 79, 0.08);
 }
 .plan-card.selected {
-    border-color: #22d3ee;
-    background-color: #f0fbfc;
-    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.14), 0 10px 26px rgba(21, 59, 79, 0.08);
+    border-color: #2d5a8f;
+    background-color: #f0f8fc;
+    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.14), 0 10px 26px rgba(21, 59, 79, 0.08);
 }
 .plan-card.selected::before {
     content: '';
     position: absolute;
     inset: 0 0 auto 0;
     height: 2px;
-    background: #22d3ee;
+    background: linear-gradient(90deg, #1e3a5f, #2d5a8f);
 }
 
 /* Card hover lift */

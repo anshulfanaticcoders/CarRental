@@ -60,12 +60,12 @@ const locautoSelected = (code) => props.selectedLocautoProtections.includes(code
             <button v-for="pkg in availablePackages" :key="pkg.type" type="button"
                 @click="selectPackage(pkg)"
                 class="plan-card group text-left rounded-2xl border-2 p-5 relative"
-                :class="isPackageSelected(pkg) ? 'selected' : 'border-slate-200 hover:border-[#22d3ee]'">
+                :class="isPackageSelected(pkg) ? 'selected' : 'border-slate-200 hover:border-[#2d5a8f]'">
                 <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
                             <h4 class="text-base font-bold text-slate-950">{{ pkg.name || getPackageDisplayName(pkg.type) }}</h4>
-                            <span v-if="isPackageSelected(pkg)" class="inline-flex items-center gap-1 rounded-full bg-[#22d3ee] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0b2230]">
+                            <span v-if="isPackageSelected(pkg)" class="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
                                 <Check class="w-3 h-3" />
                                 Selected
                             </span>
@@ -77,8 +77,8 @@ const locautoSelected = (code) => props.selectedLocautoProtections.includes(code
                         <p class="mt-1 text-sm text-slate-500">{{ pkg.subtitle || getPackageSubtitle(pkg.type) }}</p>
                     </div>
                     <div class="shrink-0 rounded-full border-2 p-1"
-                        :class="isPackageSelected(pkg) ? 'border-[#22d3ee] bg-[#22d3ee]' : 'border-slate-300 bg-white group-hover:border-[#22d3ee]'">
-                        <Check v-if="isPackageSelected(pkg)" class="w-3.5 h-3.5 text-[#0b2230]" />
+                        :class="isPackageSelected(pkg) ? 'border-[#2d5a8f] bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f]' : 'border-slate-300 bg-white group-hover:border-[#2d5a8f]'">
+                        <Check v-if="isPackageSelected(pkg)" class="w-3.5 h-3.5 text-white" />
                         <div v-else class="w-3.5 h-3.5 rounded-full"></div>
                     </div>
                 </div>
@@ -119,7 +119,7 @@ const locautoSelected = (code) => props.selectedLocautoProtections.includes(code
                         <div class="text-2xl font-bold text-[#153b4f]">{{ formatRentalPrice(pkg.total) }}</div>
                     </div>
                     <span class="rounded-full px-4 py-2 text-xs font-bold"
-                        :class="isPackageSelected(pkg) ? 'bg-[#22d3ee] text-[#0b2230]' : 'bg-[#f0f8fc] text-[#153b4f] group-hover:bg-[#dceef6]'">
+                        :class="isPackageSelected(pkg) ? 'bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f] text-white' : 'bg-[#f0f8fc] text-[#153b4f] group-hover:bg-[#dceef6]'">
                         {{ isPackageSelected(pkg) ? 'Current choice' : 'Choose package' }}
                     </span>
                 </div>
@@ -140,15 +140,15 @@ const locautoSelected = (code) => props.selectedLocautoProtections.includes(code
             <button v-for="protection in locautoProtectionPlans" :key="protection.code" type="button"
                 @click="emit('toggle-locauto-protection', protection.code)"
                 class="plan-card group text-left rounded-2xl border-2 p-5 relative"
-                :class="locautoSelected(protection.code) ? 'selected' : 'border-slate-200 hover:border-[#22d3ee]'">
+                :class="locautoSelected(protection.code) ? 'selected' : 'border-slate-200 hover:border-[#2d5a8f]'">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h4 class="text-base font-bold text-slate-950">{{ getShortProtectionName(protection.description) }}</h4>
                         <p class="mt-1 text-sm text-slate-500">{{ protection.description }}</p>
                     </div>
                     <div class="shrink-0 rounded-md border-2 p-1"
-                        :class="locautoSelected(protection.code) ? 'border-[#22d3ee] bg-[#22d3ee]' : 'border-slate-300 bg-white group-hover:border-[#22d3ee]'">
-                        <Check v-if="locautoSelected(protection.code)" class="w-3.5 h-3.5 text-[#0b2230]" />
+                        :class="locautoSelected(protection.code) ? 'border-[#2d5a8f] bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f]' : 'border-slate-300 bg-white group-hover:border-[#2d5a8f]'">
+                        <Check v-if="locautoSelected(protection.code)" class="w-3.5 h-3.5 text-white" />
                         <div v-else class="w-3.5 h-3.5"></div>
                     </div>
                 </div>

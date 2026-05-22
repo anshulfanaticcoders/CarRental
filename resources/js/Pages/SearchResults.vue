@@ -2703,7 +2703,7 @@ watch(
     justify-content: center;
     background: linear-gradient(135deg, #153b4f, #1c4d66);
     color: #fff;
-    border: 1px solid rgba(34, 211, 238, 0.25);
+    border: 1px solid rgba(45, 90, 143, 0.25);
     border-radius: 14px;
     box-shadow: 0 10px 24px rgba(21, 59, 79, 0.28), 0 2px 6px rgba(21, 59, 79, 0.12);
     cursor: pointer;
@@ -2714,11 +2714,11 @@ watch(
 }
 .scroll-top-btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 14px 28px rgba(21, 59, 79, 0.34), 0 3px 8px rgba(34, 211, 238, 0.22);
-    border-color: rgba(34, 211, 238, 0.6);
+    box-shadow: 0 14px 28px rgba(21, 59, 79, 0.34), 0 3px 8px rgba(45, 90, 143, 0.22);
+    border-color: rgba(45, 90, 143, 0.6);
 }
 .scroll-top-btn:focus-visible {
-    outline: 2px solid #22d3ee;
+    outline: 2px solid #2d5a8f;
     outline-offset: 3px;
 }
 .scroll-top-btn:active {
