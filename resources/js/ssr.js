@@ -22,6 +22,20 @@ const ssrPageModules = import.meta.glob([
     './Pages/Frontend/Templates/AboutUsPage.vue',
     './Pages/Frontend/Templates/ContactUsPage.vue',
 ]);
+const ClientOnlyPage = {
+    name: 'ClientOnlyPage',
+    render: () => h('div'),
+};
+
+const resolveSsrPage = (name) => {
+    const path = `./Pages/${name}.vue`;
+
+    if (ssrPageModules[path]) {
+        return resolvePageComponent(path, ssrPageModules);
+    }
+
+    return ClientOnlyPage;
+};
 
 createServer((page) =>
     createInertiaApp({
@@ -34,8 +48,7 @@ createServer((page) =>
                 ? resolved
                 : `${resolved} - ${appName}`;
         },
-        resolve: (name) =>
-            resolvePageComponent(`./Pages/${name}.vue`, ssrPageModules),
+        resolve: resolveSsrPage,
         setup({ App, props, plugin }) {
             const app = createSSRApp({
                 render: () => h(App, props),
