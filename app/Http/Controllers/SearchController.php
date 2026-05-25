@@ -173,7 +173,18 @@ class SearchController extends Controller
         }
 
         $originalUnifiedLocationId = (int) ($validated['unified_location_id'] ?? 0);
-        $resolvedSearchLocation = $this->locationSearchService->resolveSearchLocation($validated);
+        try {
+            $resolvedSearchLocation = $this->locationSearchService->resolveSearchLocation($validated);
+        } catch (\Throwable $exception) {
+            Log::error('Search location resolution failed', [
+                'requested_unified_location_id' => $originalUnifiedLocationId,
+                'provider' => $validated['provider'] ?? null,
+                'provider_pickup_id' => $validated['provider_pickup_id'] ?? null,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $emptyResultsResponse('We could not verify this pickup location. Please choose a location from the search suggestions.');
+        }
         $requestedProvider = strtolower(trim((string) ($validated['provider'] ?? '')));
         $blockInternalProviderForResolvedLocation = false;
         $hasResolvedSearchLocation = false;
@@ -447,12 +458,49 @@ class SearchController extends Controller
                 : 'Search Car Rentals — Compare Deals Worldwide | Vrooem';
         }
 
-        $props = $this->gatewaySearchService->buildPageProps(
-            $request,
-            $validated,
-            $rentalDays,
-            collect($internalVehiclesCollection),
-            [
+        try {
+            $props = $this->gatewaySearchService->buildPageProps(
+                $request,
+                $validated,
+                $rentalDays,
+                collect($internalVehiclesCollection),
+                [
+                    'brands' => $brands,
+                    'colors' => $colors,
+                    'seatingCapacities' => $seatingCapacities,
+                    'transmissions' => $transmissions,
+                    'fuels' => $fuels,
+                    'mileages' => $mileages,
+                    'categories' => $categoriesFromOptions,
+                    'schema' => $vehicleListSchema,
+                    'seo' => $seo,
+                    'locale' => App::getLocale(),
+                ],
+                fn (array $gatewayVehicle, int $days): array => $this->gatewayVehicleTransformer->transform($gatewayVehicle, $days),
+                fn (string $supplierId): string => $this->gatewayVehicleTransformer->normalizeSupplierId($supplierId)
+            );
+        } catch (\Throwable $exception) {
+            Log::error('Search gateway render failed', [
+                'requested_unified_location_id' => $validated['unified_location_id'] ?? null,
+                'provider' => $validated['provider'] ?? null,
+                'provider_pickup_id' => $validated['provider_pickup_id'] ?? null,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $emptyVehicles = new \Illuminate\Pagination\LengthAwarePaginator(
+                collect(),
+                0,
+                500,
+                1,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+
+            $props = [
+                'vehicles' => $emptyVehicles,
+                'providerStatus' => [],
+                'searchError' => 'We could not load live supplier availability for this search. Please adjust the search and try again.',
+                'filters' => $validated,
+                'pagination_links' => '',
                 'brands' => $brands,
                 'colors' => $colors,
                 'seatingCapacities' => $seatingCapacities,
@@ -463,10 +511,11 @@ class SearchController extends Controller
                 'schema' => $vehicleListSchema,
                 'seo' => $seo,
                 'locale' => App::getLocale(),
-            ],
-            fn (array $gatewayVehicle, int $days): array => $this->gatewayVehicleTransformer->transform($gatewayVehicle, $days),
-            fn (string $supplierId): string => $this->gatewayVehicleTransformer->normalizeSupplierId($supplierId)
-        );
+                'optionalExtras' => [],
+                'locationName' => $validated['where'] ?? 'Selected Location',
+                'recommendedLocations' => [],
+            ];
+        }
 
         return Inertia::render('SearchResults', $props);
     }

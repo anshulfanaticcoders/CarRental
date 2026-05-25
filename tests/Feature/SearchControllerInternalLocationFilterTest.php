@@ -297,6 +297,100 @@ class SearchControllerInternalLocationFilterTest extends TestCase
         );
     }
 
+    public function test_search_returns_empty_state_when_location_resolution_fails(): void
+    {
+        $locationSearchService = Mockery::mock(LocationSearchService::class);
+        $locationSearchService->shouldReceive('resolveSearchLocation')
+            ->once()
+            ->andThrow(new \RuntimeException('location resolver unavailable'));
+        $locationSearchService->shouldReceive('nearbyLocations')
+            ->once()
+            ->andReturn([]);
+        $this->app->instance(LocationSearchService::class, $locationSearchService);
+
+        $gatewaySearchService = Mockery::mock(GatewaySearchService::class);
+        $gatewaySearchService->shouldReceive('buildPageProps')->never();
+        $this->app->instance(GatewaySearchService::class, $gatewaySearchService);
+
+        $response = $this->get('/en/s?'.http_build_query([
+            'where' => 'Bologna Airport (BLQ)',
+            'city' => 'Bologna',
+            'country' => 'Italy',
+            'latitude' => 44.542518,
+            'longitude' => 11.297874,
+            'provider' => 'greenmotion',
+            'provider_pickup_id' => 179,
+            'unified_location_id' => 1033571661,
+            'date_from' => '2026-06-15',
+            'date_to' => '2026-06-16',
+            'start_time' => '09:00',
+            'end_time' => '09:00',
+            'age' => 35,
+            'currency' => 'EUR',
+        ]));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('SearchResults')
+            ->where('vehicles.total', 0)
+            ->where('recommendedLocations', [])
+            ->where('searchError', 'We could not verify this pickup location. Please choose a location from the search suggestions.')
+        );
+    }
+
+    public function test_search_returns_empty_state_when_gateway_render_fails(): void
+    {
+        $locationSearchService = Mockery::mock(LocationSearchService::class);
+        $locationSearchService->shouldReceive('resolveSearchLocation')
+            ->once()
+            ->andReturn([
+                'unified_location_id' => 1033571661,
+                'name' => 'Bologna Airport (BLQ)',
+                'city' => 'Bologna',
+                'country' => 'Italy',
+                'country_code' => 'IT',
+                'latitude' => 44.542518,
+                'longitude' => 11.297874,
+                'location_type' => 'airport',
+                'iata' => 'BLQ',
+                'providers' => [
+                    ['provider' => 'greenmotion', 'pickup_id' => '179'],
+                ],
+            ]);
+        $this->app->instance(LocationSearchService::class, $locationSearchService);
+
+        $gatewaySearchService = Mockery::mock(GatewaySearchService::class);
+        $gatewaySearchService->shouldReceive('buildPageProps')
+            ->once()
+            ->andThrow(new \RuntimeException('gateway render unavailable'));
+        $this->app->instance(GatewaySearchService::class, $gatewaySearchService);
+
+        $response = $this->get('/en/s?'.http_build_query([
+            'where' => 'Bologna Airport (BLQ)',
+            'city' => 'Bologna',
+            'country' => 'Italy',
+            'latitude' => 44.542518,
+            'longitude' => 11.297874,
+            'provider' => 'greenmotion',
+            'provider_pickup_id' => 179,
+            'unified_location_id' => 1033571661,
+            'date_from' => '2026-06-15',
+            'date_to' => '2026-06-16',
+            'start_time' => '09:00',
+            'end_time' => '09:00',
+            'age' => 35,
+            'currency' => 'EUR',
+        ]));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('SearchResults')
+            ->where('vehicles.total', 0)
+            ->where('recommendedLocations', [])
+            ->where('searchError', 'We could not load live supplier availability for this search. Please adjust the search and try again.')
+        );
+    }
+
     private function mockSearchDependencies(array $resolvedLocation, ?Collection &$capturedInternalVehicles): void
     {
         $locationSearchService = Mockery::mock(LocationSearchService::class);

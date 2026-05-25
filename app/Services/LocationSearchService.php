@@ -19,10 +19,20 @@ class LocationSearchService
         }
 
         $normalized = strtolower($string);
-        $normalized = transliterator_transliterate('NFKD; [:Nonspacing Mark:] Remove; NFC;', $normalized);
+        if (function_exists('transliterator_transliterate')) {
+            $transliterated = transliterator_transliterate('NFKD; [:Nonspacing Mark:] Remove; NFC;', $normalized);
+            if (is_string($transliterated)) {
+                $normalized = $transliterated;
+            }
+        } elseif (function_exists('iconv')) {
+            $transliterated = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $normalized);
+            if (is_string($transliterated)) {
+                $normalized = $transliterated;
+            }
+        }
         $normalized = preg_replace('/[^a-z0-9]/', '', $normalized);
 
-        return $normalized;
+        return is_string($normalized) ? $normalized : '';
     }
 
     public function getAllLocations(int $limit = 50): array
