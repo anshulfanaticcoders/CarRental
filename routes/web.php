@@ -70,6 +70,7 @@ use App\Models\Booking;
 use App\Models\Message;
 use App\Models\Page;
 use App\Services\LocalePreferenceResolver;
+use App\Services\MerchantFeeds\MerchantFeedFileLocator;
 use Illuminate\Foundation\Application; // Import the AdminProfileController
 use Illuminate\Support\Facades\Route; // Import the AffiliateBusinessModelController
 use Inertia\Inertia; // Import the AffiliateQrCodeController
@@ -837,6 +838,18 @@ Route::get('/llms.txt', function () {
         'Content-Type' => 'text/plain',
     ]);
 })->name('llms');
+
+Route::get('/feeds/awin/google-merchant.xml', function (MerchantFeedFileLocator $locator) {
+    $feedPath = $locator->path('awin');
+    if (! file_exists($feedPath)) {
+        abort(404);
+    }
+
+    return response()->file($feedPath, [
+        'Content-Type' => 'application/xml; charset=UTF-8',
+        'Cache-Control' => 'public, max-age=900',
+    ]);
+})->name('feeds.awin.google-merchant');
 
 // Sitemap route (must be before fallback)
 Route::get('/sitemap.xml', function () {

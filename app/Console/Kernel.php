@@ -4,11 +4,11 @@ namespace App\Console;
 
 use App\Console\Commands\AutoCompleteInternalBookings;
 use App\Console\Commands\ExpireBookingHolds;
+use App\Console\Commands\GeneratePublicSitemaps;
+use App\Console\Commands\RefreshCurrencyRates;
+use App\Console\Commands\RefreshMerchantFeed;
 use App\Console\Commands\SendChatMessageReminders;
 use App\Console\Commands\SendPendingBookingReminders;
-use App\Console\Commands\GeneratePublicSitemaps;
-use App\Console\Commands\MigrateSeoTargets;
-use App\Console\Commands\RefreshCurrencyRates;
 use App\Console\Commands\SendScheduledNewsletterCampaigns;
 use App\Console\Commands\UpdateGeoIpDatabase;
 use Illuminate\Console\Scheduling\Schedule;
@@ -27,6 +27,7 @@ class Kernel extends ConsoleKernel
         $schedule->command(SendChatMessageReminders::class)->everyFiveMinutes();
         $schedule->command(SendPendingBookingReminders::class)->twiceDaily();
         $schedule->command(RefreshCurrencyRates::class)->everyTwoHours();
+        $schedule->command(RefreshMerchantFeed::class, ['awin'])->hourly()->withoutOverlapping();
         $schedule->command(GeneratePublicSitemaps::class)->daily()->withoutOverlapping();
         $schedule->command(SendScheduledNewsletterCampaigns::class)->everyMinute()->withoutOverlapping();
         $schedule->command(UpdateGeoIpDatabase::class)->weekly()->withoutOverlapping();
