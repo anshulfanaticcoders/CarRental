@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\BookingHold;
 use App\Models\Customer;
 use App\Models\MerchantFeedItem;
+use App\Models\PayableSetting;
 use App\Models\PopularPlace;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -41,6 +42,8 @@ class MerchantFeedTest extends TestCase
             'merchant_feeds.awin.currency' => 'EUR',
             'merchant_feeds.awin.driver_age' => 35,
         ]);
+
+        PayableSetting::create(['payment_percentage' => 15]);
 
         Carbon::setTestNow(Carbon::parse('2026-05-25 10:00:00'));
     }
@@ -129,13 +132,37 @@ class MerchantFeedTest extends TestCase
         $this->artisan('merchant-feed:refresh', ['feed' => 'awin'])->assertExitCode(0);
 
         $this->assertSame('in_stock', MerchantFeedItem::where('feed_key', 'internal-'.$availableVehicle->id)->value('availability'));
+        $this->assertSame('63.25', MerchantFeedItem::where('feed_key', 'internal-'.$availableVehicle->id)->value('price'));
         $this->assertSame('out_of_stock', MerchantFeedItem::where('feed_key', 'internal-'.$bookedVehicle->id)->value('availability'));
         $this->assertSame('out_of_stock', MerchantFeedItem::where('feed_key', 'internal-'.$heldVehicle->id)->value('availability'));
         $this->assertFileExists($this->feedPath());
         $xml = file_get_contents($this->feedPath());
         $this->assertStringContainsString('<g:id>internal-'.$availableVehicle->id.'</g:id>', $xml);
+        $this->assertStringContainsString('<g:price>63.25 EUR</g:price>', $xml);
+        $this->assertStringContainsString('From 63.25 EUR per day.', $xml);
         $this->assertStringNotContainsString('<g:id>internal-'.$bookedVehicle->id.'</g:id>', $xml);
         $this->assertStringNotContainsString('<g:id>internal-'.$heldVehicle->id.'</g:id>', $xml);
+    }
+
+    public function test_refresh_command_uses_admin_payable_percentage_for_feed_prices(): void
+    {
+        PayableSetting::query()->update(['payment_percentage' => 20]);
+        [$vehicle] = $this->createVehicleContext([
+            'brand' => 'Hyundai',
+            'price_per_day' => 100,
+        ]);
+
+        $this->artisan('merchant-feed:refresh', ['feed' => 'awin'])->assertExitCode(0);
+
+        $item = MerchantFeedItem::where('feed_key', 'internal-'.$vehicle->id)->firstOrFail();
+        $this->assertSame('120.00', $item->price);
+        $this->assertEqualsWithDelta(100.0, $item->raw_attributes['net_price'], 0.001);
+        $this->assertEqualsWithDelta(20.0, $item->raw_attributes['payment_percentage'], 0.001);
+        $this->assertEqualsWithDelta(0.2, $item->raw_attributes['price_markup_rate'], 0.001);
+
+        $xml = file_get_contents($this->feedPath());
+        $this->assertStringContainsString('<g:price>120.00 EUR</g:price>', $xml);
+        $this->assertStringContainsString('From 120.00 EUR per day.', $xml);
     }
 
     public function test_refresh_command_imports_external_gateway_items(): void
@@ -207,6 +234,7 @@ class MerchantFeedTest extends TestCase
             ->where('provider', 'greenmotion')
             ->firstOrFail();
         $this->assertSame('greenmotion', $item->provider);
+        $this->assertSame('51.18', $item->price);
         $this->assertSame('in_stock', $item->availability);
         $this->assertStringContainsString('/en/s?', $item->link);
         $this->assertStringContainsString('provider=greenmotion', $item->link);
@@ -214,9 +242,12 @@ class MerchantFeedTest extends TestCase
         $this->assertStringContainsString('feed_provider=greenmotion', $item->link);
         $this->assertStringStartsWith('ext-', $item->feed_key);
         $this->assertLessThanOrEqual(50, mb_strlen($item->feed_key));
-        $this->assertStringContainsString('<g:id>'.$item->feed_key.'</g:id>', file_get_contents($this->feedPath()));
-        $this->assertStringNotContainsString('<g:id>'.$legacyLongId.'</g:id>', file_get_contents($this->feedPath()));
-        $this->assertStringNotContainsString('<g:id>'.$staleOutOfStockId.'</g:id>', file_get_contents($this->feedPath()));
+        $xml = file_get_contents($this->feedPath());
+        $this->assertStringContainsString('<g:id>'.$item->feed_key.'</g:id>', $xml);
+        $this->assertStringContainsString('<g:price>51.18 EUR</g:price>', $xml);
+        $this->assertStringContainsString('From 51.18 EUR per day.', $xml);
+        $this->assertStringNotContainsString('<g:id>'.$legacyLongId.'</g:id>', $xml);
+        $this->assertStringNotContainsString('<g:id>'.$staleOutOfStockId.'</g:id>', $xml);
     }
 
     public function test_external_gateway_failure_keeps_existing_external_items(): void

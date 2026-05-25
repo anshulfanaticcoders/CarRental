@@ -3,14 +3,18 @@
 namespace App\Services\MerchantFeeds;
 
 use App\Models\Vehicle;
+use App\Services\Pricing\PayablePercentageService;
 use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\GatewayVehicleTransformer;
 
 class MerchantFeedItemBuilder
 {
+    private ?float $priceMarkupRate = null;
+
     public function __construct(
         private readonly InternalSearchVehicleFactory $internalVehicleFactory,
         private readonly GatewayVehicleTransformer $gatewayVehicleTransformer,
+        private readonly PayablePercentageService $payablePercentageService,
     ) {}
 
     public function fromInternalVehicle(Vehicle $vehicle, bool $available, array $window, string $feedName = 'awin'): ?array
@@ -32,6 +36,7 @@ class MerchantFeedItemBuilder
 
         $feedKey = 'internal-'.$vehicle->id;
         $currency = $this->currency(data_get($normalized, 'pricing.currency'));
+        $grossPrice = $this->grossPrice($price);
         $locationName = $this->cleanText($vehicle->vendorLocation?->name ?: $vehicle->location ?: $vehicle->city ?: $vehicle->country, 191);
         $title = $this->title([
             $normalized['display_name'] ?? trim($vehicle->brand.' '.$vehicle->model),
@@ -52,11 +57,11 @@ class MerchantFeedItemBuilder
                 data_get($normalized, 'specs.transmission'),
                 data_get($normalized, 'specs.fuel'),
                 data_get($normalized, 'specs.seating_capacity') ? data_get($normalized, 'specs.seating_capacity').' seats' : null,
-                "From {$this->money($price, $currency)} per day.",
+                "From {$this->money($grossPrice, $currency)} per day.",
             ]),
             'link' => $this->internalLink($vehicle, $window, $feedName, $feedKey, $currency),
             'image_link' => $image,
-            'price' => $price,
+            'price' => $grossPrice,
             'currency' => $currency,
             'availability' => $available ? 'in_stock' : 'out_of_stock',
             'brand' => $this->nullableText($vehicle->brand, 120),
@@ -68,6 +73,9 @@ class MerchantFeedItemBuilder
             'raw_attributes' => [
                 'vehicle_id' => $vehicle->id,
                 'category' => $vehicle->category?->name,
+                'net_price' => $price,
+                'payment_percentage' => $this->paymentPercentage(),
+                'price_markup_rate' => $this->priceMarkupRate(),
                 'window' => $this->windowPayload($window),
             ],
         ];
@@ -92,6 +100,7 @@ class MerchantFeedItemBuilder
         $providerVehicleId = $this->providerVehicleId($vehicle, $gatewayVehicle);
         $feedKey = $this->externalFeedKey($provider, $providerVehicleId, $vehicle, $location);
         $currency = $this->currency(data_get($vehicle, 'currency') ?? data_get($vehicle, 'pricing.currency') ?? $window['currency'] ?? null);
+        $grossPrice = $this->grossPrice($price);
         $locationName = $this->cleanText($location['place_name'] ?? $location['name'] ?? 'Selected location', 191);
         $displayName = $this->cleanText(
             data_get($vehicle, 'display_name')
@@ -119,11 +128,11 @@ class MerchantFeedItemBuilder
                 data_get($vehicle, 'transmission'),
                 data_get($vehicle, 'fuel'),
                 data_get($vehicle, 'seating_capacity') ? data_get($vehicle, 'seating_capacity').' seats' : null,
-                "From {$this->money($price, $currency)} per day.",
+                "From {$this->money($grossPrice, $currency)} per day.",
             ]),
             'link' => $this->externalLink($vehicle, $location, $window, $feedName, $feedKey, $currency),
             'image_link' => $image,
-            'price' => $price,
+            'price' => $grossPrice,
             'currency' => $currency,
             'availability' => $this->gatewayAvailability($gatewayVehicle, $vehicle),
             'brand' => $this->nullableText(data_get($vehicle, 'brand'), 120),
@@ -138,6 +147,9 @@ class MerchantFeedItemBuilder
                 'gateway_vehicle_id' => data_get($vehicle, 'gateway_vehicle_id') ?? data_get($vehicle, 'id'),
                 'provider_product_id' => data_get($vehicle, 'provider_product_id'),
                 'provider_rate_id' => data_get($vehicle, 'provider_rate_id'),
+                'net_price' => $price,
+                'payment_percentage' => $this->paymentPercentage(),
+                'price_markup_rate' => $this->priceMarkupRate(),
                 'unified_location_id' => $location['unified_location_id'] ?? null,
                 'window' => $this->windowPayload($window),
             ],
@@ -306,6 +318,21 @@ class MerchantFeedItemBuilder
         $price = round((float) $value, 2);
 
         return $price > 0 ? $price : null;
+    }
+
+    private function grossPrice(float $netPrice): float
+    {
+        return round($netPrice * (1 + $this->priceMarkupRate()), 2);
+    }
+
+    private function priceMarkupRate(): float
+    {
+        return $this->priceMarkupRate ??= $this->payablePercentageService->rate();
+    }
+
+    private function paymentPercentage(): float
+    {
+        return round($this->priceMarkupRate() * 100, 2);
     }
 
     private function validUrl(mixed $value): ?string
