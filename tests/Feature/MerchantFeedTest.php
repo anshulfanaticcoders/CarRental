@@ -188,6 +188,8 @@ class MerchantFeedTest extends TestCase
         $this->assertSame('in_stock', $item->availability);
         $this->assertStringContainsString('/en/s?', $item->link);
         $this->assertStringContainsString('provider=greenmotion', $item->link);
+        $this->assertStringContainsString('feed_item='.$item->feed_key, $item->link);
+        $this->assertStringContainsString('feed_provider=greenmotion', $item->link);
         $this->assertStringStartsWith('ext-', $item->feed_key);
         $this->assertLessThanOrEqual(50, mb_strlen($item->feed_key));
         $this->assertStringContainsString('<g:id>'.$item->feed_key.'</g:id>', file_get_contents($this->feedPath()));

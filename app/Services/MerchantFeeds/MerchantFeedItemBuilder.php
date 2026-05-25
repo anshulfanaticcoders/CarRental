@@ -170,6 +170,12 @@ class MerchantFeedItemBuilder
             'unified_location_id' => $location['unified_location_id'] ?? null,
             'dropoff_unified_location_id' => $location['unified_location_id'] ?? null,
             'dropoff_where' => $locationName,
+            'feed_item' => $feedKey,
+            'feed_provider' => $provider,
+            'feed_gateway_vehicle_id' => data_get($vehicle, 'gateway_vehicle_id') ?? data_get($vehicle, 'id'),
+            'feed_provider_vehicle_id' => data_get($vehicle, 'provider_vehicle_id'),
+            'feed_product_id' => data_get($vehicle, 'provider_product_id'),
+            'feed_rate_id' => data_get($vehicle, 'provider_rate_id'),
         ], $this->windowQuery($window, $currency), $this->utm($feedName, 'external', $feedKey));
 
         return $this->appendQuery(route('search', ['locale' => $this->locale($feedName)]), $params);

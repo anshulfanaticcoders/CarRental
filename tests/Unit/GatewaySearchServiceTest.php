@@ -203,6 +203,123 @@ class GatewaySearchServiceTest extends TestCase
     }
 
     #[Test]
+    public function it_moves_the_clicked_feed_vehicle_to_the_top_of_search_results(): void
+    {
+        $locationSearchService = $this->createMock(LocationSearchService::class);
+        $locationSearchService->method('resolveSearchLocation')->willReturn([
+            'unified_location_id' => 3656758232,
+            'name' => 'Marrakech Airport (RAK)',
+            'our_location_id' => null,
+        ]);
+        $locationSearchService->method('getLocationByUnifiedId')->willReturn([
+            'unified_location_id' => 3656758232,
+            'name' => 'Marrakech Airport (RAK)',
+        ]);
+
+        $paramsBuilder = $this->createMock(GatewaySearchParamsBuilder::class);
+        $paramsBuilder->method('build')->willReturn(['unified_location_id' => 3656758232]);
+
+        $gatewayService = $this->createMock(VrooemGatewayService::class);
+        $gatewayService->method('searchVehicles')->willReturn([
+            'vehicles' => [
+                [
+                    'id' => 'other-vehicle',
+                    'source' => 'surprice',
+                    'provider_vehicle_id' => 'CCMR',
+                    'provider_product_id' => 'product-other',
+                    'provider_rate_id' => 'rate-other',
+                    'provider_pickup_id' => 'RAK:RAKA01',
+                    'brand' => 'Dacia',
+                    'model' => 'Logan',
+                    'total_price' => 42.23,
+                    'price_per_day' => 42.23,
+                ],
+                [
+                    'id' => 'target-i10',
+                    'source' => 'surprice',
+                    'provider_vehicle_id' => 'MCMR',
+                    'provider_product_id' => 'product-i10',
+                    'provider_rate_id' => 'rate-i10',
+                    'provider_pickup_id' => 'RAK:RAKA01',
+                    'brand' => 'Hyundai',
+                    'model' => 'i10',
+                    'total_price' => 28.72,
+                    'price_per_day' => 28.72,
+                ],
+            ],
+            'supplier_results' => [],
+            'search_id' => 'search_feed_click',
+            'response_time_ms' => 321,
+        ]);
+
+        $presentationService = $this->createMock(GatewayVehiclePresentationService::class);
+        $this->stubSicilyVehicleCollapse($presentationService);
+        $presentationService->method('collapseEquivalentRenteonVehicles')
+            ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
+
+        $searchOrchestratorService = $this->createMock(SearchOrchestratorService::class);
+        $searchOrchestratorService->expects($this->once())
+            ->method('filterGatewayVehiclesForRequestedProvider')
+            ->willReturnCallback(fn (Collection $vehicles) => $vehicles);
+
+        $internalMergeService = $this->createMock(InternalVehicleMergeService::class);
+        $internalMergeService->expects($this->once())
+            ->method('forGatewayMerge')
+            ->willReturn(collect());
+
+        $priceVerificationService = $this->createMock(PriceVerificationService::class);
+        $priceVerificationService->expects($this->once())
+            ->method('storeOriginalPrices')
+            ->willReturn([]);
+
+        $service = new GatewaySearchService(
+            $locationSearchService,
+            $paramsBuilder,
+            $gatewayService,
+            $presentationService,
+            $searchOrchestratorService,
+            $internalMergeService,
+            $priceVerificationService
+        );
+
+        $props = $service->buildPageProps(
+            Request::create('/en/s', 'GET', [
+                'feed_provider' => 'surprice',
+                'feed_provider_pickup_id' => 'RAK:RAKA01',
+                'feed_provider_vehicle_id' => 'MCMR',
+                'feed_product_id' => 'product-i10',
+                'feed_rate_id' => 'rate-i10',
+            ]),
+            [
+                'unified_location_id' => 3656758232,
+                'where' => 'Marrakech Airport (RAK)',
+                'provider' => 'surprice',
+                'provider_pickup_id' => 'RAK:RAKA01',
+            ],
+            1,
+            collect(),
+            [
+                'brands' => [],
+                'colors' => [],
+                'seatingCapacities' => [],
+                'transmissions' => [],
+                'fuels' => [],
+                'mileages' => [],
+                'categories' => [],
+                'schema' => null,
+                'seo' => ['title' => 'Search'],
+                'locale' => 'en',
+            ],
+            fn (array $vehicle): array => $vehicle,
+            fn (string $supplierId): string => $supplierId
+        );
+
+        $items = collect($props['vehicles']->items());
+
+        $this->assertSame(['target-i10', 'other-vehicle'], $items->pluck('id')->all());
+    }
+
+    #[Test]
     public function it_aggregates_duplicate_provider_status_rows_by_provider(): void
     {
         $locationSearchService = $this->createMock(LocationSearchService::class);
@@ -374,7 +491,7 @@ class GatewaySearchServiceTest extends TestCase
         $presentationService->expects($this->once())
             ->method('collapseEquivalentSicilyByCarVehicles')
             ->willReturnCallback(function (Collection $vehicles): Collection {
-                return (new GatewayVehiclePresentationService())->collapseEquivalentSicilyByCarVehicles($vehicles);
+                return (new GatewayVehiclePresentationService)->collapseEquivalentSicilyByCarVehicles($vehicles);
             });
         $presentationService->expects($this->once())
             ->method('collapseEquivalentRenteonVehicles')

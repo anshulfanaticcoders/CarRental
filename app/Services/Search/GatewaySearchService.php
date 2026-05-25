@@ -192,6 +192,7 @@ class GatewaySearchService
         $combinedVehicles = $this->deduplicateVehicles(
             $internalForMerge->merge($filteredProviderVehicles)
         );
+        $combinedVehicles = $this->prioritizeFeedRequestedVehicle($combinedVehicles, $request);
         Log::info('VrooemGateway: Combined vehicles', [
             'internal' => $internalForMerge->count(),
             'provider' => $filteredProviderVehicles->count(),
@@ -347,6 +348,103 @@ class GatewaySearchService
                 return $source.'|'.(string) $identity;
             })
             ->values();
+    }
+
+    private function prioritizeFeedRequestedVehicle(Collection $vehicles, Request $request): Collection
+    {
+        $criteria = $this->feedRequestedVehicleCriteria($request);
+        if ($criteria === []) {
+            return $vehicles->values();
+        }
+
+        $scored = $vehicles->map(fn ($vehicle): array => [
+            'vehicle' => $vehicle,
+            'score' => $this->feedVehicleMatchScore(is_array($vehicle) ? $vehicle : (array) $vehicle, $criteria),
+        ]);
+
+        if ((int) $scored->max('score') <= 0) {
+            return $vehicles->values();
+        }
+
+        return $scored
+            ->sortByDesc('score')
+            ->pluck('vehicle')
+            ->values();
+    }
+
+    private function feedRequestedVehicleCriteria(Request $request): array
+    {
+        $criteria = [
+            'provider' => $this->normalizeFeedToken($request->query('feed_provider') ?: $request->query('provider')),
+            'provider_pickup_id' => $this->normalizeFeedToken($request->query('feed_provider_pickup_id') ?: $request->query('provider_pickup_id')),
+            'gateway_vehicle_id' => $this->normalizeFeedToken($request->query('feed_gateway_vehicle_id')),
+            'provider_vehicle_id' => $this->normalizeFeedToken($request->query('feed_provider_vehicle_id')),
+            'provider_product_id' => $this->normalizeFeedToken($request->query('feed_product_id')),
+            'provider_rate_id' => $this->normalizeFeedToken($request->query('feed_rate_id')),
+        ];
+
+        if ($criteria['gateway_vehicle_id'] === ''
+            && $criteria['provider_vehicle_id'] === ''
+            && $criteria['provider_product_id'] === ''
+            && $criteria['provider_rate_id'] === ''
+        ) {
+            return [];
+        }
+
+        return $criteria;
+    }
+
+    private function feedVehicleMatchScore(array $vehicle, array $criteria): int
+    {
+        $score = 0;
+
+        if ($criteria['provider'] !== '') {
+            if ($this->normalizeFeedToken($vehicle['source'] ?? null) !== $criteria['provider']) {
+                return 0;
+            }
+            $score += 5;
+        }
+
+        if ($criteria['provider_pickup_id'] !== '') {
+            if ($this->normalizeFeedToken($vehicle['provider_pickup_id'] ?? null) !== $criteria['provider_pickup_id']) {
+                return 0;
+            }
+            $score += 5;
+        }
+
+        if ($criteria['gateway_vehicle_id'] !== ''
+            && in_array($criteria['gateway_vehicle_id'], [
+                $this->normalizeFeedToken($vehicle['gateway_vehicle_id'] ?? null),
+                $this->normalizeFeedToken($vehicle['id'] ?? null),
+            ], true)
+        ) {
+            $score += 30;
+        }
+
+        if ($criteria['provider_vehicle_id'] !== ''
+            && $this->normalizeFeedToken($vehicle['provider_vehicle_id'] ?? null) === $criteria['provider_vehicle_id']
+        ) {
+            $score += 15;
+        }
+
+        if ($criteria['provider_product_id'] !== ''
+            && $this->normalizeFeedToken($vehicle['provider_product_id'] ?? null) === $criteria['provider_product_id']
+        ) {
+            $score += 15;
+        }
+
+        if ($criteria['provider_rate_id'] !== ''
+            && $this->normalizeFeedToken($vehicle['provider_rate_id'] ?? null) === $criteria['provider_rate_id']
+        ) {
+            $score += 15;
+        }
+
+        return $score >= 20 ? $score : 0;
+    }
+
+    private function normalizeFeedToken(mixed $value): string
+    {
+        return strtolower(trim((string) $value));
     }
 
     private function filterDisplayableVehicles(Collection $vehicles): Collection
