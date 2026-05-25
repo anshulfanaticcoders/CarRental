@@ -86,6 +86,10 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api')
                 ->group(base_path('routes/skyscanner.php'));
 
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/trabber.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
         });

@@ -809,6 +809,11 @@ class StripeBookingService
             'search_session_id' => $metadata->search_session_id ?? null,
             'gateway_search_id' => $metadata->gateway_search_id ?? null,
             'selected_deposit_type' => $metadata->selected_deposit_type ?? null,
+            'partner_source' => $metadata->partner_source ?? null,
+            'trabber_clickid' => $metadata->trabber_clickid ?? null,
+            'trabber_offer_id' => $metadata->trabber_offer_id ?? null,
+            'trabber_commission_rate' => $metadata->trabber_commission_rate ?? null,
+            'trabber_clicked_at' => $metadata->trabber_clicked_at ?? null,
         ], static fn ($v) => $v !== null && $v !== '');
 
         if (($booking->provider_source ?? $metadata->vehicle_source ?? null) === 'internal' && $vehicle) {

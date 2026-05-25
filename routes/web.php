@@ -51,6 +51,8 @@ use App\Http\Controllers\PopularPlacesController as PublicPopularPlacesControlle
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\Trabber\OfferController as TrabberOfferController;
+use App\Http\Controllers\Trabber\RedirectController as TrabberRedirectController;
 use App\Http\Controllers\UserDocumentController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\Vendor\BlockingDateController;
@@ -101,6 +103,8 @@ Route::middleware('guest')->group(function () {
 Route::post('/language/change', [LanguageController::class, 'change'])->name('language.change');
 
 Route::post('/currency', [CurrencyController::class, 'update'])->name('currency.update');
+
+Route::get('/api/trabber/redirect', TrabberRedirectController::class)->name('trabber.redirect');
 
 // Test route to force automatic detection (clears detection time)
 Route::get('/force-currency-detection', function () {
@@ -440,6 +444,7 @@ Route::group([
     // Show Blogs on Home page
     Route::get('/', [BlogController::class, 'homeBlogs'])->name('welcome');
     Route::get('/offers/{quoteId}', [\App\Http\Controllers\Skyscanner\CarHireOfferController::class, 'show'])->name('skyscanner.offer');
+    Route::get('/trabber/offers/{offerId}', TrabberOfferController::class)->name('trabber.offer');
     Route::get('/vehicle/{id}', [VehicleController::class, 'show'])->name('vehicle.show');
     Route::get('/api/footer-places', [PopularPlacesController::class, 'getFooterPlaces']);
     Route::get('/api/footer-categories', [VehicleCategoriesController::class, 'getFooterCategories']);

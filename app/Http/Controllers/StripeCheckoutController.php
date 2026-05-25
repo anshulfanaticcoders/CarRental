@@ -15,6 +15,7 @@ use App\Services\CurrencyConversionService;
 use App\Services\OfferService;
 use App\Services\PriceVerificationService;
 use App\Services\StripeBookingService;
+use App\Services\Trabber\TrabberAttributionService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use App\Support\CurrencyRegistry;
 use Illuminate\Http\Request;
@@ -977,6 +978,7 @@ class StripeCheckoutController extends Controller
                 $validated['package'] ?? null
             );
             $vehicleProviderPayload = $this->resolveVehicleLegacyPayload($validated['vehicle'] ?? []);
+            $trabberAttribution = app(TrabberAttributionService::class)->fromRequest($request);
 
             // Build the FULL metadata (no Stripe key limit here â€” stored in our DB)
             $fullMetadata = [
@@ -1122,6 +1124,12 @@ class StripeCheckoutController extends Controller
                 // Affiliate tracking
                 'affiliate_business_id' => session('affiliate_data.business_id'),
                 'affiliate_scan_id' => session('affiliate_data.customer_scan_id'),
+                // Trabber attribution
+                'partner_source' => $trabberAttribution['partner_source'] ?? null,
+                'trabber_clickid' => $trabberAttribution['trabber_clickid'] ?? null,
+                'trabber_offer_id' => $trabberAttribution['trabber_offer_id'] ?? null,
+                'trabber_commission_rate' => $trabberAttribution['trabber_commission_rate'] ?? null,
+                'trabber_clicked_at' => $trabberAttribution['trabber_clicked_at'] ?? null,
             ];
 
             $extrasPayload = [
@@ -1273,6 +1281,9 @@ class StripeCheckoutController extends Controller
                 'affiliate_business_id' => session('affiliate_data.business_id'),
                 'affiliate_scan_id' => session('affiliate_data.customer_scan_id'),
                 'awc' => $request->cookie('awc'),
+                'partner_source' => $trabberAttribution['partner_source'] ?? null,
+                'trabber_clickid' => $trabberAttribution['trabber_clickid'] ?? null,
+                'trabber_offer_id' => $trabberAttribution['trabber_offer_id'] ?? null,
             ];
 
             $metadata = $this->compactStripeMetadata($metadata);
