@@ -249,14 +249,10 @@ class MerchantFeedRefreshService
     {
         return MerchantFeedItem::query()
             ->where('feed_name', $feedName)
+            ->where('availability', 'in_stock')
             ->where(function ($query) use ($now) {
-                $query->where('availability', 'in_stock')
-                    ->orWhere(function ($staleQuery) use ($now) {
-                        $staleQuery
-                            ->where('availability', 'out_of_stock')
-                            ->whereNotNull('expires_at')
-                            ->where('expires_at', '>', $now);
-                    });
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', $now);
             })
             ->orderBy('source')
             ->orderBy('feed_key')

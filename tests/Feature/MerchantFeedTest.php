@@ -132,7 +132,10 @@ class MerchantFeedTest extends TestCase
         $this->assertSame('out_of_stock', MerchantFeedItem::where('feed_key', 'internal-'.$bookedVehicle->id)->value('availability'));
         $this->assertSame('out_of_stock', MerchantFeedItem::where('feed_key', 'internal-'.$heldVehicle->id)->value('availability'));
         $this->assertFileExists($this->feedPath());
-        $this->assertStringContainsString('<g:id>internal-'.$availableVehicle->id.'</g:id>', file_get_contents($this->feedPath()));
+        $xml = file_get_contents($this->feedPath());
+        $this->assertStringContainsString('<g:id>internal-'.$availableVehicle->id.'</g:id>', $xml);
+        $this->assertStringNotContainsString('<g:id>internal-'.$bookedVehicle->id.'</g:id>', $xml);
+        $this->assertStringNotContainsString('<g:id>internal-'.$heldVehicle->id.'</g:id>', $xml);
     }
 
     public function test_refresh_command_imports_external_gateway_items(): void
@@ -154,6 +157,7 @@ class MerchantFeedTest extends TestCase
         ]);
 
         $legacyLongId = 'external-'.str_repeat('a', 48);
+        $staleOutOfStockId = 'ext-'.str_repeat('b', 46);
         MerchantFeedItem::create([
             'feed_name' => 'awin',
             'feed_key' => $legacyLongId,
@@ -166,6 +170,24 @@ class MerchantFeedTest extends TestCase
             'price' => 10,
             'currency' => 'EUR',
             'availability' => 'in_stock',
+            'brand' => 'Legacy',
+            'product_type' => 'Car Rental',
+            'condition' => 'used',
+            'last_seen_at' => now(),
+            'expires_at' => now()->addDay(),
+        ]);
+        MerchantFeedItem::create([
+            'feed_name' => 'awin',
+            'feed_key' => $staleOutOfStockId,
+            'source' => 'external',
+            'provider' => 'legacy',
+            'title' => 'Legacy out of stock',
+            'description' => 'Legacy out of stock item.',
+            'link' => 'https://vrooem.test/legacy-out',
+            'image_link' => 'https://cdn.vrooem.test/legacy-out.jpg',
+            'price' => 10,
+            'currency' => 'EUR',
+            'availability' => 'out_of_stock',
             'brand' => 'Legacy',
             'product_type' => 'Car Rental',
             'condition' => 'used',
@@ -194,6 +216,7 @@ class MerchantFeedTest extends TestCase
         $this->assertLessThanOrEqual(50, mb_strlen($item->feed_key));
         $this->assertStringContainsString('<g:id>'.$item->feed_key.'</g:id>', file_get_contents($this->feedPath()));
         $this->assertStringNotContainsString('<g:id>'.$legacyLongId.'</g:id>', file_get_contents($this->feedPath()));
+        $this->assertStringNotContainsString('<g:id>'.$staleOutOfStockId.'</g:id>', file_get_contents($this->feedPath()));
     }
 
     public function test_external_gateway_failure_keeps_existing_external_items(): void
