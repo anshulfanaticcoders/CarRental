@@ -243,7 +243,7 @@ class MerchantFeedItemBuilder
             $location['unified_location_id'] ?? '',
         ]);
 
-        return 'external-'.substr(hash('sha256', $material), 0, 48);
+        return 'ext-'.substr(hash('sha256', $material), 0, 46);
     }
 
     private function gatewayAvailability(array $gatewayVehicle, array $vehicle): string

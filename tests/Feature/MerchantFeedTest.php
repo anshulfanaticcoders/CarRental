@@ -153,6 +153,26 @@ class MerchantFeedTest extends TestCase
             'image' => 'https://cdn.vrooem.test/dxb.jpg',
         ]);
 
+        $legacyLongId = 'external-'.str_repeat('a', 48);
+        MerchantFeedItem::create([
+            'feed_name' => 'awin',
+            'feed_key' => $legacyLongId,
+            'source' => 'external',
+            'provider' => 'legacy',
+            'title' => 'Legacy long ID',
+            'description' => 'Legacy long ID item.',
+            'link' => 'https://vrooem.test/legacy',
+            'image_link' => 'https://cdn.vrooem.test/legacy.jpg',
+            'price' => 10,
+            'currency' => 'EUR',
+            'availability' => 'in_stock',
+            'brand' => 'Legacy',
+            'product_type' => 'Car Rental',
+            'condition' => 'used',
+            'last_seen_at' => now(),
+            'expires_at' => now()->addDay(),
+        ]);
+
         $this->app->instance(VrooemGatewayService::class, new FakeMerchantFeedGatewayService([
             'search_id' => 'search_feed_1',
             'vehicles' => [$this->gatewayVehicle()],
@@ -161,12 +181,17 @@ class MerchantFeedTest extends TestCase
 
         $this->artisan('merchant-feed:refresh', ['feed' => 'awin'])->assertExitCode(0);
 
-        $item = MerchantFeedItem::where('source', 'external')->firstOrFail();
+        $item = MerchantFeedItem::where('source', 'external')
+            ->where('provider', 'greenmotion')
+            ->firstOrFail();
         $this->assertSame('greenmotion', $item->provider);
         $this->assertSame('in_stock', $item->availability);
         $this->assertStringContainsString('/en/s?', $item->link);
         $this->assertStringContainsString('provider=greenmotion', $item->link);
+        $this->assertStringStartsWith('ext-', $item->feed_key);
+        $this->assertLessThanOrEqual(50, mb_strlen($item->feed_key));
         $this->assertStringContainsString('<g:id>'.$item->feed_key.'</g:id>', file_get_contents($this->feedPath()));
+        $this->assertStringNotContainsString('<g:id>'.$legacyLongId.'</g:id>', file_get_contents($this->feedPath()));
     }
 
     public function test_external_gateway_failure_keeps_existing_external_items(): void

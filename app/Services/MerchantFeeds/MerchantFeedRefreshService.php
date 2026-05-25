@@ -260,7 +260,9 @@ class MerchantFeedRefreshService
             })
             ->orderBy('source')
             ->orderBy('feed_key')
-            ->get();
+            ->get()
+            ->filter(fn (MerchantFeedItem $item): bool => mb_strlen($item->feed_key) <= 50)
+            ->values();
     }
 
     private function timeConfig(string $feedName, string $key, string $default): string
