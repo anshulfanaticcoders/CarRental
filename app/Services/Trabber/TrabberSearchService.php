@@ -4,6 +4,7 @@ namespace App\Services\Trabber;
 
 use App\Models\Vehicle;
 use App\Models\VendorLocation;
+use App\Services\Pricing\PayablePercentageService;
 use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Carbon\Carbon;
@@ -18,7 +19,8 @@ class TrabberSearchService
         private readonly InternalVehicleAvailabilityService $availabilityService,
         private readonly InternalSearchVehicleFactory $vehicleFactory,
         private readonly TrabberGatewayInventoryService $gatewayInventoryService,
-        private readonly TrabberOfferStoreService $offerStore
+        private readonly TrabberOfferStoreService $offerStore,
+        private readonly PayablePercentageService $payablePercentageService
     ) {}
 
     public function search(array $criteria): array
@@ -149,12 +151,17 @@ class TrabberSearchService
     private function mapVehicleOffer(array $vehicle, string $currency, array $searchPayload): array
     {
         $offerId = (string) Str::uuid();
-        $price = (float) (
+        $price = round((float) (
             Arr::get($vehicle, 'pricing.total_price')
             ?? $vehicle['total_price']
             ?? $vehicle['total']
             ?? 0
-        );
+        ), 2);
+        $markupRate = $this->payablePercentageService->rate();
+        $grossPrice = $this->grossAmount($price, $markupRate);
+        $rentalDays = $this->rentalDays($searchPayload);
+        $netPricePerDay = $rentalDays > 0 ? round($price / $rentalDays, 2) : $price;
+        $grossPricePerDay = $rentalDays > 0 ? round($grossPrice / $rentalDays, 2) : $grossPrice;
         $vehicleName = $vehicle['display_name'] ?? trim((string) (($vehicle['brand'] ?? '').' '.($vehicle['model'] ?? '')));
         $supplierName = Arr::get($vehicle, 'supplier.name')
             ?? $vehicle['supplier_name']
@@ -166,7 +173,7 @@ class TrabberSearchService
             'vehicle_name' => $vehicleName,
             'supplier_name' => $supplierName,
             'sipp' => Arr::get($vehicle, 'specs.sipp_code') ?: ($vehicle['sipp_code'] ?? null),
-            'price' => round($price, 2),
+            'price' => $grossPrice,
             'currency' => Arr::get($vehicle, 'pricing.currency') ?: ($vehicle['currency'] ?? $currency),
             'image_url' => $vehicle['image'] ?? $vehicle['image_url'] ?? null,
             'inclusions' => $this->resolveInclusions($vehicle),
@@ -180,6 +187,14 @@ class TrabberSearchService
             'offer' => $offer,
             'vehicle' => $vehicle,
             'search' => $searchPayload,
+            'trabber_pricing' => [
+                'markup_rate' => $markupRate,
+                'payment_percentage' => round($markupRate * 100, 2),
+                'net_total_price' => round($price, 2),
+                'gross_total_price' => $grossPrice,
+                'net_price_per_day' => $netPricePerDay,
+                'gross_price_per_day' => $grossPricePerDay,
+            ],
             'created_at' => now('UTC')->toIso8601String(),
             'expires_at' => now('UTC')->addMinutes((int) config('trabber.offer_ttl_minutes', 60))->toIso8601String(),
         ]);
@@ -253,5 +268,22 @@ class TrabberSearchService
             'latitude' => (float) ($unifiedLocation['latitude'] ?? $location?->latitude ?? 0),
             'longitude' => (float) ($unifiedLocation['longitude'] ?? $location?->longitude ?? 0),
         ];
+    }
+
+    private function grossAmount(float $amount, float $markupRate): float
+    {
+        return round($amount * (1 + max(0, $markupRate)), 2);
+    }
+
+    private function rentalDays(array $searchPayload): int
+    {
+        $pickup = Carbon::parse($searchPayload['pickup_date_time']);
+        $dropoff = Carbon::parse($searchPayload['dropoff_date_time']);
+
+        if ($dropoff->lessThanOrEqualTo($pickup)) {
+            return 1;
+        }
+
+        return max(1, (int) ceil($pickup->diffInMinutes($dropoff) / 1440));
     }
 }

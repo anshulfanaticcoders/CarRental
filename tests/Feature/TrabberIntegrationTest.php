@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Booking;
 use App\Models\Customer;
+use App\Models\PayableSetting;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Vehicle;
@@ -16,6 +17,7 @@ use App\Services\Trabber\TrabberAttributionService;
 use App\Services\Trabber\TrabberReportService;
 use App\Services\VrooemGatewayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class TrabberIntegrationTest extends TestCase
@@ -30,6 +32,8 @@ class TrabberIntegrationTest extends TestCase
             'trabber.api_key' => 'trabber-secret',
             'trabber.inventory_scope' => 'internal',
         ]);
+
+        PayableSetting::create(['payment_percentage' => 15]);
     }
 
     public function test_trabber_api_rejects_missing_or_invalid_api_key(): void
@@ -63,6 +67,7 @@ class TrabberIntegrationTest extends TestCase
         $response->assertJsonPath('offers.0.vehicle_name', 'Toyota Yaris');
         $response->assertJsonPath('offers.0.sipp', 'ECAR');
         $response->assertJsonPath('offers.0.currency', 'EUR');
+        $response->assertJsonPath('offers.0.price', 149.49);
         $this->assertStringContainsString('/api/trabber/redirect?offer_id=', $response->json('offers.0.deeplink_url'));
     }
 
@@ -181,6 +186,11 @@ class TrabberIntegrationTest extends TestCase
         $response->assertSee('selected_quote_id');
         $response->assertSee('bookingContext');
         $response->assertSee('bookingContexts');
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('OfferResults')
+            ->where('quote.pricing.total_price', 149.49)
+            ->where("bookingContexts.{$offerId}.vehicle.total_price", 129.99)
+        );
     }
 
     public function test_trabber_search_includes_external_provider_offers_from_gateway(): void
@@ -265,6 +275,7 @@ class TrabberIntegrationTest extends TestCase
         $response->assertJsonCount(1, 'offers');
         $response->assertJsonPath('offers.0.vehicle_name', 'Nissan Sunny');
         $response->assertJsonPath('offers.0.supplier_name', 'surprice');
+        $response->assertJsonPath('offers.0.price', 207);
         $response->assertJsonPath('offers.0.image_url', 'https://example.com/surprice-sunny.jpg');
         $response->assertJsonPath('offers.0.mileage_policy', 'unlimited');
         $response->assertJsonPath('meta.inventory_scope', 'mixed');

@@ -10,10 +10,10 @@ class TrabberOfferBookingAdapter
     {
         $pickupLocation = $this->normalizeLocationDetails($quote['pickup_location_details'] ?? []);
         $dropoffLocation = $this->normalizeLocationDetails($quote['dropoff_location_details'] ?? []);
-        $products = $this->normalizeProducts($quote['products'] ?? []);
+        $products = $this->normalizeProducts($quote['booking_products'] ?? ($quote['products'] ?? []));
         $optionalExtras = $this->normalizeOptionalExtras($quote['extras_preview'] ?? []);
         $search = is_array($quote['search'] ?? null) ? $quote['search'] : [];
-        $pricing = is_array($quote['pricing'] ?? null) ? $quote['pricing'] : [];
+        $pricing = is_array($quote['net_pricing'] ?? null) ? $quote['net_pricing'] : (is_array($quote['pricing'] ?? null) ? $quote['pricing'] : []);
         $vehicle = is_array($quote['vehicle'] ?? null) ? $quote['vehicle'] : [];
         $supplier = is_array($quote['supplier'] ?? null) ? $quote['supplier'] : [];
         $benefits = $this->buildBenefits($quote);

@@ -13,7 +13,9 @@ class TrabberOfferPageService
         $offer = is_array($payload['offer'] ?? null) ? $payload['offer'] : [];
         $vehicle = is_array($payload['vehicle'] ?? null) ? $payload['vehicle'] : [];
         $search = $this->normalizeSearch(is_array($payload['search'] ?? null) ? $payload['search'] : []);
-        $pricing = $this->pricing($vehicle, $offer, $search);
+        $trabberPricing = is_array($payload['trabber_pricing'] ?? null) ? $payload['trabber_pricing'] : [];
+        $pricing = $this->pricing($vehicle, $offer, $search, $trabberPricing);
+        $netPricing = $this->netPricing($pricing, $trabberPricing);
         $createdAt = CarbonImmutable::parse($payload['created_at'] ?? now('UTC'))->utc();
         $expiresAt = CarbonImmutable::parse(
             $payload['expires_at'] ?? $createdAt->addMinutes((int) config('trabber.offer_ttl_minutes', 60))->toIso8601String()
@@ -28,10 +30,12 @@ class TrabberOfferPageService
             'supplier' => $this->supplier($vehicle, $offer),
             'specs' => $this->specs($vehicle),
             'pricing' => $pricing,
+            'net_pricing' => $netPricing,
             'policies' => $this->policies($vehicle, $offer),
             'pickup_location_details' => $this->locationDetails(Arr::get($payload, 'search.pickup_location', [])),
             'dropoff_location_details' => $this->locationDetails(Arr::get($payload, 'search.dropoff_location', [])),
             'products' => $this->products($vehicle, $pricing),
+            'booking_products' => $this->products($vehicle, $netPricing),
             'extras_preview' => is_array($vehicle['extras_preview'] ?? null) ? $vehicle['extras_preview'] : [],
             'deeplink' => [
                 'landing_page_url' => $this->offerUrl((string) ($offer['offer_id'] ?? ''), $search),
@@ -140,21 +144,31 @@ class TrabberOfferPageService
         ];
     }
 
-    private function pricing(array $vehicle, array $offer, array $search): array
+    private function pricing(array $vehicle, array $offer, array $search, array $trabberPricing): array
     {
         $pricing = is_array($vehicle['pricing'] ?? null) ? $vehicle['pricing'] : [];
         $total = $this->floatOrNull($pricing['total_price'] ?? $vehicle['total_price'] ?? $vehicle['total'] ?? $offer['price'] ?? null);
+        $grossTotal = $this->floatOrNull($trabberPricing['gross_total_price'] ?? null) ?? $total;
         $days = $this->rentalDays($search);
 
         return [
             'currency' => $this->stringOrNull($pricing['currency'] ?? $vehicle['currency'] ?? $offer['currency'] ?? $search['currency'] ?? config('trabber.default_currency', 'EUR')),
-            'total_price' => $total,
-            'price_per_day' => $this->floatOrNull($pricing['price_per_day'] ?? $pricing['daily_rate'] ?? ($total !== null ? $total / $days : null)),
+            'total_price' => $grossTotal,
+            'price_per_day' => $this->floatOrNull($trabberPricing['gross_price_per_day'] ?? null)
+                ?? $this->floatOrNull($pricing['price_per_day'] ?? $pricing['daily_rate'] ?? ($grossTotal !== null ? $grossTotal / $days : null)),
             'deposit_amount' => $this->floatOrNull($pricing['deposit_amount'] ?? $vehicle['security_deposit'] ?? null),
             'deposit_currency' => $this->stringOrNull($pricing['deposit_currency'] ?? $pricing['currency'] ?? $search['currency'] ?? null),
             'excess_amount' => $this->floatOrNull($pricing['excess_amount'] ?? null),
             'excess_theft_amount' => $this->floatOrNull($pricing['excess_theft_amount'] ?? null),
         ];
+    }
+
+    private function netPricing(array $displayPricing, array $trabberPricing): array
+    {
+        return array_merge($displayPricing, [
+            'total_price' => $this->floatOrNull($trabberPricing['net_total_price'] ?? null) ?? $displayPricing['total_price'],
+            'price_per_day' => $this->floatOrNull($trabberPricing['net_price_per_day'] ?? null) ?? $displayPricing['price_per_day'],
+        ]);
     }
 
     private function policies(array $vehicle, array $offer): array
