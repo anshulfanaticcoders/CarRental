@@ -81,83 +81,100 @@
 
               <!-- Desktop Version -->
               <VueDatePicker v-if="!isMobile" v-model="dateRange" range :multi-calendars="2" :enable-time-picker="false"
-                :min-date="new Date()" :format="formatRangeDate" :close-on-click-outside="true" :teleport="true"
-                @internal-model-change="handleDateUpdate" placeholder="Select dates" class="w-full" ref="datepicker">
+                :min-date="new Date()" :format="formatRangeDate" :close-on-click-outside="true" :teleport="true" dark
+                :ui="datePickerUi" @internal-model-change="handleDateUpdate" placeholder="Select dates"
+                class="w-full luxury-date-picker" ref="datepicker">
                 <template #trigger>
                   <div
-                    class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 cursor-pointer transition-colors group-hover:border-customPrimaryColor hover:bg-gray-100">
-                    <div class="flex items-center gap-2 overflow-hidden">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-customPrimaryColor flex-shrink-0"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span v-if="dateRange && dateRange[0] && dateRange[1]"
-                        class="text-customDarkBlackColor font-medium text-sm truncate">
-                        {{ formatRangeDate(dateRange) }}
-                        <span
-                          class="text-xs text-customPrimaryColor font-semibold ml-1 bg-customPrimaryColor/10 px-1.5 py-0.5 rounded">
-                          {{ totalDays }} {{ totalDays > 1 ? 'days' : 'day' }}
-                        </span>
+                    class="luxury-date-trigger flex min-h-[54px] items-center justify-between gap-3 rounded-xl border border-[#153b4f]/15 bg-[#f8fafc] px-3 py-2.5 shadow-sm cursor-pointer transition-all duration-200 group-hover:border-[#22d3ee]/60 hover:bg-white hover:shadow-md">
+                    <div
+                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] text-white shadow-[0_8px_20px_rgba(21,59,79,0.22)]">
+                      <CalendarDays class="h-[18px] w-[18px]" />
+                    </div>
+
+                    <div v-if="dateRange && dateRange[0] && dateRange[1]"
+                      class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                      <span
+                        class="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
+                        <span class="text-[10px] uppercase tracking-[0.12em] text-slate-400">Pick-up</span>
+                        <span class="whitespace-nowrap">{{ formatDateChip(dateRange[0]) }}</span>
                       </span>
-                      <span v-else class="text-gray-400 text-sm">
-                        Select Rental Dates
+                      <span
+                        class="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
+                        <span class="text-[10px] uppercase tracking-[0.12em] text-slate-400">Return</span>
+                        <span class="whitespace-nowrap">{{ formatDateChip(dateRange[1]) }}</span>
+                      </span>
+                      <span
+                        class="inline-flex items-center rounded-lg bg-[#153b4f]/10 px-2.5 py-1.5 text-xs font-bold text-[#153b4f]">
+                        {{ rentalDurationLabel }}
                       </span>
                     </div>
+                    <span v-else class="min-w-0 flex-1 text-sm font-semibold text-slate-500">
+                      Select rental dates
+                    </span>
+
+                    <ChevronDown class="h-4 w-4 shrink-0 text-[#153b4f]/60 transition-transform group-hover:text-[#153b4f]" />
                   </div>
                 </template>
 
                 <template #action-row="{ selectDate, closePicker }">
-                  <div class="flex flex-col bg-[#153B4F1A] text-white rounded-[3px] overflow-hidden w-full">
+                  <div class="luxury-date-actions flex w-full flex-col overflow-hidden rounded-[18px] text-white">
                     <!-- Time Selection Row -->
                     <div class="grid grid-cols-2 gap-4 p-5 border-b border-white/10">
                       <!-- Pick-up time -->
                       <div class="flex flex-col">
                         <label
-                          class="text-[11px] uppercase tracking-wider text-customPrimaryColor font-bold mb-2">Pick-up
+                          class="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#67e8f9]">
+                          <Clock3 class="h-3.5 w-3.5" /> Pick-up
                           time</label>
                         <div class="relative group">
                           <select v-model="selectedStartTime"
-                            class="w-full appearance-none bg-[#1a3b4b] border border-[#2c5265] rounded-lg px-4 py-2.5 text-sm text-white font-medium focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor outline-none cursor-pointer transition-all hover:bg-[#23485a]">
+                            class="luxury-time-select w-full appearance-none rounded-xl border border-white/10 bg-[#0f2936] px-4 py-3 text-sm font-semibold text-white outline-none transition-all hover:border-[#22d3ee]/50 focus:border-[#22d3ee] focus:ring-2 focus:ring-[#22d3ee]/25">
                             <option v-for="time in timeOptions" :key="`start-${time}`" :value="time"
                               class="bg-[#0F2936] text-white">{{ time }}</option>
                           </select>
                           <div
-                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white/50 group-hover:text-white transition-colors">
-                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                              <path
-                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                            </svg>
+                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white/50 transition-colors group-hover:text-[#67e8f9]">
+                            <ChevronDown class="h-4 w-4" />
                           </div>
                         </div>
                       </div>
                       <!-- Drop-off time -->
                       <div class="flex flex-col">
                         <label
-                          class="text-[11px] uppercase tracking-wider text-customPrimaryColor font-bold mb-2">Drop-off
+                          class="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#67e8f9]">
+                          <Clock3 class="h-3.5 w-3.5" /> Return
                           time</label>
                         <div class="relative group">
                           <select v-model="selectedEndTime"
-                            class="w-full appearance-none bg-[#1a3b4b] border border-[#2c5265] rounded-lg px-4 py-2.5 text-sm text-white font-medium focus:ring-2 focus:ring-customPrimaryColor focus:border-customPrimaryColor outline-none cursor-pointer transition-all hover:bg-[#23485a]">
+                            class="luxury-time-select w-full appearance-none rounded-xl border border-white/10 bg-[#0f2936] px-4 py-3 text-sm font-semibold text-white outline-none transition-all hover:border-[#22d3ee]/50 focus:border-[#22d3ee] focus:ring-2 focus:ring-[#22d3ee]/25">
                             <option v-for="time in timeOptions" :key="`end-${time}`" :value="time"
                               class="bg-[#0F2936] text-white">{{ time }}</option>
                           </select>
                           <div
-                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white/50 group-hover:text-white transition-colors">
-                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                              <path
-                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                            </svg>
+                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white/50 transition-colors group-hover:text-[#67e8f9]">
+                            <ChevronDown class="h-4 w-4" />
                           </div>
                         </div>
                       </div>
                     </div>
 
                     <!-- Total Duration Row -->
-                    <div class="px-5 py-4 bg-customPrimaryColor flex justify-between items-center">
-                      <span class="text-sm text-gray-300 font-medium">Total Rental Duration:</span>
-                      <span class="text-lg font-bold text-white tracking-wide">{{ totalDays }} <span
-                          class="text-sm font-normal text-gray-400">{{ totalDays > 1 ? 'Days' : 'Day' }}</span></span>
+                    <div class="flex items-center justify-between gap-3 px-5 py-4">
+                      <div>
+                        <span class="block text-[11px] font-bold uppercase tracking-[0.16em] text-[#67e8f9]">Duration</span>
+                        <span class="text-lg font-extrabold tracking-wide text-white">{{ rentalDurationLabel }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <button type="button" @click="closePicker"
+                          class="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+                          Close
+                        </button>
+                        <button type="button" @click="applyDateSelection(selectDate)"
+                          class="rounded-full bg-gradient-to-r from-[#153b4f] to-[#2ea7ad] px-5 py-2 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(34,211,238,0.18)] transition hover:shadow-[0_12px_30px_rgba(34,211,238,0.26)]">
+                          Apply dates
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </template>
@@ -167,93 +184,108 @@
               <div v-else>
                 <!-- Trigger -->
                 <div @click="openMobileDatePicker"
-                  class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 cursor-pointer transition-colors group-hover:border-customPrimaryColor hover:bg-gray-100">
-                  <div class="flex items-center gap-2 overflow-hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-customPrimaryColor flex-shrink-0"
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span v-if="dateRange && dateRange[0] && dateRange[1]"
-                      class="text-customDarkBlackColor font-medium text-sm truncate">
-                      {{ formatRangeDate(dateRange) }}
-                      <span
-                        class="text-xs text-customPrimaryColor font-semibold ml-1 bg-customPrimaryColor/10 px-1.5 py-0.5 rounded">
-                        {{ totalDays }} {{ totalDays > 1 ? 'days' : 'day' }}
-                      </span>
+                  class="luxury-date-trigger flex min-h-[54px] items-center justify-between gap-3 rounded-xl border border-[#153b4f]/15 bg-[#f8fafc] px-3 py-2.5 shadow-sm cursor-pointer transition-all duration-200 group-hover:border-[#22d3ee]/60 hover:bg-white hover:shadow-md">
+                  <div
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] text-white shadow-[0_8px_20px_rgba(21,59,79,0.22)]">
+                    <CalendarDays class="h-[18px] w-[18px]" />
+                  </div>
+                  <div v-if="dateRange && dateRange[0] && dateRange[1]"
+                    class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                    <span
+                      class="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
+                      <span class="text-[10px] uppercase tracking-[0.12em] text-slate-400">Pick-up</span>
+                      <span class="whitespace-nowrap">{{ formatDateChip(dateRange[0]) }}</span>
                     </span>
-                    <span v-else class="text-gray-400 text-sm">
-                      Select Rental Dates
+                    <span
+                      class="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
+                      <span class="text-[10px] uppercase tracking-[0.12em] text-slate-400">Return</span>
+                      <span class="whitespace-nowrap">{{ formatDateChip(dateRange[1]) }}</span>
+                    </span>
+                    <span
+                      class="inline-flex items-center rounded-lg bg-[#153b4f]/10 px-2.5 py-1.5 text-xs font-bold text-[#153b4f]">
+                      {{ rentalDurationLabel }}
                     </span>
                   </div>
+                  <span v-else class="min-w-0 flex-1 text-sm font-semibold text-slate-500">
+                    Select rental dates
+                  </span>
+                  <ChevronDown class="h-4 w-4 shrink-0 text-[#153b4f]/60" />
                 </div>
 
                 <!-- Full Screen Modal -->
                 <Teleport to="body">
-                  <div v-if="showMobileDatePicker" class="fixed inset-0 z-[99999] bg-white flex flex-col">
+                  <div v-if="showMobileDatePicker"
+                    class="fixed inset-0 z-[99999] flex flex-col bg-[linear-gradient(135deg,#0a1d28_0%,#153b4f_52%,#071720_100%)] text-white">
                     <!-- Header -->
-                    <div class="flex justify-between items-center p-4 border-b border-gray-100">
-                      <h3 class="text-lg font-bold text-customPrimaryColor m-0 leading-none">Select Rental Dates</h3>
-                      <button @click="closeMobileDatePicker" class="p-2 -mr-2 text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
+                    <div class="flex items-center justify-between border-b border-white/10 p-4">
+                      <div>
+                        <p class="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#67e8f9]">Pick-up and return</p>
+                        <h3 class="m-0 text-lg font-extrabold leading-none text-white">Select rental dates</h3>
+                      </div>
+                      <button @click="closeMobileDatePicker"
+                        class="-mr-1 rounded-full border border-white/10 bg-white/10 p-2 text-white/80 transition hover:bg-white/15 hover:text-white">
+                        <X class="h-5 w-5" />
                       </button>
                     </div>
 
                     <!-- Scrollable Body -->
                     <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
                       <!-- Calendar -->
-                      <VueDatePicker v-model="mobileDateRange" inline auto-apply range :enable-time-picker="false"
-                        :min-date="new Date()" :multi-calendars="0" :month-change-on-scroll="false"
-                        class="w-full justify-center flex" />
+                      <VueDatePicker v-model="mobileDateRange" inline auto-apply range dark :enable-time-picker="false"
+                        :min-date="new Date()" :multi-calendars="0" :month-change-on-scroll="false" :ui="datePickerUi"
+                        class="w-full justify-center flex luxury-date-picker luxury-date-picker-mobile" />
 
                       <!-- Time Selection -->
-                      <div class="bg-[#153B4F1A] rounded-xl p-4">
+                      <div class="luxury-date-actions rounded-[18px] border border-white/10 p-4">
                         <div class="grid grid-cols-2 gap-4 mb-4">
                           <!-- Pick-up time -->
                           <div class="flex flex-col">
                             <label
-                              class="text-[11px] uppercase tracking-wider text-customPrimaryColor font-bold mb-2">Pick-up
+                              class="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#67e8f9]">
+                              <Clock3 class="h-3.5 w-3.5" /> Pick-up
                               time</label>
                             <div class="relative">
                               <select v-model="selectedStartTime"
-                                class="w-full appearance-none bg-[#1a3b4b] border border-[#2c5265] rounded-lg px-3 py-2.5 text-sm text-white font-medium focus:ring-0 outline-none">
+                                class="luxury-time-select w-full appearance-none rounded-xl border border-white/10 bg-[#0f2936] px-3 py-3 text-sm font-semibold text-white outline-none focus:border-[#22d3ee] focus:ring-2 focus:ring-[#22d3ee]/25">
                                 <option v-for="time in timeOptions" :key="`start-${time}`" :value="time"
-                                  class="bg-[#0F2936]">{{ time
+                                  class="bg-[#0F2936] text-white">{{ time
                                   }}</option>
                               </select>
+                              <ChevronDown
+                                class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                             </div>
                           </div>
                           <!-- Drop-off time -->
                           <div class="flex flex-col">
                             <label
-                              class="text-[11px] uppercase tracking-wider text-customPrimaryColor font-bold mb-2">Drop-off
+                              class="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#67e8f9]">
+                              <Clock3 class="h-3.5 w-3.5" /> Return
                               time</label>
                             <div class="relative">
                               <select v-model="selectedEndTime"
-                                class="w-full appearance-none bg-[#1a3b4b] border border-[#2c5265] rounded-lg px-3 py-2.5 text-sm text-white font-medium focus:ring-0 outline-none">
+                                class="luxury-time-select w-full appearance-none rounded-xl border border-white/10 bg-[#0f2936] px-3 py-3 text-sm font-semibold text-white outline-none focus:border-[#22d3ee] focus:ring-2 focus:ring-[#22d3ee]/25">
                                 <option v-for="time in timeOptions" :key="`end-${time}`" :value="time"
-                                  class="bg-[#0F2936]">{{ time }}
+                                  class="bg-[#0F2936] text-white">{{ time }}
                                 </option>
                               </select>
+                              <ChevronDown
+                                class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                             </div>
                           </div>
                         </div>
                         <div
-                          class="pt-4 border-t border-white/10 flex justify-between items-center text-customPrimaryColor">
-                          <span class="text-sm font-semibold">Total Duration:</span>
-                          <span class="text-lg font-bold">{{ mobileTotalDays }} Days</span>
+                          class="flex items-center justify-between border-t border-white/10 pt-4 text-white">
+                          <span class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#67e8f9]">Duration</span>
+                          <span class="text-lg font-extrabold">{{ mobileDurationLabel }}</span>
                         </div>
                       </div>
                     </div>
 
                     <!-- Footer -->
-                    <div class="p-4 border-t border-gray-100 bg-white">
+                    <div class="border-t border-white/10 bg-[#071720]/80 p-4 backdrop-blur">
                       <button @click="confirmMobileDateSelection"
-                        class="w-full py-4 bg-customPrimaryColor text-white font-bold rounded-xl shadow-lg active:scale-95 transition-transform text-lg">
-                        Confirm & Select
+                        class="w-full rounded-xl bg-gradient-to-r from-[#153b4f] to-[#2ea7ad] py-4 text-lg font-extrabold text-white shadow-[0_14px_34px_rgba(34,211,238,0.22)] transition-transform active:scale-95">
+                        Confirm dates
                       </button>
                     </div>
                   </div>
@@ -478,6 +510,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import axios from "axios";
 import { router, usePage } from "@inertiajs/vue3";
+import { CalendarDays, ChevronDown, Clock3, X } from "lucide-vue-next";
 import { resolveSearchCurrency } from "@/utils/searchCurrency";
 import {
   buildLocationInputValue,
@@ -540,6 +573,14 @@ const dateRange = ref(null);
 const selectedStartTime = ref('09:00');
 const selectedEndTime = ref('09:00');
 
+const datePickerUi = {
+  menu: 'luxury-date-menu',
+  calendar: 'luxury-date-calendar',
+  calendarCell: 'luxury-date-cell',
+  navBtnNext: 'luxury-date-nav',
+  navBtnPrev: 'luxury-date-nav',
+};
+
 // Generate time options (00:00 to 23:30)
 const timeOptions = [];
 for (let i = 0; i < 24; i++) {
@@ -558,6 +599,11 @@ const totalDays = computed(() => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; // Minimum 1 day
 });
 
+const rentalDurationLabel = computed(() => {
+  const days = totalDays.value || 1;
+  return `${days} ${days > 1 ? 'days' : 'day'} rental`;
+});
+
 const formatRangeDate = (dates) => {
   if (!dates || !dates[0] || !dates[1]) return "";
   const start = dates[0];
@@ -566,6 +612,15 @@ const formatRangeDate = (dates) => {
   // Format: DD/MM/YYYY - DD/MM/YYYY
   const fmt = (d) => `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
   return `${fmt(start)} - ${fmt(end)}`;
+};
+
+const formatDateChip = (date) => {
+  if (!date) return '';
+
+  return new Intl.DateTimeFormat('en', {
+    day: '2-digit',
+    month: 'short',
+  }).format(new Date(date));
 };
 
 const applyDateSelection = (selectDate) => {
@@ -743,6 +798,11 @@ const mobileTotalDays = computed(() => {
   const end = new Date(mobileDateRange.value[1]);
   const diffTime = Math.abs(end - start);
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+});
+
+const mobileDurationLabel = computed(() => {
+  const days = mobileTotalDays.value || totalDays.value || 1;
+  return `${days} ${days > 1 ? 'days' : 'day'} rental`;
 });
 
 const handleSearchInput = () => {
@@ -1209,6 +1269,171 @@ onUnmounted(() => {
 /* Ensure VueDatePicker dropdown appears above other page elements */
 :deep(.dp__menu) {
   z-index: 9999 !important;
+}
+
+.luxury-date-picker {
+  --dp-font-family: var(--jakarta-font-family), "Plus Jakarta Sans", sans-serif;
+}
+
+.luxury-date-trigger {
+  font-family: var(--jakarta-font-family), "Plus Jakarta Sans", sans-serif;
+}
+
+.luxury-date-menu {
+  --dp-background-color: #0a1d28;
+  --dp-text-color: #e6f7fb;
+  --dp-hover-color: rgba(34, 211, 238, 0.12);
+  --dp-hover-text-color: #ffffff;
+  --dp-hover-icon-color: #67e8f9;
+  --dp-primary-color: #22d3ee;
+  --dp-primary-text-color: #06222e;
+  --dp-secondary-color: rgba(226, 232, 240, 0.48);
+  --dp-border-color: rgba(255, 255, 255, 0.1);
+  --dp-menu-border-color: rgba(34, 211, 238, 0.22);
+  --dp-border-color-hover: rgba(34, 211, 238, 0.42);
+  --dp-border-color-focus: #22d3ee;
+  --dp-disabled-color: rgba(255, 255, 255, 0.05);
+  --dp-disabled-color-text: rgba(226, 232, 240, 0.32);
+  --dp-icon-color: rgba(226, 232, 240, 0.72);
+  --dp-highlight-color: rgba(34, 211, 238, 0.18);
+  --dp-range-between-dates-background-color: rgba(34, 211, 238, 0.15);
+  --dp-range-between-dates-text-color: #dffbff;
+  --dp-range-between-border-color: rgba(34, 211, 238, 0.08);
+  --dp-border-radius: 22px;
+  --dp-cell-border-radius: 999px;
+  --dp-cell-size: 40px;
+  --dp-menu-padding: 14px;
+  --dp-row-margin: 7px 0;
+  --dp-multi-calendars-spacing: 18px;
+  --dp-month-year-row-height: 44px;
+  --dp-month-year-row-button-size: 34px;
+  --dp-button-icon-height: 18px;
+  --dp-font-size: 0.92rem;
+  --dp-action-row-padding: 0;
+  overflow: hidden;
+  border-radius: 24px !important;
+  border: 1px solid rgba(34, 211, 238, 0.22) !important;
+  background:
+    linear-gradient(135deg, rgba(10, 29, 40, 0.98) 0%, rgba(21, 59, 79, 0.98) 52%, rgba(7, 23, 32, 0.98) 100%) !important;
+  box-shadow: 0 28px 70px rgba(10, 29, 40, 0.34), 0 12px 28px rgba(21, 59, 79, 0.18) !important;
+}
+
+.luxury-date-menu .dp__menu_inner {
+  gap: 8px;
+  padding: 16px !important;
+}
+
+.luxury-date-menu .dp__month_year_row {
+  margin-bottom: 8px;
+}
+
+.luxury-date-menu .dp__month_year_select,
+.luxury-date-menu .dp--year-select {
+  border-radius: 999px;
+  color: #ffffff;
+  font-family: var(--jakarta-font-family), "Plus Jakarta Sans", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.luxury-date-menu .dp__inner_nav {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e6f7fb;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.luxury-date-menu .dp__inner_nav:hover {
+  transform: translateY(-1px);
+  border-color: rgba(34, 211, 238, 0.38);
+  background: rgba(34, 211, 238, 0.16);
+  color: #67e8f9;
+}
+
+.luxury-date-menu .dp__calendar_header {
+  color: rgba(226, 232, 240, 0.72);
+  font-family: var(--jakarta-font-family), "Plus Jakarta Sans", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.luxury-date-menu .dp__calendar_header_separator {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.luxury-date-menu .dp__calendar_item {
+  font-family: var(--jakarta-font-family), "Plus Jakarta Sans", sans-serif;
+  font-weight: 700;
+}
+
+.luxury-date-menu .dp__cell_inner {
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.luxury-date-menu .dp__cell_inner:hover {
+  border-color: rgba(34, 211, 238, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.14);
+}
+
+.luxury-date-menu .dp__today {
+  border-color: rgba(34, 211, 238, 0.72);
+  color: #ffffff;
+}
+
+.luxury-date-menu .dp__range_start,
+.luxury-date-menu .dp__range_end,
+.luxury-date-menu .dp__active_date {
+  background: linear-gradient(135deg, #22d3ee 0%, #2ea7ad 100%) !important;
+  color: #06222e !important;
+  font-weight: 900;
+  box-shadow: 0 8px 22px rgba(34, 211, 238, 0.28);
+}
+
+.luxury-date-menu .dp__range_between {
+  border-color: rgba(34, 211, 238, 0.08) !important;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.1), rgba(46, 167, 173, 0.18)) !important;
+  color: #e6f7fb !important;
+}
+
+.luxury-date-menu .dp__cell_offset,
+.luxury-date-menu .dp__cell_disabled {
+  color: rgba(226, 232, 240, 0.28) !important;
+}
+
+.luxury-date-menu .dp__action_row {
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.luxury-date-actions {
+  background:
+    linear-gradient(135deg, rgba(5, 20, 29, 0.98) 0%, rgba(15, 41, 54, 0.98) 48%, rgba(21, 59, 79, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.luxury-time-select {
+  font-family: var(--jakarta-font-family), "Plus Jakarta Sans", sans-serif;
+}
+
+.luxury-date-picker-mobile .luxury-date-menu,
+.luxury-date-picker-mobile .dp__menu {
+  width: 100%;
+  max-width: 100%;
+  box-shadow: none !important;
+}
+
+@media screen and (max-width: 768px) {
+  .luxury-date-menu {
+    --dp-cell-size: 42px;
+    --dp-menu-padding: 10px;
+    border-radius: 20px !important;
+  }
+
+  .luxury-date-menu .dp__menu_inner {
+    padding: 14px !important;
+  }
 }
 
 .loader-overlay {

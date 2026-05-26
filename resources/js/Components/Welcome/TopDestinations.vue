@@ -242,11 +242,10 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
     aspect-ratio: 3 / 4;
     cursor: pointer;
     box-shadow: 0 8px 24px rgba(10, 29, 40, 0.08);
-    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .dest-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 14px 36px rgba(10, 29, 40, 0.16);
+    box-shadow: 0 10px 28px rgba(10, 29, 40, 0.12);
 }
 
 .dest-card img {
@@ -260,14 +259,33 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
     content: '';
     position: absolute;
     inset: 0;
+    z-index: 1;
     background: linear-gradient(to top, rgba(10, 29, 40, 0.88) 0%, rgba(10, 29, 40, 0.42) 45%, rgba(10, 29, 40, 0.08) 72%, transparent 100%);
+}
+
+.dest-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    background:
+        linear-gradient(180deg, rgba(34, 211, 238, 0.14) 0%, rgba(34, 211, 238, 0.04) 34%, transparent 68%),
+        radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.28), transparent 48%);
+    box-shadow: inset 0 0 0 1.5px rgba(34, 211, 238, 0.42), inset 0 0 28px rgba(34, 211, 238, 0.16);
+    transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dest-card:hover::before {
+    opacity: 1;
 }
 
 .dest-card:hover img { transform: scale(1.05); }
 
 .dest-info {
     position: absolute;
-    z-index: 1;
+    z-index: 3;
     inset: auto 0 0;
     padding: 1.15rem;
 }
