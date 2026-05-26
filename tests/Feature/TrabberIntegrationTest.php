@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\TrabberReportMail;
 use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\PayableSetting;
@@ -17,6 +18,7 @@ use App\Services\Trabber\TrabberAttributionService;
 use App\Services\Trabber\TrabberReportService;
 use App\Services\VrooemGatewayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -352,6 +354,40 @@ class TrabberIntegrationTest extends TestCase
 
         $this->assertStringContainsString('booking_reference,clickid,commission,status,total_amount,currency,booking_date,pickup_date,dropoff_date', $csv);
         $this->assertStringContainsString('VRM-TRABBER-001,CLICK-REPORT,6.50,confirmed,130.00,EUR', $csv);
+    }
+
+    public function test_trabber_daily_report_command_emails_configured_recipient(): void
+    {
+        config(['trabber.report_recipient' => 'reports@trabber.com']);
+        Mail::fake();
+
+        $path = storage_path('framework/testing/trabber-daily-report.csv');
+
+        $this->artisan('trabber:export-daily-report', [
+            '--path' => $path,
+            '--send' => true,
+        ])->assertSuccessful();
+
+        $this->assertFileExists($path);
+        Mail::assertSent(TrabberReportMail::class, function (TrabberReportMail $mail) use ($path): bool {
+            return $mail->hasTo('reports@trabber.com')
+                && $mail->reportType === 'daily'
+                && $mail->filename === basename($path)
+                && str_contains($mail->csv, 'booking_reference,clickid,commission,status,total_amount,currency,booking_date,pickup_date,dropoff_date');
+        });
+    }
+
+    public function test_trabber_report_command_fails_send_without_recipient(): void
+    {
+        config(['trabber.report_recipient' => null]);
+        Mail::fake();
+
+        $this->artisan('trabber:export-monthly-report', [
+            '--path' => storage_path('framework/testing/trabber-monthly-report.csv'),
+            '--send' => true,
+        ])->assertExitCode(1);
+
+        Mail::assertNothingSent();
     }
 
     private function createInternalVehicleAtDubaiAirport(): Vehicle
