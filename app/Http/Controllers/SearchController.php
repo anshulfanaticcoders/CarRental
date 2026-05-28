@@ -581,28 +581,38 @@ class SearchController extends Controller
 
     public function searchUnifiedLocations(Request $request)
     {
-        $validated = $request->validate([
-            'search_term' => 'sometimes|string|min:2',
-            'limit' => 'sometimes|integer|min:1|max:50',
-            'unified_location_id' => 'sometimes|integer',
-        ]);
+        try {
+            $validated = $request->validate([
+                'search_term' => 'sometimes|string|min:2',
+                'limit' => 'sometimes|integer|min:1|max:50',
+                'unified_location_id' => 'sometimes|integer',
+            ]);
 
-        // Direct lookup by ID
-        if (! empty($validated['unified_location_id'])) {
-            $location = $this->locationSearchService->getLocationByUnifiedId($validated['unified_location_id']);
+            // Direct lookup by ID
+            if (! empty($validated['unified_location_id'])) {
+                $location = $this->locationSearchService->getLocationByUnifiedId($validated['unified_location_id']);
 
-            return response()->json($location ? [$location] : []);
+                return response()->json($location ? [$location] : []);
+            }
+
+            $searchTerm = $validated['search_term'] ?? null;
+            $limit = $validated['limit'] ?? 20;
+
+            if ($searchTerm) {
+                $locations = $this->locationSearchService->searchLocations($searchTerm, $limit);
+            } else {
+                $locations = $this->locationSearchService->getAllLocations();
+            }
+
+            return response()->json($locations);
+        } catch (\Throwable $exception) {
+            Log::error('Unified location lookup failed', [
+                'search_term' => $request->query('search_term'),
+                'unified_location_id' => $request->query('unified_location_id'),
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json([]);
         }
-
-        $searchTerm = $validated['search_term'] ?? null;
-        $limit = $validated['limit'] ?? 20;
-
-        if ($searchTerm) {
-            $locations = $this->locationSearchService->searchLocations($searchTerm, $limit);
-        } else {
-            $locations = $this->locationSearchService->getAllLocations();
-        }
-
-        return response()->json($locations);
     }
 }

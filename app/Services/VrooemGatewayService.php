@@ -17,10 +17,10 @@ class VrooemGatewayService
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(config('vrooem.url'), '/');
-        $this->apiKey = config('vrooem.api_key');
-        $this->timeout = config('vrooem.timeout', 30);
-        $this->connectTimeout = config('vrooem.connect_timeout', 5);
+        $this->baseUrl = rtrim((string) config('vrooem.url', ''), '/');
+        $this->apiKey = (string) config('vrooem.api_key', '');
+        $this->timeout = max(1, (int) config('vrooem.timeout', 30));
+        $this->connectTimeout = max(1, (int) config('vrooem.connect_timeout', 5));
     }
 
     /**
@@ -138,6 +138,12 @@ class VrooemGatewayService
      */
     protected function request(string $method, string $path, array $params = []): ?array
     {
+        if ($this->baseUrl === '') {
+            Log::error('VrooemGateway: Base URL is not configured');
+
+            return null;
+        }
+
         $url = $this->baseUrl.$path;
 
         try {
