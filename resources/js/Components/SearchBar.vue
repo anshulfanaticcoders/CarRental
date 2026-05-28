@@ -8,13 +8,13 @@
             }}</span>
         </div>
         <form @submit.prevent="submit"
-          class="column px-[2rem] py-[1.5rem] bg-white grid grid-cols-12 gap-6 items-center max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-6 max-[768px]:px-[1.5rem] shadow-sm"
+          class="search-form column px-[2rem] py-[1.5rem] bg-white grid grid-cols-12 gap-6 items-center max-[768px]:flex max-[768px]:flex-col max-[768px]:gap-6 max-[768px]:px-[1.5rem] shadow-sm"
           :class="[
             simple ? 'w-full rounded-[20px]' : 'w-[80%] rounded-tr-[16px] rounded-br-[16px] max-[768px]:w-[100%] max-[768px]:rounded-tr-[0] max-[768px]:rounded-bl-[16px]'
           ]">
 
           <!-- Locations Section -->
-          <div class="col-span-6 flex gap-4 relative max-[768px]:flex-col max-[768px]:w-full"
+          <div class="search-locations col-span-6 flex gap-4 relative max-[768px]:flex-col max-[768px]:w-full"
             :class="{ 'flex-col': !isProviderLocation, 'flex-row': isProviderLocation }">
             <!-- Pickup Location -->
             <div class="w-full relative group">
@@ -73,7 +73,7 @@
           </div>
 
           <!-- Date Picker Section -->
-          <div class="col-span-4 relative rental-dates-container max-[768px]:w-full">
+          <div class="search-dates col-span-4 relative rental-dates-container max-[768px]:w-full">
             <div class="flex flex-col w-full group">
               <label
                 class="block text-xs font-semibold text-customLightGrayColor uppercase tracking-wider mb-2 pl-1">Rental
@@ -93,19 +93,19 @@
                     </div>
 
                     <div v-if="dateRange && dateRange[0] && dateRange[1]"
-                      class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                      class="date-chip-list flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                       <span
-                        class="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
+                        class="date-chip inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
                         <span class="text-[10px] uppercase tracking-[0.12em] text-slate-400">Pick-up</span>
                         <span class="whitespace-nowrap">{{ formatDateChip(dateRange[0]) }}</span>
                       </span>
                       <span
-                        class="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
+                        class="date-chip inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
                         <span class="text-[10px] uppercase tracking-[0.12em] text-slate-400">Return</span>
                         <span class="whitespace-nowrap">{{ formatDateChip(dateRange[1]) }}</span>
                       </span>
                       <span
-                        class="inline-flex items-center rounded-lg bg-[#153b4f]/10 px-2.5 py-1.5 text-xs font-bold text-[#153b4f]">
+                        class="duration-chip inline-flex items-center rounded-lg bg-[#153b4f]/10 px-2.5 py-1.5 text-xs font-bold text-[#153b4f]">
                         {{ rentalDurationLabel }}
                       </span>
                     </div>
@@ -190,19 +190,19 @@
                     <CalendarDays class="h-[18px] w-[18px]" />
                   </div>
                   <div v-if="dateRange && dateRange[0] && dateRange[1]"
-                    class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                    class="date-chip-list flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                     <span
-                      class="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
+                      class="date-chip inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
                       <span class="text-[10px] uppercase tracking-[0.12em] text-slate-400">Pick-up</span>
                       <span class="whitespace-nowrap">{{ formatDateChip(dateRange[0]) }}</span>
                     </span>
                     <span
-                      class="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
+                      class="date-chip inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-[#153b4f]/10 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#153b4f] shadow-sm">
                       <span class="text-[10px] uppercase tracking-[0.12em] text-slate-400">Return</span>
                       <span class="whitespace-nowrap">{{ formatDateChip(dateRange[1]) }}</span>
                     </span>
                     <span
-                      class="inline-flex items-center rounded-lg bg-[#153b4f]/10 px-2.5 py-1.5 text-xs font-bold text-[#153b4f]">
+                      class="duration-chip inline-flex items-center rounded-lg bg-[#153b4f]/10 px-2.5 py-1.5 text-xs font-bold text-[#153b4f]">
                       {{ rentalDurationLabel }}
                     </span>
                   </div>
@@ -304,7 +304,7 @@
           </div>
 
           <!-- Submit Button -->
-          <div class="col-span-2 flex justify-end items-center mt-[20px] max-[768px]:w-full">
+          <div class="search-submit col-span-2 flex justify-end items-center mt-[20px] max-[768px]:w-full">
             <button type="submit"
               class="bg-customPrimaryColor text-white rounded-xl w-full py-3.5 text-base font-bold shadow-md hover:bg-customPrimaryColor/90 hover:shadow-lg transition-all transform active:scale-[0.98] flex justify-center items-center gap-2"
               :disabled="isLoading">
@@ -1422,6 +1422,61 @@ onUnmounted(() => {
   width: 100%;
   max-width: 100%;
   box-shadow: none !important;
+}
+
+@media screen and (min-width: 769px) and (max-width: 1399px) {
+  .search_bar .search-form {
+    gap: 1rem;
+    padding: 1.25rem 1.35rem;
+  }
+
+  .search_bar .search-submit button {
+    min-height: 54px;
+    padding-inline: 0.75rem;
+  }
+
+  .search_bar .luxury-date-trigger {
+    min-height: 54px;
+    gap: 0.45rem;
+    padding: 0.55rem 0.6rem;
+  }
+
+  .search_bar .luxury-date-trigger > div:first-child {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.625rem;
+  }
+
+  .search_bar .luxury-date-trigger > svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .search_bar .date-chip-list {
+    flex-wrap: nowrap;
+    overflow: hidden;
+    gap: 0.35rem;
+  }
+
+  .search_bar .date-chip {
+    min-width: 0;
+    flex: 1 1 0;
+    justify-content: center;
+    gap: 0;
+    padding: 0.45rem 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  .search_bar .date-chip > span:first-child {
+    display: none;
+  }
+
+  .search_bar .duration-chip {
+    flex: 0 0 auto;
+    padding: 0.45rem 0.5rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
 }
 
 @media screen and (max-width: 768px) {

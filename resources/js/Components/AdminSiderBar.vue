@@ -10,7 +10,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -43,7 +42,7 @@ import {
   Plug,
   LogOut,
 } from 'lucide-vue-next';
-import { onMounted, ref, computed, type Component } from 'vue';
+import { onMounted, ref, type Component } from 'vue';
 import ApplicationLogo from './ApplicationLogo.vue';
 
 interface NavSubItem {
@@ -332,24 +331,24 @@ onMounted(() => {
 </script>
 
 <template>
-  <Sidebar collapsible="icon" class="bg-white border-r border-gray-200 font-[var(--jakarta-font-family)]">
+  <Sidebar collapsible="icon" class="bg-[#fbfdff] border-r border-[#dceef6] font-[var(--jakarta-font-family)] shadow-[8px_0_28px_rgba(21,59,79,0.06)]">
       <SidebarContent class="sb-scroll-hide">
         <!-- Brand -->
         <SidebarGroup class="!p-0">
-          <Link href="/" class="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-gray-100">
-            <div class="relative w-[38px] h-[38px] rounded-[10px] bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white font-extrabold text-[17px] flex-shrink-0 sb-logo-glow">
+          <Link href="/" class="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#dceef6] bg-gradient-to-br from-white via-[#f8fafc] to-[#f0f8fc]">
+            <div class="relative w-[38px] h-[38px] rounded-[10px] bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] flex items-center justify-center text-white font-extrabold text-[17px] flex-shrink-0 sb-logo-glow">
               V
             </div>
             <div class="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
-              <span class="text-[15px] font-extrabold tracking-tight text-gray-900 leading-tight">Vrooem</span>
-              <span class="text-[9.5px] font-mono font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 rounded mt-0.5 w-fit uppercase tracking-wider">Admin Panel</span>
+              <ApplicationLogo logo-color="#153B4F" class="h-[18px] w-[150px]" />
+              <span class="text-[9.5px] font-semibold text-[#0891b2] bg-[#cffafe]/55 border border-[#b0d4e6] px-1.5 rounded mt-1 w-fit uppercase tracking-[0.13em]">Admin Panel</span>
             </div>
           </Link>
         </SidebarGroup>
 
         <!-- Nav Groups -->
         <SidebarGroup v-for="group in navGroups" :key="group.label" class="!px-3 !py-1">
-          <p class="text-[10px] font-bold tracking-[0.1em] uppercase text-gray-400 px-2.5 pt-3 pb-1 group-data-[collapsible=icon]:hidden">
+          <p class="text-[10px] font-bold tracking-[0.12em] uppercase text-slate-400 px-2.5 pt-3 pb-1 group-data-[collapsible=icon]:hidden">
             {{ group.label }}
           </p>
           <SidebarMenu>
@@ -369,8 +368,8 @@ onMounted(() => {
                     class="relative !rounded-lg !px-2.5 !py-2 !h-auto !text-[13.5px] !font-medium transition-all duration-150"
                     :class="[
                       isMenuActive(item)
-                        ? '!bg-gradient-to-r !from-indigo-50 !to-indigo-100/60 !text-indigo-700 !font-semibold !shadow-[0_0_0_1px_rgba(199,210,254,1),0_1px_2px_rgba(0,0,0,0.03)]'
-                        : '!text-gray-600 hover:!bg-gray-50 hover:!text-gray-900'
+                        ? '!bg-gradient-to-r !from-[#f0f8fc] !to-[#ecfeff] !text-[#153b4f] !font-semibold !shadow-[0_0_0_1px_rgba(176,212,230,0.95),0_8px_22px_rgba(21,59,79,0.08)]'
+                        : '!text-slate-600 hover:!bg-[#f0f8fc]/75 hover:!text-[#153b4f]'
                     ]"
                   >
                     <!-- Active bar indicator -->
@@ -379,7 +378,7 @@ onMounted(() => {
                     <component
                       :is="item.icon"
                       class="!w-[19px] !h-[19px] transition-all duration-150"
-                      :class="isMenuActive(item) ? '!text-indigo-600 drop-shadow-[0_0_4px_rgba(79,70,229,0.3)]' : '!text-gray-400'"
+                      :class="isMenuActive(item) ? '!text-[#0891b2] drop-shadow-[0_0_5px_rgba(34,211,238,0.32)]' : '!text-slate-400'"
                       :stroke-width="1.7"
                     />
                     <span class="group-data-[collapsible=icon]:hidden">{{ item.title }}</span>
@@ -389,8 +388,8 @@ onMounted(() => {
                       v-if="item.count"
                       class="font-mono text-[10px] font-semibold rounded-full px-1.5 py-0.5 ml-auto mr-0.5 leading-none group-data-[collapsible=icon]:hidden transition-all"
                       :class="isMenuActive(item)
-                        ? 'bg-indigo-600 text-white shadow-[0_2px_6px_rgba(79,70,229,0.3)]'
-                        : 'bg-gray-100 text-gray-500'
+                        ? 'bg-[#153b4f] text-white shadow-[0_2px_8px_rgba(21,59,79,0.22)]'
+                        : 'bg-[#f1f5f9] text-slate-500'
                       "
                     >
                       {{ item.count }}
@@ -399,7 +398,7 @@ onMounted(() => {
                     <ChevronRight
                       class="ml-auto transition-transform duration-300 group-data-[collapsible=icon]:hidden"
                       :class="[
-                        isMenuOpen(item.title) ? 'rotate-90 text-gray-500' : 'text-gray-300',
+                        isMenuOpen(item.title) ? 'rotate-90 text-[#2d7294]' : 'text-slate-300',
                       ]"
                       :size="16"
                       :stroke-width="2.2"
@@ -423,8 +422,8 @@ onMounted(() => {
                           class="relative !text-[13px] !rounded transition-all duration-150 !py-1.5"
                           :class="[
                             isSubmenuActive(subItem.url)
-                              ? '!text-indigo-700 !font-semibold !bg-indigo-50'
-                              : '!text-gray-400 !font-normal hover:!text-gray-900 hover:!bg-gray-50 hover:!pl-4'
+                              ? '!text-[#153b4f] !font-semibold !bg-[#f0f8fc]'
+                              : '!text-slate-400 !font-normal hover:!text-[#153b4f] hover:!bg-[#f8fafc] hover:!pl-4'
                           ]"
                         >
                           <span v-if="isSubmenuActive(subItem.url)" class="sb-active-dot" />
@@ -441,7 +440,7 @@ onMounted(() => {
       </SidebarContent>
 
       <!-- Footer -->
-      <SidebarFooter class="!border-t !border-gray-100">
+      <SidebarFooter class="!border-t !border-[#dceef6] !bg-[#fbfdff]">
         <Link
           :href="route('admin.logout')"
           method="post"

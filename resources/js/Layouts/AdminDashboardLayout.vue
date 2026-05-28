@@ -10,10 +10,16 @@ import {
   User,
   Settings,
   LogOut,
-  PanelLeft,
 } from 'lucide-vue-next';
 import { Toaster } from '@/Components/ui/sonner';
 import { SidebarProvider, SidebarTrigger } from '@/Components/ui/sidebar';
+
+const props = defineProps({
+  title: {
+    type: String,
+    default: '',
+  },
+});
 
 // State for admin profile
 const showDropdown = ref(false);
@@ -247,7 +253,7 @@ const getNotificationLink = (notification) => {
 
 const currentPageTitle = computed(() => {
   const path = window.location.pathname;
-  return routeTitles[path] || 'Dashboard';
+  return props.title || routeTitles[path] || 'Dashboard';
 });
 
 // Get initials from company name
@@ -270,28 +276,28 @@ onUnmounted(() => {
 <template>
   <Head>
     <meta name="robots" content="noindex, nofollow" />
-    <title>Dashboard</title>
+    <title>{{ currentPageTitle }}</title>
   </Head>
 
   <main class="font-[var(--jakarta-font-family)]">
-    <SidebarProvider>
+    <SidebarProvider class="admin-shell">
       <AdminSiderBar />
 
       <!-- Main Content Area -->
-      <div class="flex-1 flex flex-col min-w-0 bg-[#f5f6fa]">
+      <div class="flex-1 flex flex-col min-w-0 bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_45%,#f1f5f9_100%)]">
 
         <!-- Premium Header -->
-        <header class="h-16 flex items-center justify-between px-7 hdr-glass border-b border-gray-200/80 flex-shrink-0 sticky top-0 z-40">
+        <header class="min-h-16 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-7 hdr-glass border-b border-[#dceef6]/90 flex-shrink-0 sticky top-0 z-40">
 
           <!-- Left: Trigger + Breadcrumb + Title -->
-          <div class="flex items-center gap-3">
-            <SidebarTrigger class="!w-8 !h-8 !rounded-lg !border !border-gray-200 !text-gray-500 hover:!text-indigo-600 hover:!border-indigo-300 hover:!bg-indigo-50/50 transition-all duration-150" />
-            <div class="w-px h-5 bg-gray-200"></div>
-            <div class="flex items-center gap-1.5 text-[13px] font-medium text-gray-400">
+          <div class="flex min-w-0 items-center gap-3">
+            <SidebarTrigger class="!w-9 !h-9 !rounded-lg !border !border-[#b0d4e6] !bg-white/80 !text-[#153b4f] hover:!text-[#0891b2] hover:!border-[#22d3ee] hover:!bg-[#f0f8fc] hover:!shadow-[0_0_0_3px_rgba(34,211,238,0.12)] transition-all duration-150" />
+            <div class="w-px h-5 bg-[#dceef6]"></div>
+            <div class="hidden sm:flex items-center gap-1.5 text-[13px] font-medium text-slate-400">
               <span>Admin</span>
               <span class="opacity-40">/</span>
             </div>
-            <h1 class="!text-[17px] !font-bold tracking-tight text-gray-900 !leading-normal">
+            <h1 class="truncate !text-[17px] !font-bold tracking-tight text-[#0f2936] !leading-normal">
               {{ currentPageTitle }}
             </h1>
           </div>
@@ -300,20 +306,20 @@ onUnmounted(() => {
           <div class="flex items-center gap-2">
 
             <!-- Search -->
-            <div class="flex items-center gap-2 px-3.5 py-2 bg-[#f5f6fa] border border-gray-200 rounded-xl text-gray-400 text-[13px] font-medium cursor-pointer min-w-[220px] transition-all duration-150 hover:border-indigo-300 hover:shadow-[0_0_0_3px_rgba(79,70,229,0.08)] hover:bg-white">
+            <div class="hidden md:flex items-center gap-2 px-3.5 py-2 bg-[#f8fafc] border border-[#dceef6] rounded-xl text-slate-400 text-[13px] font-medium cursor-pointer min-w-[220px] transition-all duration-150 hover:border-[#22d3ee] hover:shadow-[0_0_0_3px_rgba(34,211,238,0.12)] hover:bg-white">
               <Search :size="15" :stroke-width="2" class="flex-shrink-0" />
               <span>Search...</span>
-              <span class="font-mono text-[10px] font-medium bg-white border border-gray-200 rounded px-1.5 py-0.5 ml-auto text-gray-400 shadow-[0_1px_0_#e2e8f0]">Ctrl K</span>
+              <span class="text-[10px] font-semibold bg-white border border-[#dceef6] rounded px-1.5 py-0.5 ml-auto text-[#2d7294] shadow-[0_1px_0_#dceef6]">Ctrl K</span>
             </div>
 
             <!-- Divider -->
-            <div class="w-px h-7 bg-gray-200 mx-1"></div>
+            <div class="hidden sm:block w-px h-7 bg-[#dceef6] mx-1"></div>
 
             <!-- Notification Bell -->
             <button
               ref="bellIconRef"
               @click="toggleNotificationDropdown(); markAllAsRead()"
-              class="relative w-[38px] h-[38px] flex items-center justify-center border border-gray-200 rounded-lg bg-white text-gray-600 transition-all duration-150 hover:bg-gray-50 hover:text-indigo-600 hover:border-indigo-300 hover:shadow-[0_0_0_3px_rgba(79,70,229,0.08)] hover:-translate-y-px active:translate-y-0 active:scale-95"
+              class="relative w-[38px] h-[38px] flex items-center justify-center border border-[#dceef6] rounded-lg bg-white text-slate-600 transition-all duration-150 hover:bg-[#f0f8fc] hover:text-[#0891b2] hover:border-[#22d3ee] hover:shadow-[0_0_0_3px_rgba(34,211,238,0.12)] hover:-translate-y-px active:translate-y-0 active:scale-95"
             >
               <Bell :size="18" :stroke-width="1.7" />
               <span
@@ -325,15 +331,15 @@ onUnmounted(() => {
             </button>
 
             <!-- Divider -->
-            <div class="w-px h-7 bg-gray-200 mx-1"></div>
+            <div class="hidden sm:block w-px h-7 bg-[#dceef6] mx-1"></div>
 
             <!-- Admin Profile -->
             <div class="hdr-profile-area relative" @click="toggleDropdown">
-              <div class="flex items-center gap-2.5 px-2 py-1 rounded-xl cursor-pointer transition-all duration-150 border border-transparent hover:bg-gray-50 hover:border-gray-200">
+              <div class="flex items-center gap-2.5 px-1.5 sm:px-2 py-1 rounded-xl cursor-pointer transition-all duration-150 border border-transparent hover:bg-[#f0f8fc] hover:border-[#dceef6]">
                 <!-- Avatar -->
                 <div class="relative">
                   <div v-if="isLoading" class="w-9 h-9 rounded-lg bg-gray-200 animate-pulse"></div>
-                  <div v-else class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white text-[13px] font-bold shadow-[0_2px_8px_rgba(79,70,229,0.2)] overflow-hidden">
+                  <div v-else class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] flex items-center justify-center text-white text-[13px] font-bold shadow-[0_2px_10px_rgba(21,59,79,0.22)] overflow-hidden">
                     <img
                       v-if="adminProfile.avatar"
                       :src="adminProfile.avatar"
@@ -347,12 +353,12 @@ onUnmounted(() => {
                 </div>
 
                 <!-- Info -->
-                <div class="flex flex-col leading-tight">
-                  <span class="text-[13.5px] font-semibold text-gray-900">{{ adminProfile.company_name || 'Loading...' }}</span>
-                  <span class="text-[11px] text-gray-400 font-mono font-medium">administrator</span>
+                <div class="hidden sm:flex flex-col leading-tight">
+                  <span class="max-w-[160px] truncate text-[13.5px] font-semibold text-[#0f2936]">{{ adminProfile.company_name || 'Loading...' }}</span>
+                  <span class="text-[11px] text-slate-400 font-medium">administrator</span>
                 </div>
 
-                <ChevronsUpDown :size="16" :stroke-width="2" class="text-gray-300 ml-1" />
+                <ChevronsUpDown :size="16" :stroke-width="2" class="hidden sm:block text-slate-300 ml-1" />
               </div>
 
               <!-- Profile Dropdown -->
@@ -366,31 +372,31 @@ onUnmounted(() => {
               >
                 <div
                   v-if="showDropdown"
-                  class="absolute right-0 mt-2 w-[220px] bg-white border border-gray-200 rounded-xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.04)] z-50 overflow-hidden p-1"
+                  class="absolute right-0 mt-2 w-[220px] bg-white border border-[#dceef6] rounded-xl shadow-[0_18px_48px_-18px_rgba(21,59,79,0.32),0_8px_18px_rgba(21,59,79,0.08)] z-50 overflow-hidden p-1"
                 >
                   <!-- Dropdown header -->
-                  <div class="px-3 pt-2.5 pb-3 border-b border-gray-100 mb-1">
-                    <p class="text-sm font-bold text-gray-900 tracking-tight">{{ adminProfile.company_name || 'Admin' }}</p>
-                    <p class="text-[11.5px] text-gray-400 mt-0.5">{{ adminProfile.email || '' }}</p>
+                  <div class="px-3 pt-2.5 pb-3 border-b border-[#dceef6] mb-1 bg-[#f8fafc] rounded-lg">
+                    <p class="text-sm font-bold text-[#0f2936] tracking-tight">{{ adminProfile.company_name || 'Admin' }}</p>
+                    <p class="text-[11.5px] text-slate-400 mt-0.5">{{ adminProfile.email || '' }}</p>
                   </div>
 
                   <Link
                     href="/admin/settings/profile"
-                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-100"
+                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 hover:bg-[#f0f8fc] hover:text-[#153b4f] transition-all duration-100"
                   >
-                    <User :size="16" :stroke-width="1.7" class="text-gray-400" />
+                    <User :size="16" :stroke-width="1.7" class="text-[#2d7294]" />
                     Profile Settings
                   </Link>
 
                   <Link
                     href="/admin/settings/profile"
-                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-100"
+                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 hover:bg-[#f0f8fc] hover:text-[#153b4f] transition-all duration-100"
                   >
-                    <Settings :size="16" :stroke-width="1.7" class="text-gray-400" />
+                    <Settings :size="16" :stroke-width="1.7" class="text-[#2d7294]" />
                     Account Settings
                   </Link>
 
-                  <div class="h-px bg-gray-100 mx-2 my-1"></div>
+                  <div class="h-px bg-[#dceef6] mx-2 my-1"></div>
 
                   <Link
                     :href="route('admin.logout')"
@@ -417,14 +423,14 @@ onUnmounted(() => {
             <div
               v-if="showingNotificationDropdown"
               ref="notificationDropdownRef"
-              class="absolute right-[100px] top-[calc(100%+6px)] w-[400px] bg-white border border-gray-200 rounded-xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.04)] z-50 overflow-hidden"
+              class="absolute right-4 sm:right-[100px] top-[calc(100%+6px)] w-[calc(100vw-2rem)] sm:w-[400px] bg-white border border-[#dceef6] rounded-xl shadow-[0_18px_48px_-18px_rgba(21,59,79,0.32),0_8px_18px_rgba(21,59,79,0.08)] z-50 overflow-hidden"
             >
               <!-- Header -->
-              <div class="flex justify-between items-center px-[18px] pt-4 pb-3 border-b border-gray-100">
-                <h3 class="text-[15px] font-bold text-gray-900 tracking-tight">Notifications</h3>
+              <div class="flex justify-between items-center px-[18px] pt-4 pb-3 border-b border-[#dceef6] bg-[#f8fafc]">
+                <h3 class="text-[15px] font-bold text-[#0f2936] tracking-tight">Notifications</h3>
                 <button
                   @click="markAllAsRead"
-                  class="text-xs font-semibold text-indigo-600 px-2 py-1 rounded hover:bg-indigo-50 transition-colors"
+                  class="text-xs font-semibold text-[#0891b2] px-2 py-1 rounded hover:bg-[#ecfeff] transition-colors"
                 >
                   Mark all read
                 </button>
@@ -439,25 +445,25 @@ onUnmounted(() => {
                   v-for="notification in notifications"
                   :key="notification.id"
                   @click="handleNotificationClick(notification)"
-                  class="flex gap-3 px-[18px] py-3.5 border-b border-gray-50 cursor-pointer transition-colors duration-100 hover:bg-gray-50 relative"
-                  :class="!notification.read_at ? 'bg-gradient-to-r from-indigo-50/80 to-indigo-50/20' : ''"
+                  class="flex gap-3 px-[18px] py-3.5 border-b border-[#f1f5f9] cursor-pointer transition-colors duration-100 hover:bg-[#f8fafc] relative"
+                  :class="!notification.read_at ? 'bg-gradient-to-r from-[#f0f8fc] to-[#ecfeff]/50' : ''"
                 >
                   <!-- Unread left bar -->
                   <span
                     v-if="!notification.read_at"
-                    class="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-indigo-600 to-violet-600 rounded-r"
+                    class="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-[#153b4f] to-[#22d3ee] rounded-r"
                   ></span>
 
                   <!-- Icon -->
-                  <div class="w-[38px] h-[38px] rounded-lg flex items-center justify-center flex-shrink-0 bg-indigo-50 text-indigo-500">
+                  <div class="w-[38px] h-[38px] rounded-lg flex items-center justify-center flex-shrink-0 bg-[#f0f8fc] text-[#0891b2]">
                     <Bell :size="17" :stroke-width="1.8" />
                   </div>
 
                   <!-- Content -->
                   <div class="flex-1 min-w-0">
-                    <p class="text-[13px] font-semibold text-gray-900 mb-0.5">{{ notification.data.title }}</p>
-                    <p class="text-xs text-gray-400 leading-snug truncate">{{ notification.data.message }}</p>
-                    <p class="text-[10px] text-gray-300 font-mono font-medium mt-1">
+                    <p class="text-[13px] font-semibold text-[#0f2936] mb-0.5">{{ notification.data.title }}</p>
+                    <p class="text-xs text-slate-400 leading-snug truncate">{{ notification.data.message }}</p>
+                    <p class="text-[10px] text-slate-300 font-medium mt-1">
                       {{ new Date(notification.created_at).toLocaleString() }}
                     </p>
                   </div>
@@ -465,10 +471,10 @@ onUnmounted(() => {
               </div>
 
               <!-- Footer -->
-              <div class="py-3 text-center border-t border-gray-100">
+              <div class="py-3 text-center border-t border-[#dceef6]">
                 <button
                   @click="clearAllNotifications"
-                  class="text-[13px] font-semibold text-indigo-600 px-4 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
+                  class="text-[13px] font-semibold text-[#0891b2] px-4 py-1.5 rounded-lg hover:bg-[#ecfeff] transition-colors"
                 >
                   Clear all notifications
                 </button>
