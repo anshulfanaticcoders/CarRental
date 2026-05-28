@@ -46,6 +46,7 @@ import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 import { getCurrencyName, getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 import { resolveProviderMarkupRate } from '@/utils/platformPricing';
 import { resolveSearchCurrency } from '@/utils/searchCurrency';
+import { loginHrefForPage } from '@/utils/authReturnUrl';
 import { computeVehicleDisplayDailyPrice } from '@/utils/vehicleSearchPricing';
 import { resolveVehicleImageSource } from '@/utils/vehicleImageFallback';
 import {
@@ -67,6 +68,7 @@ import {
 const { selectedCurrency, supportedCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
 const { convertPrice, fetchExchangeRates } = useCurrencyConversion();
 const page = usePage();
+const loginHref = computed(() => loginHrefForPage(page.props.locale || 'en', page.url));
 
 const providerMarkupRate = computed(() => {
     return resolveProviderMarkupRate(page.props);
@@ -1530,7 +1532,7 @@ const buildProviderFavoritePayload = (vehicle) => {
 
 const toggleFavourite = async (vehicle) => {
     if (!$page.props.auth?.user) {
-        return router.get(route('login', {}, usePage().props.locale));
+        return router.get(loginHref.value);
     }
 
     const isFavorite = !!favoriteStatus.value[vehicle.id];
@@ -1570,7 +1572,7 @@ const toggleFavourite = async (vehicle) => {
         );
     } catch (error) {
         if (error.response && error.response.status === 401) {
-            router.get(route('login', {}, usePage().props.locale));
+            router.get(loginHref.value);
         } else {
             sonnerToast.error("Failed to update favorite.", {
                 position: "bottom-right",

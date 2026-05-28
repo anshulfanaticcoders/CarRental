@@ -11,6 +11,7 @@ use App\Notifications\AccountCreatedNotification;
 use App\Notifications\AccountCreatedUserConfirmation;
 use App\Services\Affiliate\AffiliateQrCodeService;
 use App\Services\CountryCodeResolver;
+use App\Support\AuthReturnUrl;
 use App\Support\CurrencyRegistry;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -34,6 +35,16 @@ class SocialAuthController extends Controller
 
         $locale = $request->route('locale') ?? $request->query('locale') ?? config('app.fallback_locale', 'en');
         $request->session()->put('oauth.locale', $locale);
+
+        $returnTo = AuthReturnUrl::normalize(
+            $request,
+            $request->query('redirect') ?: $request->session()->get(AuthReturnUrl::SESSION_KEY)
+        );
+        if ($returnTo) {
+            $request->session()->put('oauth.return_to', $returnTo);
+        } else {
+            $request->session()->forget('oauth.return_to');
+        }
 
         // Detect mobile clients so the callback can redirect to a deep link with a Sanctum token.
         if ($request->boolean('mobile')) {
@@ -173,6 +184,11 @@ class SocialAuthController extends Controller
         $statusMessage = $wasCreated
             ? 'Account created successfully. Please complete your profile.'
             : 'Welcome back!';
+
+        $returnTo = AuthReturnUrl::normalize($request, $request->session()->pull('oauth.return_to'));
+        if ($returnTo) {
+            return redirect()->to($returnTo)->with('status', $statusMessage);
+        }
 
         return redirect()
             ->route('profile.edit', ['locale' => $locale])

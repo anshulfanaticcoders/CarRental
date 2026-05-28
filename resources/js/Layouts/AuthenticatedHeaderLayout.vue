@@ -6,6 +6,7 @@ import CurrencySelector from "@/Components/CurrencySelector.vue";
 import { Link, usePage, router } from "@inertiajs/vue3";
 import axios from "axios";
 import { useCurrency } from '@/composables/useCurrency';
+import { loginHrefForPage } from '@/utils/authReturnUrl';
 // import { hideTawk, showTawk } from '@/lib/tawk';
 import { setScrollLock } from '@/lib/scrollLock';
 import bellIcon from '../../assets/bell.svg'
@@ -217,6 +218,7 @@ const handleNotificationClick = async (notification) => {
 const vendorStatus = computed(() => page.props.vendorStatus);
 const currentLocale = computed(() => page.props.locale || 'en');
 const isAuthenticated = computed(() => !!page.props.auth?.user);
+const loginHref = computed(() => loginHrefForPage(props.locale || currentLocale.value, page.url));
 const isVendor = computed(() => page.props.auth?.user?.role === 'vendor');
 const isCustomer = computed(() => page.props.auth?.user?.role === 'customer');
 const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
@@ -480,7 +482,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
           </div>
 
           <!-- Login (guest only) -->
-          <Link v-if="!isAuthenticated" :href="route('login', { locale: props.locale })" class="hdr-btn primary">Log in</Link>
+          <Link v-if="!isAuthenticated" :href="loginHref" class="hdr-btn primary">Log in</Link>
 
           <!-- User dropdown (authenticated, desktop only) -->
           <div v-if="isAuthenticated" ref="desktopDropdownRef" class="hdr-user-wrap hidden lg:inline-flex">
@@ -551,7 +553,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
             </Link>
             <Link v-if="isCustomer" :href="route('vendor.register', { locale: props.locale })" class="oc-item">Register as Vendor</Link>
             <div v-if="!isAuthenticated" class="oc-auth-btns">
-              <Link :href="route('login', { locale: props.locale })" class="oc-btn-login">Log in</Link>
+              <Link :href="loginHref" class="oc-btn-login">Log in</Link>
               <Link :href="route('register', { locale: props.locale })" class="oc-btn-signup">Create Account</Link>
             </div>
           </div>

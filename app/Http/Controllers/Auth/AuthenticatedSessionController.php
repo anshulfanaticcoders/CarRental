@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Providers\RouteServiceProvider;
 use App\Services\Affiliate\AffiliateQrCodeService;
+use App\Support\AuthReturnUrl;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,17 +19,17 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): InertiaResponse
+    public function create(Request $request): InertiaResponse
     {
-        // Store the previous URL as the intended destination, but only if it's not an auth route.
-        $previousUrl = url()->previous();
-        if ($previousUrl && !str_contains($previousUrl, '/login') && !str_contains($previousUrl, '/register')) {
-            session(['url.intended' => $previousUrl]);
-        }
+        $returnTo = AuthReturnUrl::capture(
+            $request,
+            $request->query('redirect') ?: url()->previous()
+        );
 
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'returnTo' => $returnTo,
         ]);
     }
 
@@ -56,6 +56,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         $locale = $request->route('locale') ?? config('app.fallback_locale', 'en');
+        $returnTo = AuthReturnUrl::pull($request, $request->input('return_to'));
 
         $request->session()->flash('status', 'Welcome back!');
 
@@ -65,6 +66,10 @@ class AuthenticatedSessionController extends Controller
 
         if ($user && $user->role === 'affiliate') {
             return Inertia::location(route('affiliate.dashboard', ['locale' => $locale]));
+        }
+
+        if ($returnTo) {
+            return Inertia::location($returnTo);
         }
 
         return Inertia::location(route('profile.edit', ['locale' => $locale]));

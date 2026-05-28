@@ -7,6 +7,7 @@ import axios from "axios";
 import Dropdown from "@/Components/Dropdown.vue";
 import CurrencySelector from "@/Components/CurrencySelector.vue";
 import { useCurrency } from '@/composables/useCurrency';
+import { loginHrefForPage } from '@/utils/authReturnUrl';
 import { setScrollLock } from '@/lib/scrollLock';
 import whatsappIcon from '../../assets/whatsapp.svg';
 import callIcon from '../../assets/call.svg';
@@ -44,6 +45,7 @@ onMounted(() => {
 
 // Language switcher logic
 const currentLocale = computed(() => page.props.locale || 'en');
+const loginHref = computed(() => loginHrefForPage(page.props.locale || currentLocale.value, page.url));
 
 const availableLocales = {
     en: { name: 'En', flag: flagEn },
@@ -167,7 +169,7 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Login -->
-                    <Link v-if="!isLoginPage" :href="route('login', { locale: page.props.locale })" class="hdr-btn primary">Log in</Link>
+                    <Link v-if="!isLoginPage" :href="loginHref" class="hdr-btn primary">Log in</Link>
 
                     <!-- Hamburger -->
                     <button @click="toggleMobileNav" type="button" class="hdr-hamburger" :class="{ 'is-open': showingNavigationDropdown }">
@@ -200,7 +202,7 @@ onUnmounted(() => {
                     <div class="oc-section">
                         <div class="oc-label">Account</div>
                         <div class="oc-auth-btns">
-                            <Link v-if="!isLoginPage" :href="route('login', { locale: page.props.locale })" class="oc-btn-login">Log in</Link>
+                            <Link v-if="!isLoginPage" :href="loginHref" class="oc-btn-login">Log in</Link>
                             <Link v-if="!isRegisterPage" :href="route('register', { locale: page.props.locale })" class="oc-btn-signup">Create Account</Link>
                         </div>
                     </div>
