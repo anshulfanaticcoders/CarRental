@@ -1,8 +1,17 @@
 const GM_PACKAGE_NAMES = { BAS: 'Basic', PLU: 'Plus', PRE: 'Premium', PMP: 'Premium Plus' };
 const GM_PACKAGE_ORDER = ['BAS', 'PLU', 'PRE', 'PMP'];
-const LOCAUTO_PROTECTION_CODES = ['136', '147', '145', '140', '146', '6', '43'];
+const LOCAUTO_PROTECTION_CODES = ['136', '147'];
+const LOCAUTO_PROTECTION_NAMES = {
+    '136': "Don't Worry",
+    '147': 'Smart Cover',
+};
 
 const parseNum = (v, fallback = 0) => { const n = parseFloat(v); return Number.isFinite(n) ? n : fallback; };
+const extraBookingTotal = (extra, days) => {
+    const explicitTotal = parseNum(extra?.total_for_booking ?? extra?.total_price, null);
+    if (explicitTotal !== null) return explicitTotal;
+    return parseNum(extra?.amount) * days;
+};
 
 const shortName = (description) => {
     if (!description) return '';
@@ -84,7 +93,11 @@ function normalizeLocauto(vehicle, days, selectedId, convertPrice) {
     const pricePerDay = parseNum(vehicle?.price_per_day);
     const totalPrice = parseNum(vehicle?.total_price);
     const extras = vehicle?.extras || [];
-    const protections = extras.filter(e => LOCAUTO_PROTECTION_CODES.includes(e.code) && parseNum(e.amount) > 0);
+    const protections = extras.filter(e => {
+        const code = `${e?.code ?? ''}`;
+        const label = `${e?.name ?? ''} ${e?.description ?? ''}`.toLowerCase().replace(/-/g, ' ');
+        return LOCAUTO_PROTECTION_CODES.includes(code) && parseNum(e.amount) > 0 && !label.includes('one way');
+    });
 
     const plans = [{
         id: 'BAS',
@@ -101,12 +114,13 @@ function normalizeLocauto(vehicle, days, selectedId, convertPrice) {
 
     protections.forEach(p => {
         const amount = parseNum(p.amount);
+        const protectionTotal = extraBookingTotal(p, days);
         plans.push({
             id: p.code,
-            name: shortName(p.description),
+            name: LOCAUTO_PROTECTION_NAMES[p.code] || shortName(p.description),
             subtitle: p.code,
             dailyPrice: convertPrice(pricePerDay + amount, currency),
-            totalPrice: convertPrice(totalPrice + amount * days, currency),
+            totalPrice: convertPrice(totalPrice + protectionTotal, currency),
             currency,
             benefits: [p.description],
             deposit: null,

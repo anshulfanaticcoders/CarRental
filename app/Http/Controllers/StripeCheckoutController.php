@@ -1930,6 +1930,10 @@ class StripeCheckoutController extends Controller
             if (! is_array($extra)) {
                 continue;
             }
+            $extraId = (string) ($extra['id'] ?? $extra['option_id'] ?? '');
+            if (($extra['purpose'] ?? null) === 'protection' || str_starts_with($extraId, 'locauto_protection_')) {
+                continue;
+            }
             $isFree = isset($extra['isFree']) ? (bool) $extra['isFree'] : false;
             if ($isFree) {
                 continue;

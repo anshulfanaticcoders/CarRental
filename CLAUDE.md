@@ -134,7 +134,6 @@ Invoke the MATCHING skill based on the file type you're about to edit:
 | Email / Mailables / Notifications | `mailtrap-laravel` | Mailtrap sending API, templates, webhooks, sandbox |
 | FastAPI Python (`vrooem-gateway/`) | `fastapi-templates` | Async patterns, dependency injection |
 | Redis caching | `redis-best-practices` | Cache strategies, key design |
-| Supabase/PostgreSQL | `supabase-postgres-best-practices` | Query optimization, schema design |
 | Vue Router changes | `vue-router-best-practices` | Navigation guards, route params |
 | Pinia store changes | `vue-pinia-best-practices` | State management patterns |
 | Vue testing | `vue-testing-best-practices` | Vitest, Vue Test Utils |
@@ -343,7 +342,7 @@ These show which steps are MANDATORY (M) vs SKIP-IF-NOT-APPLICABLE (S) for commo
 | 3. superpowers:brainstorming | M |
 | 4. superpowers:writing-plans | M |
 | 5. karpathy-guidelines | M |
-| 6. fastapi-templates + redis-best-practices + supabase-postgres-best-practices | M (relevant ones) |
+| 6. fastapi-templates + redis-best-practices + mysql | M (relevant ones) |
 | 7. Write code | M |
 | 8. error-handling-patterns | M |
 | 8a. code-simplifier (agent) | M |
@@ -775,7 +774,7 @@ npm run lint                        # ESLint
 npm run test                        # Vitest
 
 # Gateway (from /mnt/c/laragon/www/vrooem-gateway/)
-docker-compose up -d                # Start gateway + Redis + PostgreSQL
+docker-compose up -d                # Start gateway + Redis
 docker-compose down                 # Stop all
 ruff check app/                     # Lint Python
 ruff format app/                    # Format Python
@@ -842,7 +841,6 @@ git log --oneline -10
 | `fastapi-templates` | FastAPI application patterns |
 | `async-python-patterns` | Python async/await patterns |
 | `redis-best-practices` | Redis caching, data structures |
-| `supabase-postgres-best-practices` | PostgreSQL optimization |
 
 ### Domain Skills - Payments & Email
 | Skill | When to Use |

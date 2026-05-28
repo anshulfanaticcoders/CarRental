@@ -197,9 +197,11 @@ const currentProduct = computed(() => {
 // ── Locauto-specific refs (delegated to adapter) ────────────────────
 const selectedLocautoProtections = adapter.selectedLocautoProtections ?? ref([]);
 const locautoProtectionPlans = adapter.locautoProtectionPlans ?? computed(() => []);
+const locautoProtectionOptions = adapter.locautoProtectionOptions ?? computed(() => []);
 const toggleLocautoProtection = adapter.toggleLocautoProtection ?? (() => {});
 const locautoSmartCoverPlan = adapter.locautoSmartCoverPlan ?? computed(() => null);
 const locautoDontWorryPlan = adapter.locautoDontWorryPlan ?? computed(() => null);
+const locautoAssistanceItems = adapter.locautoAssistanceItems ?? computed(() => []);
 const locautoBaseTotal = adapter.locautoBaseDaily ? computed(() => adapter.baseTotal?.value ?? 0) : computed(() => 0);
 const locautoBaseDaily = adapter.locautoBaseDaily ?? computed(() => 0);
 const normalizeProtectionCodes = (code) => {
@@ -550,14 +552,15 @@ const getSelectedExtrasDetails = computed(() => {
         for (const code of selectedLocautoProtections.value) {
             const plan = locautoProtectionPlans.value.find(p => p.code === code);
             if (plan) {
-                const total = parseFloat(plan.amount || 0) * props.numberOfDays;
+                const total = parseFloat(plan.total_for_booking ?? plan.price ?? (parseFloat(plan.amount || 0) * props.numberOfDays));
                 details.push({
                     id: `locauto_protection_${code}`,
-                    name: plan.description || plan.name || code,
+                    name: plan.title || plan.name || plan.description || code,
                     qty: 1,
                     total,
                     daily_rate: parseFloat(plan.amount || 0),
                     code,
+                    purpose: 'protection',
                 });
             }
         }
@@ -592,6 +595,9 @@ const getExtraIcon = (name) => {
     if (!name) return Plus;
     const n = name.toLowerCase();
     if (n.includes('gps') || n.includes('nav') || n.includes('sat')) return Navigation;
+    if (n.includes('toll')) return Gauge;
+    if (n.includes('roadside') || n.includes('towing') || n.includes('injur')) return Shield;
+    if (n.includes('bau') || n.includes('dog') || n.includes('pet')) return CircleDashed;
     if (n.includes('mobile') || n.includes('phone')) return Smartphone;
     if (n.includes('wifi') || n.includes('internet')) return Wifi;
     if (n.includes('baby') || n.includes('child') || n.includes('booster') || n.includes('infant')) return Baby;
@@ -605,6 +611,9 @@ const getIconBackgroundClass = (name) => {
     if (!name) return 'icon-bg-gray';
     const n = name.toLowerCase();
     if (n.includes('gps') || n.includes('nav')) return 'icon-bg-blue';
+    if (n.includes('toll')) return 'icon-bg-purple';
+    if (n.includes('roadside') || n.includes('towing') || n.includes('injur')) return 'icon-bg-orange';
+    if (n.includes('bau') || n.includes('dog') || n.includes('pet')) return 'icon-bg-green';
     if (n.includes('baby') || n.includes('child') || n.includes('booster') || n.includes('infant')) return 'icon-bg-pink';
     if (n.includes('driver') || n.includes('additional')) return 'icon-bg-green';
     if (n.includes('wifi') || n.includes('internet')) return 'icon-bg-purple';
@@ -616,6 +625,9 @@ const getIconColorClass = (name) => {
     if (!name) return 'icon-text-gray';
     const n = name.toLowerCase();
     if (n.includes('gps') || n.includes('nav')) return 'icon-text-blue';
+    if (n.includes('toll')) return 'icon-text-purple';
+    if (n.includes('roadside') || n.includes('towing') || n.includes('injur')) return 'icon-text-orange';
+    if (n.includes('bau') || n.includes('dog') || n.includes('pet')) return 'icon-text-green';
     if (n.includes('baby') || n.includes('child') || n.includes('booster') || n.includes('infant')) return 'icon-text-pink';
     if (n.includes('driver') || n.includes('additional')) return 'icon-text-green';
     if (n.includes('wifi') || n.includes('internet')) return 'icon-text-purple';
@@ -811,13 +823,14 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
 
                 <!-- ═══ 4. PACKAGE / RATE SELECTION ═══ -->
                 <PackageSelection
-                    v-if="(!isLocautoRent && availablePackages.length > 0) || (isLocautoRent && locautoProtectionPlans.length > 0)"
+                    v-if="(!isLocautoRent && availablePackages.length > 0) || (isLocautoRent && locautoProtectionOptions.length > 0)"
                     :available-packages="availablePackages"
                     :selected-package-type="selectedPackageType"
                     :is-locauto-rent="isLocautoRent"
                     :is-adobe-cars="isAdobeCars"
                     :is-ok-mobility="isOkMobility"
                     :locauto-protection-plans="locautoProtectionPlans"
+                    :locauto-protection-options="locautoProtectionOptions"
                     :selected-locauto-protections="selectedLocautoProtections"
                     :format-rental-price="formatRentalPrice"
                     :format-price="formatPrice"
@@ -886,12 +899,14 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
 
                 <!-- ═══ 10. OPTIONAL EXTRAS ═══ -->
                 <OptionalExtras
-                    v-if="hasUnifiedExtras"
+                    v-if="hasUnifiedExtras || (isLocautoRent && locautoAssistanceItems.length > 0)"
                     :extras="unifiedOptionalExtras"
                     :selected-extras="selectedExtras"
                     :is-favrica="isFavrica"
                     :is-x-drive="isXDrive"
                     :is-emr="isEmr"
+                    :is-locauto-rent="isLocautoRent"
+                    :locauto-assistance-items="locautoAssistanceItems"
                     :is-sicily-by-car="isSicilyByCar"
                     :is-record-go="isRecordGo"
                     :format-rental-price="formatRentalPrice"

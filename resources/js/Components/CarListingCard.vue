@@ -299,10 +299,10 @@ const handleAdobeSelection = (product) => {
     }
 };
 
-// Get LocautoRent protection plans from extras (all 7 plans)
+// Get LocautoRent paid protection plans from extras
 const locautoProtectionPlans = computed(() => {
     if (!isLocautoRent.value) return [];
-    const protectionCodes = ['136', '147', '145', '140', '146', '6', '43'];
+    const protectionCodes = ['136', '147'];
     const extras = props.vehicle.extras || [];
     return extras.filter(extra =>
         protectionCodes.includes(extra.code) && extra.amount > 0

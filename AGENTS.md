@@ -17,7 +17,7 @@ This repo is the main Laravel 10 + Vue 3 + Inertia application for Vrooem Car Re
 ## Stack
 - Backend: Laravel 10, PHP 8.1+, Sanctum, Inertia Laravel, queues/jobs, Pusher, Stripe, Mailtrap, Sentry, Twilio.
 - Frontend: Vue 3 with `<script setup>`, Inertia.js, Tailwind CSS, Shadcn-Vue/Radix Vue, Lucide Vue Next.
-- Data: MySQL in Laravel; gateway also uses Redis/PostgreSQL/MySQL paths depending on adapter/service.
+- Data: MySQL in Laravel and gateway provider API tables; Redis for gateway cache and locks.
 
 ## Architecture Notes
 - Laravel owns web/admin/vendor/customer flows and the mobile API under `routes/api.php` prefix `mobile`.
@@ -33,7 +33,7 @@ This repo is the main Laravel 10 + Vue 3 + Inertia application for Vrooem Car Re
 
 ## Required Workflow For Code Changes
 1. Understand the task and inspect relevant files first.
-2. Use relevant skills: `karpathy-guidelines` before edits; `laravel-specialist` for PHP/Laravel; `vue-best-practices` for Vue; `mysql` for migrations/queries; `fastapi-templates` for gateway Python; `redis-best-practices` or `supabase-postgres-best-practices` when relevant; UI/design skills for frontend work.
+2. Use relevant skills: `karpathy-guidelines` before edits; `laravel-specialist` for PHP/Laravel; `vue-best-practices` for Vue; `mysql` for migrations/queries; `fastapi-templates` for gateway Python; `redis-best-practices` when relevant; UI/design skills for frontend work.
 3. For UI/design changes, route visual implementation to Claude as primary designer/implementer and require Impeccable (`pbakaus/impeccable`) for shape/audit/polish before the UI is considered done.
 4. For UI changes, follow the design system exactly: brand teal `#153b4f`, cyan `#22d3ee`, Plus Jakarta Sans headings, IBM Plex Sans body, `full-w-container`, scoped styles, targeted transitions, Lucide icons.
 5. Validate with the smallest relevant checks, then broader checks when risk is higher.
@@ -55,7 +55,7 @@ This repo is the main Laravel 10 + Vue 3 + Inertia application for Vrooem Car Re
 - Vue/UI work: `vue-best-practices`, `frontend-design`, Impeccable (`shape`, `audit`, and `polish` as appropriate), and `resources/js/design-system.md`.
 - Gateway work: `fastapi-templates`; use Ref for current library docs if APIs are uncertain.
 - Mobile work: inspect `vrooem-mobile/src/api`, matching Laravel `/api/mobile` route/controller, and mobile types together.
-- Database work: `mysql` for MySQL, `supabase-postgres-best-practices` for Postgres/Supabase; dry-run migrations before real DB changes.
+- Database work: `mysql` for database changes; dry-run migrations before real DB changes.
 - External/current docs: use Ref first for official docs; use Exa/web only when current or non-official discovery is needed.
 - Browser/UI verification: use Browser/Chrome DevTools after significant frontend changes.
 - Linear/Gmail/calendar-style MCPs: use only when the task asks for that external system.

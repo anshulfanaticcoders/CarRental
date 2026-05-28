@@ -40,6 +40,8 @@ test('normalizes locauto plans with basic + protections', () => {
             extras: [
                 { code: '147', description: 'Smart Cover', amount: 15 },
                 { code: '136', description: "Don't Worry", amount: 25 },
+                { code: '43', description: 'Roadside Plus', amount: 8 },
+                { code: '6', description: 'Protection Against Injuries', amount: 10 },
             ],
         },
         rentalDays: 3,
@@ -53,7 +55,28 @@ test('normalizes locauto plans with basic + protections', () => {
     assert.equal(plans[0].isSelected, true);
     assert.equal(plans[0].dailyPrice, 40);
     assert.equal(plans[1].id, '147');
+    assert.equal(plans[1].name, 'Smart Cover');
     assert.equal(plans[1].dailyPrice, 55); // 40 + 15
+});
+
+test('normalizes locauto protection totals from supplier booking total when present', () => {
+    const plans = normalizeProtectionPlans({
+        vehicle: {
+            source: 'locauto_rent',
+            price_per_day: 40,
+            total_price: 120,
+            currency: 'EUR',
+            extras: [
+                { code: '147', description: 'Smart Cover', amount: 15, total_for_booking: 30 },
+            ],
+        },
+        rentalDays: 3,
+        selectedId: '147',
+        convertPrice: identity,
+    });
+
+    assert.equal(plans[1].id, '147');
+    assert.equal(plans[1].totalPrice, 150);
 });
 
 test('normalizes adobe plans with base + protections', () => {

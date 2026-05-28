@@ -43,7 +43,11 @@ class GatewayVehicleTransformer
             $features[] = 'Air Conditioning';
         }
 
-        $extras = $this->mapExtras($gv['extras'] ?? [], $rawSupplierId);
+        $rawExtras = is_array($gv['extras'] ?? null) ? $gv['extras'] : [];
+        if (in_array($supplierId, ['locauto_rent', 'locauto'], true)) {
+            $rawExtras = $this->filterLocautoCustomerSelectableExtras($rawExtras);
+        }
+        $extras = $this->mapExtras($rawExtras, $rawSupplierId);
         $options = $extras;
 
         $insuranceOptions = collect($gv['insurance_options'] ?? [])->map(function ($ins) {
@@ -202,7 +206,7 @@ class GatewayVehicleTransformer
             'recordgo_acriss_id' => $supplierData['acriss_id'] ?? null,
             'recordgo_sellcode_ver' => $supplierData['sell_code_ver'] ?? null,
             'recordgo_country' => $supplierData['country'] ?? null,
-            'terms' => $this->extractTerms($rawSupplierId, $supplierData),
+            'terms' => $this->extractTerms($rawSupplierId, $supplierData, $gv),
             'driver_requirements' => $this->extractDriverRequirements($rawSupplierId, $supplierData, $gv),
             'rental_policies' => $this->extractRentalPolicies($rawSupplierId, $gv),
             'bags' => array_key_exists('bags_large', $gv) || array_key_exists('bags_small', $gv)
@@ -311,7 +315,7 @@ class GatewayVehicleTransformer
         return [];
     }
 
-    private function extractTerms(string $supplierId, array $supplierData): ?array
+    private function extractTerms(string $supplierId, array $supplierData, array $gv = []): ?array
     {
         // RecordGo: product T&Cs from productTTCC
         if (in_array($supplierId, ['record_go', 'recordgo'], true)) {
@@ -334,7 +338,7 @@ class GatewayVehicleTransformer
                 ['name' => 'Payment Methods', 'conditions' => [
                     'Credit Cards or Debit Cards accepted (Visa, Mastercard, Amex, Union Pay).',
                     'Maestro, prepaid or rechargeable cards are NOT accepted.',
-                    'Card must be in the main driver\'s name with sufficient funds for deposit + rental charges.',
+                    'Card must be in the main driver\'s name with sufficient funds for rental charges and any local extras/fees.',
                     'Digital cards are not accepted.',
                 ]],
                 ['name' => 'Documents Required', 'conditions' => [
@@ -345,7 +349,8 @@ class GatewayVehicleTransformer
                 ['name' => 'Deposit & Excess', 'conditions' => [
                     "Damage excess (CDW): €{$damageExcess}",
                     "Theft excess (TW): €{$theftExcess}",
-                    'Deposit blocked on credit card at pickup.',
+                    'Security deposit for Locauto car groups: EUR 0.00 / no car deposit required.',
+                    'Damage and theft excess liability still applies unless reduced by an eligible protection product.',
                 ]],
                 ['name' => 'Fuel & Mileage', 'conditions' => [
                     'Fuel policy: Full to Full. Return with same fuel level. Refuelling surcharge: €35.',
@@ -451,6 +456,8 @@ class GatewayVehicleTransformer
                 $benefits['excess_amount'] = $benefits['excess_amount'] ?? $conditions['damage_excess'];
                 $benefits['excess_theft_amount'] = $benefits['excess_theft_amount'] ?? $conditions['theft_excess'];
                 $benefits['fuel_policy'] = $benefits['fuel_policy'] ?? 'Full to Full';
+                $benefits['deposit_amount'] = $benefits['deposit_amount'] ?? $conditions['deposit_amount'];
+                $benefits['deposit_currency'] = $benefits['deposit_currency'] ?? 'EUR';
             }
         }
 
@@ -463,7 +470,7 @@ class GatewayVehicleTransformer
             return null;
         }
 
-        $sippCode = $gv['sipp_code'] ?? ($gv['supplier_data']['sipp_code'] ?? '');
+        $sippCode = $gv['sipp_code'] ?? ($gv['specs']['sipp_code'] ?? ($gv['supplier_data']['sipp_code'] ?? ''));
         $conditions = $this->getLocautoConditions($sippCode);
         if (!$conditions) {
             return null;
@@ -472,6 +479,7 @@ class GatewayVehicleTransformer
         return [
             ['label' => 'Fuel Policy', 'value' => 'Full to Full', 'detail' => 'Return with full tank. Refuelling surcharge: €35'],
             ['label' => 'Mileage', 'value' => 'Unlimited'],
+            ['label' => 'Security Deposit', 'value' => 'No car deposit required'],
             ['label' => 'Damage Excess (CDW)', 'value' => '€' . $conditions['damage_excess']],
             ['label' => 'Theft Excess (TW)', 'value' => '€' . $conditions['theft_excess']],
             ['label' => 'Payment at Pickup', 'value' => 'Credit or Debit card in driver\'s name'],
@@ -505,7 +513,11 @@ class GatewayVehicleTransformer
             'IFAR' => ['min_age' => 25, 'damage_excess' => 1700, 'theft_excess' => 2200],
         ];
 
-        return $conditions[$sippCode] ?? null;
+        if (!isset($conditions[$sippCode])) {
+            return null;
+        }
+
+        return $conditions[$sippCode] + ['deposit_amount' => 0.0];
     }
 
     private function resolveProviderVehicleId(string $rawSupplierId, array $gv, array $supplierData, mixed $supplierVehicleId): ?string
@@ -563,6 +575,10 @@ class GatewayVehicleTransformer
         $extrasPreview = is_array($gv['extras_preview'] ?? null) ? $gv['extras_preview'] : [];
         // Fallback: if no extras_preview, use full extras array (e.g. OKMobility, Locauto)
         $fullExtras = is_array($gv['extras'] ?? null) ? $gv['extras'] : [];
+        if (in_array($source, ['locauto_rent', 'locauto'], true)) {
+            $extrasPreview = $this->filterLocautoCustomerSelectableExtras($extrasPreview);
+            $fullExtras = $this->filterLocautoCustomerSelectableExtras($fullExtras);
+        }
         $products = is_array($gv['products'] ?? null) ? $gv['products'] : [];
         $image = (string) ($gv['image'] ?? '');
         $totalPrice = (float) ($pricing['total_price'] ?? 0);
@@ -677,6 +693,7 @@ class GatewayVehicleTransformer
             'recordgo_country' => $providerPayload['country'] ?? null,
             'terms' => $this->extractTerms($source, $providerPayload),
             'driver_requirements' => $this->extractDriverRequirements($source, $providerPayload, $gv),
+            'rental_policies' => $this->extractRentalPolicies($source, $gv),
             'bags' => (($specs['luggage_small'] ?? 0) + ($specs['luggage_medium'] ?? 0) + ($specs['luggage_large'] ?? 0)) ?: null,
             'suitcases' => $specs['luggage_large'] ?? null,
             'security_deposit' => $pricing['deposit_amount'] ?? null,
@@ -797,6 +814,50 @@ class GatewayVehicleTransformer
         };
     }
 
+    private function filterLocautoCustomerSelectableExtras(array $extras): array
+    {
+        return collect($extras)
+            ->filter(fn ($extra) => is_array($extra)
+                && ! $this->isLocautoOneWayFeeExtra($extra)
+                && ! $this->isLocautoIncludedNonSelectableExtra($extra))
+            ->values()
+            ->all();
+    }
+
+    private function isLocautoOneWayFeeExtra(array $extra): bool
+    {
+        $supplierData = is_array($extra['supplier_data'] ?? null) ? $extra['supplier_data'] : [];
+        $code = (string) ($extra['code'] ?? ($supplierData['code'] ?? ($extra['id'] ?? '')));
+        if (str_starts_with($code, 'ext_') && substr_count($code, '_') >= 2) {
+            $parts = explode('_', $code);
+            $code = (string) end($parts);
+        }
+
+        $label = strtolower((string) ($extra['name'] ?? '') . ' ' . (string) ($extra['description'] ?? ''));
+        $label = str_replace('-', ' ', $label);
+
+        return in_array($code, ['23', '35'], true) || str_contains($label, 'one way');
+    }
+
+    private function isLocautoIncludedNonSelectableExtra(array $extra): bool
+    {
+        $supplierData = is_array($extra['supplier_data'] ?? null) ? $extra['supplier_data'] : [];
+        $code = (string) ($extra['code'] ?? ($supplierData['code'] ?? ($extra['id'] ?? '')));
+        if (str_starts_with($code, 'ext_') && substr_count($code, '_') >= 2) {
+            $parts = explode('_', $code);
+            $code = (string) end($parts);
+        }
+
+        if ($code !== '55') {
+            return false;
+        }
+
+        $total = $extra['total_for_booking'] ?? ($extra['total_price'] ?? ($supplierData['total_for_booking'] ?? null));
+        $amount = $extra['amount'] ?? ($supplierData['amount'] ?? ($extra['daily_rate'] ?? null));
+
+        return (float) ($total ?? 0) <= 0.0 && (float) ($amount ?? 0) <= 0.0;
+    }
+
     private function mapCanonicalInsuranceOptions(array $gv, array $providerPayload): array
     {
         // Try booking_context.insurance_options first
@@ -867,9 +928,13 @@ class GatewayVehicleTransformer
         return collect($extrasPreview)->filter(fn ($extra) => is_array($extra))->map(function ($extra) {
             $dailyRate = (float) ($extra['daily_rate'] ?? 0);
             $totalPrice = (float) ($extra['total_price'] ?? 0);
+            $amount = array_key_exists('amount', $extra) && is_numeric($extra['amount'])
+                ? (float) $extra['amount']
+                : $dailyRate;
             $currency = $extra['currency'] ?? 'EUR';
             $id = $extra['id'] ?? '';
             $mandatory = (bool) ($extra['mandatory'] ?? false);
+            $pricingType = $extra['pricing_type'] ?? ($dailyRate > 0 ? 'per_day' : 'per_rental');
 
             // Extract raw code from gateway ID (e.g. 'ext_ok_mobility_ADD' → 'ADD')
             $code = $extra['code'] ?? $id;
@@ -891,7 +956,7 @@ class GatewayVehicleTransformer
                 'option_id' => $id,
                 'optionID' => $id,
                 'price' => $dailyRate,
-                'amount' => $dailyRate,
+                'amount' => $amount,
                 'total_price' => $totalPrice,
                 'price_per_day' => $dailyRate,
                 'service_id' => $id,
@@ -904,6 +969,8 @@ class GatewayVehicleTransformer
                 'type' => $extra['type'] ?? 'equipment',
                 'code' => $code,
                 'total' => $totalPrice,
+                'pricing_type' => $pricingType,
+                'per_day' => $pricingType === 'per_day',
                 'payment' => $extra['payment'] ?? null,
                 'excess' => $extra['excess'] ?? null,
                 'excessAmount' => $extra['excess'] ?? ($extra['excessAmount'] ?? null),

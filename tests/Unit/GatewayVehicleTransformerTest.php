@@ -149,6 +149,135 @@ class GatewayVehicleTransformerTest extends TestCase
         $this->assertArrayHasKey('included_in_rate', $extra);
     }
 
+    public function test_locauto_one_way_fee_is_not_exposed_as_customer_extra(): void
+    {
+        $gv = $this->makeGatewayVehicle('locauto_rent', [
+            [
+                'id' => 'ext_locauto_rent_35',
+                'name' => 'Sardinia one way fee',
+                'description' => 'Sardinia one way fee',
+                'daily_rate' => 0.0,
+                'total_price' => 719.8,
+                'currency' => 'EUR',
+                'max_quantity' => 1,
+                'mandatory' => true,
+                'type' => 'fee',
+                'supplier_data' => [
+                    'code' => '35',
+                    'amount' => 719.8,
+                    'pricing_type' => 'per_rental',
+                    'included_in_rate' => false,
+                ],
+            ],
+            [
+                'id' => 'ext_locauto_rent_19',
+                'name' => 'GPS Navigation',
+                'description' => 'GPS Navigation',
+                'daily_rate' => 10.0,
+                'total_price' => 30.0,
+                'currency' => 'EUR',
+                'max_quantity' => 1,
+                'mandatory' => false,
+                'type' => 'equipment',
+                'supplier_data' => [
+                    'code' => '19',
+                    'amount' => 10.0,
+                    'pricing_type' => 'per_day',
+                    'included_in_rate' => false,
+                ],
+            ],
+            [
+                'id' => 'ext_locauto_rent_55',
+                'name' => 'Snow chains',
+                'description' => 'Snow chains',
+                'daily_rate' => 0.0,
+                'total_price' => 0.0,
+                'currency' => 'EUR',
+                'max_quantity' => 1,
+                'mandatory' => false,
+                'type' => 'equipment',
+                'supplier_data' => [
+                    'code' => '55',
+                    'amount' => 0.0,
+                    'pricing_type' => 'per_day',
+                    'included_in_rate' => false,
+                ],
+            ],
+        ]);
+
+        $result = $this->transformer->transform($gv, 5);
+
+        $this->assertCount(1, $result['extras']);
+        $this->assertSame('19', $result['extras'][0]['code']);
+        $this->assertSame(30.0, $result['extras'][0]['total_for_booking']);
+        $this->assertSame('per_day', $result['extras'][0]['pricing_type']);
+    }
+
+    public function test_locauto_canonical_payload_exposes_rental_policies(): void
+    {
+        $gv = [
+            'id' => 'gw_locauto_1',
+            'source' => 'locauto_rent',
+            'provider_code' => 'locauto_rent',
+            'display_name' => 'Fiat Panda or similar',
+            'brand' => 'Fiat',
+            'model' => 'Panda',
+            'category' => 'mini',
+            'image' => '',
+            'specs' => [
+                'sipp_code' => 'MDMR',
+                'transmission' => 'manual',
+                'fuel' => 'petrol',
+                'seating_capacity' => 4,
+            ],
+            'pricing' => [
+                'currency' => 'EUR',
+                'price_per_day' => 76.5,
+                'total_price' => 612.0,
+                'deposit_amount' => 0.0,
+                'deposit_currency' => 'EUR',
+            ],
+            'policies' => ['mileage_policy' => 'unlimited'],
+            'location' => [
+                'pickup' => ['provider_location_id' => 'MXP2', 'name' => 'Milano Malpensa Airport T2'],
+                'dropoff' => ['provider_location_id' => 'MXP2', 'name' => 'Milano Malpensa Airport T2'],
+            ],
+            'booking_context' => ['provider_payload' => ['sipp_code' => 'MDMR']],
+            'extras_preview' => [],
+        ];
+
+        $result = $this->transformer->transform($gv, 8);
+
+        $policyLabels = array_column($result['rental_policies'], 'label');
+        $this->assertContains('Security Deposit', $policyLabels);
+        $securityDepositPolicy = $result['rental_policies'][array_search('Security Deposit', $policyLabels, true)];
+        $this->assertSame('No car deposit required', $securityDepositPolicy['value']);
+    }
+
+    public function test_locauto_deposit_policy_displays_no_car_deposit(): void
+    {
+        $gv = $this->makeGatewayVehicle('locauto_rent');
+        $gv['pricing']['deposit_amount'] = 0.0;
+        $gv['pricing']['deposit_currency'] = 'EUR';
+        $gv['supplier_data'] = ['sipp_code' => 'EDMR'];
+
+        $result = $this->transformer->transform($gv, 5);
+
+        $this->assertSame(0.0, $result['security_deposit']);
+        $this->assertSame(0.0, $result['benefits']['deposit_amount']);
+        $this->assertSame('EUR', $result['benefits']['deposit_currency']);
+
+        $policyLabels = array_column($result['rental_policies'], 'label');
+        $this->assertContains('Security Deposit', $policyLabels);
+        $securityDepositPolicy = $result['rental_policies'][array_search('Security Deposit', $policyLabels, true)];
+        $this->assertSame('No car deposit required', $securityDepositPolicy['value']);
+
+        $termsText = implode(' ', array_merge(...array_column($result['terms'], 'conditions')));
+        $this->assertStringContainsString('EUR 0.00 / no car deposit required', $termsText);
+        $this->assertStringNotContainsString('Deposit blocked on credit card', $termsText);
+        $this->assertStringNotContainsString('deposit + rental charges', $termsText);
+    }
+
     public function test_surprice_extras_preserve_supplier_data_fields(): void
     {
         $gv = $this->makeGatewayVehicle('surprice');
