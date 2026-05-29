@@ -82,7 +82,7 @@ class LocationSearchServiceTest extends TestCase
         $this->assertCount(1, $results);
         $this->assertSame('Marrakech Airport', $results[0]['name']);
         $this->assertSame('RAK', $results[0]['iata']);
-        $this->assertSame('internal_1', $results[0]['our_location_id']);
+        $this->assertNull($results[0]['our_location_id']);
     }
 
     public function test_it_preserves_provider_metadata_needed_for_one_way_and_gateway_searches(): void
@@ -393,7 +393,7 @@ class LocationSearchServiceTest extends TestCase
 
         $this->assertNotNull($location);
         $this->assertSame('Marrakech Airport', $location['name']);
-        $this->assertSame('internal_1', $location['our_location_id']);
+        $this->assertNull($location['our_location_id']);
     }
 
     public function test_it_augments_gateway_location_by_unified_id_with_same_iata_provider_aliases(): void
@@ -563,7 +563,7 @@ class LocationSearchServiceTest extends TestCase
 
         $this->assertNotNull($location);
         $this->assertSame('Marrakech Airport', $location['name']);
-        $this->assertSame('internal_1', $location['our_location_id']);
+        $this->assertNull($location['our_location_id']);
     }
 
     public function test_it_returns_empty_results_when_gateway_search_fails(): void

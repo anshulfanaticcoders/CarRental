@@ -5,6 +5,7 @@ namespace App\Services\Skyscanner;
 use App\Models\Vehicle;
 use App\Models\VendorLocation;
 use App\Services\LocationSearchService;
+use App\Services\Search\InternalLocationResolver;
 use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Carbon\Carbon;
@@ -13,20 +14,20 @@ class CarHireInternalInventoryService
 {
     public function __construct(
         private readonly LocationSearchService $locationSearchService,
+        private readonly InternalLocationResolver $internalLocationResolver,
         private readonly InternalSearchVehicleFactory $internalSearchVehicleFactory,
         private readonly InternalVehicleAvailabilityService $internalVehicleAvailabilityService,
-    ) {
-    }
+    ) {}
 
     public function search(array $criteria): array
     {
-        $pickupDateTime = Carbon::parse($criteria['pickup_date'] . ' ' . $criteria['pickup_time']);
-        $dropoffDateTime = Carbon::parse($criteria['dropoff_date'] . ' ' . $criteria['dropoff_time']);
+        $pickupDateTime = Carbon::parse($criteria['pickup_date'].' '.$criteria['pickup_time']);
+        $dropoffDateTime = Carbon::parse($criteria['dropoff_date'].' '.$criteria['dropoff_time']);
         $rentalDays = max(1, (int) ceil($pickupDateTime->diffInMinutes($dropoffDateTime) / 1440));
 
         $canonicalLocation = $this->resolveCanonicalLocation($criteria);
 
-        if (!$canonicalLocation) {
+        if (! $canonicalLocation) {
             return [];
         }
 
@@ -88,10 +89,7 @@ class CarHireInternalInventoryService
         $locationId = (int) ($criteria['pickup_location_id'] ?? 0);
 
         if ($locationId > 0) {
-            $directLocation = VendorLocation::query()
-                ->whereKey($locationId)
-                ->where('is_active', true)
-                ->first();
+            $directLocation = $this->internalLocationResolver->activeLocationWithVehiclesById($locationId);
 
             if ($directLocation) {
                 return $directLocation;
@@ -102,25 +100,11 @@ class CarHireInternalInventoryService
             'unified_location_id' => $locationId,
         ]);
 
-        if (!is_array($searchLocation) || $searchLocation === []) {
+        if (! is_array($searchLocation) || $searchLocation === []) {
             return null;
         }
 
-        $internalProvider = collect($searchLocation['providers'] ?? [])
-            ->first(function (array $provider): bool {
-                return strtolower(trim((string) ($provider['provider'] ?? ''))) === 'internal'
-                    && trim((string) ($provider['pickup_id'] ?? '')) !== '';
-            });
-
-        $internalPickupId = (int) ($internalProvider['pickup_id'] ?? 0);
-        if ($internalPickupId <= 0) {
-            return null;
-        }
-
-        return VendorLocation::query()
-            ->whereKey($internalPickupId)
-            ->where('is_active', true)
-            ->first();
+        return $this->internalLocationResolver->resolveForUnifiedLocation($searchLocation);
     }
 
     private function joinAddress(array $parts): ?string

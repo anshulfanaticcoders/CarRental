@@ -2,9 +2,14 @@
 
 namespace App\Services;
 
+use App\Services\Search\InternalLocationResolver;
+
 class LocationSearchService
 {
-    public function __construct(private VrooemGatewayService $gatewayService) {}
+    public function __construct(
+        private VrooemGatewayService $gatewayService,
+        private InternalLocationResolver $internalLocationResolver
+    ) {}
 
     /**
      * Normalize a string by removing diacritics and converting to lowercase.
@@ -481,6 +486,7 @@ class LocationSearchService
             })
             ->values()
             ->all();
+        $location = $this->internalLocationResolver->appendVerifiedProvider($location);
         $location['provider_count'] = count($location['providers']);
 
         return $location;

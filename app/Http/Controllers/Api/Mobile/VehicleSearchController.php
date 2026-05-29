@@ -7,6 +7,7 @@ use App\Models\Vehicle;
 use App\Services\GatewaySearchParamsBuilder;
 use App\Services\LocationSearchService;
 use App\Services\PriceVerificationService;
+use App\Services\Search\InternalLocationResolver;
 use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\GatewayVehicleTransformer;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
@@ -39,6 +40,7 @@ class VehicleSearchController extends Controller
         private VrooemGatewayService $gatewayService,
         private GatewayVehicleTransformer $transformer,
         private InternalSearchVehicleFactory $internalFactory,
+        private InternalLocationResolver $internalLocationResolver,
         private InternalVehicleAvailabilityService $availability,
     ) {}
 
@@ -46,6 +48,7 @@ class VehicleSearchController extends Controller
     {
         $raw = config('services.pricing.provider_markup_percent');
         $percent = is_numeric($raw) ? (float) $raw : self::DEFAULT_MARKUP_PERCENT;
+
         return $percent / 100;
     }
 
@@ -108,6 +111,7 @@ class VehicleSearchController extends Controller
             $gatewayResult = $this->gatewayService->searchVehicles($gatewayParams);
         } catch (\Throwable $e) {
             Log::warning('Mobile vehicle search: gateway request failed', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Search service is temporarily unavailable. Try again shortly.',
             ], 503);
@@ -164,7 +168,7 @@ class VehicleSearchController extends Controller
         // Seed PriceVerificationService cache so checkout can verify against stored prices.
         // Mirrors GatewaySearchService::search() lines 196-260: stamp price_hash onto each
         // slim vehicle so mobile can pass it back to verifyPrices at checkout time.
-        $searchSessionId = 'mobile_' . ($request->user()?->id ?? 'guest') . '_' . now()->timestamp;
+        $searchSessionId = 'mobile_'.($request->user()?->id ?? 'guest').'_'.now()->timestamp;
         $priceMap = [];
         try {
             $priceMap = app(PriceVerificationService::class)->storeOriginalPrices($searchSessionId, $combined);
@@ -233,14 +237,18 @@ class VehicleSearchController extends Controller
             $decoded = json_decode($rawFeatures, true);
             $rawFeatures = is_array($decoded) ? $decoded : [];
         }
-        if (! is_array($rawFeatures)) $rawFeatures = [];
+        if (! is_array($rawFeatures)) {
+            $rawFeatures = [];
+        }
 
         $paymentMethods = $providerPayload['payment_method'] ?? null;
         if (is_string($paymentMethods)) {
             $decoded = json_decode($paymentMethods, true);
             $paymentMethods = is_array($decoded) ? $decoded : [$paymentMethods];
         }
-        if (! is_array($paymentMethods)) $paymentMethods = [];
+        if (! is_array($paymentMethods)) {
+            $paymentMethods = [];
+        }
 
         return [
             'id' => $v['id'] ?? null,
@@ -353,14 +361,23 @@ class VehicleSearchController extends Controller
     private function deriveDefaultProtectionCode(array $v): ?string
     {
         $source = strtolower((string) ($v['source'] ?? ''));
-        if ($source === 'adobe') return 'PLI';
-        if ($source === 'locauto_rent') return null; // user selects from 7 codes
+        if ($source === 'adobe') {
+            return 'PLI';
+        }
+        if ($source === 'locauto_rent') {
+            return null;
+        } // user selects from 7 codes
         // Default: first product/plan code if any.
         $products = is_array($v['products'] ?? null) ? $v['products'] : [];
         foreach ($products as $p) {
-            if (is_array($p) && ! empty($p['code'])) return (string) $p['code'];
-            if (is_array($p) && ! empty($p['type'])) return (string) $p['type'];
+            if (is_array($p) && ! empty($p['code'])) {
+                return (string) $p['code'];
+            }
+            if (is_array($p) && ! empty($p['type'])) {
+                return (string) $p['type'];
+            }
         }
+
         return null;
     }
 
@@ -382,6 +399,7 @@ class VehicleSearchController extends Controller
                     }
                 }
             }
+
             return $out;
         }
 
@@ -393,8 +411,8 @@ class VehicleSearchController extends Controller
                 '145' => 'Tyres & Glass Protection',
                 '140' => 'Theft Protection',
                 '146' => 'Roadside Assistance Plus',
-                '6'   => 'Premium Cover',
-                '43'  => 'Personal Accident',
+                '6' => 'Premium Cover',
+                '43' => 'Personal Accident',
             ];
             $extras = is_array($v['extras'] ?? null) ? $v['extras'] : [];
             $filtered = array_values(array_filter($extras, function ($e) use ($codes) {
@@ -403,14 +421,18 @@ class VehicleSearchController extends Controller
             $out = $this->slimExtras($filtered, $markup, $rentalDays);
             foreach ($out as &$plan) {
                 $code = (string) ($plan['code'] ?? '');
-                if (isset($names[$code])) $plan['name'] = $names[$code];
+                if (isset($names[$code])) {
+                    $plan['name'] = $names[$code];
+                }
             }
+
             return $out;
         }
 
         if ($source === 'renteon') {
             // Renteon: insurance_options has daily_rate + total_price — use slimExtras
             $insurance = is_array($v['insurance_options'] ?? null) ? $v['insurance_options'] : [];
+
             return $this->slimExtras($insurance, $markup, $rentalDays);
         }
 
@@ -460,6 +482,7 @@ class VehicleSearchController extends Controller
             $net = (float) $valueWithoutTax;
             $rate = (float) $taxRate;
             $vat = round($net * $rate / 100, 2);
+
             return [
                 'type' => $source,
                 'net' => round($net, 2),
@@ -481,7 +504,9 @@ class VehicleSearchController extends Controller
         if ($source === 'renteon') {
             $services = $supplierData['included_services'] ?? ($v['included_services'] ?? []);
             foreach ($services as $s) {
-                if (! is_array($s)) continue;
+                if (! is_array($s)) {
+                    continue;
+                }
                 $out[] = [
                     'name' => (string) ($s['name'] ?? $s['service_name'] ?? 'Service'),
                     'quantity_included' => isset($s['quantity_included']) ? (int) $s['quantity_included'] : null,
@@ -494,7 +519,9 @@ class VehicleSearchController extends Controller
         if ($source === 'sicily_by_car') {
             $services = $supplierData['included_services'] ?? [];
             foreach ($services as $s) {
-                if (! is_array($s)) continue;
+                if (! is_array($s)) {
+                    continue;
+                }
                 $out[] = [
                     'name' => (string) ($s['name'] ?? 'Service'),
                     'quantity_included' => null,
@@ -512,10 +539,14 @@ class VehicleSearchController extends Controller
         $source = strtolower((string) ($v['source'] ?? ''));
         $supplierData = is_array($v['supplier_data'] ?? null) ? $v['supplier_data'] : [];
 
-        if ($source !== 'renteon') return null;
+        if ($source !== 'renteon') {
+            return null;
+        }
 
         $dp = $supplierData['driver_policy'] ?? null;
-        if (! is_array($dp)) return null;
+        if (! is_array($dp)) {
+            return null;
+        }
 
         return [
             'min_age' => isset($dp['min_age']) ? (int) $dp['min_age'] : null,
@@ -531,11 +562,15 @@ class VehicleSearchController extends Controller
     private function deriveCancellationSummary(array $v): ?array
     {
         $source = strtolower((string) ($v['source'] ?? ''));
-        if ($source !== 'okmobility' && $source !== 'ok_mobility') return null;
+        if ($source !== 'okmobility' && $source !== 'ok_mobility') {
+            return null;
+        }
 
         $supplierData = is_array($v['supplier_data'] ?? null) ? $v['supplier_data'] : [];
         $c = $supplierData['cancellation'] ?? ($v['cancellation'] ?? null);
-        if (! is_array($c)) return null;
+        if (! is_array($c)) {
+            return null;
+        }
 
         return [
             'available' => (bool) ($c['available'] ?? false),
@@ -550,22 +585,29 @@ class VehicleSearchController extends Controller
         if ($source === 'okmobility' || $source === 'ok_mobility') {
             return ['OPC', 'OPCO'];
         }
+
         return [];
     }
 
     private function deriveMandatoryAmount(array $v, float $markup): float
     {
         $source = strtolower((string) ($v['source'] ?? ''));
-        if ($source !== 'adobe') return 0.0;
+        if ($source !== 'adobe') {
+            return 0.0;
+        }
         $pli = $v['pli'] ?? null;
+
         return is_numeric($pli) ? $this->grossUp((float) $pli, $markup) : 0.0;
     }
 
     private function deriveMandatoryAmountNet(array $v): float
     {
         $source = strtolower((string) ($v['source'] ?? ''));
-        if ($source !== 'adobe') return 0.0;
+        if ($source !== 'adobe') {
+            return 0.0;
+        }
         $pli = $v['pli'] ?? null;
+
         return is_numeric($pli) ? round((float) $pli, 2) : 0.0;
     }
 
@@ -626,6 +668,7 @@ class VehicleSearchController extends Controller
 
         if ($source === 'recordgo') {
             $included = is_array($v['recordgo_products'] ?? null) ? $v['recordgo_products'] : [];
+
             return [
                 'kind' => 'recordgo',
                 'payload' => ['products' => $included],
@@ -651,8 +694,13 @@ class VehicleSearchController extends Controller
 
     private function splitCsv(mixed $val): array
     {
-        if (is_array($val)) return array_values(array_filter(array_map(fn ($s) => is_string($s) ? trim($s) : null, $val)));
-        if (! is_string($val) || trim($val) === '') return [];
+        if (is_array($val)) {
+            return array_values(array_filter(array_map(fn ($s) => is_string($s) ? trim($s) : null, $val)));
+        }
+        if (! is_string($val) || trim($val) === '') {
+            return [];
+        }
+
         return array_values(array_filter(array_map('trim', explode(',', $val))));
     }
 
@@ -666,20 +714,26 @@ class VehicleSearchController extends Controller
             $out = [];
             foreach ($imgs as $img) {
                 $url = is_string($img) ? $img : ($img['image_url'] ?? ($img['image_path'] ?? null));
-                if (! $url) continue;
+                if (! $url) {
+                    continue;
+                }
                 if (! preg_match('#^https?://#i', $url)) {
                     $url = $host.'/storage/'.ltrim($url, '/');
                 }
                 $out[] = $url;
             }
+
             return array_values(array_unique($out));
         }
         $imgs = $v['supplier_data']['images'] ?? ($v['images'] ?? []);
         $out = [];
         foreach ($imgs as $img) {
             $url = is_string($img) ? $img : ($img['image_url'] ?? null);
-            if ($url) $out[] = $url;
+            if ($url) {
+                $out[] = $url;
+            }
         }
+
         return array_values(array_unique($out));
     }
 
@@ -716,23 +770,35 @@ class VehicleSearchController extends Controller
         $cancellation = $policies['cancellation'] ?? null;
         if (is_array($cancellation) && ! empty($cancellation['available'])) {
             $days = $cancellation['days_before_pickup'] ?? null;
-            $items[] = $days ? "Free cancellation up to {$days} day".($days === 1 ? '' : 's')." before pickup" : 'Free cancellation';
+            $items[] = $days ? "Free cancellation up to {$days} day".($days === 1 ? '' : 's').' before pickup' : 'Free cancellation';
         } elseif (! empty($rawBenefits['cancellation_available_per_day'])) {
             $days = $rawBenefits['cancellation_available_per_day_date'] ?? null;
-            $items[] = $days ? "Free cancellation up to {$days} day".((int) $days === 1 ? '' : 's')." before pickup" : 'Free cancellation';
+            $items[] = $days ? "Free cancellation up to {$days} day".((int) $days === 1 ? '' : 's').' before pickup' : 'Free cancellation';
         }
 
         // Provider-side flags
-        if (! empty($rawBenefits['theft_protection'])) $items[] = 'Theft protection';
-        if (! empty($rawBenefits['collision_damage_waiver']) || ! empty($rawBenefits['cdw'])) $items[] = 'Collision damage waiver';
-        if (! empty($rawBenefits['airport_fee_included'])) $items[] = 'Airport fee included';
-        if (! empty($rawBenefits['vat_included'])) $items[] = 'VAT included';
-        if (! empty($rawBenefits['additional_driver_included'])) $items[] = 'Additional driver included';
+        if (! empty($rawBenefits['theft_protection'])) {
+            $items[] = 'Theft protection';
+        }
+        if (! empty($rawBenefits['collision_damage_waiver']) || ! empty($rawBenefits['cdw'])) {
+            $items[] = 'Collision damage waiver';
+        }
+        if (! empty($rawBenefits['airport_fee_included'])) {
+            $items[] = 'Airport fee included';
+        }
+        if (! empty($rawBenefits['vat_included'])) {
+            $items[] = 'VAT included';
+        }
+        if (! empty($rawBenefits['additional_driver_included'])) {
+            $items[] = 'Additional driver included';
+        }
 
         // Free-form features
         if (is_array($v['features'] ?? null)) {
             foreach ($v['features'] as $f) {
-                if (is_string($f) && ! in_array($f, $items, true)) $items[] = $f;
+                if (is_string($f) && ! in_array($f, $items, true)) {
+                    $items[] = $f;
+                }
             }
         }
 
@@ -760,40 +826,57 @@ class VehicleSearchController extends Controller
         $out = [];
         if (is_array($req)) {
             foreach ($req as $key => $value) {
-                if ($key === 'mileage_type' || $key === 'minimum_driver_age') continue;
+                if ($key === 'mileage_type' || $key === 'minimum_driver_age') {
+                    continue;
+                }
                 $val = strtolower((string) $value);
                 if (in_array($val, ['1', 'true', 'yes', 'y'], true)) {
                     $out[] = $labels[$key] ?? ucwords(str_replace('_', ' ', $key));
                 }
             }
         }
+
         return array_values(array_unique($out));
     }
 
     private function extractTerms(array $v): array
     {
         $terms = $v['terms'] ?? null;
-        if (! is_array($terms)) return [];
+        if (! is_array($terms)) {
+            return [];
+        }
         $out = [];
         foreach ($terms as $section) {
-            if (! is_array($section)) continue;
+            if (! is_array($section)) {
+                continue;
+            }
             $name = (string) ($section['name'] ?? 'Terms');
             $conditions = $section['conditions'] ?? [];
-            if (! is_array($conditions)) $conditions = [$conditions];
+            if (! is_array($conditions)) {
+                $conditions = [$conditions];
+            }
             $clean = array_values(array_filter(array_map('strval', $conditions)));
-            if ($clean) $out[] = ['name' => $name, 'conditions' => $clean];
+            if ($clean) {
+                $out[] = ['name' => $name, 'conditions' => $clean];
+            }
         }
+
         return $out;
     }
 
     private function parseList(mixed $val): array
     {
-        if (! $val) return [];
+        if (! $val) {
+            return [];
+        }
         if (is_string($val)) {
             $decoded = json_decode($val, true);
             $val = is_array($decoded) ? $decoded : [$val];
         }
-        if (! is_array($val)) return [];
+        if (! is_array($val)) {
+            return [];
+        }
+
         return array_values(array_filter(array_map(fn ($v) => is_string($v) ? $v : null, $val)));
     }
 
@@ -845,6 +928,7 @@ class VehicleSearchController extends Controller
                     'reason' => 'Vehicle not found.',
                 ], 404);
             }
+
             return response()->json([
                 'available' => false,
                 'reason' => 'Not available for the selected dates.',
@@ -890,6 +974,7 @@ class VehicleSearchController extends Controller
                 'vehicle_id' => $vehicleId,
                 'error' => $e->getMessage(),
             ]);
+
             return response()->json([
                 'available' => false,
                 'reason' => 'Could not compute live quote. Try again.',
@@ -900,24 +985,17 @@ class VehicleSearchController extends Controller
     private function fetchInternalVehicles(array $location, array $validated, int $rentalDays): array
     {
         try {
-            $city = $location['city'] ?? null;
-            $country = $location['country'] ?? null;
-            $countryCode = $location['country_code'] ?? null;
+            $internalLocation = $this->internalLocationResolver->resolveForUnifiedLocation($location);
+            if ($internalLocation === null) {
+                return [];
+            }
+
             $lat = $location['latitude'] ?? null;
             $lng = $location['longitude'] ?? null;
 
             $query = Vehicle::query()
-                ->with(['images', 'vendor.profile', 'vendorProfile', 'vendorProfileData', 'benefits', 'vendorPlans', 'addons']);
-
-            if (! empty($city)) {
-                $query->where('city', $city);
-            } elseif (! empty($countryCode)) {
-                $query->where('country_code', $countryCode);
-            } elseif (! empty($country)) {
-                $query->where('country', $country);
-            } else {
-                return [];
-            }
+                ->with(['images', 'vendor.profile', 'vendorProfile', 'vendorProfileData', 'benefits', 'vendorPlans', 'addons'])
+                ->where('vendor_location_id', $internalLocation->id);
 
             $this->availability->apply($query, [
                 'pickup_date' => $validated['pickup_date'],
@@ -952,9 +1030,11 @@ class VehicleSearchController extends Controller
                     ]);
                 }
             }
+
             return $out;
         } catch (\Throwable $e) {
             Log::warning('Mobile vehicle search: internal fetch failed', ['error' => $e->getMessage()]);
+
             return [];
         }
     }
@@ -963,9 +1043,13 @@ class VehicleSearchController extends Controller
     {
         $out = [];
         foreach ($products as $p) {
-            if (! is_array($p)) continue;
+            if (! is_array($p)) {
+                continue;
+            }
             $totalNet = (float) ($p['total'] ?? 0);
-            if ($totalNet <= 0) continue;
+            if ($totalNet <= 0) {
+                continue;
+            }
             $dailyNet = (float) ($p['price_per_day'] ?? ($totalNet / max(1, $rentalDays)));
             $out[] = [
                 'code' => (string) ($p['type'] ?? 'BAS'),
@@ -984,6 +1068,7 @@ class VehicleSearchController extends Controller
                 'is_basic' => strtoupper((string) ($p['type'] ?? 'BAS')) === 'BAS',
             ];
         }
+
         return $out;
     }
 
@@ -991,7 +1076,9 @@ class VehicleSearchController extends Controller
     {
         $out = [];
         foreach ($extras as $e) {
-            if (! is_array($e)) continue;
+            if (! is_array($e)) {
+                continue;
+            }
 
             // Prefer total_for_booking / total_price (already × days). Fall back to daily_rate.
             $totalForBooking = $e['total_for_booking'] ?? $e['total_price'] ?? $e['total'] ?? null;
@@ -1032,6 +1119,7 @@ class VehicleSearchController extends Controller
                 'included' => (bool) ($e['included'] ?? false),
             ];
         }
+
         return $out;
     }
 
@@ -1039,7 +1127,9 @@ class VehicleSearchController extends Controller
     {
         $out = [];
         foreach (($gatewayResult['supplier_results'] ?? []) as $sr) {
-            if (! is_array($sr)) continue;
+            if (! is_array($sr)) {
+                continue;
+            }
             $out[] = [
                 'provider' => $this->transformer->normalizeSupplierId((string) ($sr['supplier_id'] ?? 'unknown')),
                 'status' => empty($sr['error']) ? 'ok' : 'error',
@@ -1048,6 +1138,7 @@ class VehicleSearchController extends Controller
                 'error' => $sr['error'] ?? null,
             ];
         }
+
         return $out;
     }
 }

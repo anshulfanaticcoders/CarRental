@@ -22,6 +22,7 @@ class SkyscannerLocationsApiTest extends TestCase
         config([
             'skyscanner.api_key' => 'secret-key',
             'skyscanner.testing_access.auth_header' => 'x-api-key',
+            'skyscanner.inventory_scope' => 'internal',
         ]);
 
         $response = $this->getJson('/api/skyscanner/locations');
@@ -37,6 +38,7 @@ class SkyscannerLocationsApiTest extends TestCase
         config([
             'skyscanner.api_key' => 'secret-key',
             'skyscanner.testing_access.auth_header' => 'x-api-key',
+            'skyscanner.inventory_scope' => 'internal',
         ]);
 
         $category = VehicleCategory::create([
@@ -63,7 +65,7 @@ class SkyscannerLocationsApiTest extends TestCase
             'company_email' => 'fleet@example.com',
             'company_phone_number' => '+212600000000',
             'company_address' => 'Marrakech',
-            'company_gst_number' => 'GST-RAK-' . $vendor->id,
+            'company_gst_number' => 'GST-RAK-'.$vendor->id,
             'status' => 'approved',
         ]);
 

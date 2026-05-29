@@ -2,13 +2,18 @@
 
 namespace App\Services\Trabber;
 
+use App\Models\Vehicle;
 use App\Models\VendorLocation;
 use App\Services\LocationSearchService;
+use App\Services\Search\InternalLocationResolver;
 use Illuminate\Support\Collection;
 
 class TrabberLocationResolver
 {
-    public function __construct(private readonly LocationSearchService $locationSearchService) {}
+    public function __construct(
+        private readonly LocationSearchService $locationSearchService,
+        private readonly InternalLocationResolver $internalLocationResolver
+    ) {}
 
     public function listLocations(): Collection
     {
@@ -23,7 +28,7 @@ class TrabberLocationResolver
     {
         return VendorLocation::query()
             ->where('is_active', true)
-            ->whereHas('vehicles', fn ($query) => $query->whereIn('status', ['active', 'available']))
+            ->whereHas('vehicles', fn ($query) => $query->whereIn('status', Vehicle::searchableStatuses()))
             ->orderBy('country_code')
             ->orderBy('city')
             ->orderBy('name')
@@ -73,28 +78,9 @@ class TrabberLocationResolver
             return null;
         }
 
-        $vendorLocationId = $this->nullableString($location['vendor_location_id'] ?? $location['id'] ?? null);
-        if ($vendorLocationId !== null && ctype_digit($vendorLocationId)) {
-            $resolved = VendorLocation::query()
-                ->whereKey((int) $vendorLocationId)
-                ->where('is_active', true)
-                ->first();
-
-            if ($resolved) {
-                return $resolved;
-            }
-        }
-
-        $iata = strtoupper($this->nullableString($location['iata'] ?? $location['iata_code'] ?? null) ?? '');
-        if ($iata !== '') {
-            $resolved = VendorLocation::query()
-                ->where('is_active', true)
-                ->whereRaw('UPPER(iata_code) = ?', [$iata])
-                ->first();
-
-            if ($resolved) {
-                return $resolved;
-            }
+        $resolved = $this->internalLocationResolver->resolveForCriteria($location);
+        if ($resolved !== null) {
+            return $resolved;
         }
 
         $geonameId = $this->nullableString($location['geoname_id'] ?? null);
@@ -122,6 +108,7 @@ class TrabberLocationResolver
 
         return VendorLocation::query()
             ->where('is_active', true)
+            ->whereHas('vehicles', fn ($query) => $query->whereIn('status', Vehicle::searchableStatuses()))
             ->get()
             ->map(function (VendorLocation $candidate) use ($latitude, $longitude) {
                 $candidate->distance_km = $this->distanceKm(

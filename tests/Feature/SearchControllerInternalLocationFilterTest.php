@@ -10,6 +10,8 @@ use App\Models\VendorLocation;
 use App\Models\VendorProfile;
 use App\Services\LocationSearchService;
 use App\Services\Search\GatewaySearchService;
+use App\Services\Search\InternalLocationResolver;
+use App\Services\VrooemGatewayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -26,6 +28,91 @@ class SearchControllerInternalLocationFilterTest extends TestCase
         Mockery::close();
 
         parent::tearDown();
+    }
+
+    public function test_location_lookup_overlays_internal_provider_when_gateway_location_is_missing_it(): void
+    {
+        [, $dxbLocation] = $this->createInternalVehicleAtDubaiAirport();
+
+        $service = $this->locationSearchServiceForGatewayLocation([
+            'unified_location_id' => 3385755165,
+            'name' => 'Dubai Airport (DXB)',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'country_code' => 'AE',
+            'latitude' => 25.248081,
+            'longitude' => 55.345093,
+            'location_type' => 'airport',
+            'iata' => 'DXB',
+            'providers' => [
+                ['provider' => 'greenmotion', 'pickup_id' => '59610'],
+                ['provider' => 'surprice', 'pickup_id' => 'DXB:DXBA01'],
+            ],
+            'our_location_id' => null,
+        ]);
+
+        $location = $service->getLocationByUnifiedId(3385755165);
+        $internalProvider = collect($location['providers'])->firstWhere('provider', 'internal');
+
+        $this->assertNotNull($internalProvider);
+        $this->assertSame((string) $dxbLocation->id, $internalProvider['pickup_id']);
+        $this->assertSame((new InternalLocationResolver)->internalLocationHash($dxbLocation), $location['our_location_id']);
+        $this->assertSame(3, $location['provider_count']);
+    }
+
+    public function test_location_lookup_does_not_overlay_internal_provider_for_a_different_airport_iata(): void
+    {
+        $this->createInternalVehicleAtDubaiAirport();
+
+        $service = $this->locationSearchServiceForGatewayLocation([
+            'unified_location_id' => 961653316,
+            'name' => 'Dubai Airport (DWC)',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'country_code' => 'AE',
+            'latitude' => 25.116073,
+            'longitude' => 55.204087,
+            'location_type' => 'airport',
+            'iata' => 'DWC',
+            'providers' => [
+                ['provider' => 'surprice', 'pickup_id' => 'DWC:DWCA01'],
+            ],
+            'our_location_id' => null,
+        ]);
+
+        $location = $service->getLocationByUnifiedId(961653316);
+
+        $this->assertSame(1, $location['provider_count']);
+        $this->assertFalse(collect($location['providers'])->contains(fn ($provider) => $provider['provider'] === 'internal'));
+        $this->assertNull($location['our_location_id']);
+    }
+
+    public function test_location_lookup_removes_stale_gateway_internal_provider_for_wrong_airport(): void
+    {
+        [, $dxbLocation] = $this->createInternalVehicleAtDubaiAirport();
+
+        $service = $this->locationSearchServiceForGatewayLocation([
+            'unified_location_id' => 961653316,
+            'name' => 'Dubai Airport (DWC)',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'country_code' => 'AE',
+            'latitude' => 25.116073,
+            'longitude' => 55.204087,
+            'location_type' => 'airport',
+            'iata' => 'DWC',
+            'providers' => [
+                ['provider' => 'internal', 'pickup_id' => (string) $dxbLocation->id],
+                ['provider' => 'surprice', 'pickup_id' => 'DWC:DWCA01'],
+            ],
+            'our_location_id' => 'internal_stale',
+        ]);
+
+        $location = $service->getLocationByUnifiedId(961653316);
+
+        $this->assertSame(1, $location['provider_count']);
+        $this->assertSame(['surprice'], collect($location['providers'])->pluck('provider')->all());
+        $this->assertNull($location['our_location_id']);
     }
 
     public function test_internal_search_returns_no_local_cars_when_selected_unified_location_has_no_internal_mapping(): void
@@ -515,5 +602,19 @@ class SearchControllerInternalLocationFilterTest extends TestCase
         ], $vehicleOverrides));
 
         return [$vehicle, $location];
+    }
+
+    private function locationSearchServiceForGatewayLocation(array $location): LocationSearchService
+    {
+        $gateway = Mockery::mock(VrooemGatewayService::class);
+        $gateway->shouldReceive('getLocation')
+            ->once()
+            ->with((int) $location['unified_location_id'])
+            ->andReturn($location);
+        $gateway->shouldReceive('searchLocations')
+            ->zeroOrMoreTimes()
+            ->andReturn(['results' => []]);
+
+        return new LocationSearchService($gateway, new InternalLocationResolver);
     }
 }

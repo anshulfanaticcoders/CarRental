@@ -8,6 +8,7 @@ use App\Models\VehicleCategory;
 use App\Models\VendorLocation;
 use App\Services\LocationSearchService;
 use App\Services\Search\GatewaySearchService;
+use App\Services\Search\InternalLocationResolver;
 use App\Services\Search\InternalSearchVehicleFactory; // Import LocationSearchService
 use App\Services\Seo\SeoMetaResolver;
 use App\Services\Vehicles\GatewayVehicleTransformer;
@@ -29,18 +30,22 @@ class SearchController extends Controller
 
     protected $internalVehicleAvailabilityService;
 
+    protected $internalLocationResolver;
+
     public function __construct(
         LocationSearchService $locationSearchService,
         GatewaySearchService $gatewaySearchService,
         GatewayVehicleTransformer $gatewayVehicleTransformer,
         InternalSearchVehicleFactory $internalSearchVehicleFactory,
-        InternalVehicleAvailabilityService $internalVehicleAvailabilityService
+        InternalVehicleAvailabilityService $internalVehicleAvailabilityService,
+        InternalLocationResolver $internalLocationResolver
     ) {
         $this->locationSearchService = $locationSearchService;
         $this->gatewaySearchService = $gatewaySearchService;
         $this->gatewayVehicleTransformer = $gatewayVehicleTransformer;
         $this->internalSearchVehicleFactory = $internalSearchVehicleFactory;
         $this->internalVehicleAvailabilityService = $internalVehicleAvailabilityService;
+        $this->internalLocationResolver = $internalLocationResolver;
     }
 
     public function search(Request $request)
@@ -234,6 +239,13 @@ class SearchController extends Controller
             }
 
             $internalProviderPickupId = $this->internalProviderPickupId($resolvedSearchLocation);
+            Log::info('Search location resolved', [
+                'requested_unified_location_id' => $originalUnifiedLocationId,
+                'resolved_unified_location_id' => $resolvedUnifiedLocationId,
+                'provider' => $requestedProvider ?: 'mixed',
+                'internal_pickup_id' => $internalProviderPickupId,
+                'provider_count' => count($resolvedSearchLocation['providers'] ?? []),
+            ]);
             if ($requestedProvider === 'internal') {
                 if ($internalProviderPickupId !== null) {
                     $validated['provider_pickup_id'] = $internalProviderPickupId;
@@ -562,21 +574,7 @@ class SearchController extends Controller
 
     private function internalProviderPickupId(?array $location): ?string
     {
-        foreach (($location['providers'] ?? []) as $provider) {
-            if (! is_array($provider)) {
-                continue;
-            }
-
-            if (strtolower(trim((string) ($provider['provider'] ?? ''))) !== 'internal') {
-                continue;
-            }
-
-            $pickupId = trim((string) ($provider['pickup_id'] ?? ''));
-
-            return $pickupId !== '' ? $pickupId : null;
-        }
-
-        return null;
+        return $this->internalLocationResolver->internalProviderPickupId($location);
     }
 
     public function searchUnifiedLocations(Request $request)

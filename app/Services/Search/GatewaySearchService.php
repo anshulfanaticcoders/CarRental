@@ -194,6 +194,10 @@ class GatewaySearchService
         );
         $combinedVehicles = $this->prioritizeFeedRequestedVehicle($combinedVehicles, $request);
         Log::info('VrooemGateway: Combined vehicles', [
+            'resolved_unified_location_id' => $resolvedPickupUnifiedId,
+            'resolved_dropoff_unified_location_id' => $resolvedDropoffUnifiedId ?: null,
+            'matched_provider_count' => count($matchedLocation['providers'] ?? []),
+            'internal_pickup_id' => $this->internalPickupId($matchedLocation),
             'internal' => $internalForMerge->count(),
             'provider' => $filteredProviderVehicles->count(),
             'combined' => $combinedVehicles->count(),
@@ -310,6 +314,25 @@ class GatewaySearchService
         $lng = (float) $lng;
 
         return abs($lat) < 0.000001 && abs($lng) < 0.000001;
+    }
+
+    private function internalPickupId(?array $location): ?string
+    {
+        foreach (($location['providers'] ?? []) as $provider) {
+            if (! is_array($provider)) {
+                continue;
+            }
+
+            if (strtolower(trim((string) ($provider['provider'] ?? ''))) !== 'internal') {
+                continue;
+            }
+
+            $pickupId = trim((string) ($provider['pickup_id'] ?? ''));
+
+            return $pickupId !== '' ? $pickupId : null;
+        }
+
+        return null;
     }
 
     private function isUsableCoordinatePair(mixed $lat, mixed $lng): bool
