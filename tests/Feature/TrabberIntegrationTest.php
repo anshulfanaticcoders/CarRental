@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Mail\TrabberReportMail;
 use App\Models\Booking;
 use App\Models\Customer;
+use App\Models\Offer;
+use App\Models\OfferEffect;
 use App\Models\PayableSetting;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -14,6 +16,7 @@ use App\Models\VehicleImage;
 use App\Models\VendorLocation;
 use App\Models\VendorProfile;
 use App\Services\LocationSearchService;
+use App\Services\OfferService;
 use App\Services\Trabber\TrabberAttributionService;
 use App\Services\Trabber\TrabberReportService;
 use App\Services\VrooemGatewayService;
@@ -36,6 +39,7 @@ class TrabberIntegrationTest extends TestCase
         ]);
 
         PayableSetting::create(['payment_percentage' => 15]);
+        app(OfferService::class)->invalidateCache();
     }
 
     public function test_trabber_api_rejects_missing_or_invalid_api_key(): void
@@ -50,6 +54,7 @@ class TrabberIntegrationTest extends TestCase
     public function test_trabber_search_accepts_iata_and_returns_offers_with_deeplinks(): void
     {
         $this->createInternalVehicleAtDubaiAirport();
+        $this->createActiveFreeEsimOffer();
 
         $response = $this
             ->withHeader('x-api-key', 'trabber-secret')
@@ -70,6 +75,10 @@ class TrabberIntegrationTest extends TestCase
         $response->assertJsonPath('offers.0.sipp', 'ECAR');
         $response->assertJsonPath('offers.0.currency', 'EUR');
         $response->assertJsonPath('offers.0.price', 149.49);
+        $response->assertJsonPath('offers.0.fuel_policy', 'Full to Full');
+        $response->assertJsonPath('offers.0.free_esim_included', true);
+        $response->assertJsonPath('offers.0.inclusions.0', 'Free eSIM included');
+        $response->assertJsonPath('offers.0.applied_offers.0.effect_type', 'free_esim');
         $this->assertStringContainsString('/api/trabber/redirect?offer_id=', $response->json('offers.0.deeplink_url'));
     }
 
@@ -228,6 +237,7 @@ class TrabberIntegrationTest extends TestCase
     public function test_trabber_search_includes_external_provider_offers_from_gateway(): void
     {
         config(['trabber.inventory_scope' => 'mixed']);
+        $this->createActiveFreeEsimOffer();
 
         $unifiedLocation = [
             'unified_location_id' => 3385755165,
@@ -313,6 +323,8 @@ class TrabberIntegrationTest extends TestCase
         $response->assertJsonPath('offers.0.image_url', 'https://example.com/surprice-sunny.jpg');
         $response->assertJsonPath('offers.0.mileage_policy', 'unlimited');
         $response->assertJsonPath('offers.0.fuel_policy', 'Same Level');
+        $response->assertJsonPath('offers.0.free_esim_included', true);
+        $this->assertContains('Free eSIM included', $response->json('offers.0.inclusions'));
         $response->assertJsonPath('meta.inventory_scope', 'mixed');
     }
 
@@ -560,6 +572,30 @@ class TrabberIntegrationTest extends TestCase
         ]);
 
         return $vehicle;
+    }
+
+    private function createActiveFreeEsimOffer(): void
+    {
+        $offer = Offer::create([
+            'name' => 'Free E-Sim',
+            'slug' => 'free-e-sim-test',
+            'title' => 'Free E-Sim',
+            'description' => 'Free eSIM with every booking',
+            'start_date' => now()->subDay(),
+            'end_date' => now()->addDay(),
+            'is_active' => true,
+            'priority' => 100,
+            'placements' => ['homepage', 'search', 'checkout', 'success'],
+        ]);
+
+        OfferEffect::create([
+            'offer_id' => $offer->id,
+            'type' => 'free_esim',
+            'config' => ['included' => true],
+            'sort_order' => 1,
+        ]);
+
+        app(OfferService::class)->invalidateCache();
     }
 
     private function createCustomer(): Customer

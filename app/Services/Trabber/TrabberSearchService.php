@@ -4,6 +4,7 @@ namespace App\Services\Trabber;
 
 use App\Models\Vehicle;
 use App\Models\VendorLocation;
+use App\Services\OfferService;
 use App\Services\Pricing\PayablePercentageService;
 use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
@@ -21,7 +22,8 @@ class TrabberSearchService
         private readonly TrabberGatewayInventoryService $gatewayInventoryService,
         private readonly TrabberOfferStoreService $offerStore,
         private readonly PayablePercentageService $payablePercentageService,
-        private readonly TrabberFuelPolicyFormatter $fuelPolicyFormatter
+        private readonly TrabberFuelPolicyFormatter $fuelPolicyFormatter,
+        private readonly OfferService $offerService
     ) {}
 
     public function search(array $criteria): array
@@ -56,6 +58,9 @@ class TrabberSearchService
             $pickupUnifiedLocation,
             $dropoffUnifiedLocation
         );
+        $resolvedOffers = $this->offerService->resolveAppliedOffers([
+            'placement' => 'search',
+        ]);
 
         if (in_array($scope, ['internal', 'mixed'], true) && $pickupLocation && $dropoffLocation) {
             $query = Vehicle::query()
@@ -83,7 +88,7 @@ class TrabberSearchService
                 $query
                     ->limit((int) config('trabber.search_limit', 50))
                     ->get()
-                    ->map(fn (Vehicle $vehicle) => $this->mapInternalOffer($vehicle, $pickupLocation, $dropoffLocation, $rentalDays, $currency, $searchPayload))
+                    ->map(fn (Vehicle $vehicle) => $this->mapInternalOffer($vehicle, $pickupLocation, $dropoffLocation, $rentalDays, $currency, $searchPayload, $resolvedOffers))
                     ->values()
                     ->all()
             );
@@ -93,7 +98,7 @@ class TrabberSearchService
             $offers = array_merge(
                 $offers,
                 collect($this->gatewayInventoryService->search($criteria, $pickupUnifiedLocation, $dropoffUnifiedLocation))
-                    ->map(fn (array $vehicle) => $this->mapVehicleOffer($vehicle, $currency, $searchPayload))
+                    ->map(fn (array $vehicle) => $this->mapVehicleOffer($vehicle, $currency, $searchPayload, $resolvedOffers))
                     ->values()
                     ->all()
             );
@@ -139,17 +144,18 @@ class TrabberSearchService
         VendorLocation $dropoffLocation,
         int $rentalDays,
         string $currency,
-        array $searchPayload
+        array $searchPayload,
+        array $resolvedOffers
     ): array {
         $internalVehicle = $this->vehicleFactory->make($vehicle->toArray(), $rentalDays, [
             'pickup_location_id' => (string) $pickupLocation->id,
             'dropoff_location_id' => (string) $dropoffLocation->id,
         ]);
 
-        return $this->mapVehicleOffer($internalVehicle, $currency, $searchPayload);
+        return $this->mapVehicleOffer($internalVehicle, $currency, $searchPayload, $resolvedOffers);
     }
 
-    private function mapVehicleOffer(array $vehicle, string $currency, array $searchPayload): array
+    private function mapVehicleOffer(array $vehicle, string $currency, array $searchPayload, array $resolvedOffers): array
     {
         $offerId = (string) Str::uuid();
         $price = round((float) (
@@ -177,7 +183,9 @@ class TrabberSearchService
             'price' => $grossPrice,
             'currency' => Arr::get($vehicle, 'pricing.currency') ?: ($vehicle['currency'] ?? $currency),
             'image_url' => $vehicle['image'] ?? $vehicle['image_url'] ?? null,
-            'inclusions' => $this->resolveInclusions($vehicle),
+            'inclusions' => $this->resolveInclusions($vehicle, $resolvedOffers),
+            'free_esim_included' => (bool) ($resolvedOffers['free_esim_included'] ?? false),
+            'applied_offers' => $this->normalizeAppliedOffers($resolvedOffers['applied_offers'] ?? []),
             'fuel_policy' => $this->fuelPolicyFormatter->label(
                 Arr::get($vehicle, 'policies.fuel_policy_label'),
                 Arr::get($vehicle, 'supplier_data.fuel_policy_label'),
@@ -211,7 +219,7 @@ class TrabberSearchService
         return $offer;
     }
 
-    private function resolveInclusions(array $internalVehicle): array
+    private function resolveInclusions(array $internalVehicle, array $resolvedOffers): array
     {
         $inclusions = [];
 
@@ -225,7 +233,29 @@ class TrabberSearchService
             $inclusions[] = 'Unlimited mileage';
         }
 
+        if (($resolvedOffers['free_esim_included'] ?? false) === true) {
+            $inclusions[] = 'Free eSIM included';
+        }
+
         return array_values(array_unique($inclusions));
+    }
+
+    private function normalizeAppliedOffers(array $offers): array
+    {
+        return array_values(array_filter(array_map(static function (array $offer): ?array {
+            $normalized = array_filter([
+                'id' => $offer['id'] ?? null,
+                'name' => $offer['name'] ?? null,
+                'slug' => $offer['slug'] ?? null,
+                'title' => $offer['title'] ?? null,
+                'description' => $offer['description'] ?? null,
+                'effect_type' => $offer['effect_type'] ?? null,
+                'effect_payload' => is_array($offer['effect_payload'] ?? null) ? $offer['effect_payload'] : null,
+                'discount_amount' => array_key_exists('discount_amount', $offer) ? $offer['discount_amount'] : null,
+            ], static fn ($value) => $value !== null);
+
+            return $normalized === [] ? null : $normalized;
+        }, $offers)));
     }
 
     private function deduplicateOffers(array $offers): Collection

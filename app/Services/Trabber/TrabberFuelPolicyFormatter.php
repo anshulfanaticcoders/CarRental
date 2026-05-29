@@ -4,6 +4,8 @@ namespace App\Services\Trabber;
 
 class TrabberFuelPolicyFormatter
 {
+    private const DEFAULT_LABEL = 'Full to Full';
+
     private const LABELS = [
         'ff' => 'Full to Full',
         'full_to_full' => 'Full to Full',
@@ -33,6 +35,6 @@ class TrabberFuelPolicyFormatter
             return self::LABELS[strtolower($value)] ?? $value;
         }
 
-        return null;
+        return self::DEFAULT_LABEL;
     }
 }
