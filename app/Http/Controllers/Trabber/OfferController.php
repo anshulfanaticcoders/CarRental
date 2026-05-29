@@ -56,7 +56,7 @@ class OfferController extends Controller
                 'expired' => $isExpired,
                 'reason' => $validation['reason'] ?? null,
                 'message' => $isExpired
-                    ? 'This offer has expired. Run the search again to see live prices and current availability.'
+                    ? __('offerresults.offer_expired_message')
                     : null,
                 'search_again_url' => $this->offerPage->searchAgainUrl($locale, $quote),
             ],

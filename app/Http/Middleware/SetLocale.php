@@ -14,7 +14,7 @@ class SetLocale
     {
         $locale = $request->route('locale');
 
-        if (!in_array($locale, ['en', 'fr', 'nl', 'es', 'ar'])) {
+        if (! in_array($locale, ['en', 'fr', 'nl', 'es', 'ar'])) {
             abort(404);
         }
 
@@ -24,40 +24,41 @@ class SetLocale
 
         // Share all translations with Inertia
         Inertia::share([
-        'locale' => $locale,
-        'translations' => [
-            'messages' => trans('messages'), // Common translations
-            'homepage' => trans('homepage'),
-            'how_it_works' => trans('how_it_works'),
-            'header' => trans('header'),
-            'registerUser' => trans('registerUser'),
-            'login' => trans('login'),
-            'forgetpassword' => trans('forgetpassword'),
-            'resetpassword' => trans('resetpassword'),
-            'common' => trans('common'),
-            'customerprofile' => trans('customerprofile'),
-            'customerprofilepages' => trans('customerprofilepages'),
-            'vendorprofilepages' => trans('vendorprofilepages'),
-            'authpages' => trans('authpages'),
-            'customerbooking' => trans('customerbooking'),
-            'createvehicle' => trans('createvehicle'),
-            'contactus' => trans('contactus'),
-            'aboutus' => trans('aboutus'), // Added for About Us page translations
-            'esim' => trans('esim'), // Added for eSIM translations
-        ],
-    ]);
+            'locale' => $locale,
+            'translations' => [
+                'messages' => trans('messages'), // Common translations
+                'homepage' => trans('homepage'),
+                'how_it_works' => trans('how_it_works'),
+                'header' => trans('header'),
+                'registerUser' => trans('registerUser'),
+                'login' => trans('login'),
+                'forgetpassword' => trans('forgetpassword'),
+                'resetpassword' => trans('resetpassword'),
+                'common' => trans('common'),
+                'customerprofile' => trans('customerprofile'),
+                'customerprofilepages' => trans('customerprofilepages'),
+                'vendorprofilepages' => trans('vendorprofilepages'),
+                'authpages' => trans('authpages'),
+                'customerbooking' => trans('customerbooking'),
+                'createvehicle' => trans('createvehicle'),
+                'contactus' => trans('contactus'),
+                'aboutus' => trans('aboutus'), // Added for About Us page translations
+                'esim' => trans('esim'), // Added for eSIM translations
+                'offerresults' => trans('offerresults'),
+            ],
+        ]);
 
-    return $next($request);
-}
+        return $next($request);
+    }
 
     protected function getAllTranslations()
     {
         // Load all message translations (which includes all other files)
         $messages = $this->loadTranslationsSafely('messages');
-        
+
         // You can still load page-specific translations if needed
         // $pageSpecific = $this->loadTranslationsSafely('homepage');
-        
+
         return [
             'messages' => $messages,
             // 'homepage' => $pageSpecific,
@@ -67,14 +68,15 @@ class SetLocale
     protected function loadTranslationsSafely($file)
     {
         $translations = trans($file);
-        
-        if ($translations === null || !is_array($translations)) {
-            \Log::warning("Translation file '$file' is missing or did not return an array for locale '" . app()->getLocale() . "'.");
+
+        if ($translations === null || ! is_array($translations)) {
+            \Log::warning("Translation file '$file' is missing or did not return an array for locale '".app()->getLocale()."'.");
+
             return [];
         }
 
         foreach ($translations as $key => $value) {
-            if (!$this->isSerializable($value)) {
+            if (! $this->isSerializable($value)) {
                 \Log::warning("Non-serializable translation in file '$file' for key '$key':", ['value' => $value]);
                 $translations[$key] = null;
             }
@@ -87,6 +89,7 @@ class SetLocale
     {
         try {
             json_encode($value, JSON_THROW_ON_ERROR);
+
             return true;
         } catch (\Exception $e) {
             return false;

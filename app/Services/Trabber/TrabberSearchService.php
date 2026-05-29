@@ -20,7 +20,8 @@ class TrabberSearchService
         private readonly InternalSearchVehicleFactory $vehicleFactory,
         private readonly TrabberGatewayInventoryService $gatewayInventoryService,
         private readonly TrabberOfferStoreService $offerStore,
-        private readonly PayablePercentageService $payablePercentageService
+        private readonly PayablePercentageService $payablePercentageService,
+        private readonly TrabberFuelPolicyFormatter $fuelPolicyFormatter
     ) {}
 
     public function search(array $criteria): array
@@ -177,7 +178,15 @@ class TrabberSearchService
             'currency' => Arr::get($vehicle, 'pricing.currency') ?: ($vehicle['currency'] ?? $currency),
             'image_url' => $vehicle['image'] ?? $vehicle['image_url'] ?? null,
             'inclusions' => $this->resolveInclusions($vehicle),
-            'fuel_policy' => Arr::get($vehicle, 'policies.fuel_policy') ?: ($vehicle['fuel_policy'] ?? Arr::get($vehicle, 'benefits.fuel_policy')),
+            'fuel_policy' => $this->fuelPolicyFormatter->label(
+                Arr::get($vehicle, 'policies.fuel_policy_label'),
+                Arr::get($vehicle, 'supplier_data.fuel_policy_label'),
+                $vehicle['fuel_policy_label'] ?? null,
+                Arr::get($vehicle, 'benefits.fuel_policy_label'),
+                Arr::get($vehicle, 'policies.fuel_policy'),
+                $vehicle['fuel_policy'] ?? null,
+                Arr::get($vehicle, 'benefits.fuel_policy'),
+            ),
             'mileage_policy' => Arr::get($vehicle, 'policies.mileage_policy') ?: ($vehicle['mileage'] ?? null),
             'cancellation_policy' => Arr::get($vehicle, 'policies.cancellation') ?: ($vehicle['cancellation'] ?? null),
             'deeplink_url' => route('trabber.redirect', ['offer_id' => $offerId]),

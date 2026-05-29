@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Route;
 
 class TrabberOfferPageService
 {
+    public function __construct(private readonly TrabberFuelPolicyFormatter $fuelPolicyFormatter) {}
+
     public function quoteFromPayload(array $payload): array
     {
         $offer = is_array($payload['offer'] ?? null) ? $payload['offer'] : [];
@@ -179,7 +181,16 @@ class TrabberOfferPageService
         return [
             'mileage_policy' => $this->stringOrNull($policies['mileage_policy'] ?? $offer['mileage_policy'] ?? $vehicle['mileage_policy'] ?? $vehicle['mileage'] ?? null),
             'mileage_limit_km' => $this->floatOrNull($policies['mileage_limit_km'] ?? null),
-            'fuel_policy' => $this->stringOrNull($policies['fuel_policy'] ?? $offer['fuel_policy'] ?? $vehicle['fuel_policy'] ?? data_get($vehicle, 'benefits.fuel_policy')),
+            'fuel_policy' => $this->fuelPolicyFormatter->label(
+                $policies['fuel_policy_label'] ?? null,
+                data_get($vehicle, 'supplier_data.fuel_policy_label'),
+                $vehicle['fuel_policy_label'] ?? null,
+                data_get($vehicle, 'benefits.fuel_policy_label'),
+                $policies['fuel_policy'] ?? null,
+                $offer['fuel_policy'] ?? null,
+                $vehicle['fuel_policy'] ?? null,
+                data_get($vehicle, 'benefits.fuel_policy'),
+            ),
             'cancellation' => is_array($cancellation) ? $cancellation : [
                 'available' => $cancellation !== null,
                 'description' => $this->stringOrNull($cancellation),

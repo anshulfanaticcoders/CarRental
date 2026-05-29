@@ -195,6 +195,36 @@ class TrabberIntegrationTest extends TestCase
         );
     }
 
+    public function test_trabber_offer_page_uses_requested_locale_translations(): void
+    {
+        $this->createInternalVehicleAtDubaiAirport();
+
+        $search = $this
+            ->withHeader('x-api-key', 'trabber-secret')
+            ->postJson('/api/trabber/car-hire/search', [
+                'pickup' => ['iata' => 'DXB'],
+                'dropoff' => ['iata' => 'DXB'],
+                'pickup_date_time' => '2026-06-15 09:00:00',
+                'dropoff_date_time' => '2026-06-18 09:00:00',
+                'currency' => 'EUR',
+                'language' => 'es',
+            ]);
+
+        $offerId = (string) $search->json('offers.0.offer_id');
+
+        $response = $this->get(route('trabber.offer', [
+            'locale' => 'es',
+            'offerId' => $offerId,
+        ]));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('OfferResults')
+            ->where('translations.offerresults.home', 'Inicio')
+            ->where('translations.offerresults.continue_to_booking', 'Continuar con la reserva')
+        );
+    }
+
     public function test_trabber_search_includes_external_provider_offers_from_gateway(): void
     {
         config(['trabber.inventory_scope' => 'mixed']);
@@ -252,10 +282,12 @@ class TrabberIntegrationTest extends TestCase
                         'fuel_type' => 'petrol',
                         'seats' => 5,
                         'mileage_policy' => 'unlimited',
+                        'fuel_policy' => 'SL',
                         'sipp_code' => 'ECAR',
                         'supplier_data' => [
                             'provider_code' => 'surprice',
-                            'fuel_policy' => 'full_to_full',
+                            'fuel_policy' => 'SL',
+                            'fuel_policy_label' => 'Same Level',
                         ],
                     ]],
                     'provider_status' => [],
@@ -280,6 +312,7 @@ class TrabberIntegrationTest extends TestCase
         $response->assertJsonPath('offers.0.price', 207);
         $response->assertJsonPath('offers.0.image_url', 'https://example.com/surprice-sunny.jpg');
         $response->assertJsonPath('offers.0.mileage_policy', 'unlimited');
+        $response->assertJsonPath('offers.0.fuel_policy', 'Same Level');
         $response->assertJsonPath('meta.inventory_scope', 'mixed');
     }
 

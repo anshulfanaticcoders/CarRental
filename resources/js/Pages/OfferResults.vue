@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, usePage } from '@inertiajs/vue3'
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue'
 import Footer from '@/Components/Footer.vue'
 import { Toaster } from '@/Components/ui/sonner'
@@ -83,6 +83,7 @@ type Search = {
   dropoff_time?: string | null
   driver_age?: string | number | null
   currency?: string | null
+  language?: string | null
 }
 
 type Product = {
@@ -162,6 +163,13 @@ type QuoteStatus = {
   search_again_url?: string | null
 }
 
+type SharedPageProps = {
+  locale?: string
+  translations?: {
+    offerresults?: Record<string, string>
+  }
+}
+
 const props = defineProps<{
   quote: Quote
   offerResults: OfferResults
@@ -175,6 +183,7 @@ const activeBookingContext = ref<BookingContext | null>(null)
 const selectedPackage = ref('BAS')
 const selectedProtectionCode = ref<string | null>(null)
 const selectedCheckoutData = ref<CheckoutData | null>(null)
+const page = usePage<SharedPageProps>()
 const { selectedCurrency, convertPrice, fetchExchangeRates, getCurrencySymbol } = useCurrencyConversion()
 
 const vehicle = computed(() => props.quote.vehicle ?? {})
@@ -198,30 +207,48 @@ const bookingCurrencyCode = computed(() => {
 })
 const bookingCurrencySymbol = computed(() => resolveCurrencySymbol(bookingCurrencyCode.value))
 const displayCurrencyCode = computed(() => `${selectedCurrency.value ?? pricing.value.currency ?? search.value.currency ?? 'EUR'}`)
+const currentLocale = computed(() => page.props.locale ?? search.value.language ?? 'en')
+
+const _t = (key: string, fallback: string, replacements: Record<string, string | number> = {}) => {
+  let translation = page.props.translations?.offerresults?.[key] || fallback
+
+  Object.entries(replacements).forEach(([token, value]) => {
+    translation = translation.replace(`:${token}`, `${value}`)
+  })
+
+  return translation
+}
 
 const displayName = computed(() => vehicle.value.display_name ?? [vehicle.value.brand, vehicle.value.model].filter(Boolean).join(' '))
-const pageTitle = computed(() => `${displayName.value || 'Selected Offer'} | Vrooem`)
+const pageTitle = computed(() => `${displayName.value || _t('selected_offer_title', 'Selected Offer')} | Vrooem`)
+const offerAvailabilityText = computed(() => {
+  const count = displayedQuotes.value.length
+  const key = count === 1 ? 'offer_available' : 'offers_available'
+  const fallback = count === 1 ? ':count offer available' : ':count offers available'
+
+  return _t(key, fallback, { count })
+})
 
 const luggageSummary = computed(() => {
   const luggage = vehicle.value.luggage ?? {}
   const parts = [
-    luggage.small != null ? `${luggage.small} small` : null,
-    luggage.medium != null ? `${luggage.medium} medium` : null,
-    luggage.large != null ? `${luggage.large} large` : null,
+    luggage.small != null ? `${luggage.small} ${_t('luggage_small', 'small')}` : null,
+    luggage.medium != null ? `${luggage.medium} ${_t('luggage_medium', 'medium')}` : null,
+    luggage.large != null ? `${luggage.large} ${_t('luggage_large', 'large')}` : null,
   ].filter(Boolean)
 
-  return parts.length > 0 ? parts.join(' / ') : 'Not specified'
+  return parts.length > 0 ? parts.join(' / ') : _t('not_specified', 'Not specified')
 })
 
 const formatAmount = (amount?: number | null, currency?: string | null) => {
   if (amount == null) {
-    return 'Not available'
+    return _t('not_available', 'Not available')
   }
 
   const safeCurrency = currency || 'EUR'
 
   try {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(currentLocale.value, {
       style: 'currency',
       currency: safeCurrency,
       maximumFractionDigits: 2,
@@ -233,7 +260,7 @@ const formatAmount = (amount?: number | null, currency?: string | null) => {
 
 const formatDisplayAmount = (amount?: number | null, sourceCurrency?: string | null) => {
   if (amount == null) {
-    return 'Not available'
+    return _t('not_available', 'Not available')
   }
 
   const normalizedSource = `${sourceCurrency || pricing.value.currency || search.value.currency || 'EUR'}`
@@ -241,7 +268,7 @@ const formatDisplayAmount = (amount?: number | null, sourceCurrency?: string | n
   const convertedAmount = convertPrice(amount, normalizedSource)
 
   try {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(currentLocale.value, {
       style: 'currency',
       currency: normalizedDisplay,
       maximumFractionDigits: 2,
@@ -253,20 +280,30 @@ const formatDisplayAmount = (amount?: number | null, sourceCurrency?: string | n
 
 const formatDateTime = (date?: string | null, time?: string | null) => {
   if (!date) {
-    return 'Not specified'
+    return _t('not_specified', 'Not specified')
   }
 
-  return time ? `${date} at ${time}` : date
+  return time ? `${date} ${_t('at_time', 'at')} ${time}` : date
 }
 
 const formatLocationMeta = (details: LocationDetails) => {
   const parts = [details.location_type, details.iata, details.country_code].filter(Boolean)
-  return parts.length > 0 ? parts.join(' â€¢ ') : 'Location details available'
+  return parts.length > 0 ? parts.join(' / ') : _t('location_details_available', 'Location details available')
 }
 
 const quotePrice = (quote: Quote) => formatDisplayAmount(quote.pricing?.total_price, quote.pricing?.currency || props.offerResults.search?.currency)
 
 const resolveCurrencySymbol = (currency: string) => registryCurrencySymbol(currency)
+const dayCountText = (days?: number | null) => {
+  const count = days || 1
+
+  return _t(count === 1 ? 'day_count' : 'days_count', count === 1 ? ':count day' : ':count days', { count })
+}
+const forDayCountText = (days?: number | null) => {
+  const count = days || 1
+
+  return _t(count === 1 ? 'for_day_count' : 'for_days_count', count === 1 ? 'For :count day' : 'For :count days', { count })
+}
 
 const startBooking = (quoteId: string) => {
   if (isExpired.value) {
@@ -325,8 +362,8 @@ onMounted(() => {
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
           </div>
           <div class="hidden sm:block">
-            <span class="or-step-label text-[#153b4f] group-hover:underline">Offer</span>
-            <span class="or-step-sub">Selected deal</span>
+            <span class="or-step-label text-[#153b4f] group-hover:underline">{{ _t('step_offer', 'Offer') }}</span>
+            <span class="or-step-sub">{{ _t('step_selected_deal', 'Selected deal') }}</span>
           </div>
         </div>
 
@@ -338,8 +375,8 @@ onMounted(() => {
             <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20V10M18 20V4M6 20v-6"/></svg>
           </div>
           <div class="hidden sm:block">
-            <span class="or-step-label" :class="bookingStep === 'extras' || bookingStep === 'checkout' ? 'text-[#153b4f]' : 'text-gray-400'">Customize</span>
-            <span class="or-step-sub">Extras & options</span>
+            <span class="or-step-label" :class="bookingStep === 'extras' || bookingStep === 'checkout' ? 'text-[#153b4f]' : 'text-gray-400'">{{ _t('step_customize', 'Customize') }}</span>
+            <span class="or-step-sub">{{ _t('step_extras_options', 'Extras & options') }}</span>
           </div>
         </div>
 
@@ -350,8 +387,8 @@ onMounted(() => {
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
           </div>
           <div class="hidden sm:block">
-            <span class="or-step-label" :class="bookingStep === 'checkout' ? 'text-[#153b4f]' : 'text-gray-400'">Checkout</span>
-            <span class="or-step-sub">Secure payment</span>
+            <span class="or-step-label" :class="bookingStep === 'checkout' ? 'text-[#153b4f]' : 'text-gray-400'">{{ _t('step_checkout', 'Checkout') }}</span>
+            <span class="or-step-sub">{{ _t('step_secure_payment', 'Secure payment') }}</span>
           </div>
         </div>
       </div>
@@ -361,38 +398,38 @@ onMounted(() => {
   <section v-if="bookingStep === 'results'" class="or-hero">
     <div class="full-w-container or-hero-inner">
       <nav class="or-breadcrumb">
-        <Link href="/">Home</Link>
+        <Link href="/">{{ _t('home', 'Home') }}</Link>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-        <span>Search results</span>
+        <span>{{ _t('search_results', 'Search results') }}</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-        <span class="or-breadcrumb-current">Selected offer</span>
+        <span class="or-breadcrumb-current">{{ _t('selected_offer', 'Selected offer') }}</span>
       </nav>
       <div class="or-hero-grid">
         <div class="or-hero-title">
-          <span class="or-eyebrow">Your offer</span>
-          <h1>{{ pickupLocation.name || 'Selected car rental' }}</h1>
+          <span class="or-eyebrow">{{ _t('your_offer', 'Your offer') }}</span>
+          <h1>{{ pickupLocation.name || _t('selected_car_rental', 'Selected car rental') }}</h1>
           <p>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span>{{ [pickupLocation.city, pickupLocation.country].filter(Boolean).join(', ') || 'Pickup location' }}</span>
-            <span class="or-hero-sep">â€¢</span>
-            <span>{{ displayedQuotes.length }} {{ displayedQuotes.length === 1 ? 'offer' : 'offers' }} available</span>
+            <span>{{ [pickupLocation.city, pickupLocation.country].filter(Boolean).join(', ') || _t('pickup_location', 'Pickup location') }}</span>
+            <span class="or-hero-sep">&middot;</span>
+            <span>{{ offerAvailabilityText }}</span>
           </p>
         </div>
         <div class="or-hero-dates">
           <div class="or-date-card">
-            <span class="or-date-label">Pickup</span>
-            <span class="or-date-value">{{ search.pickup_date || 'â€”' }}</span>
+            <span class="or-date-label">{{ _t('pickup', 'Pickup') }}</span>
+            <span class="or-date-value">{{ search.pickup_date || '-' }}</span>
             <span class="or-date-time">{{ search.pickup_time || '' }}</span>
           </div>
           <div class="or-date-arrow" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
           </div>
           <div class="or-date-card">
-            <span class="or-date-label">Return</span>
-            <span class="or-date-value">{{ search.dropoff_date || 'â€”' }}</span>
+            <span class="or-date-label">{{ _t('return', 'Return') }}</span>
+            <span class="or-date-value">{{ search.dropoff_date || '-' }}</span>
             <span class="or-date-time">{{ search.dropoff_time || '' }}</span>
           </div>
-          <div class="or-days-pill">{{ currentBookingContext?.number_of_days || 1 }} days</div>
+          <div class="or-days-pill">{{ dayCountText(currentBookingContext?.number_of_days || 1) }}</div>
         </div>
       </div>
     </div>
@@ -406,11 +443,11 @@ onMounted(() => {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
           </div>
           <div class="or-alert-body">
-            <p class="or-alert-eyebrow">Offer expired</p>
-            <p class="or-alert-message">{{ quoteStatus.message || 'This offer has expired. Run the search again to see current prices and availability.' }}</p>
+            <p class="or-alert-eyebrow">{{ _t('offer_expired', 'Offer expired') }}</p>
+            <p class="or-alert-message">{{ quoteStatus.message || _t('offer_expired_message', 'This offer has expired. Run the search again to see current prices and availability.') }}</p>
           </div>
           <Link v-if="quoteStatus.search_again_url" :href="quoteStatus.search_again_url" class="or-alert-btn">
-            Search again
+            {{ _t('search_again', 'Search again') }}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
           </Link>
         </div>
@@ -421,10 +458,10 @@ onMounted(() => {
               <div class="or-vehicle-media">
                 <div class="or-vehicle-media-layout">
                   <div class="or-vehicle-media-image">
-                    <img v-if="vehicle.image_url" :src="vehicle.image_url" :alt="displayName || 'Vehicle image'" />
+                    <img v-if="vehicle.image_url" :src="vehicle.image_url" :alt="displayName || _t('vehicle_image', 'Vehicle image')" />
                     <div v-else class="or-vehicle-empty">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 16H9m10 0h3v-3.15a1 1 0 00-.84-.99L16 11l-2.7-3.6a1 1 0 00-.8-.4H5.24a2 2 0 00-1.8 1.1l-.8 1.63A6 6 0 002 12.42V16h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
-                      <span>No image available</span>
+                      <span>{{ _t('no_image_available', 'No image available') }}</span>
                     </div>
                   </div>
                   <div class="or-vehicle-media-side">
@@ -445,7 +482,7 @@ onMounted(() => {
                 <div class="or-vehicle-badges">
                   <span class="or-badge or-badge-selected">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
-                    Selected offer
+                    {{ _t('selected_offer', 'Selected offer') }}
                   </span>
                   <span v-if="vehicle.category" class="or-badge or-badge-muted">{{ vehicle.category }}</span>
                 </div>
@@ -453,49 +490,49 @@ onMounted(() => {
               <div class="or-vehicle-body">
                 <div class="or-vehicle-head">
                   <div class="or-vehicle-title">
-                    <h2>{{ displayName || 'Vehicle offer' }}</h2>
+                    <h2>{{ displayName || _t('vehicle_offer', 'Vehicle offer') }}</h2>
                     <p>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                      {{ quote.supplier?.name || vehicle.supplier_name || 'Supplier' }}
+                      {{ quote.supplier?.name || vehicle.supplier_name || _t('supplier', 'Supplier') }}
                     </p>
                   </div>
                   <div class="or-vehicle-price">
-                    <span class="or-price-eyebrow">Total from</span>
+                    <span class="or-price-eyebrow">{{ _t('total_from', 'Total from') }}</span>
                     <span class="or-price-value">{{ formatDisplayAmount(pricing.total_price, pricing.currency || search.currency) }}</span>
-                    <span class="or-price-sub">{{ formatDisplayAmount(pricing.price_per_day, pricing.currency || search.currency) }} / day</span>
+                    <span class="or-price-sub">{{ formatDisplayAmount(pricing.price_per_day, pricing.currency || search.currency) }} / {{ _t('day', 'day') }}</span>
                   </div>
                 </div>
 
                 <div class="or-spec-grid">
                   <div class="or-spec">
                     <div class="or-spec-icon or-icon-fuel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22V4a2 2 0 012-2h8a2 2 0 012 2v18M3 22h12M6 7h6M18 8l3-3v11a2 2 0 01-4 0V8a2 2 0 012-2"/></svg></div>
-                    <div class="or-spec-text"><span>Fuel</span><strong>{{ vehicle.fuel_type || 'â€”' }}</strong></div>
+                    <div class="or-spec-text"><span>{{ _t('fuel', 'Fuel') }}</span><strong>{{ vehicle.fuel_type || '-' }}</strong></div>
                   </div>
                   <div class="or-spec">
                     <div class="or-spec-icon or-icon-ac"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg></div>
-                    <div class="or-spec-text"><span>AC</span><strong>{{ vehicle.air_conditioning ? 'Included' : 'No' }}</strong></div>
+                    <div class="or-spec-text"><span>{{ _t('ac', 'AC') }}</span><strong>{{ vehicle.air_conditioning ? _t('included', 'Included') : _t('no', 'No') }}</strong></div>
                   </div>
                   <div class="or-spec">
                     <div class="or-spec-icon or-icon-seat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2M17 11a4 4 0 100-8"/></svg></div>
-                    <div class="or-spec-text"><span>Seats</span><strong>{{ vehicle.seats ?? 'N/A' }}</strong></div>
+                    <div class="or-spec-text"><span>{{ _t('seats', 'Seats') }}</span><strong>{{ vehicle.seats ?? _t('not_applicable', 'N/A') }}</strong></div>
                   </div>
                   <div class="or-spec">
                     <div class="or-spec-icon or-icon-door"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M5 20V6a2 2 0 012-2h10a2 2 0 012 2v14M10 12h.01"/></svg></div>
-                    <div class="or-spec-text"><span>Doors</span><strong>{{ vehicle.doors ?? 'N/A' }}</strong></div>
+                    <div class="or-spec-text"><span>{{ _t('doors', 'Doors') }}</span><strong>{{ vehicle.doors ?? _t('not_applicable', 'N/A') }}</strong></div>
                   </div>
                   <div class="or-spec">
                     <div class="or-spec-icon or-icon-trans"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8M6 8h12a2 2 0 012 2v6"/></svg></div>
-                    <div class="or-spec-text"><span>Transmission</span><strong>{{ vehicle.transmission || 'â€”' }}</strong></div>
+                    <div class="or-spec-text"><span>{{ _t('transmission', 'Transmission') }}</span><strong>{{ vehicle.transmission || '-' }}</strong></div>
                   </div>
                   <div class="or-spec">
                     <div class="or-spec-icon or-icon-lug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="7" width="14" height="13" rx="2"/><path d="M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M9 12v5M15 12v5"/></svg></div>
-                    <div class="or-spec-text"><span>Luggage</span><strong>{{ luggageSummary }}</strong></div>
+                    <div class="or-spec-text"><span>{{ _t('luggage', 'Luggage') }}</span><strong>{{ luggageSummary }}</strong></div>
                   </div>
                 </div>
 
                 <div class="or-vehicle-foot">
                   <button type="button" class="or-btn-primary" :disabled="!canBookQuote(quote.quote_id)" @click="startBooking(quote.quote_id)">
-                    <span>{{ isExpired ? 'Offer expired' : 'Continue to booking' }}</span>
+                    <span>{{ isExpired ? _t('offer_expired', 'Offer expired') : _t('continue_to_booking', 'Continue to booking') }}</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                   </button>
                 </div>
@@ -508,22 +545,22 @@ onMounted(() => {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                 </div>
                 <div class="or-panel-title">
-                  <h3>Trip details</h3>
-                  <p>Your search criteria</p>
+                  <h3>{{ _t('trip_details', 'Trip details') }}</h3>
+                  <p>{{ _t('your_search_criteria', 'Your search criteria') }}</p>
                 </div>
               </header>
               <div class="or-trip-grid">
                 <div class="or-trip-item">
-                  <span class="or-label">Pickup</span>
+                  <span class="or-label">{{ _t('pickup', 'Pickup') }}</span>
                   <strong class="or-value">{{ formatDateTime(search.pickup_date, search.pickup_time) }}</strong>
                 </div>
                 <div class="or-trip-item">
-                  <span class="or-label">Drop-off</span>
+                  <span class="or-label">{{ _t('dropoff', 'Drop-off') }}</span>
                   <strong class="or-value">{{ formatDateTime(search.dropoff_date, search.dropoff_time) }}</strong>
                 </div>
                 <div class="or-trip-item">
-                  <span class="or-label">Driver age</span>
-                  <strong class="or-value">{{ search.driver_age || 'N/A' }}</strong>
+                  <span class="or-label">{{ _t('driver_age', 'Driver age') }}</span>
+                  <strong class="or-value">{{ search.driver_age || _t('not_applicable', 'N/A') }}</strong>
                 </div>
               </div>
             </article>
@@ -535,13 +572,13 @@ onMounted(() => {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   </div>
                   <div class="or-panel-title">
-                    <h3>Pickup office</h3>
+                    <h3>{{ _t('pickup_office', 'Pickup office') }}</h3>
                     <p>{{ formatLocationMeta(pickupLocation) }}</p>
                   </div>
                 </header>
                 <div class="or-office">
-                  <p class="or-office-name">{{ pickupLocation.name || 'Not specified' }}</p>
-                  <p class="or-office-addr">{{ pickupLocation.address || 'Address not specified' }}</p>
+                  <p class="or-office-name">{{ pickupLocation.name || _t('not_specified', 'Not specified') }}</p>
+                  <p class="or-office-addr">{{ pickupLocation.address || _t('address_not_specified', 'Address not specified') }}</p>
                   <p v-if="pickupLocation.phone" class="or-office-phone">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
                     {{ pickupLocation.phone }}
@@ -556,13 +593,13 @@ onMounted(() => {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   </div>
                   <div class="or-panel-title">
-                    <h3>Drop-off office</h3>
+                    <h3>{{ _t('dropoff_office', 'Drop-off office') }}</h3>
                     <p>{{ formatLocationMeta(dropoffLocation) }}</p>
                   </div>
                 </header>
                 <div class="or-office">
-                  <p class="or-office-name">{{ dropoffLocation.name || 'Not specified' }}</p>
-                  <p class="or-office-addr">{{ dropoffLocation.address || 'Address not specified' }}</p>
+                  <p class="or-office-name">{{ dropoffLocation.name || _t('not_specified', 'Not specified') }}</p>
+                  <p class="or-office-addr">{{ dropoffLocation.address || _t('address_not_specified', 'Address not specified') }}</p>
                   <p v-if="dropoffLocation.phone" class="or-office-phone">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
                     {{ dropoffLocation.phone }}
@@ -578,86 +615,86 @@ onMounted(() => {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>
                 </div>
                 <div class="or-panel-title flex-1">
-                  <h3>Other available offers</h3>
-                  <p>Same search, alternative rates</p>
+                  <h3>{{ _t('other_available_offers', 'Other available offers') }}</h3>
+                  <p>{{ _t('same_search_alternative_rates', 'Same search, alternative rates') }}</p>
                 </div>
                 <span class="or-count">{{ alternativeQuotes.length }}</span>
               </header>
               <div v-if="alternativeQuotes.length > 0" class="or-alts">
                 <article v-for="offer in alternativeQuotes" :key="offer.quote_id" class="or-alt">
                   <div class="or-alt-media">
-                    <img v-if="offer.vehicle?.image_url" :src="offer.vehicle.image_url" :alt="offer.vehicle?.display_name || 'Vehicle'" />
+                    <img v-if="offer.vehicle?.image_url" :src="offer.vehicle.image_url" :alt="offer.vehicle?.display_name || _t('vehicle', 'Vehicle')" />
                     <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 16H9m10 0h3v-3.15a1 1 0 00-.84-.99L16 11l-2.7-3.6a1 1 0 00-.8-.4H5.24a2 2 0 00-1.8 1.1l-.8 1.63A6 6 0 002 12.42V16h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
                   </div>
                   <div class="or-alt-info">
-                    <h4>{{ offer.vehicle?.display_name || 'Vehicle offer' }}</h4>
+                    <h4>{{ offer.vehicle?.display_name || _t('vehicle_offer', 'Vehicle offer') }}</h4>
                     <p>
                       <span v-if="offer.vehicle?.sipp_code">{{ offer.vehicle.sipp_code }}</span>
-                      <span v-if="offer.vehicle?.transmission"> Â· {{ offer.vehicle.transmission }}</span>
-                      <span v-if="offer.vehicle?.fuel_type"> Â· {{ offer.vehicle.fuel_type }}</span>
+                      <span v-if="offer.vehicle?.transmission"> / {{ offer.vehicle.transmission }}</span>
+                      <span v-if="offer.vehicle?.fuel_type"> / {{ offer.vehicle.fuel_type }}</span>
                     </p>
                   </div>
                   <div class="or-alt-price">
                     <strong>{{ quotePrice(offer) }}</strong>
-                    <span>Total</span>
+                    <span>{{ _t('total', 'Total') }}</span>
                   </div>
                   <button type="button" class="or-btn-ghost" :disabled="!canBookQuote(offer.quote_id)" @click="startBooking(offer.quote_id)">
-                    {{ isExpired ? 'Expired' : 'Book' }}
+                    {{ isExpired ? _t('expired', 'Expired') : _t('book', 'Book') }}
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                   </button>
                 </article>
               </div>
-              <p v-else class="or-empty">No alternative offers were returned for this search.</p>
+              <p v-else class="or-empty">{{ _t('no_alternative_offers', 'No alternative offers were returned for this search.') }}</p>
             </article>
           </div>
 
           <aside class="or-col-side">
             <div class="or-summary">
               <div class="or-summary-head">
-                <span class="or-summary-eyebrow">Total rental price</span>
+                <span class="or-summary-eyebrow">{{ _t('total_rental_price', 'Total rental price') }}</span>
                 <div class="or-summary-total">{{ formatDisplayAmount(pricing.total_price, pricing.currency || search.currency) }}</div>
                 <p class="or-summary-days">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                  For {{ currentBookingContext?.number_of_days || 1 }} days
+                  {{ forDayCountText(currentBookingContext?.number_of_days || 1) }}
                 </p>
               </div>
 
               <div class="or-summary-rows">
                 <div class="or-summary-row">
-                  <span>Per day</span>
+                  <span>{{ _t('per_day', 'Per day') }}</span>
                   <strong>{{ formatDisplayAmount(pricing.price_per_day, pricing.currency || search.currency) }}</strong>
                 </div>
                 <div class="or-summary-row">
-                  <span>Deposit</span>
+                  <span>{{ _t('deposit', 'Deposit') }}</span>
                   <strong>{{ formatDisplayAmount(pricing.deposit_amount, pricing.deposit_currency || pricing.currency || search.currency) }}</strong>
                 </div>
                 <div class="or-summary-row or-summary-row-stack">
-                  <span>Mileage</span>
+                  <span>{{ _t('mileage', 'Mileage') }}</span>
                   <strong>
-                    {{ policies.mileage_policy || 'Not specified' }}
+                    {{ policies.mileage_policy || _t('not_specified', 'Not specified') }}
                     <template v-if="policies.mileage_limit_km != null"> ({{ policies.mileage_limit_km }} km)</template>
                   </strong>
                 </div>
                 <div class="or-summary-row or-summary-row-stack">
-                  <span>Fuel policy</span>
-                  <strong>{{ policies.fuel_policy || 'Not specified' }}</strong>
+                  <span>{{ _t('fuel_policy', 'Fuel policy') }}</span>
+                  <strong>{{ policies.fuel_policy || _t('not_specified', 'Not specified') }}</strong>
                 </div>
               </div>
 
               <div v-if="featuredProduct" class="or-product">
-                <span class="or-product-eyebrow">Selected product</span>
-                <p class="or-product-name">{{ featuredProduct.name || 'Standard offer' }}</p>
+                <span class="or-product-eyebrow">{{ _t('selected_product', 'Selected product') }}</span>
+                <p class="or-product-name">{{ featuredProduct.name || _t('standard_offer', 'Standard offer') }}</p>
                 <p v-if="featuredProduct.subtitle" class="or-product-sub">{{ featuredProduct.subtitle }}</p>
               </div>
 
               <button type="button" class="or-btn-primary or-btn-block" :disabled="!canBookQuote(quote.quote_id)" @click="startBooking(quote.quote_id)">
-                <span>{{ isExpired ? 'Offer expired' : 'Continue to booking' }}</span>
+                <span>{{ isExpired ? _t('offer_expired', 'Offer expired') : _t('continue_to_booking', 'Continue to booking') }}</span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
               </button>
 
               <p class="or-summary-note">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                Secure checkout Â· Instant confirmation
+                {{ _t('secure_checkout_instant_confirmation', 'Secure checkout / Instant confirmation') }}
               </p>
             </div>
           </aside>
