@@ -256,3 +256,22 @@ Concise durable memory for significant completed work.
 - Decision: Trabber offers now include Skyscanner-style `vehicle`, `specs`, `pricing`, `policies`, pickup/drop-off office details, security deposit, capacity, mileage allowance, and reliable CDW/TP/TW coverage data. Legacy gateway-shaped provider vehicles now retain normalized specs/pricing/policies/location blocks for partner feeds.
 - Verification: PHP syntax checks passed; `php artisan test --filter=Trabber --stop-on-failure` passed with 12 tests and 103 assertions.
 - Follow-ups: send Trabber the updated API docs and deploy before asking Oscar to retest live cards.
+
+### 2026-05-30 - Partner offer page redesign implementation
+- Scope: `CarRental` shared Skyscanner/Trabber `OfferResults` page and Trabber offer-page metadata pass-through.
+- Decision: replaced the old split offer layout with a Vrooem-branded partner hero, vertical selected-vehicle card, compact office/included/alternative sections, sticky desktop price summary, mobile-safe stacking, and conditional free eSIM/inclusion copy from stored partner offer metadata.
+- Verification: PHP syntax passed; `tests/Feature/TrabberIntegrationTest.php` passed with 12 tests and 103 assertions; `npm run build` passed with existing project warnings; local Trabber deeplink browser smoke passed on desktop and mobile screenshots.
+- Follow-ups: local free eSIM visibility depends on an active free-eSIM offer in the DB; production will show the badge when `free_esim_included` is true in the stored offer payload.
+
+### 2026-05-30 - Offer page related cards and partner smoke checks
+- Scope: `resources/js/Pages/OfferResults.vue`.
+- Decision: aligned the offer page container to the site width, changed the selected offer and price summary row to flex, moved post-offer content into full-width sections, replaced alternative offers with `CarListingCard`, and limited related cards to 20 with `Load more`.
+- Tracking: Trabber related-card booking uses the existing Trabber attribution cookie/session, so the original `clickid` remains on checkout metadata and reports.
+- Verification: `npm run build` passed; `./vendor/bin/pint --test --dirty` passed; local HTTP smoke passed for Trabber and Skyscanner redirects with selected vehicle and API total present on the offer page; browser screenshot saved during visual check.
+- Test notes: `SkyscannerOfferPageTest` is blocked by local testing DB missing `currency_rates`; `TrabberIntegrationTest` timed out on gateway location sync calls in this environment.
+
+### 2026-05-30 - Partner public supplier branding
+- Scope: `CarRental` Skyscanner/Trabber public search payloads, partner offer-page booking contexts, and shared offer-page display.
+- Decision: public partner-facing supplier/company display is now always `Vrooem`; underlying provider source/code metadata remains intact for booking routing, provider payloads, reporting, and diagnostics.
+- Verification: PHP syntax checks passed; targeted Skyscanner unit tests passed; targeted Trabber external-provider feature test passed; `./vendor/bin/pint --test --dirty` passed; `npm run build` passed with existing project warnings.
+- Test notes: existing Skyscanner cache-backed tests with hardcoded April 2026 expiry dates now fail because those dates are in the past on May 30, 2026; this is separate from supplier branding.

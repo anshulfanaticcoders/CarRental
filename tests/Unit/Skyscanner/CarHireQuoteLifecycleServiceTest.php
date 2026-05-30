@@ -110,7 +110,7 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
         $this->assertSame('327', $quote['vehicle']['provider_vehicle_id']);
         $this->assertSame('Toyota Yaris', $quote['vehicle']['display_name']);
         $this->assertSame('ECMR', $quote['vehicle']['sipp_code']);
-        $this->assertSame('Vrooem Internal Fleet', $quote['vehicle']['supplier_name']);
+        $this->assertSame('Vrooem', $quote['vehicle']['supplier_name']);
         $this->assertSame('https://example.com/yaris.jpg', $quote['vehicle']['image_url']);
         $this->assertSame('internal', $quote['supplier']['code']);
         $this->assertSame('ECMR', $quote['specs']['sipp_code']);
@@ -118,7 +118,7 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
         $this->assertSame('EUR', $quote['pricing']['currency']);
         $this->assertSame('3272373056', $quote['search']['pickup_location_id']);
         $this->assertSame('Marrakech Airport', $quote['pickup_location_details']['name']);
-        $this->assertStringContainsString('/offers/' . $quote['quote_id'], $quote['deeplink']['landing_page_url']);
+        $this->assertStringContainsString('/offers/'.$quote['quote_id'], $quote['deeplink']['landing_page_url']);
         $this->assertStringNotContainsString('skyscanner', $quote['deeplink']['landing_page_url']);
         $this->assertStringContainsString('/api/skyscanner/redirect', $quote['deeplink']['quote_redirect_url']);
         $this->assertSame('limited', $quote['policies']['mileage_policy']);

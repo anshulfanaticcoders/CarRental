@@ -48,7 +48,7 @@ class CarHireQuoteMapperTest extends TestCase
 
         $this->assertSame([
             'code' => 'internal',
-            'name' => 'Vrooem Internal Fleet',
+            'name' => 'Vrooem',
         ], $mapped['supplier']);
         $this->assertSame('XCAR', $mapped['specs']['sipp_code']);
         $this->assertSame('derived', $mapped['specs']['sipp_source']);
@@ -93,7 +93,7 @@ class CarHireQuoteMapperTest extends TestCase
 
         $this->assertSame([
             'code' => 'internal-fleet',
-            'name' => 'Vrooem Fleet',
+            'name' => 'Vrooem',
         ], $mapped['supplier']);
         $this->assertSame('ECMR', $mapped['specs']['sipp_code']);
         $this->assertSame('explicit', $mapped['specs']['sipp_source']);

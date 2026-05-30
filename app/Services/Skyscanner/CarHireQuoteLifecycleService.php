@@ -5,11 +5,13 @@ namespace App\Services\Skyscanner;
 use App\Services\OfferService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 class CarHireQuoteLifecycleService
 {
+    private const PUBLIC_SUPPLIER_NAME = 'Vrooem';
+
     public function createQuote(array $vehicle, array $search, ?CarbonInterface $now = null): array
     {
         $createdAt = $this->normalizeNow($now);
@@ -29,7 +31,7 @@ class CarHireQuoteLifecycleService
             'free_esim_included' => (bool) ($resolvedOffers['free_esim_included'] ?? false),
             'applied_offers' => $resolvedOffers['applied_offers'] ?? [],
             'vehicle' => $this->buildVehicleSnapshot($vehicle),
-            'supplier' => $vehicle['supplier'] ?? [],
+            'supplier' => $this->publicSupplier(is_array($vehicle['supplier'] ?? null) ? $vehicle['supplier'] : []),
             'specs' => $this->buildSpecsSnapshot($vehicle),
             'pricing' => $vehicle['pricing'] ?? [],
             'policies' => $vehicle['policies'] ?? [],
@@ -129,7 +131,7 @@ class CarHireQuoteLifecycleService
             'model' => $vehicle['model'] ?? null,
             'category' => $vehicle['category'] ?? null,
             'image_url' => $vehicle['image'] ?? null,
-            'supplier_name' => $supplier['name'] ?? null,
+            'supplier_name' => self::PUBLIC_SUPPLIER_NAME,
             'supplier_code' => $supplier['code'] ?? null,
             'sipp_code' => $specs['sipp_code'] ?? null,
             'transmission' => $specs['transmission'] ?? null,
@@ -143,6 +145,14 @@ class CarHireQuoteLifecycleService
                 'large' => $specs['luggage_large'] ?? null,
             ],
             'booking_context' => is_array($vehicle['booking_context'] ?? null) ? $vehicle['booking_context'] : [],
+        ];
+    }
+
+    private function publicSupplier(array $supplier): array
+    {
+        return [
+            'code' => $supplier['code'] ?? null,
+            'name' => self::PUBLIC_SUPPLIER_NAME,
         ];
     }
 
@@ -166,7 +176,7 @@ class CarHireQuoteLifecycleService
 
     private function buildOfferLandingUrl(string $quoteId): ?string
     {
-        if ($quoteId === '' || !Route::has('skyscanner.offer')) {
+        if ($quoteId === '' || ! Route::has('skyscanner.offer')) {
             return null;
         }
 
@@ -178,7 +188,7 @@ class CarHireQuoteLifecycleService
 
     private function buildQuoteRedirectUrl(string $quoteId): ?string
     {
-        if (!Route::has('skyscanner.redirect')) {
+        if (! Route::has('skyscanner.redirect')) {
             return null;
         }
 

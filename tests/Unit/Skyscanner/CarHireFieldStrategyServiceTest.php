@@ -82,7 +82,7 @@ class CarHireFieldStrategyServiceTest extends TestCase
 
         $this->assertSame([
             'code' => 'internal',
-            'name' => 'Vrooem Internal Fleet',
+            'name' => 'Vrooem',
             'source' => 'derived',
         ], $supplier);
     }

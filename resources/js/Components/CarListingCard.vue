@@ -818,7 +818,7 @@ onUnmounted(() => {
                 <button @click="closeModal" class="modal-close-btn" aria-label="Close modal">✕</button>
 
                 <div class="mb-6">
-                    <h2 class="text-2xl font-bold text-gray-900 font-['Outfit']">Select Your Protection Package</h2>
+                    <h2 class="plans-modal-title text-2xl font-bold text-gray-900">Select Your Protection Package</h2>
                     <p class="text-gray-500 mt-1">Choose the best coverage option for your trip</p>
                 </div>
 
@@ -882,6 +882,7 @@ onUnmounted(() => {
     border: 1px solid var(--gray-100);
     display: flex;
     flex-direction: column;
+    font-family: 'IBM Plex Sans', sans-serif;
 }
 
 .car-card.list-view {
@@ -1150,7 +1151,7 @@ onUnmounted(() => {
 }
 
 .car-name {
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--jakarta-font-family, 'Plus Jakarta Sans', sans-serif);
     font-size: 18px;
     font-weight: 700;
     color: var(--gray-900);
@@ -1254,11 +1255,11 @@ onUnmounted(() => {
 }
 
 .car-price {
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--jakarta-font-family, 'Plus Jakarta Sans', sans-serif);
     font-size: 22px;
     font-weight: 700;
     color: var(--gray-900);
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
 }
 
 .car-currency {
@@ -1314,6 +1315,15 @@ onUnmounted(() => {
     padding: 2rem;
     overflow-y: auto;
     position: relative;
+}
+
+.plans-modal-title,
+.plan-name,
+.plan-daily-price,
+.plan-total-price,
+.plan-select-btn {
+    font-family: var(--jakarta-font-family, 'Plus Jakarta Sans', sans-serif);
+    letter-spacing: 0;
 }
 
 @media (max-width: 640px) {

@@ -52,7 +52,7 @@ class SkyscannerOfferPageTest extends TestCase
             ],
             'supplier' => [
                 'code' => 'internal',
-                'name' => 'Vrooem Internal Fleet',
+                'name' => 'Vrooem',
             ],
             'pricing' => [
                 'currency' => 'EUR',
@@ -112,7 +112,7 @@ class SkyscannerOfferPageTest extends TestCase
             ],
             'supplier' => [
                 'code' => 'internal',
-                'name' => 'Vrooem Internal Fleet',
+                'name' => 'Vrooem',
             ],
             'pricing' => [
                 'currency' => 'EUR',
@@ -142,7 +142,8 @@ class SkyscannerOfferPageTest extends TestCase
         $response->assertOk();
         $response->assertSee('Opel Corsa');
         $response->assertSee('Peugeot 208');
-        $response->assertSee('Vrooem Internal Fleet');
+        $response->assertSee('Vrooem');
+        $response->assertDontSee('Vrooem Internal Fleet');
         $response->assertSee('Menara Airport');
         $response->assertSee('ECAR');
         $response->assertSee('selected_quote_id');

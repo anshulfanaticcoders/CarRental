@@ -4,6 +4,8 @@ namespace App\Services\Skyscanner;
 
 class CarHireFieldStrategyService
 {
+    private const PUBLIC_SUPPLIER_NAME = 'Vrooem';
+
     public function resolveSipp(array $quote): array
     {
         $explicit = $this->nullableString(data_get($quote, 'specs.sipp_code'));
@@ -20,7 +22,7 @@ class CarHireFieldStrategyService
         $airConditioningLetter = $this->resolveAirConditioningLetter(data_get($quote, 'specs.air_conditioning'));
 
         return [
-            'code' => $categoryLetter . 'C' . $transmissionLetter . $airConditioningLetter,
+            'code' => $categoryLetter.'C'.$transmissionLetter.$airConditioningLetter,
             'source' => 'derived',
         ];
     }
@@ -36,7 +38,7 @@ class CarHireFieldStrategyService
             if ($code !== null && $name !== null) {
                 return [
                     'code' => $code,
-                    'name' => $name,
+                    'name' => self::PUBLIC_SUPPLIER_NAME,
                     'source' => 'explicit',
                 ];
             }
@@ -48,7 +50,7 @@ class CarHireFieldStrategyService
 
         return [
             'code' => $providerCode,
-            'name' => $providerCode === 'internal' ? 'Vrooem Internal Fleet' : $this->headline($providerCode),
+            'name' => self::PUBLIC_SUPPLIER_NAME,
             'source' => 'derived',
         ];
     }
@@ -69,7 +71,7 @@ class CarHireFieldStrategyService
         $longitude = $this->nullableString($location['longitude'] ?? null) ?? 'na';
 
         return [
-            'id' => 'internal-' . substr(sha1($name . '|' . $latitude . '|' . $longitude), 0, 12),
+            'id' => 'internal-'.substr(sha1($name.'|'.$latitude.'|'.$longitude), 0, 12),
             'source' => 'derived',
         ];
     }

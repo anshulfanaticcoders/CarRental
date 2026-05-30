@@ -6,6 +6,8 @@ use Carbon\CarbonImmutable;
 
 class CarHireOfferBookingAdapter
 {
+    private const PUBLIC_SUPPLIER_NAME = 'Vrooem';
+
     public function build(array $quote): array
     {
         $pickupLocation = $this->normalizeLocationDetails($quote['pickup_location_details'] ?? []);
@@ -36,7 +38,7 @@ class CarHireOfferBookingAdapter
             'vendorProfileData' => array_merge(
                 is_array($baseProviderPayload['vendorProfileData'] ?? null) ? $baseProviderPayload['vendorProfileData'] : [],
                 [
-                    'company_name' => $this->stringOrNull($supplier['name'] ?? ($vehicle['supplier_name'] ?? 'Vrooem Internal Fleet')),
+                    'company_name' => self::PUBLIC_SUPPLIER_NAME,
                     'currency' => $currency,
                     'phone' => $pickupLocation['telephone'] ?? null,
                     'city' => $pickupLocation['address_city'] ?? null,
@@ -46,7 +48,7 @@ class CarHireOfferBookingAdapter
             'vendor_profile_data' => array_merge(
                 is_array($baseProviderPayload['vendor_profile_data'] ?? null) ? $baseProviderPayload['vendor_profile_data'] : [],
                 [
-                    'company_name' => $this->stringOrNull($supplier['name'] ?? ($vehicle['supplier_name'] ?? 'Vrooem Internal Fleet')),
+                    'company_name' => self::PUBLIC_SUPPLIER_NAME,
                     'currency' => $currency,
                     'phone' => $pickupLocation['telephone'] ?? null,
                     'city' => $pickupLocation['address_city'] ?? null,
@@ -209,7 +211,7 @@ class CarHireOfferBookingAdapter
     private function normalizeProducts(array $products): array
     {
         return array_values(array_filter(array_map(function ($product) {
-            if (!is_array($product)) {
+            if (! is_array($product)) {
                 return null;
             }
 
@@ -233,7 +235,7 @@ class CarHireOfferBookingAdapter
     private function normalizeOptionalExtras(array $extras): array
     {
         return array_values(array_filter(array_map(function ($extra) {
-            if (!is_array($extra)) {
+            if (! is_array($extra)) {
                 return null;
             }
 
@@ -309,7 +311,7 @@ class CarHireOfferBookingAdapter
     {
         if (is_array($providerExtras) && $providerExtras !== []) {
             return array_values(array_filter(array_map(function ($extra, int $index) {
-                if (!is_array($extra)) {
+                if (! is_array($extra)) {
                     return null;
                 }
 
@@ -335,13 +337,13 @@ class CarHireOfferBookingAdapter
     private function resolveInitialPackage(array $products): string
     {
         foreach ($products as $product) {
-            if (($product['is_basic'] ?? false) === true && !empty($product['type'])) {
+            if (($product['is_basic'] ?? false) === true && ! empty($product['type'])) {
                 return (string) $product['type'];
             }
         }
 
         foreach ($products as $product) {
-            if (!empty($product['type'])) {
+            if (! empty($product['type'])) {
                 return (string) $product['type'];
             }
         }
@@ -355,8 +357,8 @@ class CarHireOfferBookingAdapter
             return 1;
         }
 
-        $pickup = CarbonImmutable::parse(trim($pickupDate . ' ' . ($pickupTime ?? '09:00')), 'UTC');
-        $dropoff = CarbonImmutable::parse(trim($dropoffDate . ' ' . ($dropoffTime ?? '09:00')), 'UTC');
+        $pickup = CarbonImmutable::parse(trim($pickupDate.' '.($pickupTime ?? '09:00')), 'UTC');
+        $dropoff = CarbonImmutable::parse(trim($dropoffDate.' '.($dropoffTime ?? '09:00')), 'UTC');
 
         if ($dropoff->lessThanOrEqualTo($pickup)) {
             return 1;

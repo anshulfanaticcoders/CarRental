@@ -6,6 +6,8 @@ use Carbon\CarbonImmutable;
 
 class TrabberOfferBookingAdapter
 {
+    private const PUBLIC_SUPPLIER_NAME = 'Vrooem';
+
     public function build(array $quote): array
     {
         $pickupLocation = $this->normalizeLocationDetails($quote['pickup_location_details'] ?? []);
@@ -36,7 +38,7 @@ class TrabberOfferBookingAdapter
             'vendorProfileData' => array_merge(
                 is_array($baseProviderPayload['vendorProfileData'] ?? null) ? $baseProviderPayload['vendorProfileData'] : [],
                 [
-                    'company_name' => $this->stringOrNull($supplier['name'] ?? ($vehicle['supplier_name'] ?? 'Vrooem Internal Fleet')),
+                    'company_name' => self::PUBLIC_SUPPLIER_NAME,
                     'currency' => $currency,
                     'phone' => $pickupLocation['telephone'] ?? null,
                     'city' => $pickupLocation['address_city'] ?? null,
@@ -46,7 +48,7 @@ class TrabberOfferBookingAdapter
             'vendor_profile_data' => array_merge(
                 is_array($baseProviderPayload['vendor_profile_data'] ?? null) ? $baseProviderPayload['vendor_profile_data'] : [],
                 [
-                    'company_name' => $this->stringOrNull($supplier['name'] ?? ($vehicle['supplier_name'] ?? 'Vrooem Internal Fleet')),
+                    'company_name' => self::PUBLIC_SUPPLIER_NAME,
                     'currency' => $currency,
                     'phone' => $pickupLocation['telephone'] ?? null,
                     'city' => $pickupLocation['address_city'] ?? null,

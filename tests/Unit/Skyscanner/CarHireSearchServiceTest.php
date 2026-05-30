@@ -85,7 +85,7 @@ class CarHireSearchServiceTest extends TestCase
         $this->assertCount(1, $results['quotes']);
         $this->assertSame('327', $results['quotes'][0]['vehicle']['provider_vehicle_id']);
         $this->assertSame('ECMR', $results['quotes'][0]['vehicle']['sipp_code']);
-        $this->assertSame('Vrooem Internal Fleet', $results['quotes'][0]['supplier']['name']);
+        $this->assertSame('Vrooem', $results['quotes'][0]['supplier']['name']);
         $this->assertSame([], $results['excluded_vehicle_ids']);
     }
 

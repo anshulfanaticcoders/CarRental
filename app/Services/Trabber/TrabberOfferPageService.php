@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Route;
 
 class TrabberOfferPageService
 {
+    private const PUBLIC_SUPPLIER_NAME = 'Vrooem';
+
     public function __construct(private readonly TrabberFuelPolicyFormatter $fuelPolicyFormatter) {}
 
     public function quoteFromPayload(array $payload): array
@@ -28,6 +30,9 @@ class TrabberOfferPageService
             'case_id' => 'trabber',
             'created_at' => $createdAt->toIso8601String(),
             'expires_at' => $expiresAt->toIso8601String(),
+            'free_esim_included' => (bool) ($offer['free_esim_included'] ?? false),
+            'applied_offers' => $this->arrayList($offer['applied_offers'] ?? []),
+            'inclusions' => $this->stringList($offer['inclusions'] ?? []),
             'vehicle' => $this->vehicle($vehicle, $offer),
             'supplier' => $this->supplier($vehicle, $offer),
             'specs' => $this->specs($vehicle),
@@ -138,11 +143,10 @@ class TrabberOfferPageService
     {
         $supplier = is_array($vehicle['supplier'] ?? null) ? $vehicle['supplier'] : [];
         $code = $this->stringOrNull($supplier['code'] ?? $vehicle['provider_code'] ?? $vehicle['source'] ?? $vehicle['supplier_code'] ?? null);
-        $name = $this->stringOrNull($supplier['name'] ?? $offer['supplier_name'] ?? $vehicle['supplier_name'] ?? $code);
 
         return [
             'code' => $code ?? 'internal',
-            'name' => $name ?? 'Vrooem',
+            'name' => self::PUBLIC_SUPPLIER_NAME,
         ];
     }
 
@@ -345,5 +349,26 @@ class TrabberOfferPageService
         }
 
         return (bool) $value;
+    }
+
+    private function arrayList(mixed $values): array
+    {
+        if (! is_array($values)) {
+            return [];
+        }
+
+        return array_values(array_filter($values, 'is_array'));
+    }
+
+    private function stringList(mixed $values): array
+    {
+        if (! is_array($values)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn (mixed $value): ?string => $this->stringOrNull($value),
+            $values,
+        )));
     }
 }

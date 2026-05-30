@@ -374,7 +374,7 @@ class TrabberIntegrationTest extends TestCase
         $response->assertOk();
         $response->assertJsonCount(1, 'offers');
         $response->assertJsonPath('offers.0.vehicle_name', 'Nissan Sunny');
-        $response->assertJsonPath('offers.0.supplier_name', 'surprice');
+        $response->assertJsonPath('offers.0.supplier_name', 'Vrooem');
         $response->assertJsonPath('offers.0.price', 207);
         $response->assertJsonPath('offers.0.image_url', 'https://example.com/surprice-sunny.jpg');
         $response->assertJsonPath('offers.0.mileage_policy', 'limited');

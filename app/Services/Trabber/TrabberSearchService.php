@@ -15,6 +15,8 @@ use Illuminate\Support\Str;
 
 class TrabberSearchService
 {
+    private const PUBLIC_SUPPLIER_NAME = 'Vrooem';
+
     public function __construct(
         private readonly TrabberLocationResolver $locationResolver,
         private readonly InternalVehicleAvailabilityService $availabilityService,
@@ -170,10 +172,7 @@ class TrabberSearchService
         $netPricePerDay = $rentalDays > 0 ? round($price / $rentalDays, 2) : $price;
         $grossPricePerDay = $rentalDays > 0 ? round($grossPrice / $rentalDays, 2) : $grossPrice;
         $vehicleName = $this->displayName($vehicle, 'Vehicle');
-        $supplierName = Arr::get($vehicle, 'supplier.name')
-            ?? $vehicle['supplier_name']
-            ?? $vehicle['source']
-            ?? 'Vrooem';
+        $supplierName = self::PUBLIC_SUPPLIER_NAME;
         $offerCurrency = Arr::get($vehicle, 'pricing.currency') ?: ($vehicle['currency'] ?? $currency);
         $fuelPolicy = $this->fuelPolicyFormatter->label(
             Arr::get($vehicle, 'policies.fuel_policy_label'),
@@ -672,7 +671,7 @@ class TrabberSearchService
         return collect($offers)
             ->unique(function (array $offer): string {
                 return strtolower(implode('|', [
-                    $offer['supplier_name'] ?? '',
+                    data_get($offer, 'vehicle.supplier_code') ?? $offer['supplier_name'] ?? '',
                     $offer['vehicle_name'] ?? '',
                     $offer['sipp'] ?? '',
                     (string) ($offer['price'] ?? ''),

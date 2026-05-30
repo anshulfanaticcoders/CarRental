@@ -152,7 +152,7 @@ class CarHireOfferBookingAdapterTest extends TestCase
         $this->assertSame('Child Seat', $context['optional_extras'][0]['name']);
         $this->assertSame('Collect at the rental desk.', $context['location_instructions']);
         $this->assertSame('Menara Airport', $context['location_details']['name']);
-        $this->assertSame('Vrooem Internal Fleet', $context['vehicle']['booking_context']['provider_payload']['vendorProfileData']['company_name']);
+        $this->assertSame('Vrooem', $context['vehicle']['booking_context']['provider_payload']['vendorProfileData']['company_name']);
         $this->assertSame('PRE', $context['vehicle']['booking_context']['provider_payload']['vendorPlans'][0]['plan_type']);
     }
 
@@ -243,7 +243,7 @@ class CarHireOfferBookingAdapterTest extends TestCase
         $this->assertSame('product-77', $context['vehicle']['provider_product_id']);
         $this->assertSame('rate-88', $context['vehicle']['provider_rate_id']);
         $this->assertSame('greenmotion', $context['vehicle']['booking_context']['provider_payload']['source']);
-        $this->assertSame('Green Motion', $context['vehicle']['booking_context']['provider_payload']['vendorProfileData']['company_name']);
+        $this->assertSame('Vrooem', $context['vehicle']['booking_context']['provider_payload']['vendorProfileData']['company_name']);
     }
 
     public function test_it_mirrors_provider_pricing_and_payload_fields_needed_by_booking_adapters(): void
