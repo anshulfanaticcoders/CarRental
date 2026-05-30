@@ -292,7 +292,7 @@ class TrabberIntegrationTest extends TestCase
                         ],
                         'pickup_location' => [
                             'supplier_location_id' => 'DXB:DXBA01',
-                            'name' => 'Dubai Airport (DXB)',
+                            'name' => null,
                             'address' => 'Dubai Airport Terminal 1',
                             'latitude' => 25.251369,
                             'longitude' => 55.347204,
@@ -346,6 +346,14 @@ class TrabberIntegrationTest extends TestCase
                             'fuel_policy_label' => 'Same Level',
                             'mileage_limit_km' => 750,
                             'dropoff_address' => 'Airport Road Dropoff Desk',
+                            'pickup_office' => [
+                                'id' => 'DXBA01',
+                                'name' => 'Terminal 1 Rental Desk',
+                            ],
+                            'dropoff_office' => [
+                                'id' => 'DXBD01',
+                                'name' => 'Airport Road Dropoff Desk',
+                            ],
                         ],
                     ]],
                     'provider_status' => [],

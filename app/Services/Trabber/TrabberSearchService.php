@@ -169,7 +169,7 @@ class TrabberSearchService
         $rentalDays = $this->rentalDays($searchPayload);
         $netPricePerDay = $rentalDays > 0 ? round($price / $rentalDays, 2) : $price;
         $grossPricePerDay = $rentalDays > 0 ? round($grossPrice / $rentalDays, 2) : $grossPrice;
-        $vehicleName = $vehicle['display_name'] ?? trim((string) (($vehicle['brand'] ?? '').' '.($vehicle['model'] ?? '')));
+        $vehicleName = $this->displayName($vehicle, 'Vehicle');
         $supplierName = Arr::get($vehicle, 'supplier.name')
             ?? $vehicle['supplier_name']
             ?? $vehicle['source']
@@ -292,7 +292,7 @@ class TrabberSearchService
             'provider_code' => $this->stringOrNull($vehicle['provider_code'] ?? Arr::get($vehicle, 'supplier.code') ?? $vehicle['source'] ?? null),
             'provider_product_id' => $this->stringOrNull($vehicle['provider_product_id'] ?? null),
             'provider_rate_id' => $this->stringOrNull($vehicle['provider_rate_id'] ?? null),
-            'display_name' => $this->stringOrNull($vehicle['display_name'] ?? trim((string) (($vehicle['brand'] ?? '').' '.($vehicle['model'] ?? '')))),
+            'display_name' => $this->displayName($vehicle),
             'brand' => $this->stringOrNull($vehicle['brand'] ?? null),
             'model' => $this->stringOrNull($vehicle['model'] ?? null),
             'category' => $this->stringOrNull($vehicle['category'] ?? null),
@@ -489,10 +489,10 @@ class TrabberSearchService
             }
 
             $text = strtolower(implode(' ', array_filter([
-                $option['id'] ?? null,
-                $option['name'] ?? null,
-                $option['coverage_type'] ?? null,
-                $option['description'] ?? null,
+                $this->stringOrNull($option['id'] ?? null),
+                $this->stringOrNull($option['name'] ?? null),
+                $this->stringOrNull($option['coverage_type'] ?? null),
+                $this->stringOrNull($option['description'] ?? null),
             ])));
 
             foreach ($needles as $needle) {
@@ -507,7 +507,7 @@ class TrabberSearchService
 
     private function mileagePolicy(array $vehicle): ?string
     {
-        $value = strtolower(trim((string) (Arr::get($vehicle, 'policies.mileage_policy') ?? $vehicle['mileage_policy'] ?? $vehicle['mileage'] ?? '')));
+        $value = strtolower($this->stringOrNull(Arr::get($vehicle, 'policies.mileage_policy') ?? $vehicle['mileage_policy'] ?? $vehicle['mileage'] ?? null) ?? '');
 
         return in_array($value, ['limited', 'unlimited'], true) ? $value : null;
     }
@@ -572,7 +572,7 @@ class TrabberSearchService
             return $explicit;
         }
 
-        $type = strtolower((string) ($location['location_type'] ?? $searchLocation['location_type'] ?? $vehicle['location_type'] ?? ''));
+        $type = strtolower($this->stringOrNull($location['location_type'] ?? $searchLocation['location_type'] ?? $vehicle['location_type'] ?? null) ?? '');
 
         return $type === 'airport' || $this->stringOrNull($location['iata'] ?? $searchLocation['iata'] ?? null) !== null;
     }
@@ -585,12 +585,12 @@ class TrabberSearchService
         }
 
         $text = strtolower(implode(' ', array_filter([
-            $location['name'] ?? null,
-            $location['address'] ?? null,
-            $location["{$prefix}_instructions"] ?? null,
-            $vehicle["{$prefix}_instructions"] ?? null,
-            $vehicle["{$prefix}_address"] ?? null,
-            $vehicle['office_address'] ?? null,
+            $this->stringOrNull($location['name'] ?? null),
+            $this->stringOrNull($location['address'] ?? null),
+            $this->stringOrNull($location["{$prefix}_instructions"] ?? null),
+            $this->stringOrNull($vehicle["{$prefix}_instructions"] ?? null),
+            $this->stringOrNull($vehicle["{$prefix}_address"] ?? null),
+            $this->stringOrNull($vehicle['office_address'] ?? null),
         ])));
 
         return str_contains($text, 'shuttle') || str_contains($text, 'transfer bus');
@@ -604,11 +604,11 @@ class TrabberSearchService
         }
 
         $text = strtolower(implode(' ', array_filter([
-            $location['name'] ?? null,
-            $location['address'] ?? null,
-            $vehicle["{$prefix}_address"] ?? null,
-            $vehicle['office_address'] ?? null,
-            $vehicle['full_vehicle_address'] ?? null,
+            $this->stringOrNull($location['name'] ?? null),
+            $this->stringOrNull($location['address'] ?? null),
+            $this->stringOrNull($vehicle["{$prefix}_address"] ?? null),
+            $this->stringOrNull($vehicle['office_address'] ?? null),
+            $this->stringOrNull($vehicle['full_vehicle_address'] ?? null),
         ])));
 
         return $atAirport && ! $requiresShuttle && (str_contains($text, 'terminal') || $this->stringOrNull($location['iata'] ?? null) !== null);
@@ -619,8 +619,27 @@ class TrabberSearchService
         return array_filter($values, static fn ($value) => $value !== null && $value !== '' && $value !== []);
     }
 
+    private function displayName(array $vehicle, ?string $fallback = null): ?string
+    {
+        $displayName = $this->stringOrNull($vehicle['display_name'] ?? null);
+        if ($displayName !== null) {
+            return $displayName;
+        }
+
+        $name = trim(implode(' ', array_filter([
+            $this->stringOrNull($vehicle['brand'] ?? null),
+            $this->stringOrNull($vehicle['model'] ?? null),
+        ])));
+
+        return $name === '' ? $fallback : $name;
+    }
+
     private function stringOrNull(mixed $value): ?string
     {
+        if (is_array($value) || is_object($value)) {
+            return null;
+        }
+
         $string = trim((string) ($value ?? ''));
 
         return $string === '' ? null : $string;
