@@ -250,3 +250,9 @@ Concise durable memory for significant completed work.
 - Decision: Trabber search offers now expose active search offers like Skyscanner does, including `free_esim_included`, normalized `applied_offers`, and a readable `Free eSIM included` inclusion line.
 - Verification: PHP syntax checks passed; touched-file Pint check passed; `php artisan test --filter=Trabber --stop-on-failure` passed with 12 tests and 80 assertions.
 - Follow-ups: send updated API docs to Trabber after deployment.
+
+### 2026-05-30 - Trabber rich offer metadata parity
+- Scope: `CarRental` Trabber search API, shared gateway vehicle transform, partner docs, and Trabber feature tests.
+- Decision: Trabber offers now include Skyscanner-style `vehicle`, `specs`, `pricing`, `policies`, pickup/drop-off office details, security deposit, capacity, mileage allowance, and reliable CDW/TP/TW coverage data. Legacy gateway-shaped provider vehicles now retain normalized specs/pricing/policies/location blocks for partner feeds.
+- Verification: PHP syntax checks passed; `php artisan test --filter=Trabber --stop-on-failure` passed with 12 tests and 103 assertions.
+- Follow-ups: send Trabber the updated API docs and deploy before asking Oscar to retest live cards.

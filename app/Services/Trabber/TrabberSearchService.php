@@ -174,6 +174,21 @@ class TrabberSearchService
             ?? $vehicle['supplier_name']
             ?? $vehicle['source']
             ?? 'Vrooem';
+        $offerCurrency = Arr::get($vehicle, 'pricing.currency') ?: ($vehicle['currency'] ?? $currency);
+        $fuelPolicy = $this->fuelPolicyFormatter->label(
+            Arr::get($vehicle, 'policies.fuel_policy_label'),
+            Arr::get($vehicle, 'supplier_data.fuel_policy_label'),
+            $vehicle['fuel_policy_label'] ?? null,
+            Arr::get($vehicle, 'benefits.fuel_policy_label'),
+            Arr::get($vehicle, 'policies.fuel_policy'),
+            $vehicle['fuel_policy'] ?? null,
+            Arr::get($vehicle, 'benefits.fuel_policy'),
+        );
+        $pricing = $this->pricingSnapshot($vehicle, $grossPrice, $grossPricePerDay, $offerCurrency);
+        $mileage = $this->mileageDetails($vehicle);
+        $policies = $this->policiesSnapshot($vehicle, $fuelPolicy, $mileage);
+        $pickupLocationDetails = $this->locationDetails($vehicle, $searchPayload, 'pickup');
+        $dropoffLocationDetails = $this->locationDetails($vehicle, $searchPayload, 'dropoff');
 
         $offer = [
             'offer_id' => $offerId,
@@ -181,22 +196,26 @@ class TrabberSearchService
             'supplier_name' => $supplierName,
             'sipp' => Arr::get($vehicle, 'specs.sipp_code') ?: ($vehicle['sipp_code'] ?? null),
             'price' => $grossPrice,
-            'currency' => Arr::get($vehicle, 'pricing.currency') ?: ($vehicle['currency'] ?? $currency),
+            'currency' => $offerCurrency,
             'image_url' => $vehicle['image'] ?? $vehicle['image_url'] ?? null,
             'inclusions' => $this->resolveInclusions($vehicle, $resolvedOffers),
             'free_esim_included' => (bool) ($resolvedOffers['free_esim_included'] ?? false),
             'applied_offers' => $this->normalizeAppliedOffers($resolvedOffers['applied_offers'] ?? []),
-            'fuel_policy' => $this->fuelPolicyFormatter->label(
-                Arr::get($vehicle, 'policies.fuel_policy_label'),
-                Arr::get($vehicle, 'supplier_data.fuel_policy_label'),
-                $vehicle['fuel_policy_label'] ?? null,
-                Arr::get($vehicle, 'benefits.fuel_policy_label'),
-                Arr::get($vehicle, 'policies.fuel_policy'),
-                $vehicle['fuel_policy'] ?? null,
-                Arr::get($vehicle, 'benefits.fuel_policy'),
-            ),
-            'mileage_policy' => Arr::get($vehicle, 'policies.mileage_policy') ?: ($vehicle['mileage'] ?? null),
-            'cancellation_policy' => Arr::get($vehicle, 'policies.cancellation') ?: ($vehicle['cancellation'] ?? null),
+            'vehicle' => $this->vehicleSnapshot($vehicle, $supplierName),
+            'specs' => $this->specsSnapshot($vehicle),
+            'pricing' => $pricing,
+            'policies' => $policies,
+            'pickup_location_details' => $pickupLocationDetails,
+            'dropoff_location_details' => $dropoffLocationDetails,
+            'pickup_location' => $pickupLocationDetails,
+            'dropoff_location' => $dropoffLocationDetails,
+            'security_deposit' => $this->securityDeposit($pricing),
+            'capacity' => $this->capacity($vehicle),
+            'mileage' => $mileage,
+            'coverages' => $this->coverages($vehicle, $offerCurrency),
+            'fuel_policy' => $fuelPolicy,
+            'mileage_policy' => $mileage['policy'] ?? null,
+            'cancellation_policy' => $policies['cancellation'] ?? null,
             'deeplink_url' => route('trabber.redirect', ['offer_id' => $offerId]),
         ];
 
@@ -256,6 +275,377 @@ class TrabberSearchService
 
             return $normalized === [] ? null : $normalized;
         }, $offers)));
+    }
+
+    private function vehicleSnapshot(array $vehicle, string $supplierName): array
+    {
+        $specs = $this->specsSnapshot($vehicle);
+        $luggage = $this->payload([
+            'small' => $specs['luggage_small'] ?? null,
+            'medium' => $specs['luggage_medium'] ?? null,
+            'large' => $specs['luggage_large'] ?? null,
+        ]);
+
+        return $this->payload([
+            'provider_vehicle_id' => $this->stringOrNull($vehicle['provider_vehicle_id'] ?? $vehicle['id'] ?? null),
+            'source' => $this->stringOrNull($vehicle['source'] ?? null),
+            'provider_code' => $this->stringOrNull($vehicle['provider_code'] ?? Arr::get($vehicle, 'supplier.code') ?? $vehicle['source'] ?? null),
+            'provider_product_id' => $this->stringOrNull($vehicle['provider_product_id'] ?? null),
+            'provider_rate_id' => $this->stringOrNull($vehicle['provider_rate_id'] ?? null),
+            'display_name' => $this->stringOrNull($vehicle['display_name'] ?? trim((string) (($vehicle['brand'] ?? '').' '.($vehicle['model'] ?? '')))),
+            'brand' => $this->stringOrNull($vehicle['brand'] ?? null),
+            'model' => $this->stringOrNull($vehicle['model'] ?? null),
+            'category' => $this->stringOrNull($vehicle['category'] ?? null),
+            'image_url' => $this->stringOrNull($vehicle['image'] ?? $vehicle['image_url'] ?? null),
+            'supplier_name' => $supplierName,
+            'supplier_code' => $this->stringOrNull(Arr::get($vehicle, 'supplier.code') ?? $vehicle['provider_code'] ?? $vehicle['source'] ?? null),
+            'sipp_code' => $specs['sipp_code'] ?? null,
+            'transmission' => $specs['transmission'] ?? null,
+            'fuel_type' => $specs['fuel'] ?? null,
+            'air_conditioning' => $specs['air_conditioning'] ?? null,
+            'seats' => $specs['seating_capacity'] ?? null,
+            'doors' => $specs['doors'] ?? null,
+            'luggage' => $luggage,
+        ]);
+    }
+
+    private function specsSnapshot(array $vehicle): array
+    {
+        return $this->payload([
+            'sipp_code' => $this->stringOrNull(Arr::get($vehicle, 'specs.sipp_code') ?: ($vehicle['sipp_code'] ?? null)),
+            'sipp_source' => $this->stringOrNull(Arr::get($vehicle, 'specs.sipp_source')),
+            'transmission' => $this->stringOrNull(Arr::get($vehicle, 'specs.transmission') ?? $vehicle['transmission'] ?? null),
+            'fuel' => $this->stringOrNull(Arr::get($vehicle, 'specs.fuel') ?? $vehicle['fuel'] ?? $vehicle['fuel_type'] ?? null),
+            'air_conditioning' => $this->boolOrNull(Arr::get($vehicle, 'specs.air_conditioning') ?? $vehicle['air_conditioning'] ?? $vehicle['airConditioning'] ?? null),
+            'seating_capacity' => $this->numberOrNull(Arr::get($vehicle, 'specs.seating_capacity') ?? $vehicle['seating_capacity'] ?? $vehicle['seats'] ?? null),
+            'doors' => $this->numberOrNull(Arr::get($vehicle, 'specs.doors') ?? $vehicle['doors'] ?? null),
+            'luggage_small' => $this->numberOrNull(Arr::get($vehicle, 'specs.luggage_small') ?? $vehicle['luggageSmall'] ?? Arr::get($vehicle, 'luggage.small')),
+            'luggage_medium' => $this->numberOrNull(Arr::get($vehicle, 'specs.luggage_medium') ?? $vehicle['luggageMed'] ?? Arr::get($vehicle, 'luggage.medium')),
+            'luggage_large' => $this->numberOrNull(Arr::get($vehicle, 'specs.luggage_large') ?? $vehicle['luggageLarge'] ?? Arr::get($vehicle, 'luggage.large') ?? $vehicle['luggage_capacity'] ?? $vehicle['suitcases'] ?? null),
+        ]);
+    }
+
+    private function pricingSnapshot(array $vehicle, float $grossPrice, float $grossPricePerDay, string $currency): array
+    {
+        $sourcePricing = is_array($vehicle['pricing'] ?? null) ? $vehicle['pricing'] : [];
+        $deposit = $this->securityDepositFromVehicle($vehicle, $currency);
+
+        return $this->payload([
+            'currency' => $currency,
+            'total_price' => $grossPrice,
+            'price_per_day' => $grossPricePerDay,
+            'deposit_amount' => $deposit['amount'] ?? null,
+            'deposit_currency' => $deposit['currency'] ?? null,
+            'excess_amount' => $this->numberOrNull($sourcePricing['excess_amount'] ?? data_get($vehicle, 'benefits.excess_amount')),
+            'excess_theft_amount' => $this->numberOrNull($sourcePricing['excess_theft_amount'] ?? data_get($vehicle, 'benefits.excess_theft_amount')),
+        ]);
+    }
+
+    private function policiesSnapshot(array $vehicle, ?string $fuelPolicy, array $mileage): array
+    {
+        $policies = is_array($vehicle['policies'] ?? null) ? $vehicle['policies'] : [];
+        $cancellation = $policies['cancellation'] ?? $vehicle['cancellation'] ?? null;
+
+        return $this->payload([
+            'mileage_policy' => $mileage['policy'] ?? null,
+            'mileage_limit_km' => $mileage['allowance'] ?? null,
+            'mileage' => $mileage,
+            'fuel_policy' => $fuelPolicy,
+            'cancellation' => is_array($cancellation) ? $cancellation : $this->stringOrNull($cancellation),
+        ]);
+    }
+
+    private function locationDetails(array $vehicle, array $searchPayload, string $type): array
+    {
+        $location = Arr::get($vehicle, "location.{$type}");
+        $location = is_array($location) ? $location : [];
+        $searchLocation = $searchPayload["{$type}_location"] ?? [];
+        $searchLocation = is_array($searchLocation) ? $searchLocation : [];
+        $prefix = $type === 'dropoff' ? 'dropoff' : 'pickup';
+        $atAirport = $this->airportFlag($vehicle, $location, $searchLocation);
+        $requiresShuttle = $this->requiresShuttle($vehicle, $location, $prefix);
+
+        return $this->payload([
+            'id' => $this->stringOrNull($location['provider_location_id'] ?? $searchLocation['id'] ?? null),
+            'provider_location_id' => $this->stringOrNull($location['provider_location_id'] ?? $vehicle["provider_{$prefix}_id"] ?? $vehicle["provider_{$prefix}_office_id"] ?? null),
+            'name' => $this->stringOrNull($location['name'] ?? $vehicle["{$prefix}_station_name"] ?? $vehicle["{$prefix}_office"] ?? $searchLocation['name'] ?? $vehicle['full_vehicle_address'] ?? null),
+            'location_type' => $this->stringOrNull($location['location_type'] ?? $searchLocation['location_type'] ?? $vehicle['location_type'] ?? null),
+            'iata' => $this->stringOrNull($location['iata'] ?? $searchLocation['iata'] ?? null),
+            'city' => $this->stringOrNull($location['city'] ?? $searchLocation['city'] ?? $vehicle['city'] ?? null),
+            'country' => $this->stringOrNull($location['country'] ?? $searchLocation['country'] ?? $vehicle['country'] ?? null),
+            'country_code' => $this->stringOrNull($location['country_code'] ?? $searchLocation['country_code'] ?? null),
+            'address' => $this->stringOrNull($location['address'] ?? $vehicle["{$prefix}_address"] ?? ($prefix === 'pickup' ? ($vehicle['office_address'] ?? $vehicle['full_vehicle_address'] ?? null) : null) ?? $searchLocation['address'] ?? null),
+            'latitude' => $this->numberOrNull($location['latitude'] ?? ($prefix === 'pickup' ? ($vehicle['latitude'] ?? null) : null) ?? $searchLocation['latitude'] ?? null),
+            'longitude' => $this->numberOrNull($location['longitude'] ?? ($prefix === 'pickup' ? ($vehicle['longitude'] ?? null) : null) ?? $searchLocation['longitude'] ?? null),
+            'at_airport' => $atAirport,
+            'in_terminal' => $this->inTerminal($vehicle, $location, $prefix, $atAirport, $requiresShuttle),
+            'requires_shuttle' => $requiresShuttle,
+            'phone' => $this->stringOrNull($location['phone'] ?? $vehicle['office_phone'] ?? null),
+            'instructions' => $this->stringOrNull($location["{$prefix}_instructions"] ?? $vehicle["{$prefix}_instructions"] ?? null),
+        ]);
+    }
+
+    private function securityDeposit(array $pricing): array
+    {
+        return $this->payload([
+            'amount' => $pricing['deposit_amount'] ?? null,
+            'currency' => $pricing['deposit_currency'] ?? ($pricing['currency'] ?? null),
+        ]);
+    }
+
+    private function securityDepositFromVehicle(array $vehicle, string $currency): array
+    {
+        $pricing = is_array($vehicle['pricing'] ?? null) ? $vehicle['pricing'] : [];
+
+        return $this->payload([
+            'amount' => $this->numberOrNull($pricing['deposit_amount'] ?? $vehicle['security_deposit'] ?? $vehicle['deposit'] ?? data_get($vehicle, 'benefits.deposit_amount') ?? data_get($vehicle, 'products.0.deposit')),
+            'currency' => $this->stringOrNull($pricing['deposit_currency'] ?? data_get($vehicle, 'benefits.deposit_currency') ?? data_get($vehicle, 'products.0.deposit_currency') ?? $currency),
+        ]);
+    }
+
+    private function capacity(array $vehicle): array
+    {
+        $specs = $this->specsSnapshot($vehicle);
+
+        return $this->payload([
+            'seats' => $specs['seating_capacity'] ?? null,
+            'bags' => $this->bagCount($vehicle, $specs),
+            'luggage' => $this->payload([
+                'small' => $specs['luggage_small'] ?? null,
+                'medium' => $specs['luggage_medium'] ?? null,
+                'large' => $specs['luggage_large'] ?? null,
+            ]),
+        ]);
+    }
+
+    private function mileageDetails(array $vehicle): array
+    {
+        $policy = $this->mileagePolicy($vehicle);
+        $allowance = $this->mileageAllowance($vehicle);
+
+        if ($policy === null && $allowance !== null) {
+            $policy = 'limited';
+        }
+
+        return $this->payload([
+            'policy' => $policy,
+            'allowance' => $policy === 'limited' ? $allowance : null,
+            'unit' => $policy === 'limited' && $allowance !== null ? 'km' : null,
+            'period' => $policy === 'limited' && $allowance !== null ? $this->mileagePeriod($vehicle) : null,
+        ]);
+    }
+
+    private function coverages(array $vehicle, string $currency): array
+    {
+        $pricing = is_array($vehicle['pricing'] ?? null) ? $vehicle['pricing'] : [];
+        $insuranceOptions = is_array($vehicle['insurance_options'] ?? null) ? $vehicle['insurance_options'] : [];
+
+        return $this->payload([
+            'cdw' => $this->coveragePayload(
+                'CDW',
+                $this->findCoverageOption($insuranceOptions, ['cdw', 'collision', 'damage', 'ldw']),
+                $this->numberOrNull($pricing['excess_amount'] ?? data_get($vehicle, 'benefits.excess_amount')),
+                $currency
+            ),
+            'tp' => $this->coveragePayload(
+                'TP',
+                $this->findCoverageOption($insuranceOptions, ['tp', 'tpl', 'third party', 'liability', 'pli']),
+                null,
+                $currency,
+                $this->numberOrNull($vehicle['pli'] ?? data_get($vehicle, 'supplier_data.pli'))
+            ),
+            'tw' => $this->coveragePayload(
+                'TW',
+                $this->findCoverageOption($insuranceOptions, ['tw', 'theft']),
+                $this->numberOrNull($pricing['excess_theft_amount'] ?? data_get($vehicle, 'benefits.excess_theft_amount')),
+                $currency
+            ),
+        ]);
+    }
+
+    private function coveragePayload(string $type, ?array $option, ?float $excessAmount, string $currency, ?float $liabilityAmount = null): ?array
+    {
+        if ($option === null && $excessAmount === null && $liabilityAmount === null) {
+            return null;
+        }
+
+        return $this->payload([
+            'type' => $type,
+            'included' => $this->boolOrNull($option['included'] ?? null) ?? true,
+            'name' => $this->stringOrNull($option['name'] ?? $type),
+            'description' => $this->stringOrNull($option['description'] ?? null),
+            'excess_amount' => $this->numberOrNull($option['excess_amount'] ?? $excessAmount),
+            'deposit_amount' => $this->numberOrNull($option['deposit_amount'] ?? null),
+            'liability_amount' => $liabilityAmount,
+            'currency' => $this->stringOrNull($option['currency'] ?? $currency),
+        ]);
+    }
+
+    private function findCoverageOption(array $options, array $needles): ?array
+    {
+        foreach ($options as $option) {
+            if (! is_array($option)) {
+                continue;
+            }
+
+            $text = strtolower(implode(' ', array_filter([
+                $option['id'] ?? null,
+                $option['name'] ?? null,
+                $option['coverage_type'] ?? null,
+                $option['description'] ?? null,
+            ])));
+
+            foreach ($needles as $needle) {
+                if (str_contains($text, $needle)) {
+                    return $option;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function mileagePolicy(array $vehicle): ?string
+    {
+        $value = strtolower(trim((string) (Arr::get($vehicle, 'policies.mileage_policy') ?? $vehicle['mileage_policy'] ?? $vehicle['mileage'] ?? '')));
+
+        return in_array($value, ['limited', 'unlimited'], true) ? $value : null;
+    }
+
+    private function mileageAllowance(array $vehicle): ?float
+    {
+        return $this->numberOrNull(
+            Arr::get($vehicle, 'policies.mileage_limit_km')
+            ?? data_get($vehicle, 'benefits.limited_km_per_day_range')
+            ?? data_get($vehicle, 'benefits.limited_km_per_week_range')
+            ?? data_get($vehicle, 'benefits.limited_km_per_month_range')
+            ?? data_get($vehicle, 'supplier_data.mileage_limit_km')
+            ?? data_get($vehicle, 'products.0.mileage')
+        );
+    }
+
+    private function mileagePeriod(array $vehicle): string
+    {
+        $explicit = $this->stringOrNull(data_get($vehicle, 'supplier_data.mileage_period') ?? data_get($vehicle, 'supplier_data.mileage_allowance_period'));
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
+        if ($this->numberOrNull(data_get($vehicle, 'benefits.limited_km_per_week_range')) !== null) {
+            return 'per_week';
+        }
+
+        if ($this->numberOrNull(data_get($vehicle, 'benefits.limited_km_per_month_range')) !== null) {
+            return 'per_month';
+        }
+
+        if ($this->numberOrNull(data_get($vehicle, 'benefits.limited_km_per_day_range')) !== null) {
+            return 'per_day';
+        }
+
+        if (($vehicle['source'] ?? null) === 'internal' && $this->numberOrNull(Arr::get($vehicle, 'policies.mileage_limit_km')) !== null) {
+            return 'per_day';
+        }
+
+        return 'per_rental';
+    }
+
+    private function bagCount(array $vehicle, array $specs): ?float
+    {
+        $explicit = $this->numberOrNull($vehicle['bags'] ?? null);
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
+        $large = $this->numberOrNull($specs['luggage_large'] ?? null) ?? 0.0;
+        $medium = $this->numberOrNull($specs['luggage_medium'] ?? null) ?? 0.0;
+        $small = $this->numberOrNull($specs['luggage_small'] ?? null) ?? 0.0;
+        $total = $large + $medium + $small;
+
+        return $total > 0 ? $total : null;
+    }
+
+    private function airportFlag(array $vehicle, array $location, array $searchLocation): bool
+    {
+        $explicit = $this->boolOrNull($vehicle['at_airport'] ?? $location['at_airport'] ?? $location['is_airport'] ?? null);
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
+        $type = strtolower((string) ($location['location_type'] ?? $searchLocation['location_type'] ?? $vehicle['location_type'] ?? ''));
+
+        return $type === 'airport' || $this->stringOrNull($location['iata'] ?? $searchLocation['iata'] ?? null) !== null;
+    }
+
+    private function requiresShuttle(array $vehicle, array $location, string $prefix): bool
+    {
+        $explicit = $this->boolOrNull($vehicle["{$prefix}_requires_shuttle"] ?? $location['requires_shuttle'] ?? $location['shuttle_required'] ?? null);
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
+        $text = strtolower(implode(' ', array_filter([
+            $location['name'] ?? null,
+            $location['address'] ?? null,
+            $location["{$prefix}_instructions"] ?? null,
+            $vehicle["{$prefix}_instructions"] ?? null,
+            $vehicle["{$prefix}_address"] ?? null,
+            $vehicle['office_address'] ?? null,
+        ])));
+
+        return str_contains($text, 'shuttle') || str_contains($text, 'transfer bus');
+    }
+
+    private function inTerminal(array $vehicle, array $location, string $prefix, bool $atAirport, bool $requiresShuttle): bool
+    {
+        $explicit = $this->boolOrNull($vehicle["{$prefix}_in_terminal"] ?? $location['in_terminal'] ?? null);
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
+        $text = strtolower(implode(' ', array_filter([
+            $location['name'] ?? null,
+            $location['address'] ?? null,
+            $vehicle["{$prefix}_address"] ?? null,
+            $vehicle['office_address'] ?? null,
+            $vehicle['full_vehicle_address'] ?? null,
+        ])));
+
+        return $atAirport && ! $requiresShuttle && (str_contains($text, 'terminal') || $this->stringOrNull($location['iata'] ?? null) !== null);
+    }
+
+    private function payload(array $values): array
+    {
+        return array_filter($values, static fn ($value) => $value !== null && $value !== '' && $value !== []);
+    }
+
+    private function stringOrNull(mixed $value): ?string
+    {
+        $string = trim((string) ($value ?? ''));
+
+        return $string === '' ? null : $string;
+    }
+
+    private function numberOrNull(mixed $value): ?float
+    {
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    private function boolOrNull(mixed $value): ?bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if ($value === 1 || $value === '1' || $value === 'true' || $value === 'yes') {
+            return true;
+        }
+
+        if ($value === 0 || $value === '0' || $value === 'false' || $value === 'no') {
+            return false;
+        }
+
+        return null;
     }
 
     private function deduplicateOffers(array $offers): Collection

@@ -11,6 +11,7 @@ use App\Models\PayableSetting;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Vehicle;
+use App\Models\VehicleBenefit;
 use App\Models\VehicleCategory;
 use App\Models\VehicleImage;
 use App\Models\VendorLocation;
@@ -79,6 +80,17 @@ class TrabberIntegrationTest extends TestCase
         $response->assertJsonPath('offers.0.free_esim_included', true);
         $response->assertJsonPath('offers.0.inclusions.0', 'Free eSIM included');
         $response->assertJsonPath('offers.0.applied_offers.0.effect_type', 'free_esim');
+        $response->assertJsonPath('offers.0.vehicle.seats', 5);
+        $response->assertJsonPath('offers.0.specs.seating_capacity', 5);
+        $response->assertJsonPath('offers.0.pickup_location_details.address', 'Dubai Airport Terminal 1');
+        $response->assertJsonPath('offers.0.pickup_location_details.in_terminal', true);
+        $response->assertJsonPath('offers.0.dropoff_location_details.latitude', 25.251369);
+        $response->assertJsonPath('offers.0.security_deposit.amount', 150);
+        $response->assertJsonPath('offers.0.capacity.bags', 2);
+        $response->assertJsonPath('offers.0.mileage.policy', 'limited');
+        $response->assertJsonPath('offers.0.mileage.allowance', 300);
+        $response->assertJsonPath('offers.0.mileage.unit', 'km');
+        $response->assertJsonPath('offers.0.mileage.period', 'per_day');
         $this->assertStringContainsString('/api/trabber/redirect?offer_id=', $response->json('offers.0.deeplink_url'));
     }
 
@@ -275,29 +287,65 @@ class TrabberIntegrationTest extends TestCase
                             'total_price' => 180.0,
                             'daily_rate' => 60.0,
                             'currency' => 'EUR',
+                            'deposit_amount' => 500.0,
+                            'deposit_currency' => 'EUR',
                         ],
                         'pickup_location' => [
                             'supplier_location_id' => 'DXB:DXBA01',
                             'name' => 'Dubai Airport (DXB)',
+                            'address' => 'Dubai Airport Terminal 1',
                             'latitude' => 25.251369,
                             'longitude' => 55.347204,
+                            'is_airport' => true,
                         ],
                         'dropoff_location' => [
-                            'supplier_location_id' => 'DXB:DXBA01',
-                            'name' => 'Dubai Airport (DXB)',
-                            'latitude' => 25.251369,
-                            'longitude' => 55.347204,
+                            'supplier_location_id' => 'DXB:DXBD01',
+                            'name' => 'Dubai Airport Car Rental Center',
+                            'address' => 'Airport Road Dropoff Desk',
+                            'latitude' => 25.252,
+                            'longitude' => 55.348,
+                            'is_airport' => true,
                         ],
                         'transmission' => 'automatic',
                         'fuel_type' => 'petrol',
                         'seats' => 5,
-                        'mileage_policy' => 'unlimited',
+                        'bags_small' => 1,
+                        'bags_large' => 2,
+                        'mileage_policy' => 'limited',
+                        'mileage_limit_km' => 750,
                         'fuel_policy' => 'SL',
                         'sipp_code' => 'ECAR',
+                        'insurance_options' => [
+                            [
+                                'id' => 'cdw_basic',
+                                'name' => 'Collision Damage Waiver',
+                                'coverage_type' => 'CDW',
+                                'included' => true,
+                                'excess_amount' => 1000,
+                                'currency' => 'EUR',
+                            ],
+                            [
+                                'id' => 'tp_basic',
+                                'name' => 'Third Party Liability',
+                                'coverage_type' => 'TP',
+                                'included' => true,
+                                'currency' => 'EUR',
+                            ],
+                            [
+                                'id' => 'tw_basic',
+                                'name' => 'Theft Waiver',
+                                'coverage_type' => 'TW',
+                                'included' => true,
+                                'excess_amount' => 1200,
+                                'currency' => 'EUR',
+                            ],
+                        ],
                         'supplier_data' => [
                             'provider_code' => 'surprice',
                             'fuel_policy' => 'SL',
                             'fuel_policy_label' => 'Same Level',
+                            'mileage_limit_km' => 750,
+                            'dropoff_address' => 'Airport Road Dropoff Desk',
                         ],
                     ]],
                     'provider_status' => [],
@@ -321,10 +369,22 @@ class TrabberIntegrationTest extends TestCase
         $response->assertJsonPath('offers.0.supplier_name', 'surprice');
         $response->assertJsonPath('offers.0.price', 207);
         $response->assertJsonPath('offers.0.image_url', 'https://example.com/surprice-sunny.jpg');
-        $response->assertJsonPath('offers.0.mileage_policy', 'unlimited');
+        $response->assertJsonPath('offers.0.mileage_policy', 'limited');
         $response->assertJsonPath('offers.0.fuel_policy', 'Same Level');
         $response->assertJsonPath('offers.0.free_esim_included', true);
         $this->assertContains('Free eSIM included', $response->json('offers.0.inclusions'));
+        $response->assertJsonPath('offers.0.pickup_location_details.address', 'Dubai Airport Terminal 1');
+        $response->assertJsonPath('offers.0.dropoff_location_details.address', 'Airport Road Dropoff Desk');
+        $response->assertJsonPath('offers.0.dropoff_location_details.provider_location_id', 'DXB:DXBD01');
+        $response->assertJsonPath('offers.0.dropoff_location_details.latitude', 25.252);
+        $response->assertJsonPath('offers.0.security_deposit.amount', 500);
+        $response->assertJsonPath('offers.0.capacity.seats', 5);
+        $response->assertJsonPath('offers.0.capacity.bags', 3);
+        $response->assertJsonPath('offers.0.mileage.allowance', 750);
+        $response->assertJsonPath('offers.0.mileage.period', 'per_rental');
+        $response->assertJsonPath('offers.0.coverages.cdw.excess_amount', 1000);
+        $response->assertJsonPath('offers.0.coverages.tp.included', true);
+        $response->assertJsonPath('offers.0.coverages.tw.excess_amount', 1200);
         $response->assertJsonPath('meta.inventory_scope', 'mixed');
     }
 
@@ -522,6 +582,16 @@ class TrabberIntegrationTest extends TestCase
             'image_path' => '',
             'image_url' => 'https://example.com/yaris.jpg',
             'image_type' => 'primary',
+        ]);
+
+        VehicleBenefit::create([
+            'vehicle_id' => $vehicle->id,
+            'limited_km_per_day' => true,
+            'limited_km_per_day_range' => 300,
+            'cancellation_available_per_day' => true,
+            'cancellation_available_per_day_date' => 2,
+            'price_per_km_per_day' => 1.5,
+            'minimum_driver_age' => 21,
         ]);
 
         return $vehicle;

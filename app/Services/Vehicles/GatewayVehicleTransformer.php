@@ -87,10 +87,10 @@ class GatewayVehicleTransformer
 
         $cancellationData = null;
         $cp = $gv['cancellation_policy'] ?? [];
-        if (!empty($cp)) {
+        if (! empty($cp)) {
             $cancellationData = [
                 'available' => $cp['free_cancellation'] ?? true,
-                'penalty' => !($cp['free_cancellation'] ?? true),
+                'penalty' => ! ($cp['free_cancellation'] ?? true),
                 'amount' => $cp['cancellation_fee'] ?? 0,
                 'currency' => $cp['cancellation_fee_currency'] ?? 'EUR',
                 'deadline' => $cp['free_cancellation_until'] ?? null,
@@ -98,7 +98,7 @@ class GatewayVehicleTransformer
         }
 
         return [
-            'id' => $gv['id'] ?? ($supplierId . '_' . $supplierVehicleId),
+            'id' => $gv['id'] ?? ($supplierId.'_'.$supplierVehicleId),
             'gateway_vehicle_id' => $gv['id'] ?? null,
             'provider_vehicle_id' => $providerVehicleId,
             'provider_product_id' => $gv['provider_product_id'] ?? ($supplierData['product_id'] ?? null),
@@ -135,7 +135,7 @@ class GatewayVehicleTransformer
             'sipp_code' => $gv['sipp_code'] ?? null,
             'doors' => $gv['doors'] ?? null,
             'benefits' => $this->buildBenefits($rawSupplierId, $gv, $supplierData, $depositAmount, $depositCurrency),
-            'provider_gross_amount' => !empty($supplierData['net_amount']) ? ($totalPrice) : null,
+            'provider_gross_amount' => ! empty($supplierData['net_amount']) ? ($totalPrice) : null,
             'provider_net_amount' => $supplierData['net_amount'] ?? null,
             'provider_vat_amount' => $supplierData['vat_amount'] ?? null,
             'luggageSmall' => array_key_exists('bags_small', $gv) ? (string) $gv['bags_small'] : null,
@@ -149,6 +149,55 @@ class GatewayVehicleTransformer
             'extras' => $extras,
             'insurance_options' => $insuranceOptions,
             'supplier_data' => $gv['supplier_data'] ?? [],
+            'specs' => [
+                'sipp_code' => $gv['sipp_code'] ?? null,
+                'transmission' => $transmission,
+                'fuel' => $fuel,
+                'air_conditioning' => $gv['air_conditioning'] ?? null,
+                'seating_capacity' => $gv['seats'] ?? null,
+                'doors' => $gv['doors'] ?? null,
+                'luggage_small' => $gv['bags_small'] ?? null,
+                'luggage_medium' => null,
+                'luggage_large' => $gv['bags_large'] ?? null,
+            ],
+            'pricing' => [
+                'currency' => $priceCurrency,
+                'price_per_day' => $dailyRate,
+                'total_price' => $totalPrice,
+                'deposit_amount' => $depositAmount,
+                'deposit_currency' => $depositCurrency,
+                'excess_amount' => $insuranceOptions[0]['excess_amount'] ?? null,
+                'excess_theft_amount' => $supplierData['excess_theft_amount'] ?? ($supplierData['theft_excess'] ?? null),
+            ],
+            'policies' => [
+                'mileage_policy' => $gv['mileage_policy'] ?? null,
+                'mileage_limit_km' => $gv['mileage_limit_km'] ?? ($supplierData['mileage_limit_km'] ?? null),
+                'fuel_policy' => $supplierData['fuel_policy'] ?? ($gv['fuel_policy'] ?? null),
+                'fuel_policy_label' => $supplierData['fuel_policy_label'] ?? null,
+                'cancellation' => $cancellationData,
+            ],
+            'location' => [
+                'pickup' => [
+                    'provider_location_id' => $pickup['supplier_location_id'] ?? null,
+                    'name' => $supplierData['pickup_station_name'] ?? ($pickup['name'] ?? null),
+                    'address' => $supplierData['pickup_address'] ?? $supplierData['office_address'] ?? ($pickup['address'] ?? null),
+                    'latitude' => $pickup['latitude'] ?? null,
+                    'longitude' => $pickup['longitude'] ?? null,
+                    'phone' => $supplierData['pickup_phone'] ?? $supplierData['office_phone'] ?? ($pickup['phone'] ?? null),
+                    'pickup_instructions' => $supplierData['pickup_instructions'] ?? ($pickup['pickup_instructions'] ?? null),
+                    'at_airport' => $supplierData['at_airport'] ?? ($pickup['is_airport'] ?? null),
+                ],
+                'dropoff' => [
+                    'provider_location_id' => ($gv['dropoff_location']['supplier_location_id'] ?? null) ?: ($pickup['supplier_location_id'] ?? null),
+                    'name' => $supplierData['dropoff_station_name'] ?? ($gv['dropoff_location']['name'] ?? ($pickup['name'] ?? null)),
+                    'address' => $supplierData['dropoff_address'] ?? ($gv['dropoff_location']['address'] ?? ($pickup['address'] ?? null)),
+                    'latitude' => $gv['dropoff_location']['latitude'] ?? ($pickup['latitude'] ?? null),
+                    'longitude' => $gv['dropoff_location']['longitude'] ?? ($pickup['longitude'] ?? null),
+                    'phone' => $supplierData['dropoff_phone'] ?? $supplierData['office_phone'] ?? ($gv['dropoff_location']['phone'] ?? ($pickup['phone'] ?? null)),
+                    'dropoff_instructions' => $supplierData['dropoff_instructions'] ?? ($gv['dropoff_location']['dropoff_instructions'] ?? ($pickup['dropoff_instructions'] ?? null)),
+                    'at_airport' => $supplierData['at_airport'] ?? ($gv['dropoff_location']['is_airport'] ?? ($pickup['is_airport'] ?? null)),
+                ],
+            ],
             'pickup_office' => $supplierData['pickup_office'] ?? null,
             'dropoff_office' => $supplierData['dropoff_office'] ?? null,
             'connector_id' => $supplierData['connector_id'] ?? null,
@@ -234,9 +283,10 @@ class GatewayVehicleTransformer
     {
         $supplierData = $gv['supplier_data'] ?? [];
         $rawProducts = $supplierData['products'] ?? [];
-        if (!empty($rawProducts) && is_array($rawProducts)) {
+        if (! empty($rawProducts) && is_array($rawProducts)) {
             return collect($rawProducts)->map(function ($p) use ($rentalDays) {
                 $total = (float) ($p['total'] ?? 0);
+
                 return [
                     'type' => $p['type'] ?? 'BAS',
                     'name' => $this->getProductName($p['type'] ?? 'BAS'),
@@ -255,7 +305,7 @@ class GatewayVehicleTransformer
         }
 
         $deposit = $gv['pricing']['deposit_amount'] ?? null;
-        $excess = !empty($gv['insurance_options']) ? ($gv['insurance_options'][0]['excess_amount'] ?? null) : null;
+        $excess = ! empty($gv['insurance_options']) ? ($gv['insurance_options'][0]['excess_amount'] ?? null) : null;
         $mileagePolicy = $gv['mileage_policy'] ?? 'unlimited';
 
         $benefits = [];
@@ -266,10 +316,10 @@ class GatewayVehicleTransformer
             $benefits[] = $limitKm ? "Limited: {$limitKm} km" : 'Limited Mileage';
         }
         if ($deposit) {
-            $benefits[] = 'Deposit: ' . $currency . ' ' . number_format($deposit, 2);
+            $benefits[] = 'Deposit: '.$currency.' '.number_format($deposit, 2);
         }
         if ($excess) {
-            $benefits[] = 'Excess: ' . $currency . ' ' . number_format($excess, 2);
+            $benefits[] = 'Excess: '.$currency.' '.number_format($excess, 2);
         }
 
         return [[
@@ -298,7 +348,7 @@ class GatewayVehicleTransformer
 
     private function extractRecordGoProducts(string $supplierId, array $supplierData): array
     {
-        if (!in_array($supplierId, ['record_go', 'recordgo'], true)) {
+        if (! in_array($supplierId, ['record_go', 'recordgo'], true)) {
             return [];
         }
 
@@ -424,7 +474,7 @@ class GatewayVehicleTransformer
         $policies = $gv['policies'] ?? [];
         $mileagePolicy = $gv['mileage_policy'] ?? ($policies['mileage_policy'] ?? null);
         $mileageLimitKm = $gv['mileage_limit_km'] ?? ($policies['mileage_limit_km'] ?? null);
-        if ($mileagePolicy && !isset($requirements['mileage_type'])) {
+        if ($mileagePolicy && ! isset($requirements['mileage_type'])) {
             if ($mileagePolicy === 'limited' && $mileageLimitKm) {
                 $requirements['mileage_type'] = "Limited ({$mileageLimitKm} km)";
             } else {
@@ -432,7 +482,7 @@ class GatewayVehicleTransformer
             }
         }
 
-        return !empty($requirements) ? $requirements : null;
+        return ! empty($requirements) ? $requirements : null;
     }
 
     private function buildBenefits(string $rawSupplierId, array $gv, array $supplierData, $depositAmount, $depositCurrency): array
@@ -443,7 +493,7 @@ class GatewayVehicleTransformer
             'fuel_policy' => $supplierData['fuel_policy'] ?? ($gv['policies']['fuel_policy'] ?? null),
             'deposit_amount' => $depositAmount,
             'deposit_currency' => $depositCurrency,
-            'excess_amount' => !empty($gv['insurance_options']) ? ($gv['insurance_options'][0]['excess_amount'] ?? null) : null,
+            'excess_amount' => ! empty($gv['insurance_options']) ? ($gv['insurance_options'][0]['excess_amount'] ?? null) : null,
             'excess_theft_amount' => $supplierData['excess_theft_amount'] ?? ($supplierData['theft_excess'] ?? null),
         ];
 
@@ -472,7 +522,7 @@ class GatewayVehicleTransformer
 
         $sippCode = $gv['sipp_code'] ?? ($gv['specs']['sipp_code'] ?? ($gv['supplier_data']['sipp_code'] ?? ''));
         $conditions = $this->getLocautoConditions($sippCode);
-        if (!$conditions) {
+        if (! $conditions) {
             return null;
         }
 
@@ -480,8 +530,8 @@ class GatewayVehicleTransformer
             ['label' => 'Fuel Policy', 'value' => 'Full to Full', 'detail' => 'Return with full tank. Refuelling surcharge: €35'],
             ['label' => 'Mileage', 'value' => 'Unlimited'],
             ['label' => 'Security Deposit', 'value' => 'No car deposit required'],
-            ['label' => 'Damage Excess (CDW)', 'value' => '€' . $conditions['damage_excess']],
-            ['label' => 'Theft Excess (TW)', 'value' => '€' . $conditions['theft_excess']],
+            ['label' => 'Damage Excess (CDW)', 'value' => '€'.$conditions['damage_excess']],
+            ['label' => 'Theft Excess (TW)', 'value' => '€'.$conditions['theft_excess']],
             ['label' => 'Payment at Pickup', 'value' => 'Credit or Debit card in driver\'s name'],
             ['label' => 'Pickup Grace Period', 'value' => '59 minutes from booked time'],
             ['label' => 'Drop-off Grace Period', 'value' => '59 minutes from pickup time on agreement'],
@@ -513,7 +563,7 @@ class GatewayVehicleTransformer
             'IFAR' => ['min_age' => 25, 'damage_excess' => 1700, 'theft_excess' => 2200],
         ];
 
-        if (!isset($conditions[$sippCode])) {
+        if (! isset($conditions[$sippCode])) {
             return null;
         }
 
@@ -633,16 +683,16 @@ class GatewayVehicleTransformer
             'luggageSmall' => isset($specs['luggage_small']) ? (string) $specs['luggage_small'] : null,
             'luggageMed' => isset($specs['luggage_medium']) ? (string) $specs['luggage_medium'] : null,
             'luggageLarge' => isset($specs['luggage_large']) ? (string) $specs['luggage_large'] : null,
-            'products' => !empty($products)
+            'products' => ! empty($products)
                 ? $this->mapCanonicalProducts($products, $currency, $pricePerDay)
                 : [['type' => 'BAS', 'name' => 'Basic Package', 'total' => $totalPrice, 'price_per_day' => $pricePerDay, 'currency' => $currency]],
             'tdr' => $providerPayload['tdr'] ?? $totalPrice,
             'quoteid' => $providerPayload['quote_id'] ?? null,
             'rentalCode' => null,
-            'options' => !empty($extrasPreview)
+            'options' => ! empty($extrasPreview)
                 ? $this->mapCanonicalExtrasPreview($extrasPreview)
                 : $this->mapExtras($fullExtras, $source),
-            'extras' => !empty($extrasPreview)
+            'extras' => ! empty($extrasPreview)
                 ? $this->mapCanonicalExtrasPreview($extrasPreview)
                 : $this->mapExtras($fullExtras, $source),
             'insurance_options' => $this->mapCanonicalInsuranceOptions($gv, $providerPayload),
@@ -833,7 +883,7 @@ class GatewayVehicleTransformer
             $code = (string) end($parts);
         }
 
-        $label = strtolower((string) ($extra['name'] ?? '') . ' ' . (string) ($extra['description'] ?? ''));
+        $label = strtolower((string) ($extra['name'] ?? '').' '.(string) ($extra['description'] ?? ''));
         $label = str_replace('-', ' ', $label);
 
         return in_array($code, ['23', '35'], true) || str_contains($label, 'one way');
@@ -865,7 +915,7 @@ class GatewayVehicleTransformer
             ?? $gv['insurance_options']
             ?? [];
 
-        if (!empty($options)) {
+        if (! empty($options)) {
             return collect($options)->filter(fn ($ins) => is_array($ins))->map(fn ($ins) => [
                 'id' => $ins['id'] ?? '',
                 'name' => $ins['name'] ?? '',
