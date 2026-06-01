@@ -399,11 +399,11 @@ class GatewayVehicleTransformer
                 ['name' => 'Deposit & Excess', 'conditions' => [
                     "Damage excess (CDW): €{$damageExcess}",
                     "Theft excess (TW): €{$theftExcess}",
-                    'Security deposit for Locauto car groups: EUR 0.00 / no car deposit required.',
+                    'Security deposit for Locauto car groups: EUR 0.01.',
                     'Damage and theft excess liability still applies unless reduced by an eligible protection product.',
                 ]],
                 ['name' => 'Fuel & Mileage', 'conditions' => [
-                    'Fuel policy: Full to Full. Return with same fuel level. Refuelling surcharge: €35.',
+                    'Fuel policy: Full to Full. Return with same fuel level. Refuelling surcharge: €35 + VAT 22% + APT fees 18% or Railway fees 15% where applicable.',
                     'Unlimited mileage for rentals up to 27 days.',
                     '28+ days: 117 km/day (3,500 km/month). Extra km: €0.24–€0.30 + fees + VAT.',
                 ]],
@@ -414,7 +414,7 @@ class GatewayVehicleTransformer
                 ['name' => 'Pickup & Grace Period', 'conditions' => [
                     'Vehicle kept available for 59 minutes after booked time.',
                     'For airport/station bookings: provide flight/train number for 59-min grace after landing.',
-                    'Out of hours pickup: €30/rental (on request, max 90 min after closing).',
+                    'Out of hours pickup: €30 + VAT 22% + APT fees 18% or Railway fees 15% where applicable (on request, max 90 min after closing).',
                 ]],
                 ['name' => 'Drop-off', 'conditions' => [
                     '59-minute grace period from pickup time on rental agreement.',
@@ -425,8 +425,8 @@ class GatewayVehicleTransformer
                     'One-way outside Italy not allowed without authorisation (€2,000 penalty).',
                 ]],
                 ['name' => 'Cancellation', 'conditions' => [
-                    'No-show fee for groups S, L, R, RR, P: €50.',
-                    'Late cancellation (within 24h before pickup) for groups S, L, R, RR, P: €50.',
+                    'No-show fee for groups S, SS, L, R, RR, P: €50.',
+                    'Late cancellation (within 24h before pickup) for groups S, SS, L, R, RR, P: €50.',
                 ]],
                 ['name' => 'Vehicle', 'conditions' => [
                     'Specific make/model not guaranteed. Vehicle category (SIPP code) is guaranteed.',
@@ -527,15 +527,15 @@ class GatewayVehicleTransformer
         }
 
         return [
-            ['label' => 'Fuel Policy', 'value' => 'Full to Full', 'detail' => 'Return with full tank. Refuelling surcharge: €35'],
+            ['label' => 'Fuel Policy', 'value' => 'Full to Full', 'detail' => 'Return with full tank. Refuelling surcharge: €35 + VAT 22% + APT fees 18% or Railway fees 15% where applicable'],
             ['label' => 'Mileage', 'value' => 'Unlimited'],
-            ['label' => 'Security Deposit', 'value' => 'No car deposit required'],
+            ['label' => 'Security Deposit', 'value' => '€0.01'],
             ['label' => 'Damage Excess (CDW)', 'value' => '€'.$conditions['damage_excess']],
             ['label' => 'Theft Excess (TW)', 'value' => '€'.$conditions['theft_excess']],
             ['label' => 'Payment at Pickup', 'value' => 'Credit or Debit card in driver\'s name'],
             ['label' => 'Pickup Grace Period', 'value' => '59 minutes from booked time'],
             ['label' => 'Drop-off Grace Period', 'value' => '59 minutes from pickup time on agreement'],
-            ['label' => 'Out of Hours Fee', 'value' => '€30 per rental (on request, max 90 min after closing)'],
+            ['label' => 'Out of Hours Fee', 'value' => '€30 + VAT 22% + APT fees 18% or Railway fees 15% where applicable'],
             ['label' => 'Cross Border', 'value' => 'Allowed in EU + Norway + Switzerland (prior authorisation required)'],
         ];
     }
@@ -567,7 +567,7 @@ class GatewayVehicleTransformer
             return null;
         }
 
-        return $conditions[$sippCode] + ['deposit_amount' => 0.0];
+        return $conditions[$sippCode] + ['deposit_amount' => 0.01];
     }
 
     private function resolveProviderVehicleId(string $rawSupplierId, array $gv, array $supplierData, mixed $supplierVehicleId): ?string
@@ -869,6 +869,7 @@ class GatewayVehicleTransformer
         return collect($extras)
             ->filter(fn ($extra) => is_array($extra)
                 && ! $this->isLocautoOneWayFeeExtra($extra)
+                && ! $this->isLocautoCounterOnlyExtra($extra)
                 && ! $this->isLocautoIncludedNonSelectableExtra($extra))
             ->values()
             ->all();
@@ -887,6 +888,18 @@ class GatewayVehicleTransformer
         $label = str_replace('-', ' ', $label);
 
         return in_array($code, ['23', '35'], true) || str_contains($label, 'one way');
+    }
+
+    private function isLocautoCounterOnlyExtra(array $extra): bool
+    {
+        $supplierData = is_array($extra['supplier_data'] ?? null) ? $extra['supplier_data'] : [];
+        $code = (string) ($extra['code'] ?? ($supplierData['code'] ?? ($extra['id'] ?? '')));
+        if (str_starts_with($code, 'ext_') && substr_count($code, '_') >= 2) {
+            $parts = explode('_', $code);
+            $code = (string) end($parts);
+        }
+
+        return in_array($code, ['89', '166'], true);
     }
 
     private function isLocautoIncludedNonSelectableExtra(array $extra): bool
@@ -1026,6 +1039,10 @@ class GatewayVehicleTransformer
                 'excessAmount' => $extra['excess'] ?? ($extra['excessAmount'] ?? null),
                 'prepay_available' => $extra['prepay_available'] ?? null,
                 'purpose' => $extra['purpose'] ?? null,
+                'chargeable_days' => $extra['chargeable_days'] ?? null,
+                'max_charge_days' => $extra['max_charge_days'] ?? null,
+                'max_charge' => $extra['max_charge'] ?? null,
+                'included_in_rate' => $extra['included_in_rate'] ?? null,
             ];
         })->values()->all();
     }

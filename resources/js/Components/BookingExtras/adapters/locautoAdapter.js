@@ -25,6 +25,7 @@ export function createLocautoAdapter(props) {
         ...assistanceCodes,
         '140', '145', '146',
         '23', '35', '55',
+        '89', '166',
     ]);
     const locautoOptionMeta = {
         '136': {
@@ -138,6 +139,12 @@ export function createLocautoAdapter(props) {
         const total = extraBookingTotal(extra);
         return props.numberOfDays > 0 ? total / props.numberOfDays : total;
     };
+    const appendMaxChargeNote = (description, extra) => {
+        const maxChargeDays = parseInt(extra?.max_charge_days ?? extra?.supplier_data?.max_charge_days ?? 0, 10);
+        const baseDescription = `${description || ''}`.trim();
+        if (!Number.isFinite(maxChargeDays) || maxChargeDays <= 0) return baseDescription;
+        return `${baseDescription} Max charge: ${maxChargeDays} days.`.trim();
+    };
     const selectableExtras = computed(() => {
         const extras = props.vehicle?.extras || [];
         return extras.filter(extra => !isOneWayFee(extra));
@@ -162,7 +169,7 @@ export function createLocautoAdapter(props) {
                     code,
                     name: meta.title || extra.name || extra.description,
                     title: meta.title || extra.name || extra.description,
-                    description: meta.description || extra.description || extra.name,
+                    description: appendMaxChargeNote(meta.description || extra.description || extra.name, extra),
                     badge: meta.badge || null,
                     amount: daily,
                     daily_rate: daily,
@@ -319,7 +326,7 @@ export function createLocautoAdapter(props) {
                     code,
                     name: meta.title || extra.name || extra.description,
                     display_name: meta.title || extra.name || extra.description,
-                    description: meta.description || extra.description || extra.name,
+                    description: appendMaxChargeNote(meta.description || extra.description || extra.name, extra),
                     category_key: meta.categoryKey || 'extra_optionals',
                     category_label: meta.categoryLabel || 'Extra optionals',
                     price: total,
@@ -327,6 +334,9 @@ export function createLocautoAdapter(props) {
                     total_for_booking: total,
                     pricing_type: pricingType,
                     amount: daily,
+                    chargeable_days: extra.chargeable_days ?? null,
+                    max_charge_days: extra.max_charge_days ?? null,
+                    max_charge: extra.max_charge ?? null,
                 };
             });
     });

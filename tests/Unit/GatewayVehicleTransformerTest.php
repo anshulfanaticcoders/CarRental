@@ -12,7 +12,7 @@ class GatewayVehicleTransformerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->transformer = new GatewayVehicleTransformer();
+        $this->transformer = new GatewayVehicleTransformer;
     }
 
     /**
@@ -234,7 +234,7 @@ class GatewayVehicleTransformerTest extends TestCase
                 'currency' => 'EUR',
                 'price_per_day' => 76.5,
                 'total_price' => 612.0,
-                'deposit_amount' => 0.0,
+                'deposit_amount' => 0.01,
                 'deposit_currency' => 'EUR',
             ],
             'policies' => ['mileage_policy' => 'unlimited'],
@@ -251,31 +251,77 @@ class GatewayVehicleTransformerTest extends TestCase
         $policyLabels = array_column($result['rental_policies'], 'label');
         $this->assertContains('Security Deposit', $policyLabels);
         $securityDepositPolicy = $result['rental_policies'][array_search('Security Deposit', $policyLabels, true)];
-        $this->assertSame('No car deposit required', $securityDepositPolicy['value']);
+        $this->assertSame('€0.01', $securityDepositPolicy['value']);
     }
 
-    public function test_locauto_deposit_policy_displays_no_car_deposit(): void
+    public function test_locauto_deposit_policy_displays_supplier_cent_deposit(): void
     {
         $gv = $this->makeGatewayVehicle('locauto_rent');
-        $gv['pricing']['deposit_amount'] = 0.0;
+        $gv['pricing']['deposit_amount'] = 0.01;
         $gv['pricing']['deposit_currency'] = 'EUR';
         $gv['supplier_data'] = ['sipp_code' => 'EDMR'];
 
         $result = $this->transformer->transform($gv, 5);
 
-        $this->assertSame(0.0, $result['security_deposit']);
-        $this->assertSame(0.0, $result['benefits']['deposit_amount']);
+        $this->assertSame(0.01, $result['security_deposit']);
+        $this->assertSame(0.01, $result['benefits']['deposit_amount']);
         $this->assertSame('EUR', $result['benefits']['deposit_currency']);
 
         $policyLabels = array_column($result['rental_policies'], 'label');
         $this->assertContains('Security Deposit', $policyLabels);
         $securityDepositPolicy = $result['rental_policies'][array_search('Security Deposit', $policyLabels, true)];
-        $this->assertSame('No car deposit required', $securityDepositPolicy['value']);
+        $this->assertSame('€0.01', $securityDepositPolicy['value']);
 
         $termsText = implode(' ', array_merge(...array_column($result['terms'], 'conditions')));
-        $this->assertStringContainsString('EUR 0.00 / no car deposit required', $termsText);
+        $this->assertStringContainsString('Security deposit for Locauto car groups: EUR 0.01', $termsText);
         $this->assertStringNotContainsString('Deposit blocked on credit card', $termsText);
         $this->assertStringNotContainsString('deposit + rental charges', $termsText);
+    }
+
+    public function test_locauto_counter_only_extras_are_not_customer_selectable(): void
+    {
+        $gv = $this->makeGatewayVehicle('locauto_rent', [
+            [
+                'id' => 'ext_locauto_rent_19',
+                'name' => 'GPS Navigation',
+                'description' => 'GPS Navigation',
+                'daily_rate' => 10.08,
+                'total_price' => 10.08,
+                'currency' => 'EUR',
+                'max_quantity' => 1,
+                'mandatory' => false,
+                'type' => 'equipment',
+                'supplier_data' => ['code' => '19', 'amount' => 10.08],
+            ],
+            [
+                'id' => 'ext_locauto_rent_89',
+                'name' => 'Bau the way',
+                'description' => 'Bau the way',
+                'daily_rate' => 57.38,
+                'total_price' => 57.38,
+                'currency' => 'EUR',
+                'max_quantity' => 1,
+                'mandatory' => false,
+                'type' => 'equipment',
+                'supplier_data' => ['code' => '89', 'amount' => 57.38],
+            ],
+            [
+                'id' => 'ext_locauto_rent_166',
+                'name' => 'Tollpass device',
+                'description' => 'Tollpass device',
+                'daily_rate' => 28.97,
+                'total_price' => 28.97,
+                'currency' => 'EUR',
+                'max_quantity' => 1,
+                'mandatory' => false,
+                'type' => 'equipment',
+                'supplier_data' => ['code' => '166', 'amount' => 28.97],
+            ],
+        ]);
+
+        $result = $this->transformer->transform($gv, 1);
+
+        $this->assertSame(['19'], array_column($result['extras'], 'code'));
     }
 
     public function test_surprice_extras_preserve_supplier_data_fields(): void
@@ -478,7 +524,7 @@ class GatewayVehicleTransformerTest extends TestCase
         $defaultExtras = $this->makeProviderExtras($supplierId);
 
         return [
-            'id' => 'gv_' . $supplierId . '_1',
+            'id' => 'gv_'.$supplierId.'_1',
             'supplier_id' => $supplierId,
             'supplier_vehicle_id' => 'veh_1',
             'make' => 'Fiat',

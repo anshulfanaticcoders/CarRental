@@ -275,3 +275,21 @@ Concise durable memory for significant completed work.
 - Decision: public partner-facing supplier/company display is now always `Vrooem`; underlying provider source/code metadata remains intact for booking routing, provider payloads, reporting, and diagnostics.
 - Verification: PHP syntax checks passed; targeted Skyscanner unit tests passed; targeted Trabber external-provider feature test passed; `./vendor/bin/pint --test --dirty` passed; `npm run build` passed with existing project warnings.
 - Test notes: existing Skyscanner cache-backed tests with hardcoded April 2026 expiry dates now fail because those dates are in the past on May 30, 2026; this is separate from supplier branding.
+
+### 2026-06-01 - Locauto website XML/T&C alignment
+- Scope: `CarRental` Locauto booking extras display, rental policy transform, and transformer tests; `vrooem-gateway` Locauto adapter, conditions YAML, search payload extras metadata, and adapter tests.
+- Decision: Locauto deposit now stays as EUR 0.01; refuelling and out-of-hours policy copy includes VAT plus airport/railway fee conditions; cancellation/no-show copy includes group SS; Bau the Way and Tollpass are blocked as counter-only; customer-facing Locauto add-on cards display supplier XML prices instead of Vrooem marked-up totals.
+- Verification: PHP syntax checks passed; focused Locauto transformer tests passed; touched-file Pint check passed; `npm run build` passed with existing project warnings; gateway changed-file AST syntax check passed; gateway Locauto adapter pytest passed.
+- Test notes: gateway-wide `ruff check app` still reports existing lint debt across unrelated providers and services, so it was not cleaned up in this Locauto compliance pass. Existing dirty `vrooem-gateway/data/unified_locations.json` remains excluded from this task.
+
+### 2026-06-01 - OK Mobility EV/PHEV fuel normalization
+- Scope: `vrooem-gateway` OK Mobility adapter and shared SIPP fuel derivation.
+- Decision: ambiguous SIPP fuel code `S` no longer defaults to petrol; OK Mobility now derives EV/PHEV fuel from clear model names before falling back to SIPP fuel parsing.
+- Verification: focused gateway pytest passed for OK Mobility and SIPP specs, including Trabber's reported BCN examples: Smart ForTwo Electric `MTES`, Fiat 500e `MSES`, Peugeot 2008 EV `SSES`, Nissan Leaf `CMES`, and Peugeot 3008 Plug-in Hybrid `SMPS`.
+- Test notes: targeted ruff still reports pre-existing long-line lint debt in `ok_mobility.py` and an existing test line, so no broad formatting cleanup was included.
+
+### 2026-06-01 - Surprice ambiguous fuel hardening
+- Scope: `vrooem-gateway` Surprice adapter fuel normalization and adapter tests.
+- Decision: Surprice no longer guesses petrol when the SIPP/ACRISS fuel character is missing or ambiguous; clear EV/PHEV model names now set electric/hybrid, while deterministic petrol codes still publish petrol.
+- Verification: focused gateway pytest passed for Surprice, OK Mobility, and shared SIPP specs with 36 tests.
+- Test notes: targeted ruff still reports pre-existing long-line lint debt in `surprice.py`, so no broad provider formatting cleanup was included.

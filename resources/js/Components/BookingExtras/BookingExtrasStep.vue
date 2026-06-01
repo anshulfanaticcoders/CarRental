@@ -910,6 +910,7 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
                     :is-sicily-by-car="isSicilyByCar"
                     :is-record-go="isRecordGo"
                     :format-rental-price="formatRentalPrice"
+                    :format-price="formatPrice"
                     :get-provider-extra-label="getProviderExtraLabel"
                     :get-extra-per-day="getExtraPerDay"
                     :get-extra-icon="getExtraIcon"

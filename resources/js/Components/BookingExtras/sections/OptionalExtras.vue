@@ -13,6 +13,7 @@ const props = defineProps({
     isLocautoRent: Boolean,
     locautoAssistanceItems: { type: Array, default: () => [] },
     formatRentalPrice: Function,
+    formatPrice: Function,
     getProviderExtraLabel: Function,
     getExtraPerDay: Function,
     getExtraIcon: Function,
@@ -32,7 +33,14 @@ const serviceTitle = (extra) => props.getProviderExtraLabel(extra);
 const servicePrice = (extra) => {
     if (extra.isIncluded) return 0;
     if (props.isLocautoRent) {
+        const pricingType = `${extra.pricing_type || ''}`.toLowerCase();
         const total = parseFloat(extra.total_for_booking ?? extra.price);
+        if ((pricingType === 'per_rental' || pricingType === 'per_booking') && Number.isFinite(total)) {
+            return total;
+        }
+
+        const daily = parseFloat(extra.daily_rate);
+        if (Number.isFinite(daily) && daily > 0) return daily;
         if (Number.isFinite(total) && props.numberOfDays > 0) return total / props.numberOfDays;
         return extra.daily_rate ?? 0;
     }
@@ -41,8 +49,17 @@ const servicePrice = (extra) => {
 };
 const serviceSuffix = (extra) => {
     if (extra.isIncluded) return '';
-    if (props.isLocautoRent) return '/day';
+    if (props.isLocautoRent) {
+        const pricingType = `${extra.pricing_type || ''}`.toLowerCase();
+        return pricingType === 'per_rental' || pricingType === 'per_booking' ? '/booking' : '/day';
+    }
     return props.isSicilyByCar || extra.total_for_booking == null ? '/day' : '/booking';
+};
+const formatServicePrice = (extra) => {
+    const formatter = props.isLocautoRent
+        ? (props.formatPrice || props.formatRentalPrice)
+        : props.formatRentalPrice;
+    return formatter(servicePrice(extra));
 };
 const locautoGroupMeta = {
     safety_assistance: {
@@ -177,7 +194,7 @@ const locautoGroupedExtras = computed(() => {
                                 <div class="text-lg font-bold" :class="extra.isIncluded ? 'text-emerald-700' : 'text-[#153b4f]'">
                                     <template v-if="extra.isIncluded">Free</template>
                                     <template v-else>
-                                        {{ formatRentalPrice(servicePrice(extra)) }}<span class="text-xs font-medium text-slate-500">{{ serviceSuffix(extra) }}</span>
+                                        {{ formatServicePrice(extra) }}<span class="text-xs font-medium text-slate-500">{{ serviceSuffix(extra) }}</span>
                                     </template>
                                 </div>
                             </div>
@@ -231,7 +248,7 @@ const locautoGroupedExtras = computed(() => {
                         <div>
                             <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Price</div>
                             <div class="text-lg font-bold text-[#153b4f]">
-                                {{ formatRentalPrice(servicePrice(extra)) }}<span class="text-xs font-medium text-slate-500">{{ serviceSuffix(extra) }}</span>
+                                {{ formatServicePrice(extra) }}<span class="text-xs font-medium text-slate-500">{{ serviceSuffix(extra) }}</span>
                             </div>
                         </div>
 
