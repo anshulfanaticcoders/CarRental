@@ -27,6 +27,11 @@ class GatewayVehicleTransformer
         // No override needed — use the gateway pricing as-is.
 
         $transmission = $gv['transmission'] ?? null;
+        $sippCode = $this->resolveSippCode($gv['sipp_code'] ?? ($supplierData['sipp_code'] ?? ($supplierData['acriss'] ?? null)), [
+            'category' => $gv['category'] ?? null,
+            'transmission' => $transmission,
+            'air_conditioning' => $gv['air_conditioning'] ?? null,
+        ]);
 
         $fuelMap = [
             'petrol' => 'Petrol',
@@ -132,7 +137,7 @@ class GatewayVehicleTransformer
             'ok_mobility_dropoff_time' => null,
             'features' => $features,
             'airConditioning' => $gv['air_conditioning'] ?? null,
-            'sipp_code' => $gv['sipp_code'] ?? null,
+            'sipp_code' => $sippCode,
             'doors' => $gv['doors'] ?? null,
             'benefits' => $this->buildBenefits($rawSupplierId, $gv, $supplierData, $depositAmount, $depositCurrency),
             'provider_gross_amount' => ! empty($supplierData['net_amount']) ? ($totalPrice) : null,
@@ -147,10 +152,11 @@ class GatewayVehicleTransformer
             'rentalCode' => null,
             'options' => $options,
             'extras' => $extras,
+            'extras_preview' => $extras,
             'insurance_options' => $insuranceOptions,
             'supplier_data' => $gv['supplier_data'] ?? [],
             'specs' => [
-                'sipp_code' => $gv['sipp_code'] ?? null,
+                'sipp_code' => $sippCode,
                 'transmission' => $transmission,
                 'fuel' => $fuel,
                 'air_conditioning' => $gv['air_conditioning'] ?? null,
@@ -277,6 +283,39 @@ class GatewayVehicleTransformer
         ];
 
         return $map[$supplierId] ?? $supplierId;
+    }
+
+    private function resolveSippCode(mixed $explicit, array $attributes): ?string
+    {
+        $explicit = strtoupper(preg_replace('/[^A-Z]/', '', trim((string) ($explicit ?? ''))) ?? '');
+        if (strlen($explicit) === 4) {
+            return $explicit;
+        }
+
+        $category = strtolower(trim((string) ($attributes['category'] ?? '')));
+        $transmission = strtolower(trim((string) ($attributes['transmission'] ?? '')));
+        $airConditioning = $attributes['air_conditioning'] ?? null;
+
+        if ($category === '' || $transmission === '') {
+            return null;
+        }
+
+        $categoryLetter = match ($category) {
+            'mini' => 'M',
+            'economy' => 'E',
+            'compact' => 'C',
+            'intermediate' => 'I',
+            'standard' => 'S',
+            'fullsize', 'full-size' => 'F',
+            'premium' => 'P',
+            'luxury' => 'L',
+            default => 'X',
+        };
+        $transmissionLetter = $transmission === 'automatic' ? 'A' : ($transmission === 'manual' ? 'M' : 'X');
+        $airConditioningFlag = filter_var($airConditioning, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+        $airConditioningLetter = $airConditioningFlag === false ? 'N' : 'R';
+
+        return $categoryLetter.'C'.$transmissionLetter.$airConditioningLetter;
     }
 
     private function buildGatewayProducts(string $supplierId, float $totalPrice, float $dailyRate, string $currency, int $rentalDays, array $gv): array
@@ -637,6 +676,11 @@ class GatewayVehicleTransformer
         $currency = $pricing['currency'] ?? 'EUR';
         $fuel = $specs['fuel'] ?? null;
         $airConditioning = array_key_exists('air_conditioning', $specs) ? $specs['air_conditioning'] : null;
+        $sippCode = $this->resolveSippCode($specs['sipp_code'] ?? ($providerPayload['sipp_code'] ?? ($providerPayload['acriss'] ?? null)), [
+            'category' => $gv['category'] ?? null,
+            'transmission' => $specs['transmission'] ?? null,
+            'air_conditioning' => $airConditioning,
+        ]);
 
         return [
             'id' => $gv['id'] ?? null,
@@ -674,7 +718,7 @@ class GatewayVehicleTransformer
             'ok_mobility_dropoff_time' => null,
             'features' => $airConditioning === true ? ['Air Conditioning'] : [],
             'airConditioning' => $airConditioning,
-            'sipp_code' => $specs['sipp_code'] ?? null,
+            'sipp_code' => $sippCode,
             'doors' => $specs['doors'] ?? null,
             'benefits' => $this->buildBenefits($source, $gv, $providerPayload, $pricing['deposit_amount'] ?? null, $pricing['deposit_currency'] ?? null),
             'provider_gross_amount' => null,
@@ -693,6 +737,9 @@ class GatewayVehicleTransformer
                 ? $this->mapCanonicalExtrasPreview($extrasPreview)
                 : $this->mapExtras($fullExtras, $source),
             'extras' => ! empty($extrasPreview)
+                ? $this->mapCanonicalExtrasPreview($extrasPreview)
+                : $this->mapExtras($fullExtras, $source),
+            'extras_preview' => ! empty($extrasPreview)
                 ? $this->mapCanonicalExtrasPreview($extrasPreview)
                 : $this->mapExtras($fullExtras, $source),
             'insurance_options' => $this->mapCanonicalInsuranceOptions($gv, $providerPayload),
@@ -747,7 +794,7 @@ class GatewayVehicleTransformer
             'bags' => (($specs['luggage_small'] ?? 0) + ($specs['luggage_medium'] ?? 0) + ($specs['luggage_large'] ?? 0)) ?: null,
             'suitcases' => $specs['luggage_large'] ?? null,
             'security_deposit' => $pricing['deposit_amount'] ?? null,
-            'specs' => $specs,
+            'specs' => array_merge($specs, ['sipp_code' => $sippCode]),
             'pricing' => [
                 'currency' => $currency,
                 'price_per_day' => $pricePerDay,

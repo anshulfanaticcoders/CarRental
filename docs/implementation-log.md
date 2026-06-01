@@ -293,3 +293,10 @@ Concise durable memory for significant completed work.
 - Decision: Surprice no longer guesses petrol when the SIPP/ACRISS fuel character is missing or ambiguous; clear EV/PHEV model names now set electric/hybrid, while deterministic petrol codes still publish petrol.
 - Verification: focused gateway pytest passed for Surprice, OK Mobility, and shared SIPP specs with 36 tests.
 - Test notes: targeted ruff still reports pre-existing long-line lint debt in `surprice.py`, so no broad provider formatting cleanup was included.
+
+### 2026-06-01 - Trabber offer page plans and extras parity
+- Scope: `CarRental` Trabber offer-page quote assembly, shared gateway vehicle transformer, and partner parity audit.
+- Decision: Trabber offer pages now retain provider package variants and customer-selectable extras from `extras_preview`, `extras`, or `options`; shared transformer also derives a fallback SIPP when suppliers omit one so website, Trabber, and Skyscanner do not disagree.
+- Verification: PHP syntax checks passed; touched-file Pint check passed; `GatewayVehicleTransformerTest`, focused Trabber provider products/extras regression, and Skyscanner offer booking adapter tests passed. Partner parity audit passed for Adobe, Click2Rent, Easirent, EMR, Favrica, Locauto, OK Mobility, RecordGo, Surprice, and XDrive on local live gateway responses.
+- Test notes: Renteon returned no live vehicles for sampled local locations/dates, so it remains no-result rather than pass/fail. Full Trabber suite passed before the final guard tweak with 13 tests and 125 assertions; later full-suite reruns timed out in the local PowerShell session before output.
+- Follow-ups: deploy before retesting the live Barcelona Trabber offer link; existing cached production offer IDs need a fresh Trabber search/deeplink to pick up the richer cached payload.

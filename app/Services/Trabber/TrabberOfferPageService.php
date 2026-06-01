@@ -43,7 +43,7 @@ class TrabberOfferPageService
             'dropoff_location_details' => $this->locationDetails(Arr::get($payload, 'search.dropoff_location', [])),
             'products' => $this->products($vehicle, $pricing),
             'booking_products' => $this->products($vehicle, $netPricing),
-            'extras_preview' => is_array($vehicle['extras_preview'] ?? null) ? $vehicle['extras_preview'] : [],
+            'extras_preview' => $this->extrasPreview($vehicle),
             'deeplink' => [
                 'landing_page_url' => $this->offerUrl((string) ($offer['offer_id'] ?? ''), $search),
                 'quote_redirect_url' => Route::has('trabber.redirect') ? route('trabber.redirect', ['offer_id' => $offer['offer_id'] ?? '']) : null,
@@ -226,6 +226,14 @@ class TrabberOfferPageService
             return $vehicle['products'];
         }
 
+        $providerProducts = data_get($vehicle, 'booking_context.provider_payload.products');
+        if (is_array($providerProducts) && $providerProducts !== []) {
+            $products = array_values(array_filter($providerProducts, 'is_array'));
+            if ($products !== []) {
+                return $products;
+            }
+        }
+
         return [[
             'type' => 'BAS',
             'name' => 'Basic Rental',
@@ -238,6 +246,24 @@ class TrabberOfferPageService
             'currency' => $pricing['currency'] ?? null,
             'is_basic' => true,
         ]];
+    }
+
+    private function extrasPreview(array $vehicle): array
+    {
+        foreach (['extras_preview', 'extras', 'options'] as $key) {
+            if (is_array($vehicle[$key] ?? null) && $vehicle[$key] !== []) {
+                $extras = array_values(array_filter($vehicle[$key], 'is_array'));
+                if ($extras !== []) {
+                    return $extras;
+                }
+            }
+        }
+
+        $providerExtras = data_get($vehicle, 'booking_context.provider_payload.extras');
+
+        return is_array($providerExtras)
+            ? array_values(array_filter($providerExtras, 'is_array'))
+            : [];
     }
 
     private function normalizeSearch(array $search): array

@@ -396,6 +396,138 @@ class TrabberIntegrationTest extends TestCase
         $response->assertJsonPath('meta.inventory_scope', 'mixed');
     }
 
+    public function test_trabber_offer_page_preserves_provider_products_and_extras(): void
+    {
+        config(['trabber.inventory_scope' => 'mixed']);
+
+        $unifiedLocation = [
+            'unified_location_id' => 1619888898,
+            'name' => 'Barcelona Airport (BCN)',
+            'city' => 'Barcelona',
+            'country' => 'Spain',
+            'country_code' => 'ES',
+            'latitude' => 41.32,
+            'longitude' => 2.07,
+            'iata' => 'BCN',
+            'providers' => [
+                ['provider' => 'okmobility', 'pickup_id' => 'ES-BAR-BCN'],
+            ],
+        ];
+
+        $this->mock(LocationSearchService::class, function ($mock) use ($unifiedLocation): void {
+            $mock->shouldReceive('getAllLocations')->andReturn([$unifiedLocation]);
+            $mock->shouldReceive('resolveSearchLocation')->andReturn($unifiedLocation);
+            $mock->shouldReceive('getLocationByUnifiedId')->andReturn($unifiedLocation);
+        });
+
+        $this->mock(VrooemGatewayService::class, function ($mock): void {
+            $mock->shouldReceive('searchVehicles')
+                ->once()
+                ->andReturn([
+                    'vehicles' => [[
+                        'id' => 'okmobility_bcn_001',
+                        'source' => 'okmobility',
+                        'provider_vehicle_id' => 'OK-BCN-001',
+                        'display_name' => 'Fiat 500e',
+                        'brand' => 'Fiat',
+                        'model' => '500e',
+                        'category' => 'mini',
+                        'image' => 'https://example.com/fiat-500e.jpg',
+                        'pricing' => [
+                            'total_price' => 300.0,
+                            'price_per_day' => 100.0,
+                            'currency' => 'EUR',
+                            'deposit_amount' => 700.0,
+                            'deposit_currency' => 'EUR',
+                        ],
+                        'specs' => [
+                            'sipp_code' => 'MSES',
+                            'transmission' => 'automatic',
+                            'fuel' => 'electric',
+                            'air_conditioning' => true,
+                            'seating_capacity' => 4,
+                            'doors' => 3,
+                            'luggage_large' => 1,
+                        ],
+                        'policies' => [
+                            'mileage_policy' => 'limited',
+                            'mileage_limit_km' => 250,
+                            'fuel_policy' => 'Full to Full',
+                        ],
+                        'location' => [
+                            'pickup' => [
+                                'provider_location_id' => 'ES-BAR-BCN',
+                                'name' => 'Barcelona Airport',
+                                'address' => 'Airport Terminal',
+                                'latitude' => 41.32,
+                                'longitude' => 2.07,
+                                'is_airport' => true,
+                            ],
+                            'dropoff' => [
+                                'provider_location_id' => 'ES-BAR-BCN',
+                                'name' => 'Barcelona Airport',
+                                'address' => 'Airport Terminal',
+                                'latitude' => 41.32,
+                                'longitude' => 2.07,
+                                'is_airport' => true,
+                            ],
+                        ],
+                        'products' => [
+                            ['type' => 'BAS', 'name' => 'Basic', 'total' => 300, 'price_per_day' => 100, 'currency' => 'EUR', 'is_basic' => true],
+                            ['type' => 'PLUS', 'name' => 'Plus', 'total' => 360, 'price_per_day' => 120, 'currency' => 'EUR'],
+                            ['type' => 'PREM', 'name' => 'Premium', 'total' => 420, 'price_per_day' => 140, 'currency' => 'EUR'],
+                        ],
+                        'extras_preview' => [
+                            ['id' => 'gps', 'name' => 'GPS', 'daily_rate' => 8, 'total_for_booking' => 24, 'currency' => 'EUR', 'max_quantity' => 1],
+                            ['id' => 'child-seat', 'name' => 'Child Seat', 'daily_rate' => 6, 'total_for_booking' => 18, 'currency' => 'EUR', 'max_quantity' => 2],
+                        ],
+                        'booking_context' => [
+                            'provider_payload' => [
+                                'source' => 'okmobility',
+                                'products' => [
+                                    ['type' => 'BAS', 'name' => 'Basic', 'total' => 300, 'price_per_day' => 100, 'currency' => 'EUR', 'is_basic' => true],
+                                    ['type' => 'PLUS', 'name' => 'Plus', 'total' => 360, 'price_per_day' => 120, 'currency' => 'EUR'],
+                                    ['type' => 'PREM', 'name' => 'Premium', 'total' => 420, 'price_per_day' => 140, 'currency' => 'EUR'],
+                                ],
+                            ],
+                        ],
+                    ]],
+                    'provider_status' => [],
+                    'search_id' => 'gateway-search-bcn',
+                ]);
+        });
+
+        $search = $this
+            ->withHeader('x-api-key', 'trabber-secret')
+            ->postJson('/api/trabber/car-hire/search', [
+                'pickup' => ['iata' => 'BCN'],
+                'dropoff' => ['iata' => 'BCN'],
+                'pickup_date_time' => '2026-09-14 09:00:00',
+                'dropoff_date_time' => '2026-09-17 09:00:00',
+                'currency' => 'EUR',
+                'language' => 'en',
+                'user_country' => 'ES',
+                'driver_age' => 35,
+            ]);
+
+        $search->assertOk();
+        $offerId = (string) $search->json('offers.0.offer_id');
+
+        $this->get(route('trabber.offer', [
+            'locale' => 'en',
+            'offerId' => $offerId,
+        ]))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('OfferResults')
+                ->has('quote.products', 3)
+                ->has('quote.extras_preview', 2)
+                ->has('bookingContext.vehicle.products', 3)
+                ->has('bookingContext.optional_extras', 2)
+                ->where('quote.products.1.name', 'Plus')
+                ->where('bookingContext.optional_extras.0.name', 'GPS')
+            );
+    }
+
     public function test_trabber_locations_returns_unified_locations_in_mixed_inventory_mode(): void
     {
         config(['trabber.inventory_scope' => 'mixed']);

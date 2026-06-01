@@ -83,6 +83,20 @@ class GatewayVehicleTransformerTest extends TestCase
         $this->assertSame($result['extras'], $result['options']);
     }
 
+    public function test_missing_sipp_is_derived_consistently_for_partner_payloads(): void
+    {
+        $gv = $this->makeGatewayVehicle('adobe_car');
+        $gv['category'] = 'mini';
+        $gv['transmission'] = 'manual';
+        $gv['air_conditioning'] = true;
+        unset($gv['sipp_code']);
+
+        $result = $this->transformer->transform($gv, 5);
+
+        $this->assertSame('MCMR', $result['sipp_code']);
+        $this->assertSame('MCMR', $result['specs']['sipp_code']);
+    }
+
     public function test_sicily_by_car_extras_preserve_supplier_data_fields(): void
     {
         $gv = $this->makeGatewayVehicle('sicily_by_car');
