@@ -55,6 +55,7 @@ import {
     resolveSearchVehicleImage,
     resolveSearchVehiclePricePerDay,
     resolveSearchVehicleRating,
+    resolveSearchVehicleSpecs,
 } from '@/features/search/utils/searchVehiclePresentation';
 import {
     Breadcrumb,
@@ -806,6 +807,17 @@ const getVehicleCategory = (vehicle) => {
     return 'Other'; // Fallback
 };
 
+const getVehicleFuel = (vehicle) => {
+    const value = resolveSearchVehicleSpecs(vehicle)?.fuel ?? vehicle?.fuel ?? vehicle?.fuel_type;
+    const fuel = `${value ?? ''}`.trim().toLowerCase();
+    return fuel && fuel !== 'unknown' ? fuel : '';
+};
+
+const formatFacetLabel = (value) => {
+    const label = `${value ?? ''}`.trim();
+    return label ? label.charAt(0).toUpperCase() + label.slice(1) : '';
+};
+
 // Main Client-Side Filtering
 const sortBy = ref('recommended');
 const viewMode = ref('grid'); // 'grid' or 'list'
@@ -921,16 +933,7 @@ const clientFilteredVehicles = computed(() => {
     if (form.fuel) {
         const fuel = form.fuel.toLowerCase();
         result = result.filter(v => {
-            // SIPP char 3
-            let vFuel = (v.fuel || v.fuel_type || '').toLowerCase();
-            const sipp = v.sipp || v.sipp_code;
-            if (sipp && sipp.length === 4) {
-                const char = sipp.charAt(3).toUpperCase();
-                if (['D', 'Q'].includes(char)) vFuel = 'diesel';
-                else if (['H', 'I'].includes(char)) vFuel = 'hybrid';
-                else if (['E', 'C'].includes(char)) vFuel = 'electric';
-                else vFuel = 'petrol';
-            }
+            const vFuel = getVehicleFuel(v);
             return vFuel.includes(fuel);
         });
     }
@@ -1024,16 +1027,7 @@ const facets = computed(() => {
             }
             // Check Fuel
             if (excludeField !== 'fuel' && form.fuel) {
-                let vFuel = (v.fuel || v.fuel_type || '').toLowerCase();
-                // ... normalize fuel same as above ...
-                const sipp = v.sipp || v.sipp_code;
-                if (sipp && sipp.length === 4) {
-                    const char = sipp.charAt(3).toUpperCase();
-                    if (['D', 'Q'].includes(char)) vFuel = 'diesel';
-                    else if (['H', 'I'].includes(char)) vFuel = 'hybrid';
-                    else if (['E', 'C'].includes(char)) vFuel = 'electric';
-                    else vFuel = 'petrol';
-                }
+                const vFuel = getVehicleFuel(v);
                 if (!vFuel.includes(form.fuel.toLowerCase())) return false;
             }
             return true;
@@ -1053,16 +1047,7 @@ const facets = computed(() => {
         return vTrans.charAt(0).toUpperCase() + vTrans.slice(1);
     });
     const fuelCounts = countBy(filterExcluding('fuel'), v => {
-        let vFuel = (v.fuel || v.fuel_type || 'Petrol').toLowerCase();
-        const sipp = v.sipp || v.sipp_code;
-        if (sipp && sipp.length === 4) {
-            const char = sipp.charAt(3).toUpperCase();
-            if (['D', 'Q'].includes(char)) vFuel = 'diesel';
-            else if (['H', 'I'].includes(char)) vFuel = 'hybrid';
-            else if (['E', 'C'].includes(char)) vFuel = 'electric';
-            else vFuel = 'petrol';
-        }
-        return vFuel.charAt(0).toUpperCase() + vFuel.slice(1);
+        return formatFacetLabel(getVehicleFuel(v));
     });
     const seatCounts = countBy(filterExcluding('seats'), v => parseInt(v.seating_capacity || v.passenger_capacity || v.passengers || v.adults || v.seat_number || v.seats || 0));
 
