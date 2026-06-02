@@ -1,15 +1,25 @@
 ﻿<script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, getCurrentInstance } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
-import carIcon from '../../../../assets/carIcon.svg';
-import { getCurrentInstance } from 'vue';
+import { CalendarCheck } from 'lucide-vue-next';
 import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
+const page = usePage();
+
+const t = (key, fallback) => {
+  const value = _t('customerbooking', key);
+  if (!value) return fallback;
+
+  const normalizedValue = String(value).trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const normalizedKey = String(key).trim().toLowerCase();
+
+  return normalizedValue === normalizedKey ? fallback : value;
+};
 
 const props = defineProps({
   bookings: Object,
@@ -17,59 +27,67 @@ const props = defineProps({
 
 const activeTab = ref('all');
 const isLoading = ref(false);
+const bookingRows = computed(() => props.bookings?.data || []);
+const totalBookings = computed(() => props.bookings?.total || bookingRows.value.length);
 
 // Status tabs configuration
 const statusTabs = [
-  { key: 'all', label: _t('customerbooking', 'all_bookings') || 'All Bookings' },
-  { key: 'pending', label: _t('customerbooking', 'pending') || 'Pending' },
-  { key: 'confirmed', label: _t('customerbooking', 'confirmed') || 'Confirmed' },
-  { key: 'completed', label: _t('customerbooking', 'completed') || 'Completed' },
-  { key: 'cancelled', label: _t('customerbooking', 'cancelled') || 'Cancelled' },
+  { key: 'all', label: t('all_bookings', 'All Bookings') },
+  { key: 'pending', label: t('pending', 'Pending') },
+  { key: 'confirmed', label: t('confirmed', 'Confirmed') },
+  { key: 'completed', label: t('completed', 'Completed') },
+  { key: 'cancelled', label: t('cancelled', 'Cancelled') },
 ];
 
 // Filter bookings by status (client-side)
 const filteredBookings = computed(() => {
-  if (!props.bookings?.data) return [];
+  if (!bookingRows.value.length) return [];
 
   if (activeTab.value === 'all') {
-    return props.bookings.data;
+    return bookingRows.value;
   }
 
-  return props.bookings.data.filter(booking =>
+  return bookingRows.value.filter(booking =>
     booking.booking_status === activeTab.value
   );
 });
 
+const getTabCount = (tabKey) => {
+  if (tabKey === 'all') return totalBookings.value;
+
+  return bookingRows.value.filter((booking) => booking.booking_status === tabKey).length;
+};
+
 // Get status badge styling
 const getStatusBadge = (status) => {
+  const normalizedStatus = (status || 'pending').toLowerCase();
   const statusConfig = {
     pending: {
-      bg: 'bg-amber-50',
-      text: 'text-amber-700',
-      border: 'border-amber-200',
-      icon: 'â—‹'
+      label: t('pending', 'Pending'),
+      tone: 'pending',
     },
     confirmed: {
-      bg: 'bg-emerald-50',
-      text: 'text-emerald-700',
-      border: 'border-emerald-200',
-      icon: 'âœ“'
+      label: t('confirmed', 'Confirmed'),
+      tone: 'confirmed',
+    },
+    active: {
+      label: t('active', 'Active'),
+      tone: 'confirmed',
     },
     completed: {
-      bg: 'bg-blue-50',
-      text: 'text-blue-700',
-      border: 'border-blue-200',
-      icon: 'â—'
+      label: t('completed', 'Completed'),
+      tone: 'completed',
     },
     cancelled: {
-      bg: 'bg-rose-50',
-      text: 'text-rose-700',
-      border: 'border-rose-200',
-      icon: 'âœ•'
+      label: t('cancelled', 'Cancelled'),
+      tone: 'cancelled',
     }
   };
 
-  return statusConfig[status] || statusConfig.pending;
+  return statusConfig[normalizedStatus] || {
+    label: normalizedStatus.replace(/_/g, ' '),
+    tone: 'pending',
+  };
 };
 
 // Get provider badge styling
@@ -93,7 +111,11 @@ const getProviderBadge = (provider) => {
 };
 
 const formatDate = (dateString) => {
+  if (!dateString) return t('date_pending', 'Date pending');
+
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
+
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -102,8 +124,12 @@ const formatDate = (dateString) => {
 };
 
 const formatTime = (timeString) => {
+  if (!timeString || typeof timeString !== 'string') return t('time_pending', 'Time pending');
+
   const [hours, minutes] = timeString.split(':');
   const hour = parseInt(hours);
+  if (Number.isNaN(hour) || !minutes) return timeString;
+
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const formattedHour = hour % 12 || 12;
   return `${formattedHour}:${minutes} ${ampm}`;
@@ -150,13 +176,67 @@ const getBookingImageUrl = (booking) => {
   return booking.vehicle_image || null;
 };
 
+const formatProviderName = (provider) => {
+  if (!provider) return t('internal_provider', 'Internal fleet');
+
+  return provider
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
+
+const getVehicleName = (booking) => {
+  const vehicleName = [booking.vehicle?.brand, booking.vehicle?.model].filter(Boolean).join(' ').trim();
+  return vehicleName || booking.vehicle_name || t('vehicle', 'Vehicle');
+};
+
+const getVehicleMeta = (booking) => {
+  const vehicle = booking.vehicle || {};
+
+  return [
+    vehicle.transmission,
+    vehicle.fuel,
+    vehicle.seating_capacity ? `${vehicle.seating_capacity} ${t('seats_suffix', 'Seats')}` : null,
+  ].filter(Boolean);
+};
+
+const getCategoryLabel = (booking) => {
+  return booking.vehicle?.category?.name || formatProviderName(booking.provider_source);
+};
+
+const hasFreeEsim = (booking) => {
+  if (booking.free_esim_included || booking.provider_metadata?.free_esim_included) return true;
+  if (!Array.isArray(booking.offers)) return false;
+
+  return booking.offers.some((offer) => offer?.effect_type === 'free_esim');
+};
+
+const getPaymentStateLabel = (booking) => {
+  if (booking.payment_status === 'pending') {
+    return t('payment_pending', 'Payment pending');
+  }
+
+  if (getBookingAmount(booking, 'amount_paid') > 0) {
+    return t('paid_online', 'Paid online');
+  }
+
+  return t('pay_at_pickup', 'Pay at pickup');
+};
+
+const getLocationLabel = (location, fallback) => {
+  return location || fallback;
+};
+
+const isPaymentRetryVisible = (booking) => (
+  booking.payment_status === 'pending' && booking.booking_status === 'pending'
+);
+
 const handleTabChange = (tab) => {
   activeTab.value = tab;
 };
 
-const handlePageChange = (page) => {
+const handlePageChange = (pageNumber) => {
   isLoading.value = true;
-  router.get(route('profile.bookings.all', { locale: usePage().props.locale }), { page }, {
+  router.get(route('profile.bookings.all', { locale: page.props.locale }), { page: pageNumber }, {
     preserveState: true,
     preserveScroll: true,
     onFinish: () => { isLoading.value = false; }
@@ -167,7 +247,7 @@ const retryPayment = async (bookingId) => {
   isLoading.value = true;
   try {
     const axios = (await import('axios')).default;
-    const response = await axios.post(route('payment.retry', { locale: usePage().props.locale }), { booking_id: bookingId });
+    const response = await axios.post(route('payment.retry', { locale: page.props.locale }), { booking_id: bookingId });
 
     if (response.data.sessionId) {
       const { loadStripe } = await import('@stripe/stripe-js');
@@ -234,8 +314,7 @@ const cancelProviderBooking = async (booking) => {
     return;
   }
 
-  let confirmMsg = _t('customerbooking', 'modal_confirm_cancellation_message')
-    || 'Are you sure you want to cancel this booking?';
+  let confirmMsg = t('modal_confirm_cancellation_message', 'Are you sure you want to cancel this booking?');
   if (deadlineInfo) {
     confirmMsg += `\n\nFree cancellation available until: ${deadlineInfo.deadline}`;
   }
@@ -253,7 +332,7 @@ const cancelProviderBooking = async (booking) => {
   isLoading.value = true;
   try {
     const axios = (await import('axios')).default;
-    await axios.post(route('booking.cancel', { locale: usePage().props.locale }), {
+    await axios.post(route('booking.cancel', { locale: page.props.locale }), {
       booking_id: booking.id,
       cancellation_reason: trimmedReason
     });
@@ -274,290 +353,252 @@ const getCardDelay = (index) => {
 
 <template>
   <MyProfileLayout>
-    <!-- Loading Overlay -->
     <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
       <div class="flex flex-col items-center gap-4">
         <div class="w-12 h-12 border-4 border-[#153B4F] border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-gray-600 font-medium">{{ _t('customerbooking', 'loading') }}</p>
+        <p class="text-gray-600 font-medium">{{ t('loading', 'Loading') }}</p>
       </div>
     </div>
 
-    <div class="container mx-auto px-4 max-[768px]:px-0 py-8 overflow-x-hidden">
-      <!-- Page Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold text-[#153B4F] mb-2">
-          {{ _t('customerbooking', 'my_bookings') || 'My Bookings' }}
-        </h1>
-        <p class="text-gray-500">
-          {{ _t('customerbooking', 'bookings_subtitle') || 'Manage all your car rental bookings in one place' }}
-        </p>
+    <div class="customer-bookings-page">
+      <div class="vr-phead">
+        <div>
+          <span class="vr-eyebrow"><CalendarCheck /> {{ t('trip_ledger', 'Trip ledger') }}</span>
+          <h2>{{ t('my_bookings', 'My Bookings') }}</h2>
+          <p class="vr-sub">{{ t('bookings_subtitle', 'Manage pickup details, payments, included perks, and support actions from one clear place.') }}</p>
+        </div>
+        <div class="vr-phead-actions">
+          <div class="bk-total-chip">
+            <strong>{{ totalBookings }}</strong>
+            <span>{{ t('total_rentals', 'total rentals') }}</span>
+          </div>
+        </div>
       </div>
 
-      <!-- Status Filter Tabs -->
-      <div class="mb-8">
+      <div class="customer-bookings-tabs" role="tablist" :aria-label="t('booking_status_filters', 'Booking status filters')">
         <div class="status-tabs-scroll">
           <div class="status-tabs-row">
           <button
             v-for="tab in statusTabs"
             :key="tab.key"
             @click="handleTabChange(tab.key)"
-            class="status-tab-btn px-5 py-2.5 rounded-full font-medium text-sm transition-all duration-200"
-            :class="[
-              activeTab === tab.key
-                ? 'bg-[#153B4F] text-white shadow-lg shadow-[#153B4F]/20'
-                : 'bg-white text-gray-600 border border-gray-200 hover:border-[#153B4F] hover:text-[#153B4F]'
-            ]"
+            type="button"
+            class="status-tab-btn"
+            :class="{ 'is-active': activeTab === tab.key }"
+            :aria-selected="activeTab === tab.key"
           >
             {{ tab.label }}
-            <span v-if="tab.key === 'all' && bookings?.total" class="ml-2 opacity-70">({{ bookings.total }})</span>
+            <span>{{ getTabCount(tab.key) }}</span>
           </button>
           </div>
         </div>
       </div>
 
-      <!-- Empty State -->
-      <div v-if="filteredBookings.length === 0" class="text-center py-16">
+      <div v-if="filteredBookings.length === 0" class="customer-bookings-empty">
         <div class="flex flex-col items-center">
-          <img :src="bookingstatusIcon" alt="No bookings" class="w-64 h-64 opacity-50 mb-6" />
-          <h3 class="text-xl font-semibold text-gray-700 mb-2">
-            {{ _t('customerbooking', 'no_bookings_found') || 'No bookings found' }}
+          <img :src="bookingstatusIcon" alt="No bookings" class="customer-bookings-empty__image" />
+          <h3>
+            {{ t('no_bookings_found', 'No bookings found') }}
           </h3>
-          <p class="text-gray-500 mb-6">
+          <p>
             {{ activeTab === 'all'
-              ? (_t('customerbooking', 'no_bookings_yet') || 'You haven\'t made any bookings yet.')
-              : (_t('customerbooking', 'no_status_bookings') || `No ${activeTab} bookings found.`)
+              ? t('no_bookings_yet', 'You haven\'t made any bookings yet.')
+              : t('no_status_bookings', `No ${activeTab} bookings found.`)
             }}
           </p>
           <Link
-            :href="route('search', { locale: usePage().props.locale })"
-            class="inline-flex items-center gap-2 px-6 py-3 bg-[#153B4F] text-white rounded-lg font-medium hover:bg-[#0f2a38] transition-colors shadow-lg shadow-[#153B4F]/20"
+            :href="route('search', { locale: page.props.locale })"
+            class="customer-booking-btn customer-booking-btn--primary customer-booking-btn--inline"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            {{ _t('customerbooking', 'search_vehicles') || 'Search Vehicles' }}
+            {{ t('search_vehicles', 'Search Vehicles') }}
           </Link>
         </div>
       </div>
 
-      <!-- Bookings Grid -->
-      <div v-else class="space-y-6">
-        <div
+      <section v-else class="customer-bookings-list">
+        <article
           v-for="(booking, index) in filteredBookings"
           :key="booking.id"
-          class="booking-card bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:border-gray-200 transition-all duration-300"
+          class="customer-booking-card"
           :style="{ animationDelay: `${getCardDelay(index)}ms` }"
         >
-          <div class="flex flex-col lg:flex-row">
-            <!-- Vehicle Image Section -->
-            <div class="lg:w-[30%] relative overflow-hidden min-h-56 lg:min-h-0">
-              <Link
-                v-if="booking.vehicle"
-                :href="route('vehicle.show', { locale: usePage().props.locale, id: booking.vehicle.id })"
-                class="absolute inset-0"
-              >
-                <div
-                  v-if="getBookingImageUrl(booking)"
-                  class="w-full h-full bg-center bg-no-repeat bg-cover"
-                  :style="{ backgroundImage: `url(${getBookingImageUrl(booking)})` }"
-                  :aria-label="booking.vehicle?.brand || booking.vehicle_name"
-                ></div>
-              </Link>
-              <div
-                v-else-if="getBookingImageUrl(booking)"
-                class="absolute inset-0 w-full h-full bg-center bg-no-repeat bg-cover"
-                :style="{ backgroundImage: `url(${getBookingImageUrl(booking)})` }"
-                :aria-label="booking.vehicle_name"
-              ></div>
-              <div v-else class="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                <svg class="w-24 h-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          <div class="customer-booking-media">
+            <Link
+              v-if="booking.vehicle"
+              :href="route('vehicle.show', { locale: page.props.locale, id: booking.vehicle.id })"
+              class="customer-booking-media__target"
+            >
+              <img
+                v-if="getBookingImageUrl(booking)"
+                :src="getBookingImageUrl(booking)"
+                :alt="getVehicleName(booking)"
+              />
+              <div v-else class="customer-booking-media__placeholder">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M8 17h8m-10 0H5a2 2 0 0 1-2-2v-3l2.1-4.2A3 3 0 0 1 7.8 6h8.4a3 3 0 0 1 2.7 1.8L21 12v3a2 2 0 0 1-2 2h-1M7 17a2 2 0 1 0 4 0m2 0a2 2 0 1 0 4 0M5 12h14" />
                 </svg>
               </div>
-              <div class="absolute inset-0 bg-gradient-to-t from-black/25 via-black/0 to-black/10"></div>
-
-              <!-- Status Badge Overlay -->
-              <div class="absolute top-4 left-4">
-                <span
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border shadow-sm backdrop-blur-sm bg-white/85"
-                  :class="[getStatusBadge(booking.booking_status).text, getStatusBadge(booking.booking_status).border]"
-                >
-                  <span>{{ getStatusBadge(booking.booking_status).icon }}</span>
-                  <span class="capitalize">{{ booking.booking_status }}</span>
-                </span>
+            </Link>
+            <div v-else class="customer-booking-media__target">
+              <img
+                v-if="getBookingImageUrl(booking)"
+                :src="getBookingImageUrl(booking)"
+                :alt="getVehicleName(booking)"
+              />
+              <div v-else class="customer-booking-media__placeholder">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M8 17h8m-10 0H5a2 2 0 0 1-2-2v-3l2.1-4.2A3 3 0 0 1 7.8 6h8.4a3 3 0 0 1 2.7 1.8L21 12v3a2 2 0 0 1-2 2h-1M7 17a2 2 0 1 0 4 0m2 0a2 2 0 1 0 4 0M5 12h14" />
+                </svg>
               </div>
             </div>
+            <span class="customer-booking-status" :class="`customer-booking-status--${getStatusBadge(booking.booking_status).tone}`">
+              <svg v-if="getStatusBadge(booking.booking_status).tone === 'confirmed'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M20 6 9 17l-5-5" />
+              </svg>
+              <svg v-else-if="getStatusBadge(booking.booking_status).tone === 'completed'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M20 6 9 17l-5-5" />
+              </svg>
+              <svg v-else-if="getStatusBadge(booking.booking_status).tone === 'cancelled'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M18 6 6 18M6 6l12 12" />
+              </svg>
+              <svg v-else fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" stroke-width="2.4" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M12 7v5l3 2" />
+              </svg>
+              {{ getStatusBadge(booking.booking_status).label }}
+            </span>
+          </div>
 
-            <!-- Booking Details Section -->
-            <div class="lg:w-[70%] p-6 lg:p-8 flex flex-col">
-              <!-- Header -->
-              <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
-                <div class="flex items-start gap-4">
-                  <div>
-                    <h3 class="text-2xl font-bold text-[#153B4F]">
-                      {{ booking.vehicle?.brand || booking.vehicle_name?.split(' ')[0] || 'Vehicle' }}
-                      <span v-if="booking.vehicle?.model" class="font-normal">{{ booking.vehicle.model }}</span>
-                    </h3>
-                    <p v-if="booking.booking_number" class="text-sm text-gray-500 mt-1">
-                      Ref: {{ booking.booking_number }}
-                    </p>
-                  </div>
-                  <span
-                    v-if="booking.vehicle?.category"
-                    class="px-3 py-1 rounded-full text-sm font-medium bg-[#154D6A0D] text-[#153B4F]"
-                  >
-                    {{ booking.vehicle.category.name }}
-                  </span>
-                  <span
-                    v-else-if="booking.provider_source"
-                    class="px-3 py-1 rounded-full text-sm font-medium capitalize border"
-                    :class="getProviderBadge(booking.provider_source)"
-                  >
-                    {{ booking.provider_source.replace('_', ' ') }}
-                  </span>
-                </div>
-
-                <!-- Action Button -->
-                <Link
-                  :href="route('booking.show', { locale: usePage().props.locale, id: booking.id })"
-                  class="inline-flex items-center gap-2 px-5 py-2.5 bg-[#153B4F] text-white rounded-lg font-medium hover:bg-[#0f2a38] transition-colors shadow-md hover:shadow-lg"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  {{ _t('customerbooking', 'view_details') }}
-                </Link>
+          <div class="customer-booking-main">
+            <div class="customer-booking-title-row">
+              <div>
+                <h2>{{ getVehicleName(booking) }}</h2>
+                <p>{{ getCategoryLabel(booking) }}</p>
               </div>
+              <span v-if="booking.booking_number" class="customer-booking-ref">{{ booking.booking_number }}</span>
+            </div>
 
-              <!-- Vehicle Specs -->
-              <div v-if="booking.vehicle" class="flex items-center gap-4 text-gray-600 mb-6">
-                <div class="flex items-center gap-2">
-                  <img :src="carIcon" alt="" class="w-5 h-5 opacity-60" />
-                  <span class="capitalize">{{ booking.vehicle.transmission }}</span>
-                </div>
-                <span class="text-gray-300">â€¢</span>
-                <span class="capitalize">{{ booking.vehicle.fuel }}</span>
-                <span class="text-gray-300">â€¢</span>
-                <span>{{ booking.vehicle.seating_capacity }} {{ _t('customerbooking', 'seats_suffix') }}</span>
-              </div>
-
-              <!-- Pickup & Return Info -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 p-4 bg-gray-50 rounded-xl">
-                <!-- Pickup -->
-                <div class="flex items-start gap-3">
-                  <div class="w-10 h-10 rounded-full bg-[#0099001A] flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-[#009900]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{{ _t('customerbooking', 'pickup') }}</p>
-                    <p class="font-medium text-gray-900">{{ booking.pickup_location }}</p>
-                    <p class="text-sm text-gray-600 mt-1">
-                      {{ formatDate(booking.pickup_date) }} at {{ formatTime(booking.pickup_time) }}
-                    </p>
-                  </div>
-                </div>
-
-                <!-- Return -->
-                <div class="flex items-start gap-3">
-                  <div class="w-10 h-10 rounded-full bg-[#EE1D521A] flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-[#EE1D52]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{{ _t('customerbooking', 'return') }}</p>
-                    <p class="font-medium text-gray-900">{{ booking.return_location }}</p>
-                    <p class="text-sm text-gray-600 mt-1">
-                      {{ formatDate(booking.return_date) }} at {{ formatTime(booking.return_time) }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Footer: Price & Actions -->
-              <div class="mt-auto pt-4 border-t border-gray-100">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                  <!-- Price -->
-                  <div>
-                    <p class="text-sm text-gray-500">{{ _t('customerbooking', 'total_amount') }}</p>
-                    <p class="text-2xl font-bold text-[#153B4F]">
-                      {{ getCurrencySymbol(getBookingCurrency(booking)) }}{{ formatNumber(getBookingAmount(booking, 'total_amount')) }}
-                    </p>
-                    <p v-if="getBookingAmount(booking, 'amount_paid') > 0" class="text-sm text-green-600 mt-1">
-                      {{ getCurrencySymbol(getBookingCurrency(booking)) }}{{ formatNumber(getBookingAmount(booking, 'amount_paid')) }} {{ _t('customerbooking', 'paid') }}
-                    </p>
-                  </div>
-
-                  <!-- Additional Actions -->
-                  <div class="flex items-center gap-3">
-                    <button
-                      v-if="booking.payment_status === 'pending' && booking.booking_status === 'pending'"
-                      @click="retryPayment(booking.id)"
-                      :disabled="isLoading"
-                      class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                      </svg>
-                      {{ _t('customerbooking', 'complete_payment') }}
-                    </button>
-
-                    <Link
-                      v-if="booking.vehicle?.vendor_id"
-                      :href="route('messages.index', { locale: usePage().props.locale, vendor_id: booking.vehicle.vendor_id })"
-                      class="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      Chat
-                    </Link>
-
-                    <button
-                      v-if="canCancelProviderBooking(booking)"
-                      @click="cancelProviderBooking(booking)"
-                      :disabled="isLoading"
-                      class="inline-flex items-center gap-2 px-4 py-2 border border-rose-200 text-rose-700 rounded-lg font-medium hover:bg-rose-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      {{ _t('customerbooking', 'cancel_booking_button') || 'Cancel Booking' }}
-                    </button>
-
-                    <a
-                      v-if="canShowContactSupport(booking)"
-                      :href="`mailto:${usePage().props.adminEmail || 'support@vrooem.com'}?subject=Cancel Booking ${booking.booking_number}`"
-                      class="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                      {{ _t('customerbooking', 'contact_support_cancel') || 'Contact Support to Cancel' }}
-                    </a>
-                  </div>
-
-                  <!-- Cancellation deadline info -->
-                  <div v-if="getCancellationDeadlineInfo(booking) && !['cancelled', 'completed'].includes(booking.booking_status)" class="mt-2">
-                    <p v-if="!getCancellationDeadlineInfo(booking).isExpired" class="text-xs text-emerald-600">
-                      Free cancellation until {{ getCancellationDeadlineInfo(booking).deadline }}
-                    </p>
-                    <p v-else class="text-xs text-rose-500">
-                      Free cancellation period expired {{ getCancellationDeadlineInfo(booking).deadline }}
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div class="customer-booking-chips">
+              <span
+                v-for="meta in getVehicleMeta(booking)"
+                :key="meta"
+                class="customer-booking-chip"
+              >
+                {{ meta }}
+              </span>
+              <span class="customer-booking-chip customer-booking-chip--vendor">
+                {{ formatProviderName(booking.provider_source) }}
+              </span>
+              <span v-if="hasFreeEsim(booking)" class="customer-booking-chip customer-booking-chip--perk">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <rect x="7" y="2" width="10" height="20" rx="2" stroke-width="2" />
+                  <path stroke-linecap="round" stroke-width="2" d="M11 18h2M10 6h4" />
+                </svg>
+                {{ t('free_esim_included', 'Free eSIM included') }}
+              </span>
+              <span class="customer-booking-chip">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1M12 15h1M6 19h12a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3Z" />
+                </svg>
+                {{ getPaymentStateLabel(booking) }}
+              </span>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Pagination -->
-      <div v-if="bookings?.last_page > 1" class="mt-8 flex justify-center">
+          <div class="customer-booking-trip">
+            <div class="customer-booking-trip-point">
+              <span>{{ t('pickup', 'Pickup') }}</span>
+              <strong>{{ getLocationLabel(booking.pickup_location, t('pickup_location', 'Pickup location')) }}</strong>
+              <p>{{ formatDate(booking.pickup_date) }} {{ t('at', 'at') }} {{ formatTime(booking.pickup_time) }}</p>
+            </div>
+            <div class="customer-booking-route-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M13 5l7 7-7 7" />
+              </svg>
+            </div>
+            <div class="customer-booking-trip-point">
+              <span>{{ t('return', 'Return') }}</span>
+              <strong>{{ getLocationLabel(booking.return_location, t('return_location', 'Return location')) }}</strong>
+              <p>{{ formatDate(booking.return_date) }} {{ t('at', 'at') }} {{ formatTime(booking.return_time) }}</p>
+            </div>
+          </div>
+
+          <div class="customer-booking-money">
+            <div>
+              <span class="customer-booking-amount-label">{{ t('total_amount', 'Total amount') }}</span>
+              <strong class="customer-booking-amount">
+                {{ getCurrencySymbol(getBookingCurrency(booking)) }}{{ formatNumber(getBookingAmount(booking, 'total_amount')) }}
+              </strong>
+              <div class="customer-booking-split">
+                <div>
+                  <span>{{ t('paid_online', 'Paid online') }}</span>
+                  <strong>{{ getCurrencySymbol(getBookingCurrency(booking)) }}{{ formatNumber(getBookingAmount(booking, 'amount_paid')) }}</strong>
+                </div>
+                <div>
+                  <span>{{ t('due_at_pickup', 'Due at pickup') }}</span>
+                  <strong>{{ getCurrencySymbol(getBookingCurrency(booking)) }}{{ formatNumber(getBookingAmount(booking, 'pending_amount')) }}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="customer-booking-actions">
+              <button
+                v-if="isPaymentRetryVisible(booking)"
+                @click="retryPayment(booking.id)"
+                :disabled="isLoading"
+                type="button"
+                class="customer-booking-btn customer-booking-btn--primary"
+              >
+                {{ t('complete_payment', 'Complete payment') }}
+              </button>
+              <Link
+                :href="route('booking.show', { locale: page.props.locale, id: booking.id })"
+                class="customer-booking-btn"
+                :class="isPaymentRetryVisible(booking) ? 'customer-booking-btn--secondary' : 'customer-booking-btn--primary'"
+              >
+                {{ t('view_details', 'View details') }}
+              </Link>
+              <Link
+                v-if="booking.vehicle?.vendor_id"
+                :href="route('messages.index', { locale: page.props.locale, vendor_id: booking.vehicle.vendor_id })"
+                class="customer-booking-btn customer-booking-btn--secondary"
+              >
+                {{ t('message_vendor', 'Message vendor') }}
+              </Link>
+              <button
+                v-if="canCancelProviderBooking(booking)"
+                @click="cancelProviderBooking(booking)"
+                :disabled="isLoading"
+                type="button"
+                class="customer-booking-btn customer-booking-btn--danger"
+              >
+                {{ t('cancel_booking_button', 'Cancel Booking') }}
+              </button>
+              <a
+                v-if="canShowContactSupport(booking)"
+                :href="`mailto:${page.props.adminEmail || 'support@vrooem.com'}?subject=Cancel Booking ${booking.booking_number}`"
+                class="customer-booking-btn customer-booking-btn--secondary"
+              >
+                {{ t('contact_support_to_cancel', 'Contact support') }}
+              </a>
+            </div>
+
+            <p v-if="getCancellationDeadlineInfo(booking) && !['cancelled', 'completed'].includes(booking.booking_status)" class="customer-booking-deadline">
+              <template v-if="!getCancellationDeadlineInfo(booking).isExpired">
+                {{ t('free_cancellation_until', 'Free cancellation until') }} {{ getCancellationDeadlineInfo(booking).deadline }}
+              </template>
+              <template v-else>
+                {{ t('free_cancellation_expired', 'Free cancellation expired') }} {{ getCancellationDeadlineInfo(booking).deadline }}
+              </template>
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <div v-if="bookings?.last_page > 1" class="customer-bookings-pagination">
         <Pagination
           :current-page="bookings.current_page"
           :total-pages="bookings.last_page"
@@ -569,15 +610,588 @@ const getCardDelay = (index) => {
 </template>
 
 <style scoped>
-.booking-card {
-  animation: fadeUp 0.4s ease-out forwards;
-  opacity: 0;
+.customer-bookings-page {
+  --booking-brand: #153b4f;
+  --booking-brand-dark: #0f2936;
+  --booking-cyan: #22d3ee;
+  --booking-cyan-dark: #0891b2;
+  --booking-line: #dce8ef;
+  --booking-muted: #64748b;
+  width: 100%;
 }
 
-@keyframes fadeUp {
+.bk-total-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+  padding: 12px 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 2px 4px rgba(21, 59, 79, 0.06), 0 1px 2px rgba(21, 59, 79, 0.04);
+}
+
+.bk-total-chip strong {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.bk-total-chip span {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.customer-bookings-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 1rem;
+  padding: 1.35rem;
+  border: 1px solid rgba(21, 59, 79, 0.12);
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(34, 211, 238, 0.14), transparent 18rem),
+    rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 36px rgba(21, 59, 79, 0.09);
+}
+
+.customer-bookings-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  color: var(--booking-cyan-dark);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.customer-bookings-eyebrow::before {
+  content: "";
+  width: 1.15rem;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.customer-bookings-hero h1 {
+  margin: 0;
+  color: var(--booking-brand-dark);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.customer-bookings-hero p {
+  max-width: 62ch;
+  margin: 0.55rem 0 0;
+  color: var(--booking-muted);
+  line-height: 1.6;
+}
+
+.customer-bookings-total {
+  min-width: 8.5rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--booking-line);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #ffffff, #f7fbfd);
+  text-align: center;
+}
+
+.customer-bookings-total strong {
+  display: block;
+  color: var(--booking-brand);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.customer-bookings-total span {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--booking-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.customer-bookings-tabs {
+  margin-bottom: 1rem;
+}
+
+.status-tabs-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem;
+  border: 1px solid rgba(21, 59, 79, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 8px 24px rgba(21, 59, 79, 0.07);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.status-tabs-row {
+  display: inline-flex;
+  gap: 0.45rem;
+  min-width: max-content;
+}
+
+.status-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.45rem;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  color: #425b6e;
+  background: transparent;
+  font-size: 0.87rem;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.status-tab-btn span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  color: var(--booking-brand);
+  background: #e9f5fa;
+  font-size: 0.72rem;
+}
+
+.status-tab-btn.is-active {
+  color: white;
+  background: linear-gradient(135deg, var(--booking-brand), #245f7b);
+  box-shadow: 0 12px 28px rgba(21, 59, 79, 0.18);
+}
+
+.status-tab-btn.is-active span {
+  color: var(--booking-brand);
+  background: white;
+}
+
+.customer-bookings-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.customer-booking-card {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr) 270px;
+  grid-template-areas:
+    "image main money"
+    "image trip money";
+  gap: 0.9rem 1.1rem;
+  align-items: stretch;
+  padding: 1rem;
+  border: 1px solid rgba(21, 59, 79, 0.12);
+  border-radius: 1.55rem;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 28px rgba(21, 59, 79, 0.08);
+  opacity: 0;
+  animation: bookingFadeUp 0.32s ease-out forwards;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.customer-booking-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 18px 42px rgba(21, 59, 79, 0.13);
+}
+
+.customer-booking-media {
+  grid-area: image;
+  position: relative;
+  overflow: hidden;
+  min-height: 224px;
+  border-radius: 1.2rem;
+  background: #dce8ef;
+}
+
+.customer-booking-media__target {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+
+.customer-booking-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.customer-booking-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(15, 41, 54, 0.12), transparent 42%, rgba(15, 41, 54, 0.18));
+}
+
+.customer-booking-media__placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  color: #9ab0be;
+  background: linear-gradient(135deg, #eef5f8, #dce8ef);
+}
+
+.customer-booking-media__placeholder svg {
+  width: 4.25rem;
+  height: 4.25rem;
+}
+
+.customer-booking-status {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.7rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: calc(100% - 1.4rem);
+  padding: 0.4rem 0.6rem;
+  border-radius: 999px;
+  color: #0f766e;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
+.customer-booking-status svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+}
+
+.customer-booking-status--pending {
+  color: #b45309;
+}
+
+.customer-booking-status--confirmed {
+  color: #047857;
+}
+
+.customer-booking-status--completed {
+  color: #1d4ed8;
+}
+
+.customer-booking-status--cancelled {
+  color: #be123c;
+}
+
+.customer-booking-main {
+  grid-area: main;
+  min-width: 0;
+  padding-top: 0.1rem;
+}
+
+.customer-booking-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.customer-booking-title-row h2 {
+  margin: 0;
+  color: var(--booking-brand-dark);
+  font-size: 1.22rem;
+  font-weight: 850;
+  line-height: 1.25;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.customer-booking-title-row p {
+  margin: 0.25rem 0 0;
+  color: var(--booking-muted);
+  font-size: 0.84rem;
+  text-transform: capitalize;
+}
+
+.customer-booking-ref {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--booking-line);
+  border-radius: 999px;
+  color: var(--booking-brand);
+  background: #f7fbfd;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.customer-booking-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.customer-booking-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.95rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--booking-line);
+  border-radius: 999px;
+  color: #365468;
+  background: #f8fbfd;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.customer-booking-chip svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: var(--booking-brand);
+}
+
+.customer-booking-chip--vendor {
+  color: #334155;
+  background: #f1f5f9;
+}
+
+.customer-booking-chip--perk {
+  border-color: rgba(34, 211, 238, 0.48);
+  color: #0e6377;
+  background: #ecfeff;
+}
+
+.customer-booking-trip {
+  grid-area: trip;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem;
+  border: 1px solid var(--booking-line);
+  border-radius: 1.1rem;
+  background:
+    linear-gradient(90deg, rgba(16, 185, 129, 0.06), transparent 44%, transparent 56%, rgba(244, 63, 94, 0.06)),
+    linear-gradient(180deg, #ffffff, #f8fbfd);
+}
+
+.customer-booking-trip-point {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid rgba(21, 59, 79, 0.1);
+  border-radius: 0.95rem;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.customer-booking-trip-point span {
+  display: block;
+  margin-bottom: 0.32rem;
+  color: var(--booking-cyan-dark);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.customer-booking-trip-point strong {
+  display: -webkit-box;
+  color: var(--booking-brand-dark);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.customer-booking-trip-point p {
+  display: -webkit-box;
+  margin: 0.3rem 0 0;
+  color: var(--booking-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.customer-booking-route-icon {
+  display: grid;
+  place-items: center;
+  color: var(--booking-cyan-dark);
+}
+
+.customer-booking-route-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.customer-booking-money {
+  grid-area: money;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-width: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--booking-line);
+  border-radius: 1.2rem;
+  background: #f7fbfd;
+}
+
+.customer-booking-amount-label {
+  display: block;
+  color: var(--booking-muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.customer-booking-amount {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--booking-brand);
+  font-size: 1.45rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.customer-booking-split {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+  color: #425b6e;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.customer-booking-split div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.customer-booking-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.customer-booking-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 1px solid var(--booking-brand);
+  border-radius: 0.9rem;
+  color: white;
+  background: linear-gradient(135deg, var(--booking-brand), #285f7a);
+  box-shadow: 0 14px 24px rgba(21, 59, 79, 0.18);
+  font-size: 0.88rem;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.customer-booking-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 28px rgba(21, 59, 79, 0.2);
+}
+
+.customer-booking-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.customer-booking-btn--secondary {
+  color: var(--booking-brand);
+  background: white;
+  border-color: var(--booking-line);
+  box-shadow: none;
+}
+
+.customer-booking-btn--danger {
+  color: #be123c;
+  background: #fff1f2;
+  border-color: #fecdd3;
+  box-shadow: none;
+}
+
+.customer-booking-btn--inline {
+  display: inline-flex;
+  width: auto;
+}
+
+.customer-booking-deadline {
+  margin: 0;
+  color: #047857;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.customer-bookings-empty {
+  padding: 2rem 1rem;
+  border: 1px dashed rgba(21, 59, 79, 0.22);
+  border-radius: 1.4rem;
+  background: rgba(255, 255, 255, 0.78);
+  text-align: center;
+}
+
+.customer-bookings-empty__image {
+  width: 9rem;
+  height: 9rem;
+  margin-bottom: 1rem;
+  opacity: 0.55;
+}
+
+.customer-bookings-empty h3 {
+  margin: 0 0 0.45rem;
+  color: var(--booking-brand);
+  font-size: 1.15rem;
+  font-weight: 850;
+}
+
+.customer-bookings-empty p {
+  max-width: 42rem;
+  margin: 0 auto 1.1rem;
+  color: var(--booking-muted);
+}
+
+.customer-bookings-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+@keyframes bookingFadeUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -585,50 +1199,90 @@ const getCardDelay = (index) => {
   }
 }
 
-.booking-card:hover {
-  transform: translateY(-4px);
+@media (max-width: 1180px) {
+  .customer-booking-card {
+    grid-template-columns: 180px minmax(0, 1fr);
+    grid-template-areas:
+      "image main"
+      "image trip"
+      "money money";
+  }
+
+  .customer-booking-money {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.55fr);
+    align-items: start;
+  }
 }
 
-/* Custom scrollbar for tabs */
-.overflow-x-auto::-webkit-scrollbar {
-  height: 6px;
+@media (max-width: 860px) {
+  .customer-bookings-page {
+    padding-inline: 0.75rem;
+  }
+
+  .customer-bookings-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-bookings-total {
+    max-width: 12rem;
+  }
+
+  .customer-booking-card {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "image"
+      "main"
+      "trip"
+      "money";
+  }
+
+  .customer-booking-media {
+    min-height: 220px;
+  }
+
+  .customer-booking-money {
+    display: flex;
+  }
 }
 
-.overflow-x-auto::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
+@media (max-width: 560px) {
+  .customer-bookings-page {
+    padding: 1.25rem 0 2rem;
+  }
+
+  .customer-bookings-hero,
+  .customer-booking-card {
+    border-radius: 1.1rem;
+  }
+
+  .customer-bookings-hero {
+    padding: 1rem;
+  }
+
+  .customer-bookings-hero h1 {
+    font-size: 1.55rem;
+  }
+
+  .customer-booking-title-row,
+  .customer-booking-trip {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-booking-title-row {
+    display: grid;
+  }
+
+  .customer-booking-route-icon {
+    display: none;
+  }
 }
 
-.overflow-x-auto::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-.overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.status-tabs-scroll {
-  width: 100%;
-  max-width: 95vw;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0 0.25rem 0.25rem;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  overscroll-behavior-x: contain;
-  display: block;
-}
-
-.status-tabs-row {
-  display: inline-flex;
-  gap: 0.5rem;
-  min-width: max-content;
-  padding: 0 0.25rem;
-}
-
-.status-tab-btn {
-  flex-shrink: 0;
-  white-space: nowrap;
+@media (prefers-reduced-motion: reduce) {
+  .customer-booking-card,
+  .customer-booking-btn {
+    animation-duration: 1ms;
+    transition-duration: 1ms;
+  }
 }
 </style>

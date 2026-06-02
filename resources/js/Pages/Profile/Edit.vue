@@ -4,7 +4,7 @@ import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import { Head } from '@inertiajs/vue3';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { UserCog, Lock, TriangleAlert } from 'lucide-vue-next';
 
 const props = defineProps({
     mustVerifyEmail: {
@@ -23,40 +23,44 @@ const props = defineProps({
 <template>
     <MyProfileLayout>
         <Head title="Profile" />
-        <div class="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>My Profile</CardTitle>
-                    <CardDescription>Keep your personal details up to date.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <UpdateProfileInformationForm
-                        :must-verify-email="mustVerifyEmail"
-                        :status="status"
-                        class="w-full"
-                    />
-                </CardContent>
-            </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Security</CardTitle>
-                    <CardDescription>Update your password to keep your account safe.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <UpdatePasswordForm class="w-full" />
-                </CardContent>
-            </Card>
+        <div class="vr-phead">
+            <div>
+                <span class="vr-eyebrow"><UserCog /> My account</span>
+                <h2>My Profile</h2>
+                <p class="vr-sub">Keep your personal details up to date.</p>
+            </div>
+        </div>
 
-            <Card class="border-rose-200/70">
-                <CardHeader>
-                    <CardTitle class="text-rose-600">Danger Zone</CardTitle>
-                    <CardDescription>Delete your account and all data permanently.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <DeleteUserForm class="w-full" :has-social-account="hasSocialAccount" />
-                </CardContent>
-            </Card>
+        <div class="vr-panel">
+            <div class="vr-panel-head">
+                <h3><UserCog /> Personal Details</h3>
+            </div>
+            <div class="vr-panel-body">
+                <UpdateProfileInformationForm
+                    :must-verify-email="mustVerifyEmail"
+                    :status="status"
+                    class="w-full"
+                />
+            </div>
+        </div>
+
+        <div class="vr-panel">
+            <div class="vr-panel-head">
+                <h3><Lock /> Security</h3>
+            </div>
+            <div class="vr-panel-body">
+                <UpdatePasswordForm class="w-full" />
+            </div>
+        </div>
+
+        <div class="vr-panel" style="border-color: #fecdd3">
+            <div class="vr-panel-head">
+                <h3 style="color: #e11d48"><TriangleAlert style="color: #e11d48" /> Danger Zone</h3>
+            </div>
+            <div class="vr-panel-body">
+                <DeleteUserForm class="w-full" :has-social-account="hasSocialAccount" />
+            </div>
         </div>
     </MyProfileLayout>
 </template>

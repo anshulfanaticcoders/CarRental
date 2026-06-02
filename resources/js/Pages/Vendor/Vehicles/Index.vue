@@ -1,6 +1,6 @@
 <template>
     <MyProfileLayout>
-        <div class="w-full mx-auto py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <div class="space-y-6">
             <!-- Flash Message -->
             <div v-if="$page.props.flash.success"
                 class="rounded-lg border border-green-200 bg-green-50 p-3 sm:p-4 text-green-800 text-sm sm:text-base">
@@ -13,27 +13,19 @@
             </div>
 
             <!-- Header -->
-            <div class="flex flex-col gap-3 sm:gap-4">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div class="flex flex-col gap-1">
-                        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-                            {{ _t('vendorprofilepages', 'my_vehicles_header') }}
-                        </h1>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 hidden sm:block">
-                            Manage your vehicle fleet and inventory
-                        </p>
-                    </div>
-
-                    <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                        <Link :href="route('vehicles.create', { locale: usePage().props.locale })" class="w-full sm:w-auto">
-                            <Button size="sm" class="flex items-center justify-center gap-2 w-full sm:w-auto">
-                                <Plus class="w-3 h-3 sm:w-4 sm:h-4" />
-                                <span class="hidden sm:inline">{{ _t('vendorprofilepages', 'add_new_vehicle_button')
-                                    }}</span>
-                                <span class="sm:hidden">Add Vehicle</span>
-                            </Button>
-                        </Link>
-                    </div>
+            <div class="vr-phead">
+                <div>
+                    <span class="vr-eyebrow"><Car /> {{ tt('vendorprofilepages', 'fleet_eyebrow', 'Fleet') }}</span>
+                    <h2>{{ tt('vendorprofilepages', 'my_vehicles_header', 'All Vehicles') }}</h2>
+                    <p class="vr-sub">{{ tt('vendorprofilepages', 'my_vehicles_subtitle', 'Manage your vehicle fleet and inventory.') }}</p>
+                </div>
+                <div class="vr-phead-actions">
+                    <Link :href="route('vehicles.create', { locale: usePage().props.locale })">
+                        <Button size="sm" class="flex items-center justify-center gap-2">
+                            <Plus class="w-4 h-4" />
+                            {{ _t('vendorprofilepages', 'add_new_vehicle_button') }}
+                        </Button>
+                    </Link>
                 </div>
             </div>
 
@@ -116,7 +108,7 @@
                     class="pl-10 sm:pl-12 pr-4 h-10 sm:h-12 text-sm sm:text-base w-full" />
             </div>
             <!-- Enhanced Vehicles Section - Mobile Cards / Desktop Table -->
-            <div v-if="filteredVehicles.length" class="rounded-xl border bg-card shadow-sm overflow-hidden">
+            <div v-if="filteredVehicles.length" class="vr-panel">
                 <!-- Desktop Table View -->
                 <div class="hidden lg:block overflow-x-auto max-w-full table-container">
                     <Table class="vehicles-table">
@@ -244,9 +236,7 @@
                                     <span class="font-bold text-primary">{{ formatPricing(vehicle) }}</span>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <Badge :variant="getStatusBadgeVariant(vehicle.status)" class="capitalize">
-                                        {{ vehicle.status }}
-                                    </Badge>
+                                    <span class="vr-chip capitalize" :class="vrStatus(vehicle.status)">{{ vehicle.status }}</span>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 text-sm">{{ formatDate(vehicle.created_at)
                                     }}</TableCell>
@@ -289,10 +279,7 @@
                                     <span class="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
                                         {{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}
                                     </span>
-                                    <Badge :variant="getStatusBadgeVariant(vehicle.status)"
-                                        class="capitalize text-xs whitespace-nowrap flex-shrink-0">
-                                        {{ vehicle.status }}
-                                    </Badge>
+                                    <span class="vr-chip capitalize whitespace-nowrap flex-shrink-0" :class="vrStatus(vehicle.status)">{{ vehicle.status }}</span>
                                 </div>
                                 <h3
                                     class="font-semibold text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate">
@@ -431,19 +418,13 @@
             </div>
 
             <!-- Empty State -->
-            <div v-else class="rounded-xl border bg-card p-6 sm:p-12 text-center">
-                <div class="flex flex-col items-center space-y-4">
-                    <Car class="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground" />
-                    <div class="space-y-2 max-w-md">
-                        <h3 class="text-lg sm:text-xl font-semibold text-foreground">{{ _t('vendorprofilepages',
-                            'no_vehicles_found_text') }}</h3>
-                        <p class="text-sm sm:text-base text-muted-foreground">Get started by adding your first vehicle
-                            to the fleet.
-                        </p>
-                    </div>
-                    <Link :href="route('vehicles.create', { locale: usePage().props.locale })"
-                        class="w-full sm:w-auto max-w-xs">
-                        <Button class="flex items-center justify-center gap-2 w-full">
+            <div v-else class="vr-panel">
+                <div class="vr-empty">
+                    <div class="e-ic"><Car /></div>
+                    <h4>{{ tt('vendorprofilepages', 'no_vehicles_found_text', 'No vehicles found') }}</h4>
+                    <p>{{ tt('vendorprofilepages', 'no_vehicles_sub', 'Get started by adding your first vehicle to the fleet.') }}</p>
+                    <Link :href="route('vehicles.create', { locale: usePage().props.locale })">
+                        <Button class="flex items-center justify-center gap-2 mx-auto">
                             <Plus class="w-4 h-4" />
                             {{ _t('vendorprofilepages', 'add_new_vehicle_button') }}
                         </Button>
@@ -531,6 +512,10 @@ import {
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
+const tt = (group, key, fallback) => {
+    const v = _t(group, key);
+    return (!v || v === key) ? fallback : v;
+};
 
 const props = defineProps({
     vehicles: {
@@ -748,18 +733,7 @@ const getPrimaryImage = (vehicle) => {
     return primaryImage ? `${primaryImage.image_url}` : '/images/placeholder.jpg'
 }
 
-const getStatusBadgeVariant = (status) => {
-    switch (status) {
-        case 'available':
-            return 'default';
-        case 'rented':
-            return 'secondary';
-        case 'maintenance':
-            return 'destructive';
-        default:
-            return 'outline';
-    }
-};
+const vrStatus = (status) => ({ available: 'ok', rented: 'warn', maintenance: 'bad' }[status] || 'mut');
 
 // Clear flash message manually
 const clearFlashManually = () => {

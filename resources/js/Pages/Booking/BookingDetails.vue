@@ -6,6 +6,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapPin from "../../../assets/MapPin.svg";
 import Footer from "@/Components/Footer.vue";
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { faSimCard } from '@fortawesome/free-solid-svg-icons';
 import { getCurrentInstance } from 'vue';
 import { useBookingData } from '@/composables/useBookingData';
 import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
@@ -287,6 +289,12 @@ const rentalPeriodDisplay = computed(() => {
 });
 
 const displayExtras = computed(() => bookingData.normalizedExtras || []);
+const includedPerks = computed(() => {
+  const offers = Array.isArray(props.booking?.offers) ? props.booking.offers : [];
+
+  return offers.filter((offer) => offer?.effect_type && offer.effect_type !== 'price_discount_percentage');
+});
+const hasFreeEsim = computed(() => includedPerks.value.some((offer) => offer.effect_type === 'free_esim'));
 
 // Format deposit payment method (JSON array or string from vendor settings)
 const formatDepositMethod = (method) => {
@@ -582,6 +590,41 @@ const vendorInitials = computed(() => {
               >
                 <div id="booking-map" class="h-44 rounded-2xl border border-gray-200"></div>
               </div>
+            </div>
+          </div>
+
+          <!-- Included Perks -->
+          <div v-if="includedPerks.length" class="bd-card">
+            <div class="bd-card-header">
+              <div class="bd-icon-box bg-cyan-50">
+                <FontAwesomeIcon :icon="faSimCard" class="w-4 h-4 text-cyan-600" />
+              </div>
+              <h3>Included with your booking</h3>
+            </div>
+            <div class="bd-card-body">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div
+                  v-for="perk in includedPerks"
+                  :key="`${perk.effect_type}-${perk.id || perk.offer_id || perk.slug || perk.name}`"
+                  class="included-perk"
+                >
+                  <div class="included-perk__icon">
+                    <FontAwesomeIcon v-if="perk.effect_type === 'free_esim'" :icon="faSimCard" class="w-4 h-4" />
+                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold text-[var(--gray-800,#153b4f)]">
+                      {{ perk.effect_type === 'free_esim' ? 'Free eSIM' : (perk.title || perk.name || 'Included benefit') }}
+                    </p>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                      {{ perk.effect_type === 'free_esim' ? 'Included automatically with this booking.' : (perk.metadata?.description || 'Included in your reservation.') }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <p v-if="hasFreeEsim" class="mt-3 text-[11px] font-semibold text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-3 py-2">
+                Your complimentary travel eSIM is included with this confirmed booking.
+              </p>
             </div>
           </div>
 
@@ -1233,6 +1276,28 @@ const vendorInitials = computed(() => {
   letter-spacing: 0;
 }
 .bd-card-body { padding: 20px; }
+
+.included-perk {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ecfeff 0%, #ffffff 100%);
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: 0 10px 24px rgba(21, 59, 79, 0.06);
+}
+.included-perk__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #cffafe;
+  color: #0891b2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 
 .bd-icon-box {
   width: 34px;

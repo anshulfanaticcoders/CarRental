@@ -1,18 +1,22 @@
 <template>
     <MyProfileLayout>
-        <div class="container mx-auto p-4 sm:p-6 space-y-6">
+        <div class="space-y-6">
             <!-- Flash Message -->
             <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
                 {{ $page.props.flash.success }}
             </div>
 
             <!-- Header -->
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
-                <h1 class="text-3xl font-bold tracking-tight">{{ _t('customerprofilepages', 'my_documents_header') }}</h1>
-                <div class="flex flex-wrap items-center gap-2 sm:gap-4">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                        <FileText class="w-4 h-4 mr-1" />
-                        {{ document ? 'Documents Uploaded' : 'No Documents' }}
+            <div class="vr-phead">
+                <div>
+                    <span class="vr-eyebrow"><FileText /> {{ tt('customerprofilepages', 'documents_eyebrow', 'Verification') }}</span>
+                    <h2>{{ tt('customerprofilepages', 'my_documents_header', 'Travel Documents') }}</h2>
+                    <p class="vr-sub">{{ tt('customerprofilepages', 'my_documents_subtitle', 'Upload your driving license and passport for verification.') }}</p>
+                </div>
+                <div class="vr-phead-actions">
+                    <span class="vr-chip" :class="document ? 'ok' : 'mut'">
+                        <FileText class="w-3.5 h-3.5" />
+                        {{ document ? tt('customerprofilepages', 'documents_uploaded', 'Documents Uploaded') : tt('customerprofilepages', 'no_documents', 'No Documents') }}
                     </span>
                     <Button @click="openUploadDialog" :disabled="document && document.verification_status === 'verified'" class="flex items-center gap-2">
                         <Upload class="w-4 h-4" />
@@ -25,19 +29,23 @@
                 </div>
             </div>
 
-            <!-- Enhanced Status Card -->
-            <div v-if="document" class="relative bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="p-3 bg-blue-500 bg-opacity-20 rounded-lg">
-                        <Shield class="w-6 h-6 text-blue-600" />
+            <!-- Status Card -->
+            <div v-if="document" class="doc-status">
+                <div class="doc-status-top">
+                    <div class="doc-status-ic">
+                        <Shield class="w-6 h-6" />
                     </div>
-                    <Badge :variant="getStatusBadgeVariant(document.verification_status)" class="capitalize">
-                        {{ document.verification_status }}
-                    </Badge>
+                    <span class="vr-chip" :class="{
+                        ok: document.verification_status === 'verified',
+                        warn: document.verification_status === 'pending',
+                        bad: document.verification_status === 'rejected'
+                    }">{{ document.verification_status }}</span>
                 </div>
                 <div class="text-center">
-                    <p class="text-2xl font-bold text-blue-900">Verification Status</p>
-                    <p class="text-sm text-blue-700 mt-1">{{ document.verification_status === 'verified' ? 'Your documents have been verified' : 'Your documents are under review' }}</p>
+                    <p class="doc-status-title">{{ tt('customerprofilepages', 'verification_status', 'Verification Status') }}</p>
+                    <p class="doc-status-sub">{{ document.verification_status === 'verified'
+                        ? tt('customerprofilepages', 'documents_verified_text', 'Your documents have been verified')
+                        : tt('customerprofilepages', 'documents_under_review_text', 'Your documents are under review') }}</p>
                 </div>
             </div>
   
@@ -230,8 +238,8 @@
                 </DialogContent>
             </Dialog>
   
-        <!-- Enhanced Document Table -->
-            <div v-if="document" class="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <!-- Document Table -->
+            <div v-if="document" class="vr-panel">
                 <div class="overflow-x-auto max-w-full">
                     <Table>
                         <TableHeader>
@@ -268,17 +276,11 @@
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="flex items-center gap-2">
-                                        <div
-                                            class="w-2 h-2 rounded-full"
-                                            :class="{
-                                                'bg-green-500': document.verification_status === 'verified',
-                                                'bg-yellow-500': document.verification_status === 'pending',
-                                                'bg-red-500': document.verification_status === 'rejected'
-                                            }"
-                                        ></div>
-                                        <Badge :variant="getStatusBadgeVariant(document.verification_status)" class="capitalize">
-                                            {{ document.verification_status }}
-                                        </Badge>
+                                        <span class="vr-chip" :class="{
+                                            ok: document.verification_status === 'verified',
+                                            warn: document.verification_status === 'pending',
+                                            bad: document.verification_status === 'rejected'
+                                        }">{{ document.verification_status }}</span>
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -288,14 +290,14 @@
             </div>
 
             <!-- Empty State -->
-            <div v-else class="rounded-xl border bg-card p-12 text-center">
-                <div class="flex flex-col items-center space-y-4">
-                    <FileText class="w-16 h-16 text-muted-foreground" />
-                    <div class="space-y-2">
-                        <h3 class="text-xl font-semibold text-foreground">{{ _t('customerprofilepages', 'no_documents_uploaded_yet_text') }}</h3>
-                        <p class="text-muted-foreground">Get started by uploading your verification documents.</p>
+            <div v-else class="vr-panel">
+                <div class="vr-empty">
+                    <div class="e-ic">
+                        <FileText />
                     </div>
-                    <Button @click="openUploadDialog" class="flex items-center gap-2">
+                    <h4>{{ tt('customerprofilepages', 'no_documents_uploaded_yet_text', 'No documents uploaded yet') }}</h4>
+                    <p>{{ tt('customerprofilepages', 'documents_empty_sub', 'Get started by uploading your verification documents.') }}</p>
+                    <Button @click="openUploadDialog" class="flex items-center gap-2 mx-auto">
                         <Upload class="w-4 h-4" />
                         {{ _t('customerprofilepages', 'upload_documents_button') }}
                     </Button>
@@ -338,7 +340,6 @@
   import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
   import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog';
   import { Input } from '@/Components/ui/input';
-  import Badge from '@/Components/ui/badge/Badge.vue';
   import { Button } from '@/Components/ui/button';
   import { Label } from '@/Components/ui/label';
   import {
@@ -365,7 +366,11 @@
   
   const { appContext } = getCurrentInstance();
   const _t = appContext.config.globalProperties._t;
-  
+  const tt = (group, key, fallback) => {
+    const v = _t(group, key);
+    return (!v || v === key) ? fallback : v;
+  };
+
   const document = ref(usePage().props.document);
   const isDialogOpen = ref(false);
   const isDeleteConfirmOpen = ref(false);
@@ -521,15 +526,6 @@
     });
   };
   
-  const getStatusBadgeVariant = (status) => {
-    switch (status) {
-        case 'verified': return 'default';
-        case 'pending': return 'secondary';
-        case 'rejected': return 'destructive';
-        default: return 'secondary';
-    }
-  };
-
   const openImagePreview = (url, title) => {
     imagePreviewUrl.value = url;
     imagePreviewTitle.value = title;
@@ -553,3 +549,43 @@
     clearFlash();
   }
   </script>
+
+<style scoped>
+.doc-status {
+    background: linear-gradient(135deg, #f0f8fc, #ffffff);
+    border: 1px solid rgba(21, 59, 79, 0.12);
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 2px 4px rgba(21, 59, 79, 0.06), 0 1px 2px rgba(21, 59, 79, 0.04);
+}
+
+.doc-status-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.doc-status-ic {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: rgba(21, 59, 79, 0.1);
+    color: #153b4f;
+}
+
+.doc-status-title {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.doc-status-sub {
+    font-size: 0.86rem;
+    color: #64748b;
+    margin-top: 4px;
+}
+</style>

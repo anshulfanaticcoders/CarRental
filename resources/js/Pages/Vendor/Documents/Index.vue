@@ -1,6 +1,6 @@
 <template>
     <MyProfileLayout>
-        <div class="w-full mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <div class="space-y-6">
             <!-- Flash Message -->
             <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-3 sm:p-4 text-green-800 text-sm sm:text-base">
                 <div class="flex items-center justify-between">
@@ -12,47 +12,34 @@
             </div>
 
             <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-                <div class="flex flex-col gap-1">
-                    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-                        {{ _t('vendorprofilepages', 'my_vendor_documents_header') }}
-                    </h1>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 hidden sm:block">
-                        Manage your vendor verification documents
-                    </p>
+            <div class="vr-phead">
+                <div>
+                    <span class="vr-eyebrow"><FileText /> {{ tt('vendorprofilepages', 'documents_eyebrow', 'Verification') }}</span>
+                    <h2>{{ tt('vendorprofilepages', 'my_vendor_documents_header', 'Vendor Documents') }}</h2>
+                    <p class="vr-sub">{{ tt('vendorprofilepages', 'my_vendor_documents_subtitle', 'Manage your vendor verification documents.') }}</p>
                 </div>
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
-                    <span class="inline-flex items-center px-2 py-1 sm:px-2.5 sm:py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium justify-center">
-                        <FileText class="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                        <span class="hidden sm:inline">{{ document ? 'Documents Uploaded' : 'No Documents' }}</span>
-                        <span class="sm:hidden">{{ document ? 'Uploaded' : 'None' }}</span>
+                <div class="vr-phead-actions">
+                    <span class="vr-chip" :class="document ? 'ok' : 'mut'">
+                        <FileText class="w-3.5 h-3.5" />
+                        {{ document ? tt('vendorprofilepages', 'documents_uploaded', 'Documents Uploaded') : tt('vendorprofilepages', 'no_documents', 'No Documents') }}
                     </span>
-                    <Button
-                        v-if="document && document.vendor_profile?.status !== 'approved'"
-                        @click="openEditDialog()"
-                        class="flex items-center justify-center gap-2 w-full sm:w-auto"
-                        size="sm"
-                    >
-                        <Edit class="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span class="hidden sm:inline">{{ _t('vendorprofilepages', 'edit_button') }}</span>
-                        <span class="sm:hidden">Edit</span>
+                    <Button v-if="document && document.vendor_profile?.status !== 'approved'" @click="openEditDialog()"
+                        class="flex items-center justify-center gap-2" size="sm">
+                        <Edit class="w-4 h-4" />
+                        {{ _t('vendorprofilepages', 'edit_button') }}
                     </Button>
                 </div>
             </div>
 
             <!-- Status Card -->
-            <div v-if="document" class="relative bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] min-h-[120px] sm:min-h-[140px]">
-                <div class="flex items-center justify-between mb-3 sm:mb-4">
-                    <div class="p-2 sm:p-3 bg-blue-500 bg-opacity-20 rounded-lg">
-                        <Shield class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
-                    </div>
-                    <Badge :variant="getStatusBadgeVariant(document.vendor_profile?.status)" class="capitalize text-xs px-2 py-1">
-                        {{ document.vendor_profile?.status || 'Unknown' }}
-                    </Badge>
+            <div v-if="document" class="doc-status">
+                <div class="doc-status-top">
+                    <div class="doc-status-ic"><Shield class="w-6 h-6" /></div>
+                    <span class="vr-chip capitalize" :class="vrStatus(document.vendor_profile?.status)">{{ document.vendor_profile?.status || 'Unknown' }}</span>
                 </div>
                 <div class="text-center">
-                    <p class="text-lg sm:text-xl sm:text-2xl font-bold text-blue-900">Verification Status</p>
-                    <p class="text-xs sm:text-sm text-blue-700 mt-1 leading-relaxed">{{ getStatusMessage(document.vendor_profile?.status) }}</p>
+                    <p class="doc-status-title">{{ tt('vendorprofilepages', 'verification_status', 'Verification Status') }}</p>
+                    <p class="doc-status-sub">{{ getStatusMessage(document.vendor_profile?.status) }}</p>
                 </div>
             </div>
 
@@ -83,8 +70,8 @@
                 </DialogContent>
             </Dialog>
   
-        <!-- Enhanced Documents Section - Mobile Cards / Desktop Table -->
-            <div v-if="document" class="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <!-- Documents Section - Mobile Cards / Desktop Table -->
+            <div v-if="document" class="vr-panel">
                 <!-- Desktop Table View -->
                 <div class="hidden lg:block overflow-x-auto max-w-full">
                     <Table>
@@ -155,19 +142,7 @@
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="flex items-center gap-2">
-                                        <div
-                                            class="w-2 h-2 rounded-full"
-                                            :class="{
-                                                'bg-green-500': document.vendor_profile?.status === 'approved',
-                                                'bg-yellow-500': document.vendor_profile?.status === 'pending',
-                                                'bg-red-500': document.vendor_profile?.status === 'rejected'
-                                            }"
-                                        ></div>
-                                        <Badge :variant="getStatusBadgeVariant(document.vendor_profile?.status)" class="capitalize">
-                                            {{ document.vendor_profile?.status || 'Unknown' }}
-                                        </Badge>
-                                    </div>
+                                    <span class="vr-chip capitalize" :class="vrStatus(document.vendor_profile?.status)">{{ document.vendor_profile?.status || 'Unknown' }}</span>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="flex justify-end gap-2">
@@ -245,9 +220,7 @@
                                 <FileText class="w-4 h-4" />
                                 {{ _t('vendorprofilepages', 'passport_back_table_header') }}
                             </h3>
-                            <Badge :variant="getStatusBadgeVariant(document.vendor_profile?.status)" class="capitalize text-xs">
-                                {{ document.vendor_profile?.status || 'Unknown' }}
-                            </Badge>
+                            <span class="vr-chip capitalize" :class="vrStatus(document.vendor_profile?.status)">{{ document.vendor_profile?.status || 'Unknown' }}</span>
                         </div>
                         <div v-if="document.passport_back" class="space-y-3">
                             <div class="relative group mx-auto w-full max-w-[200px] sm:max-w-[250px]">
@@ -304,25 +277,20 @@
             </div>
 
             <!-- Empty State -->
-            <div v-else class="rounded-xl border bg-card p-6 sm:p-12 text-center">
-                <div class="flex flex-col items-center space-y-4">
-                    <FileText class="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground" />
-                    <div class="space-y-2 max-w-md">
-                        <h3 class="text-lg sm:text-xl font-semibold text-foreground">{{ _t('vendorprofilepages', 'no_vendor_documents_found_text') }}</h3>
-                        <p class="text-sm sm:text-base text-muted-foreground">Your vendor documents will appear here once uploaded.</p>
-                    </div>
+            <div v-else class="vr-panel">
+                <div class="vr-empty">
+                    <div class="e-ic"><FileText /></div>
+                    <h4>{{ tt('vendorprofilepages', 'no_vendor_documents_found_text', 'No vendor documents found') }}</h4>
+                    <p>{{ tt('vendorprofilepages', 'no_vendor_documents_sub', 'Your vendor documents will appear here once uploaded.') }}</p>
                 </div>
             </div>
 
-      <!-- Enhanced Company Information Card -->
-            <div v-if="document && document.vendor_profile" class="rounded-xl border bg-card shadow-sm overflow-hidden">
-                <div class="bg-muted/50 px-4 py-3 sm:px-6 sm:py-4 border-b">
-                    <h2 class="text-base sm:text-lg font-semibold flex items-center gap-2">
-                        <Building class="w-4 h-4 sm:w-5 sm:h-5" />
-                        {{ _t('vendorprofilepages', 'company_information_header') }}
-                    </h2>
+      <!-- Company Information Card -->
+            <div v-if="document && document.vendor_profile" class="vr-panel">
+                <div class="vr-panel-head">
+                    <h3><Building /> {{ _t('vendorprofilepages', 'company_information_header') }}</h3>
                 </div>
-                <div class="p-4 sm:p-6">
+                <div class="vr-panel-body">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div class="space-y-2">
                             <div class="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground">
@@ -380,7 +348,6 @@
   import TableBody from '@/Components/ui/table/TableBody.vue';
   import TableCell from '@/Components/ui/table/TableCell.vue';
   import Button from '@/Components/ui/button/Button.vue';
-  import Badge from '@/Components/ui/badge/Badge.vue';
   import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
   import EditDocument from '@/Pages/Vendor/Documents/Edit.vue';
   import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
@@ -401,7 +368,12 @@
   
   const { appContext } = getCurrentInstance();
   const _t = appContext.config.globalProperties._t;
-  
+  const tt = (group, key, fallback) => {
+    const v = _t(group, key);
+    return (!v || v === key) ? fallback : v;
+  };
+  const vrStatus = (status) => ({ approved: 'ok', pending: 'warn', rejected: 'bad' }[status] || 'mut');
+
   const props = defineProps({
     document: Object,
   });
@@ -422,19 +394,6 @@
     isViewDialogOpen.value = true;
   };
   
-  const getStatusBadgeVariant = (status) => {
-    switch (status) {
-        case 'approved':
-            return 'default';
-        case 'pending':
-            return 'secondary';
-        case 'rejected':
-            return 'destructive';
-        default:
-            return 'outline';
-    }
-  };
-
   const getStatusMessage = (status) => {
     switch (status) {
         case 'approved':
@@ -477,6 +436,44 @@
 </script>
 
 <style scoped>
+.doc-status {
+    background: linear-gradient(135deg, #f0f8fc, #ffffff);
+    border: 1px solid rgba(21, 59, 79, 0.12);
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 2px 4px rgba(21, 59, 79, 0.06), 0 1px 2px rgba(21, 59, 79, 0.04);
+}
+
+.doc-status-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.doc-status-ic {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: rgba(21, 59, 79, 0.1);
+    color: #153b4f;
+}
+
+.doc-status-title {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.doc-status-sub {
+    font-size: 0.86rem;
+    color: #64748b;
+    margin-top: 4px;
+}
+
 /* Mobile-specific adjustments */
 @media (max-width: 640px) {
     .document-card {

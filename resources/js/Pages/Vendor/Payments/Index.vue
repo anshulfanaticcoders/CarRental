@@ -1,33 +1,22 @@
 ﻿<template>
   <MyProfileLayout>
-    <div class="p-0 md:p-0 lg:p-6 space-y-6">
-      <!-- Enhanced Header -->
-      <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl p-6 shadow-sm">
-        <div class="flex items-center gap-4">
-          <div class="p-3 bg-green-500 bg-opacity-20 rounded-lg">
-            <CreditCard class="w-6 h-6 text-green-600" />
-          </div>
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">{{ _t('vendorprofilepages', 'payment_history_header') }}</h1>
-            <p class="text-sm text-gray-600 mt-1">{{ _t('vendorprofilepages', 'payment_history_subheader') }}</p>
-          </div>
+    <div class="space-y-5">
+      <!-- Header -->
+      <div class="vr-phead">
+        <div>
+          <span class="vr-eyebrow"><CreditCard /> {{ tt('vendorprofilepages', 'billing_eyebrow', 'Billing') }}</span>
+          <h2>{{ tt('vendorprofilepages', 'payment_history_header', 'Payment History') }}</h2>
+          <p class="vr-sub">{{ tt('vendorprofilepages', 'payment_history_subheader', 'Track payouts and transactions across your fleet.') }}</p>
         </div>
       </div>
 
-      <!-- Search and Filter Section -->
-      <div>
-        <div class="rounded-xl border bg-card shadow-sm p-6">
-          <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <div class="relative flex-1 max-w-md">
-              <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                v-model="searchQuery"
-                type="text"
-                :placeholder="_t('vendorprofilepages', 'search_payments_placeholder')"
-                class="pl-10 w-full"
-              />
-            </div>
-            <div class="flex items-center gap-2">
+      <!-- Search and Filters -->
+      <div class="vr-toolbar">
+        <label class="vr-search">
+          <Search />
+          <input v-model="searchQuery" type="text"
+            :placeholder="_t('vendorprofilepages', 'search_payments_placeholder')" />
+        </label>
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                   <Button variant="outline" class="flex items-center gap-2">
@@ -69,114 +58,50 @@
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <!-- Payment Statistics Cards -->
-      <div>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <!-- Total Revenue Card -->
-          <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-green-100 text-sm font-medium">Total Revenue</p>
-                <p class="text-2xl font-bold mt-1">
-                  <span v-if="selectedCurrency === 'all'">
-                    {{ getCurrencySymbol(defaultVendorCurrency) }}{{ formatNumber(totalRevenueAllCurrencies) }}
-                  </span>
-                  <span v-else>
-                    {{ getCurrencySymbol(selectedCurrency) }}{{ formatNumber(totalRevenueByCurrency) }}
-                  </span>
-                </p>
-                <p class="text-xs text-green-100 mt-1">
-                  {{ selectedCurrency === 'all' ? 'All Currencies' : selectedCurrency }}
-                </p>
-              </div>
-              <div class="p-3 bg-white bg-opacity-20 rounded-lg">
-                <TrendingUp class="w-6 h-6" />
-              </div>
-            </div>
+      <!-- Stat Cards -->
+      <div class="vr-stat-grid c4">
+        <div class="vr-stat">
+          <div class="vr-ic vr-ic-green"><TrendingUp /></div>
+          <div class="vr-v">
+            <span v-if="selectedCurrency === 'all'">{{ getCurrencySymbol(defaultVendorCurrency) }}{{ formatNumber(totalRevenueAllCurrencies) }}</span>
+            <span v-else>{{ getCurrencySymbol(selectedCurrency) }}{{ formatNumber(totalRevenueByCurrency) }}</span>
           </div>
-
-          <!-- Pending Amount Card -->
-          <div class="bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl p-6 text-white shadow-lg">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-yellow-100 text-sm font-medium">Pending Amount</p>
-                <p class="text-2xl font-bold mt-1">
-                  <span v-if="selectedCurrency === 'all'">
-                    {{ getCurrencySymbol(defaultVendorCurrency) }}{{ formatNumber(pendingAmountAllCurrencies) }}
-                  </span>
-                  <span v-else>
-                    {{ getCurrencySymbol(selectedCurrency) }}{{ formatNumber(pendingAmountByCurrency) }}
-                  </span>
-                </p>
-                <p class="text-xs text-yellow-100 mt-1">
-                  {{ selectedCurrency === 'all' ? 'All Currencies' : selectedCurrency }}
-                </p>
-              </div>
-              <div class="p-3 bg-white bg-opacity-20 rounded-lg">
-                <Clock class="w-6 h-6" />
-              </div>
-            </div>
+          <div class="vr-l">Total Revenue · {{ selectedCurrency === 'all' ? 'All Currencies' : selectedCurrency }}</div>
+        </div>
+        <div class="vr-stat">
+          <div class="vr-ic vr-ic-amber"><Clock /></div>
+          <div class="vr-v">
+            <span v-if="selectedCurrency === 'all'">{{ getCurrencySymbol(defaultVendorCurrency) }}{{ formatNumber(pendingAmountAllCurrencies) }}</span>
+            <span v-else>{{ getCurrencySymbol(selectedCurrency) }}{{ formatNumber(pendingAmountByCurrency) }}</span>
           </div>
-
-          <!-- Total Transactions Card -->
-          <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-blue-100 text-sm font-medium">Total Transactions</p>
-                <p class="text-2xl font-bold mt-1">
-                  {{ totalTransactionsAll }}
-                </p>
-                <p class="text-xs text-blue-100 mt-1">
-                  {{ selectedCurrency === 'all' ? 'All Currencies' : `Filtered: ${selectedCurrency}` }}
-                </p>
-              </div>
-              <div class="p-3 bg-white bg-opacity-20 rounded-lg">
-                <CreditCard class="w-6 h-6" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Successful Transactions Card -->
-          <div class="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-6 text-white shadow-lg">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-purple-100 text-sm font-medium">Successful</p>
-                <p class="text-2xl font-bold mt-1">
-                  {{ successfulTransactionsAll }}
-                </p>
-                <p class="text-xs text-purple-100 mt-1">
-                  {{ selectedCurrency === 'all' ? 'All Currencies' : `Filtered: ${selectedCurrency}` }}
-                </p>
-              </div>
-              <div class="p-3 bg-white bg-opacity-20 rounded-lg">
-                <CheckCircle class="w-6 h-6" />
-              </div>
-            </div>
-          </div>
+          <div class="vr-l">Pending Amount · {{ selectedCurrency === 'all' ? 'All Currencies' : selectedCurrency }}</div>
+        </div>
+        <div class="vr-stat">
+          <div class="vr-ic vr-ic-blue"><CreditCard /></div>
+          <div class="vr-v">{{ totalTransactionsAll }}</div>
+          <div class="vr-l">Total Transactions</div>
+        </div>
+        <div class="vr-stat">
+          <div class="vr-ic vr-ic-violet"><CheckCircle /></div>
+          <div class="vr-v">{{ successfulTransactionsAll }}</div>
+          <div class="vr-l">Successful</div>
         </div>
       </div>
 
       <!-- No Payments -->
-      <div v-if="!filteredPayments.length">
-        <div class="rounded-xl border bg-card p-12 text-center">
-          <div class="flex flex-col items-center space-y-4">
-            <CreditCard class="w-16 h-16 text-muted-foreground" />
-            <div class="space-y-2">
-              <h3 class="text-xl font-semibold text-foreground">No payments found</h3>
-              <p class="text-muted-foreground">{{ _t('vendorprofilepages', 'no_payment_history_found_text') }}</p>
-            </div>
-          </div>
+      <div v-if="!filteredPayments.length" class="vr-panel">
+        <div class="vr-empty">
+          <div class="e-ic"><CreditCard /></div>
+          <h4>{{ tt('vendorprofilepages', 'no_payments_found', 'No payments found') }}</h4>
+          <p>{{ tt('vendorprofilepages', 'no_payment_history_found_text', 'Your payment history will appear here.') }}</p>
         </div>
       </div>
 
       <!-- Payments Table -->
       <div v-else>
-        <div class="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <div class="vr-panel">
           <Table>
             <TableHeader>
               <TableRow>
@@ -184,9 +109,9 @@
                 <TableHead>Transaction ID</TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>Vehicle</TableHead>
-                <TableHead class="text-right">Amount Paid</TableHead>
-                <TableHead class="text-right">Total Amount</TableHead>
-                <TableHead class="text-right">Pending</TableHead>
+                <TableHead>Amount Paid</TableHead>
+                <TableHead>Total Amount</TableHead>
+                <TableHead>Pending</TableHead>
                 <TableHead>Method</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
@@ -222,30 +147,26 @@
                     {{ payment.booking?.vehicle?.brand || 'N/A' }} {{ payment.booking?.vehicle?.model || '' }}
                   </div>
                 </TableCell>
-                <TableCell class="text-right">
+                <TableCell>
                   <div class="font-medium text-green-600">
                     {{ getCurrencySymbol(getVendorCurrency(payment)) }}{{ formatNumber(getVendorAmount(payment, 'amount_paid')) }}
                   </div>
                 </TableCell>
-                <TableCell class="text-right">
+                <TableCell>
                   <div class="font-medium">
                     {{ getCurrencySymbol(getVendorCurrency(payment)) }}{{ formatNumber(getVendorAmount(payment, 'total_amount')) }}
                   </div>
                 </TableCell>
-                <TableCell class="text-right">
+                <TableCell>
                   <div class="font-medium text-yellow-600">
                     {{ getCurrencySymbol(getVendorCurrency(payment)) }}{{ formatNumber(getVendorAmount(payment, 'pending_amount')) }}
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" class="capitalize">
-                    {{ payment.payment_method || 'N/A' }}
-                  </Badge>
+                  <span class="vr-vbadge capitalize">{{ payment.payment_method || 'N/A' }}</span>
                 </TableCell>
                 <TableCell>
-                  <Badge :variant="getStatusVariant(payment.payment_status)" class="capitalize">
-                    {{ payment.payment_status }}
-                  </Badge>
+                  <span class="vr-chip capitalize" :class="vrStatus(payment.payment_status)">{{ payment.payment_status }}</span>
                 </TableCell>
                 <TableCell>
                   <div class="text-sm text-muted-foreground">
@@ -255,7 +176,8 @@
               </TableRow>
             </TableBody>
           </Table>
-          <div class="flex justify-end pt-4 pr-2">
+          <div class="vr-pager">
+            <span class="info"></span>
             <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
               @page-change="handlePageChange" />
           </div>
@@ -272,8 +194,6 @@ import { defineProps } from 'vue'
 import Pagination from '@/Pages/Vendor/Payments/Pagination.vue';
 import { Link, router } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
-import { Input } from '@/Components/ui/input';
-import { Badge } from '@/Components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/Components/ui/avatar';
 import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 import {
@@ -302,6 +222,11 @@ import {
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
+const tt = (group, key, fallback) => {
+  const v = _t(group, key);
+  return (!v || v === key) ? fallback : v;
+};
+const vrStatus = (status) => ({ succeeded: 'ok', pending: 'warn', failed: 'bad' }[status?.toLowerCase()] || 'mut');
 
 const props = defineProps({
   payments: {
@@ -376,20 +301,6 @@ const formatNumber = (number) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(number);
-};
-
-// Get status badge variant
-const getStatusVariant = (status) => {
-  switch (status?.toLowerCase()) {
-    case 'succeeded':
-      return 'default';
-    case 'pending':
-      return 'secondary';
-    case 'failed':
-      return 'destructive';
-    default:
-      return 'outline';
-  }
 };
 
 // Use all payments data if provided, otherwise use current page payments

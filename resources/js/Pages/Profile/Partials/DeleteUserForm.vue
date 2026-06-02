@@ -46,14 +46,10 @@ const closeModal = () => {
 </script>
 
 <template>
-    <section class="space-y-6 mt-[3rem]">
-        <header>
-            <h2 class="text-[1.5rem] font-medium text-gray-900">{{ _t('customerprofilepages', 'delete_account_header') }}</h2>
-
-            <p class="mt-1 text-sm text-gray-600">
-                {{ _t('customerprofilepages', 'delete_account_subheader') }}
-            </p>
-        </header>
+    <section class="space-y-4">
+        <p class="text-sm text-gray-600">
+            {{ _t('customerprofilepages', 'delete_account_subheader') }}
+        </p>
 
         <DangerButton @click="confirmUserDeletion">{{ _t('customerprofilepages', 'delete_account_button') }}</DangerButton>
 

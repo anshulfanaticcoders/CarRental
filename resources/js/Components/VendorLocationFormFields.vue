@@ -227,22 +227,25 @@ const applyLocationSelection = (location) => {
 }
 
 .vln-input,
-.vln-textarea {
+.vln-textarea,
+.vln-select-native {
     width: 100%;
-    border-radius: 0.875rem;
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    padding: 0.875rem 1rem;
-    font-size: 0.95rem;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    padding: 0.7rem 0.85rem;
+    font-size: 0.92rem;
     color: #0f172a;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .vln-input:focus,
-.vln-textarea:focus {
+.vln-textarea:focus,
+.vln-select-native:focus {
     outline: none;
-    border-color: #06b6d4;
-    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+    border-color: #153b4f;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(21, 59, 79, 0.12);
 }
 
 .vln-textarea {
@@ -253,22 +256,6 @@ const applyLocationSelection = (location) => {
 .vln-error {
     font-size: 0.8rem;
     color: #dc2626;
-}
-
-.vln-select-native {
-    width: 100%;
-    border-radius: 0.875rem;
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    padding: 0.875rem 1rem;
-    font-size: 0.95rem;
-    color: #0f172a;
-}
-
-.vln-select-native:focus {
-    outline: none;
-    border-color: #06b6d4;
-    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
 }
 
 @media (max-width: 767px) {

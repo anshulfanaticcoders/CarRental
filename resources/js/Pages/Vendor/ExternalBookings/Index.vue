@@ -1,85 +1,56 @@
 ﻿<template>
     <MyProfileLayout>
         <div class="space-y-5">
-            <!-- KPI strip -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div class="rounded-xl border border-[var(--gray-200)] bg-white p-4 shadow-sm">
-                    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--gray-500)] font-semibold">
-                        <TrendingUp class="w-3.5 h-3.5" /> Lifetime revenue
-                    </div>
-                    <div class="mt-1.5 text-xl font-bold text-[var(--gray-900)]">
-                        {{ formatNumber(props.analytics.total_revenue) }}
-                    </div>
-                    <div class="text-[11px] text-[var(--gray-400)] mt-0.5">
-                        From confirmed + completed bookings
-                    </div>
-                </div>
-                <div class="rounded-xl border border-[var(--gray-200)] bg-white p-4 shadow-sm">
-                    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--gray-500)] font-semibold">
-                        <BarChart3 class="w-3.5 h-3.5" /> This month
-                    </div>
-                    <div class="mt-1.5 text-xl font-bold text-[var(--gray-900)]">
-                        {{ formatNumber(props.analytics.this_month_revenue) }}
-                    </div>
-                    <div class="text-[11px] text-[var(--gray-400)] mt-0.5">
-                        Revenue in current month
-                    </div>
-                </div>
-                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-                    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-amber-700 font-semibold">
-                        <Clock class="w-3.5 h-3.5" /> Pending action
-                    </div>
-                    <div class="mt-1.5 text-xl font-bold text-amber-900">
-                        {{ props.analytics.pending_count }}
-                    </div>
-                    <div class="text-[11px] text-amber-600 mt-0.5">
-                        Awaiting confirmation
-                    </div>
-                </div>
-                <div class="rounded-xl border border-[var(--gray-200)] bg-white p-4 shadow-sm">
-                    <div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--gray-500)] font-semibold">
-                        <CheckCircle2 class="w-3.5 h-3.5" /> Confirmed / Completed
-                    </div>
-                    <div class="mt-1.5 text-xl font-bold text-[var(--gray-900)]">
-                        {{ props.analytics.confirmed_count + props.analytics.completed_count }}
-                    </div>
-                    <div class="text-[11px] text-[var(--gray-400)] mt-0.5">
-                        {{ props.analytics.total_bookings }} total &middot; {{ props.analytics.cancelled_count }} cancelled
-                    </div>
+            <!-- Header -->
+            <div class="vr-phead">
+                <div>
+                    <span class="vr-eyebrow"><Globe /> {{ tt('vendorprofilepages', 'operations_eyebrow', 'Operations') }}</span>
+                    <h2>{{ tt('vendorprofilepages', 'external_bookings_header', 'External Bookings') }}</h2>
+                    <p class="vr-sub">{{ tt('vendorprofilepages', 'external_bookings_subtitle', 'Bookings received through the Provider API from external companies.') }}</p>
                 </div>
             </div>
 
-            <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-xl font-bold text-[var(--gray-900)]">External Bookings</h1>
-                    <p class="text-sm text-[var(--gray-500)] mt-0.5">Bookings received through the Provider API from external companies.</p>
+            <!-- Stat Cards -->
+            <div class="vr-stat-grid c4">
+                <div class="vr-stat">
+                    <div class="vr-ic vr-ic-green"><TrendingUp /></div>
+                    <div class="vr-v">{{ formatNumber(props.analytics.total_revenue) }}</div>
+                    <div class="vr-l">Lifetime Revenue</div>
                 </div>
-                <div class="flex items-center gap-3">
-                    <select
-                        v-model="statusFilter"
-                        class="h-10 px-3 text-sm border border-[var(--gray-200)] rounded-lg bg-white focus:ring-2 focus:ring-[var(--primary-400)] focus:border-[var(--primary-400)] outline-none transition-colors"
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-                    <div class="relative w-full sm:w-72">
-                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--gray-400)]" />
-                        <Input
-                            v-model="searchQuery"
-                            type="text"
-                            placeholder="Search bookings..."
-                            class="pl-9 w-full h-10 text-sm"
-                        />
-                    </div>
+                <div class="vr-stat">
+                    <div class="vr-ic vr-ic-teal"><BarChart3 /></div>
+                    <div class="vr-v">{{ formatNumber(props.analytics.this_month_revenue) }}</div>
+                    <div class="vr-l">This Month</div>
                 </div>
+                <div class="vr-stat">
+                    <div class="vr-ic vr-ic-amber"><Clock /></div>
+                    <div class="vr-v">{{ props.analytics.pending_count }}</div>
+                    <div class="vr-l">Pending Action</div>
+                </div>
+                <div class="vr-stat">
+                    <div class="vr-ic vr-ic-violet"><CheckCircle2 /></div>
+                    <div class="vr-v">{{ props.analytics.confirmed_count + props.analytics.completed_count }}</div>
+                    <div class="vr-l">Confirmed / Completed</div>
+                </div>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="vr-toolbar">
+                <label class="vr-search">
+                    <Search />
+                    <input v-model="searchQuery" type="text" placeholder="Search bookings..." />
+                </label>
+                <select v-model="statusFilter" style="padding:10px 14px;min-width:150px;font-size:0.84rem;font-weight:500">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
             </div>
 
             <!-- Table Card -->
-            <div class="rounded-xl border border-[var(--gray-200)] bg-white shadow-sm overflow-hidden">
+            <div class="vr-panel">
                 <div v-if="props.bookings.length" class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
@@ -90,7 +61,7 @@
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Driver</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Company</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Dates</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Amount</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Amount</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider">Status</th>
                                 <th class="px-4 py-3 text-center text-xs font-semibold text-[var(--gray-500)] uppercase tracking-wider w-[80px]">Actions</th>
                             </tr>
@@ -119,25 +90,18 @@
 
                                 <!-- Driver -->
                                 <td class="px-4 py-3">
-                                    <div class="flex items-center gap-2.5">
-                                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[var(--primary-100)] text-[var(--primary-700)] text-[10px] font-bold shrink-0">
-                                            {{ booking.driver_first_name?.[0] }}{{ booking.driver_last_name?.[0] }}
+                                    <span class="vr-cust">
+                                        <span class="vr-ava">{{ booking.driver_first_name?.[0] }}{{ booking.driver_last_name?.[0] }}</span>
+                                        <span class="min-w-0">
+                                            <span class="cell-strong truncate block max-w-[150px]">{{ booking.driver_first_name }} {{ booking.driver_last_name }}</span>
+                                            <span class="vr-mut truncate block max-w-[150px]">{{ booking.driver_email }}</span>
                                         </span>
-                                        <div class="min-w-0">
-                                            <span class="font-medium text-[var(--gray-800)] truncate block max-w-[130px]">
-                                                {{ booking.driver_first_name }} {{ booking.driver_last_name }}
-                                            </span>
-                                            <span class="text-[11px] text-[var(--gray-400)] truncate block max-w-[130px]">{{ booking.driver_email }}</span>
-                                        </div>
-                                    </div>
+                                    </span>
                                 </td>
 
                                 <!-- Company -->
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-medium">
-                                        <Globe class="w-3 h-3 mr-1" />
-                                        {{ booking.consumer?.name || 'N/A' }}
-                                    </span>
+                                    <span class="vr-chip blue"><Globe class="w-3 h-3" /> {{ booking.consumer?.name || 'N/A' }}</span>
                                 </td>
 
                                 <!-- Dates -->
@@ -149,7 +113,7 @@
                                 </td>
 
                                 <!-- Amount -->
-                                <td class="px-4 py-3 text-right whitespace-nowrap">
+                                <td class="px-4 py-3 whitespace-nowrap">
                                     <span class="font-semibold text-[var(--gray-900)]">
                                         {{ getCurrencySymbol(booking.currency) }}{{ formatNumber(booking.total_amount) }}
                                     </span>
@@ -157,13 +121,7 @@
 
                                 <!-- Status -->
                                 <td class="px-4 py-3">
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold capitalize"
-                                        :class="statusBadgeClass(booking.status)"
-                                    >
-                                        <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="statusDotClass(booking.status)"></span>
-                                        {{ booking.status }}
-                                    </span>
+                                    <span class="vr-chip capitalize" :class="vrStatus(booking.status)">{{ booking.status }}</span>
                                 </td>
 
                                 <!-- Actions -->
@@ -190,17 +148,15 @@
                 </div>
 
                 <!-- Empty State -->
-                <div v-else class="px-6 py-20 text-center">
-                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[var(--gray-100)] mb-4">
-                        <Globe class="w-6 h-6 text-[var(--gray-400)]" />
-                    </div>
-                    <p class="text-sm font-medium text-[var(--gray-500)]">No external bookings found</p>
-                    <p class="text-xs text-[var(--gray-400)] mt-1">Bookings from external API consumers will appear here.</p>
+                <div v-else class="vr-empty">
+                    <div class="e-ic"><Globe /></div>
+                    <h4>No external bookings found</h4>
+                    <p>Bookings from external API consumers will appear here.</p>
                 </div>
 
                 <!-- Pagination -->
-                <div v-if="props.bookings.length" class="flex items-center justify-between px-4 py-3 border-t border-[var(--gray-200)] bg-[var(--gray-50)]/50">
-                    <span class="text-xs text-[var(--gray-500)]">
+                <div v-if="props.bookings.length" class="vr-pager">
+                    <span class="info">
                         Showing {{ (pagination.current_page - 1) * pagination.per_page + 1 }}&ndash;{{ Math.min(pagination.current_page * pagination.per_page, pagination.total) }} of {{ pagination.total }}
                     </span>
                     <Pagination
@@ -219,10 +175,18 @@ import { ref, watch } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
-import { Input } from '@/Components/ui/input';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/Components/ui/tooltip';
 import { Search, Eye, Globe, TrendingUp, Clock, CheckCircle2, BarChart3 } from 'lucide-vue-next';
 import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
+import { getCurrentInstance } from 'vue';
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
+const tt = (group, key, fallback) => {
+    const v = _t(group, key);
+    return (!v || v === key) ? fallback : v;
+};
+const vrStatus = (status) => ({ confirmed: 'blue', completed: 'ok', pending: 'warn', cancelled: 'bad' }[status] || 'mut');
 
 const props = defineProps({
     bookings: { type: Array, required: true },
@@ -263,21 +227,6 @@ const formatDateShort = (dateStr) => {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 };
-
-// --- Status helpers ---
-const statusBadgeClass = (status) => ({
-    confirmed: 'bg-blue-50 text-blue-700',
-    completed: 'bg-emerald-50 text-emerald-700',
-    pending: 'bg-amber-50 text-amber-700',
-    cancelled: 'bg-red-50 text-red-600',
-}[status] || 'bg-gray-50 text-gray-600');
-
-const statusDotClass = (status) => ({
-    confirmed: 'bg-blue-500',
-    completed: 'bg-emerald-500',
-    pending: 'bg-amber-500',
-    cancelled: 'bg-red-500',
-}[status] || 'bg-gray-400');
 
 // --- Actions ---
 const viewBooking = (bookingId) => {

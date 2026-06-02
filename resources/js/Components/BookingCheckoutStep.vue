@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, unref, watch } from 'vue';
 import StripeCheckoutButton from './StripeCheckoutButton.vue';
 import { usePage } from '@inertiajs/vue3';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { faSimCard } from '@fortawesome/free-solid-svg-icons';
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 import { normalizeCurrencyCode as registryNormalizeCurrencyCode } from '@/utils/currencyRegistry';
 import {
@@ -59,6 +61,8 @@ const emit = defineEmits(['back']);
 
 const { convertPrice, getSelectedCurrencySymbol, fetchExchangeRates, selectedCurrency } = useCurrencyConversion();
 const page = usePage();
+const checkoutPerkOffers = computed(() => Array.isArray(page.props.checkout_perk_offers) ? page.props.checkout_perk_offers : []);
+const freeEsimOffer = computed(() => checkoutPerkOffers.value.find((offer) => offer?.effect_type === 'free_esim') || null);
 
 // Pre-fill from auth user if available
 const user = page.props.auth?.user || {};
@@ -334,6 +338,8 @@ const bookingData = computed(() => {
         search_session_id: props.searchSessionId,
         gateway_search_id: props.gatewaySearchId || null,
         selected_deposit_type: props.selectedDepositType || null,
+        perk_offers: checkoutPerkOffers.value,
+        free_esim_included: Boolean(freeEsimOffer.value),
     };
 });
 
@@ -801,6 +807,11 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 <div class="text-xs text-gray-500">{{ dropoffLocation }}</div>
                             </div>
                         </div>
+                    </div>
+
+                    <div v-if="freeEsimOffer" class="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm font-bold text-[#153b4f]">
+                        <FontAwesomeIcon :icon="faSimCard" class="h-4 w-4 text-cyan-600" />
+                        <span>Free eSIM</span>
                     </div>
 
                     <!-- Financials -->

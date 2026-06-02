@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, getCurrentInstance } from "vue";
 import axios from "axios";
 import { router } from "@inertiajs/vue3";
 import MyProfileLayout from "@/Layouts/MyProfileLayout.vue";
@@ -7,13 +7,19 @@ import Pagination from '@/Components/ReusableComponents/Pagination.vue'; // Adde
 import carIcon from "../../../assets/carIcon.svg";
 import mileageIcon from "../../../assets/mileageIcon.svg";
 import { Heart } from "lucide-vue-next";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
 
 // Props will now come from Inertia controller
 const props = defineProps({
     favoriteVehicles: Object, // Expects a paginated object
     providerFavorites: Object,
 });
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
+const tt = (group, key, fallback) => {
+    const v = _t(group, key);
+    return (!v || v === key) ? fallback : v;
+};
 
 import { toast as sonnerToast } from 'vue-sonner';
 
@@ -129,20 +135,27 @@ const handlePageChange = (page) => {
 
 <template>
     <MyProfileLayout>
-        <div class="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>{{ _t('common','favorite_title') }}</CardTitle>
-                    <CardDescription>Your saved vehicles across providers.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div v-if="favoriteVehiclesState.length === 0 && providerFavoritesState.length === 0"
-                        class="rounded-xl border border-dashed border-slate-200 px-6 py-10 text-center text-sm text-slate-500">
-                        No favorite vehicles yet.
+        <div class="vr-phead">
+            <div>
+                <span class="vr-eyebrow"><Heart /> {{ tt('common', 'favorites_eyebrow', 'Saved') }}</span>
+                <h2>{{ tt('common', 'favorite_title', 'Favorites') }}</h2>
+                <p class="vr-sub">{{ tt('common', 'favorites_subtitle', 'Your saved vehicles across providers.') }}</p>
+            </div>
+        </div>
+
+        <div>
+            <div v-if="favoriteVehiclesState.length === 0 && providerFavoritesState.length === 0" class="vr-panel">
+                <div class="vr-empty">
+                    <div class="e-ic">
+                        <Heart />
                     </div>
-                    <div v-if="favoriteVehiclesState.length > 0" class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
-                        <div v-for="vehicle in favoriteVehiclesState" :key="vehicle.id"
-                            class="favorite-card">
+                    <h4>{{ tt('common', 'no_favorites_title', 'No favorite vehicles yet') }}</h4>
+                    <p>{{ tt('common', 'no_favorites_text', 'Save vehicles you love and find them here.') }}</p>
+                </div>
+            </div>
+            <div v-if="favoriteVehiclesState.length > 0" class="vr-card-grid">
+                <div v-for="vehicle in favoriteVehiclesState" :key="vehicle.id"
+                    class="favorite-card">
                             <div class="favorite-image">
                                 <img v-if="vehicle.images" :src="`${vehicle.images.find(
                                     (image) =>
@@ -174,9 +187,9 @@ const handlePageChange = (page) => {
                         </div>
                     </div>
 
-                    <div v-if="providerFavoritesState.length > 0" class="mt-8">
-                        <p class="text-sm font-semibold text-slate-700 mb-4">Provider favorites</p>
-                        <div class="grid grid-cols-3 gap-6 max-[768px]:grid-cols-1">
+                    <div v-if="providerFavoritesState.length > 0" style="margin-top: 26px">
+                        <p class="provider-label">{{ tt('common', 'provider_favorites', 'Provider favorites') }}</p>
+                        <div class="vr-card-grid">
                             <div v-for="favorite in providerFavoritesState" :key="favorite.id"
                                 class="favorite-card">
                                 <div class="favorite-image">
@@ -203,10 +216,8 @@ const handlePageChange = (page) => {
                             </div>
                         </div>
                     </div>
-                </CardContent>
-            </Card>
 
-            <div v-if="props.favoriteVehicles && props.favoriteVehicles.last_page > 1" class="flex justify-center">
+            <div v-if="props.favoriteVehicles && props.favoriteVehicles.last_page > 1" class="flex justify-center" style="margin-top: 24px">
                 <Pagination
                     :currentPage="props.favoriteVehicles.current_page"
                     :totalPages="props.favoriteVehicles.last_page"
@@ -218,6 +229,14 @@ const handlePageChange = (page) => {
 </template>
 
 <style scoped>
+.provider-label {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #0f172a;
+  margin-bottom: 14px;
+}
+
 .favorite-card {
   background: #fff;
   border-radius: 18px;

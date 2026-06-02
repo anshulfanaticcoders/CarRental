@@ -300,3 +300,9 @@ Concise durable memory for significant completed work.
 - Verification: PHP syntax checks passed; touched-file Pint check passed; `GatewayVehicleTransformerTest`, focused Trabber provider products/extras regression, and Skyscanner offer booking adapter tests passed. Partner parity audit passed for Adobe, Click2Rent, Easirent, EMR, Favrica, Locauto, OK Mobility, RecordGo, Surprice, and XDrive on local live gateway responses.
 - Test notes: Renteon returned no live vehicles for sampled local locations/dates, so it remains no-result rather than pass/fail. Full Trabber suite passed before the final guard tweak with 13 tests and 125 assertions; later full-suite reruns timed out in the local PowerShell session before output.
 - Follow-ups: deploy before retesting the live Barcelona Trabber offer link; existing cached production offer IDs need a fresh Trabber search/deeplink to pick up the richer cached payload.
+
+### 2026-06-02 - Free eSIM booking visibility
+- Scope: `CarRental` active offer sharing, search result car cards, customize/checkout booking summaries, and checkout payload.
+- Decision: active free-eSIM perk offers are shared to search/checkout pages, displayed as compact included badges on car listing cards and booking summaries, and sent in checkout payload as `free_esim_included` plus `perk_offers`; server-side offer resolution remains authoritative for stored booking metadata.
+- Verification: PHP syntax check passed for shared Inertia offer props; `git diff --check` passed; local offer service resolved `free_esim_included=true`; `npm run build` passed with existing project warnings.
+- Follow-ups: confirm admin/vendor/customer booking detail screens read stored booking offer metadata where needed.

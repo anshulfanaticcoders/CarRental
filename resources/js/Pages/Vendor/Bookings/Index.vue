@@ -7,28 +7,24 @@
 
         <div class="space-y-5">
             <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="vr-phead">
                 <div>
-                    <h1 class="text-xl font-bold text-[var(--gray-900)]">
-                        {{ _t('vendorprofilepages', 'booking_details_header') }}
-                    </h1>
-                    <p class="text-sm text-[var(--gray-500)] mt-0.5">
-                        {{ _t('vendorprofilepages', 'booking_details_subtitle') || 'Manage and update booking records.' }}
-                    </p>
-                </div>
-                <div class="relative w-full sm:w-72">
-                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--gray-400)]" />
-                    <Input
-                        v-model="searchQuery"
-                        type="text"
-                        :placeholder="_t('vendorprofilepages', 'search_bookings_placeholder')"
-                        class="pl-9 w-full h-10 text-sm"
-                    />
+                    <span class="vr-eyebrow"><CalendarCheck /> {{ tt('vendorprofilepages', 'operations_eyebrow', 'Operations') }}</span>
+                    <h2>{{ tt('vendorprofilepages', 'booking_details_header', 'Bookings') }}</h2>
+                    <p class="vr-sub">{{ tt('vendorprofilepages', 'booking_details_subtitle', 'Manage and update booking records.') }}</p>
                 </div>
             </div>
 
+            <div class="vr-toolbar">
+                <label class="vr-search">
+                    <Search />
+                    <input v-model="searchQuery" type="text"
+                        :placeholder="_t('vendorprofilepages', 'search_bookings_placeholder')" />
+                </label>
+            </div>
+
             <!-- Table Card -->
-            <div class="rounded-xl border border-[var(--gray-200)] bg-white shadow-sm overflow-hidden">
+            <div class="vr-panel">
                 <div v-if="filteredBookings.length" class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
@@ -95,13 +91,7 @@
 
                                 <!-- Status -->
                                 <td class="px-4 py-3">
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold capitalize"
-                                        :class="statusBadgeClass(booking.booking_status)"
-                                    >
-                                        <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="statusDotClass(booking.booking_status)"></span>
-                                        {{ booking.booking_status }}
-                                    </span>
+                                    <span class="vr-chip capitalize" :class="vrStatus(booking.booking_status)">{{ booking.booking_status }}</span>
                                 </td>
 
                                 <!-- Actions -->
@@ -152,17 +142,17 @@
                 </div>
 
                 <!-- Empty State -->
-                <div v-else class="px-6 py-20 text-center">
-                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[var(--gray-100)] mb-4">
-                        <CalendarX2 class="w-6 h-6 text-[var(--gray-400)]" />
+                <div v-else class="vr-empty">
+                    <div class="e-ic">
+                        <CalendarX2 />
                     </div>
-                    <p class="text-sm font-medium text-[var(--gray-500)]">{{ _t('vendorprofilepages', 'no_bookings_found_text') }}</p>
-                    <p class="text-xs text-[var(--gray-400)] mt-1">Try adjusting your search or filters</p>
+                    <h4>{{ tt('vendorprofilepages', 'no_bookings_found_text', 'No bookings found') }}</h4>
+                    <p>{{ tt('vendorprofilepages', 'no_bookings_sub', 'Try adjusting your search or filters.') }}</p>
                 </div>
 
                 <!-- Pagination -->
-                <div v-if="filteredBookings.length" class="flex items-center justify-between px-4 py-3 border-t border-[var(--gray-200)] bg-[var(--gray-50)]/50">
-                    <span class="text-xs text-[var(--gray-500)]">
+                <div v-if="filteredBookings.length" class="vr-pager">
+                    <span class="info">
                         Showing {{ (pagination.current_page - 1) * pagination.per_page + 1 }}&ndash;{{ Math.min(pagination.current_page * pagination.per_page, pagination.total) }} of {{ pagination.total }}
                     </span>
                     <Pagination
@@ -182,15 +172,18 @@ import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
-import { Input } from '@/Components/ui/input';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/Components/ui/tooltip';
 import { useToast } from 'vue-toastification';
 import loaderVariant from '../../../../assets/loader-variant.svg';
-import { Search, Eye, ShieldCheck, Ban, CalendarX2 } from 'lucide-vue-next';
+import { Search, Eye, ShieldCheck, Ban, CalendarX2, CalendarCheck } from 'lucide-vue-next';
 import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
+const tt = (group, key, fallback) => {
+    const v = _t(group, key);
+    return (!v || v === key) ? fallback : v;
+};
 const toast = useToast();
 
 const props = defineProps({
@@ -245,19 +238,12 @@ const formatDateShort = (dateStr) => {
 };
 
 // --- Status helpers ---
-const statusBadgeClass = (status) => ({
-    confirmed: 'bg-emerald-50 text-emerald-700',
-    completed: 'bg-emerald-50 text-emerald-700',
-    pending: 'bg-amber-50 text-amber-700',
-    cancelled: 'bg-red-50 text-red-600',
-}[status] || 'bg-gray-50 text-gray-600');
-
-const statusDotClass = (status) => ({
-    confirmed: 'bg-emerald-500',
-    completed: 'bg-emerald-500',
-    pending: 'bg-amber-500',
-    cancelled: 'bg-red-500',
-}[status] || 'bg-gray-400');
+const vrStatus = (status) => ({
+    confirmed: 'ok',
+    completed: 'ok',
+    pending: 'warn',
+    cancelled: 'bad',
+}[status] || 'mut');
 
 // --- Actions ---
 const viewBooking = (bookingId) => {

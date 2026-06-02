@@ -78,6 +78,8 @@ const providerMarkupRate = computed(() => {
 // Active promo from backend (shared via HandleInertiaRequests)
 const activePromo = computed(() => page.props.active_promo ?? null);
 const promoMarkupRate = computed(() => activePromo.value?.promo_markup_rate ?? 0);
+const searchPerkOffers = computed(() => Array.isArray(page.props.search_perk_offers) ? page.props.search_perk_offers : []);
+const searchFreeEsimOffer = computed(() => searchPerkOffers.value.find((offer) => offer?.effect_type === 'free_esim') || null);
 
 const getInflatedPrice = (basePrice) => {
     if (!activePromo.value || promoMarkupRate.value <= 0) return null;
@@ -2516,6 +2518,7 @@ watch(
                 <CarListingCard v-for="vehicle in paginatedVehicles" :key="vehicle.id" :vehicle="vehicle" :form="form"
                     :view-mode="viewMode" :favoriteStatus="favoriteStatus[vehicle.id] || false"
                     :favoriteLoading="favoriteLoading[vehicle.id] || false" :popEffect="popEffect[vehicle.id] || false"
+                    :free-esim-offer="searchFreeEsimOffer"
                     @toggleFavourite="toggleFavourite" @saveSearchUrl="saveSearchUrl"
                     @select-package="handlePackageSelection">
                     <template #dailyPrice>

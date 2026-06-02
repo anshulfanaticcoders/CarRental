@@ -1,13 +1,15 @@
 <template>
     <MyProfileLayout>
-        <Card>
-            <CardHeader>
-                <CardTitle>{{ _t('customerprofilepages', 'my_reviews_header') }}</CardTitle>
-                <CardDescription>See what you shared about your rentals.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div v-if="reviews.data.length > 0" class="space-y-6">
-                <div v-for="review in reviews.data" :key="review.id" class="border rounded-xl p-6 shadow-sm">
+        <div class="vr-phead">
+            <div>
+                <span class="vr-eyebrow"><Star /> {{ tt('customerprofilepages', 'reviews_eyebrow', 'My account') }}</span>
+                <h2>{{ tt('customerprofilepages', 'my_reviews_header', 'My Reviews') }}</h2>
+                <p class="vr-sub">{{ tt('customerprofilepages', 'my_reviews_subtitle', 'See what you shared about your rentals.') }}</p>
+            </div>
+        </div>
+
+        <div v-if="reviews.data.length > 0" class="space-y-6">
+                <div v-for="review in reviews.data" :key="review.id" class="rv-card">
                     <div class="flex justify-between items-start mb-4 max-[768px]:flex-col">
                         <div class="flex items-start gap-8 max-[768px]:flex-col">
                             <div class="max-w-[308px] max-[768px]:max-w-full">
@@ -20,9 +22,7 @@
                                     <h3 class="text-[1.5rem] font-semibold max-[768px]:text-[1rem]">{{ review.vehicle.brand }} {{
                                         review.vehicle.model }}
                                     </h3>
-                                    <span
-                                        class="bg-gray-200 text-customPrimaryColor px-4 py-3 rounded-full inline-block ml-[2rem]
-                                        max-[768px]:text-[0.75rem]  max-[768px]:ml-0">
+                                    <span class="vr-vbadge ml-[2rem] max-[768px]:ml-0">
                                         {{ review.vehicle.category.name }}
                                     </span>
                                 </div>
@@ -51,7 +51,7 @@
                                 </div>
                             </div>
                             <div
-                                class="bg-gray-200 rounded-[6px] min-w-[300px] min-h-[160px] flex flex-col gap-5 justify-between p-4">
+                                class="rv-booking min-w-[300px] min-h-[160px] flex flex-col gap-5 justify-between">
                                 <div class="flex flex-col gap-1">
                                     <strong class="text-customPrimaryColor">{{ _t('customerprofilepages', 'booking_from') }}</strong>
                                     <p class="text-customPrimaryColor font-medium text-[0.875rem]"> {{
@@ -89,11 +89,11 @@
                         </p>
 
                         <div class="flex mt-2 items-center gap-2">
-                            <span class="font-bold">Verification Status :</span>
-                            <span class="text-sm font-medium" :class="{
-                                'text-green-500': review.status === 'approved',
-                                'text-yellow-500': review.status === 'pending',
-                                'text-red-500': review.status === 'rejected',
+                            <span class="font-bold">{{ tt('customerprofilepages', 'verification_status', 'Verification Status') }} :</span>
+                            <span class="vr-chip" :class="{
+                                ok: review.status === 'approved',
+                                warn: review.status === 'pending',
+                                bad: review.status === 'rejected',
                             }">
                                 {{ review.status }}
                             </span>
@@ -101,14 +101,21 @@
                     </div>
 
                 </div>
-                <Pagination :current-page="reviews.current_page" :total-pages="reviews.last_page"
-                    @page-change="handlePageChange" />
+                <div class="vr-pager">
+                    <span class="info"></span>
+                    <Pagination :current-page="reviews.current_page" :total-pages="reviews.last_page"
+                        @page-change="handlePageChange" />
+                </div>
             </div>
-            <div v-else class="rounded-xl border border-dashed border-slate-200 px-6 py-10 text-center text-sm text-slate-500">
-                {{ _t('customerprofilepages', 'no_reviews_submitted') }}
+            <div v-else class="vr-panel">
+                <div class="vr-empty">
+                    <div class="e-ic">
+                        <Star />
+                    </div>
+                    <h4>{{ tt('customerprofilepages', 'no_reviews_submitted', 'No reviews available yet') }}</h4>
+                    <p>{{ tt('customerprofilepages', 'my_reviews_subtitle', 'See what you shared about your rentals.') }}</p>
+                </div>
             </div>
-            </CardContent>
-        </Card>
     </MyProfileLayout>
 </template>
 
@@ -120,10 +127,14 @@ import { ref, getCurrentInstance } from 'vue';
 import fullStar from "../../../../assets/fullstar.svg";
 import halfStar from "../../../../assets/halfstar.svg";
 import blankStar from "../../../../assets/blankstar.svg";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Star } from 'lucide-vue-next';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
+const tt = (group, key, fallback) => {
+    const v = _t(group, key);
+    return (!v || v === key) ? fallback : v;
+};
 
 const props = defineProps({
     reviews: Object,
@@ -200,5 +211,26 @@ const getStarAltText = (rating, starNumber) => {
 .star-rating {
     display: flex;
     /* Ensure stars are displayed horizontally */
+}
+
+.rv-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 2px 4px rgba(21, 59, 79, 0.06), 0 1px 2px rgba(21, 59, 79, 0.04);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rv-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(21, 59, 79, 0.08), 0 2px 4px rgba(21, 59, 79, 0.04);
+}
+
+.rv-booking {
+    background: #f8fafc;
+    border: 1px solid #eef2f6;
+    border-radius: 14px;
+    padding: 16px;
 }
 </style>

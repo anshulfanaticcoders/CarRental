@@ -1,9 +1,13 @@
 <script setup>
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { faSimCard } from '@fortawesome/free-solid-svg-icons';
+
 const props = defineProps({
     vehicleImage: String,
     displayVehicleName: String,
     providerBadge: Object,
     vehicleSpecs: Object,
+    freeEsimOffer: { type: Object, default: null },
     pickupDate: String,
     pickupTime: String,
     dropoffDate: String,
@@ -87,6 +91,11 @@ const emit = defineEmits(['show-details-modal', 'proceed-to-checkout', 'back']);
                     <span v-if="vehicleSpecs.transmission" class="text-xs font-medium text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">{{ vehicleSpecs.transmission }}</span>
                     <span v-if="vehicleSpecs.airConditioning" class="text-xs font-medium text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">AC</span>
                     <span v-if="vehicleSpecs.doors" class="text-xs font-medium text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">{{ vehicleSpecs.doors }}</span>
+                </div>
+
+                <div v-if="freeEsimOffer" class="inline-flex w-fit items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm font-bold text-[#153b4f]">
+                    <FontAwesomeIcon :icon="faSimCard" class="h-4 w-4 text-cyan-600" />
+                    <span>Free eSIM</span>
                 </div>
 
                 <!-- Divider -->

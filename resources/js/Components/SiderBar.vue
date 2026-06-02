@@ -1,18 +1,31 @@
 <script setup>
-import { ref, computed, onMounted, watch, getCurrentInstance } from "vue";
+import { ref, computed, onMounted, watch, getCurrentInstance, markRaw } from "vue";
 import { Link, router, usePage } from "@inertiajs/vue3";
-import chevronIcon from "../../assets/chaveronDown.svg";
-import profileIcon from "../../assets/userDashIcon.svg";
-import bookingsIcon from "../../assets/bookingIcon.svg";
-import inboxIcon from "../../assets/inboxIcon.svg";
-import favoritesIcon from "../../assets/favouriteIcon.svg";
-import reviewsIcon from "../../assets/myreviewIcon.svg";
-import dashboardIcon from "../../assets/vendorDashboarIcon.svg";
-import vehiclesIcon from "../../assets/vehicletypeIcon.svg";
-import clockIcon from "../../assets/clockIcon.svg";
-import dateblockingIcon from "../../assets/dateblockingIcon.svg";
-import globeIcon from "../../assets/globe.svg";
-import logoutIcon from '../../assets/logoutIcon.svg';
+import {
+  CalendarCheck,
+  Car,
+  CalendarX,
+  ChevronDown,
+  Clock,
+  Globe,
+  Heart,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  Star,
+  User,
+} from "lucide-vue-next";
+
+const profileIcon = markRaw(User);
+const bookingsIcon = markRaw(CalendarCheck);
+const inboxIcon = markRaw(Inbox);
+const favoritesIcon = markRaw(Heart);
+const reviewsIcon = markRaw(Star);
+const dashboardIcon = markRaw(LayoutDashboard);
+const vehiclesIcon = markRaw(Car);
+const clockIcon = markRaw(Clock);
+const dateblockingIcon = markRaw(CalendarX);
+const globeIcon = markRaw(Globe);
 import {
   AlertDialog,
   AlertDialogAction,
@@ -146,7 +159,7 @@ const vendorMenus = [
 
 const vendorOtherLinks = [
   { name: _t('customerprofile', 'payment_history'), path: route('vendor.payments', { locale: usePage().props.locale }), icon: clockIcon },
-  { name: _t('customerprofile', 'bookings'), path: route('bookings.index', { locale: usePage().props.locale }), icon: vehiclesIcon },
+  { name: _t('customerprofile', 'bookings'), path: route('bookings.index', { locale: usePage().props.locale }), icon: bookingsIcon },
   { name: 'External Bookings', path: route('vendor.external-bookings.index', { locale: usePage().props.locale }), icon: globeIcon },
   { name: _t('customerprofile', 'date_blocking'), path: route('vendor.blocking-dates.index', { locale: usePage().props.locale }), icon: dateblockingIcon },
   { name: _t('customerprofile', 'inbox'), path: route('messages.vendor.index', { locale: usePage().props.locale }), icon: inboxIcon, isInbox: true },
@@ -346,9 +359,7 @@ const leave = (el) => {
             <p class="text-sm font-semibold text-white truncate">
               {{ user?.first_name }} {{ user?.last_name }}
             </p>
-            <p class="text-[0.65rem] uppercase tracking-[0.2em] text-white/80">
-              {{ user?.role || 'User' }}
-            </p>
+            <span class="role-chip">{{ user?.role || 'User' }}</span>
           </div>
         </div>
         <div class="mt-3">
@@ -363,23 +374,23 @@ const leave = (el) => {
       </div>
     </SidebarHeader>
 
-    <SidebarSeparator class="my-2" />
+    <SidebarSeparator class="sb-divider" />
 
     <SidebarContent>
-      <SidebarGroup v-for="menu in activeMenus" :key="menu.key">
-        <SidebarGroupLabel>{{ menu.title }}</SidebarGroupLabel>
+      <SidebarGroup v-for="menu in activeMenus" :key="menu.key" class="sb-group">
+        <SidebarGroupLabel class="sb-group-label">{{ menu.title }}</SidebarGroupLabel>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton :is-active="activeMenu === menu.key" :tooltip="menu.title" size="lg"
-              :class="['profile-nav-button', isCollapsed ? 'justify-center' : '']" @click="toggleMenu(menu.key)">
-              <img :src="menu.icon" alt="" class="h-5 w-5 nav-icon" />
+              :class="['profile-nav-button profile-group-button', isCollapsed ? 'justify-center' : '']" @click="toggleMenu(menu.key)">
+              <component :is="menu.icon" class="h-5 w-5 nav-icon" :stroke-width="1.75" />
               <span v-if="!isCollapsed" class="nav-label">{{ menu.title }}</span>
-              <img v-if="!isCollapsed" :src="chevronIcon" alt="" class="ml-auto h-3 w-3 transition-transform"
-                :class="{ 'rotate-180': activeMenu === menu.key }" />
+              <ChevronDown v-if="!isCollapsed" class="ml-auto h-4 w-4 nav-chevron transition-transform"
+                :stroke-width="2" :class="{ 'rotate-180': activeMenu === menu.key }" />
             </SidebarMenuButton>
             <Transition name="accordion" @before-enter="beforeEnter" @enter="enter" @after-enter="afterEnter"
               @before-leave="beforeLeave" @leave="leave">
-              <SidebarMenuSub v-if="activeMenu === menu.key && !isCollapsed">
+              <SidebarMenuSub v-if="activeMenu === menu.key && !isCollapsed" class="sb-submenu">
                 <SidebarMenuSubItem v-for="item in menu.items" :key="item.name">
                   <SidebarMenuSubButton :is-active="activeSubmenu === item.name" as-child class="profile-sub-button">
                     <Link :href="item.path" @click="handleSubmenuClick(item.name)">
@@ -393,16 +404,16 @@ const leave = (el) => {
         </SidebarMenu>
       </SidebarGroup>
 
-      <SidebarSeparator class="my-2" />
+      <SidebarSeparator class="sb-divider" />
 
-      <SidebarGroup>
-        <SidebarGroupLabel>{{ _t('customerprofile', 'quick_links') || 'Quick Links' }}</SidebarGroupLabel>
+      <SidebarGroup class="sb-group">
+        <SidebarGroupLabel class="sb-group-label">{{ _t('customerprofile', 'quick_links') || 'Quick Links' }}</SidebarGroupLabel>
         <SidebarMenu>
           <SidebarMenuItem v-for="link in activeOtherLinks" :key="link.name">
             <SidebarMenuButton :is-active="activeLink === link.name" :tooltip="link.name" size="lg" as-child
               :class="['profile-nav-button', isCollapsed ? 'justify-center' : '']">
               <Link :href="link.path" class="items-center" @click="handleLinkClick(link.name)">
-                <img :src="link.icon" alt="" class="h-5 w-5 nav-icon" />
+                <component :is="link.icon" class="h-5 w-5 nav-icon" :stroke-width="1.75" />
                 <span v-if="!isCollapsed" class="nav-label">{{ link.name }}</span>
               </Link>
             </SidebarMenuButton>
@@ -418,10 +429,10 @@ const leave = (el) => {
       <AlertDialog v-model:open="isLogoutDialogOpen">
         <AlertDialogTrigger as-child>
           <SidebarMenuButton variant="outline" size="lg"
-            class="profile-nav-button bg-rose-600 text-white hover:text-white hover:bg-rose-700 border-rose-600"
+            class="profile-nav-button logout-button bg-rose-600 text-white hover:text-white hover:bg-rose-700 border-rose-600"
             :disabled="isLoggingOut"
             :tooltip="_t('customerprofile', 'log_out')">
-            <img :src="logoutIcon" alt="" class="h-5 w-5 nav-icon nav-icon--white" />
+            <LogOut class="h-5 w-5 nav-icon" :stroke-width="1.75" />
             <span v-if="!isCollapsed" class="nav-label text-white">
               {{ isLoggingOut ? (_t('customerprofile', 'logging_out') || 'Logging out...') : _t('customerprofile', 'log_out') }}
             </span>
@@ -459,13 +470,26 @@ const leave = (el) => {
 }
 
 .profile-card {
-  border-radius: 16px;
-  border: 1px solid rgba(21, 59, 79, 0.35);
-  background: #153b4f;
-  padding: 0.85rem 0.9rem;
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  background: linear-gradient(135deg, #153b4f 0%, #1c4d66 100%);
+  padding: 1rem;
   box-shadow: 0 14px 26px rgba(15, 23, 42, 0.18);
   width: 100%;
   overflow: hidden;
+}
+
+.profile-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 88% -10%, rgba(34, 211, 238, 0.28), transparent 52%);
+  pointer-events: none;
+}
+
+.profile-card > * {
+  position: relative;
 }
 
 .profile-collapsed {
@@ -473,6 +497,20 @@ const leave = (el) => {
   align-items: center;
   justify-content: center;
   padding: 0.75rem 0.5rem;
+}
+
+.role-chip {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  padding: 3px 9px;
+  border-radius: 999px;
 }
 
 .accordion-enter-active,
@@ -487,22 +525,104 @@ const leave = (el) => {
   opacity: 0;
 }
 
+/* tighten stacked groups: kill the default p-2 vertical padding */
+.sb-group {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.sb-divider {
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+/* section group labels */
+.sb-group-label {
+  height: auto;
+  padding: 8px 12px 6px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+/* first group label needs no extra top gap (separator already spaces it) */
+.sb-group:first-child .sb-group-label {
+  padding-top: 2px;
+}
+
+/* primary nav buttons: group headers + quick links */
 .profile-nav-button {
+  height: auto;
+  min-height: 44px;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 2px;
   color: #334155;
   border-radius: 12px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 600;
   line-height: 1.3;
-  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  transition: background 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.profile-nav-button:hover {
-  background: rgba(148, 163, 184, 0.2);
+.profile-nav-button:not(.logout-button):hover {
+  background: rgba(21, 59, 79, 0.06);
+  color: #153b4f;
+  transform: translateX(2px);
 }
 
-.profile-nav-button[data-active='true'] {
-  background: rgba(21, 59, 79, 0.12);
+.profile-nav-button:not(.logout-button):hover .nav-icon {
+  color: #153b4f;
+}
+
+/* logout: keep rose, white icon */
+.logout-button .nav-icon {
+  color: #ffffff !important;
+}
+
+.logout-button:hover {
+  transform: translateY(-1px);
+}
+
+/* leaf items (quick links): bold filled teal when active */
+.profile-nav-button[data-active='true']:not(.profile-group-button) {
+  background: linear-gradient(135deg, #153b4f, #1c4d66);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(21, 59, 79, 0.3);
+  transform: none;
+}
+
+.profile-nav-button[data-active='true']:not(.profile-group-button) .nav-icon {
+  color: #ffffff;
+}
+
+.profile-nav-button[data-active='true']:not(.profile-group-button):not(.justify-center)::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  margin-left: auto;
+  border-radius: 999px;
+  background: #22d3ee;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.85);
+}
+
+/* parent group containing the active route child: tint + left bar */
+.profile-group-button[data-active='true'] {
+  background: rgba(21, 59, 79, 0.1);
   color: #153b4f;
   box-shadow: inset 3px 0 0 #153b4f;
+  transform: none;
+}
+
+.profile-group-button[data-active='true'] .nav-icon,
+.profile-group-button[data-active='true'] .nav-chevron {
+  color: #153b4f;
 }
 
 .nav-label {
@@ -510,21 +630,79 @@ const leave = (el) => {
 }
 
 .nav-icon {
-  opacity: 0.9;
+  width: 20px !important;
+  height: 20px !important;
+  flex-shrink: 0;
+  color: #64748b;
+  transition: color 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.nav-icon--white {
-  filter: brightness(0) invert(1);
+.nav-chevron {
+  width: 16px !important;
+  height: 16px !important;
+  color: #94a3b8;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* submenu: guide line + breathing room */
+.sb-submenu {
+  margin-left: 20px;
+  padding: 4px 0 4px 12px;
+  border-left: 1px solid #e2e8f0;
+  gap: 2px;
+}
+
+/* submenu leaf links */
 .profile-sub-button {
-  font-size: 0.95rem;
+  position: relative;
+  height: auto;
+  min-height: 36px;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 500;
   line-height: 1.3;
+  color: #64748b;
+  transition: background 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.profile-sub-button[data-active='true'] {
-  background: rgba(21, 59, 79, 0.12);
+.profile-sub-button::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: background 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.profile-sub-button:hover {
+  background: rgba(21, 59, 79, 0.06);
   color: #153b4f;
+  transform: translateX(2px);
+}
+
+.profile-sub-button:hover::before {
+  background: #22d3ee;
+}
+
+/* active submenu leaf: bold filled teal + cyan dot */
+.profile-sub-button[data-active='true'] {
+  background: linear-gradient(135deg, #153b4f, #1c4d66);
+  color: #ffffff;
   font-weight: 600;
+  box-shadow: 0 6px 14px rgba(21, 59, 79, 0.26);
+  transform: none;
+}
+
+.profile-sub-button[data-active='true']::before {
+  background: #22d3ee;
+  transform: scale(1.5);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.9);
 }
 </style>

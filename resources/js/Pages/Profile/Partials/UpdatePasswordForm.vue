@@ -37,17 +37,13 @@ const updatePassword = () => {
 </script>
 
 <template>
-    <section class="mt-[3rem]">
-        <header>
-            <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">{{ _t('customerprofilepages', 'update_password_header') }}</h2>
+    <section>
+        <p class="text-sm text-gray-600 mb-5 max-[768px]:text-[0.875rem]">
+            {{ _t('customerprofilepages', 'update_password_subheader') }}
+        </p>
 
-            <p class="mt-1 text-sm text-gray-600 max-[768px]:text-[0.875rem]">
-                {{ _t('customerprofilepages', 'update_password_subheader') }}
-            </p>
-        </header>
-
-        <form @submit.prevent="updatePassword" class="mt-6 space-y-6">
-            <div>
+        <form @submit.prevent="updatePassword" class="vr-form-grid">
+            <div class="col-span-2">
                 <InputLabel for="current_password" :value="_t('customerprofilepages', 'current_password_label')" />
 
                 <TextInput
@@ -91,7 +87,7 @@ const updatePassword = () => {
                 <InputError :message="form.errors.password_confirmation" class="mt-2" />
             </div>
 
-            <div class="flex items-center gap-4">
+            <div class="vr-form-actions col-span-2" style="justify-content: flex-start">
                 <PrimaryButton :disabled="form.processing" class="">{{ _t('customerprofilepages', 'update_password_button') }}</PrimaryButton>
 
                 <Transition
@@ -112,8 +108,17 @@ const updatePassword = () => {
 input,
 textarea,
 select {
-    border-radius: 0.75rem;
-    border: 1px solid rgba(43, 43, 43, 0.50) !important;
-    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0 !important;
+    padding: 0.7rem 0.85rem;
+    transition: border-color 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #153b4f !important;
+    box-shadow: 0 0 0 3px rgba(21, 59, 79, 0.12);
 }
 </style>

@@ -5,9 +5,15 @@ import { Head, useForm } from '@inertiajs/vue3'
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue'
  import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { router } from '@inertiajs/vue3'
+import { Star, MessageSquare, Search } from 'lucide-vue-next'
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
+const tt = (group, key, fallback) => {
+  const v = _t(group, key);
+  return (!v || v === key) ? fallback : v;
+};
+const vrStatus = (status) => ({ approved: 'ok', pending: 'warn', rejected: 'bad' }[status] || 'mut');
 
 const props = defineProps({
   reviews: {
@@ -57,15 +63,6 @@ const getRatingColor = (rating) => {
   return 'text-red-600'
 };
 
-const getStatusColor = (status) => {
-  const colors = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    approved: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800'
-  }
-  return colors[status] || 'bg-gray-100 text-gray-800'
-};
-
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -98,38 +95,44 @@ const handlePageChange = (page) => {
     <div>
       <Head :title="_t('vendorprofilepages', 'customer_reviews_header')" />
 
-      <div class="">
-        <!-- Statistics Header -->
-        <p class="text-[1.75rem] font-bold text-gray-800 bg-customLightPrimaryColor p-4 rounded-[12px] mb-[2rem] max-[768px]:text-[1.2rem]">{{ _t('vendorprofilepages', 'customer_reviews_header') }}</p>
-        <div class="bg-white rounded-lg shadow p-6 mb-6">
-          <div class="grid grid-cols-2 gap-4">
-            <div class="text-center">
-              <h3 class="text-lg font-medium text-gray-900">{{ _t('vendorprofilepages', 'total_reviews_label') }}</h3>
-              <p class="text-3xl font-bold text-gray-700">{{ statistics.total_reviews || 0 }}</p>
-            </div>
-            <div class="text-center">
-              <h3 class="text-lg font-medium text-gray-900">{{ _t('vendorprofilepages', 'average_rating_label') }}</h3>
-              <p class="text-3xl font-bold" :class="getRatingColor(statistics.average_rating)">
-                {{ averageRating }} <span class="text-lg">/5</span>
-              </p>
-            </div>
+      <div>
+        <!-- Header -->
+        <div class="vr-phead">
+          <div>
+            <span class="vr-eyebrow"><Star /> {{ tt('vendorprofilepages', 'reputation_eyebrow', 'Reputation') }}</span>
+            <h2>{{ tt('vendorprofilepages', 'customer_reviews_header', 'Customer Reviews') }}</h2>
+            <p class="vr-sub">{{ tt('vendorprofilepages', 'customer_reviews_subtitle', 'See what customers say about your fleet.') }}</p>
           </div>
         </div>
 
-        <!-- Search Input -->
-        <div class="mb-4">
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            :placeholder="_t('vendorprofilepages', 'search_reviews_placeholder')" 
-            class="px-4 py-2 border border-gray-300 rounded-md w-full">
+        <!-- Stats -->
+        <div class="vr-stat-grid c2">
+          <div class="vr-stat">
+            <div class="vr-ic vr-ic-teal"><MessageSquare /></div>
+            <div class="vr-v">{{ statistics.total_reviews || 0 }}</div>
+            <div class="vr-l">{{ tt('vendorprofilepages', 'total_reviews_label', 'Total Reviews') }}</div>
+          </div>
+          <div class="vr-stat">
+            <div class="vr-ic vr-ic-amber"><Star /></div>
+            <div class="vr-v">{{ averageRating }} <span style="font-size:1rem;color:#64748b">/5</span></div>
+            <div class="vr-l">{{ tt('vendorprofilepages', 'average_rating_label', 'Average Rating') }}</div>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div class="vr-toolbar">
+          <label class="vr-search">
+            <Search />
+            <input v-model="searchQuery" type="text"
+              :placeholder="_t('vendorprofilepages', 'search_reviews_placeholder')" />
+          </label>
         </div>
 
         <!-- Reviews Table -->
-        <div class="bg-white shadow-md rounded-lg overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
+        <div class="vr-panel">
+          <div v-if="filteredReviews.length" class="overflow-x-auto">
+            <table>
+              <thead>
                 <tr>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ _t('vendorprofilepages', 'table_id_header') }}</th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -157,50 +160,31 @@ const handlePageChange = (page) => {
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr v-for="(review, index) in filteredReviews" :key="review.id">
-                  <td class="px-6 py-4 whitespace-nowrap">{{ (reviews.current_page - 1) * reviews.per_page + index + 1 }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                      <div class="flex-shrink-0 h-10 w-10">
-                        <img v-if="review.user?.profile?.avatar" 
-                             :src="`${review.user.profile.avatar}`"
-                             class="h-10 w-10 rounded-full object-cover"
-                             :alt="review.user?.first_name">
-                        <div v-else 
-                             class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span class="text-gray-500 text-sm">
-                            {{ review.user?.first_name?.charAt(0).toUpperCase() || '?' }}
-                          </span>
-                        </div>
-                      </div>
-                      <div class="ml-4">
-                        <div class="text-sm font-medium text-gray-900">
-                          {{ review.user?.first_name }} {{ review.user?.last_name }}
-                        </div>
-                      </div>
-                    </div>
+                  <td>{{ (reviews.current_page - 1) * reviews.per_page + index + 1 }}</td>
+                  <td>
+                    <span class="vr-cust">
+                      <img v-if="review.user?.profile?.avatar" :src="`${review.user.profile.avatar}`"
+                        class="vr-ava-img" :alt="review.user?.first_name">
+                      <span v-else class="vr-ava">{{ review.user?.first_name?.charAt(0).toUpperCase() || '?' }}</span>
+                      <span class="cell-strong">{{ review.user?.first_name }} {{ review.user?.last_name }}</span>
+                    </span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-900">{{ review.vehicle?.brand }} <span class="bg-customLightPrimaryColor p-1 rounded-[12px] ml-1">{{ review.vehicle?.model }}</span></div>
+                  <td>
+                    <span class="cell-strong">{{ review.vehicle?.brand }}</span>
+                    <span class="vr-vbadge">{{ review.vehicle?.model }}</span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div :class="getRatingColor(review.rating)" class="text-sm font-medium">
-                      {{ review.rating }}/5
-                    </div>
+                  <td>
+                    <span :class="getRatingColor(review.rating)" class="font-semibold">{{ review.rating }}/5</span>
                   </td>
-                  <td class="px-6 py-4">
-                    <div class="text-sm text-gray-900">{{ review.review_text }}</div>
-                    <div v-if="review.reply_text" class="mt-2 text-sm text-gray-500">
+                  <td style="white-space:normal;max-width:320px">
+                    <div>{{ review.review_text }}</div>
+                    <div v-if="review.reply_text" class="vr-mut" style="margin-top:6px">
                       <span class="font-medium">{{ _t('vendorprofilepages', 'text_reply_prefix') }}</span> {{ review.reply_text }}
                     </div>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-900">{{ formatDate(review.created_at) }}</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                          :class="getStatusColor(review.status)">
-                      {{ review.status }}
-                    </span>
+                  <td>{{ formatDate(review.created_at) }}</td>
+                  <td>
+                    <span class="vr-chip capitalize" :class="vrStatus(review.status)">{{ review.status }}</span>
                   </td>
                   <!-- <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div class="flex space-x-2">
@@ -230,14 +214,27 @@ const handlePageChange = (page) => {
               </tbody>
             </table>
           </div>
+          <div v-else class="vr-empty">
+            <div class="e-ic"><Star /></div>
+            <h4>{{ tt('vendorprofilepages', 'no_reviews_found', 'No reviews found') }}</h4>
+            <p>{{ tt('vendorprofilepages', 'customer_reviews_subtitle', 'See what customers say about your fleet.') }}</p>
+          </div>
+          <div v-if="filteredReviews.length" class="vr-pager">
+            <span class="info"></span>
+            <Pagination :current-page="reviews.current_page" :total-pages="reviews.last_page"
+              @page-change="handlePageChange" />
+          </div>
         </div>
-
-        <!-- Pagination -->
-         <div class="mt-[1rem] flex justify-end">
-        <Pagination :current-page="reviews.current_page" :total-pages="reviews.last_page"
-        @page-change="handlePageChange" />
-      </div>
       </div>
     </div>
   </MyProfileLayout>
 </template>
+
+<style scoped>
+.vr-ava-img {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  object-fit: cover;
+}
+</style>

@@ -1,6 +1,6 @@
 <template>
     <button
-        class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150"
+        class="vr-danger-btn inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#e11d48] border border-transparent rounded-xl font-semibold text-sm text-white shadow-[0_6px_16px_rgba(225,29,72,0.28)] hover:bg-[#be123c] hover:-translate-y-px focus:outline-none focus:ring-2 focus:ring-[#e11d48]/40 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none transition-[transform,box-shadow,background-color] duration-300"
     >
         <slot />
     </button>

@@ -1,16 +1,12 @@
 <template>
     <MyProfileLayout>
-       <div class="p-0 md:p-0 lg:p-6 space-y-6">
-            <!-- Enhanced Header -->
-            <div class="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-xl p-6 shadow-sm">
-                <div class="flex items-center gap-4">
-                    <div class="p-3 bg-orange-500 bg-opacity-20 rounded-lg">
-                        <CalendarX class="w-6 h-6 text-orange-600" />
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900">{{ _t('vendorprofilepages', 'manage_blocking_dates_header') }}</h1>
-                        <p class="text-sm text-gray-600 mt-1">Manage vehicle blocking dates and availability</p>
-                    </div>
+       <div class="space-y-6">
+            <!-- Header -->
+            <div class="vr-phead">
+                <div>
+                    <span class="vr-eyebrow"><CalendarX /> {{ tt('vendorprofilepages', 'availability_eyebrow', 'Availability') }}</span>
+                    <h2>{{ tt('vendorprofilepages', 'manage_blocking_dates_header', 'Date Blocking') }}</h2>
+                    <p class="vr-sub">{{ tt('vendorprofilepages', 'manage_blocking_dates_subtitle', 'Manage vehicle blocking dates and availability.') }}</p>
                 </div>
             </div>
 
@@ -90,85 +86,42 @@
 
             <!-- Blocking Dates Statistics Cards -->
             <div>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <!-- Total Vehicles Card -->
-                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-blue-100 text-sm font-medium">Total Vehicles</p>
-                                <p class="text-2xl font-bold mt-1">
-                                    {{ totalVehicles }}
-                                </p>
-                            </div>
-                            <div class="p-3 bg-white bg-opacity-20 rounded-lg">
-                                <Car class="w-6 h-6" />
-                            </div>
-                        </div>
+                <div class="vr-stat-grid c4">
+                    <div class="vr-stat">
+                        <div class="vr-ic vr-ic-blue"><Car /></div>
+                        <div class="vr-v">{{ totalVehicles }}</div>
+                        <div class="vr-l">Total Vehicles</div>
                     </div>
-
-                    <!-- Active Blockings Card -->
-                    <div class="bg-gradient-to-br from-red-500 to-pink-600 rounded-xl p-6 text-white shadow-lg">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-red-100 text-sm font-medium">Active Blockings</p>
-                                <p class="text-2xl font-bold mt-1">
-                                    {{ activeBlockings }}
-                                </p>
-                            </div>
-                            <div class="p-3 bg-white bg-opacity-20 rounded-lg">
-                                <CalendarX class="w-6 h-6" />
-                            </div>
-                        </div>
+                    <div class="vr-stat">
+                        <div class="vr-ic vr-ic-rose"><CalendarX /></div>
+                        <div class="vr-v">{{ activeBlockings }}</div>
+                        <div class="vr-l">Active Blockings</div>
                     </div>
-
-                    <!-- Vehicles with Bookings Card -->
-                    <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-green-100 text-sm font-medium">With Bookings</p>
-                                <p class="text-2xl font-bold mt-1">
-                                    {{ vehiclesWithBookings }}
-                                </p>
-                            </div>
-                            <div class="p-3 bg-white bg-opacity-20 rounded-lg">
-                                <CalendarCheck class="w-6 h-6" />
-                            </div>
-                        </div>
+                    <div class="vr-stat">
+                        <div class="vr-ic vr-ic-green"><CalendarCheck /></div>
+                        <div class="vr-v">{{ vehiclesWithBookings }}</div>
+                        <div class="vr-l">With Bookings</div>
                     </div>
-
-                    <!-- Available Vehicles Card -->
-                    <div class="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl p-6 text-white shadow-lg">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-teal-100 text-sm font-medium">Available</p>
-                                <p class="text-2xl font-bold mt-1">
-                                    {{ availableVehicles }}
-                                </p>
-                            </div>
-                            <div class="p-3 bg-white bg-opacity-20 rounded-lg">
-                                <CheckCircle class="w-6 h-6" />
-                            </div>
-                        </div>
+                    <div class="vr-stat">
+                        <div class="vr-ic vr-ic-teal"><CheckCircle /></div>
+                        <div class="vr-v">{{ availableVehicles }}</div>
+                        <div class="vr-l">Available</div>
                     </div>
                 </div>
             </div>
 
             <!-- No Vehicles -->
-            <div v-if="!filteredVehicles.length">
-                <div class="rounded-xl border bg-card p-12 text-center">
-                    <div class="flex flex-col items-center space-y-4">
-                        <CalendarX class="w-16 h-16 text-muted-foreground" />
-                        <div class="space-y-2">
-                            <h3 class="text-xl font-semibold text-foreground">No vehicles found</h3>
-                            <p class="text-muted-foreground">{{ _t('vendorprofilepages', 'no_vehicles_found_text') }}</p>
-                        </div>
-                    </div>
+            <div v-if="!filteredVehicles.length" class="vr-panel">
+                <div class="vr-empty">
+                    <div class="e-ic"><CalendarX /></div>
+                    <h4>{{ tt('vendorprofilepages', 'no_vehicles_found_text', 'No vehicles found') }}</h4>
+                    <p>{{ tt('vendorprofilepages', 'no_vehicles_blocking_sub', 'Try adjusting your search or filters.') }}</p>
                 </div>
             </div>
 
             <!-- Vehicles Table -->
             <div v-else>
-                <div class="rounded-xl border bg-card shadow-sm overflow-hidden">
+                <div class="vr-panel">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -431,6 +384,10 @@ import '@vuepic/vue-datepicker/dist/main.css';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
+const tt = (group, key, fallback) => {
+    const v = _t(group, key);
+    return (!v || v === key) ? fallback : v;
+};
 
 const toast = useToast();
 const today = new Date().toISOString().split('T')[0];

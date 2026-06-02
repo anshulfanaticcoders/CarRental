@@ -163,6 +163,22 @@ class HandleInertiaRequests extends Middleware
                 ->all();
         };
 
+        $sharedData['search_perk_offers'] = function () {
+            $resolved = app(OfferService::class)->resolveAppliedOffers(['placement' => 'search']);
+
+            return collect($resolved['perk_offers'] ?? [])
+                ->values()
+                ->all();
+        };
+
+        $sharedData['checkout_perk_offers'] = function () {
+            $resolved = app(OfferService::class)->resolveAppliedOffers(['placement' => 'checkout']);
+
+            return collect($resolved['perk_offers'] ?? [])
+                ->values()
+                ->all();
+        };
+
         $sharedData['homepage_offers'] = function () {
             $offerService = app(OfferService::class);
 

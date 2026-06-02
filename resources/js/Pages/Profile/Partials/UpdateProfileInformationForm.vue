@@ -21,6 +21,7 @@ import {
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import loaderVariant from '../../../../assets/loader-variant.svg';
+import { User, Phone, Mail, Building2, Map, Hash, Home, Receipt, FileText } from 'lucide-vue-next';
 
 const user = usePage().props.auth.user;
 const profile = usePage().props.auth.user.profile;
@@ -187,20 +188,15 @@ onMounted(() => {
 </script>
 
 <template>
-    <header>
-        <h2 class="text-[1.75rem] font-medium text-gray-900 max-[768px]:text-[1.2rem]">{{ _t('customerprofilepages',
-            'personal_details') }}</h2>
-        <div class="w-[25rem] max-[768px]:w-full"></div>
-    </header>
     <section v-bind="$attrs">
-        <form @submit.prevent="handleSubmit" class="mt-6 space-y-6">
-            <div>
-                <!-- Avatar preview with edit button -->
-                <div class="relative w-24 h-24">
-                    <img :src="avatarPreview" alt="User Avatar" class="w-24 h-24 rounded-full object-cover" />
-                    <button type="button" @click="() => $refs.avatarInput.click()"
-                        class="absolute bottom-0 right-0 bg-gray-700 text-white p-1 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <form @submit.prevent="handleSubmit" class="space-y-6">
+            <!-- Identity header: avatar + name + title -->
+            <div class="profile-id">
+                <div class="profile-id-avatar">
+                    <img :src="avatarPreview" alt="User Avatar" />
+                    <button type="button" @click="() => $refs.avatarInput.click()" class="profile-id-edit"
+                        aria-label="Change photo">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                             <path
                                 d="M17.414 2.586a2 2 0 00-2.828 0L6 11.172V14h2.828l8.586-8.586a2 2 0 000-2.828zM5 15v1a2 2 0 002 2h1a2 2 0 002-2v-1H5z" />
                         </svg>
@@ -208,12 +204,15 @@ onMounted(() => {
                 </div>
                 <input ref="avatarInput" id="avatar" type="file" accept="image/*" class="hidden"
                     @change="handleAvatarUpload" />
-                <InputError class="mt-2" :message="form.errors.avatar" />
-            </div>
-            <div class="grid grid-cols-2 gap-8">
-                <div class="col-span-2 w-[6rem]">
+                <div class="profile-id-meta">
+                    <p class="profile-id-name">{{ form.first_name }} {{ form.last_name }}</p>
+                    <p class="profile-id-email">{{ form.email }}</p>
+                    <InputError class="mt-1" :message="form.errors.avatar" />
+                </div>
+                <div class="profile-id-title">
+                    <InputLabel for="title" :value="_t('customerprofilepages', 'title_label')" />
                     <Select v-model="form.title">
-                        <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                        <SelectTrigger class="h-11 rounded-[10px] min-w-[130px] mt-1 bg-white">
                             <SelectValue :placeholder="_t('customerprofilepages', 'select_title_placeholder')" />
                         </SelectTrigger>
                         <SelectContent>
@@ -224,22 +223,28 @@ onMounted(() => {
                             </SelectGroup>
                         </SelectContent>
                     </Select>
-                    <InputError class="mt-2" :message="form.errors.title" />
-
+                    <InputError class="mt-1" :message="form.errors.title" />
                 </div>
+            </div>
 
+            <div class="vr-form-grid">
                 <!-- First and Last Name -->
 
                 <div class="w-full">
                     <InputLabel for="first_name" :value="_t('customerprofilepages', 'first_name_label')" />
-                    <TextInput id="first_name" type="text" class="mt-1 block w-full" v-model="form.first_name"
-                        required />
+                    <div class="vr-ifield">
+                        <User class="vr-ifield-ic" />
+                        <TextInput id="first_name" type="text" class="block w-full" v-model="form.first_name" required />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.first_name" />
                 </div>
 
                 <div class="w-full">
                     <InputLabel for="last_name" :value="_t('customerprofilepages', 'last_name_label')" />
-                    <TextInput id="last_name" type="text" class="mt-1 block w-full" v-model="form.last_name" required />
+                    <div class="vr-ifield">
+                        <User class="vr-ifield-ic" />
+                        <TextInput id="last_name" type="text" class="block w-full" v-model="form.last_name" required />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.last_name" />
                 </div>
                 <!-- First and Last Name// -->
@@ -247,15 +252,20 @@ onMounted(() => {
 
                 <div>
                     <InputLabel for="phone" :value="_t('customerprofilepages', 'phone_number_label')" />
-                    <TextInput id="phone" type="tel" class="mt-1 block w-full" v-model="form.phone" required />
+                    <div class="vr-ifield">
+                        <Phone class="vr-ifield-ic" />
+                        <TextInput id="phone" type="tel" class="block w-full" v-model="form.phone" required />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.phone" />
                 </div>
 
 
                 <div>
                     <InputLabel for="email" :value="_t('customerprofilepages', 'email_label')" />
-                    <TextInput id="email" type="email" class="mt-1 block w-full bg-gray-200" v-model="form.email"
-                        required readonly />
+                    <div class="vr-ifield">
+                        <Mail class="vr-ifield-ic" />
+                        <TextInput id="email" type="email" class="block w-full" v-model="form.email" required readonly />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.email" />
                 </div>
 
@@ -272,7 +282,7 @@ onMounted(() => {
                 <div class="relative">
                     <InputLabel for="country" :value="_t('customerprofilepages', 'country_label')" class="mb-1" />
                     <Select v-model="form.country">
-                        <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                        <SelectTrigger class="w-full h-12 rounded-[10px]">
                             <SelectValue :placeholder="_t('customerprofilepages', 'select_country_placeholder')" />
                         </SelectTrigger>
                         <SelectContent>
@@ -300,7 +310,7 @@ onMounted(() => {
                 <div>
                     <InputLabel for="currency" :value="_t('customerprofilepages', 'currency_label')" class="mb-1" />
                     <Select v-model="selectedCurrency">
-                        <SelectTrigger class="w-full p-[1.7rem] border-customLightGrayColor rounded-[12px]">
+                        <SelectTrigger class="w-full h-12 rounded-[10px]">
                             <SelectValue :placeholder="_t('customerprofilepages', 'select_currency_placeholder')" />
                         </SelectTrigger>
                         <SelectContent>
@@ -318,40 +328,53 @@ onMounted(() => {
 
                 <div>
                     <InputLabel for="city" :value="_t('customerprofilepages', 'city_label')" />
-                    <TextInput id="city" type="text" class="mt-1 block w-full" v-model="form.city" />
+                    <div class="vr-ifield">
+                        <Building2 class="vr-ifield-ic" />
+                        <TextInput id="city" type="text" class="block w-full" v-model="form.city" />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.city" />
                 </div>
 
 
                 <div>
                     <InputLabel for="state" :value="_t('customerprofilepages', 'state_label')" />
-                    <TextInput id="state" type="text" class="mt-1 block w-full" v-model="form.state" />
+                    <div class="vr-ifield">
+                        <Map class="vr-ifield-ic" />
+                        <TextInput id="state" type="text" class="block w-full" v-model="form.state" />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.state" />
                 </div>
 
                 <div>
                     <InputLabel for="postal_code" :value="_t('customerprofilepages', 'postal_code_label')" />
-                    <TextInput id="postal_code" type="text" class="mt-1 block w-full" v-model="form.postal_code" />
+                    <div class="vr-ifield">
+                        <Hash class="vr-ifield-ic" />
+                        <TextInput id="postal_code" type="text" class="block w-full" v-model="form.postal_code" />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.postal_code" />
                 </div>
 
                 <div class="col-span-2">
                     <InputLabel for="address_line1" :value="_t('customerprofilepages', 'address_line1_label')" />
-                    <TextInput id="address_line1" type="text" class="mt-1 block w-full" v-model="form.address_line1" />
+                    <div class="vr-ifield">
+                        <Home class="vr-ifield-ic" />
+                        <TextInput id="address_line1" type="text" class="block w-full" v-model="form.address_line1" />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.address_line1" />
                 </div>
 
 
-                <h2 class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] leading-4 mt-10">{{
-                    _t('customerprofilepages', 'profile_section_title') }}
-                </h2>
+                <h3 class="vr-section col-span-2">{{ _t('customerprofilepages', 'profile_section_title') }}</h3>
 
                 <div class="col-span-2">
                     <p class="mb-[1rem] text-customLightGrayColor font-medium max-[768px]:text-[0.95rem]">{{
                         _t('customerprofilepages', 'who_am_i_prompt') }}
                     </p>
                     <InputLabel for="about" :value="_t('customerprofilepages', 'about_label')" />
-                    <TextArea id="about" class="mt-1 block w-full" v-model="form.about" />
+                    <div class="vr-ifield vr-ifield--area">
+                        <FileText class="vr-ifield-ic" />
+                        <TextArea id="about" class="block w-full" v-model="form.about" />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.about" />
                 </div>
 
@@ -359,24 +382,29 @@ onMounted(() => {
 
                 <div class="col-span-2">
                     <InputLabel for="address_line2" :value="_t('customerprofilepages', 'address_line2_label')" />
-                    <TextInput id="address_line2" type="text" class="mt-1 block w-full" v-model="form.address_line2" />
+                    <div class="vr-ifield">
+                        <Home class="vr-ifield-ic" />
+                        <TextInput id="address_line2" type="text" class="block w-full" v-model="form.address_line2" />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.address_line2" />
                 </div>
 
 
-                <div class="max-[768px]:col-span-2">
-                    <span
-                        class="text-[1.5rem] font-medium text-gray-900 max-[768px]:text-[1.2rem] mb-4 inline-block mt-5 max-[768px]:mb-4">{{
-                            _t('customerprofilepages', 'tax_identification_number_title') }}</span>
+                <div class="col-span-2">
+                    <span class="vr-section" style="display:inline-block;margin-bottom:10px">{{
+                        _t('customerprofilepages', 'tax_identification_number_title') }}</span>
                     <InputLabel for="tax_identification"
                         :value="_t('customerprofilepages', 'tax_identification_number_label')" />
-                    <TextInput id="tax_identification" type="text" class="mt-1 block w-full"
-                        v-model="form.tax_identification" />
+                    <div class="vr-ifield">
+                        <Receipt class="vr-ifield-ic" />
+                        <TextInput id="tax_identification" type="text" class="block w-full"
+                            v-model="form.tax_identification" />
+                    </div>
                     <InputError class="mt-2" :message="form.errors.tax_identification" />
                 </div>
 
-                <div class="flex items-end gap-4 row-span-3 col-span-2">
-                    <PrimaryButton :disabled="form.processing" class="w-[10rem]">{{ _t('customerprofilepages',
+                <div class="vr-form-actions col-span-2">
+                    <PrimaryButton :disabled="form.processing">{{ _t('customerprofilepages',
                         'update_profile_button') }} </PrimaryButton>
                 </div>
             </div>
@@ -394,9 +422,138 @@ onMounted(() => {
 input,
 textarea,
 select {
-    border-radius: 0.75rem;
-    border: 1px solid rgba(43, 43, 43, 0.50) !important;
-    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0 !important;
+    padding: 0.7rem 0.85rem;
+    background: #f8fafc;
+    transition: border-color 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #153b4f !important;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(21, 59, 79, 0.12);
+}
+
+/* leading-icon fields */
+.vr-ifield {
+    position: relative;
+    margin-top: 0.25rem;
+}
+
+.vr-ifield-ic {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 17px;
+    height: 17px;
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.vr-ifield :deep(input),
+.vr-ifield :deep(textarea) {
+    padding-left: 2.45rem !important;
+}
+
+.vr-ifield--area .vr-ifield-ic {
+    top: 0.95rem;
+    transform: none;
+}
+
+.vr-section {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eef2f6;
+}
+
+.profile-id {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 18px;
+    background: linear-gradient(135deg, #f0f8fc, #ffffff);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    flex-wrap: wrap;
+}
+
+.profile-id-avatar {
+    position: relative;
+    width: 84px;
+    height: 84px;
+    flex: 0 0 84px;
+}
+
+.profile-id-avatar img {
+    width: 84px;
+    height: 84px;
+    border-radius: 20px;
+    object-fit: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 6px 16px rgba(21, 59, 79, 0.18);
+}
+
+.profile-id-edit {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    background: #153b4f;
+    color: #fff;
+    border-radius: 999px;
+    box-shadow: 0 4px 10px rgba(21, 59, 79, 0.3);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.profile-id-edit:hover {
+    transform: scale(1.08);
+}
+
+.profile-id-edit svg {
+    width: 15px;
+    height: 15px;
+}
+
+.profile-id-meta {
+    flex: 1;
+    min-width: 160px;
+}
+
+.profile-id-name {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.profile-id-email {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 3px;
+}
+
+.profile-id-title {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+    .profile-id-title {
+        width: 100%;
+    }
 }
 
 .profile-completion {
@@ -421,9 +578,9 @@ select {
 }
 
 :deep(.dp__input) {
-    padding: 1rem 1rem 1rem 2.5rem;
-    border-radius: 12px;
-    border: 1px solid #2b2b2b99;
+    padding: 0.7rem 0.85rem 0.7rem 2.5rem;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
     width: 100%;
 }
 

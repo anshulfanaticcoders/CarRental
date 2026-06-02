@@ -3,7 +3,7 @@
         <Head><title>Vendor Locations</title></Head>
         <Toaster class="pointer-events-auto" position="bottom-right" rich-colors />
 
-        <div class="mx-auto w-full space-y-6 py-4 sm:py-6">
+        <div class="space-y-6">
             <div v-if="$page.props.flash.success" class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
                 {{ $page.props.flash.success }}
             </div>
@@ -12,67 +12,64 @@
                 {{ $page.props.errors.delete }}
             </div>
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="vr-phead">
                 <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-slate-900">Vendor Locations</h1>
-                    <p class="text-sm text-slate-600">Create canonical pickup locations once, then assign multiple vehicles to them.</p>
+                    <span class="vr-eyebrow"><MapPin /> {{ tt('vendorprofilepages', 'fleet_eyebrow', 'Fleet') }}</span>
+                    <h2>{{ tt('vendorprofilepages', 'vendor_locations_header', 'Manage Vehicle Locations') }}</h2>
+                    <p class="vr-sub">Create canonical pickup locations once, then assign multiple vehicles to them.</p>
                 </div>
-                <Link :href="route('vehicles.create', { locale: page.props.locale })" class="text-sm font-medium text-cyan-700 hover:text-cyan-800">
-                    Back to vehicle listing
-                </Link>
+                <div class="vr-phead-actions">
+                    <Link :href="route('vehicles.create', { locale: page.props.locale })" class="vr-btn vr-btn-ghost">
+                        <ArrowLeft class="w-4 h-4" /> Back to vehicle listing
+                    </Link>
+                </div>
             </div>
 
             <div class="space-y-6">
-                <div v-if="shouldShowForm" ref="formSection" class="rounded-xl border bg-white p-5 shadow-sm">
-                    <div class="mb-4">
-                        <h2 class="text-lg font-semibold text-slate-900">{{ editingId ? 'Edit Location' : 'Add Location' }}</h2>
-                        <p class="text-sm text-slate-600">One saved location can serve many vehicles. This prevents duplicate airport or downtown offices.</p>
+                <div v-if="shouldShowForm" ref="formSection" class="vr-panel">
+                    <div class="vr-panel-head">
+                        <h3><MapPin /> {{ editingId ? 'Edit Location' : 'Add Location' }}</h3>
                     </div>
+                    <div class="vr-panel-body">
+                        <p class="vr-hint" style="margin-bottom:16px">One saved location can serve many vehicles. This prevents duplicate airport or downtown offices.</p>
 
-                    <div v-if="editingLocationName" class="mb-4 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3">
-                        <div class="text-sm font-semibold text-cyan-900">Editing: {{ editingLocationName }}</div>
-                        <div class="mt-1 text-xs text-cyan-800">Update the form below, then click <span class="font-semibold">Save Changes</span>. Use Cancel if you want to go back to creating a new location.</div>
-                    </div>
-
-                    <form class="space-y-4" @submit.prevent="submit">
-                        <VendorLocationFormFields :form="form" :errors="form.errors" />
-
-                        <div class="flex gap-3">
-                            <button type="submit" class="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700" :disabled="form.processing">
-                                {{ editingId ? 'Save Changes' : 'Create Location' }}
-                            </button>
-                            <button v-if="editingId || hasLocations" type="button" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" @click="resetForm">
-                                Cancel
-                            </button>
+                        <div v-if="editingLocationName" class="mb-4 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3">
+                            <div class="text-sm font-semibold text-cyan-900">Editing: {{ editingLocationName }}</div>
+                            <div class="mt-1 text-xs text-cyan-800">Update the form below, then click <span class="font-semibold">Save Changes</span>. Use Cancel if you want to go back to creating a new location.</div>
                         </div>
-                    </form>
-                </div>
 
-                <div class="rounded-xl border bg-white shadow-sm">
-                    <div class="border-b px-5 py-4">
-                        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                            <div>
-                                <h2 class="text-lg font-semibold text-slate-900">Saved Locations</h2>
-                                <p class="text-sm text-slate-600">These locations drive vehicle grouping, internal APIs, unified locations, and partner feeds.</p>
-                            </div>
-                            <div class="flex flex-wrap items-center gap-3">
-                                <div v-if="locationCards.length" class="rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
-                                    Showing {{ locations.from }}-{{ locations.to }} of {{ locations.total }}
-                                </div>
-                                <button
-                                    v-if="hasLocations && !shouldShowForm"
-                                    type="button"
-                                    class="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700"
-                                    @click="openCreateForm"
-                                >
-                                    Add New Location
+                        <form class="space-y-4" @submit.prevent="submit">
+                            <VendorLocationFormFields :form="form" :errors="form.errors" />
+
+                            <div class="vr-form-actions" style="justify-content:flex-start">
+                                <button type="submit" class="vr-btn vr-btn-pri" :disabled="form.processing">
+                                    {{ editingId ? 'Save Changes' : 'Create Location' }}
+                                </button>
+                                <button v-if="editingId || hasLocations" type="button" class="vr-btn vr-btn-ghost" @click="resetForm">
+                                    Cancel
                                 </button>
                             </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="vr-panel">
+                    <div class="vr-panel-head">
+                        <h3><MapPin /> Saved Locations</h3>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div v-if="locationCards.length" class="vr-pill">
+                                Showing {{ locations.from }}-{{ locations.to }} of {{ locations.total }}
+                            </div>
+                            <button v-if="hasLocations && !shouldShowForm" type="button" class="vr-btn vr-btn-pri vr-btn-sm" @click="openCreateForm">
+                                <Plus class="w-4 h-4" /> Add New Location
+                            </button>
                         </div>
                     </div>
 
-                    <div v-if="!locationCards.length" class="p-5 text-sm text-slate-600">
-                        No vendor locations exist yet.
+                    <div v-if="!locationCards.length" class="vr-empty">
+                        <div class="e-ic"><MapPin /></div>
+                        <h4>No vendor locations yet</h4>
+                        <p>Create your first pickup location above.</p>
                     </div>
 
                     <div v-else class="space-y-5 p-5">
@@ -208,9 +205,17 @@ import {
     AlertDialogTitle,
 } from "@/Components/ui/alert-dialog";
 import { Head, Link, router, useForm, usePage } from "@inertiajs/vue3";
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref, getCurrentInstance } from "vue";
 import { toast } from "vue-sonner";
 import { Toaster } from "@/Components/ui/sonner";
+import { MapPin, ArrowLeft, Plus } from "lucide-vue-next";
+
+const { appContext } = getCurrentInstance();
+const _t = appContext.config.globalProperties._t;
+const tt = (group, key, fallback) => {
+    const v = _t(group, key);
+    return (!v || v === key) ? fallback : v;
+};
 
 const props = defineProps({
     locations: {

@@ -4,64 +4,85 @@
         <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-70">
             <div class="loader h-12 w-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
         </div>
-        <Card>
-            <CardHeader>
-                <CardTitle>{{ _t('customerprofilepages', 'issued_payments_header') }}</CardTitle>
-                <CardDescription>{{ _t('customerprofilepages', 'issued_payments_subtitle') || 'Track payments issued for your bookings.' }}</CardDescription>
-            </CardHeader>
-            <CardContent class="space-y-4">
-                <div>
-                    <input type="text" v-model="searchQuery" :placeholder="_t('customerprofilepages', 'search_payments_placeholder')"
-                        class="w-full" />
-                </div>
 
-                <div v-if="filteredPayments.length" class="overflow-x-auto">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>{{ _t('customerprofilepages', 'table_header_id') }}</th>
-                                <th>{{ _t('customerprofilepages', 'table_header_booking_id') }}</th>
-                                <th>{{ _t('customerprofilepages', 'table_header_vehicle') }}</th>
-                                <th>{{ _t('customerprofilepages', 'table_header_payment_date') }}</th>
-                                <th>{{ _t('customerprofilepages', 'table_header_amount_paid') }}</th>
-                                <th>{{ _t('customerprofilepages', 'table_header_payment_method') }}</th>
-                                <th>{{ _t('customerprofilepages', 'table_header_payment_status') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(payment, index) in filteredPayments" :key="payment.id">
-                                <td>{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
-                                <td>{{ payment.booking?.booking_number || _t('customerprofilepages', 'not_applicable') }}</td>
-                                <td>{{ payment.booking?.vehicle_name || _t('customerprofilepages', 'not_applicable') }}</td>
-                                <td>{{ formatDate(payment.created_at) }}</td>
-                                <td class="text-emerald-600 font-semibold">
-                                    {{ getCurrencySymbol(getBookingCurrency(payment)) }} {{ formatNumber(getBookingAmount(payment, 'amount_paid')) }}
-                                </td>
-                                <td>{{ payment.payment_method || _t('customerprofilepages', 'not_applicable') }}</td>
-                                <td>
-                                    <span :class="{
-                                        'text-emerald-600 font-semibold': payment.payment_status === 'succeeded',
-                                        'text-amber-500 font-semibold': payment.payment_status === 'pending',
-                                        'text-rose-500 font-semibold': payment.payment_status === 'failed',
-                                        'text-slate-500 font-semibold': !payment.payment_status
-                                    }">
-                                        {{ payment.payment_status || _t('customerprofilepages', 'not_applicable') }}
-                                    </span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+        <div class="vr-phead">
+            <div>
+                <span class="vr-eyebrow"><CreditCard /> {{ tt('customerprofilepages', 'billing_label', 'Billing') }}</span>
+                <h2>{{ tt('customerprofilepages', 'issued_payments_header', 'Issued Payments') }}</h2>
+                <p class="vr-sub">{{ tt('customerprofilepages', 'issued_payments_subtitle', 'Track payments issued for your bookings.') }}</p>
+            </div>
+        </div>
 
-                <div v-else class="rounded-xl border border-dashed border-slate-200 px-6 py-10 text-center text-sm text-slate-500">
-                    {{ _t('customerprofilepages', 'no_payments_found_text') }}
+        <div class="vr-toolbar">
+            <label class="vr-search">
+                <Search />
+                <input type="text" v-model="searchQuery"
+                    :placeholder="_t('customerprofilepages', 'search_payments_placeholder')" />
+            </label>
+        </div>
+
+        <div v-if="filteredPayments.length" class="vr-panel">
+            <div class="overflow-x-auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>{{ _t('customerprofilepages', 'table_header_id') }}</th>
+                            <th>{{ _t('customerprofilepages', 'table_header_booking_id') }}</th>
+                            <th>{{ _t('customerprofilepages', 'table_header_vehicle') }}</th>
+                            <th>{{ _t('customerprofilepages', 'table_header_payment_date') }}</th>
+                            <th>{{ _t('customerprofilepages', 'table_header_amount_paid') }}</th>
+                            <th>{{ _t('customerprofilepages', 'table_header_payment_method') }}</th>
+                            <th>{{ _t('customerprofilepages', 'table_header_payment_status') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(payment, index) in filteredPayments" :key="payment.id">
+                            <td>{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
+                            <td class="cell-strong">{{ payment.booking?.booking_number || tt('customerprofilepages', 'not_applicable', 'N/A') }}</td>
+                            <td>
+                                <span class="vr-cust">
+                                    <span class="vr-ava">{{ vehInitials(payment.booking?.vehicle_name) }}</span>
+                                    <span class="cell-strong">{{ payment.booking?.vehicle_name || tt('customerprofilepages', 'not_applicable', 'N/A') }}</span>
+                                </span>
+                            </td>
+                            <td>{{ formatDate(payment.created_at) }}</td>
+                            <td class="text-emerald-600 font-semibold">
+                                {{ getCurrencySymbol(getBookingCurrency(payment)) }} {{ formatNumber(getBookingAmount(payment, 'amount_paid')) }}
+                            </td>
+                            <td>
+                                <span v-if="payment.payment_method" class="vr-vbadge">{{ payment.payment_method }}</span>
+                                <span v-else>{{ _t('customerprofilepages', 'not_applicable') }}</span>
+                            </td>
+                            <td>
+                                <span class="vr-chip" :class="{
+                                    ok: payment.payment_status === 'succeeded',
+                                    warn: payment.payment_status === 'pending',
+                                    bad: payment.payment_status === 'failed',
+                                    mut: !payment.payment_status
+                                }">
+                                    {{ payment.payment_status || tt('customerprofilepages', 'not_applicable', 'N/A') }}
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div v-if="pagination && pagination.last_page > 1" class="vr-pager">
+                <span class="info">{{ tt('common', 'page_label', 'Page') }} {{ pagination.current_page }} / {{ pagination.last_page }}</span>
+                <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
+                    @page-change="handlePageChange" />
+            </div>
+        </div>
+
+        <div v-else class="vr-panel">
+            <div class="vr-empty">
+                <div class="e-ic">
+                    <Receipt />
                 </div>
-                <div v-if="pagination && pagination.last_page > 1" class="flex justify-end">
-                    <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
-                        @page-change="handlePageChange" />
-                </div>
-            </CardContent>
-        </Card>
+                <h4>{{ tt('customerprofilepages', 'no_payments_found_text', 'No payments found') }}</h4>
+                <p>{{ tt('customerprofilepages', 'issued_payments_subtitle', 'Track payments issued for your bookings.') }}</p>
+            </div>
+        </div>
     </MyProfileLayout>
 </template>
 
@@ -70,7 +91,7 @@ import { ref, computed, onMounted, watch, getCurrentInstance } from 'vue';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import { router } from '@inertiajs/vue3';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Search, Receipt, CreditCard } from 'lucide-vue-next';
 import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const props = defineProps({
@@ -93,6 +114,14 @@ const isLoading = ref(false);
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
+
+// _t returns the raw key when a translation is missing — fall back to English.
+const tt = (group, key, fallback) => {
+    const v = _t(group, key);
+    return (!v || v === key) ? fallback : v;
+};
+
+const vehInitials = (name) => (name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
 const handlePageChange = (page) => {
     router.get(route('profile.payments'), { ...props.filters, page, search: searchQuery.value }, { preserveState: true, preserveScroll: true });

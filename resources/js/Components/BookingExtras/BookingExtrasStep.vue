@@ -91,6 +91,8 @@ const emit = defineEmits(['back', 'proceed-to-checkout']);
 const page = usePage();
 const providerMarkupRate = computed(() => resolveProviderMarkupRate(page.props));
 const providerGrossMultiplier = computed(() => toProviderGrossMultiplier(providerMarkupRate.value));
+const checkoutPerkOffers = computed(() => Array.isArray(page.props.checkout_perk_offers) ? page.props.checkout_perk_offers : []);
+const checkoutFreeEsimOffer = computed(() => checkoutPerkOffers.value.find((offer) => offer?.effect_type === 'free_esim') || null);
 
 // ── Provider adapter ────────────────────────────────────────────────
 const {
@@ -952,6 +954,7 @@ watch(() => mapModalCompRef.value?.mapModalRef, (el) => {
                     :display-vehicle-name="displayVehicleName"
                     :provider-badge="providerBadge"
                     :vehicle-specs="vehicleSpecs"
+                    :free-esim-offer="checkoutFreeEsimOffer"
                     :pickup-date="pickupDate"
                     :pickup-time="pickupTime"
                     :dropoff-date="dropoffDate"

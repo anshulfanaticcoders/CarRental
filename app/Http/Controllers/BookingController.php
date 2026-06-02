@@ -541,7 +541,7 @@ class BookingController extends Controller
         }
 
         // Eager load relationships
-        $booking->load(['payments', 'extras', 'customer', 'amounts']);
+        $booking->load(['payments', 'extras', 'customer', 'amounts', 'offers']);
 
         // Check if internal vehicle exists
         if ($booking->vehicle_id) {
@@ -1072,7 +1072,7 @@ class BookingController extends Controller
 
         $bookings = !empty($customerIds) ?
             Booking::whereIn('customer_id', $customerIds)
-                ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'extras', 'amounts')
+                ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'extras', 'amounts', 'offers')
                 ->orderBy('created_at', 'desc')
                 ->paginate(10) :
             collect();

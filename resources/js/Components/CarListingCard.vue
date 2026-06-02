@@ -26,6 +26,8 @@ import seatingIcon from "../../assets/travellerIcon.svg";
 import doorIcon from "../../assets/door.svg";
 import check from "../../assets/Check.svg";
 import acIcon from "../../assets/ac.svg";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faSimCard } from "@fortawesome/free-solid-svg-icons";
 import { Leaf, Heart } from "lucide-vue-next";
 
 // Check if vehicle is LocautoRent
@@ -80,6 +82,10 @@ const props = defineProps({
         default: false,
     },
     popEffect: Boolean,
+    freeEsimOffer: {
+        type: Object,
+        default: null,
+    },
     viewMode: {
         type: String,
         default: 'grid'
@@ -750,6 +756,12 @@ onUnmounted(() => {
 
             <!-- Features -->
             <div class="car-features">
+                <!-- Free eSIM -->
+                <span v-if="freeEsimOffer" class="feature-tag esim">
+                    <FontAwesomeIcon :icon="faSimCard" class="w-3.5 h-3.5" />
+                    Free eSIM included
+                </span>
+
                 <!-- CO2 -->
                 <span v-if="vehicleSpecs.co2" class="feature-tag info">
                     <component :is="Leaf" class="w-3 h-3" />
@@ -1217,6 +1229,17 @@ onUnmounted(() => {
 .feature-tag.info {
     background: #f0f9ff;
     color: #0284c7;
+}
+
+.feature-tag.esim {
+    padding: 6px 10px;
+    border-radius: var(--radius-full);
+    background: #ecfeff;
+    color: #153b4f;
+    border: 1px solid rgba(34, 211, 238, 0.42);
+    box-shadow: 0 6px 14px rgba(21, 59, 79, 0.06);
+    font-size: 12px;
+    font-weight: 700;
 }
 
 /* Card Footer */
