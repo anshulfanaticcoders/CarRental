@@ -252,7 +252,27 @@ const quickActions = computed(() => [
 .sh-tile-arrow { width: 16px; height: 16px; color: #94a3b8; flex: 0 0 16px; transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
 .sh-tile:hover .sh-tile-arrow { color: #153b4f; transform: translateX(3px); }
 
+@media (max-width: 900px) {
+    /* drop the centered max-width so nothing wastes space on the sides */
+    .status-hero,
+    .sh-quick {
+        max-width: none;
+        margin-left: 0;
+        margin-right: 0;
+    }
+}
+
 @media (max-width: 768px) {
     .sh-quick { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+    .status-hero { padding: 40px 20px; }
+    .sh-links { flex-direction: column; }
+    .sh-link { width: 100%; justify-content: center; }
+    /* compact tiles: sit at the top-left of their row, don't stretch the empty gap */
+    .sh-tile { padding: 14px; }
+    .sh-tile-body { flex: 0 1 auto; }
+    .sh-tile-arrow { margin-left: auto; }
 }
 </style>

@@ -121,4 +121,22 @@ select:focus {
     border-color: #153b4f !important;
     box-shadow: 0 0 0 3px rgba(21, 59, 79, 0.12);
 }
+
+/* responsive grid via flexbox wrap — no media/container queries needed */
+.vr-form-grid {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.vr-form-grid > * {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 240px;
+}
+
+.vr-form-grid > .col-span-2,
+.vr-form-grid > .full {
+    flex-basis: 100%;
+    min-width: 100%;
+}
 </style>

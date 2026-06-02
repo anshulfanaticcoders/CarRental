@@ -589,6 +589,25 @@ select:focus {
     padding: 0.5rem;
 }
 
+/* responsive grid via flexbox wrap — no media/container queries needed.
+   2 columns when there's room, wraps to 1 when each field can't fit its min-width. */
+.vr-form-grid {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.vr-form-grid > * {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 240px;
+}
+
+.vr-form-grid > .col-span-2,
+.vr-form-grid > .full {
+    flex-basis: 100%;
+    min-width: 100%;
+}
+
 @media screen and (max-width:768px) {
     input {
         font-size: 0.75rem;
