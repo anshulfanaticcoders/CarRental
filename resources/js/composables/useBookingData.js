@@ -301,14 +301,19 @@ export function useBookingData(booking, vehicle, payment) {
       return metaExtras.map(extra => {
         const name = extra.name || extra.Name || extra.extra_name || extra.service_name || 'Extra';
         const qty = extra.qty || extra.quantity || extra.Quantity || 1;
-        const price = parseFloat(extra.price || extra.Price || extra.total || extra.Total || 0);
+        const unitPriceRaw = extra.price ?? extra.Price ?? extra.daily_rate ?? extra.Daily_rate ?? extra.amount ?? 0;
+        const parsedUnitPrice = parseFloat(unitPriceRaw);
+        const unitPrice = Number.isFinite(parsedUnitPrice) ? parsedUnitPrice : 0;
+        const lineTotalRaw = extra.total_for_booking ?? extra.Total_for_this_booking ?? extra.total_price ?? extra.total ?? extra.Total ?? null;
+        const parsedLineTotal = lineTotalRaw !== null ? parseFloat(lineTotalRaw) : unitPrice * qty;
+        const lineTotal = Number.isFinite(parsedLineTotal) ? parsedLineTotal : 0;
         return {
           id: extra.id || extra.code || extra.optionID,
           name,
           type: extra.type || extra.extra_type || 'extra',
           quantity: qty,
-          price,
-          total: price * qty,
+          price: unitPrice || (qty > 0 ? lineTotal / qty : lineTotal),
+          total: lineTotal,
           included: extra.isFree || extra.included || extra.is_included || false,
         };
       });

@@ -306,3 +306,9 @@ Concise durable memory for significant completed work.
 - Decision: active free-eSIM perk offers are shared to search/checkout pages, displayed as compact included badges on car listing cards and booking summaries, and sent in checkout payload as `free_esim_included` plus `perk_offers`; server-side offer resolution remains authoritative for stored booking metadata.
 - Verification: PHP syntax check passed for shared Inertia offer props; `git diff --check` passed; local offer service resolved `free_esim_included=true`; `npm run build` passed with existing project warnings.
 - Follow-ups: confirm admin/vendor/customer booking detail screens read stored booking offer metadata where needed.
+
+### 2026-06-03 - Worldwide search parity audit tooling
+- Scope: `CarRental` gateway service, provider parity audit command, booking details extras normalization; `vrooem-gateway` supplier registry.
+- Decision: added repeatable raw gateway vs Laravel transform audit capture under ignored `storage/app/search-parity-audits`; gateway supplier inventory now skips non-supplier support YAML and exposes adapter/config one-way mismatches.
+- Verification: PHP syntax checks passed; targeted Pint passed for changed PHP files; `npm run build` passed with existing warnings; gateway registry pytest/Ruff targeted checks passed; full provider audit captured raw/mapped rows at `storage/app/search-parity-audits/20260603_061624_474671_18324`.
+- Follow-ups: restart/redeploy gateway so the supplier endpoint reflects the strict registry loader; resolve Docker/host DNS for `nextrent.locautorent.com` before Locauto live API smoke tests.

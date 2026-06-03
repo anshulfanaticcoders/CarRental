@@ -15,6 +15,8 @@ class VrooemGatewayService
 
     protected int $connectTimeout;
 
+    protected ?array $lastError = null;
+
     public function __construct()
     {
         $this->baseUrl = rtrim((string) config('vrooem.url', ''), '/');
@@ -37,6 +39,11 @@ class VrooemGatewayService
         }
 
         return $response;
+    }
+
+    public function getLastError(): ?array
+    {
+        return $this->lastError;
     }
 
     /**
@@ -69,6 +76,16 @@ class VrooemGatewayService
         ]);
 
         return is_array($response) ? $response : [];
+    }
+
+    /**
+     * List configured gateway suppliers and adapter status.
+     */
+    public function listSuppliers(): array
+    {
+        $response = $this->request('GET', '/api/v1/suppliers');
+
+        return is_array($response) ? $response : ['suppliers' => [], 'total' => 0];
     }
 
     /**
@@ -138,7 +155,13 @@ class VrooemGatewayService
      */
     protected function request(string $method, string $path, array $params = []): ?array
     {
+        $this->lastError = null;
+
         if ($this->baseUrl === '') {
+            $this->lastError = [
+                'type' => 'configuration',
+                'message' => 'Gateway base URL is not configured.',
+            ];
             Log::error('VrooemGateway: Base URL is not configured');
 
             return null;
@@ -172,6 +195,13 @@ class VrooemGatewayService
             ]);
 
             if ($response->failed()) {
+                $this->lastError = [
+                    'type' => 'http',
+                    'method' => $method,
+                    'url' => $url,
+                    'status' => $response->status(),
+                    'body_preview' => substr($response->body(), 0, 1000),
+                ];
                 Log::error('VrooemGateway: Request failed', [
                     'method' => $method,
                     'url' => $url,
@@ -184,6 +214,12 @@ class VrooemGatewayService
 
             return $response->json();
         } catch (\Exception $e) {
+            $this->lastError = [
+                'type' => 'connection',
+                'method' => $method,
+                'url' => $url,
+                'message' => $e->getMessage(),
+            ];
             Log::error('VrooemGateway: Connection error', [
                 'method' => $method,
                 'url' => $url,
