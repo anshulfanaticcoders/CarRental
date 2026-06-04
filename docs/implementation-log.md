@@ -312,3 +312,21 @@ Concise durable memory for significant completed work.
 - Decision: added repeatable raw gateway vs Laravel transform audit capture under ignored `storage/app/search-parity-audits`; gateway supplier inventory now skips non-supplier support YAML and exposes adapter/config one-way mismatches.
 - Verification: PHP syntax checks passed; targeted Pint passed for changed PHP files; `npm run build` passed with existing warnings; gateway registry pytest/Ruff targeted checks passed; full provider audit captured raw/mapped rows at `storage/app/search-parity-audits/20260603_061624_474671_18324`.
 - Follow-ups: restart/redeploy gateway so the supplier endpoint reflects the strict registry loader; resolve Docker/host DNS for `nextrent.locautorent.com` before Locauto live API smoke tests.
+
+### 2026-06-04 - Dynamic cinematic About page replacement
+- Scope: `CarRental` public About page template, dynamic page-section contract, admin page editor initialization, section editor content handling, and frontend About Vue components.
+- Decision: replaced the live About presentation with admin-driven cinematic sections while preserving the existing route, Inertia props, translations, and SEO resolver. About template defaults now use semantic fields and Unsplash CDN images; missing template sections are appended as draft admin rows; localized section settings fall back field-by-field to English.
+- Verification: PHP syntax checks passed for touched PHP/config files; `npm run build` passed for client and SSR with existing project warnings; browser smoke on `/en/page/about-us` passed at 375, 768, 1024, and 1440 with no document horizontal overflow and responsive About sections rendered. Reduced-motion guards were verified in the component code paths.
+- Test notes: repo-wide Pint still reports existing style debt, and targeted Pint on `PageController.php` would reformat pre-existing controller code outside this task. Local DevTools reported one existing shared-shell form-field accessibility issue, not an About Vue runtime error.
+
+### 2026-06-04 - About page hero wrap and motion polish
+- Scope: `CarRental` cinematic About Vue components and route-level reveal controller.
+- Decision: grouped animated hero letters inside non-breaking word spans so words cannot split mid-line; added clipped/blurred hero image-card entrance animation; changed section/card reveals to IntersectionObserver-driven scroll reveals with reduced-motion and no-JS visible fallbacks.
+- Verification: `npm run build` passed for client and SSR with existing project warnings; `git diff --check` passed; Chrome checks passed at 375, 768, 1024, and 1440 with no horizontal overflow, no broken hero words, visible hero card animation CSS, and scroll reveals activating per section.
+- Test notes: Chrome console only showed existing Pusher ping/pong logs during the About check.
+
+### 2026-06-04 - About page translated production seeder
+- Scope: `CarRental` one-time About page content seeder.
+- Decision: `AboutUsCinematicSeeder` now seeds production-ready About section copy for `en`, `fr`, `nl`, `es`, and `ar`, including section titles, body copy, structured cards, alt text, labels, stats, and CTA copy. The seeder remains standalone and is not called by `DatabaseSeeder`.
+- Verification: `php -l database\seeders\AboutUsCinematicSeeder.php` passed.
+- Follow-ups: run the seeder once on production after a DB backup, confirm the live About page, then remove the one-time seeder from git if desired.

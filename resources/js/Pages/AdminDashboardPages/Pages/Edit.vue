@@ -58,6 +58,49 @@ locales.forEach(locale => {
     };
 });
 
+const emptySectionTranslations = () => locales.reduce((acc, locale) => {
+    acc[locale] = { title: '', content: '', settings: {} };
+    return acc;
+}, {});
+
+const normalizeSections = (sectionsData) => {
+    if (Array.isArray(sectionsData)) {
+        return sectionsData;
+    }
+
+    if (sectionsData && typeof sectionsData === 'object') {
+        return Object.values(sectionsData);
+    }
+
+    return [];
+};
+
+const appendMissingTemplateSections = (sectionsData) => {
+    const sections = normalizeSections(sectionsData).map((section, index) => ({
+        ...section,
+        sort_order: section.sort_order ?? index,
+    }));
+    const templateSections = props.templates?.[props.page.template || 'default']?.sections || [];
+    const existingTypes = new Set(sections.map(section => section.type));
+
+    templateSections.forEach((sectionConfig) => {
+        if (existingTypes.has(sectionConfig.type)) return;
+
+        sections.push({
+            type: sectionConfig.type,
+            sort_order: sections.length,
+            is_visible: true,
+            translations: emptySectionTranslations(),
+        });
+        existingTypes.add(sectionConfig.type);
+    });
+
+    return sections.map((section, index) => ({
+        ...section,
+        sort_order: index,
+    }));
+};
+
 const form = useForm({
     _method: 'PUT',
     template: props.page.template || 'default',
@@ -69,7 +112,7 @@ const form = useForm({
     seo_image_url: props.seoMeta?.seo_image_url || '',
     seo_translations: JSON.parse(JSON.stringify(initialSeoTranslations)),
     meta: props.metaValues || {},
-    sections: props.sectionsData ? [...props.sectionsData] : [],
+    sections: appendMissingTemplateSections(props.sectionsData),
 });
 
 const setActiveLocale = (locale, event) => {

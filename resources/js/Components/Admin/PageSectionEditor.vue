@@ -62,6 +62,11 @@ function hasSectionFields(section) {
     return getSectionFields(section).length > 0;
 }
 
+function shouldShowContent(section) {
+    const match = getSectionConfig(section);
+    return !hasSectionFields(section) || Boolean(match?.show_content);
+}
+
 function emitUpdate(updatedSections) {
     emit('update:sections', updatedSections);
 }
@@ -243,7 +248,7 @@ function updateRepeaterField(sectionIndex, fieldKey, itemIndex, subKey, value) {
                 </div>
 
                 <!-- Content (TinyMCE) — only for sections WITHOUT custom fields -->
-                <div v-if="!hasSectionFields(section)">
+                <div v-if="shouldShowContent(section)">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Section Content ({{ locale.toUpperCase() }})
                     </label>
@@ -259,7 +264,7 @@ function updateRepeaterField(sectionIndex, fieldKey, itemIndex, subKey, value) {
                 <!-- Structured Fields — for sections WITH custom fields -->
                 <div v-if="hasSectionFields(section)" class="space-y-4">
                     <div class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                        <p class="text-xs text-blue-700 font-medium">This section uses structured fields instead of free-form content.</p>
+                        <p class="text-xs text-blue-700 font-medium">This section uses structured fields for cards, images, buttons, and other reusable content.</p>
                     </div>
 
                     <div v-for="fieldDef in getSectionFields(section)" :key="fieldDef.key" class="space-y-2">

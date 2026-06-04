@@ -531,12 +531,14 @@ class PageController extends Controller
 
         // Get sections
         $sections = $page->sections()->with('translations')->where('is_visible', true)->orderBy('sort_order')->get()->map(function ($section) use ($locale) {
-            $trans = $section->getTranslation($locale);
+            $trans = $section->translations->firstWhere('locale', $locale);
+            $fallback = $locale === 'en' ? null : $section->translations->firstWhere('locale', 'en');
+
             return [
                 'type' => $section->section_type,
-                'title' => $trans?->title,
-                'content' => $trans?->content,
-                'settings' => $trans?->settings,
+                'title' => $this->translatedSectionValue($trans?->title, $fallback?->title),
+                'content' => $this->translatedSectionValue($trans?->content, $fallback?->content),
+                'settings' => $this->mergeTranslatedSettings($trans?->settings, $fallback?->settings),
             ];
         });
 
@@ -556,6 +558,57 @@ class PageController extends Controller
             'locale' => $locale,
             'pages' => $pages,
         ]);
+    }
+
+    private function translatedSectionValue(?string $value, ?string $fallback): ?string
+    {
+        if ($this->hasTranslationValue($value)) {
+            return $value;
+        }
+
+        return $this->hasTranslationValue($fallback) ? $fallback : $value;
+    }
+
+    private function mergeTranslatedSettings(?array $settings, ?array $fallback): array
+    {
+        $settings = $settings ?: [];
+        $fallback = $fallback ?: [];
+
+        foreach ($fallback as $key => $fallbackValue) {
+            if (! array_key_exists($key, $settings) || $this->isBlankSetting($settings[$key])) {
+                $settings[$key] = $fallbackValue;
+
+                continue;
+            }
+
+            if (is_array($settings[$key]) && is_array($fallbackValue)) {
+                $settings[$key] = $this->mergeTranslatedSettings($settings[$key], $fallbackValue);
+            }
+        }
+
+        return $settings;
+    }
+
+    private function hasTranslationValue(mixed $value): bool
+    {
+        if ($value === null) {
+            return false;
+        }
+
+        if (is_string($value)) {
+            return trim($value) !== '';
+        }
+
+        if (is_array($value)) {
+            return $value !== [];
+        }
+
+        return true;
+    }
+
+    private function isBlankSetting(mixed $value): bool
+    {
+        return ! $this->hasTranslationValue($value);
     }
 
     /**

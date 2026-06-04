@@ -66,7 +66,7 @@ return [
 
     'about-us' => [
         'name' => 'About Us',
-        'description' => 'Company story, bio, mission, features, and CTA',
+        'description' => 'Cinematic company story with trust, rental journey, coverage, promises, and CTA',
         'vue_component' => 'Frontend/Templates/AboutUsPage',
         'meta_fields' => [
             [
@@ -89,19 +89,67 @@ return [
             ],
         ],
         'sections' => [
-            ['type' => 'hero', 'label' => 'Hero Section', 'required' => true],
-            ['type' => 'content', 'label' => 'Our Story', 'required' => true],
             [
-                'type' => 'features',
-                'label' => 'Why Choose Us (Features Grid)',
+                'type' => 'hero',
+                'label' => 'Cinematic Hero',
+                'required' => true,
+                'show_content' => true,
+                'fields' => [
+                    ['key' => 'badge', 'label' => 'Badge Text', 'type' => 'text'],
+                    ['key' => 'image_url', 'label' => 'Hero Background Image URL', 'type' => 'image'],
+                    ['key' => 'image_alt', 'label' => 'Hero Background Alt Text', 'type' => 'text'],
+                    ['key' => 'primary_button_text', 'label' => 'Primary Button Text', 'type' => 'text'],
+                    ['key' => 'primary_button_url', 'label' => 'Primary Button URL', 'type' => 'url'],
+                    ['key' => 'secondary_button_text', 'label' => 'Secondary Button Text', 'type' => 'text'],
+                    ['key' => 'secondary_button_url', 'label' => 'Secondary Button URL', 'type' => 'url'],
+                    ['key' => 'panel_image_url', 'label' => 'Main Floating Panel Image URL', 'type' => 'image'],
+                    ['key' => 'panel_image_alt', 'label' => 'Main Floating Panel Alt Text', 'type' => 'text'],
+                    ['key' => 'panel_title', 'label' => 'Floating Panel Title', 'type' => 'text'],
+                    ['key' => 'panel_text', 'label' => 'Floating Panel Text', 'type' => 'text'],
+                    ['key' => 'side_image_url', 'label' => 'Small Floating Panel Image URL', 'type' => 'image'],
+                    ['key' => 'side_image_alt', 'label' => 'Small Floating Panel Alt Text', 'type' => 'text'],
+                ],
+            ],
+            [
+                'type' => 'stats',
+                'label' => 'Platform Stats',
                 'required' => false,
                 'fields' => [
                     [
                         'key' => 'items',
-                        'label' => 'Feature Cards',
+                        'label' => 'Stat Items',
                         'type' => 'repeater',
                         'fields' => [
-                            ['key' => 'emoji', 'label' => 'Emoji Icon', 'type' => 'text'],
+                            ['key' => 'number', 'label' => 'Number (e.g. 800)', 'type' => 'text'],
+                            ['key' => 'suffix', 'label' => 'Suffix (e.g. +, /7, K+)', 'type' => 'text'],
+                            ['key' => 'label', 'label' => 'Label', 'type' => 'text'],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'content',
+                'label' => 'Mission and Trust',
+                'required' => true,
+                'show_content' => true,
+                'fields' => [
+                    ['key' => 'kicker', 'label' => 'Small Label', 'type' => 'text'],
+                    [
+                        'key' => 'proof_items',
+                        'label' => 'Trust Chips',
+                        'type' => 'repeater',
+                        'fields' => [
+                            ['key' => 'icon', 'label' => 'Lucide Icon Name', 'type' => 'text'],
+                            ['key' => 'title', 'label' => 'Title', 'type' => 'text'],
+                            ['key' => 'description', 'label' => 'Description', 'type' => 'textarea'],
+                        ],
+                    ],
+                    [
+                        'key' => 'mission_lines',
+                        'label' => 'Mission Lines',
+                        'type' => 'repeater',
+                        'fields' => [
+                            ['key' => 'label', 'label' => 'Label', 'type' => 'text'],
                             ['key' => 'title', 'label' => 'Title', 'type' => 'text'],
                             ['key' => 'description', 'label' => 'Description', 'type' => 'textarea'],
                         ],
@@ -109,36 +157,84 @@ return [
                 ],
             ],
             [
-                'type' => 'stats',
-                'label' => 'Stats Section',
+                'type' => 'split',
+                'label' => 'Rental Journey',
                 'required' => false,
+                'show_content' => true,
                 'fields' => [
-                    ['key' => 'subtitle', 'label' => 'Subtitle', 'type' => 'text'],
+                    ['key' => 'kicker', 'label' => 'Small Label', 'type' => 'text'],
+                    ['key' => 'image_url', 'label' => 'Journey Image URL', 'type' => 'image'],
+                    ['key' => 'image_alt', 'label' => 'Journey Image Alt Text', 'type' => 'text'],
+                    ['key' => 'route_note_title', 'label' => 'Route Note Title', 'type' => 'text'],
+                    ['key' => 'route_note_text', 'label' => 'Route Note Text', 'type' => 'textarea'],
                     [
                         'key' => 'items',
-                        'label' => 'Stat Items',
+                        'label' => 'Journey Steps',
                         'type' => 'repeater',
                         'fields' => [
-                            ['key' => 'number', 'label' => 'Number (e.g. 50,000+)', 'type' => 'text'],
-                            ['key' => 'label', 'label' => 'Label', 'type' => 'text'],
+                            ['key' => 'title', 'label' => 'Title', 'type' => 'text'],
+                            ['key' => 'description', 'label' => 'Description', 'type' => 'textarea'],
                         ],
                     ],
                 ],
             ],
             [
-                'type' => 'split',
-                'label' => 'Split Content + Image',
+                'type' => 'ribbon',
+                'label' => 'Brand Statement',
                 'required' => false,
+                'show_content' => true,
                 'fields' => [
-                    ['key' => 'subtitle', 'label' => 'Subtitle', 'type' => 'text'],
-                    ['key' => 'image_url', 'label' => 'Image URL', 'type' => 'image'],
+                    ['key' => 'background_image_url', 'label' => 'Background Image URL', 'type' => 'image'],
+                    ['key' => 'background_image_alt', 'label' => 'Background Image Alt Text', 'type' => 'text'],
+                ],
+            ],
+            [
+                'type' => 'features',
+                'label' => 'Customer Promises',
+                'required' => false,
+                'show_content' => true,
+                'fields' => [
+                    ['key' => 'kicker', 'label' => 'Small Label', 'type' => 'text'],
+                    [
+                        'key' => 'items',
+                        'label' => 'Promise Cards',
+                        'type' => 'repeater',
+                        'fields' => [
+                            ['key' => 'icon', 'label' => 'Lucide Icon Name', 'type' => 'text'],
+                            ['key' => 'kicker', 'label' => 'Small Label', 'type' => 'text'],
+                            ['key' => 'title', 'label' => 'Title', 'type' => 'text'],
+                            ['key' => 'description', 'label' => 'Description', 'type' => 'textarea'],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'coverage',
+                'label' => 'Coverage Gallery',
+                'required' => false,
+                'show_content' => true,
+                'fields' => [
+                    ['key' => 'kicker', 'label' => 'Small Label', 'type' => 'text'],
+                    [
+                        'key' => 'items',
+                        'label' => 'Coverage Cards',
+                        'type' => 'repeater',
+                        'fields' => [
+                            ['key' => 'image_url', 'label' => 'Image URL', 'type' => 'image'],
+                            ['key' => 'image_alt', 'label' => 'Image Alt Text', 'type' => 'text'],
+                            ['key' => 'title', 'label' => 'Title', 'type' => 'text'],
+                            ['key' => 'description', 'label' => 'Description', 'type' => 'textarea'],
+                        ],
+                    ],
                 ],
             ],
             [
                 'type' => 'cta',
                 'label' => 'Call to Action',
                 'required' => false,
+                'show_content' => true,
                 'fields' => [
+                    ['key' => 'kicker', 'label' => 'Small Label', 'type' => 'text'],
                     ['key' => 'button_text', 'label' => 'Button Text', 'type' => 'text'],
                     ['key' => 'button_url', 'label' => 'Button URL', 'type' => 'url'],
                 ],
