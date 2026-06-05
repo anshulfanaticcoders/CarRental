@@ -20,6 +20,10 @@
         $siteName = config('app.name', 'Vrooem');
         $twitterHandle = config('seo.twitter_handle', '@vrooem');
         $themeColor = '#153b4f';
+
+        $__inertiaSsrDispatched = true;
+        $__inertiaSsrResponse = app(\Inertia\Ssr\Gateway::class)->dispatch($page);
+        $hasInertiaSsrHead = $__inertiaSsrResponse && trim((string) $__inertiaSsrResponse->head) !== '';
     @endphp
 
     <meta charset="utf-8">
@@ -31,40 +35,42 @@
       tags elsewhere in the head — Inertia dedupes by head-key, which we set
       via the `inertia` attribute on each managed tag.
     --}}
-    <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}" inertia="og:locale">
-    <meta property="og:type" content="{{ $initialSeoType }}" inertia="og:type">
-    <meta property="og:site_name" content="{{ $siteName }}" inertia="og:site_name">
+    @unless($hasInertiaSsrHead)
+        <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}" inertia="og:locale">
+        <meta property="og:type" content="{{ $initialSeoType }}" inertia="og:type">
+        <meta property="og:site_name" content="{{ $siteName }}" inertia="og:site_name">
 
-    <title inertia>{{ $initialSeoTitle }}</title>
-    @if($initialSeoRobots)
-        <meta name="robots" content="{{ $initialSeoRobots }}" inertia="robots">
-    @endif
-    @if($initialSeoDescription)
-        <meta name="description" content="{{ $initialSeoDescription }}" inertia="description">
-    @endif
-    @if($initialSeoCanonical)
-        <link rel="canonical" href="{{ $initialSeoCanonical }}" inertia="canonical">
-    @endif
-    <meta property="og:title" content="{{ $initialSeoTitle }}" inertia="og:title">
-    @if($initialSeoDescription)
-        <meta property="og:description" content="{{ $initialSeoDescription }}" inertia="og:description">
-    @endif
-    @if($initialSeoCanonical)
-        <meta property="og:url" content="{{ $initialSeoCanonical }}" inertia="og:url">
-    @endif
-    @if($initialSeoImage)
-        <meta property="og:image" content="{{ $initialSeoImage }}" inertia="og:image">
-        <meta property="og:image:alt" content="{{ $initialSeoTitle }}" inertia="og:image:alt">
-    @endif
-    <meta name="twitter:card" content="summary_large_image" inertia="twitter:card">
-    <meta name="twitter:site" content="{{ $twitterHandle }}" inertia="twitter:site">
-    <meta name="twitter:title" content="{{ $initialSeoTitle }}" inertia="twitter:title">
-    @if($initialSeoDescription)
-        <meta name="twitter:description" content="{{ $initialSeoDescription }}" inertia="twitter:description">
-    @endif
-    @if($initialSeoImage)
-        <meta name="twitter:image" content="{{ $initialSeoImage }}" inertia="twitter:image">
-    @endif
+        <title inertia>{{ $initialSeoTitle }}</title>
+        @if($initialSeoRobots)
+            <meta name="robots" content="{{ $initialSeoRobots }}" inertia="robots">
+        @endif
+        @if($initialSeoDescription)
+            <meta name="description" content="{{ $initialSeoDescription }}" inertia="description">
+        @endif
+        @if($initialSeoCanonical)
+            <link rel="canonical" href="{{ $initialSeoCanonical }}" inertia="canonical">
+        @endif
+        <meta property="og:title" content="{{ $initialSeoTitle }}" inertia="og:title">
+        @if($initialSeoDescription)
+            <meta property="og:description" content="{{ $initialSeoDescription }}" inertia="og:description">
+        @endif
+        @if($initialSeoCanonical)
+            <meta property="og:url" content="{{ $initialSeoCanonical }}" inertia="og:url">
+        @endif
+        @if($initialSeoImage)
+            <meta property="og:image" content="{{ $initialSeoImage }}" inertia="og:image">
+            <meta property="og:image:alt" content="{{ $initialSeoTitle }}" inertia="og:image:alt">
+        @endif
+        <meta name="twitter:card" content="summary_large_image" inertia="twitter:card">
+        <meta name="twitter:site" content="{{ $twitterHandle }}" inertia="twitter:site">
+        <meta name="twitter:title" content="{{ $initialSeoTitle }}" inertia="twitter:title">
+        @if($initialSeoDescription)
+            <meta name="twitter:description" content="{{ $initialSeoDescription }}" inertia="twitter:description">
+        @endif
+        @if($initialSeoImage)
+            <meta name="twitter:image" content="{{ $initialSeoImage }}" inertia="twitter:image">
+        @endif
+    @endunless
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
 
@@ -92,14 +98,16 @@
             : [];
     @endphp
 
-    @foreach($alternateUrls as $locale => $url)
-        <link rel="alternate" hreflang="{{ $locale }}" href="{{ $url }}" inertia="alternate:{{ $locale }}">
-    @endforeach
+    @unless($hasInertiaSsrHead)
+        @foreach($alternateUrls as $locale => $url)
+            <link rel="alternate" hreflang="{{ $locale }}" href="{{ $url }}" inertia="alternate:{{ $locale }}">
+        @endforeach
 
-    @php $xDefaultLocale = config('app.fallback_locale', config('app.locale')); @endphp
-    @if(isset($alternateUrls[$xDefaultLocale]))
-        <link rel="alternate" hreflang="x-default" href="{{ $alternateUrls[$xDefaultLocale] }}" inertia="alternate:x-default">
-    @endif
+        @php $xDefaultLocale = config('app.fallback_locale', config('app.locale')); @endphp
+        @if(isset($alternateUrls[$xDefaultLocale]))
+            <link rel="alternate" hreflang="x-default" href="{{ $alternateUrls[$xDefaultLocale] }}" inertia="alternate:x-default">
+        @endif
+    @endunless
 
     <!-- Scripts -->
     @routes
