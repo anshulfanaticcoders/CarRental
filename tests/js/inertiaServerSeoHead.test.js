@@ -12,10 +12,12 @@ test('app blade renders initial SEO title and meta tags from Inertia page props 
     assert.match(appBlade, /\$initialSeoTitle\s*=\s*data_get\(\$page,\s*'props\.seo\.title'/);
     assert.match(appBlade, /\$initialSeoDescription\s*=\s*data_get\(\$page,\s*'props\.seo\.description'/);
     assert.match(appBlade, /\$initialSeoCanonical\s*=\s*data_get\(\$page,\s*'props\.seo\.canonical'/);
+    assert.match(appBlade, /\$hasInertiaSsrHead\s*=/);
+    assert.match(appBlade, /@unless\(\$hasInertiaSsrHead\)/);
     assert.match(appBlade, /<title inertia>\{\{\s*\$initialSeoTitle\s*\}\}<\/title>/);
     assert.match(appBlade, /@if\(\$initialSeoDescription\)/);
-    assert.match(appBlade, /<meta name="description" content="\{\{\s*\$initialSeoDescription\s*\}\}">/);
+    assert.match(appBlade, /<meta name="description" content="\{\{\s*\$initialSeoDescription\s*\}\}" inertia="description">/);
     assert.match(appBlade, /@if\(\$initialSeoCanonical\)/);
-    assert.match(appBlade, /<link rel="canonical" href="\{\{\s*\$initialSeoCanonical\s*\}\}">/);
-    assert.match(appBlade, /<meta property="og:title" content="\{\{\s*\$initialSeoTitle\s*\}\}">/);
+    assert.match(appBlade, /<link rel="canonical" href="\{\{\s*\$initialSeoCanonical\s*\}\}" inertia="canonical">/);
+    assert.match(appBlade, /<meta property="og:title" content="\{\{\s*\$initialSeoTitle\s*\}\}" inertia="og:title">/);
 });
