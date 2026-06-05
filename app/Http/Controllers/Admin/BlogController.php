@@ -799,7 +799,7 @@ class BlogController extends Controller
             });
         }
 
-        $blogs = $blogsQuery->latest()->paginate(9)->withQueryString();
+        $paginatedBlogs = $blogsQuery->latest()->paginate(9)->withQueryString();
 
         // Get all tags that have at least one published blog
         $tags = BlogTag::whereHas('blogs', function ($q) {
@@ -819,9 +819,11 @@ class BlogController extends Controller
         )->toArray();
 
         $blogListSchema = [];
-        if (! empty($blogs->items())) {
-            $blogListSchema = SchemaBuilder::blogList(collect($blogs->items()), 'Latest Blog Posts', $country);
+        if (! empty($paginatedBlogs->items())) {
+            $blogListSchema = SchemaBuilder::blogList(collect($paginatedBlogs->items()), 'Latest Blog Posts', $country);
         }
+
+        $blogs = $paginatedBlogs->through(fn (Blog $blog) => $this->blogListItem($blog, $locale));
 
         return Inertia::render('BlogPage', [
             'blogs' => LocaleHelper::sanitizeUtf8($blogs),
@@ -843,19 +845,25 @@ class BlogController extends Controller
         // Store the country in session for future use
         session(['country' => $country]);
 
-        $blog = \App\Models\Blog::with('translations')
-            ->whereHas('translations', function ($q) use ($slug, $locale) {
-                $q->where('slug', $slug)
-                    ->where('locale', $locale);
-            })
+        $translation = \App\Models\BlogTranslation::query()
+            ->where('slug', $slug)
+            ->where('locale', $locale)
+            ->first();
+
+        if (! $translation) {
+            return $this->redirectLegacyLocalizedBlog($locale, $country, $slug);
+        }
+
+        $blog = $translation->blog()
+            ->with(['translations', 'tags'])
             ->firstOrFail();
 
         // Check if published or admin
-        if (! $blog->is_published && ! (auth()->check() && auth()->user()->hasRole('admin'))) {
+        if (! $this->canViewBlog($blog)) {
             abort(404);
         }
 
-        $blog->load('translations');
+        $blog->loadMissing('translations');
 
         // Generate schema: Blog article + Breadcrumb
         $blogTranslation = $blog->getTranslation($locale);
@@ -872,7 +880,8 @@ class BlogController extends Controller
         $seo = app(SeoMetaResolver::class)->resolveForModel(
             $blog,
             $locale,
-            url("/{$locale}/{$country}/blog/{$slug}")
+            url("/{$locale}/{$country}/blog/{$slug}"),
+            allowCanonicalOverride: false
         )->toArray();
         // Mark as article for Open Graph — enables richer previews on FB/LinkedIn/etc.
         $seo['og_type'] = 'article';
@@ -927,11 +936,46 @@ class BlogController extends Controller
             });
         }
 
-        $recentBlogs = $query->latest()->offset(1)->take(5)->get();
+        $recentBlogs = $query->latest()->offset(1)->take(5)->get()
+            ->map(fn (Blog $blog) => $this->blogListItem($blog, App::getLocale()));
 
         \Log::info('getRecentBlogs: Found '.$recentBlogs->count().' recent blogs for country '.$country);
 
         return response()->json(LocaleHelper::sanitizeUtf8($recentBlogs));
+    }
+
+    public function redirectLegacyBlog(string $locale, string $slug)
+    {
+        $country = strtolower((string) session('country', 'us'));
+
+        return $this->redirectLegacyLocalizedBlog($locale, $country, $slug);
+    }
+
+    public function redirectRootLegacyBlog(string $slug)
+    {
+        $blog = $this->findBlogByAnySlug($slug);
+        if (! $blog || ! $this->canViewBlog($blog)) {
+            abort(404);
+        }
+
+        $locale = (string) config('app.fallback_locale', 'en');
+        $translation = $blog->translations->firstWhere('locale', $locale)
+            ?? $blog->translations->first();
+
+        if (! $translation || empty($translation->slug)) {
+            abort(404);
+        }
+
+        $country = strtolower((string) (
+            $blog->canonical_country
+            ?: ($blog->countries[0] ?? session('country', 'us'))
+        ));
+
+        return redirect()->route('blog.show', [
+            'locale' => $translation->locale,
+            'country' => $country ?: 'us',
+            'blog' => $translation->slug,
+        ], 301);
     }
 
     /**
@@ -952,6 +996,97 @@ class BlogController extends Controller
         $slug = trim($slug, '-');
 
         return $slug !== '' ? mb_strtolower($slug, 'UTF-8') : '';
+    }
+
+    private function redirectLegacyLocalizedBlog(string $locale, string $country, string $slug)
+    {
+        $blog = $this->findBlogByAnySlug($slug);
+        if (! $blog || ! $this->canViewBlog($blog)) {
+            abort(404);
+        }
+
+        $translation = $blog->translations->firstWhere('locale', $locale);
+        if (! $translation || empty($translation->slug)) {
+            abort(404);
+        }
+
+        return redirect()->route('blog.show', [
+            'locale' => $locale,
+            'country' => $country,
+            'blog' => $translation->slug,
+        ], 301);
+    }
+
+    private function findBlogByAnySlug(string $slug): ?Blog
+    {
+        $blog = Blog::query()
+            ->with(['translations', 'tags'])
+            ->where('slug', $slug)
+            ->orWhereHas('translations', fn ($query) => $query->where('slug', $slug))
+            ->first();
+
+        if ($blog) {
+            return $blog;
+        }
+
+        return $this->findBlogByLegacySeoMeta($slug);
+    }
+
+    private function findBlogByLegacySeoMeta(string $slug): ?Blog
+    {
+        $blogMorphClass = (new Blog)->getMorphClass();
+
+        $seoMeta = SeoMeta::query()
+            ->where('seoable_type', $blogMorphClass)
+            ->whereNotNull('seoable_id')
+            ->where(function ($query) use ($slug) {
+                $query->where('url_slug', 'blog/'.$slug)
+                    ->orWhere('url_slug', $slug)
+                    ->orWhere('canonical_url', 'like', '%/blog/'.$slug)
+                    ->orWhere('canonical_url', 'like', '%/blog/'.$slug.'?%');
+            })
+            ->first();
+
+        if (! $seoMeta) {
+            return null;
+        }
+
+        return Blog::query()
+            ->with(['translations', 'tags'])
+            ->whereKey($seoMeta->seoable_id)
+            ->first();
+    }
+
+    private function canViewBlog(Blog $blog): bool
+    {
+        return (bool) $blog->is_published
+            || (auth()->check() && auth()->user()->hasRole('admin'));
+    }
+
+    private function blogListItem(Blog $blog, string $locale): array
+    {
+        $translation = $blog->translations->firstWhere('locale', $locale)
+            ?? $blog->translations->firstWhere('locale', 'en')
+            ?? $blog->translations->first();
+
+        $content = (string) ($translation?->content ?? '');
+        $plainContent = trim(preg_replace('/\s+/', ' ', strip_tags($content)) ?? '');
+        $excerpt = (string) ($translation?->excerpt ?: Str::limit($plainContent, 180));
+
+        return [
+            'id' => $blog->id,
+            'title' => (string) ($translation?->title ?? ''),
+            'translated_slug' => (string) ($translation?->slug ?? $blog->slug),
+            'excerpt' => $excerpt,
+            'content' => $excerpt,
+            'reading_time' => $this->calculateReadingTime($content),
+            'image' => $blog->image,
+            'created_at' => $blog->created_at,
+            'tags' => $blog->tags->map(fn ($tag) => [
+                'name' => $tag->name,
+                'slug' => $tag->slug,
+            ])->values(),
+        ];
     }
 
     private function calculateReadingTime(string $content): int

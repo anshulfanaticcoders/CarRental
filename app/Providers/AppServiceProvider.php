@@ -6,9 +6,11 @@ use App\Http\Controllers\FrontendPageController;
 use App\Models\Blog;
 use App\Models\BlogTranslation;
 use App\Models\HeaderFooterScript;
+use App\Models\Page;
 use App\Models\PageTranslation;
 use App\Observers\BlogObserver;
 use App\Observers\BlogTranslationObserver;
+use App\Observers\PageObserver;
 use App\Observers\PageTranslationObserver;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
@@ -30,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Blog::observe(BlogObserver::class);
         BlogTranslation::observe(BlogTranslationObserver::class);
+        Page::observe(PageObserver::class);
         PageTranslation::observe(PageTranslationObserver::class);
         \App\Models\Vehicle::observe(\App\Observers\VehicleObserver::class);
 
@@ -44,7 +47,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Faq::observe($activityLogObserver);
         \App\Models\Testimonial::observe($activityLogObserver);
         \App\Models\PopularPlace::observe($activityLogObserver);
-        \App\Models\Page::observe($activityLogObserver);
+        Page::observe($activityLogObserver);
         \App\Models\VehicleCategory::observe($activityLogObserver);
         \App\Models\Plan::observe($activityLogObserver);
         \App\Models\Offer::observe($activityLogObserver);

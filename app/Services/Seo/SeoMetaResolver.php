@@ -15,7 +15,8 @@ class SeoMetaResolver
         array $routeParams,
         string $locale,
         string $canonicalUrl,
-        ?string $robots = null
+        ?string $robots = null,
+        bool $allowCanonicalOverride = true
     ): SeoData {
         $hash = $this->hashRouteParams($routeParams);
 
@@ -26,7 +27,7 @@ class SeoMetaResolver
             ->where('route_params_hash', $hash)
             ->first();
 
-        return $this->buildSeoData($resolved, $locale, $canonicalUrl, $robots);
+        return $this->buildSeoData($resolved, $locale, $canonicalUrl, $robots, $allowCanonicalOverride);
     }
 
     public function resolveForRouteWithFallbacks(
@@ -34,7 +35,8 @@ class SeoMetaResolver
         array $routeParamsCandidates,
         string $locale,
         string $canonicalUrl,
-        ?string $robots = null
+        ?string $robots = null,
+        bool $allowCanonicalOverride = true
     ): SeoData {
         foreach ($routeParamsCandidates as $candidateParams) {
             $hash = $this->hashRouteParams((array) $candidateParams);
@@ -46,18 +48,19 @@ class SeoMetaResolver
                 ->first();
 
             if ($resolved) {
-                return $this->buildSeoData($resolved, $locale, $canonicalUrl, $robots);
+                return $this->buildSeoData($resolved, $locale, $canonicalUrl, $robots, $allowCanonicalOverride);
             }
         }
 
-        return $this->buildSeoData(null, $locale, $canonicalUrl, $robots);
+        return $this->buildSeoData(null, $locale, $canonicalUrl, $robots, $allowCanonicalOverride);
     }
 
     public function resolveForModel(
         Model $model,
         string $locale,
         string $canonicalUrl,
-        ?string $robots = null
+        ?string $robots = null,
+        bool $allowCanonicalOverride = true
     ): SeoData {
         // Intentionally no caching: admin SEO changes should reflect immediately.
         $resolved = SeoMeta::query()
@@ -66,7 +69,7 @@ class SeoMetaResolver
             ->where('seoable_id', $model->getKey())
             ->first();
 
-        return $this->buildSeoData($resolved, $locale, $canonicalUrl, $robots);
+        return $this->buildSeoData($resolved, $locale, $canonicalUrl, $robots, $allowCanonicalOverride);
     }
 
     public function hashRouteParams(array $routeParams): string
@@ -76,6 +79,7 @@ class SeoMetaResolver
         if ($json === false) {
             throw new RuntimeException('Failed to encode route params for SEO hashing.');
         }
+
         return sha1($json);
     }
 
@@ -94,8 +98,13 @@ class SeoMetaResolver
         return $normalized;
     }
 
-    private function buildSeoData(?SeoMeta $seoMeta, string $locale, string $canonicalUrl, ?string $robots): SeoData
-    {
+    private function buildSeoData(
+        ?SeoMeta $seoMeta,
+        string $locale,
+        string $canonicalUrl,
+        ?string $robots,
+        bool $allowCanonicalOverride
+    ): SeoData {
         $canonicalUrl = $this->normalizeAbsoluteUrl($canonicalUrl);
 
         $title = config('seo.defaults.title', config('app.name', 'Vrooem'));
@@ -109,7 +118,7 @@ class SeoMetaResolver
             $description = $translation?->meta_description ?: $seoMeta->meta_description;
             $image = $seoMeta->seo_image_url ?: $image;
 
-            if (! empty($seoMeta->canonical_url)) {
+            if ($allowCanonicalOverride && ! empty($seoMeta->canonical_url)) {
                 $canonicalUrl = $this->normalizeAbsoluteUrl($seoMeta->canonical_url);
             }
         }
@@ -133,7 +142,7 @@ class SeoMetaResolver
             return $url;
         }
 
-        return rtrim((string) config('app.url'), '/') . '/' . ltrim($url, '/');
+        return rtrim((string) config('app.url'), '/').'/'.ltrim($url, '/');
     }
 
     private function limitLength(string $value, int $max): string

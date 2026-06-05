@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\PageTranslation;
 use App\Models\SeoRedirect;
+use Illuminate\Support\Facades\Artisan;
 
 class PageTranslationObserver
 {
@@ -25,5 +26,31 @@ class PageTranslationObserver
         $newPath = "/{$locale}/page/{$newSlug}";
 
         SeoRedirect::addRedirect($oldPath, $newPath, "Page #{$translation->page_id} slug changed");
+    }
+
+    public function saved(PageTranslation $translation): void
+    {
+        $this->regenerateSitemap();
+    }
+
+    public function deleted(PageTranslation $translation): void
+    {
+        if (! empty($translation->slug)) {
+            SeoRedirect::addGone(
+                "/{$translation->locale}/page/{$translation->slug}",
+                "Page #{$translation->page_id} translation deleted"
+            );
+        }
+
+        $this->regenerateSitemap();
+    }
+
+    private function regenerateSitemap(): void
+    {
+        try {
+            Artisan::call('sitemap:generate');
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }

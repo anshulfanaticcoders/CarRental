@@ -1,11 +1,11 @@
 <?php
 
 namespace App\Http\Controllers;
-    
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Session;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\URL;
 
 class LanguageController extends Controller
 {
@@ -17,6 +17,7 @@ class LanguageController extends Controller
 
         $locale = $request->locale;
         App::setLocale($locale);
+        URL::defaults(['locale' => $locale]);
         Session::put('locale', $locale);
         $preferredLocaleCookie = cookie()->forever('preferred_locale', $locale);
 
@@ -27,6 +28,7 @@ class LanguageController extends Controller
 
         $previousUrl = url()->previous();
         $previousPath = parse_url($previousUrl, PHP_URL_PATH);
+        $previousQuery = parse_url($previousUrl, PHP_URL_QUERY);
 
         $segments = explode('/', ltrim($previousPath, '/'));
         if (in_array($segments[0], ['en', 'fr', 'nl', 'es', 'ar'])) {
@@ -35,6 +37,11 @@ class LanguageController extends Controller
             array_unshift($segments, $locale);
         }
 
-        return redirect(implode('/', $segments))->cookie($preferredLocaleCookie);
+        $target = implode('/', $segments);
+        if ($previousQuery) {
+            $target .= '?'.$previousQuery;
+        }
+
+        return redirect($target)->cookie($preferredLocaleCookie);
     }
 }

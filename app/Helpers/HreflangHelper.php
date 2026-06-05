@@ -3,9 +3,9 @@
 namespace App\Helpers;
 
 use App\Models\BlogTranslation;
+use App\Models\Page;
 use App\Models\PageTranslation;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Route;
 
 class HreflangHelper
 {
@@ -43,11 +43,11 @@ class HreflangHelper
         }
 
         if ($routeName === 'contact-us') {
-            return route('contact-us', ['locale' => $targetLocale]);
+            return self::buildCustomPageAlternate('contact-us', $targetLocale);
         }
 
-        if ($routeName === 'affiliate.business.register') {
-            return route('affiliate.business.register', ['locale' => $targetLocale]);
+        if ($routeName === 'affiliate.register' || $routeName === 'affiliate.business.register') {
+            return route('affiliate.register', ['locale' => $targetLocale]);
         }
 
         if ($routeName === 'blog') {
@@ -94,9 +94,18 @@ class HreflangHelper
             return route('pages.show', ['locale' => $targetLocale, 'slug' => $alt->slug]);
         }
 
+        if ($routeName === 'pages.custom') {
+            $customSlug = (string) ($params['customSlug'] ?? '');
+
+            return self::buildCustomPageAlternate($customSlug, $targetLocale);
+        }
+
         if ($routeName === 'blog.show') {
             $country = strtolower((string) ($params['country'] ?? 'us'));
-            $slug = (string) ($params['slug'] ?? ($params['blog'] ?? ''));
+            $blogParam = $params['slug'] ?? ($params['blog'] ?? '');
+            $slug = is_object($blogParam) && isset($blogParam->slug)
+                ? (string) $blogParam->slug
+                : (string) $blogParam;
             if ($slug === '') {
                 return null;
             }
@@ -140,5 +149,32 @@ class HreflangHelper
         }
 
         return null;
+    }
+
+    private static function buildCustomPageAlternate(string $customSlug, string $targetLocale): ?string
+    {
+        if ($customSlug === '') {
+            return null;
+        }
+
+        $page = Page::query()
+            ->where('custom_slug', $customSlug)
+            ->where('status', 'published')
+            ->first();
+
+        if (! $page) {
+            return null;
+        }
+
+        $translation = PageTranslation::query()
+            ->where('page_id', $page->id)
+            ->where('locale', $targetLocale)
+            ->first();
+
+        if (! $translation || ! $translation->slug) {
+            return null;
+        }
+
+        return route('pages.show', ['locale' => $targetLocale, 'slug' => $translation->slug]);
     }
 }

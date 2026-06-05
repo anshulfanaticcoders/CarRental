@@ -42,7 +42,7 @@ class PublicSitemapBuilder
             if ($host !== '' && str_contains($host, $needle)) {
                 throw new RuntimeException(
                     "Refusing to build sitemap with local base URL ({$resolvedBaseUrl}). "
-                    . "Set SITEMAP_BASE_URL=https://your-production-domain.com (or APP_URL) before running."
+                    .'Set SITEMAP_BASE_URL=https://your-production-domain.com (or APP_URL) before running.'
                 );
             }
         }
@@ -125,10 +125,7 @@ class PublicSitemapBuilder
             "{$locale}",
             "{$locale}/destinations",
             "{$locale}/faq",
-            "{$locale}/business/register",
             "{$locale}/affiliate/register",
-            "{$locale}/login",
-            "{$locale}/register",
         ];
 
         foreach ($staticPaths as $path) {

@@ -47,7 +47,11 @@ class SitemapUrlPolicy
             return false;
         }
 
-        if (preg_match('#/affiliate/#', $path) && !preg_match('#/affiliate/register$#', $path)) {
+        if (preg_match('#^/[a-z]{2}/(login|register)$#', $path)) {
+            return false;
+        }
+
+        if (preg_match('#/affiliate/#', $path) && ! preg_match('#/affiliate/register$#', $path)) {
             return false;
         }
 

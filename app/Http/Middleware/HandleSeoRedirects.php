@@ -11,12 +11,12 @@ class HandleSeoRedirects
 {
     public function handle(Request $request, Closure $next): Response
     {
-        // Only handle GET requests (redirects don't apply to POST/PUT/DELETE)
-        if (! $request->isMethod('GET')) {
+        // Only handle safe page discovery requests (redirects don't apply to POST/PUT/DELETE)
+        if (! $request->isMethod('GET') && ! $request->isMethod('HEAD')) {
             return $next($request);
         }
 
-        $path = '/' . ltrim($request->path(), '/');
+        $path = '/'.ltrim($request->path(), '/');
 
         // Permanently removed URL patterns — return 410 Gone
         // ~1,000 old vehicle pages like /{locale}/vehicle/{id} indexed in Google

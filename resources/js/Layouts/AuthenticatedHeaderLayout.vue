@@ -7,6 +7,7 @@ import { Link, usePage, router } from "@inertiajs/vue3";
 import axios from "axios";
 import { useCurrency } from '@/composables/useCurrency';
 import { loginHrefForPage } from '@/utils/authReturnUrl';
+import { useLocalizedRoutes } from '@/composables/useLocalizedRoutes';
 // import { hideTawk, showTawk } from '@/lib/tawk';
 import { setScrollLock } from '@/lib/scrollLock';
 import bellIcon from '../../assets/bell.svg'
@@ -21,7 +22,6 @@ import FloatingSocialIcons from '@/Components/FloatingSocialIcons.vue';
 
 // Get page properties
 const page = usePage();
-const { url, props } = page;
 const { selectedCurrency, supportedCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
 const showingNavigationDropdown = ref(false);
 const showingNotificationDropdown = ref(false);
@@ -216,15 +216,21 @@ const handleNotificationClick = async (notification) => {
 
 // Computed properties
 const vendorStatus = computed(() => page.props.vendorStatus);
-const currentLocale = computed(() => page.props.locale || 'en');
+const {
+  currentLocale,
+  pageHref,
+  welcomeHref,
+  blogHref,
+  faqHref,
+  affiliateRegisterHref,
+  resolveLanguageTargetUrl,
+} = useLocalizedRoutes();
 const isAuthenticated = computed(() => !!page.props.auth?.user);
-const loginHref = computed(() => loginHrefForPage(props.locale || currentLocale.value, page.url));
+const loginHref = computed(() => loginHrefForPage(currentLocale.value, page.url));
 const isVendor = computed(() => page.props.auth?.user?.role === 'vendor');
 const isCustomer = computed(() => page.props.auth?.user?.role === 'customer');
 const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
 const authUser = computed(() => page.props.auth?.user || null);
-
-const pages = computed(() => page.props.pages);
 
 // Language switcher
 const availableLocales = {
@@ -233,45 +239,6 @@ const availableLocales = {
   nl: { name: 'Nl', flag: flagNl },
   es: { name: 'Es', flag: flagEs },
   ar: { name: 'Ar', flag: flagAr },
-};
-
-const resolveLanguageTargetUrl = (newLocale) => {
-  const currentUrl = new URL(window.location.href);
-  const pathParts = currentUrl.pathname.split('/');
-
-  let targetUrl = null;
-
-  // Handle page translations
-  if (pathParts.length > 2 && pathParts[2] === 'page') {
-    const currentSlug = pathParts[3];
-    const pagesData = page.props.pages;
-    const currentPage = Object.values(pagesData).find(p => p.translations.some(t => t.slug === currentSlug));
-    if (currentPage) {
-      const t = currentPage.translations.find(t => t.locale === newLocale);
-      if (t) targetUrl = route('pages.show', { locale: newLocale, slug: t.slug });
-    }
-  }
-
-  // Handle blog post translations
-  if (!targetUrl && pathParts.length > 3 && pathParts[3] === 'blog' && page.props.blog) {
-    const t = page.props.blog.translations.find(t => t.locale === newLocale);
-    targetUrl = t?.slug
-      ? route('blog.show', { locale: newLocale, country: page.props.country, blog: t.slug })
-      : route('blog', { locale: newLocale, country: page.props.country });
-  }
-
-  // Handle contact page
-  if (!targetUrl && page.props.contactPage) {
-    targetUrl = `/${newLocale}/contact-us`;
-  }
-
-  // Fallback: swap locale in current path
-  if (!targetUrl) {
-    pathParts[1] = newLocale;
-    targetUrl = pathParts.join('/') + currentUrl.search;
-  }
-
-  return targetUrl;
 };
 
 const changeLanguage = async (newLocale) => {
@@ -288,33 +255,6 @@ const changeLanguage = async (newLocale) => {
   }
 
   router.visit(targetUrl);
-};
-
-const getTranslatedSlug = (pageSlug) => {
-  let targetPage = null;
-  const defaultLocale = 'en';
-
-  if (pages.value) {
-    for (const key in pages.value) {
-      const pageItem = pages.value[key];
-      if (pageItem && pageItem.translations && Array.isArray(pageItem.translations)) {
-        const defaultTranslation = pageItem.translations.find(
-          (t) => t.locale === defaultLocale && t.slug === pageSlug
-        );
-        if (defaultTranslation) {
-          targetPage = pageItem;
-          break;
-        }
-      }
-    }
-  }
-
-  if (!targetPage || !targetPage.translations || !Array.isArray(targetPage.translations)) {
-    return pageSlug;
-  }
-
-  const translation = targetPage.translations.find((t) => t.locale === currentLocale.value);
-  return translation ? translation.slug : pageSlug;
 };
 
 const middleNavItems = [
@@ -392,7 +332,7 @@ const toggleMobileNav = () => {
 };
 
 // Watch for route changes to close mobile menu
-watch(() => url.value, () => {
+watch(() => page.url, () => {
   showingNavigationDropdown.value = false;
   showingAccountDropdown.value = false;
 });
@@ -413,7 +353,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
     <div class="full-w-container mx-auto">
       <div class="hdr-inner">
         <!-- Logo -->
-        <Link :href="route('welcome', { locale: page.props.locale })" class="hdr-logo">
+        <Link :href="welcomeHref()" class="hdr-logo">
           <ApplicationLogo class="w-full h-auto" :logo-color="heroTransparent ? '#ffffff' : '#153B4F'" />
         </Link>
 
@@ -488,11 +428,11 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
           <div v-if="isAuthenticated" ref="desktopDropdownRef" class="hdr-user-wrap hidden lg:inline-flex">
             <button type="button" class="hdr-avatar" @click="showingDesktopDropdown = !showingDesktopDropdown">{{ userInitials }}</button>
             <div v-if="showingDesktopDropdown" class="hdr-user-menu">
-              <Link v-if="!isAdmin" :href="route('profile.edit', { locale: props.locale })" class="hdr-user-item" @click="showingDesktopDropdown = false">
+              <Link v-if="!isAdmin" :href="route('profile.edit', { locale: currentLocale })" class="hdr-user-item" @click="showingDesktopDropdown = false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 Profile
               </Link>
-              <Link :href="route('logout', { locale: props.locale })" method="post" as="button" class="hdr-user-item" @click="showingDesktopDropdown = false">
+              <Link :href="route('logout', { locale: currentLocale })" method="post" as="button" class="hdr-user-item" @click="showingDesktopDropdown = false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 Log Out
               </Link>
@@ -529,11 +469,11 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
               <svg class="oc-chevron" :class="{ 'is-open': showingAccountDropdown }" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15l6-6 6 6" /></svg>
             </button>
             <div v-if="showingAccountDropdown" class="oc-account-menu">
-              <Link v-if="!isAdmin" :href="route('profile.edit', { locale: props.locale })" class="oc-menu-item">Profile</Link>
-              <Link :href="route('logout', { locale: props.locale })" method="post" as="button" class="oc-menu-item">Log Out</Link>
+              <Link v-if="!isAdmin" :href="route('profile.edit', { locale: currentLocale })" class="oc-menu-item">Profile</Link>
+              <Link :href="route('logout', { locale: currentLocale })" method="post" as="button" class="oc-menu-item">Log Out</Link>
             </div>
           </div>
-          <Link v-else :href="route('welcome', { locale: page.props.locale })" class="w-28">
+          <Link v-else :href="welcomeHref()" class="w-28">
             <ApplicationLogo class="w-full h-auto" />
           </Link>
           <button type="button" class="oc-close" @click="showingNavigationDropdown = false">
@@ -547,14 +487,14 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
           <div class="oc-section">
             <div class="oc-label">Account</div>
             <Link v-if="isAdmin" :href="route('admin.dashboard')" class="oc-item">Admin Dashboard</Link>
-            <Link v-if="isVendor" :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: props.locale }) : route('vendor.status', { locale: props.locale })" class="oc-item">
+            <Link v-if="isVendor" :href="vendorStatus === 'approved' ? route('vehicles.create', { locale: currentLocale }) : route('vendor.status', { locale: currentLocale })" class="oc-item">
               <span v-if="vendorStatus === 'approved'">Create Listing</span>
               <span v-else>Complete Verification</span>
             </Link>
-            <Link v-if="isCustomer" :href="route('vendor.register', { locale: props.locale })" class="oc-item">Register as Vendor</Link>
+            <Link v-if="isCustomer" :href="route('vendor.register', { locale: currentLocale })" class="oc-item">Register as Vendor</Link>
             <div v-if="!isAuthenticated" class="oc-auth-btns">
               <Link :href="loginHref" class="oc-btn-login">Log in</Link>
-              <Link :href="route('register', { locale: props.locale })" class="oc-btn-signup">Create Account</Link>
+              <Link :href="route('register', { locale: currentLocale })" class="oc-btn-signup">Create Account</Link>
             </div>
           </div>
 
@@ -590,12 +530,12 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
           <!-- Pages Section -->
           <div class="oc-section">
             <div class="oc-label">Explore</div>
-            <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })" class="oc-item">About Us</Link>
-            <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })" class="oc-item">Blogs</Link>
-            <Link :href="route('faq.show', { locale: page.props.locale })" class="oc-item">FAQ</Link>
+            <Link :href="pageHref('about-us')" class="oc-item">About Us</Link>
+            <Link :href="blogHref()" class="oc-item">Blogs</Link>
+            <Link :href="faqHref()" class="oc-item">FAQ</Link>
             <a href="https://vrooem.esimqr.link/" target="_blank" rel="noopener noreferrer" class="oc-item">eSIM</a>
-            <Link :href="`/${page.props.locale}/contact-us`" class="oc-item">Contact Us</Link>
-            <Link :href="route('affiliate.register', { locale: page.props.locale })" class="oc-item">Business</Link>
+            <Link :href="pageHref('contact-us')" class="oc-item">Contact Us</Link>
+            <Link :href="affiliateRegisterHref()" class="oc-item">Business</Link>
           </div>
         </div>
 

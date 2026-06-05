@@ -3,8 +3,8 @@ import ApplicationLogo from "./ApplicationLogo.vue";
 import { Link } from "@inertiajs/vue3";
 import paypalLogos from "../../assets/paymentIcons.svg";
 import axios from 'axios';
-import { onMounted, ref, computed } from "vue";
-import { usePage } from '@inertiajs/vue3';
+import { ref, watch } from "vue";
+import { useLocalizedRoutes } from '@/composables/useLocalizedRoutes';
 import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, Linkedin } from 'lucide-vue-next';
 
 const newsletterEmail = ref('');
@@ -12,53 +12,14 @@ const newsletterError = ref('');
 const newsletterSuccess = ref('');
 const newsletterLoading = ref(false);
 
-const page = usePage();
-const pages = computed(() => page.props.pages);
-
-const props = defineProps({
-    locale: {
-        type: String,
-        default: 'en',
-    },
-    country: {
-        type: String,
-        default: 'us',
-    },
-});
-
-
-const getTranslatedSlug = (pageSlug) => {
-    let targetPage = null;
-    const currentLocale = page.props.locale || 'en';
-    const defaultLocale = 'en'; // Assuming 'en' is the default/main locale for the base slug
-
-    // Iterate through the values of the pages object to find the target page
-    // The keys of pages.value are translated slugs, but the input pageSlug is the main slug (e.g., 'about-us')
-    // So, we need to find the page whose 'en' translation slug matches the input pageSlug
-    if (pages.value) {
-        for (const key in pages.value) {
-            const pageItem = pages.value[key];
-            if (pageItem && pageItem.translations && Array.isArray(pageItem.translations)) {
-                const defaultTranslation = pageItem.translations.find(t => t.locale === defaultLocale && t.slug === pageSlug);
-                if (defaultTranslation) {
-                    targetPage = pageItem;
-                    break;
-                }
-            }
-        }
-    }
-
-    // If targetPage is not found or translations are not available, return the original slug
-    if (!targetPage || !targetPage.translations || !Array.isArray(targetPage.translations)) {
-        return pageSlug;
-    }
-
-    // Find the translation for the current locale
-    const translation = targetPage.translations.find(t => t.locale === currentLocale);
-
-    // Return the translated slug if found, otherwise return the original slug
-    return translation ? translation.slug : pageSlug;
-};
+const {
+    currentLocale,
+    pageHref,
+    welcomeHref,
+    blogHref,
+    faqHref,
+    affiliateRegisterHref,
+} = useLocalizedRoutes();
 
 // Fetch footer places and categories data
 const footerPlaces = ref([]);
@@ -68,24 +29,15 @@ const footerContactInfo = ref({
     address: ''
 });
 
-const navigateToSearch = (place) => {
-    const searchUrl = updateSearchUrl(place);
-
-    if (searchUrl) {
-        window.location.href = `/${page.props.locale}${searchUrl}`;
-        return;
-    }
-
-    window.location.href = `/${page.props.locale}`;
-};
-
 const updateSearchUrl = (place) => {
     const searchUrl = place?.search_url || null;
 
-    if (searchUrl) {
-        sessionStorage.setItem('searchurl', searchUrl);
-    } else {
-        sessionStorage.removeItem('searchurl');
+    if (typeof window !== 'undefined') {
+        if (searchUrl) {
+            sessionStorage.setItem('searchurl', searchUrl);
+        } else {
+            sessionStorage.removeItem('searchurl');
+        }
     }
 
     return searchUrl;
@@ -93,7 +45,11 @@ const updateSearchUrl = (place) => {
 
 const getPlaceHref = (place) => {
     const searchUrl = place?.search_url || null;
-    return searchUrl ? `/${page.props.locale}${searchUrl}` : `/${page.props.locale}`;
+    return searchUrl ? `/${currentLocale.value}${searchUrl}` : welcomeHref();
+};
+
+const prepareSearchNavigation = (place) => {
+    updateSearchUrl(place);
 };
 
 const submitNewsletter = async () => {
@@ -112,7 +68,7 @@ const submitNewsletter = async () => {
         await axios.post('/api/newsletter/subscriptions', {
             email: newsletterEmail.value,
             source: 'footer',
-            locale: page.props.locale,
+            locale: currentLocale.value,
         });
         newsletterSuccess.value = 'Check your inbox to confirm your subscription.';
         newsletterEmail.value = '';
@@ -129,10 +85,10 @@ const submitNewsletter = async () => {
         newsletterLoading.value = false;
     }
 };
-onMounted(async () => {
+const loadFooterData = async () => {
     try {
         const [placesResponse, contactInfoResponse] = await Promise.all([
-            axios.get(`/${page.props.locale}/api/footer-places`),
+            axios.get(`/${currentLocale.value}/api/footer-places`),
             axios.get('/api/footer-contact-info')
         ]);
 
@@ -141,7 +97,9 @@ onMounted(async () => {
     } catch (error) {
         console.error('Failed to fetch footer data:', error);
     }
-});
+};
+
+watch(currentLocale, loadFooterData, { immediate: true });
 </script>
 
 <template>
@@ -150,7 +108,7 @@ onMounted(async () => {
             <!-- Top: Brand + Links -->
             <div class="footer-top">
                 <div class="footer-brand">
-                    <Link href="/">
+                    <Link :href="welcomeHref()">
                         <ApplicationLogo logoColor="#FFFFFF" />
                     </Link>
                     <p class="footer-brand-desc">Compare and book rental cars across Europe's best providers. Best prices guaranteed, free cancellation on most bookings.</p>
@@ -173,18 +131,18 @@ onMounted(async () => {
                     <div class="footer-col">
                         <div class="footer-col-title">Company</div>
                         <ul>
-                            <li><Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })" class="footer-link">About Us</Link></li>
-                            <li><Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })" class="footer-link">Blogs</Link></li>
-                            <li><Link :href="route('faq.show', { locale: page.props.locale })" class="footer-link">FAQ</Link></li>
-                            <li><Link :href="`/${page.props.locale}/contact-us`" class="footer-link">Contact Us</Link></li>
+                            <li><Link :href="pageHref('about-us')" class="footer-link">About Us</Link></li>
+                            <li><Link :href="blogHref()" class="footer-link">Blogs</Link></li>
+                            <li><Link :href="faqHref()" class="footer-link">FAQ</Link></li>
+                            <li><Link :href="pageHref('contact-us')" class="footer-link">Contact Us</Link></li>
                         </ul>
                     </div>
                     <div class="footer-col">
                         <div class="footer-col-title">Information</div>
                         <ul>
-                            <li><Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('privacy-policy') })" class="footer-link">Privacy Policy</Link></li>
-                            <li><Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('terms-and-conditions') })" class="footer-link">Terms & Conditions</Link></li>
-                            <li><Link :href="route('affiliate.register', { locale: $page.props.locale })" class="footer-link">Business</Link></li>
+                            <li><Link :href="pageHref('privacy-policy')" class="footer-link">Privacy Policy</Link></li>
+                            <li><Link :href="pageHref('terms-and-conditions')" class="footer-link">Terms & Conditions</Link></li>
+                            <li><Link :href="affiliateRegisterHref()" class="footer-link">Business</Link></li>
                         </ul>
                     </div>
                     <div class="footer-col">
@@ -192,10 +150,10 @@ onMounted(async () => {
                         <ul>
                             <li v-for="place in footerPlaces" :key="place.id">
                                 <a :href="getPlaceHref(place)"
-                                    @click.prevent="navigateToSearch(place)" class="footer-link">{{ place.place_name }}</a>
+                                    @click="prepareSearchNavigation(place)" class="footer-link">{{ place.place_name }}</a>
                             </li>
                             <li v-if="footerPlaces.length === 0">
-                                <Link :href="route('welcome', { locale: page.props.locale })" class="footer-link">No locations available</Link>
+                                <Link :href="welcomeHref()" class="footer-link">No locations available</Link>
                             </li>
                         </ul>
                     </div>

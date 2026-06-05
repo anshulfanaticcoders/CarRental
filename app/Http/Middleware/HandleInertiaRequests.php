@@ -2,14 +2,15 @@
 
 namespace App\Http\Middleware;
 
+use App\Helpers\HreflangHelper;
+use App\Models\UserDocument;
 use App\Models\VendorProfile;
 use App\Services\OfferService;
+use App\Support\CurrencyRegistry;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Middleware;
-use App\Models\UserDocument;
-use App\Support\CurrencyRegistry;
 use Tighten\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
@@ -29,7 +30,7 @@ class HandleInertiaRequests extends Middleware
     {
         $route = $request->route();
 
-        if (!$route) {
+        if (! $route) {
             return false;
         }
 
@@ -69,7 +70,7 @@ class HandleInertiaRequests extends Middleware
     /**
      * Determine the current asset version.
      */
-    public function version(Request $request): string|null
+    public function version(Request $request): ?string
     {
         return parent::version($request);
     }
@@ -92,7 +93,7 @@ class HandleInertiaRequests extends Middleware
                     'driving_license_back',
                     'passport_front',
                     'passport_back',
-                    'verification_status'
+                    'verification_status',
                 ]);
 
             // Prepare document data
@@ -115,14 +116,17 @@ class HandleInertiaRequests extends Middleware
                     $user = auth()->user();
                     if ($user) {
                         $vendorProfile = VendorProfile::where('user_id', $user->id)->first();
+
                         return $vendorProfile ? $vendorProfile->status : 'pending';
                     }
+
                     return 'pending';
                 },
                 'affiliateVerificationStatus' => function () use ($user) {
                     if ($user->role === 'affiliate' && $user->affiliateBusiness) {
                         return $user->affiliateBusiness->verification_status;
                     }
+
                     return null;
                 },
             ]);
@@ -192,7 +196,7 @@ class HandleInertiaRequests extends Middleware
             $resolved = app(OfferService::class)->resolveAppliedOffers(['placement' => 'search']);
             $monetary = $resolved['monetary_offer'];
 
-            if (!$monetary) {
+            if (! $monetary) {
                 return null;
             }
 
@@ -209,7 +213,7 @@ class HandleInertiaRequests extends Middleware
             $resolved = app(OfferService::class)->resolveAppliedOffers(['placement' => 'search']);
             $monetary = $resolved['monetary_offer'];
 
-            if (!$monetary) {
+            if (! $monetary) {
                 return null;
             }
 
@@ -231,14 +235,56 @@ class HandleInertiaRequests extends Middleware
             ];
         };
 
-        if ($this->shouldUseSsr($request)) {
-            $sharedData['ziggy'] = function () use ($request) {
-                return array_merge((new Ziggy())->toArray(), [
-                    'location' => $request->url(),
-                ]);
-            };
-        }
+        $sharedData['ziggy'] = function () use ($request) {
+            return array_merge((new Ziggy)->toArray(), [
+                'location' => $request->fullUrl(),
+            ]);
+        };
+
+        $sharedData['alternate_urls'] = function () use ($request) {
+            return $this->alternateUrls($request);
+        };
 
         return $sharedData;
+    }
+
+    /**
+     * @return array<int, array{hreflang: string, href: string}>
+     */
+    private function alternateUrls(Request $request): array
+    {
+        $route = $request->route();
+
+        if (! $route) {
+            return [];
+        }
+
+        $routeName = (string) $route->getName();
+        if ($routeName === '' || Str::startsWith($routeName, 'admin.')) {
+            return [];
+        }
+
+        $currentLocale = (string) ($request->route('locale') ?: app()->getLocale());
+        $params = $route->parameters();
+        unset($params['locale']);
+
+        $alternates = HreflangHelper::getAlternateUrls($routeName, $params, $currentLocale);
+
+        if (empty($alternates)) {
+            return [];
+        }
+
+        $fallbackLocale = (string) config('app.fallback_locale', 'en');
+        if (isset($alternates[$fallbackLocale])) {
+            $alternates['x-default'] = $alternates[$fallbackLocale];
+        }
+
+        return collect($alternates)
+            ->map(fn (string $href, string $hreflang) => [
+                'hreflang' => $hreflang,
+                'href' => $href,
+            ])
+            ->values()
+            ->all();
     }
 }

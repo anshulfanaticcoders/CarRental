@@ -14,6 +14,50 @@ import TranslationPlugin from '../js/plugins/translation';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Vrooem';
 
+const SUPPORTED_LOCALES = new Set(['en', 'fr', 'nl', 'es', 'ar']);
+
+const localeFromPage = (page) => {
+    const propLocale = page?.props?.locale;
+
+    if (SUPPORTED_LOCALES.has(propLocale)) {
+        return propLocale;
+    }
+
+    const path = page?.url || (typeof window !== 'undefined' ? window.location.pathname : '/');
+    const firstSegment = String(path)
+        .split('?')[0]
+        .split('/')
+        .filter(Boolean)[0];
+
+    return SUPPORTED_LOCALES.has(firstSegment) ? firstSegment : 'en';
+};
+
+const absolutePageUrl = (page) => {
+    if (typeof window === 'undefined') {
+        return page?.props?.ziggy?.location || page?.url || '/';
+    }
+
+    return new URL(page?.url || window.location.pathname, window.location.origin).href;
+};
+
+const syncLocalizedRuntimeState = (page, ziggyConfig, rootEl = null) => {
+    const locale = localeFromPage(page);
+
+    if (typeof document !== 'undefined') {
+        document.documentElement.lang = locale;
+        document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+    }
+
+    if (ziggyConfig) {
+        Object.assign(ziggyConfig, page?.props?.ziggy || {});
+        ziggyConfig.location = absolutePageUrl(page);
+    }
+
+    if (rootEl && page) {
+        rootEl.dataset.page = JSON.stringify(page);
+    }
+};
+
 createInertiaApp({
     // Title resolution rules:
     //  - Empty / fallback title → use brand alone (avoids "Laravel - Laravel" or
@@ -29,6 +73,13 @@ createInertiaApp({
     },
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
+        const ziggyConfig = {
+            ...(props.initialPage?.props?.ziggy || globalThis.Ziggy || {}),
+            location: absolutePageUrl(props.initialPage),
+        };
+
+        syncLocalizedRuntimeState(props.initialPage, ziggyConfig, el);
+
         const vueApp = createApp({
             render: () => h(App, props),
         });
@@ -59,7 +110,7 @@ createInertiaApp({
 
         vueApp.use(plugin)
             .use(Toast)
-            .use(ZiggyVue)
+            .use(ZiggyVue, ziggyConfig)
             .use(TranslationPlugin);
 
         // Mount the main App component
@@ -80,6 +131,9 @@ createInertiaApp({
         // // Hide early during transitions; show again only on Welcome.
         // router.on('start', () => hideTawk());
         // router.on('navigate', (event) => updateTawkForPage(event?.detail?.page));
+        router.on('navigate', (event) => {
+            syncLocalizedRuntimeState(event?.detail?.page, ziggyConfig, el);
+        });
 
         return vueApp;
     },

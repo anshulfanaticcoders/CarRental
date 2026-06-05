@@ -365,6 +365,10 @@ Route::get('/newsletter/unsubscribe/{subscription}', [NewsletterTrackingControll
     ->middleware('signed')
     ->name('newsletter.unsubscribe');
 
+Route::get('/blog/{slug}', [BlogController::class, 'redirectRootLegacyBlog'])
+    ->where('slug', '[^/]+')
+    ->name('blog.legacy-root');
+
 // Locale-prefixed routes (for customer and vendor)
 Route::group([
     'prefix' => '{locale}',
@@ -434,11 +438,6 @@ Route::group([
     Route::post('/validate-email', [EmailValidationController::class, 'validateEmail'])->middleware('throttle:form-validation')->name('validate-email');
     Route::post('/validate-contact', [EmailValidationController::class, 'validateContact'])->middleware('throttle:form-validation')->name('validate-contact');
 
-    // Dynamic page custom slugs (managed via admin Pages > custom_slug field)
-    Route::get('/{customSlug}', [\App\Http\Controllers\Admin\PageController::class, 'showByCustomSlug'])
-        ->name('pages.custom')
-        ->where('customSlug', 'contact-us|about-us|privacy-policy|terms-and-conditions');
-
     Route::post('/contact', [ContactFormController::class, 'store'])->name('contact.submit')->middleware('throttle:5,1');
     Route::get('/vendor/{vendorProfileId}/reviews', [ReviewController::class, 'vendorAllReviews'])->name('vendor.reviews.all');
 
@@ -468,6 +467,9 @@ Route::group([
     // Public QR Code Tracking Routes (with locale prefix)
     Route::get('/affiliate/track/{trackingData}', [AffiliateQrCodeController::class, 'track'])->name('affiliate.qr.track');
     Route::get('/affiliate/qr/{shortCode}', [AffiliateQrCodeController::class, 'qrLanding'])->name('affiliate.qr.landing');
+    Route::get('/business/register', function (string $locale) {
+        return redirect()->route('affiliate.register', ['locale' => $locale], 301);
+    })->name('affiliate.business.register.redirect');
 
     // Public affiliate registration
     Route::get('/affiliate/register', [\App\Http\Controllers\Affiliate\AffiliateRegisteredController::class, 'create'])->name('affiliate.register');
@@ -626,11 +628,9 @@ Route::group([
         return redirect("/{$locale}/{$country}/blog");
     });
 
-    Route::get('/blog/{slug}', function ($locale, $slug) {
-        $country = session('country', 'us');
-
-        return redirect("/{$locale}/{$country}/blog/{$slug}");
-    });
+    Route::get('/blog/{slug}', [BlogController::class, 'redirectLegacyBlog'])
+        ->where('slug', '[^/]+')
+        ->name('blog.legacy-localized');
 
     Route::middleware(['redirect.country'])->group(function () {
 
@@ -820,6 +820,12 @@ Route::group([
             'messages' => $messages,
         ]);
     });
+
+    // Dynamic page custom slugs (managed via admin Pages > custom_slug field).
+    // Keep this last in the locale group so concrete public routes win first.
+    Route::get('/{customSlug}', [PageController::class, 'showByCustomSlug'])
+        ->name('pages.custom')
+        ->where('customSlug', '[^/]+');
 }); // End of locale group
 
 // Simple test route to verify routes are working

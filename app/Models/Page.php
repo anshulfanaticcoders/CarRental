@@ -63,20 +63,26 @@ class Page extends Model
     {
         $locale = app()->getLocale();
         $translation = $this->translations()->where('locale', $locale)->first();
-        return $translation ? $translation->title : $this->translations()->first()->title;
+        $fallback = $this->translations()->first();
+
+        return $translation?->title ?? $fallback?->title;
     }
 
     public function getContentAttribute()
     {
         $locale = app()->getLocale();
         $translation = $this->translations()->where('locale', $locale)->first();
-        return $translation ? $translation->content : $this->translations()->first()->content;
+        $fallback = $this->translations()->first();
+
+        return $translation?->content ?? $fallback?->content;
     }
 
     public function getSlugAttribute()
     {
         $locale = app()->getLocale();
         $translation = $this->translations()->where('locale', $locale)->first();
-        return $translation ? $translation->slug : $this->translations()->first()->slug;
+        $fallback = $this->translations()->first();
+
+        return $translation?->slug ?? $fallback?->slug;
     }
 }

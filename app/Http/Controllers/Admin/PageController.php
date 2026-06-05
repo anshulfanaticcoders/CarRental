@@ -7,10 +7,10 @@ use App\Models\Page;
 use App\Models\SeoMeta; // Added for SEO Meta
 use App\Services\Seo\SeoMetaResolver;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\App; // Added for locale access
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str; // Added for locale access
+use Inertia\Inertia;
 
 class PageController extends Controller
 {
@@ -60,20 +60,20 @@ class PageController extends Controller
         $available_locales = ['en', 'fr', 'nl', 'es', 'ar'];
         $validationRules = [
             'translations' => 'required|array',
-            'template' => 'required|string|in:' . implode(',', array_keys(config('page-templates'))),
+            'template' => 'required|string|in:'.implode(',', array_keys(config('page-templates'))),
             'status' => 'required|in:published,draft',
             'custom_slug' => 'nullable|string|max:255|unique:pages,custom_slug',
             // SEO Meta Validation Rules
-            'seo_title'       => 'nullable|string|max:60',
-            'meta_description'=> 'nullable|string|max:160',
-            'keywords'        => 'nullable|string|max:255',
-            'canonical_url'   => 'nullable|url|max:255',
-            'seo_image_url'   => 'nullable|url|max:255',
+            'seo_title' => 'nullable|string|max:60',
+            'meta_description' => 'nullable|string|max:160',
+            'keywords' => 'nullable|string|max:255',
+            'canonical_url' => 'nullable|url|max:255',
+            'seo_image_url' => 'nullable|url|max:255',
         ];
 
         // Content is required only for templates without sections
         $templateKey = $request->input('template', 'default');
-        $hasSections = !empty(config("page-templates.{$templateKey}.sections"));
+        $hasSections = ! empty(config("page-templates.{$templateKey}.sections"));
 
         foreach ($available_locales as $locale) {
             $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
@@ -88,7 +88,7 @@ class PageController extends Controller
         $mainSlug = Str::slug($slugTitle);
         $existingPage = Page::where('slug', $mainSlug)->first();
         if ($existingPage) {
-            $mainSlug = $mainSlug . '-' . uniqid();
+            $mainSlug = $mainSlug.'-'.uniqid();
         }
 
         $page = Page::create([
@@ -99,8 +99,8 @@ class PageController extends Controller
         ]);
 
         foreach ($translationsData as $locale => $data) {
-            if (in_array($locale, $available_locales) && !empty($data['title'])) {
-                 $page->translations()->create([
+            if (in_array($locale, $available_locales) && ! empty($data['title'])) {
+                $page->translations()->create([
                     'locale' => $locale,
                     'title' => $data['title'],
                     'slug' => Str::slug($data['slug']),
@@ -112,7 +112,7 @@ class PageController extends Controller
         // Save meta fields based on template configuration
         $metaData = $request->input('meta', []);
         $templateConfig = config("page-templates.{$request->input('template', 'default')}");
-        if ($templateConfig && !empty($templateConfig['meta_fields'])) {
+        if ($templateConfig && ! empty($templateConfig['meta_fields'])) {
             foreach ($templateConfig['meta_fields'] as $fieldDef) {
                 $key = $fieldDef['key'];
                 if ($fieldDef['translatable'] ?? false) {
@@ -174,14 +174,14 @@ class PageController extends Controller
                 $q->where('seoable_type', $page->getMorphClass())
                     ->where('seoable_id', $page->getKey());
             })
-            ->orWhere('url_slug', 'page/' . $page->slug)
+            ->orWhere('url_slug', 'page/'.$page->slug)
             ->first();
 
         if (! $seoMeta) {
-            $seoMeta = new SeoMeta();
+            $seoMeta = new SeoMeta;
         }
 
-        $seoMeta->forceFill(array_filter($seoData, fn ($v) => !is_null($v) && $v !== ''));
+        $seoMeta->forceFill(array_filter($seoData, fn ($v) => ! is_null($v) && $v !== ''));
         $seoMeta->seoable_type = $page->getMorphClass();
         $seoMeta->seoable_id = $page->getKey();
         $seoMeta->save();
@@ -210,9 +210,8 @@ class PageController extends Controller
         }
 
         foreach ($available_locales as $locale) {
-            Cache::forget('seo:model:' . get_class($page) . ':' . $page->getKey() . ':' . $locale);
+            Cache::forget('seo:model:'.get_class($page).':'.$page->getKey().':'.$locale);
         }
-
 
         return redirect()->route('admin.pages.index')
             ->with('success', 'Page created successfully.');
@@ -224,7 +223,7 @@ class PageController extends Controller
     public function show(Page $page)
     {
         return Inertia::render('AdminDashboardPages/Pages/Show', [
-            'page' => $page
+            'page' => $page,
         ]);
     }
 
@@ -242,7 +241,7 @@ class PageController extends Controller
                 $q->where('seoable_type', $page->getMorphClass())
                     ->where('seoable_id', $page->getKey());
             })
-            ->orWhere('url_slug', 'page/' . $page->slug)
+            ->orWhere('url_slug', 'page/'.$page->slug)
             ->first();
 
         $seoTranslations = [];
@@ -250,9 +249,9 @@ class PageController extends Controller
             foreach ($allLocales as $l) {
                 $translation = $seoMeta->translations->firstWhere('locale', $l);
                 $seoTranslations[$l] = [
-                    'seo_title'        => $translation->seo_title ?? null,
+                    'seo_title' => $translation->seo_title ?? null,
                     'meta_description' => $translation->meta_description ?? null,
-                    'keywords'         => $translation->keywords ?? null,
+                    'keywords' => $translation->keywords ?? null,
                 ];
             }
         }
@@ -325,16 +324,16 @@ class PageController extends Controller
         $validationRules = [
             'translations' => 'required|array',
             'status' => 'required|in:published,draft',
-            'custom_slug' => 'nullable|string|max:255|unique:pages,custom_slug,' . $page->id,
+            'custom_slug' => 'nullable|string|max:255|unique:pages,custom_slug,'.$page->id,
             // SEO Meta Validation Rules
-            'seo_title'       => 'nullable|string|max:60',
-            'meta_description'=> 'nullable|string|max:160',
-            'keywords'        => 'nullable|string|max:255',
-            'canonical_url'   => 'nullable|url|max:255',
-            'seo_image_url'   => 'nullable|url|max:255',
+            'seo_title' => 'nullable|string|max:60',
+            'meta_description' => 'nullable|string|max:160',
+            'keywords' => 'nullable|string|max:255',
+            'canonical_url' => 'nullable|url|max:255',
+            'seo_image_url' => 'nullable|url|max:255',
         ];
         // Content is required only for templates without sections
-        $hasSections = !empty(config("page-templates.{$page->template}.sections"));
+        $hasSections = ! empty(config("page-templates.{$page->template}.sections"));
 
         foreach ($available_locales as $locale) {
             $validationRules["translations.{$locale}.title"] = 'required|string|max:255';
@@ -345,7 +344,7 @@ class PageController extends Controller
 
         $translationsData = $request->input('translations');
         foreach ($translationsData as $locale => $data) {
-             if (in_array($locale, $available_locales) && !empty($data['title'])) {
+            if (in_array($locale, $available_locales) && ! empty($data['title'])) {
                 $page->translations()->updateOrCreate(
                     ['locale' => $locale],
                     [
@@ -361,7 +360,7 @@ class PageController extends Controller
         // No direct save of $page needed here unless other $page attributes were changed.
 
         // SEO meta bound to the page entity (not slug-based).
-        $primaryTitleForSeo = $request->input("translations.en.title", $page->translations()->where('locale', 'en')->first()?->title);
+        $primaryTitleForSeo = $request->input('translations.en.title', $page->translations()->where('locale', 'en')->first()?->title);
         $seoData = [
             'seo_title' => $request->input('seo_title') ?: (is_string($primaryTitleForSeo) ? Str::limit($primaryTitleForSeo, 60) : null),
             'meta_description' => $request->input('meta_description'),
@@ -376,14 +375,14 @@ class PageController extends Controller
                 $q->where('seoable_type', $page->getMorphClass())
                     ->where('seoable_id', $page->getKey());
             })
-            ->orWhere('url_slug', 'page/' . $page->slug)
+            ->orWhere('url_slug', 'page/'.$page->slug)
             ->first();
 
         if (! $seoMeta) {
-            $seoMeta = new SeoMeta();
+            $seoMeta = new SeoMeta;
         }
 
-        $seoMeta->forceFill(array_filter($seoData, fn ($v) => !is_null($v) && $v !== ''));
+        $seoMeta->forceFill(array_filter($seoData, fn ($v) => ! is_null($v) && $v !== ''));
         $seoMeta->seoable_type = $page->getMorphClass();
         $seoMeta->seoable_id = $page->getKey();
         $seoMeta->save();
@@ -412,7 +411,7 @@ class PageController extends Controller
         }
 
         foreach ($available_locales as $locale) {
-            Cache::forget('seo:model:' . get_class($page) . ':' . $page->getKey() . ':' . $locale);
+            Cache::forget('seo:model:'.get_class($page).':'.$page->getKey().':'.$locale);
         }
 
         // Update page-level fields
@@ -424,7 +423,7 @@ class PageController extends Controller
         // Save meta fields based on template configuration
         $metaData = $request->input('meta', []);
         $templateConfig = config("page-templates.{$page->template}");
-        if ($templateConfig && !empty($templateConfig['meta_fields'])) {
+        if ($templateConfig && ! empty($templateConfig['meta_fields'])) {
             foreach ($templateConfig['meta_fields'] as $fieldDef) {
                 $key = $fieldDef['key'];
                 if ($fieldDef['translatable'] ?? false) {
@@ -487,13 +486,13 @@ class PageController extends Controller
             ->delete();
 
         // Backward compatibility: clean up old slug-keyed records
-        SeoMeta::where('url_slug', 'page/' . $page->slug)->delete();
+        SeoMeta::where('url_slug', 'page/'.$page->slug)->delete();
         SeoMeta::where('url_slug', $page->slug)->delete();
-        
+
         $page->delete();
 
         foreach ($available_locales as $locale) {
-            Cache::forget('seo:model:' . get_class($page) . ':' . $page->getKey() . ':' . $locale);
+            Cache::forget('seo:model:'.get_class($page).':'.$page->getKey().':'.$locale);
         }
 
         return redirect()->route('admin.pages.index')
@@ -507,7 +506,24 @@ class PageController extends Controller
     {
         App::setLocale($locale);
 
-        $translation = \App\Models\PageTranslation::where('slug', $slug)->where('locale', $locale)->firstOrFail();
+        $translation = \App\Models\PageTranslation::where('slug', $slug)->where('locale', $locale)->first();
+        if (! $translation) {
+            $page = Page::query()
+                ->where('status', 'published')
+                ->whereHas('translations', fn ($query) => $query->where('slug', $slug))
+                ->with('translations')
+                ->first();
+
+            $localizedTranslation = $page?->translations->firstWhere('locale', $locale);
+            if ($localizedTranslation) {
+                return redirect()->route('pages.show', [
+                    'locale' => $locale,
+                    'slug' => $localizedTranslation->slug,
+                ], 301);
+            }
+
+            abort(404);
+        }
         $page = $translation->page;
 
         $pageData = [
@@ -625,8 +641,13 @@ class PageController extends Controller
         $translation = $page->translations()->where('locale', $locale)->first()
             ?? $page->translations()->where('locale', 'en')->first();
 
-        if (!$translation) abort(404);
+        if (! $translation) {
+            abort(404);
+        }
 
-        return $this->showPublic($locale, $translation->slug);
+        return redirect()->route('pages.show', [
+            'locale' => $locale,
+            'slug' => $translation->slug,
+        ], 301);
     }
 }

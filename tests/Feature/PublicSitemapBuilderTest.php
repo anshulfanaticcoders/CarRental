@@ -12,8 +12,8 @@ class PublicSitemapBuilderTest extends TestCase
 {
     public function test_public_sitemaps_include_expected_urls_and_exclude_forbidden(): void
     {
-        $provider = new FakeSitemapDataProvider();
-        $builder = new PublicSitemapBuilder($provider, new SitemapUrlPolicy(), 'https://example.com', 2);
+        $provider = new FakeSitemapDataProvider;
+        $builder = new PublicSitemapBuilder($provider, new SitemapUrlPolicy, 'https://example.com', 2);
 
         $result = $builder->build();
 
@@ -31,12 +31,14 @@ class PublicSitemapBuilderTest extends TestCase
         $this->assertStringContainsString('https://example.com/en', $combined);
         $this->assertStringContainsString('https://example.com/en/destinations', $combined);
         $this->assertStringContainsString('https://example.com/en/faq', $combined);
-        $this->assertStringContainsString('https://example.com/en/contact-us', $combined);
-        $this->assertStringContainsString('https://example.com/en/business/register', $combined);
+        $this->assertStringContainsString('https://example.com/en/affiliate/register', $combined);
         $this->assertStringContainsString('https://example.com/en/page/about-us', $combined);
         $this->assertStringContainsString('https://example.com/en/us/blog', $combined);
         $this->assertStringContainsString('https://example.com/en/us/blog/hello-world', $combined);
 
+        $this->assertStringNotContainsString('/business/register', $combined);
+        $this->assertStringNotContainsString('https://example.com/en/login', $combined);
+        $this->assertStringNotContainsString('https://example.com/en/register', $combined);
         $this->assertStringNotContainsString('/vehicle/', $combined);
         $this->assertStringNotContainsString('/booking', $combined);
         $this->assertStringNotContainsString('/admin', $combined);

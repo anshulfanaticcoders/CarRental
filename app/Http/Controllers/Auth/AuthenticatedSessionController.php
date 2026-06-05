@@ -21,6 +21,7 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(Request $request): InertiaResponse
     {
+        $locale = (string) ($request->route('locale') ?? app()->getLocale());
         $returnTo = AuthReturnUrl::capture(
             $request,
             $request->query('redirect') ?: url()->previous()
@@ -30,6 +31,15 @@ class AuthenticatedSessionController extends Controller
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
             'returnTo' => $returnTo,
+            'seo' => [
+                'title' => 'Sign in to Vrooem',
+                'description' => 'Sign in to manage your Vrooem bookings, profile, and account settings.',
+                'canonical' => route('login', ['locale' => $locale]),
+                'image' => config('seo.defaults.image'),
+                'robots' => 'noindex,follow',
+                'og_type' => 'website',
+                'site_name' => 'Vrooem',
+            ],
         ]);
     }
 
@@ -51,7 +61,7 @@ class AuthenticatedSessionController extends Controller
 
         // Update affiliate customer scan with customer_id if affiliate data exists in session
         if ($user) {
-            $affiliateService = new AffiliateQrCodeService();
+            $affiliateService = new AffiliateQrCodeService;
             $affiliateService->updateCustomerInAffiliateScans($user->id);
         }
 

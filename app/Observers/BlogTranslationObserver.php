@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\BlogTranslation;
 use App\Models\SeoRedirect;
+use Illuminate\Support\Facades\Artisan;
 
 class BlogTranslationObserver
 {
@@ -35,6 +36,30 @@ class BlogTranslationObserver
         }
     }
 
+    public function saved(BlogTranslation $translation): void
+    {
+        $this->regenerateSitemap();
+    }
+
+    public function deleted(BlogTranslation $translation): void
+    {
+        $blog = $translation->blog;
+        if (! $blog || empty($translation->slug)) {
+            $this->regenerateSitemap();
+
+            return;
+        }
+
+        foreach ($this->getBlogCountries($blog) as $country) {
+            SeoRedirect::addGone(
+                "/{$translation->locale}/{$country}/blog/{$translation->slug}",
+                "Blog #{$blog->id} translation deleted"
+            );
+        }
+
+        $this->regenerateSitemap();
+    }
+
     private function getBlogCountries($blog): array
     {
         $countries = $blog->countries;
@@ -48,5 +73,14 @@ class BlogTranslationObserver
         }
 
         return ['us'];
+    }
+
+    private function regenerateSitemap(): void
+    {
+        try {
+            Artisan::call('sitemap:generate');
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }

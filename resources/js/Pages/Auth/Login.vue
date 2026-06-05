@@ -2,8 +2,9 @@
 import Checkbox from '@/Components/Checkbox.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import SeoHead from '@/Components/SeoHead.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
 import loginBg from '../../../assets/loginpageImage.jpg'
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { ref, computed } from 'vue';
@@ -79,10 +80,7 @@ watch(() => props.status, (newStatus) => {
 </script>
 
 <template>
-    <Head>
-        <meta name="robots" content="noindex, nofollow">
-        <title inertia>{{ _t('login', 'log_in') }}</title>
-    </Head>
+    <SeoHead :seo="page.props.seo" />
 
     <Toaster position="bottom-right" :toastOptions="{ style: { background: 'black', color: 'white', border: '1px solid #333' } }" />
 

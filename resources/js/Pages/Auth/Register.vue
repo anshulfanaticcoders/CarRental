@@ -3,7 +3,8 @@ import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
-import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
+import SeoHead from "@/Components/SeoHead.vue";
+import { Link, useForm, usePage } from "@inertiajs/vue3";
 import { ref, watch, computed, onMounted } from "vue";
 import { Toaster } from "@/Components/ui/sonner";
 import { toast } from "vue-sonner";
@@ -331,10 +332,7 @@ watch(dateOfBirth, (newValue) => {
 </script>
 
 <template>
-    <Head>
-        <meta name="robots" content="noindex, nofollow">
-        <title>{{ _t('registerUser', 'register_title') || 'Create Account' }}</title>
-    </Head>
+    <SeoHead :seo="page.props.seo" />
 
     <Toaster position="bottom-right" :toastOptions="{ style: { background: 'black', color: 'white', border: '1px solid #333' } }" />
 

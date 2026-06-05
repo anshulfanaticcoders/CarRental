@@ -126,7 +126,7 @@
                                 </p>
                                 <div class="flex items-center text-xs text-gray-400">
                                     <span>{{ formatDate(blog.created_at) }}</span>
-                                    <span class="meta-dot">{{ getReadingTime(blog.content) }} min read</span>
+                                    <span class="meta-dot">{{ blog.reading_time || getReadingTime(blog.content) }} min read</span>
                                 </div>
                             </div>
                         </Link>

@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Notifications\AccountCreatedNotification;
 use App\Notifications\AccountCreatedUserConfirmation;
-use App\Providers\RouteServiceProvider;
 use App\Services\Affiliate\AffiliateQrCodeService;
 use App\Support\CurrencyRegistry;
 use Illuminate\Auth\Events\Registered;
@@ -17,8 +16,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,9 +26,21 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        return Inertia::render('Auth/Register');
+        $locale = (string) ($request->route('locale') ?? app()->getLocale());
+
+        return Inertia::render('Auth/Register', [
+            'seo' => [
+                'title' => 'Create your Vrooem account',
+                'description' => 'Create a Vrooem account to manage bookings, saved details, and car rental preferences.',
+                'canonical' => route('register', ['locale' => $locale]),
+                'image' => config('seo.defaults.image'),
+                'robots' => 'noindex,follow',
+                'og_type' => 'website',
+                'site_name' => 'Vrooem',
+            ],
+        ]);
     }
 
     /**
@@ -89,7 +100,7 @@ class RegisteredUserController extends Controller
         Auth::login($user);
 
         // Update affiliate customer scan with customer_id if affiliate data exists in session
-        $affiliateService = new AffiliateQrCodeService();
+        $affiliateService = new AffiliateQrCodeService;
         $affiliateService->updateCustomerInAffiliateScans($user->id);
 
         // Log the activity
@@ -107,10 +118,10 @@ class RegisteredUserController extends Controller
             $user->notify(new AccountCreatedUserConfirmation($user));
         } catch (\Exception $e) {
             // Log the notification error but don't show it to user
-            Log::error('Registration notification failed: ' . $e->getMessage(), [
+            Log::error('Registration notification failed: '.$e->getMessage(), [
                 'user_id' => $user->id,
                 'email' => $user->email,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             // Continue with registration flow even if notification fails
         }
@@ -130,13 +141,12 @@ class RegisteredUserController extends Controller
             'profile',
             'vendorProfile',
             'vendorDocument',
-            'vehicles'
+            'vehicles',
         ])->find($user->id);
 
         return response()->json([
             'status' => 'success',
-            'data' => $userWithRelations
+            'data' => $userWithRelations,
         ]);
     }
-
 }

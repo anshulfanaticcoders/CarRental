@@ -7,10 +7,10 @@ use App\Models\NewContactUsPage as ContactUsPage; // Use the new model
 use App\Models\SeoMeta;
 use App\Services\Seo\SeoMetaResolver;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class ContactUsPageController extends Controller
 {
@@ -23,14 +23,14 @@ class ContactUsPageController extends Controller
             $locale = App::getLocale();
             $translation = $contactPage->translations()->where('locale', $locale)->first();
 
-            if (!$translation) {
+            if (! $translation) {
                 $fallbackLocale = config('app.fallback_locale', 'en');
                 if ($locale !== $fallbackLocale) {
                     $translation = $contactPage->translations()->where('locale', $fallbackLocale)->first();
                 }
             }
         } else {
-            $contactPage = new ContactUsPage();
+            $contactPage = new ContactUsPage;
         }
 
         return Inertia::render('AdminDashboardPages/ContactUs/Index', [
@@ -41,7 +41,7 @@ class ContactUsPageController extends Controller
 
     public function edit()
     {
-        $contactPage = ContactUsPage::first() ?? new ContactUsPage();
+        $contactPage = ContactUsPage::first() ?? new ContactUsPage;
         $translations = $contactPage->translations->keyBy('locale');
         $locale = app()->getLocale();
         $allLocales = ['en', 'fr', 'nl', 'es', 'ar'];
@@ -104,8 +104,8 @@ class ContactUsPageController extends Controller
         ]);
 
         $contactPage = ContactUsPage::first();
-        if (!$contactPage) {
-            $contactPage = new ContactUsPage();
+        if (! $contactPage) {
+            $contactPage = new ContactUsPage;
         }
 
         $nonTranslatableData = $request->only(['phone_number', 'email', 'address', 'contact_point_icons']);
@@ -120,7 +120,7 @@ class ContactUsPageController extends Controller
             $nonTranslatableData['hero_image_url'] = Storage::disk('upcloud')->url($path);
         }
 
-        if (!$contactPage->exists) {
+        if (! $contactPage->exists) {
             $contactPage->fill($nonTranslatableData);
             $contactPage->save();
         } else {
@@ -133,7 +133,7 @@ class ContactUsPageController extends Controller
                 'hero_title',
                 'hero_description',
                 'intro_text',
-                'contact_points'
+                'contact_points',
             ];
             $filteredData = array_intersect_key($translatableDataForLocale, array_flip($allowedTranslatableFields));
 
@@ -146,7 +146,7 @@ class ContactUsPageController extends Controller
         $seoData = $request->only(['seo_title', 'meta_description', 'keywords', 'canonical_url', 'seo_image_url']);
 
         $hash = app(SeoMetaResolver::class)->hashRouteParams([]);
-        if (array_filter($seoData, fn ($v) => !is_null($v) && $v !== '') || SeoMeta::where('route_name', 'contact-us')->where('route_params_hash', $hash)->exists()) {
+        if (array_filter($seoData, fn ($v) => ! is_null($v) && $v !== '') || SeoMeta::where('route_name', 'contact-us')->where('route_params_hash', $hash)->exists()) {
             $seoMeta = SeoMeta::updateOrCreate(
                 [
                     'route_name' => 'contact-us',
@@ -188,7 +188,7 @@ class ContactUsPageController extends Controller
 
         // Make changes visible immediately on the frontend.
         foreach (config('app.available_locales', ['en']) as $locale) {
-            Cache::forget('seo:route:contact-us:' . $hash . ':' . $locale);
+            Cache::forget('seo:route:contact-us:'.$hash.':'.$locale);
         }
 
         return redirect()->route('admin.contact-us.index')
@@ -213,7 +213,7 @@ class ContactUsPageController extends Controller
             SeoMeta::where('url_slug', 'contact-us')->delete();
 
             foreach (config('app.available_locales', ['en']) as $locale) {
-                Cache::forget('seo:route:contact-us:' . $hash . ':' . $locale);
+                Cache::forget('seo:route:contact-us:'.$hash.':'.$locale);
             }
         }
 
@@ -224,15 +224,20 @@ class ContactUsPageController extends Controller
     public function show()
     {
         $contactPage = ContactUsPage::first();
+        $locale = App::getLocale();
         $pages = \App\Models\Page::with('translations')->get()->keyBy('slug');
+        $contactPageModel = $pages->first(fn ($page) => $page->custom_slug === 'contact-us');
+        $contactSlug = $contactPageModel?->translations?->firstWhere('locale', $locale)?->slug
+            ?: $contactPageModel?->translations?->firstWhere('locale', config('app.fallback_locale', 'en'))?->slug
+            ?: 'contact-us';
         $seo = app(SeoMetaResolver::class)->resolveForRoute(
             'contact-us',
             [],
-            App::getLocale(),
-            route('contact-us', ['locale' => App::getLocale()])
+            $locale,
+            url("/{$locale}/page/{$contactSlug}")
         )->toArray();
 
-        if (!$contactPage) {
+        if (! $contactPage) {
             $pageData = [
                 'hero_title' => 'Contact Us Title Not Found',
                 'hero_description' => '<p>Description not available.</p>',
@@ -243,6 +248,7 @@ class ContactUsPageController extends Controller
                 'email' => '',
                 'address' => '',
             ];
+
             return Inertia::render('ContactUs', [
                 'contactPage' => $pageData,
                 'seo' => $seo,
@@ -250,10 +256,9 @@ class ContactUsPageController extends Controller
             ]);
         }
 
-        $locale = App::getLocale();
         $translation = $contactPage->translations()->where('locale', $locale)->first();
 
-        if (!$translation) {
+        if (! $translation) {
             $defaultLocale = config('app.fallback_locale', 'en');
             $translation = $contactPage->translations()->where('locale', $defaultLocale)->first();
         }
@@ -286,11 +291,12 @@ class ContactUsPageController extends Controller
             'pages' => $pages,
         ]);
     }
+
     public function getContactInfo()
     {
         $contactPage = ContactUsPage::first();
 
-        if (!$contactPage) {
+        if (! $contactPage) {
             return response()->json([
                 'phone_number' => null,
                 'email' => null,

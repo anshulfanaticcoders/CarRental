@@ -31,7 +31,7 @@
       tags elsewhere in the head — Inertia dedupes by head-key, which we set
       via the `inertia` attribute on each managed tag.
     --}}
-    <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}" inertia>
+    <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}" inertia="og:locale">
     <meta property="og:type" content="{{ $initialSeoType }}" inertia="og:type">
     <meta property="og:site_name" content="{{ $siteName }}" inertia="og:site_name">
 
@@ -93,12 +93,12 @@
     @endphp
 
     @foreach($alternateUrls as $locale => $url)
-        <link rel="alternate" hreflang="{{ $locale }}" href="{{ $url }}">
+        <link rel="alternate" hreflang="{{ $locale }}" href="{{ $url }}" inertia="alternate:{{ $locale }}">
     @endforeach
 
     @php $xDefaultLocale = config('app.fallback_locale', config('app.locale')); @endphp
     @if(isset($alternateUrls[$xDefaultLocale]))
-        <link rel="alternate" hreflang="x-default" href="{{ $alternateUrls[$xDefaultLocale] }}">
+        <link rel="alternate" hreflang="x-default" href="{{ $alternateUrls[$xDefaultLocale] }}" inertia="alternate:x-default">
     @endif
 
     <!-- Scripts -->

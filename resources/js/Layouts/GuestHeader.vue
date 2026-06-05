@@ -8,6 +8,7 @@ import Dropdown from "@/Components/Dropdown.vue";
 import CurrencySelector from "@/Components/CurrencySelector.vue";
 import { useCurrency } from '@/composables/useCurrency';
 import { loginHrefForPage } from '@/utils/authReturnUrl';
+import { useLocalizedRoutes } from '@/composables/useLocalizedRoutes';
 import { setScrollLock } from '@/lib/scrollLock';
 import whatsappIcon from '../../assets/whatsapp.svg';
 import callIcon from '../../assets/call.svg';
@@ -19,7 +20,6 @@ import flagAr from '../../assets/flag-ar.svg';
 import FloatingSocialIcons from '@/Components/FloatingSocialIcons.vue';
 
 const page = usePage();
-const { url } = page;
 
 const { selectedCurrency, supportedCurrencies, changeCurrency, loading: currencyLoading } = useCurrency();
 
@@ -28,7 +28,15 @@ const showingNavigationDropdown = ref(false);
 const isLoginPage = computed(() => page.url.includes('/login'));
 const isRegisterPage = computed(() => page.url.includes('/register'));
 const contactInfo = ref(null);
-const pages = computed(() => page.props.pages);
+const {
+    currentLocale,
+    pageHref,
+    welcomeHref,
+    blogHref,
+    faqHref,
+    affiliateRegisterHref,
+    resolveLanguageTargetUrl,
+} = useLocalizedRoutes();
 
 const fetchContactInfo = async () => {
     try {
@@ -43,9 +51,7 @@ onMounted(() => {
     fetchContactInfo();
 });
 
-// Language switcher logic
-const currentLocale = computed(() => page.props.locale || 'en');
-const loginHref = computed(() => loginHrefForPage(page.props.locale || currentLocale.value, page.url));
+const loginHref = computed(() => loginHrefForPage(currentLocale.value, page.url));
 
 const availableLocales = {
     en: { name: 'En', flag: flagEn },
@@ -53,33 +59,6 @@ const availableLocales = {
     nl: { name: 'Nl', flag: flagNl },
     es: { name: 'Es', flag: flagEs },
     ar: { name: 'Ar', flag: flagAr },
-};
-
-const getTranslatedSlug = (pageSlug) => {
-    let targetPage = null;
-    const defaultLocale = 'en';
-
-    if (pages.value) {
-        for (const key in pages.value) {
-            const pageItem = pages.value[key];
-            if (pageItem && pageItem.translations && Array.isArray(pageItem.translations)) {
-                const defaultTranslation = pageItem.translations.find(
-                    (t) => t.locale === defaultLocale && t.slug === pageSlug
-                );
-                if (defaultTranslation) {
-                    targetPage = pageItem;
-                    break;
-                }
-            }
-        }
-    }
-
-    if (!targetPage || !targetPage.translations || !Array.isArray(targetPage.translations)) {
-        return pageSlug;
-    }
-
-    const translation = targetPage.translations.find((t) => t.locale === currentLocale.value);
-    return translation ? translation.slug : pageSlug;
 };
 
 const whatsappLink = computed(() => {
@@ -94,13 +73,6 @@ const callLink = computed(() => {
     if (!cleaned) return null;
     return `tel:${cleaned}`;
 });
-
-const resolveLanguageTargetUrl = (newLocale) => {
-    const currentUrl = new URL(window.location.href);
-    const pathParts = currentUrl.pathname.split('/');
-    pathParts[1] = newLocale;
-    return pathParts.join('/') + currentUrl.search;
-};
 
 const changeLanguage = async (newLocale) => {
     const targetUrl = resolveLanguageTargetUrl(newLocale);
@@ -118,7 +90,7 @@ const toggleMobileNav = () => {
     showingNavigationDropdown.value = !showingNavigationDropdown.value;
 };
 
-watch(() => url.value, () => {
+watch(() => page.url, () => {
     showingNavigationDropdown.value = false;
 });
 
@@ -136,7 +108,7 @@ onUnmounted(() => {
         <div class="full-w-container mx-auto">
             <div class="hdr-inner">
                 <!-- Logo -->
-                <Link :href="route('welcome', { locale: page.props.locale })" class="hdr-logo">
+                <Link :href="welcomeHref()" class="hdr-logo">
                     <ApplicationLogo class="w-full h-auto" />
                 </Link>
 
@@ -188,7 +160,7 @@ onUnmounted(() => {
             <div class="flex h-full flex-col">
                 <!-- Head -->
                 <div class="oc-head">
-                    <Link :href="route('welcome', { locale: page.props.locale })" class="w-28">
+                    <Link :href="welcomeHref()" class="w-28">
                         <ApplicationLogo class="w-full h-auto" />
                     </Link>
                     <button type="button" class="oc-close" @click="showingNavigationDropdown = false">
@@ -203,7 +175,7 @@ onUnmounted(() => {
                         <div class="oc-label">Account</div>
                         <div class="oc-auth-btns">
                             <Link v-if="!isLoginPage" :href="loginHref" class="oc-btn-login">Log in</Link>
-                            <Link v-if="!isRegisterPage" :href="route('register', { locale: page.props.locale })" class="oc-btn-signup">Create Account</Link>
+                            <Link v-if="!isRegisterPage" :href="route('register', { locale: currentLocale })" class="oc-btn-signup">Create Account</Link>
                         </div>
                     </div>
 
@@ -239,12 +211,12 @@ onUnmounted(() => {
                     <!-- Pages -->
                     <div class="oc-section">
                         <div class="oc-label">Explore</div>
-                        <Link :href="route('pages.show', { locale: page.props.locale, slug: getTranslatedSlug('about-us') })" class="oc-item">About Us</Link>
-                        <Link :href="route('blog', { locale: page.props.locale, country: page.props.country || 'us' })" class="oc-item">Blogs</Link>
-                        <Link :href="route('faq.show', { locale: page.props.locale })" class="oc-item">FAQ</Link>
+                        <Link :href="pageHref('about-us')" class="oc-item">About Us</Link>
+                        <Link :href="blogHref()" class="oc-item">Blogs</Link>
+                        <Link :href="faqHref()" class="oc-item">FAQ</Link>
                         <a href="https://vrooem.esimqr.link/" target="_blank" rel="noopener noreferrer" class="oc-item">eSIM</a>
-                        <Link :href="`/${page.props.locale}/contact-us`" class="oc-item">Contact Us</Link>
-                        <Link :href="`/${page.props.locale}/business/register`" class="oc-item">Business</Link>
+                        <Link :href="pageHref('contact-us')" class="oc-item">Contact Us</Link>
+                        <Link :href="affiliateRegisterHref()" class="oc-item">Business</Link>
                     </div>
                 </div>
 
