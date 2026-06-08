@@ -99,7 +99,9 @@ const loadFooterData = async () => {
     }
 };
 
-watch(currentLocale, loadFooterData, { immediate: true });
+if (typeof window !== 'undefined') {
+    watch(currentLocale, loadFooterData, { immediate: true });
+}
 </script>
 
 <template>

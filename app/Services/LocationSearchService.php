@@ -40,6 +40,11 @@ class LocationSearchService
         return is_string($normalized) ? $normalized : '';
     }
 
+    public function lastGatewayError(): ?array
+    {
+        return $this->gatewayService->getLastError();
+    }
+
     public function getAllLocations(int $limit = 50): array
     {
         $chunkSize = max(1, min(200, $limit));

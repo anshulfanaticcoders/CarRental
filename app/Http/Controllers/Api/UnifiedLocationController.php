@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Services\LocationSearchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class UnifiedLocationController extends Controller
 {
@@ -20,6 +22,12 @@ class UnifiedLocationController extends Controller
 
             if (! empty($validated['unified_location_id'])) {
                 $location = $locations->getLocationByUnifiedId((int) $validated['unified_location_id']);
+                if (! $location) {
+                    Log::warning('UnifiedLocations: lookup returned empty', [
+                        'unified_location_id' => (int) $validated['unified_location_id'],
+                        'gateway_error' => $this->gatewayError($locations),
+                    ]);
+                }
 
                 return response()->json($location ? [$location] : []);
             }
@@ -28,18 +36,53 @@ class UnifiedLocationController extends Controller
             $limit = (int) ($validated['limit'] ?? 20);
 
             if ($searchTerm) {
-                return response()->json($locations->searchLocations($searchTerm, $limit));
+                $results = $locations->searchLocations($searchTerm, $limit);
+                if ($results === []) {
+                    Log::warning('UnifiedLocations: search returned empty', [
+                        'search_term' => $searchTerm,
+                        'limit' => $limit,
+                        'gateway_error' => $this->gatewayError($locations),
+                    ]);
+                }
+
+                return response()->json($results);
             }
 
-            return response()->json($locations->getAllLocations($limit));
+            $results = $locations->getAllLocations($limit);
+            if ($results === []) {
+                Log::warning('UnifiedLocations: list returned empty', [
+                    'limit' => $limit,
+                    'gateway_error' => $this->gatewayError($locations),
+                ]);
+            }
+
+            return response()->json($results);
+        } catch (ValidationException) {
+            return response()->json([]);
         } catch (\Throwable $exception) {
             try {
+                Log::error('UnifiedLocations: request failed', [
+                    'search_term' => $request->query('search_term'),
+                    'limit' => $request->query('limit'),
+                    'unified_location_id' => $request->query('unified_location_id'),
+                    'exception' => $exception::class,
+                    'message' => $exception->getMessage(),
+                ]);
                 report($exception);
             } catch (\Throwable) {
                 // Keep public autocomplete resilient even if production logging is misconfigured.
             }
 
             return response()->json([]);
+        }
+    }
+
+    private function gatewayError(LocationSearchService $locations): ?array
+    {
+        try {
+            return $locations->lastGatewayError();
+        } catch (\Throwable) {
+            return null;
         }
     }
 }
