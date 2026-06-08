@@ -331,24 +331,24 @@ onMounted(() => {
 </script>
 
 <template>
-  <Sidebar collapsible="icon" class="bg-[#fbfdff] border-r border-[#dceef6] font-[var(--jakarta-font-family)] shadow-[8px_0_28px_rgba(21,59,79,0.06)]">
+  <Sidebar collapsible="icon" class="admin-sidebar-dark border-r border-[rgba(176,212,230,0.13)] font-[var(--jakarta-font-family)] shadow-[18px_0_58px_rgba(0,0,0,0.26)]">
       <SidebarContent class="sb-scroll-hide">
         <!-- Brand -->
         <SidebarGroup class="!p-0">
-          <Link href="/" class="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[#dceef6] bg-gradient-to-br from-white via-[#f8fafc] to-[#f0f8fc]">
+          <Link href="/" class="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[rgba(176,212,230,0.13)] bg-[linear-gradient(180deg,rgba(8,24,34,0.98),rgba(7,19,28,0.97))]">
             <div class="relative w-[38px] h-[38px] rounded-[10px] bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] flex items-center justify-center text-white font-extrabold text-[17px] flex-shrink-0 sb-logo-glow">
               V
             </div>
             <div class="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
-              <ApplicationLogo logo-color="#153B4F" class="h-[18px] w-[150px]" />
-              <span class="text-[9.5px] font-semibold text-[#0891b2] bg-[#cffafe]/55 border border-[#b0d4e6] px-1.5 rounded mt-1 w-fit uppercase tracking-[0.13em]">Admin Panel</span>
+              <ApplicationLogo logo-color="#FFFFFF" class="h-[18px] w-[150px]" />
+              <span class="text-[9.5px] font-semibold text-[#67e8f9] bg-[rgba(34,211,238,0.08)] border border-[rgba(34,211,238,0.2)] px-1.5 rounded mt-1 w-fit uppercase tracking-[0.13em]">Admin Panel</span>
             </div>
           </Link>
         </SidebarGroup>
 
         <!-- Nav Groups -->
         <SidebarGroup v-for="group in navGroups" :key="group.label" class="!px-3 !py-1">
-          <p class="text-[10px] font-bold tracking-[0.12em] uppercase text-slate-400 px-2.5 pt-3 pb-1 group-data-[collapsible=icon]:hidden">
+          <p class="text-[10px] font-bold tracking-[0.12em] uppercase text-[#667e90] px-2.5 pt-3 pb-1 group-data-[collapsible=icon]:hidden">
             {{ group.label }}
           </p>
           <SidebarMenu>
@@ -365,11 +365,11 @@ onMounted(() => {
                 <CollapsibleTrigger as-child>
                   <SidebarMenuButton
                     :tooltip="item.title"
-                    class="relative !rounded-lg !px-2.5 !py-2 !h-auto !text-[13.5px] !font-medium transition-all duration-150"
+                    class="relative !rounded-[12px] !px-2.5 !py-2 !h-auto !text-[13.5px] !font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-200"
                     :class="[
                       isMenuActive(item)
-                        ? '!bg-gradient-to-r !from-[#f0f8fc] !to-[#ecfeff] !text-[#153b4f] !font-semibold !shadow-[0_0_0_1px_rgba(176,212,230,0.95),0_8px_22px_rgba(21,59,79,0.08)]'
-                        : '!text-slate-600 hover:!bg-[#f0f8fc]/75 hover:!text-[#153b4f]'
+                        ? '!bg-[linear-gradient(135deg,rgba(21,59,79,0.92),rgba(34,211,238,0.14))] !text-white !font-semibold !border !border-[rgba(34,211,238,0.3)] !shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_28px_rgba(34,211,238,0.08)]'
+                        : '!text-[#b8c7d2] hover:!bg-[rgba(21,59,79,0.46)] hover:!text-white hover:!shadow-[inset_0_0_0_1px_rgba(176,212,230,0.08)] hover:!-translate-y-px active:!translate-y-0 active:!scale-[0.99]'
                     ]"
                   >
                     <!-- Active bar indicator -->
@@ -377,8 +377,8 @@ onMounted(() => {
 
                     <component
                       :is="item.icon"
-                      class="!w-[19px] !h-[19px] transition-all duration-150"
-                      :class="isMenuActive(item) ? '!text-[#0891b2] drop-shadow-[0_0_5px_rgba(34,211,238,0.32)]' : '!text-slate-400'"
+                      class="!w-[19px] !h-[19px] transition-[color,filter,transform] duration-200"
+                      :class="isMenuActive(item) ? '!text-[#67e8f9] drop-shadow-[0_0_7px_rgba(34,211,238,0.34)]' : '!text-[#8da3b4]'"
                       :stroke-width="1.7"
                     />
                     <span class="group-data-[collapsible=icon]:hidden">{{ item.title }}</span>
@@ -386,10 +386,10 @@ onMounted(() => {
                     <!-- Count badge -->
                     <span
                       v-if="item.count"
-                      class="font-mono text-[10px] font-semibold rounded-full px-1.5 py-0.5 ml-auto mr-0.5 leading-none group-data-[collapsible=icon]:hidden transition-all"
+                      class="font-mono text-[10px] font-semibold rounded-full px-1.5 py-0.5 ml-auto mr-0.5 leading-none group-data-[collapsible=icon]:hidden transition-[color,background-color,box-shadow,transform] duration-200"
                       :class="isMenuActive(item)
-                        ? 'bg-[#153b4f] text-white shadow-[0_2px_8px_rgba(21,59,79,0.22)]'
-                        : 'bg-[#f1f5f9] text-slate-500'
+                        ? 'bg-[#22d3ee] text-[#07131c] shadow-[0_4px_14px_rgba(34,211,238,0.28)]'
+                        : 'bg-[rgba(176,212,230,0.1)] text-[#8da3b4]'
                       "
                     >
                       {{ item.count }}
@@ -398,7 +398,7 @@ onMounted(() => {
                     <ChevronRight
                       class="ml-auto transition-transform duration-300 group-data-[collapsible=icon]:hidden"
                       :class="[
-                        isMenuOpen(item.title) ? 'rotate-90 text-[#2d7294]' : 'text-slate-300',
+                        isMenuOpen(item.title) ? 'rotate-90 text-[#67e8f9]' : 'text-[#5f7484]',
                       ]"
                       :size="16"
                       :stroke-width="2.2"
@@ -419,11 +419,11 @@ onMounted(() => {
                       <SidebarMenuSubButton as-child>
                         <a
                           :href="subItem.url"
-                          class="relative !text-[13px] !rounded transition-all duration-150 !py-1.5"
+                          class="relative !text-[13px] !rounded transition-[color,background-color,padding,transform] duration-150 !py-1.5"
                           :class="[
                             isSubmenuActive(subItem.url)
-                              ? '!text-[#153b4f] !font-semibold !bg-[#f0f8fc]'
-                              : '!text-slate-400 !font-normal hover:!text-[#153b4f] hover:!bg-[#f8fafc] hover:!pl-4'
+                              ? '!text-[#67e8f9] !font-semibold !bg-[rgba(34,211,238,0.08)]'
+                              : '!text-[#8da3b4] !font-normal hover:!text-white hover:!bg-[rgba(21,59,79,0.36)] hover:!pl-4'
                           ]"
                         >
                           <span v-if="isSubmenuActive(subItem.url)" class="sb-active-dot" />
@@ -440,12 +440,12 @@ onMounted(() => {
       </SidebarContent>
 
       <!-- Footer -->
-      <SidebarFooter class="!border-t !border-[#dceef6] !bg-[#fbfdff]">
+      <SidebarFooter class="!border-t !border-[rgba(176,212,230,0.13)] !bg-[rgba(7,19,28,0.96)]">
         <Link
           :href="route('admin.logout')"
           method="post"
           as="button"
-          class="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[13px] font-medium text-red-600 bg-red-50 border border-red-100 transition-all duration-150 hover:bg-red-100 hover:border-red-200 hover:text-red-700 hover:shadow-[0_0_0_3px_rgba(239,68,68,0.08)]"
+          class="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-[12px] text-[13px] font-medium text-red-300 bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.16)] transition-[color,background-color,border-color,box-shadow,transform] duration-200 hover:bg-[rgba(239,68,68,0.13)] hover:border-[rgba(239,68,68,0.3)] hover:text-red-200 hover:shadow-[0_0_0_4px_rgba(239,68,68,0.08)] hover:-translate-y-px active:translate-y-0 active:scale-[0.98]"
         >
           <LogOut :size="17" :stroke-width="1.8" />
           <span class="group-data-[collapsible=icon]:hidden">Log out</span>

@@ -366,3 +366,21 @@ Concise durable memory for significant completed work.
 - Decision: kept public autocomplete resilient but added production-safe logs for empty lookups, empty searches, gateway error context, and hidden exceptions. Footer no longer fetches relative API URLs during server-side rendering, preventing Node SSR `ERR_INVALID_URL` crashes for localized pages.
 - Verification: PHP syntax checks passed for touched backend files; `UnifiedLocationApiTest` passed with 4 tests/8 assertions; Footer SSR safety node test passed; `npm run build` passed for client and SSR with existing project warnings.
 - Follow-ups: deploy, run the live `/api/unified-locations?search_term=dubai&limit=1` curl, then inspect `storage/logs/laravel.log` for `UnifiedLocations:` or `VrooemGateway:` lines to identify the remaining live HTTP/PHP-FPM mismatch if the response is still empty.
+
+### 2026-06-08 - Admin dark dashboard demo
+- Scope: `CarRental` static admin design preview only.
+- Decision: added a standalone Deep Vrooem dark admin prototype at `public/admin-dark-dashboard-demo.html` with dashboard and bookings screens, static data, embedded CSS/SVG/JS, and no Laravel/Vue/backend changes.
+- Verification: static checks passed for ASCII, no external URLs/CDNs, no `transition: all`, no gradient text, and no colored side-stripe pattern. Browser smoke passed at 1440, 1024, 768, and 375 with no horizontal overflow, desktop sidebar collapse, screen switching, notification/profile dropdowns, booking status filtering, row detail updates, mobile drawer navigation, reduced-motion CSS, and no console errors.
+- Follow-ups: review demo, then convert approved direction into real admin Vue layout/components in a separate implementation task.
+
+### 2026-06-08 - Admin dark theme shell port
+- Scope: `CarRental` real admin Vue layout/sidebar styling and admin-scoped global CSS.
+- Decision: ported the approved Deep Vrooem dark demo direction into `AdminDashboardLayout`, `AdminSiderBar`, and admin-only CSS overrides for cards, tabs, tables, forms, badges, dropdowns, popovers, hover/focus/active/disabled states, and reduced-motion behavior. No admin routes, backend logic, data fetching, links, or table actions were changed.
+- Verification: `npm run build` passed for client and SSR with existing project warnings. Browser navigation to `/admin-dashboard` on local port 8000 reached the app but redirected to `/en/login`, so logged-in visual review is still needed in an authenticated admin session.
+- Follow-ups: review the logged-in admin dashboard and dense admin pages at desktop/tablet/mobile widths, then tune any page-specific light utility leftovers if they appear.
+
+### 2026-06-08 - Admin-only table and feedback polish
+- Scope: `CarRental` admin layout runtime styling hooks and admin-scoped CSS only.
+- Decision: kept shared Shadcn/customer/vendor UI primitives untouched; added admin-only table labeling, compact responsive wide-table card mode, route loading feedback, page arrival motion, dark dialogs, dark toasts, form label polish, and stronger admin table overflow handling.
+- Verification: `git diff --check` passed; `npm run build` passed for client and SSR with existing project warnings. Browser navigation to `/admin-dashboard` still redirects to `/en/login` without an authenticated admin session.
+- Follow-ups: perform logged-in admin visual QA across dashboard, bookings, users, vendors, vehicles, payments, settings, and reports at desktop/tablet/mobile widths.

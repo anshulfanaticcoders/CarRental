@@ -1,0 +1,2490 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Vrooem Admin Dark Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07131c;
+      --bg-2: #0a1d28;
+      --ink: #f7fbff;
+      --muted: #8da3b4;
+      --muted-2: #667e90;
+      --line: rgba(176, 212, 230, 0.14);
+      --line-strong: rgba(176, 212, 230, 0.24);
+      --surface: rgba(11, 31, 43, 0.92);
+      --surface-2: rgba(13, 39, 54, 0.82);
+      --surface-3: rgba(18, 51, 68, 0.76);
+      --primary: #153b4f;
+      --primary-2: #1c4d66;
+      --cyan: #22d3ee;
+      --cyan-2: #0891b2;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --violet: #8b5cf6;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.32), 0 12px 34px rgba(6, 182, 212, 0.06);
+      --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.22);
+      --radius-xs: 8px;
+      --radius-sm: 10px;
+      --radius-md: 14px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-fast: cubic-bezier(0.16, 1, 0.3, 1);
+      --dur: 220ms;
+      --sidebar: 296px;
+      --sidebar-collapsed: 86px;
+      --topbar: 76px;
+      --font-ui: "Plus Jakarta Sans", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html {
+      min-height: 100%;
+      overflow-x: hidden;
+      background: var(--bg);
+    }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow: hidden;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 16% 8%, rgba(34, 211, 238, 0.14), transparent 34%),
+        radial-gradient(circle at 80% 18%, rgba(16, 185, 129, 0.08), transparent 32%),
+        linear-gradient(135deg, #051018 0%, #071923 44%, #07131c 100%);
+      color: var(--ink);
+      font-family: var(--font-ui);
+      letter-spacing: 0;
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    svg { display: block; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .demo-shell {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      display: grid;
+      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+      min-height: 100vh;
+      transition: grid-template-columns 260ms var(--ease);
+    }
+
+    .demo-shell.is-collapsed { grid-template-columns: var(--sidebar-collapsed) minmax(0, 1fr); }
+
+    .app-noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      opacity: 0.16;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle at 55% 26%, black, transparent 72%);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 14px;
+      padding: 16px 12px;
+      background:
+        linear-gradient(180deg, rgba(8, 24, 34, 0.98), rgba(7, 19, 28, 0.97)),
+        radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.12), transparent 38%);
+      border-right: 1px solid rgba(176, 212, 230, 0.13);
+      box-shadow: 18px 0 58px rgba(0, 0, 0, 0.26);
+      z-index: 30;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 56px;
+      padding: 8px 10px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand-mark {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #153b4f, #22d3ee);
+      color: white;
+      font-size: 18px;
+      font-weight: 900;
+      box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.09), 0 14px 30px rgba(34, 211, 238, 0.16);
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border-radius: 7px;
+      border: 1px solid rgba(255, 255, 255, 0.34);
+    }
+
+    .brand-copy {
+      min-width: 0;
+      transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+    }
+
+    .brand-title {
+      display: block;
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 850;
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-subtitle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      padding: 3px 8px;
+      border: 1px solid rgba(34, 211, 238, 0.22);
+      border-radius: 999px;
+      color: #91f2ff;
+      background: rgba(34, 211, 238, 0.08);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+    }
+
+    .nav-scroll {
+      min-height: 0;
+      overflow: auto;
+      padding: 2px 2px 8px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(34, 211, 238, 0.28) transparent;
+    }
+
+    .nav-section { margin-top: 12px; }
+    .nav-label {
+      display: block;
+      padding: 8px 12px 7px;
+      color: var(--muted-2);
+      font-size: 10px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      transition: opacity var(--dur) var(--ease);
+    }
+
+    .nav-item {
+      position: relative;
+      width: 100%;
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin: 3px 0;
+      padding: 10px 11px;
+      border: 1px solid transparent;
+      border-radius: 13px;
+      color: #b8c7d2;
+      background: transparent;
+      text-align: left;
+      transition:
+        color var(--dur) var(--ease),
+        background-color var(--dur) var(--ease),
+        border-color var(--dur) var(--ease),
+        transform var(--dur) var(--ease),
+        box-shadow var(--dur) var(--ease);
+    }
+
+    .nav-item:hover {
+      color: #f5fbff;
+      background: rgba(21, 59, 79, 0.46);
+      border-color: rgba(176, 212, 230, 0.12);
+      transform: translateX(3px);
+    }
+
+    .nav-item:focus-visible,
+    .icon-btn:focus-visible,
+    .chip:focus-visible,
+    .primary-btn:focus-visible,
+    .ghost-btn:focus-visible,
+    .table-action:focus-visible,
+    .row-button:focus-visible,
+    .select-control:focus-visible,
+    .search-box:focus-within {
+      outline: 2px solid rgba(34, 211, 238, 0.72);
+      outline-offset: 2px;
+    }
+
+    .nav-item.is-active {
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(21, 59, 79, 0.92), rgba(34, 211, 238, 0.14));
+      border-color: rgba(34, 211, 238, 0.3);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 28px rgba(34, 211, 238, 0.08);
+    }
+
+    .nav-item.is-active::before {
+      content: "";
+      position: absolute;
+      inset: 8px auto 8px -2px;
+      width: 3px;
+      border-radius: 999px;
+      background: var(--cyan);
+      box-shadow: 0 0 18px rgba(34, 211, 238, 0.5);
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;
+      color: currentColor;
+      opacity: 0.86;
+    }
+
+    .nav-text {
+      min-width: 0;
+      overflow: hidden;
+      color: inherit;
+      font-size: 13px;
+      font-weight: 760;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+    }
+
+    .nav-count {
+      margin-left: auto;
+      min-width: 24px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #dffbff;
+      background: rgba(34, 211, 238, 0.11);
+      border: 1px solid rgba(34, 211, 238, 0.17);
+      font-size: 10px;
+      font-weight: 850;
+      text-align: center;
+      transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+    }
+
+    .sidebar-footer {
+      display: grid;
+      gap: 10px;
+      padding: 12px 4px 2px;
+      border-top: 1px solid var(--line);
+    }
+
+    .system-card {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(10, 29, 40, 0.82);
+      transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+    }
+
+    .system-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 9px;
+      color: #d9e7ee;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.12), 0 0 18px rgba(16, 185, 129, 0.34);
+      animation: dotPulse 2.3s var(--ease) infinite;
+    }
+
+    .system-meter {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .system-meter span {
+      display: block;
+      width: 72%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--emerald), var(--cyan));
+      box-shadow: 0 0 18px rgba(34, 211, 238, 0.28);
+    }
+
+    .logout-btn {
+      color: #ffc4c4;
+      background: rgba(239, 68, 68, 0.08);
+      border-color: rgba(239, 68, 68, 0.18);
+    }
+
+    .logout-btn:hover {
+      color: #fff;
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.28);
+    }
+
+    .demo-shell.is-collapsed .brand-copy,
+    .demo-shell.is-collapsed .nav-label,
+    .demo-shell.is-collapsed .nav-text,
+    .demo-shell.is-collapsed .nav-count,
+    .demo-shell.is-collapsed .system-card {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-6px);
+    }
+
+    .demo-shell.is-collapsed .nav-item { justify-content: center; }
+    .demo-shell.is-collapsed .nav-item:hover { transform: translateY(-1px); }
+    .demo-shell.is-collapsed .brand { justify-content: center; padding-inline: 0; }
+
+    .main {
+      min-width: 0;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: var(--topbar) minmax(0, 1fr);
+      background:
+        radial-gradient(circle at 42% -10%, rgba(34, 211, 238, 0.12), transparent 36%),
+        linear-gradient(180deg, rgba(9, 28, 40, 0.88), rgba(7, 19, 28, 0.98));
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-width: 0;
+      padding: 14px 22px;
+      border-bottom: 1px solid rgba(176, 212, 230, 0.13);
+      background: rgba(7, 19, 28, 0.78);
+      backdrop-filter: blur(18px) saturate(1.35);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+    }
+
+    .top-left,
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .icon-btn.mobile-trigger { display: none; }
+
+    .icon-btn {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      color: #c7d8e2;
+      background: rgba(13, 39, 54, 0.76);
+      transition:
+        color var(--dur) var(--ease),
+        background-color var(--dur) var(--ease),
+        border-color var(--dur) var(--ease),
+        transform var(--dur) var(--ease),
+        box-shadow var(--dur) var(--ease);
+    }
+
+    .icon-btn:hover {
+      color: #ffffff;
+      background: rgba(21, 59, 79, 0.9);
+      border-color: rgba(34, 211, 238, 0.32);
+      box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .icon-btn:active,
+    .primary-btn:active,
+    .ghost-btn:active,
+    .chip:active,
+    .table-action:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .crumb {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .crumb span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .crumb strong {
+      overflow: hidden;
+      color: #ffffff;
+      font-size: 18px;
+      line-height: 1.1;
+      font-weight: 850;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: min(32vw, 380px);
+      min-width: 230px;
+      height: 42px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      color: #bfd0da;
+      background: rgba(5, 16, 24, 0.66);
+      transition:
+        border-color var(--dur) var(--ease),
+        background-color var(--dur) var(--ease),
+        box-shadow var(--dur) var(--ease);
+    }
+
+    .search-box:hover {
+      border-color: rgba(34, 211, 238, 0.26);
+      background: rgba(10, 29, 40, 0.78);
+    }
+
+    .search-box input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      color: #edf8ff;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .search-box input::placeholder { color: #6f8797; opacity: 1; }
+
+    .kbd {
+      min-width: 24px;
+      padding: 3px 7px;
+      border-radius: 7px;
+      color: #9fb3c0;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 11px;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .badge-dot {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      min-width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      padding: 0 5px;
+      border-radius: 999px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      border: 2px solid #07131c;
+      font-size: 10px;
+      font-weight: 900;
+      animation: badgePop 2.6s var(--ease) infinite;
+    }
+
+    .admin-menu {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 6px 5px 5px;
+      border: 1px solid transparent;
+      border-radius: 16px;
+      color: #d8e7ef;
+      background: transparent;
+      transition:
+        background-color var(--dur) var(--ease),
+        border-color var(--dur) var(--ease),
+        transform var(--dur) var(--ease);
+    }
+
+    .admin-menu:hover,
+    .admin-menu.is-open {
+      background: rgba(21, 59, 79, 0.48);
+      border-color: rgba(176, 212, 230, 0.14);
+      transform: translateY(-1px);
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #153b4f, #22d3ee);
+      font-size: 13px;
+      font-weight: 900;
+      box-shadow: 0 10px 24px rgba(34, 211, 238, 0.16);
+    }
+
+    .admin-name {
+      display: grid;
+      gap: 1px;
+      text-align: left;
+    }
+
+    .admin-name strong {
+      font-size: 13px;
+      line-height: 1.1;
+      font-weight: 820;
+    }
+
+    .admin-name span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .dropdown {
+      position: fixed;
+      top: 66px;
+      right: 22px;
+      width: min(390px, calc(100vw - 32px));
+      max-height: calc(100vh - 92px);
+      overflow: auto;
+      border: 1px solid rgba(176, 212, 230, 0.18);
+      border-radius: 18px;
+      background: rgba(8, 24, 34, 0.96);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px) saturate(1.35);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px) scale(0.98);
+      transition:
+        opacity var(--dur) var(--ease-fast),
+        transform var(--dur) var(--ease-fast);
+      z-index: 70;
+    }
+
+    .dropdown.is-open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+
+    .dropdown-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dropdown-head strong {
+      font-size: 14px;
+      font-weight: 850;
+    }
+
+    .dropdown-head span,
+    .notification-copy span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .notification-list { padding: 8px; }
+
+    .notification {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 12px;
+      padding: 10px;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      background: transparent;
+      transition:
+        background-color var(--dur) var(--ease),
+        border-color var(--dur) var(--ease),
+        transform var(--dur) var(--ease);
+    }
+
+    .notification:hover {
+      background: rgba(21, 59, 79, 0.38);
+      border-color: rgba(176, 212, 230, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .notification-icon {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: var(--cyan);
+      background: rgba(34, 211, 238, 0.09);
+    }
+
+    .notification-copy { display: grid; gap: 4px; min-width: 0; }
+    .notification-copy strong {
+      overflow: hidden;
+      color: #edf8ff;
+      font-size: 12px;
+      line-height: 1.25;
+      font-weight: 780;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .profile-panel { padding: 12px; }
+    .profile-top {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(13, 39, 54, 0.62);
+    }
+
+    .profile-actions {
+      display: grid;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .profile-action {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 12px;
+      border: 1px solid transparent;
+      border-radius: 13px;
+      color: #c7d8e2;
+      background: transparent;
+      text-align: left;
+      transition:
+        color var(--dur) var(--ease),
+        background-color var(--dur) var(--ease),
+        border-color var(--dur) var(--ease);
+    }
+
+    .profile-action:hover {
+      color: #fff;
+      background: rgba(21, 59, 79, 0.46);
+      border-color: rgba(176, 212, 230, 0.13);
+    }
+
+    .content {
+      min-width: 0;
+      overflow: auto;
+      padding: 24px;
+      scroll-behavior: smooth;
+    }
+
+    .screen {
+      display: none;
+      gap: 18px;
+      max-width: 1540px;
+      margin-inline: auto;
+      animation: screenIn 220ms var(--ease-fast) both;
+    }
+
+    .screen.is-active { display: grid; }
+
+    .hero-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(330px, 0.65fr);
+      gap: 18px;
+    }
+
+    .hero-card {
+      position: relative;
+      min-height: 242px;
+      overflow: hidden;
+      padding: 24px;
+      border: 1px solid rgba(34, 211, 238, 0.18);
+      border-radius: var(--radius-xl);
+      background:
+        radial-gradient(circle at 82% 16%, rgba(34, 211, 238, 0.18), transparent 28%),
+        radial-gradient(circle at 20% 90%, rgba(16, 185, 129, 0.13), transparent 30%),
+        linear-gradient(135deg, rgba(21, 59, 79, 0.82), rgba(9, 28, 40, 0.95));
+      box-shadow: var(--shadow-soft);
+    }
+
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -12% -40% 44%;
+      height: 220px;
+      border-radius: 999px;
+      background: rgba(34, 211, 238, 0.13);
+      filter: blur(32px);
+      transform: rotate(-8deg);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 18px;
+      max-width: 720px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      padding: 6px 10px;
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      border-radius: 999px;
+      color: #bff7ff;
+      background: rgba(34, 211, 238, 0.08);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero-title {
+      margin: 0;
+      color: #ffffff;
+      font-size: 32px;
+      line-height: 1.06;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+    }
+
+    .hero-copy {
+      max-width: 68ch;
+      margin: 0;
+      color: #b8cad5;
+      font-size: 14px;
+      line-height: 1.65;
+      font-weight: 570;
+    }
+
+    .hero-actions,
+    .filter-row,
+    .button-row,
+    .chip-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 9px;
+    }
+
+    .primary-btn,
+    .ghost-btn,
+    .chip,
+    .table-action,
+    .row-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: #d7e8f0;
+      background: rgba(13, 39, 54, 0.62);
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+      transition:
+        color var(--dur) var(--ease),
+        background-color var(--dur) var(--ease),
+        border-color var(--dur) var(--ease),
+        transform var(--dur) var(--ease),
+        box-shadow var(--dur) var(--ease);
+    }
+
+    .primary-btn {
+      color: #041117;
+      border-color: rgba(34, 211, 238, 0.66);
+      background: linear-gradient(135deg, #22d3ee, #10b981);
+      box-shadow: 0 14px 32px rgba(34, 211, 238, 0.16);
+    }
+
+    .primary-btn:hover {
+      color: #020a0e;
+      border-color: rgba(255, 255, 255, 0.32);
+      box-shadow: 0 20px 42px rgba(34, 211, 238, 0.23);
+      transform: translateY(-2px);
+    }
+
+    .ghost-btn:hover,
+    .table-action:hover,
+    .row-button:hover {
+      color: #ffffff;
+      background: rgba(21, 59, 79, 0.84);
+      border-color: rgba(34, 211, 238, 0.3);
+      box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.07);
+      transform: translateY(-1px);
+    }
+
+    .chip {
+      min-height: 34px;
+      padding: 0 12px;
+      color: #a9bdca;
+      background: rgba(5, 16, 24, 0.42);
+    }
+
+    .chip:hover {
+      color: #ffffff;
+      border-color: rgba(34, 211, 238, 0.24);
+      background: rgba(21, 59, 79, 0.54);
+    }
+
+    .chip.is-active {
+      color: #dbfcff;
+      border-color: rgba(34, 211, 238, 0.38);
+      background: rgba(34, 211, 238, 0.12);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .hero-map {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      width: min(42%, 330px);
+      min-width: 240px;
+      height: 154px;
+      opacity: 0.72;
+    }
+
+    .map-line {
+      fill: none;
+      stroke: rgba(34, 211, 238, 0.5);
+      stroke-width: 2;
+      stroke-dasharray: 8 9;
+      animation: dashMove 7s linear infinite;
+    }
+
+    .map-node {
+      fill: #22d3ee;
+      filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.6));
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(12, 35, 49, 0.86), rgba(8, 24, 34, 0.88));
+      box-shadow: var(--shadow-soft);
+    }
+
+    .panel.is-soft {
+      background: rgba(10, 29, 40, 0.66);
+      box-shadow: none;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 18px 18px 12px;
+    }
+
+    .panel-title {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .panel-title h2,
+    .panel-title h3 {
+      margin: 0;
+      color: #f8fcff;
+      font-size: 15px;
+      line-height: 1.2;
+      font-weight: 850;
+      letter-spacing: -0.01em;
+    }
+
+    .panel-title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      font-weight: 600;
+    }
+
+    .panel-body { padding: 0 18px 18px; }
+
+    .ops-score {
+      display: grid;
+      gap: 18px;
+      min-height: 242px;
+      padding: 20px;
+    }
+
+    .score-ring {
+      width: 132px;
+      height: 132px;
+      margin: 4px auto 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        conic-gradient(from -90deg, #22d3ee 0 81%, rgba(255, 255, 255, 0.08) 81% 100%);
+      box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.12), 0 18px 46px rgba(34, 211, 238, 0.11);
+    }
+
+    .score-ring::before {
+      content: "";
+      position: absolute;
+      width: 96px;
+      height: 96px;
+      border-radius: inherit;
+      background: #0b2230;
+      border: 1px solid rgba(176, 212, 230, 0.12);
+    }
+
+    .score-ring strong,
+    .score-ring span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .score-ring strong {
+      color: #ffffff;
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .score-mini {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .score-mini span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .score-mini strong {
+      display: block;
+      margin-top: 5px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .kpi-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 156px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background:
+        radial-gradient(circle at 82% 18%, rgba(var(--tone-rgb), 0.18), transparent 34%),
+        linear-gradient(180deg, rgba(13, 39, 54, 0.88), rgba(8, 24, 34, 0.9));
+      box-shadow: var(--shadow-soft);
+      transition:
+        border-color var(--dur) var(--ease),
+        transform var(--dur) var(--ease),
+        box-shadow var(--dur) var(--ease),
+        background-color var(--dur) var(--ease);
+    }
+
+    .kpi-card:hover {
+      border-color: rgba(var(--tone-rgb), 0.36);
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.28), 0 0 0 4px rgba(var(--tone-rgb), 0.045);
+      transform: translateY(-3px);
+    }
+
+    .kpi-card[data-tone="cyan"] { --tone-rgb: 34, 211, 238; }
+    .kpi-card[data-tone="emerald"] { --tone-rgb: 16, 185, 129; }
+    .kpi-card[data-tone="amber"] { --tone-rgb: 245, 158, 11; }
+    .kpi-card[data-tone="red"] { --tone-rgb: 239, 68, 68; }
+
+    .kpi-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .kpi-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      color: rgb(var(--tone-rgb));
+      background: rgba(var(--tone-rgb), 0.1);
+      border: 1px solid rgba(var(--tone-rgb), 0.18);
+    }
+
+    .delta {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 7px;
+      border-radius: 999px;
+      color: #b9ffe4;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.16);
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .delta.warn {
+      color: #ffe5ae;
+      background: rgba(245, 158, 11, 0.1);
+      border-color: rgba(245, 158, 11, 0.16);
+    }
+
+    .kpi-card h3 {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .kpi-value {
+      display: block;
+      margin-top: 7px;
+      color: #ffffff;
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 920;
+      letter-spacing: -0.03em;
+    }
+
+    .kpi-foot {
+      display: block;
+      margin-top: 9px;
+      color: #8fa6b5;
+      font-size: 12px;
+      font-weight: 630;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.38fr) minmax(330px, 0.62fr);
+      gap: 18px;
+    }
+
+    .bars {
+      height: 292px;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(22px, 1fr));
+      align-items: end;
+      gap: 10px;
+      padding-top: 14px;
+    }
+
+    .bar-col {
+      display: grid;
+      align-items: end;
+      gap: 8px;
+      height: 100%;
+    }
+
+    .bar-stack {
+      position: relative;
+      height: 100%;
+      min-height: 42px;
+      display: grid;
+      align-items: end;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: var(--h);
+      min-height: 12px;
+      border-radius: 999px 999px 0 0;
+      background: linear-gradient(180deg, var(--cyan), rgba(34, 211, 238, 0.18));
+      transform-origin: bottom;
+      animation: growBar 780ms var(--ease-fast) both;
+      animation-delay: calc(var(--i) * 35ms);
+    }
+
+    .bar-fill.alt {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(var(--h) * 0.46);
+      background: linear-gradient(180deg, var(--emerald), rgba(16, 185, 129, 0.16));
+      opacity: 0.84;
+    }
+
+    .bar-label {
+      color: var(--muted-2);
+      font-size: 10px;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .legend-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 12px rgba(34, 211, 238, 0.3);
+    }
+
+    .legend-dot.green { background: var(--emerald); box-shadow: 0 0 12px rgba(16, 185, 129, 0.3); }
+    .legend-dot.amber { background: var(--amber); box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
+
+    .activity-list,
+    .timeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .activity {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 11px;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      transition:
+        background-color var(--dur) var(--ease),
+        border-color var(--dur) var(--ease),
+        transform var(--dur) var(--ease);
+    }
+
+    .activity:hover {
+      background: rgba(21, 59, 79, 0.34);
+      border-color: rgba(176, 212, 230, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .activity-avatar {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: #dffbff;
+      background: rgba(34, 211, 238, 0.08);
+      border: 1px solid rgba(34, 211, 238, 0.15);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .activity-main { min-width: 0; }
+    .activity-main strong {
+      display: block;
+      overflow: hidden;
+      color: #f3fbff;
+      font-size: 12px;
+      font-weight: 780;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .activity-main span {
+      display: block;
+      overflow: hidden;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 620;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .amount {
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .health-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .health-card {
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: rgba(10, 29, 40, 0.64);
+      transition:
+        border-color var(--dur) var(--ease),
+        transform var(--dur) var(--ease),
+        background-color var(--dur) var(--ease);
+    }
+
+    .health-card:hover {
+      background: rgba(13, 39, 54, 0.8);
+      border-color: rgba(34, 211, 238, 0.22);
+      transform: translateY(-2px);
+    }
+
+    .health-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .health-value {
+      display: block;
+      margin-top: 12px;
+      color: #fff;
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 910;
+      letter-spacing: -0.02em;
+    }
+
+    .mini-meter {
+      height: 8px;
+      margin-top: 14px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .mini-meter span {
+      display: block;
+      width: var(--w);
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--tone), rgba(255, 255, 255, 0.2));
+      animation: meterIn 600ms var(--ease-fast) both;
+    }
+
+    .table-screen {
+      grid-template-columns: minmax(0, 1fr) 360px;
+      align-items: start;
+    }
+
+    .operations-card {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar-main {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .toolbar-title {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .toolbar-title h1 {
+      margin: 0;
+      color: #ffffff;
+      font-size: 24px;
+      line-height: 1.1;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+
+    .toolbar-title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 620;
+    }
+
+    .select-control {
+      min-height: 40px;
+      padding: 0 38px 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: #dcecf4;
+      background:
+        linear-gradient(45deg, transparent 50%, #9eb3c0 50%) right 16px center / 7px 7px no-repeat,
+        linear-gradient(135deg, #9eb3c0 50%, transparent 50%) right 11px center / 7px 7px no-repeat,
+        rgba(8, 24, 34, 0.68);
+      appearance: none;
+      transition:
+        border-color var(--dur) var(--ease),
+        background-color var(--dur) var(--ease);
+    }
+
+    .select-control:hover {
+      border-color: rgba(34, 211, 238, 0.26);
+      background-color: rgba(13, 39, 54, 0.78);
+    }
+
+    .tabs-panel {
+      display: flex;
+      gap: 6px;
+      width: fit-content;
+      padding: 5px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(5, 16, 24, 0.42);
+    }
+
+    .status-tab {
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      color: #9eb3c0;
+      background: transparent;
+      font-size: 12px;
+      font-weight: 820;
+      transition:
+        color var(--dur) var(--ease),
+        background-color var(--dur) var(--ease),
+        border-color var(--dur) var(--ease),
+        transform var(--dur) var(--ease);
+    }
+
+    .status-tab:hover {
+      color: #ffffff;
+      background: rgba(21, 59, 79, 0.42);
+    }
+
+    .status-tab.is-active {
+      color: #dffbff;
+      border-color: rgba(34, 211, 238, 0.24);
+      background: rgba(34, 211, 238, 0.1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .table-wrap {
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(34, 211, 238, 0.25) transparent;
+    }
+
+    table {
+      width: 100%;
+      min-width: 940px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 13px 16px;
+      border-bottom: 1px solid rgba(176, 212, 230, 0.09);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      color: #7f96a6;
+      background: rgba(8, 24, 34, 0.96);
+      font-size: 11px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    td {
+      color: #d9e8ef;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    tbody tr {
+      transition:
+        background-color var(--dur) var(--ease),
+        opacity var(--dur) var(--ease);
+    }
+
+    tbody tr:hover { background: rgba(21, 59, 79, 0.24); }
+    tbody tr.is-hidden { display: none; }
+    tbody tr.is-selected { background: rgba(34, 211, 238, 0.07); }
+
+    .booking-id {
+      color: #8ff3ff;
+      font-weight: 880;
+      white-space: nowrap;
+    }
+
+    .customer-cell {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .customer-cell strong {
+      color: #f5fbff;
+      font-size: 13px;
+      font-weight: 820;
+    }
+
+    .customer-cell span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 620;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(var(--status-rgb), 0.2);
+      color: rgb(var(--status-rgb));
+      background: rgba(var(--status-rgb), 0.08);
+      font-size: 11px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .status-pill::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 12px rgba(var(--status-rgb), 0.45);
+    }
+
+    .status-pill.confirmed { --status-rgb: 34, 211, 238; }
+    .status-pill.pending { --status-rgb: 245, 158, 11; }
+    .status-pill.completed { --status-rgb: 16, 185, 129; }
+    .status-pill.cancelled { --status-rgb: 239, 68, 68; }
+
+    .row-button {
+      min-height: 32px;
+      padding: 0 10px;
+      border-radius: 10px;
+    }
+
+    .detail-card {
+      position: sticky;
+      top: 0;
+      overflow: hidden;
+    }
+
+    .detail-hero {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 82% 10%, rgba(34, 211, 238, 0.16), transparent 35%),
+        linear-gradient(135deg, rgba(21, 59, 79, 0.66), rgba(8, 24, 34, 0.72));
+    }
+
+    .detail-hero span {
+      display: block;
+      color: #8ff3ff;
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .detail-hero h2 {
+      margin: 8px 0 5px;
+      color: #fff;
+      font-size: 20px;
+      line-height: 1.15;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+
+    .detail-hero p {
+      margin: 0;
+      color: #a6bac8;
+      font-size: 12px;
+      line-height: 1.45;
+      font-weight: 620;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .detail-mini {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .detail-mini span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .detail-mini strong {
+      display: block;
+      margin-top: 5px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .timeline {
+      padding: 4px 18px 18px;
+    }
+
+    .timeline-item {
+      position: relative;
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .timeline-item + .timeline-item { margin-top: 12px; }
+    .timeline-item:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: 9px;
+      top: 22px;
+      bottom: -13px;
+      width: 1px;
+      background: rgba(176, 212, 230, 0.16);
+    }
+
+    .timeline-dot {
+      width: 19px;
+      height: 19px;
+      margin-top: 1px;
+      border: 1px solid rgba(34, 211, 238, 0.32);
+      border-radius: 50%;
+      background: rgba(34, 211, 238, 0.13);
+      box-shadow: 0 0 16px rgba(34, 211, 238, 0.18);
+    }
+
+    .timeline-copy strong {
+      display: block;
+      color: #edf8ff;
+      font-size: 12px;
+      font-weight: 820;
+    }
+
+    .timeline-copy span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+      font-weight: 620;
+    }
+
+    .command-palette {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: grid;
+      place-items: start center;
+      padding: 9vh 18px;
+      background: rgba(2, 8, 12, 0.55);
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--dur) var(--ease);
+    }
+
+    .command-palette.is-open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .command-card {
+      width: min(680px, 100%);
+      overflow: hidden;
+      border: 1px solid rgba(176, 212, 230, 0.18);
+      border-radius: 22px;
+      background: rgba(8, 24, 34, 0.96);
+      box-shadow: var(--shadow);
+      transform: translateY(-8px) scale(0.98);
+      transition: transform var(--dur) var(--ease-fast);
+    }
+
+    .command-palette.is-open .command-card { transform: translateY(0) scale(1); }
+
+    .command-search {
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .command-search input {
+      border: 0;
+      outline: 0;
+      color: #fff;
+      background: transparent;
+      font-size: 15px;
+      font-weight: 720;
+    }
+
+    .command-list {
+      display: grid;
+      gap: 6px;
+      padding: 10px;
+    }
+
+    .command-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 12px;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      color: #d9e8ef;
+      background: transparent;
+      transition:
+        background-color var(--dur) var(--ease),
+        border-color var(--dur) var(--ease);
+    }
+
+    .command-item:hover {
+      background: rgba(21, 59, 79, 0.42);
+      border-color: rgba(176, 212, 230, 0.12);
+    }
+
+    .mobile-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(0, 0, 0, 0.56);
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--dur) var(--ease);
+    }
+
+    .mobile-backdrop.is-open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    @keyframes dotPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.24); opacity: 0.72; }
+    }
+
+    @keyframes badgePop {
+      0%, 84%, 100% { transform: scale(1); }
+      91% { transform: scale(1.1); }
+    }
+
+    @keyframes screenIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes growBar {
+      from { transform: scaleY(0); }
+      to { transform: scaleY(1); }
+    }
+
+    @keyframes meterIn {
+      from { width: 0; }
+      to { width: var(--w); }
+    }
+
+    @keyframes dashMove {
+      to { stroke-dashoffset: -80; }
+    }
+
+    @media (max-width: 1180px) {
+      .hero-row,
+      .dashboard-grid,
+      .table-screen {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-card { position: static; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .search-box { width: 260px; }
+    }
+
+    @media (max-width: 900px) {
+      body {
+        overflow: auto;
+        overflow-x: hidden;
+      }
+      .demo-shell {
+        display: block;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        position: fixed;
+        left: -104%;
+        top: 0;
+        width: min(320px, calc(100vw - 42px));
+        transform: none;
+        transition: left 260ms var(--ease);
+      }
+
+      #sidebar.is-mobile-open {
+        left: 0 !important;
+        transform: none !important;
+      }
+      .demo-shell.is-collapsed .brand-copy,
+      .demo-shell.is-collapsed .nav-label,
+      .demo-shell.is-collapsed .nav-text,
+      .demo-shell.is-collapsed .nav-count,
+      .demo-shell.is-collapsed .system-card {
+        opacity: 1;
+        pointer-events: auto;
+        transform: none;
+      }
+
+      .demo-shell.is-collapsed .nav-item { justify-content: flex-start; }
+      .main { min-height: 100vh; height: auto; }
+      .icon-btn.mobile-trigger { display: inline-grid; }
+      .desktop-collapse { display: none; }
+      .content { overflow: visible; padding: 18px; }
+      .topbar { padding: 12px 16px; }
+      .admin-name { display: none; }
+      .search-box { display: none; }
+      .bars { gap: 7px; }
+    }
+
+    @media (max-width: 680px) {
+      .topbar { min-height: 68px; }
+      .crumb strong { font-size: 15px; }
+      .content { padding: 14px; }
+      .hero-card { min-height: auto; padding: 18px; }
+      .hero-title { font-size: 25px; }
+      .hero-map {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        width: 100%;
+        min-width: 0;
+        margin-top: 8px;
+      }
+      .kpi-grid,
+      .health-grid,
+      .score-grid,
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+      .toolbar-main,
+      .filter-row,
+      .button-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .toolbar-main > *,
+      .filter-row > *,
+      .button-row > *,
+      .primary-btn,
+      .ghost-btn,
+      .select-control {
+        width: 100%;
+      }
+      .tabs-panel {
+        width: 100%;
+        overflow: auto;
+      }
+      .status-tab { flex: 1 0 auto; }
+      .bars {
+        height: 220px;
+        grid-template-columns: repeat(6, minmax(24px, 1fr));
+      }
+      .bar-col:nth-child(n+7) { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" width="0" height="0" style="position:absolute">
+    <symbol id="i-dashboard" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-booking" viewBox="0 0 24 24"><path d="M7 3v3m10-3v3M4.5 8.2h15M6 5h12a2 2 0 0 1 2 2v11.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm3 8 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="m5 12 1.7-4.2A3 3 0 0 1 9.5 6h5a3 3 0 0 1 2.8 1.8L19 12m-15 0h16v5a1.5 1.5 0 0 1-1.5 1.5H17A1.5 1.5 0 0 1 15.5 17h-7A1.5 1.5 0 0 1 7 18.5H5.5A1.5 1.5 0 0 1 4 17v-5Zm3 3h.01M17 15h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2m18 0v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75M9.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-money" viewBox="0 0 24 24"><path d="M4 7h16v10H4V7Zm3 3h.01M17 14h.01M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16v-5m4 5V8m4 8v-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Zm0-12v2m0 13v2m8.49-15-1.42 1.42M4.93 19.07l1.42-1.42m15.15-5.65h-2M5.5 12h-2m16.99 6.49-1.42-1.42M4.93 4.93l1.42 1.42" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 12a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16M7 12h10m-7 7h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><path d="M6 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm12-8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 13V8a3 3 0 0 1 3-3h6m3 6v5a3 3 0 0 1-3 3H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <div class="app-noise"></div>
+  <div class="mobile-backdrop" data-close-mobile></div>
+
+  <div class="demo-shell" id="demoShell">
+    <aside class="sidebar" id="sidebar" aria-label="Admin navigation">
+      <div class="brand">
+        <div class="brand-mark">V</div>
+        <div class="brand-copy">
+          <span class="brand-title">Vrooem</span>
+          <span class="brand-subtitle">Admin Panel</span>
+        </div>
+      </div>
+
+      <nav class="nav-scroll">
+        <div class="nav-section">
+          <span class="nav-label">Main</span>
+          <button class="nav-item is-active" type="button" data-screen="dashboard" aria-current="page">
+            <svg class="nav-icon"><use href="#i-dashboard"></use></svg>
+            <span class="nav-text">Command Dashboard</span>
+            <span class="nav-count">Live</span>
+          </button>
+          <button class="nav-item" type="button" data-screen="bookings">
+            <svg class="nav-icon"><use href="#i-booking"></use></svg>
+            <span class="nav-text">Bookings Operations</span>
+            <span class="nav-count">128</span>
+          </button>
+        </div>
+
+        <div class="nav-section">
+          <span class="nav-label">Management</span>
+          <button class="nav-item" type="button">
+            <svg class="nav-icon"><use href="#i-car"></use></svg>
+            <span class="nav-text">Fleet Inventory</span>
+            <span class="nav-count">486</span>
+          </button>
+          <button class="nav-item" type="button">
+            <svg class="nav-icon"><use href="#i-users"></use></svg>
+            <span class="nav-text">Users and Vendors</span>
+            <span class="nav-count">42</span>
+          </button>
+          <button class="nav-item" type="button">
+            <svg class="nav-icon"><use href="#i-money"></use></svg>
+            <span class="nav-text">Payments</span>
+          </button>
+        </div>
+
+        <div class="nav-section">
+          <span class="nav-label">Business</span>
+          <button class="nav-item" type="button">
+            <svg class="nav-icon"><use href="#i-chart"></use></svg>
+            <span class="nav-text">Reports</span>
+          </button>
+          <button class="nav-item" type="button">
+            <svg class="nav-icon"><use href="#i-route"></use></svg>
+            <span class="nav-text">Provider API</span>
+            <span class="nav-count">17</span>
+          </button>
+        </div>
+
+        <div class="nav-section">
+          <span class="nav-label">System</span>
+          <button class="nav-item" type="button">
+            <svg class="nav-icon"><use href="#i-settings"></use></svg>
+            <span class="nav-text">Settings</span>
+          </button>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="system-card">
+          <div class="system-line"><span>Gateway health</span><span class="pulse-dot"></span></div>
+          <div class="system-meter"><span></span></div>
+        </div>
+        <button class="nav-item logout-btn" type="button">
+          <svg class="nav-icon"><use href="#i-log-out"></use></svg>
+          <span class="nav-text">Log out</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="top-left">
+          <button class="icon-btn mobile-trigger" type="button" id="mobileOpen" aria-label="Open navigation">
+            <svg width="20" height="20"><use href="#i-menu"></use></svg>
+          </button>
+          <button class="icon-btn desktop-collapse" type="button" id="collapseSidebar" aria-label="Collapse sidebar">
+            <svg width="20" height="20"><use href="#i-menu"></use></svg>
+          </button>
+          <div class="crumb">
+            <span>Admin / <span id="crumbSection">Overview</span></span>
+            <strong id="screenTitle">Command Dashboard</strong>
+          </div>
+        </div>
+
+        <div class="top-right">
+          <label class="search-box" id="searchTrigger">
+            <svg width="18" height="18"><use href="#i-search"></use></svg>
+            <input type="search" placeholder="Search bookings, vendors, cars..." aria-label="Search demo">
+            <span class="kbd">/</span>
+          </label>
+
+          <button class="icon-btn" type="button" id="notifyButton" aria-label="Open notifications">
+            <svg width="19" height="19"><use href="#i-bell"></use></svg>
+            <span class="badge-dot">9+</span>
+          </button>
+
+          <button class="admin-menu" type="button" id="profileButton" aria-label="Open profile menu">
+            <span class="avatar">VR</span>
+            <span class="admin-name"><strong>Vrooem Ops</strong><span>administrator</span></span>
+            <svg width="15" height="15"><use href="#i-chevron"></use></svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="screen is-active" id="screen-dashboard" data-title="Command Dashboard" data-section="Overview">
+          <section class="hero-row">
+            <article class="hero-card">
+              <div class="hero-content">
+                <span class="eyebrow"><span class="pulse-dot"></span> Live rental command center</span>
+                <h1 class="hero-title">Dark operations view for bookings, vendors, fleet health, and revenue control.</h1>
+                <p class="hero-copy">This demo keeps the existing Vrooem admin structure, then shifts the surface into a dark, task-focused command panel with richer contrast, tighter density, and active states that feel clear during long admin sessions.</p>
+                <div class="hero-actions">
+                  <button class="primary-btn" type="button" data-screen="bookings"><svg width="16" height="16"><use href="#i-booking"></use></svg>Review bookings</button>
+                  <button class="ghost-btn" type="button"><svg width="16" height="16"><use href="#i-download"></use></svg>Export snapshot</button>
+                </div>
+              </div>
+              <svg class="hero-map" viewBox="0 0 360 180" aria-hidden="true">
+                <path class="map-line" d="M23 126 C76 60 127 155 179 84 S280 56 331 122"></path>
+                <circle class="map-node" cx="23" cy="126" r="5"></circle>
+                <circle class="map-node" cx="116" cy="124" r="4"></circle>
+                <circle class="map-node" cx="179" cy="84" r="5"></circle>
+                <circle class="map-node" cx="268" cy="68" r="4"></circle>
+                <circle class="map-node" cx="331" cy="122" r="5"></circle>
+              </svg>
+            </article>
+
+            <aside class="panel ops-score">
+              <div class="panel-title">
+                <h2>Operations score</h2>
+                <p>Weighted health across bookings, fleet, payments, and provider API.</p>
+              </div>
+              <div class="score-ring" aria-label="Operations score 81 percent"><strong>81</strong></div>
+              <div class="score-grid">
+                <div class="score-mini"><span>Open</span><strong>24</strong></div>
+                <div class="score-mini"><span>Risk</span><strong>7</strong></div>
+                <div class="score-mini"><span>SLA</span><strong>96%</strong></div>
+              </div>
+            </aside>
+          </section>
+
+          <section class="kpi-grid" aria-label="Dashboard metrics">
+            <article class="kpi-card" data-tone="cyan">
+              <div class="kpi-top"><div class="kpi-icon"><svg width="20" height="20"><use href="#i-booking"></use></svg></div><span class="delta">+12.4%</span></div>
+              <h3>Total bookings</h3><span class="kpi-value">12,842</span><span class="kpi-foot">1,209 active trips this month</span>
+            </article>
+            <article class="kpi-card" data-tone="emerald">
+              <div class="kpi-top"><div class="kpi-icon"><svg width="20" height="20"><use href="#i-money"></use></svg></div><span class="delta">+8.1%</span></div>
+              <h3>Commission revenue</h3><span class="kpi-value">EUR 84.7k</span><span class="kpi-foot">15 percent platform margin</span>
+            </article>
+            <article class="kpi-card" data-tone="amber">
+              <div class="kpi-top"><div class="kpi-icon"><svg width="20" height="20"><use href="#i-car"></use></svg></div><span class="delta warn">31 pending</span></div>
+              <h3>Fleet approvals</h3><span class="kpi-value">486</span><span class="kpi-foot">42 vehicles need admin review</span>
+            </article>
+            <article class="kpi-card" data-tone="red">
+              <div class="kpi-top"><div class="kpi-icon"><svg width="20" height="20"><use href="#i-alert"></use></svg></div><span class="delta warn">7 alerts</span></div>
+              <h3>Payment exceptions</h3><span class="kpi-value">18</span><span class="kpi-foot">4 require same-day action</span>
+            </article>
+          </section>
+
+          <section class="dashboard-grid">
+            <article class="panel">
+              <div class="panel-head">
+                <div class="panel-title"><h2>Booking velocity</h2><p>Monthly confirmed and completed bookings.</p></div>
+                <div class="chip-row" role="tablist" aria-label="Chart period">
+                  <button class="chip is-active" type="button">Year</button>
+                  <button class="chip" type="button">Quarter</button>
+                  <button class="chip" type="button">Month</button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="chart-legend">
+                  <span class="legend-item"><span class="legend-dot"></span>Confirmed</span>
+                  <span class="legend-item"><span class="legend-dot green"></span>Completed</span>
+                  <span class="legend-item"><span class="legend-dot amber"></span>Peak demand</span>
+                </div>
+                <div class="bars" aria-label="Animated booking bar chart">
+                  <div class="bar-col" style="--i:0"><div class="bar-stack"><span class="bar-fill" style="--h:42%"></span><span class="bar-fill alt" style="--h:42%"></span></div><span class="bar-label">Jan</span></div>
+                  <div class="bar-col" style="--i:1"><div class="bar-stack"><span class="bar-fill" style="--h:55%"></span><span class="bar-fill alt" style="--h:55%"></span></div><span class="bar-label">Feb</span></div>
+                  <div class="bar-col" style="--i:2"><div class="bar-stack"><span class="bar-fill" style="--h:48%"></span><span class="bar-fill alt" style="--h:48%"></span></div><span class="bar-label">Mar</span></div>
+                  <div class="bar-col" style="--i:3"><div class="bar-stack"><span class="bar-fill" style="--h:64%"></span><span class="bar-fill alt" style="--h:64%"></span></div><span class="bar-label">Apr</span></div>
+                  <div class="bar-col" style="--i:4"><div class="bar-stack"><span class="bar-fill" style="--h:71%"></span><span class="bar-fill alt" style="--h:71%"></span></div><span class="bar-label">May</span></div>
+                  <div class="bar-col" style="--i:5"><div class="bar-stack"><span class="bar-fill" style="--h:83%"></span><span class="bar-fill alt" style="--h:83%"></span></div><span class="bar-label">Jun</span></div>
+                  <div class="bar-col" style="--i:6"><div class="bar-stack"><span class="bar-fill" style="--h:76%"></span><span class="bar-fill alt" style="--h:76%"></span></div><span class="bar-label">Jul</span></div>
+                  <div class="bar-col" style="--i:7"><div class="bar-stack"><span class="bar-fill" style="--h:88%"></span><span class="bar-fill alt" style="--h:88%"></span></div><span class="bar-label">Aug</span></div>
+                  <div class="bar-col" style="--i:8"><div class="bar-stack"><span class="bar-fill" style="--h:62%"></span><span class="bar-fill alt" style="--h:62%"></span></div><span class="bar-label">Sep</span></div>
+                  <div class="bar-col" style="--i:9"><div class="bar-stack"><span class="bar-fill" style="--h:69%"></span><span class="bar-fill alt" style="--h:69%"></span></div><span class="bar-label">Oct</span></div>
+                  <div class="bar-col" style="--i:10"><div class="bar-stack"><span class="bar-fill" style="--h:57%"></span><span class="bar-fill alt" style="--h:57%"></span></div><span class="bar-label">Nov</span></div>
+                  <div class="bar-col" style="--i:11"><div class="bar-stack"><span class="bar-fill" style="--h:74%"></span><span class="bar-fill alt" style="--h:74%"></span></div><span class="bar-label">Dec</span></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <div class="panel-title"><h2>Recent commission earnings</h2><p>Latest booking revenue events.</p></div>
+              </div>
+              <div class="panel-body activity-list">
+                <div class="activity"><span class="activity-avatar">AK</span><span class="activity-main"><strong>Aisha Khan</strong><span>BMW 3 Series, Dubai Airport</span></span><span class="amount">EUR 1,280</span></div>
+                <div class="activity"><span class="activity-avatar">MD</span><span class="activity-main"><strong>Marco Diaz</strong><span>Toyota Corolla, Rome FCO</span></span><span class="amount">EUR 742</span></div>
+                <div class="activity"><span class="activity-avatar">SL</span><span class="activity-main"><strong>Sofia Lind</strong><span>Range Rover Sport, Amsterdam</span></span><span class="amount">EUR 2,140</span></div>
+                <div class="activity"><span class="activity-avatar">JP</span><span class="activity-main"><strong>Jonas Park</strong><span>Volkswagen Golf, Vienna</span></span><span class="amount">EUR 638</span></div>
+                <div class="activity"><span class="activity-avatar">NM</span><span class="activity-main"><strong>Nadia Moore</strong><span>Peugeot 3008, Paris CDG</span></span><span class="amount">EUR 985</span></div>
+              </div>
+            </article>
+          </section>
+
+          <section class="health-grid">
+            <article class="health-card"><div class="health-top"><span>Provider API sync</span><strong>96%</strong></div><span class="health-value">17/18</span><div class="mini-meter"><span style="--w:96%;--tone:var(--cyan)"></span></div></article>
+            <article class="health-card"><div class="health-top"><span>Fleet available</span><strong>71%</strong></div><span class="health-value">344 cars</span><div class="mini-meter"><span style="--w:71%;--tone:var(--emerald)"></span></div></article>
+            <article class="health-card"><div class="health-top"><span>Pending disputes</span><strong>14%</strong></div><span class="health-value">18 cases</span><div class="mini-meter"><span style="--w:14%;--tone:var(--amber)"></span></div></article>
+          </section>
+        </div>
+
+        <div class="screen table-screen" id="screen-bookings" data-title="Bookings Operations" data-section="Operations">
+          <section class="panel operations-card">
+            <div class="toolbar">
+              <div class="toolbar-main">
+                <div class="toolbar-title">
+                  <h1>Bookings Operations</h1>
+                  <p>Static demo table with filters, status tabs, selected row detail, and admin action states.</p>
+                </div>
+                <div class="button-row">
+                  <button class="ghost-btn" type="button"><svg width="16" height="16"><use href="#i-filter"></use></svg>Saved filters</button>
+                  <button class="primary-btn" type="button"><svg width="16" height="16"><use href="#i-download"></use></svg>Export CSV</button>
+                </div>
+              </div>
+              <div class="filter-row">
+                <select class="select-control" aria-label="Region filter">
+                  <option>All regions</option>
+                  <option>United Arab Emirates</option>
+                  <option>Italy</option>
+                  <option>Netherlands</option>
+                </select>
+                <select class="select-control" aria-label="Provider filter">
+                  <option>All providers</option>
+                  <option>Internal fleet</option>
+                  <option>Gateway suppliers</option>
+                  <option>Affiliate bookings</option>
+                </select>
+                <div class="tabs-panel" role="tablist" aria-label="Booking status">
+                  <button class="status-tab is-active" type="button" data-filter="all">All <span id="count-all">8</span></button>
+                  <button class="status-tab" type="button" data-filter="confirmed">Confirmed</button>
+                  <button class="status-tab" type="button" data-filter="pending">Pending</button>
+                  <button class="status-tab" type="button" data-filter="completed">Completed</button>
+                  <button class="status-tab" type="button" data-filter="cancelled">Cancelled</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table aria-label="Bookings table">
+                <thead>
+                  <tr>
+                    <th>Booking</th>
+                    <th>Customer</th>
+                    <th>Vendor</th>
+                    <th>Vehicle</th>
+                    <th>Trip dates</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="bookingTable">
+                  <tr class="is-selected" data-status="confirmed" data-id="VR-10482" data-customer="Aisha Khan" data-route="Dubai Airport to Downtown Dubai" data-amount="EUR 1,280" data-status-label="Confirmed">
+                    <td><span class="booking-id">#VR-10482</span></td>
+                    <td><span class="customer-cell"><strong>Aisha Khan</strong><span>aisha@example.com</span></span></td>
+                    <td>Vrooem Premium</td>
+                    <td>BMW 3 Series</td>
+                    <td>08 Jun to 13 Jun</td>
+                    <td>EUR 1,280</td>
+                    <td><span class="status-pill confirmed">Confirmed</span></td>
+                    <td><button class="row-button" type="button">View</button></td>
+                  </tr>
+                  <tr data-status="pending" data-id="VR-10481" data-customer="Marco Diaz" data-route="Rome FCO to City Center" data-amount="EUR 742" data-status-label="Pending">
+                    <td><span class="booking-id">#VR-10481</span></td>
+                    <td><span class="customer-cell"><strong>Marco Diaz</strong><span>marco@example.com</span></span></td>
+                    <td>SicilyByCar</td>
+                    <td>Toyota Corolla</td>
+                    <td>09 Jun to 12 Jun</td>
+                    <td>EUR 742</td>
+                    <td><span class="status-pill pending">Pending</span></td>
+                    <td><button class="row-button" type="button">View</button></td>
+                  </tr>
+                  <tr data-status="completed" data-id="VR-10479" data-customer="Sofia Lind" data-route="Amsterdam Schiphol to Utrecht" data-amount="EUR 2,140" data-status-label="Completed">
+                    <td><span class="booking-id">#VR-10479</span></td>
+                    <td><span class="customer-cell"><strong>Sofia Lind</strong><span>sofia@example.com</span></span></td>
+                    <td>GreenMotion</td>
+                    <td>Range Rover Sport</td>
+                    <td>31 May to 06 Jun</td>
+                    <td>EUR 2,140</td>
+                    <td><span class="status-pill completed">Completed</span></td>
+                    <td><button class="row-button" type="button">View</button></td>
+                  </tr>
+                  <tr data-status="confirmed" data-id="VR-10476" data-customer="Jonas Park" data-route="Vienna Airport to Innere Stadt" data-amount="EUR 638" data-status-label="Confirmed">
+                    <td><span class="booking-id">#VR-10476</span></td>
+                    <td><span class="customer-cell"><strong>Jonas Park</strong><span>jonas@example.com</span></span></td>
+                    <td>RecordGo</td>
+                    <td>Volkswagen Golf</td>
+                    <td>10 Jun to 15 Jun</td>
+                    <td>EUR 638</td>
+                    <td><span class="status-pill confirmed">Confirmed</span></td>
+                    <td><button class="row-button" type="button">View</button></td>
+                  </tr>
+                  <tr data-status="cancelled" data-id="VR-10473" data-customer="Nadia Moore" data-route="Paris CDG to Montparnasse" data-amount="EUR 985" data-status-label="Cancelled">
+                    <td><span class="booking-id">#VR-10473</span></td>
+                    <td><span class="customer-cell"><strong>Nadia Moore</strong><span>nadia@example.com</span></span></td>
+                    <td>Internal Fleet</td>
+                    <td>Peugeot 3008</td>
+                    <td>01 Jun to 07 Jun</td>
+                    <td>EUR 985</td>
+                    <td><span class="status-pill cancelled">Cancelled</span></td>
+                    <td><button class="row-button" type="button">View</button></td>
+                  </tr>
+                  <tr data-status="pending" data-id="VR-10469" data-customer="Elena Rossi" data-route="Milan Malpensa to Como" data-amount="EUR 1,104" data-status-label="Pending">
+                    <td><span class="booking-id">#VR-10469</span></td>
+                    <td><span class="customer-cell"><strong>Elena Rossi</strong><span>elena@example.com</span></span></td>
+                    <td>OK Mobility</td>
+                    <td>Mercedes A Class</td>
+                    <td>11 Jun to 16 Jun</td>
+                    <td>EUR 1,104</td>
+                    <td><span class="status-pill pending">Pending</span></td>
+                    <td><button class="row-button" type="button">View</button></td>
+                  </tr>
+                  <tr data-status="completed" data-id="VR-10465" data-customer="Thomas Reid" data-route="Dublin Airport to Galway" data-amount="EUR 914" data-status-label="Completed">
+                    <td><span class="booking-id">#VR-10465</span></td>
+                    <td><span class="customer-cell"><strong>Thomas Reid</strong><span>thomas@example.com</span></span></td>
+                    <td>Easirent</td>
+                    <td>Hyundai Tucson</td>
+                    <td>24 May to 29 May</td>
+                    <td>EUR 914</td>
+                    <td><span class="status-pill completed">Completed</span></td>
+                    <td><button class="row-button" type="button">View</button></td>
+                  </tr>
+                  <tr data-status="confirmed" data-id="VR-10461" data-customer="Maya Patel" data-route="London Heathrow to Canary Wharf" data-amount="EUR 1,442" data-status-label="Confirmed">
+                    <td><span class="booking-id">#VR-10461</span></td>
+                    <td><span class="customer-cell"><strong>Maya Patel</strong><span>maya@example.com</span></span></td>
+                    <td>Surprice</td>
+                    <td>Audi Q3</td>
+                    <td>12 Jun to 18 Jun</td>
+                    <td>EUR 1,442</td>
+                    <td><span class="status-pill confirmed">Confirmed</span></td>
+                    <td><button class="row-button" type="button">View</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <aside class="panel detail-card" aria-label="Booking detail">
+            <div class="detail-hero">
+              <span id="detailId">#VR-10482</span>
+              <h2 id="detailCustomer">Aisha Khan</h2>
+              <p id="detailRoute">Dubai Airport to Downtown Dubai</p>
+            </div>
+            <div class="detail-grid">
+              <div class="detail-mini"><span>Amount</span><strong id="detailAmount">EUR 1,280</strong></div>
+              <div class="detail-mini"><span>Status</span><strong id="detailStatus">Confirmed</strong></div>
+              <div class="detail-mini"><span>Risk</span><strong>Low</strong></div>
+              <div class="detail-mini"><span>Provider SLA</span><strong>98%</strong></div>
+            </div>
+            <div class="timeline">
+              <div class="timeline-item"><span class="timeline-dot"></span><span class="timeline-copy"><strong>Booking created</strong><span>Customer completed checkout and price hash validation.</span></span></div>
+              <div class="timeline-item"><span class="timeline-dot"></span><span class="timeline-copy"><strong>Provider confirmed</strong><span>Supplier inventory accepted through gateway response.</span></span></div>
+              <div class="timeline-item"><span class="timeline-dot"></span><span class="timeline-copy"><strong>Admin watch</strong><span>Monitor pickup window and payment capture status.</span></span></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <section class="dropdown" id="notificationsDropdown" aria-label="Notifications">
+    <div class="dropdown-head"><div><strong>Notifications</strong><br><span>9 unread admin events</span></div><button class="chip" type="button">Mark read</button></div>
+    <div class="notification-list">
+      <div class="notification"><span class="notification-icon"><svg width="18" height="18"><use href="#i-alert"></use></svg></span><span class="notification-copy"><strong>Payment capture failed on #VR-10488</strong><span>Stripe requires manual review.</span></span></div>
+      <div class="notification"><span class="notification-icon"><svg width="18" height="18"><use href="#i-car"></use></svg></span><span class="notification-copy"><strong>42 vehicles waiting for approval</strong><span>New vendor batch uploaded 14 minutes ago.</span></span></div>
+      <div class="notification"><span class="notification-icon"><svg width="18" height="18"><use href="#i-route"></use></svg></span><span class="notification-copy"><strong>Gateway latency spike detected</strong><span>Wheelsys response p95 crossed threshold.</span></span></div>
+    </div>
+  </section>
+
+  <section class="dropdown" id="profileDropdown" aria-label="Profile menu">
+    <div class="profile-panel">
+      <div class="profile-top"><span class="avatar">VR</span><span class="notification-copy"><strong>Vrooem Ops</strong><span>admin@vrooem.example</span></span></div>
+      <div class="profile-actions">
+        <button class="profile-action" type="button"><svg width="17" height="17"><use href="#i-settings"></use></svg>Profile settings</button>
+        <button class="profile-action" type="button"><svg width="17" height="17"><use href="#i-bell"></use></svg>Notification rules</button>
+        <button class="profile-action" type="button"><svg width="17" height="17"><use href="#i-log-out"></use></svg>Log out</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="command-palette" id="commandPalette" aria-label="Command palette">
+    <div class="command-card">
+      <div class="command-search">
+        <svg width="20" height="20"><use href="#i-search"></use></svg>
+        <input type="search" id="commandInput" placeholder="Type a command or booking ID..." aria-label="Command search">
+        <span class="kbd">Esc</span>
+      </div>
+      <div class="command-list">
+        <button class="command-item" type="button" data-screen="dashboard"><span>Open Command Dashboard</span><span class="kbd">1</span></button>
+        <button class="command-item" type="button" data-screen="bookings"><span>Open Bookings Operations</span><span class="kbd">2</span></button>
+        <button class="command-item" type="button"><span>Review payment exceptions</span><span class="kbd">P</span></button>
+        <button class="command-item" type="button"><span>Export current dashboard snapshot</span><span class="kbd">E</span></button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const shell = document.getElementById("demoShell");
+    const sidebar = document.getElementById("sidebar");
+    const mobileBackdrop = document.querySelector("[data-close-mobile]");
+    const collapseSidebar = document.getElementById("collapseSidebar");
+    const mobileOpen = document.getElementById("mobileOpen");
+    const screenTitle = document.getElementById("screenTitle");
+    const crumbSection = document.getElementById("crumbSection");
+    const notifyButton = document.getElementById("notifyButton");
+    const profileButton = document.getElementById("profileButton");
+    const notificationsDropdown = document.getElementById("notificationsDropdown");
+    const profileDropdown = document.getElementById("profileDropdown");
+    const commandPalette = document.getElementById("commandPalette");
+    const commandInput = document.getElementById("commandInput");
+
+    const closeDropdowns = () => {
+      notificationsDropdown.classList.remove("is-open");
+      profileDropdown.classList.remove("is-open");
+      profileButton.classList.remove("is-open");
+    };
+
+    const closeMobile = () => {
+      sidebar.classList.remove("is-mobile-open");
+      sidebar.style.transform = "";
+      sidebar.style.left = "";
+      mobileBackdrop.classList.remove("is-open");
+    };
+
+    const openScreen = (name) => {
+      document.querySelectorAll(".screen").forEach((screen) => screen.classList.remove("is-active"));
+      const next = document.getElementById(`screen-${name}`);
+      if (!next) return;
+      next.classList.add("is-active");
+      document.querySelectorAll("[data-screen]").forEach((item) => item.classList.remove("is-active"));
+      document.querySelectorAll(`.nav-item[data-screen="${name}"]`).forEach((item) => item.classList.add("is-active"));
+      screenTitle.textContent = next.dataset.title;
+      crumbSection.textContent = next.dataset.section;
+      closeMobile();
+      closeDropdowns();
+      commandPalette.classList.remove("is-open");
+      document.querySelector(".content").scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    collapseSidebar.addEventListener("click", () => shell.classList.toggle("is-collapsed"));
+    mobileOpen.addEventListener("click", () => {
+      sidebar.classList.add("is-mobile-open");
+      sidebar.style.left = "0px";
+      sidebar.style.transform = "none";
+      mobileBackdrop.classList.add("is-open");
+    });
+    mobileBackdrop.addEventListener("click", closeMobile);
+
+    document.querySelectorAll("[data-screen]").forEach((button) => {
+      button.addEventListener("click", () => openScreen(button.dataset.screen));
+    });
+
+    notifyButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = notificationsDropdown.classList.contains("is-open");
+      closeDropdowns();
+      notificationsDropdown.classList.toggle("is-open", !isOpen);
+    });
+
+    profileButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = profileDropdown.classList.contains("is-open");
+      closeDropdowns();
+      profileDropdown.classList.toggle("is-open", !isOpen);
+      profileButton.classList.toggle("is-open", !isOpen);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".dropdown") && !event.target.closest("#notifyButton") && !event.target.closest("#profileButton")) {
+        closeDropdowns();
+      }
+    });
+
+    document.getElementById("searchTrigger").addEventListener("click", () => {
+      commandPalette.classList.add("is-open");
+      commandInput.focus();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "/" && !event.target.matches("input, textarea")) {
+        event.preventDefault();
+        commandPalette.classList.add("is-open");
+        commandInput.focus();
+      }
+      if (event.key === "Escape") {
+        commandPalette.classList.remove("is-open");
+        closeDropdowns();
+        closeMobile();
+      }
+      if (event.key === "1" && commandPalette.classList.contains("is-open")) openScreen("dashboard");
+      if (event.key === "2" && commandPalette.classList.contains("is-open")) openScreen("bookings");
+    });
+
+    commandPalette.addEventListener("click", (event) => {
+      if (event.target === commandPalette) commandPalette.classList.remove("is-open");
+    });
+
+    document.querySelectorAll(".chip-row .chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        chip.parentElement.querySelectorAll(".chip").forEach((item) => item.classList.remove("is-active"));
+        chip.classList.add("is-active");
+      });
+    });
+
+    const rows = Array.from(document.querySelectorAll("#bookingTable tr"));
+    const updateDetail = (row) => {
+      rows.forEach((item) => item.classList.remove("is-selected"));
+      row.classList.add("is-selected");
+      document.getElementById("detailId").textContent = `#${row.dataset.id}`;
+      document.getElementById("detailCustomer").textContent = row.dataset.customer;
+      document.getElementById("detailRoute").textContent = row.dataset.route;
+      document.getElementById("detailAmount").textContent = row.dataset.amount;
+      document.getElementById("detailStatus").textContent = row.dataset.statusLabel;
+    };
+
+    rows.forEach((row) => {
+      row.addEventListener("click", () => updateDetail(row));
+      row.querySelector(".row-button").addEventListener("click", (event) => {
+        event.stopPropagation();
+        updateDetail(row);
+      });
+    });
+
+    document.querySelectorAll(".status-tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const filter = tab.dataset.filter;
+        document.querySelectorAll(".status-tab").forEach((item) => item.classList.remove("is-active"));
+        tab.classList.add("is-active");
+        rows.forEach((row) => row.classList.toggle("is-hidden", filter !== "all" && row.dataset.status !== filter));
+        const firstVisible = rows.find((row) => !row.classList.contains("is-hidden"));
+        if (firstVisible) updateDetail(firstVisible);
+      });
+    });
+  </script>
+</body>
+</html>

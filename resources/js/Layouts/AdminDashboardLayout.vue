@@ -262,13 +262,90 @@ const profileInitials = computed(() => {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'VC';
 });
 
+let adminTableObserver = null;
+let tableEnhanceFrame = 0;
+let removeAdminRouteStartListener = null;
+let removeAdminRouteFinishListener = null;
+
+const normalizeTableLabel = (value) => value.replace(/\s+/g, ' ').trim();
+
+const enhanceAdminTables = () => {
+  if (typeof window === 'undefined') return;
+
+  if (tableEnhanceFrame) {
+    window.cancelAnimationFrame(tableEnhanceFrame);
+  }
+
+  tableEnhanceFrame = window.requestAnimationFrame(() => {
+    document.querySelectorAll('.admin-content-surface table').forEach((table) => {
+      const headers = Array.from(table.querySelectorAll('thead th')).map((header) =>
+        normalizeTableLabel(header.textContent || '')
+      );
+
+      table.classList.add('admin-data-table');
+      table.classList.toggle('is-wide', headers.length >= 8);
+      table.classList.toggle('is-ultra-wide', headers.length >= 10);
+
+      const frame = table.closest('.overflow-x-auto');
+      if (frame) {
+        frame.classList.add('admin-table-frame');
+      }
+
+      table.querySelectorAll('tbody tr').forEach((row) => {
+        row.classList.add('admin-data-row');
+        Array.from(row.children).forEach((cell, index) => {
+          if (cell.tagName !== 'TD') return;
+          cell.classList.add('admin-data-cell');
+          if (headers[index]) {
+            cell.setAttribute('data-admin-label', headers[index]);
+          }
+        });
+      });
+    });
+  });
+};
+
+const setupAdminTableObserver = () => {
+  enhanceAdminTables();
+
+  const content = document.querySelector('.admin-content-surface');
+  if (!content || typeof MutationObserver === 'undefined') return;
+
+  adminTableObserver = new MutationObserver(enhanceAdminTables);
+  adminTableObserver.observe(content, { childList: true, subtree: true });
+};
+
+const setAdminRouteLoading = (isLoading) => {
+  document.body.classList.toggle('admin-route-loading', isLoading);
+};
+
 onMounted(() => {
+  document.body.classList.add('admin-dark-active');
   fetchAdminProfile();
   fetchNotifications();
+  setupAdminTableObserver();
+  removeAdminRouteStartListener = router.on('start', () => setAdminRouteLoading(true));
+  removeAdminRouteFinishListener = router.on('finish', () => {
+    setAdminRouteLoading(false);
+    enhanceAdminTables();
+  });
   document.addEventListener('click', closeDropdownsOnOutsideClick);
 });
 
 onUnmounted(() => {
+  document.body.classList.remove('admin-dark-active');
+  document.body.classList.remove('admin-route-loading');
+  if (tableEnhanceFrame) {
+    window.cancelAnimationFrame(tableEnhanceFrame);
+  }
+  adminTableObserver?.disconnect();
+  adminTableObserver = null;
+  if (typeof removeAdminRouteStartListener === 'function') {
+    removeAdminRouteStartListener();
+  }
+  if (typeof removeAdminRouteFinishListener === 'function') {
+    removeAdminRouteFinishListener();
+  }
   document.removeEventListener('click', closeDropdownsOnOutsideClick);
 });
 </script>
@@ -279,25 +356,25 @@ onUnmounted(() => {
     <title>{{ currentPageTitle }}</title>
   </Head>
 
-  <main class="font-[var(--jakarta-font-family)]">
-    <SidebarProvider class="admin-shell">
+  <main class="admin-dark-root font-[var(--jakarta-font-family)]">
+    <SidebarProvider class="admin-shell admin-shell-dark">
       <AdminSiderBar />
 
       <!-- Main Content Area -->
-      <div class="flex-1 flex flex-col min-w-0 bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_45%,#f1f5f9_100%)]">
+      <div class="admin-main-surface flex-1 flex flex-col min-w-0">
 
         <!-- Premium Header -->
-        <header class="min-h-16 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-7 hdr-glass border-b border-[#dceef6]/90 flex-shrink-0 sticky top-0 z-40">
+        <header class="admin-topbar min-h-16 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-7 hdr-glass border-b flex-shrink-0 sticky top-0 z-40">
 
           <!-- Left: Trigger + Breadcrumb + Title -->
           <div class="flex min-w-0 items-center gap-3">
-            <SidebarTrigger class="!w-9 !h-9 !rounded-lg !border !border-[#b0d4e6] !bg-white/80 !text-[#153b4f] hover:!text-[#0891b2] hover:!border-[#22d3ee] hover:!bg-[#f0f8fc] hover:!shadow-[0_0_0_3px_rgba(34,211,238,0.12)] transition-all duration-150" />
-            <div class="w-px h-5 bg-[#dceef6]"></div>
-            <div class="hidden sm:flex items-center gap-1.5 text-[13px] font-medium text-slate-400">
+            <SidebarTrigger class="!w-10 !h-10 !rounded-[13px] !border !border-[rgba(176,212,230,0.14)] !bg-[rgba(13,39,54,0.76)] !text-[#c7d8e2] hover:!text-white hover:!border-[rgba(34,211,238,0.32)] hover:!bg-[rgba(21,59,79,0.9)] hover:!shadow-[0_0_0_4px_rgba(34,211,238,0.08)] hover:!-translate-y-px active:!translate-y-0 active:!scale-[0.98] transition-[color,background-color,border-color,box-shadow,transform] duration-200 admin-ease-product" />
+            <div class="w-px h-5 bg-[rgba(176,212,230,0.16)]"></div>
+            <div class="hidden sm:flex items-center gap-1.5 text-[13px] font-medium text-[#6f8798]">
               <span>Admin</span>
               <span class="opacity-40">/</span>
             </div>
-            <h1 class="truncate !text-[17px] !font-bold tracking-tight text-[#0f2936] !leading-normal">
+            <h1 class="truncate !text-[17px] !font-bold tracking-tight text-[#f4fbff] !leading-normal">
               {{ currentPageTitle }}
             </h1>
           </div>
@@ -306,39 +383,39 @@ onUnmounted(() => {
           <div class="flex items-center gap-2">
 
             <!-- Search -->
-            <div class="hidden md:flex items-center gap-2 px-3.5 py-2 bg-[#f8fafc] border border-[#dceef6] rounded-xl text-slate-400 text-[13px] font-medium cursor-pointer min-w-[220px] transition-all duration-150 hover:border-[#22d3ee] hover:shadow-[0_0_0_3px_rgba(34,211,238,0.12)] hover:bg-white">
+            <div class="hidden md:flex items-center gap-2 px-3.5 py-2 bg-[rgba(8,24,34,0.7)] border border-[rgba(176,212,230,0.14)] rounded-xl text-[#8da3b4] text-[13px] font-medium cursor-pointer min-w-[220px] transition-[color,background-color,border-color,box-shadow,transform] duration-200 hover:text-[#d8edf7] hover:border-[rgba(34,211,238,0.34)] hover:shadow-[0_0_0_4px_rgba(34,211,238,0.08)] hover:bg-[rgba(10,35,49,0.9)]">
               <Search :size="15" :stroke-width="2" class="flex-shrink-0" />
               <span>Search...</span>
-              <span class="text-[10px] font-semibold bg-white border border-[#dceef6] rounded px-1.5 py-0.5 ml-auto text-[#2d7294] shadow-[0_1px_0_#dceef6]">Ctrl K</span>
+              <span class="text-[10px] font-semibold bg-[rgba(34,211,238,0.08)] border border-[rgba(34,211,238,0.18)] rounded px-1.5 py-0.5 ml-auto text-[#67e8f9] shadow-[0_1px_0_rgba(255,255,255,0.06)]">Ctrl K</span>
             </div>
 
             <!-- Divider -->
-            <div class="hidden sm:block w-px h-7 bg-[#dceef6] mx-1"></div>
+            <div class="hidden sm:block w-px h-7 bg-[rgba(176,212,230,0.14)] mx-1"></div>
 
             <!-- Notification Bell -->
             <button
               ref="bellIconRef"
               @click="toggleNotificationDropdown(); markAllAsRead()"
-              class="relative w-[38px] h-[38px] flex items-center justify-center border border-[#dceef6] rounded-lg bg-white text-slate-600 transition-all duration-150 hover:bg-[#f0f8fc] hover:text-[#0891b2] hover:border-[#22d3ee] hover:shadow-[0_0_0_3px_rgba(34,211,238,0.12)] hover:-translate-y-px active:translate-y-0 active:scale-95"
+              class="relative w-[40px] h-[40px] flex items-center justify-center border border-[rgba(176,212,230,0.14)] rounded-[13px] bg-[rgba(13,39,54,0.76)] text-[#b8c7d2] transition-[color,background-color,border-color,box-shadow,transform] duration-200 hover:bg-[rgba(21,59,79,0.9)] hover:text-white hover:border-[rgba(34,211,238,0.34)] hover:shadow-[0_0_0_4px_rgba(34,211,238,0.08)] hover:-translate-y-px active:translate-y-0 active:scale-95"
             >
               <Bell :size="18" :stroke-width="1.7" />
               <span
                 v-if="unreadCount > 0"
-                class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-gradient-to-br from-red-500 to-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 border-[2.5px] border-white shadow-[0_2px_8px_rgba(239,68,68,0.35)] sb-badge-bounce"
+                class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-gradient-to-br from-red-500 to-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 border-[2.5px] border-[#07131c] shadow-[0_2px_12px_rgba(239,68,68,0.42)] sb-badge-bounce"
               >
                 {{ unreadCount }}
               </span>
             </button>
 
             <!-- Divider -->
-            <div class="hidden sm:block w-px h-7 bg-[#dceef6] mx-1"></div>
+            <div class="hidden sm:block w-px h-7 bg-[rgba(176,212,230,0.14)] mx-1"></div>
 
             <!-- Admin Profile -->
             <div class="hdr-profile-area relative" @click="toggleDropdown">
-              <div class="flex items-center gap-2.5 px-1.5 sm:px-2 py-1 rounded-xl cursor-pointer transition-all duration-150 border border-transparent hover:bg-[#f0f8fc] hover:border-[#dceef6]">
+              <div class="flex items-center gap-2.5 px-1.5 sm:px-2 py-1 rounded-xl cursor-pointer transition-[background-color,border-color,box-shadow,transform] duration-200 border border-transparent hover:bg-[rgba(21,59,79,0.46)] hover:border-[rgba(176,212,230,0.14)] hover:shadow-[0_0_0_4px_rgba(34,211,238,0.06)] hover:-translate-y-px active:translate-y-0">
                 <!-- Avatar -->
                 <div class="relative">
-                  <div v-if="isLoading" class="w-9 h-9 rounded-lg bg-gray-200 animate-pulse"></div>
+                  <div v-if="isLoading" class="w-9 h-9 rounded-lg bg-[rgba(176,212,230,0.12)] animate-pulse"></div>
                   <div v-else class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] flex items-center justify-center text-white text-[13px] font-bold shadow-[0_2px_10px_rgba(21,59,79,0.22)] overflow-hidden">
                     <img
                       v-if="adminProfile.avatar"
@@ -349,21 +426,21 @@ onUnmounted(() => {
                     <span v-else>{{ profileInitials }}</span>
                   </div>
                   <!-- Online dot -->
-                  <span class="absolute -bottom-0.5 -right-0.5 w-[11px] h-[11px] bg-emerald-500 border-[2.5px] border-white rounded-full shadow-[0_0_4px_rgba(16,185,129,0.4)]"></span>
+                  <span class="absolute -bottom-0.5 -right-0.5 w-[11px] h-[11px] bg-emerald-500 border-[2.5px] border-[#07131c] rounded-full shadow-[0_0_8px_rgba(16,185,129,0.45)]"></span>
                 </div>
 
                 <!-- Info -->
                 <div class="hidden sm:flex flex-col leading-tight">
-                  <span class="max-w-[160px] truncate text-[13.5px] font-semibold text-[#0f2936]">{{ adminProfile.company_name || 'Loading...' }}</span>
-                  <span class="text-[11px] text-slate-400 font-medium">administrator</span>
+                  <span class="max-w-[160px] truncate text-[13.5px] font-semibold text-[#f4fbff]">{{ adminProfile.company_name || 'Loading...' }}</span>
+                  <span class="text-[11px] text-[#6f8798] font-medium">administrator</span>
                 </div>
 
-                <ChevronsUpDown :size="16" :stroke-width="2" class="hidden sm:block text-slate-300 ml-1" />
+                <ChevronsUpDown :size="16" :stroke-width="2" class="hidden sm:block text-[#6f8798] ml-1" />
               </div>
 
               <!-- Profile Dropdown -->
               <Transition
-                enter-active-class="transition duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                enter-active-class="transition duration-200 admin-ease-spring"
                 enter-from-class="opacity-0 -translate-y-1.5 scale-[0.98]"
                 enter-to-class="opacity-100 translate-y-0 scale-100"
                 leave-active-class="transition duration-150 ease-in"
@@ -372,36 +449,36 @@ onUnmounted(() => {
               >
                 <div
                   v-if="showDropdown"
-                  class="absolute right-0 mt-2 w-[220px] bg-white border border-[#dceef6] rounded-xl shadow-[0_18px_48px_-18px_rgba(21,59,79,0.32),0_8px_18px_rgba(21,59,79,0.08)] z-50 overflow-hidden p-1"
+                  class="absolute right-0 mt-2 w-[220px] bg-[rgba(10,29,40,0.98)] border border-[rgba(176,212,230,0.16)] rounded-xl shadow-[0_24px_70px_rgba(0,0,0,0.42),0_0_0_1px_rgba(255,255,255,0.03)] z-50 overflow-hidden p-1"
                 >
                   <!-- Dropdown header -->
-                  <div class="px-3 pt-2.5 pb-3 border-b border-[#dceef6] mb-1 bg-[#f8fafc] rounded-lg">
-                    <p class="text-sm font-bold text-[#0f2936] tracking-tight">{{ adminProfile.company_name || 'Admin' }}</p>
-                    <p class="text-[11.5px] text-slate-400 mt-0.5">{{ adminProfile.email || '' }}</p>
+                  <div class="px-3 pt-2.5 pb-3 border-b border-[rgba(176,212,230,0.13)] mb-1 bg-[rgba(21,59,79,0.36)] rounded-lg">
+                    <p class="text-sm font-bold text-[#f4fbff] tracking-tight">{{ adminProfile.company_name || 'Admin' }}</p>
+                    <p class="text-[11.5px] text-[#8da3b4] mt-0.5">{{ adminProfile.email || '' }}</p>
                   </div>
 
                   <Link
                     href="/admin/settings/profile"
-                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 hover:bg-[#f0f8fc] hover:text-[#153b4f] transition-all duration-100"
+                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-[#b8c7d2] hover:bg-[rgba(34,211,238,0.08)] hover:text-white transition-[color,background-color,transform] duration-150 active:scale-[0.98]"
                   >
-                    <User :size="16" :stroke-width="1.7" class="text-[#2d7294]" />
+                    <User :size="16" :stroke-width="1.7" class="text-[#67e8f9]" />
                     Profile Settings
                   </Link>
 
                   <Link
                     href="/admin/settings/profile"
-                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-600 hover:bg-[#f0f8fc] hover:text-[#153b4f] transition-all duration-100"
+                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-[#b8c7d2] hover:bg-[rgba(34,211,238,0.08)] hover:text-white transition-[color,background-color,transform] duration-150 active:scale-[0.98]"
                   >
-                    <Settings :size="16" :stroke-width="1.7" class="text-[#2d7294]" />
+                    <Settings :size="16" :stroke-width="1.7" class="text-[#67e8f9]" />
                     Account Settings
                   </Link>
 
-                  <div class="h-px bg-[#dceef6] mx-2 my-1"></div>
+                  <div class="h-px bg-[rgba(176,212,230,0.13)] mx-2 my-1"></div>
 
                   <Link
                     :href="route('admin.logout')"
                     method="post"
-                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-red-600 hover:bg-red-50 transition-all duration-100"
+                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-red-300 hover:bg-[rgba(239,68,68,0.1)] hover:text-red-200 transition-[color,background-color,transform] duration-150 active:scale-[0.98]"
                   >
                     <LogOut :size="16" :stroke-width="1.7" />
                     Log out
@@ -413,7 +490,7 @@ onUnmounted(() => {
 
           <!-- Notification Dropdown -->
           <Transition
-            enter-active-class="transition duration-250 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            enter-active-class="transition duration-250 admin-ease-spring"
             enter-from-class="opacity-0 -translate-y-1.5 scale-[0.98]"
             enter-to-class="opacity-100 translate-y-0 scale-100"
             leave-active-class="transition duration-150 ease-in"
@@ -423,14 +500,14 @@ onUnmounted(() => {
             <div
               v-if="showingNotificationDropdown"
               ref="notificationDropdownRef"
-              class="absolute right-4 sm:right-[100px] top-[calc(100%+6px)] w-[calc(100vw-2rem)] sm:w-[400px] bg-white border border-[#dceef6] rounded-xl shadow-[0_18px_48px_-18px_rgba(21,59,79,0.32),0_8px_18px_rgba(21,59,79,0.08)] z-50 overflow-hidden"
+              class="absolute right-4 sm:right-[100px] top-[calc(100%+6px)] w-[calc(100vw-2rem)] sm:w-[400px] bg-[rgba(10,29,40,0.98)] border border-[rgba(176,212,230,0.16)] rounded-xl shadow-[0_24px_70px_rgba(0,0,0,0.42),0_0_0_1px_rgba(255,255,255,0.03)] z-50 overflow-hidden"
             >
               <!-- Header -->
-              <div class="flex justify-between items-center px-[18px] pt-4 pb-3 border-b border-[#dceef6] bg-[#f8fafc]">
-                <h3 class="text-[15px] font-bold text-[#0f2936] tracking-tight">Notifications</h3>
+              <div class="flex justify-between items-center px-[18px] pt-4 pb-3 border-b border-[rgba(176,212,230,0.13)] bg-[rgba(21,59,79,0.36)]">
+                <h3 class="text-[15px] font-bold text-[#f4fbff] tracking-tight">Notifications</h3>
                 <button
                   @click="markAllAsRead"
-                  class="text-xs font-semibold text-[#0891b2] px-2 py-1 rounded hover:bg-[#ecfeff] transition-colors"
+                  class="text-xs font-semibold text-[#67e8f9] px-2 py-1 rounded hover:bg-[rgba(34,211,238,0.08)] transition-colors"
                 >
                   Mark all read
                 </button>
@@ -438,15 +515,15 @@ onUnmounted(() => {
 
               <!-- List -->
               <div class="overflow-y-auto max-h-[360px] sb-scroll-hide">
-                <div v-if="notifications.length === 0" class="py-10 text-center text-gray-400 text-sm">
+                <div v-if="notifications.length === 0" class="py-10 text-center text-[#8da3b4] text-sm">
                   No notifications yet.
                 </div>
                 <div
                   v-for="notification in notifications"
                   :key="notification.id"
                   @click="handleNotificationClick(notification)"
-                  class="flex gap-3 px-[18px] py-3.5 border-b border-[#f1f5f9] cursor-pointer transition-colors duration-100 hover:bg-[#f8fafc] relative"
-                  :class="!notification.read_at ? 'bg-gradient-to-r from-[#f0f8fc] to-[#ecfeff]/50' : ''"
+                  class="flex gap-3 px-[18px] py-3.5 border-b border-[rgba(176,212,230,0.1)] cursor-pointer transition-colors duration-150 hover:bg-[rgba(21,59,79,0.34)] relative"
+                  :class="!notification.read_at ? 'bg-gradient-to-r from-[rgba(21,59,79,0.46)] to-[rgba(34,211,238,0.08)]' : ''"
                 >
                   <!-- Unread left bar -->
                   <span
@@ -455,15 +532,15 @@ onUnmounted(() => {
                   ></span>
 
                   <!-- Icon -->
-                  <div class="w-[38px] h-[38px] rounded-lg flex items-center justify-center flex-shrink-0 bg-[#f0f8fc] text-[#0891b2]">
+                  <div class="w-[38px] h-[38px] rounded-lg flex items-center justify-center flex-shrink-0 bg-[rgba(34,211,238,0.1)] text-[#67e8f9]">
                     <Bell :size="17" :stroke-width="1.8" />
                   </div>
 
                   <!-- Content -->
                   <div class="flex-1 min-w-0">
-                    <p class="text-[13px] font-semibold text-[#0f2936] mb-0.5">{{ notification.data.title }}</p>
-                    <p class="text-xs text-slate-400 leading-snug truncate">{{ notification.data.message }}</p>
-                    <p class="text-[10px] text-slate-300 font-medium mt-1">
+                    <p class="text-[13px] font-semibold text-[#f4fbff] mb-0.5">{{ notification.data.title }}</p>
+                    <p class="text-xs text-[#8da3b4] leading-snug truncate">{{ notification.data.message }}</p>
+                    <p class="text-[10px] text-[#5f7484] font-medium mt-1">
                       {{ new Date(notification.created_at).toLocaleString() }}
                     </p>
                   </div>
@@ -471,10 +548,10 @@ onUnmounted(() => {
               </div>
 
               <!-- Footer -->
-              <div class="py-3 text-center border-t border-[#dceef6]">
+              <div class="py-3 text-center border-t border-[rgba(176,212,230,0.13)]">
                 <button
                   @click="clearAllNotifications"
-                  class="text-[13px] font-semibold text-[#0891b2] px-4 py-1.5 rounded-lg hover:bg-[#ecfeff] transition-colors"
+                  class="text-[13px] font-semibold text-[#67e8f9] px-4 py-1.5 rounded-lg hover:bg-[rgba(34,211,238,0.08)] transition-colors"
                 >
                   Clear all notifications
                 </button>
@@ -484,7 +561,7 @@ onUnmounted(() => {
         </header>
 
         <!-- Page Content -->
-        <div class="flex-1 overflow-y-auto [&_.container]:!max-w-full">
+        <div class="admin-content-surface flex-1 overflow-y-auto [&_.container]:!max-w-full">
           <slot />
         </div>
       </div>

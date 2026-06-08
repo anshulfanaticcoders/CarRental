@@ -517,3 +517,765 @@ input[type='time'] {
         animation-iteration-count: 1 !important;
     }
 }
+
+/* ==========================================================================
+   ADMIN SHELL - DEEP VROOEM DARK THEME
+   Scoped to AdminDashboardLayout so public/customer pages keep their styling.
+   ========================================================================== */
+
+.admin-dark-root {
+    --admin-bg: #07131c;
+    --admin-bg-2: #0a1d28;
+    --admin-surface: rgba(11, 31, 43, 0.92);
+    --admin-surface-2: rgba(13, 39, 54, 0.78);
+    --admin-surface-3: rgba(21, 59, 79, 0.52);
+    --admin-line: rgba(176, 212, 230, 0.14);
+    --admin-line-strong: rgba(34, 211, 238, 0.3);
+    --admin-ink: #f4fbff;
+    --admin-ink-soft: #c7d8e2;
+    --admin-muted: #8da3b4;
+    --admin-muted-2: #667e90;
+    --admin-primary: #153b4f;
+    --admin-cyan: #22d3ee;
+    --admin-emerald: #10b981;
+    --admin-amber: #f59e0b;
+    --admin-red: #ef4444;
+    --admin-shadow: 0 22px 70px rgba(0, 0, 0, 0.32);
+    --admin-shadow-soft: 0 16px 44px rgba(0, 0, 0, 0.22);
+    color: var(--admin-ink);
+    background: var(--admin-bg);
+}
+
+body.admin-dark-active {
+    background: #07131c;
+}
+
+.admin-shell-dark {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 18% -10%, rgba(34, 211, 238, 0.15), transparent 34%),
+        radial-gradient(circle at 96% 2%, rgba(16, 185, 129, 0.12), transparent 26%),
+        linear-gradient(135deg, #07131c 0%, #0a1d28 56%, #081923 100%);
+    color: var(--admin-ink);
+    --background: 202 60% 7%;
+    --foreground: 198 100% 98%;
+    --card: 202 58% 11%;
+    --card-foreground: 198 100% 98%;
+    --popover: 202 58% 11%;
+    --popover-foreground: 198 100% 98%;
+    --primary: 191 78% 56%;
+    --primary-foreground: 202 60% 7%;
+    --secondary: 199 56% 18%;
+    --secondary-foreground: 198 100% 98%;
+    --muted: 199 42% 16%;
+    --muted-foreground: 201 19% 63%;
+    --accent: 190 76% 16%;
+    --accent-foreground: 198 100% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 199 31% 27%;
+    --input: 199 31% 23%;
+    --ring: 188 86% 53%;
+    --sidebar-background: 203 62% 7%;
+    --sidebar-foreground: 201 32% 84%;
+    --sidebar-primary: 188 86% 53%;
+    --sidebar-primary-foreground: 202 60% 7%;
+    --sidebar-accent: 199 56% 18%;
+    --sidebar-accent-foreground: 198 100% 98%;
+    --sidebar-border: 199 31% 27%;
+    --sidebar-ring: 188 86% 53%;
+}
+
+.admin-main-surface {
+    position: relative;
+    isolation: isolate;
+    background:
+        radial-gradient(circle at 18% 5%, rgba(34, 211, 238, 0.12), transparent 32%),
+        radial-gradient(circle at 86% 0%, rgba(21, 59, 79, 0.54), transparent 30%),
+        linear-gradient(180deg, rgba(7, 19, 28, 0.98) 0%, #07131c 44%, #081823 100%);
+}
+
+.admin-main-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image:
+        linear-gradient(rgba(176, 212, 230, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(176, 212, 230, 0.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 72%);
+}
+
+.admin-content-surface {
+    position: relative;
+    color: var(--admin-ink);
+}
+
+.admin-topbar.hdr-glass {
+    background: rgba(7, 19, 28, 0.78);
+    border-color: var(--admin-line) !important;
+    backdrop-filter: blur(20px) saturate(1.35);
+    -webkit-backdrop-filter: blur(20px) saturate(1.35);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.admin-sidebar-dark,
+.admin-shell-dark [data-sidebar="sidebar"] {
+    background:
+        radial-gradient(circle at 16% 0%, rgba(34, 211, 238, 0.11), transparent 32%),
+        linear-gradient(180deg, rgba(8, 24, 34, 0.98) 0%, rgba(7, 19, 28, 0.98) 100%) !important;
+    color: var(--admin-ink-soft) !important;
+    border-color: var(--admin-line) !important;
+}
+
+.admin-shell-dark [data-sidebar="sidebar"] {
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.02);
+}
+
+.admin-shell-dark .sb-logo-glow {
+    box-shadow: 0 10px 28px rgba(34, 211, 238, 0.18), 0 0 0 4px rgba(34, 211, 238, 0.08);
+}
+
+.admin-shell-dark .sb-active-bar {
+    width: 3px;
+    background: linear-gradient(180deg, #22d3ee, #10b981);
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.48), 0 0 24px rgba(16, 185, 129, 0.14);
+}
+
+.admin-shell-dark .sb-active-dot {
+    background: linear-gradient(135deg, #22d3ee, #10b981);
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.5), 0 0 16px rgba(16, 185, 129, 0.14);
+}
+
+.admin-shell-dark .sb-scroll-hide {
+    scrollbar-color: rgba(34, 211, 238, 0.42) transparent;
+}
+
+.admin-shell-dark .sb-scroll-hide::-webkit-scrollbar-thumb {
+    background: rgba(34, 211, 238, 0.42);
+}
+
+.admin-shell-dark .sb-tree-line {
+    border-left-color: rgba(176, 212, 230, 0.14);
+}
+
+.admin-shell-dark .sb-tree-line-active {
+    border-left-color: rgba(34, 211, 238, 0.42);
+}
+
+.admin-shell-dark :where(.bg-white, .bg-background, .bg-card) {
+    background-color: var(--admin-surface) !important;
+}
+
+.admin-shell-dark :where(.bg-muted, .bg-muted\/50, .bg-muted\/60, .bg-slate-50, .bg-gray-50, .bg-\[\#f8fafc\]) {
+    background-color: rgba(176, 212, 230, 0.06) !important;
+}
+
+.admin-shell-dark :where(.text-gray-900, .text-slate-900, .text-neutral-900, .text-\[\#0f2936\]) {
+    color: var(--admin-ink) !important;
+}
+
+.admin-shell-dark :where(.text-gray-800, .text-slate-800, .text-gray-700, .text-slate-700) {
+    color: var(--admin-ink-soft) !important;
+}
+
+.admin-shell-dark :where(.text-gray-600, .text-slate-600, .text-gray-500, .text-slate-500, .text-muted-foreground) {
+    color: var(--admin-muted) !important;
+}
+
+.admin-shell-dark :where(.text-gray-400, .text-slate-400, .text-gray-300, .text-slate-300) {
+    color: var(--admin-muted-2) !important;
+}
+
+.admin-shell-dark :where(.border, .border-b, .border-t, .border-l, .border-r, .divide-y > :not([hidden]) ~ :not([hidden])) {
+    border-color: var(--admin-line) !important;
+}
+
+.admin-shell-dark :where(.rounded-xl.border.bg-card, [class*="bg-card"], .shadow, .shadow-sm, .shadow-md) {
+    box-shadow: var(--admin-shadow-soft) !important;
+}
+
+.admin-shell-dark :where(.rounded-xl.border.bg-card, [class*="bg-card"]) {
+    position: relative;
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, rgba(13, 39, 54, 0.9), rgba(9, 27, 38, 0.92)) !important;
+    border-color: var(--admin-line) !important;
+    color: var(--admin-ink) !important;
+}
+
+.admin-shell-dark :where(.rounded-xl.border.bg-card, [class*="bg-card"])::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 38%);
+    opacity: 0.55;
+}
+
+.admin-shell-dark :where(.rounded-xl.border.bg-card, [class*="bg-card"]) > * {
+    position: relative;
+    z-index: 1;
+}
+
+.admin-shell-dark :where(.rounded-xl.border.bg-card:hover, [class*="bg-card"]:hover) {
+    border-color: rgba(34, 211, 238, 0.28) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 20px 52px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(34, 211, 238, 0.08) !important;
+}
+
+.admin-shell-dark [class*="border-l-4"] {
+    border-left-width: 1px !important;
+}
+
+.admin-shell-dark :where(button, a, input, select, textarea, [role="button"], [role="tab"], [role="combobox"]) {
+    outline: none;
+}
+
+.admin-shell-dark :where(button, a, input, select, textarea, [role="button"], [role="tab"], [role="combobox"]):focus-visible {
+    box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.16) !important;
+    border-color: rgba(34, 211, 238, 0.48) !important;
+}
+
+.admin-shell-dark :where(button, a, [role="button"], [role="tab"]) {
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: 180ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.admin-ease-product {
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.admin-ease-spring {
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.admin-shell-dark :where(button, a, [role="button"], [role="tab"]):active {
+    transform: translateY(0) scale(0.98);
+}
+
+.admin-shell-dark :where(button:disabled, [aria-disabled="true"], .disabled) {
+    opacity: 0.46 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.admin-shell-dark :where(input, select, textarea, [role="combobox"]) {
+    background-color: rgba(8, 24, 34, 0.76) !important;
+    color: var(--admin-ink) !important;
+    border-color: var(--admin-line) !important;
+}
+
+.admin-shell-dark :where(input::placeholder, textarea::placeholder) {
+    color: var(--admin-muted-2) !important;
+}
+
+.admin-shell-dark :where(.data-\[state\=active\]\:bg-white[data-state="active"], [data-state="active"]) {
+    background: linear-gradient(135deg, rgba(21, 59, 79, 0.94), rgba(34, 211, 238, 0.14)) !important;
+    color: #ffffff !important;
+    border-color: rgba(34, 211, 238, 0.26) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 24px rgba(34, 211, 238, 0.08) !important;
+}
+
+.admin-shell-dark :where([role="tablist"], .bg-muted\/60) {
+    background: rgba(8, 24, 34, 0.72) !important;
+    border: 1px solid var(--admin-line);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.admin-shell-dark :where(table) {
+    color: var(--admin-ink-soft);
+}
+
+.admin-shell-dark :where(thead tr, tr.bg-muted\/50) {
+    background: rgba(176, 212, 230, 0.07) !important;
+}
+
+.admin-shell-dark :where(th) {
+    color: var(--admin-muted) !important;
+    font-weight: 700;
+}
+
+.admin-shell-dark :where(td) {
+    border-color: rgba(176, 212, 230, 0.1) !important;
+}
+
+.admin-shell-dark :where(tbody tr) {
+    border-color: rgba(176, 212, 230, 0.09) !important;
+}
+
+.admin-shell-dark :where(tbody tr:hover, .hover\:bg-muted\/30:hover, .hover\:bg-muted\/50:hover) {
+    background: rgba(21, 59, 79, 0.28) !important;
+}
+
+.admin-shell-dark :where(.text-primary) {
+    color: #67e8f9 !important;
+}
+
+.admin-shell-dark :where(.bg-primary, .bg-primary\/10) {
+    background-color: rgba(34, 211, 238, 0.1) !important;
+    color: #67e8f9 !important;
+}
+
+.admin-shell-dark :where(.text-blue-500, .text-blue-600, .text-blue-700, .text-cyan-500, .text-cyan-600, .text-cyan-700) {
+    color: #67e8f9 !important;
+}
+
+.admin-shell-dark :where(.bg-blue-50, .bg-cyan-50) {
+    background-color: rgba(34, 211, 238, 0.1) !important;
+}
+
+.admin-shell-dark :where(.border-blue-200, .border-cyan-200, .border-l-blue-500) {
+    border-color: rgba(34, 211, 238, 0.34) !important;
+}
+
+.admin-shell-dark :where(.text-emerald-500, .text-emerald-600, .text-emerald-700, .text-green-500, .text-green-600, .text-green-700) {
+    color: #34d399 !important;
+}
+
+.admin-shell-dark :where(.bg-emerald-50, .bg-green-50) {
+    background-color: rgba(16, 185, 129, 0.11) !important;
+}
+
+.admin-shell-dark :where(.border-emerald-200, .border-green-200, .border-l-emerald-500) {
+    border-color: rgba(16, 185, 129, 0.34) !important;
+}
+
+.admin-shell-dark :where(.text-amber-500, .text-amber-600, .text-amber-700, .text-yellow-500, .text-yellow-600, .text-yellow-700, .text-orange-500, .text-orange-600, .text-orange-700) {
+    color: #fbbf24 !important;
+}
+
+.admin-shell-dark :where(.bg-amber-50, .bg-yellow-50, .bg-orange-50) {
+    background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+.admin-shell-dark :where(.border-amber-200, .border-yellow-200, .border-orange-200, .border-l-amber-500, .border-l-orange-500) {
+    border-color: rgba(245, 158, 11, 0.34) !important;
+}
+
+.admin-shell-dark :where(.text-red-500, .text-red-600, .text-red-700) {
+    color: #f87171 !important;
+}
+
+.admin-shell-dark :where(.bg-red-50) {
+    background-color: rgba(239, 68, 68, 0.11) !important;
+}
+
+.admin-shell-dark :where(.border-red-100, .border-red-200, .border-l-red-500) {
+    border-color: rgba(239, 68, 68, 0.34) !important;
+}
+
+.admin-shell-dark :where(.text-violet-500, .text-violet-600, .text-violet-700, .text-purple-500, .text-purple-600, .text-purple-700) {
+    color: #a5b4fc !important;
+}
+
+.admin-shell-dark :where(.bg-violet-50, .bg-purple-50) {
+    background-color: rgba(129, 140, 248, 0.12) !important;
+}
+
+.admin-shell-dark :where(.border-violet-200, .border-purple-200, .border-l-violet-500) {
+    border-color: rgba(129, 140, 248, 0.34) !important;
+}
+
+.admin-shell-dark :where(.rounded-full, .rounded, .rounded-md, .rounded-lg) {
+    border-color: rgba(176, 212, 230, 0.14);
+}
+
+body.admin-dark-active :where([data-radix-popper-content-wrapper] [role="menu"], [data-radix-popper-content-wrapper] [role="listbox"], [data-radix-popper-content-wrapper] .bg-popover, [data-radix-popper-content-wrapper] [cmdk-list]) {
+    background: rgba(10, 29, 40, 0.98) !important;
+    color: var(--admin-ink, #f4fbff) !important;
+    border: 1px solid rgba(176, 212, 230, 0.16) !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255, 255, 255, 0.03) !important;
+}
+
+body.admin-dark-active :where([data-radix-popper-content-wrapper] [role="option"], [data-radix-popper-content-wrapper] [role="menuitem"]) {
+    color: #c7d8e2 !important;
+}
+
+body.admin-dark-active :where([data-radix-popper-content-wrapper] [role="option"]:hover, [data-radix-popper-content-wrapper] [role="menuitem"]:hover, [data-radix-popper-content-wrapper] [data-highlighted]) {
+    background: rgba(34, 211, 238, 0.09) !important;
+    color: #ffffff !important;
+}
+
+.admin-shell-dark :where(.dp__main, .dp__menu, .vc-container) {
+    --vc-bg: #0a1d28;
+    --vc-color: #f4fbff;
+    color: var(--admin-ink) !important;
+}
+
+.admin-shell-dark :where(svg text) {
+    fill: var(--admin-muted) !important;
+}
+
+.admin-shell-dark :where(svg [stroke="#e5e7eb"], svg [stroke="#E5E7EB"], svg [stroke="#cbd5e1"]) {
+    stroke: rgba(176, 212, 230, 0.16) !important;
+}
+
+body.admin-dark-active #nprogress .bar {
+    background: linear-gradient(90deg, #22d3ee, #10b981) !important;
+    box-shadow: 0 0 18px rgba(34, 211, 238, 0.45);
+}
+
+body.admin-dark-active #nprogress .peg {
+    box-shadow: 0 0 12px #22d3ee, 0 0 6px #22d3ee !important;
+}
+
+body.admin-dark-active.admin-route-loading .admin-content-surface {
+    filter: saturate(0.92);
+}
+
+.admin-content-surface::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 2px;
+    pointer-events: none;
+    z-index: 20;
+    opacity: 0;
+    transform: scaleX(0.38);
+    transform-origin: left center;
+    background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.86), rgba(16, 185, 129, 0.82), transparent);
+    transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.admin-dark-active.admin-route-loading .admin-content-surface::after {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+.admin-content-surface > * {
+    animation: admin-page-arrive 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes admin-page-arrive {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.admin-shell-dark :where(label, legend) {
+    color: var(--admin-ink-soft) !important;
+    font-weight: 700;
+}
+
+.admin-shell-dark :where(input[type="checkbox"], input[type="radio"]) {
+    accent-color: #22d3ee;
+}
+
+.admin-shell-dark :where(input:read-only, textarea:read-only) {
+    background-color: rgba(176, 212, 230, 0.055) !important;
+    color: var(--admin-muted) !important;
+}
+
+.admin-shell-dark :where(.admin-table-frame, .overflow-x-auto:has(.admin-data-table)) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: visible !important;
+    border: 1px solid var(--admin-line);
+    border-radius: 18px;
+    background: rgba(7, 19, 28, 0.32);
+    box-shadow: var(--admin-shadow-soft);
+}
+
+.admin-shell-dark .admin-table-frame::-webkit-scrollbar,
+.admin-shell-dark .overflow-x-auto:has(.admin-data-table)::-webkit-scrollbar {
+    display: none;
+}
+
+.admin-shell-dark .admin-data-table {
+    width: 100%;
+    min-width: 0 !important;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: var(--admin-ink-soft);
+}
+
+.admin-shell-dark .admin-data-table th,
+.admin-shell-dark .admin-data-table td {
+    min-width: 0;
+    max-width: 18rem;
+    padding: 0.72rem 0.8rem !important;
+    white-space: normal !important;
+    vertical-align: top;
+}
+
+.admin-shell-dark .admin-data-table th {
+    color: var(--admin-muted) !important;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.admin-shell-dark .admin-data-table td {
+    color: var(--admin-ink-soft);
+    font-size: 0.8rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.admin-shell-dark .admin-data-table :where(.truncate) {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+}
+
+.admin-shell-dark .admin-data-table :where(.font-mono) {
+    font-size: 0.72rem;
+    letter-spacing: 0;
+}
+
+.admin-shell-dark .admin-data-table :where(img, video) {
+    max-width: 4.5rem;
+    max-height: 4.5rem;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.admin-shell-dark .admin-data-table td:last-child,
+.admin-shell-dark .admin-data-table th:last-child {
+    text-align: right;
+}
+
+.admin-shell-dark .admin-data-table :where(tbody tr) {
+    transition: background-color 170ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 170ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.admin-shell-dark .admin-data-table :where(tbody tr:hover) {
+    box-shadow: inset 0 0 0 999px rgba(34, 211, 238, 0.035);
+}
+
+body.admin-dark-active :where([role="dialog"], [role="alertdialog"], [data-radix-dialog-content], [data-reka-dialog-content]) {
+    background: linear-gradient(180deg, rgba(13, 39, 54, 0.98), rgba(8, 24, 34, 0.99)) !important;
+    color: var(--admin-ink, #f4fbff) !important;
+    border: 1px solid rgba(176, 212, 230, 0.18) !important;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.54), 0 0 0 1px rgba(34, 211, 238, 0.08) !important;
+}
+
+body.admin-dark-active :where([role="dialog"], [role="alertdialog"]) :where(h1, h2, h3, h4, [data-title]) {
+    color: #f4fbff !important;
+}
+
+body.admin-dark-active :where([role="dialog"], [role="alertdialog"]) :where(p, label, [data-description]) {
+    color: #b8c7d2 !important;
+}
+
+body.admin-dark-active :where([data-sonner-toast], .Vue-Toastification__toast) {
+    background: linear-gradient(180deg, rgba(13, 39, 54, 0.98), rgba(8, 24, 34, 0.98)) !important;
+    color: var(--admin-ink, #f4fbff) !important;
+    border: 1px solid rgba(176, 212, 230, 0.18) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(34, 211, 238, 0.06) !important;
+}
+
+body.admin-dark-active :where([data-sonner-toast][data-type="success"], .Vue-Toastification__toast--success) {
+    border-color: rgba(16, 185, 129, 0.38) !important;
+}
+
+body.admin-dark-active :where([data-sonner-toast][data-type="error"], .Vue-Toastification__toast--error) {
+    border-color: rgba(239, 68, 68, 0.38) !important;
+}
+
+body.admin-dark-active :where([data-sonner-toast][data-type="warning"], .Vue-Toastification__toast--warning) {
+    border-color: rgba(245, 158, 11, 0.38) !important;
+}
+
+body.admin-dark-active :where([data-sonner-toast]) :where([data-title]) {
+    color: #f4fbff !important;
+    font-weight: 800;
+}
+
+body.admin-dark-active :where([data-sonner-toast]) :where([data-description]) {
+    color: #b8c7d2 !important;
+}
+
+@media (max-width: 1536px) {
+    .admin-shell-dark .admin-data-table.is-ultra-wide,
+    .admin-shell-dark .admin-data-table.is-ultra-wide thead,
+    .admin-shell-dark .admin-data-table.is-ultra-wide tbody,
+    .admin-shell-dark .admin-data-table.is-ultra-wide tfoot,
+    .admin-shell-dark .admin-data-table.is-ultra-wide tr,
+    .admin-shell-dark .admin-data-table.is-ultra-wide td {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-shell-dark .admin-data-table.is-ultra-wide thead {
+        display: none;
+    }
+
+    .admin-shell-dark .admin-data-table.is-ultra-wide tbody {
+        display: grid;
+        gap: 0.85rem;
+        padding: 0.85rem;
+    }
+
+    .admin-shell-dark .admin-data-table.is-ultra-wide tr {
+        border: 1px solid var(--admin-line);
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(13, 39, 54, 0.78), rgba(8, 24, 34, 0.84));
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+        padding: 0.75rem 0.9rem;
+    }
+
+    .admin-shell-dark .admin-data-table.is-ultra-wide td {
+        display: grid;
+        grid-template-columns: minmax(8rem, 32%) minmax(0, 1fr);
+        gap: 0.8rem;
+        max-width: none;
+        border: 0 !important;
+        padding: 0.48rem 0 !important;
+        text-align: left !important;
+    }
+
+    .admin-shell-dark .admin-data-table.is-ultra-wide td::before {
+        content: attr(data-admin-label);
+        color: var(--admin-muted-2);
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        line-height: 1.3;
+        text-transform: uppercase;
+    }
+
+    .admin-shell-dark .admin-data-table.is-ultra-wide td:empty {
+        display: none;
+    }
+}
+
+@media (max-width: 1280px) {
+    .admin-shell-dark .admin-data-table.is-wide,
+    .admin-shell-dark .admin-data-table.is-wide thead,
+    .admin-shell-dark .admin-data-table.is-wide tbody,
+    .admin-shell-dark .admin-data-table.is-wide tfoot,
+    .admin-shell-dark .admin-data-table.is-wide tr,
+    .admin-shell-dark .admin-data-table.is-wide td {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-shell-dark .admin-data-table.is-wide thead {
+        display: none;
+    }
+
+    .admin-shell-dark .admin-data-table.is-wide tbody {
+        display: grid;
+        gap: 0.85rem;
+        padding: 0.85rem;
+    }
+
+    .admin-shell-dark .admin-data-table.is-wide tr {
+        border: 1px solid var(--admin-line);
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(13, 39, 54, 0.78), rgba(8, 24, 34, 0.84));
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+        padding: 0.75rem 0.9rem;
+    }
+
+    .admin-shell-dark .admin-data-table.is-wide td {
+        display: grid;
+        grid-template-columns: minmax(8rem, 32%) minmax(0, 1fr);
+        gap: 0.8rem;
+        max-width: none;
+        border: 0 !important;
+        padding: 0.48rem 0 !important;
+        text-align: left !important;
+    }
+
+    .admin-shell-dark .admin-data-table.is-wide td::before {
+        content: attr(data-admin-label);
+        color: var(--admin-muted-2);
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        line-height: 1.3;
+        text-transform: uppercase;
+    }
+
+    .admin-shell-dark .admin-data-table.is-wide td:empty {
+        display: none;
+    }
+}
+
+@media (max-width: 767px) {
+    .admin-topbar {
+        min-height: 60px;
+    }
+
+    .admin-content-surface > * {
+        min-width: 0;
+    }
+
+    .admin-shell-dark :where(.rounded-xl.border.bg-card, [class*="bg-card"]) {
+        border-radius: 14px;
+    }
+
+    .admin-shell-dark .admin-data-table,
+    .admin-shell-dark .admin-data-table thead,
+    .admin-shell-dark .admin-data-table tbody,
+    .admin-shell-dark .admin-data-table tfoot,
+    .admin-shell-dark .admin-data-table tr,
+    .admin-shell-dark .admin-data-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-shell-dark .admin-data-table thead {
+        display: none;
+    }
+
+    .admin-shell-dark .admin-data-table tbody {
+        display: grid;
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    .admin-shell-dark .admin-data-table tr {
+        border: 1px solid var(--admin-line);
+        border-radius: 14px;
+        background: linear-gradient(180deg, rgba(13, 39, 54, 0.8), rgba(8, 24, 34, 0.88));
+        padding: 0.7rem 0.82rem;
+    }
+
+    .admin-shell-dark .admin-data-table td {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.24rem;
+        max-width: none;
+        border: 0 !important;
+        padding: 0.44rem 0 !important;
+        text-align: left !important;
+    }
+
+    .admin-shell-dark .admin-data-table td::before {
+        content: attr(data-admin-label);
+        color: var(--admin-muted-2);
+        font-size: 0.63rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        line-height: 1.3;
+        text-transform: uppercase;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-shell-dark *,
+    body.admin-dark-active [data-radix-popper-content-wrapper] * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
