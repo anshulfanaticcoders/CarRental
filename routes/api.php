@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\PayableSettingController;
 use App\Http\Controllers\Api\CategoryFeaturesController;
 use App\Http\Controllers\Api\SeoMetaController;
+use App\Http\Controllers\Api\UnifiedLocationController;
 use App\Http\Controllers\BookingAddonController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CurrencyController;
@@ -107,7 +108,7 @@ Route::get('/payment-percentage', [PayableSettingController::class, 'getPercenta
 Route::get('/{provider}/dropoff-locations/{location_id}', [ProviderLocationController::class, 'getDropoffLocationsForProvider'])->name('api.provider.dropoff-locations');
 
 // Route for unified location search
-Route::get('/unified-locations', [App\Http\Controllers\SearchController::class, 'searchUnifiedLocations'])->name('api.unified-locations.search');
+Route::get('/unified-locations', UnifiedLocationController::class)->name('api.unified-locations.search');
 
 // Vendor API routes - Note: Moved to web.php for proper authentication
 Route::get('/offers', [\App\Http\Controllers\OfferController::class, 'index']);

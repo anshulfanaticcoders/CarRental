@@ -17,6 +17,12 @@ Concise durable memory for significant completed work.
 - Follow-ups: remaining work, if any.
 ```
 
+### 2026-06-08 - Unified location API production hardening
+- Scope: `CarRental` public unified-location API route, gateway config fallback, endpoint feature tests.
+- Decision: moved `/api/unified-locations` off the heavy search page controller into a dedicated lightweight API controller; preserve the autocomplete JSON contract and return an empty array instead of 500 when gateway/config/logging fails.
+- Verification: `php -l` on touched PHP files passed; `php artisan test --filter=UnifiedLocationApiTest` passed; `php artisan test --filter=LocationSearchServiceTest` passed on clean rerun; `php artisan test --filter=SearchControllerInternalLocationFilterTest` passed; focused Pint check passed; local endpoint returned 5 Dubai results.
+- Follow-ups: deploy to production, clear Laravel/opcache/route/config caches, verify production gateway env uses `VROOEM_GATEWAY_URL` or legacy `VROOEM_GATEWAY_BASE_URL`, then retest live endpoint.
+
 ### 2026-05-25 - Awin Google Merchant vehicle feed
 - Scope: `CarRental` merchant feed config, snapshot table/model, feed refresh command, XML writer, public feed route, hourly scheduler, and feed tests.
 - Decision: generate a UTF-8 Google Merchant RSS XML snapshot from internal vehicles and curated gateway searches; keep last good XML live if refresh fails and avoid marking external items stale when all gateway searches fail.
