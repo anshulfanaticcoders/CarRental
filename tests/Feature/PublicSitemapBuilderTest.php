@@ -13,7 +13,12 @@ class PublicSitemapBuilderTest extends TestCase
     public function test_public_sitemaps_include_expected_urls_and_exclude_forbidden(): void
     {
         $provider = new FakeSitemapDataProvider;
-        $builder = new PublicSitemapBuilder($provider, new SitemapUrlPolicy, 'https://example.com', 2);
+        $builder = new PublicSitemapBuilder($provider, new SitemapUrlPolicy, 'https://example.com', 2, [
+            '/fr/us/blog/bonjour' => [
+                'to_url' => 'https://example.com/fr/us/blog/bonjour-canonical',
+                'status_code' => 301,
+            ],
+        ]);
 
         $result = $builder->build();
 
@@ -35,7 +40,9 @@ class PublicSitemapBuilderTest extends TestCase
         $this->assertStringContainsString('https://example.com/en/page/about-us', $combined);
         $this->assertStringContainsString('https://example.com/en/us/blog', $combined);
         $this->assertStringContainsString('https://example.com/en/us/blog/hello-world', $combined);
+        $this->assertStringContainsString('https://example.com/fr/us/blog/bonjour-canonical', $combined);
 
+        $this->assertStringNotContainsString('https://example.com/fr/us/blog/bonjour<', $combined);
         $this->assertStringNotContainsString('/business/register', $combined);
         $this->assertStringNotContainsString('https://example.com/en/login', $combined);
         $this->assertStringNotContainsString('https://example.com/en/register', $combined);

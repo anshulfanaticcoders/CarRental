@@ -2,6 +2,7 @@
 
 namespace App\Services\Sitemaps;
 
+use App\Models\SeoRedirect;
 use Carbon\Carbon;
 use DateTimeInterface;
 use RuntimeException;
@@ -16,11 +17,14 @@ class PublicSitemapBuilder
 
     private int $maxUrlsPerSitemap;
 
+    private ?array $seoRedirectMap = null;
+
     public function __construct(
         private SitemapDataProvider $dataProvider,
         private SitemapUrlPolicy $urlPolicy,
         ?string $baseUrl = null,
-        int $maxUrlsPerSitemap = 45000
+        int $maxUrlsPerSitemap = 45000,
+        ?array $seoRedirectMap = null
     ) {
         // Prefer an explicit SITEMAP_BASE_URL so dev environments can't clobber
         // production sitemaps with localhost URLs by accident.
@@ -49,6 +53,7 @@ class PublicSitemapBuilder
 
         $this->baseUrl = $resolvedBaseUrl;
         $this->maxUrlsPerSitemap = max(1, $maxUrlsPerSitemap);
+        $this->seoRedirectMap = $seoRedirectMap;
     }
 
     public function build(): SitemapBuildResult
@@ -239,21 +244,29 @@ class PublicSitemapBuilder
 
     private function createSitemapFile(string $path, array $entries): ?SitemapFile
     {
-        if (empty($entries)) {
-            return null;
-        }
-
         $sitemap = Sitemap::create();
         $maxLastMod = null;
+        $urlCount = 0;
+        $seen = [];
 
         foreach ($entries as $entry) {
+            if (! $entry || isset($seen[$entry['loc']])) {
+                continue;
+            }
+
+            $seen[$entry['loc']] = true;
             $sitemap->add($entry['url']);
+            $urlCount++;
             if ($entry['lastmod']) {
                 $maxLastMod = $this->maxDate([$maxLastMod, $entry['lastmod']]);
             }
         }
 
-        return new SitemapFile($path, $sitemap, $maxLastMod, count($entries));
+        if ($urlCount === 0) {
+            return null;
+        }
+
+        return new SitemapFile($path, $sitemap, $maxLastMod, $urlCount);
     }
 
     private function buildEntry(
@@ -262,7 +275,12 @@ class PublicSitemapBuilder
         array $alternates = [],
         ?string $imageUrl = null,
         ?string $imageTitle = null
-    ): array {
+    ): ?array {
+        $url = $this->canonicalSitemapUrl($url);
+        if ($url === null) {
+            return null;
+        }
+
         $this->urlPolicy->assertAllowed($url);
 
         $tag = Url::create($url);
@@ -271,6 +289,11 @@ class PublicSitemapBuilder
         }
 
         foreach ($alternates as $locale => $alternateUrl) {
+            $alternateUrl = $this->canonicalSitemapUrl($alternateUrl);
+            if ($alternateUrl === null) {
+                continue;
+            }
+
             $this->urlPolicy->assertAllowed($alternateUrl);
             $tag->addAlternate($alternateUrl, (string) $locale);
         }
@@ -287,8 +310,59 @@ class PublicSitemapBuilder
 
         return [
             'url' => $tag,
+            'loc' => $url,
             'lastmod' => $lastMod,
         ];
+    }
+
+    private function canonicalSitemapUrl(string $url): ?string
+    {
+        $seen = [];
+
+        for ($i = 0; $i < 5; $i++) {
+            $path = parse_url($url, PHP_URL_PATH);
+            if (! is_string($path) || $path === '' || isset($seen[$path])) {
+                return $url;
+            }
+
+            $seen[$path] = true;
+            $redirect = $this->seoRedirectMap()[$path] ?? null;
+            if (! is_array($redirect)) {
+                return $url;
+            }
+
+            if ((int) ($redirect['status_code'] ?? 0) === 410) {
+                return null;
+            }
+
+            $target = trim((string) ($redirect['to_url'] ?? ''));
+            if ($target === '') {
+                return null;
+            }
+
+            if (str_starts_with($target, 'http://') || str_starts_with($target, 'https://')) {
+                $url = $target;
+            } else {
+                $url = $this->buildUrl(ltrim($target, '/'));
+            }
+        }
+
+        return $url;
+    }
+
+    private function seoRedirectMap(): array
+    {
+        if (is_array($this->seoRedirectMap)) {
+            return $this->seoRedirectMap;
+        }
+
+        try {
+            $this->seoRedirectMap = SeoRedirect::getCachedMap();
+        } catch (\Throwable) {
+            $this->seoRedirectMap = [];
+        }
+
+        return $this->seoRedirectMap;
     }
 
     private function groupPageTranslations(array $rows): array
