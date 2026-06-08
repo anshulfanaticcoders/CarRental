@@ -1,27 +1,46 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { useScrollAnimation } from '@/composables/useScrollAnimation';
+import { useTurnstile } from '@/composables/useTurnstile';
 
 const page = usePage();
 const email = ref('');
 const error = ref('');
 const success = ref('');
 const loading = ref(false);
+const {
+    turnstileContainer,
+    turnstileToken,
+    turnstileError,
+    resetTurnstile,
+} = useTurnstile({ action: 'newsletter_homepage', theme: 'dark' });
+const submitDisabled = computed(() => loading.value || !turnstileToken.value);
 
 const subscribe = async () => {
     if (loading.value) return;
     error.value = ''; success.value = '';
     if (!email.value) { error.value = 'Please enter your email.'; return; }
+    if (!turnstileToken.value) { error.value = turnstileError.value || 'Please complete the security check.'; return; }
     loading.value = true;
     try {
-        await axios.post('/api/newsletter/subscriptions', { email: email.value, source: 'homepage_cta', locale: page.props.locale });
+        await axios.post('/api/newsletter/subscriptions', {
+            email: email.value,
+            source: 'homepage_cta',
+            locale: page.props.locale,
+            cf_turnstile_response: turnstileToken.value,
+        });
         success.value = 'Check your inbox to confirm your subscription.';
         email.value = '';
+        resetTurnstile();
     } catch (err) {
         if (err?.response?.status === 409) error.value = err.response?.data?.message || 'This email is already subscribed.';
-        else if (err?.response?.status === 422) error.value = err.response?.data?.errors?.email?.[0] || 'Please enter a valid email.';
+        else if (err?.response?.status === 422) {
+            const errors = err.response?.data?.errors || {};
+            error.value = errors.cf_turnstile_response?.[0] || errors.email?.[0] || 'Please enter a valid email.';
+            if (errors.cf_turnstile_response) resetTurnstile();
+        }
         else error.value = 'Unable to subscribe right now. Please try again.';
     } finally { loading.value = false; }
 };
@@ -41,9 +60,11 @@ useScrollAnimation('.nl-section', '.nl-card', {
                 <h2 class="nl-title">Deals. Routes. Inspiration.</h2>
                 <p class="nl-text">Join 40,000+ travelers getting exclusive deals and curated road trip guides every week.</p>
                 <form class="nl-form" @submit.prevent="subscribe">
-                    <input v-model="email" type="email" class="nl-input" placeholder="Enter your email" />
-                    <button type="submit" class="nl-btn" :disabled="loading">{{ loading ? '...' : 'Subscribe' }}</button>
+                    <input v-model="email" type="email" class="nl-input" placeholder="Enter your email" :disabled="loading" />
+                    <button type="submit" class="nl-btn" :disabled="submitDisabled">{{ loading ? '...' : 'Subscribe' }}</button>
                 </form>
+                <div ref="turnstileContainer" class="nl-turnstile" aria-label="Security check"></div>
+                <p v-if="turnstileError" class="nl-error">{{ turnstileError }}</p>
                 <p v-if="error" class="nl-error">{{ error }}</p>
                 <p v-if="success" class="nl-success">{{ success }}</p>
                 <p class="nl-fine">No spam. Unsubscribe anytime.</p>
@@ -97,10 +118,12 @@ useScrollAnimation('.nl-section', '.nl-card', {
     cursor: pointer; transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
 }
 .nl-btn:hover { background: #22d3ee; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(6,182,212,0.3); }
+.nl-btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .nl-fine { font-size: 0.76rem; color: rgba(255,255,255,0.3); margin-top: 1rem; }
 .nl-error { font-size: 0.85rem; color: #f87171; margin-top: 0.75rem; }
 .nl-success { font-size: 0.85rem; color: #34d399; margin-top: 0.75rem; }
+.nl-turnstile { display: flex; justify-content: center; min-height: 65px; margin-top: 1rem; }
 
 @media (max-width: 768px) { .nl-form { flex-direction: column; } }
 </style>

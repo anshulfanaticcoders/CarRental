@@ -17,6 +17,12 @@ Concise durable memory for significant completed work.
 - Follow-ups: remaining work, if any.
 ```
 
+### 2026-06-08 - Newsletter Turnstile protection
+- Scope: `CarRental` newsletter subscribe API, footer/homepage/shared newsletter forms, shared Turnstile composable, and focused tests.
+- Decision: require Cloudflare Turnstile on public newsletter subscriptions before creating/updating records or sending confirmation emails; add IP and normalized-email throttles; keep double opt-in unchanged.
+- Verification: PHP syntax checks passed; `php artisan test tests\Feature\NewsletterSubscriptionTest.php` passed; `node --test tests\js\newsletterTurnstile.test.js` passed; `node --test tests\js\footerNewsletterLayout.test.js` passed; focused Pint check passed; `npm run build` passed; local browser smoke confirmed contact and footer Turnstile widgets render and pre-token submits stay disabled.
+- Follow-ups: ensure production has `VITE_TURNSTILE_SITE_KEY` available at build time and `TURNSTILE_SECRET_KEY` available at runtime before deploy.
+
 ### 2026-06-08 - Unified location API production hardening
 - Scope: `CarRental` public unified-location API route, gateway config fallback, endpoint feature tests.
 - Decision: moved `/api/unified-locations` off the heavy search page controller into a dedicated lightweight API controller; preserve the autocomplete JSON contract and return an empty array instead of 500 when gateway/config/logging fails.

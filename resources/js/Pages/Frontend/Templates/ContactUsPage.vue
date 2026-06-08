@@ -3,7 +3,8 @@ import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import SeoHead from '@/Components/SeoHead.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { computed, watch, ref, onMounted, onUnmounted } from 'vue';
+import { computed, watch, onMounted, onUnmounted } from 'vue';
+import { useTurnstile } from '@/composables/useTurnstile';
 
 const props = defineProps({
     page: Object,
@@ -33,27 +34,18 @@ const inertiaPage = usePage();
 const flashSuccess = computed(() => inertiaPage.props.flash?.success || null);
 
 // Turnstile
-const turnstileContainer = ref(null);
-let turnstileWidgetId = null;
+const { turnstileContainer, turnstileToken, resetTurnstile } = useTurnstile({ action: 'contact', theme: 'light' });
 
-const initTurnstile = () => {
-    if (turnstileContainer.value && window.turnstile) {
-        turnstileWidgetId = window.turnstile.render(turnstileContainer.value, {
-            sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
-            callback: (token) => { form.cf_turnstile_response = token; },
-            'expired-callback': () => { form.cf_turnstile_response = ''; },
-        });
-    }
-};
+watch(turnstileToken, (token) => {
+    form.cf_turnstile_response = token;
+});
 
 const submitForm = () => {
     form.post(route('contact.submit'), {
         preserveScroll: true,
         onSuccess: () => {
             form.reset();
-            if (window.turnstile && turnstileWidgetId !== null) {
-                window.turnstile.reset(turnstileWidgetId);
-            }
+            resetTurnstile();
         },
     });
 };
@@ -96,16 +88,6 @@ onMounted(() => {
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-    // Load Turnstile
-    if (!document.querySelector('script[src*="turnstile"]')) {
-        const script = document.createElement('script');
-        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit';
-        script.async = true;
-        window.onTurnstileLoad = () => initTurnstile();
-        document.head.appendChild(script);
-    } else if (window.turnstile) {
-        initTurnstile();
-    }
 });
 
 onUnmounted(() => {

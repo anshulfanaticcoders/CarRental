@@ -1,6 +1,8 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { usePage } from '@inertiajs/vue3';
+import axios from 'axios';
+import { useTurnstile } from '@/composables/useTurnstile';
 
 const page = usePage();
 
@@ -8,6 +10,13 @@ const email = ref('');
 const error = ref('');
 const success = ref('');
 const loading = ref(false);
+const {
+    turnstileContainer,
+    turnstileToken,
+    turnstileError,
+    resetTurnstile,
+} = useTurnstile({ action: 'newsletter_homepage', theme: 'light' });
+const submitDisabled = computed(() => loading.value || !turnstileToken.value);
 
 const subscribe = async () => {
     if (loading.value) return;
@@ -19,6 +28,11 @@ const subscribe = async () => {
         return;
     }
 
+    if (!turnstileToken.value) {
+        error.value = turnstileError.value || 'Please complete the security check.';
+        return;
+    }
+
     loading.value = true;
 
     try {
@@ -26,15 +40,19 @@ const subscribe = async () => {
             email: email.value,
             source: 'homepage_cta',
             locale: page.props.locale,
+            cf_turnstile_response: turnstileToken.value,
         });
         success.value = 'Check your inbox to confirm your subscription.';
         email.value = '';
+        resetTurnstile();
     } catch (err) {
         if (err?.response?.status === 409) {
             error.value = err.response?.data?.message || 'This email is already subscribed.';
         } else if (err?.response?.status === 422) {
-            const message = err.response?.data?.errors?.email?.[0];
+            const errors = err.response?.data?.errors || {};
+            const message = errors.cf_turnstile_response?.[0] || errors.email?.[0];
             error.value = message || 'Please enter a valid email.';
+            if (errors.cf_turnstile_response) resetTurnstile();
         } else {
             error.value = 'Unable to subscribe right now. Please try again.';
         }
@@ -113,11 +131,13 @@ const subscribe = async () => {
                                         autocomplete="email"
                                         :disabled="loading"
                                     />
-                                    <button type="submit" class="nl-btn" :disabled="loading">
+                                    <button type="submit" class="nl-btn" :disabled="submitDisabled">
                                         {{ loading ? 'Sending...' : 'Subscribe' }}
                                         <svg v-if="!loading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                                     </button>
                                 </div>
+                                <div ref="turnstileContainer" class="nl-turnstile" aria-label="Security check"></div>
+                                <p v-if="turnstileError" class="nl-feedback nl-feedback--error">{{ turnstileError }}</p>
                                 <p v-if="error" class="nl-feedback nl-feedback--error">{{ error }}</p>
                                 <p v-if="success" class="nl-feedback nl-feedback--success">{{ success }}</p>
                             </form>
@@ -453,6 +473,11 @@ const subscribe = async () => {
 
 .nl-feedback--error { color: #dc2626; }
 .nl-feedback--success { color: #059669; }
+
+.nl-turnstile {
+    min-height: 65px;
+    margin-top: 0.85rem;
+}
 
 .nl-privacy {
     margin-top: 1rem;

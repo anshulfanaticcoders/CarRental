@@ -3,14 +3,24 @@ import ApplicationLogo from "./ApplicationLogo.vue";
 import { Link } from "@inertiajs/vue3";
 import paypalLogos from "../../assets/paymentIcons.svg";
 import axios from 'axios';
-import { ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useLocalizedRoutes } from '@/composables/useLocalizedRoutes';
+import { useTurnstile } from '@/composables/useTurnstile';
 import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, Linkedin } from 'lucide-vue-next';
 
 const newsletterEmail = ref('');
 const newsletterError = ref('');
 const newsletterSuccess = ref('');
 const newsletterLoading = ref(false);
+const {
+    turnstileContainer,
+    turnstileToken,
+    turnstileError,
+    renderTurnstile,
+    resetTurnstile,
+} = useTurnstile({ action: 'newsletter_footer', theme: 'dark', defer: true });
+const newsletterSubmitDisabled = computed(() => newsletterLoading.value || !turnstileToken.value);
+let footerTurnstileObserver = null;
 
 const {
     currentLocale,
@@ -62,6 +72,11 @@ const submitNewsletter = async () => {
         return;
     }
 
+    if (!turnstileToken.value) {
+        newsletterError.value = turnstileError.value || 'Please complete the security check.';
+        return;
+    }
+
     newsletterLoading.value = true;
 
     try {
@@ -69,15 +84,19 @@ const submitNewsletter = async () => {
             email: newsletterEmail.value,
             source: 'footer',
             locale: currentLocale.value,
+            cf_turnstile_response: turnstileToken.value,
         });
         newsletterSuccess.value = 'Check your inbox to confirm your subscription.';
         newsletterEmail.value = '';
+        resetTurnstile();
     } catch (error) {
         if (error?.response?.status === 409) {
             newsletterError.value = error.response?.data?.message || 'This email is already subscribed.';
         } else if (error?.response?.status === 422) {
-            const message = error.response?.data?.errors?.email?.[0];
+            const errors = error.response?.data?.errors || {};
+            const message = errors.cf_turnstile_response?.[0] || errors.email?.[0];
             newsletterError.value = message || 'Please enter a valid email.';
+            if (errors.cf_turnstile_response) resetTurnstile();
         } else {
             newsletterError.value = 'Unable to subscribe right now. Please try again.';
         }
@@ -101,6 +120,25 @@ const loadFooterData = async () => {
 
 if (typeof window !== 'undefined') {
     watch(currentLocale, loadFooterData, { immediate: true });
+
+    onMounted(() => {
+        if (!('IntersectionObserver' in window) || !turnstileContainer.value) return;
+
+        footerTurnstileObserver = new IntersectionObserver((entries) => {
+            if (!entries.some((entry) => entry.isIntersecting)) return;
+
+            renderTurnstile();
+            footerTurnstileObserver?.disconnect();
+            footerTurnstileObserver = null;
+        }, { rootMargin: '200px 0px' });
+
+        footerTurnstileObserver.observe(turnstileContainer.value);
+    });
+
+    onUnmounted(() => {
+        footerTurnstileObserver?.disconnect();
+        footerTurnstileObserver = null;
+    });
 }
 </script>
 
@@ -185,13 +223,15 @@ if (typeof window !== 'undefined') {
                     <h3>Stay in the loop</h3>
                     <p>Get exclusive deals, travel tips, and new destination alerts.</p>
                 </div>
-                <div class="footer-nl-form-wrap">
+                <div class="footer-nl-form-wrap" @focusin="renderTurnstile" @pointerenter="renderTurnstile">
                     <form class="footer-nl-form" @submit.prevent="submitNewsletter">
                         <input v-model="newsletterEmail" type="email" placeholder="Your email address" :disabled="newsletterLoading" />
-                        <button type="submit" :disabled="newsletterLoading">
+                        <button type="submit" :disabled="newsletterSubmitDisabled">
                             {{ newsletterLoading ? 'Sending...' : 'Subscribe' }}
                         </button>
                     </form>
+                    <div ref="turnstileContainer" class="footer-turnstile" aria-label="Security check"></div>
+                    <p v-if="turnstileError" class="footer-nl-hint is-error">{{ turnstileError }}</p>
                     <p v-if="newsletterError" class="footer-nl-hint is-error">{{ newsletterError }}</p>
                     <p v-if="newsletterSuccess" class="footer-nl-hint is-success">{{ newsletterSuccess }}</p>
                 </div>
@@ -363,6 +403,10 @@ if (typeof window !== 'undefined') {
     flex-direction: column;
     gap: 8px;
     align-items: flex-start;
+}
+
+.footer-turnstile {
+    min-height: 65px;
 }
 
 .footer-nl-form input {

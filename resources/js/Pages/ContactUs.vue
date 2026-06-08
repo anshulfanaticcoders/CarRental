@@ -3,7 +3,8 @@ import Footer from '@/Components/Footer.vue';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import SeoHead from '@/Components/SeoHead.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { computed, watch, ref, onMounted } from 'vue';
+import { computed, watch } from 'vue';
+import { useTurnstile } from '@/composables/useTurnstile';
 
 const props = defineProps({
   contactPage: {
@@ -37,24 +38,10 @@ const flashSuccess = computed(() => page.props.flash?.success || null);
 const currentLocale = computed(() => page.props.locale || 'en');
 
 // Turnstile
-const turnstileContainer = ref(null);
-let turnstileWidgetId = null;
+const { turnstileContainer, turnstileToken, resetTurnstile } = useTurnstile({ action: 'contact', theme: 'light' });
 
-onMounted(() => {
-  if (document.querySelector('script[src*="turnstile"]')) return;
-  const script = document.createElement('script');
-  script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit';
-  script.async = true;
-  window.onTurnstileLoad = () => {
-    if (turnstileContainer.value) {
-      turnstileWidgetId = window.turnstile.render(turnstileContainer.value, {
-        sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
-        callback: (token) => { form.cf_turnstile_response = token; },
-        'expired-callback': () => { form.cf_turnstile_response = ''; },
-      });
-    }
-  };
-  document.head.appendChild(script);
+watch(turnstileToken, (token) => {
+  form.cf_turnstile_response = token;
 });
 
 const submitForm = () => {
@@ -62,9 +49,7 @@ const submitForm = () => {
     preserveScroll: true,
     onSuccess: () => {
       form.reset();
-      if (window.turnstile && turnstileWidgetId !== null) {
-        window.turnstile.reset(turnstileWidgetId);
-      }
+      resetTurnstile();
     },
   });
 };

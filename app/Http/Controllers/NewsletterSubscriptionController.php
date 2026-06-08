@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\NewsletterSubscription;
 use App\Notifications\NewsletterSubscriptionConfirmation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 class NewsletterSubscriptionController extends Controller
@@ -15,14 +17,26 @@ class NewsletterSubscriptionController extends Controller
             'email' => 'required|email:rfc|max:254',
             'source' => 'nullable|string|max:50',
             'locale' => 'nullable|string|in:en,fr,nl,es,ar',
+            'cf_turnstile_response' => 'required|string',
+        ], [
+            'cf_turnstile_response.required' => 'Please complete the security check.',
         ]);
+
+        if (! $this->verifyTurnstile($request)) {
+            return response()->json([
+                'message' => 'Security verification failed. Please try again.',
+                'errors' => [
+                    'cf_turnstile_response' => ['Security verification failed. Please try again.'],
+                ],
+            ], 422);
+        }
 
         $email = NewsletterSubscription::normalizeEmail($validated['email']);
         $locale = $validated['locale'] ?? config('app.locale', 'en');
 
         $subscription = NewsletterSubscription::where('email', $email)->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             $subscription = NewsletterSubscription::create([
                 'email' => $email,
                 'status' => 'pending',
@@ -33,7 +47,7 @@ class NewsletterSubscriptionController extends Controller
             ]);
         } elseif ($subscription->status === 'subscribed') {
             return response()->json([
-                'message' => 'This email is already subscribed.'
+                'message' => 'This email is already subscribed.',
             ], 409);
         } else {
             $subscription->status = 'pending';
@@ -51,7 +65,7 @@ class NewsletterSubscriptionController extends Controller
                 Notification::route('mail', $email)
                     ->notify(new NewsletterSubscriptionConfirmation($subscription, $locale));
             } catch (\Throwable $e) {
-                \Log::error('Newsletter confirmation email failed', [
+                Log::error('Newsletter confirmation email failed', [
                     'email' => $email,
                     'error' => $e->getMessage(),
                 ]);
@@ -59,8 +73,43 @@ class NewsletterSubscriptionController extends Controller
         }
 
         return response()->json([
-            'message' => 'If this email can be subscribed, a confirmation link has been sent.'
+            'message' => 'If this email can be subscribed, a confirmation link has been sent.',
         ], 202);
+    }
+
+    private function verifyTurnstile(Request $request): bool
+    {
+        $secret = (string) config('services.turnstile.secret_key');
+
+        if ($secret === '') {
+            Log::warning('Newsletter Turnstile verification skipped because secret key is missing.');
+
+            return false;
+        }
+
+        try {
+            $response = Http::asForm()
+                ->timeout(5)
+                ->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+                    'secret' => $secret,
+                    'response' => $request->input('cf_turnstile_response'),
+                    'remoteip' => $request->ip(),
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning('Newsletter Turnstile verification request failed.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        if (! $response->json('success')) {
+            Log::notice('Newsletter Turnstile verification rejected.', [
+                'error_codes' => $response->json('error-codes', []),
+            ]);
+        }
+
+        return (bool) $response->json('success');
     }
 
     public function confirm(Request $request, $locale, $subscription)
@@ -69,11 +118,12 @@ class NewsletterSubscriptionController extends Controller
 
         $subscriptionModel = NewsletterSubscription::find($subscription);
 
-        if (!$subscriptionModel) {
-            \Log::warning('Newsletter confirm: subscription not found', [
+        if (! $subscriptionModel) {
+            Log::warning('Newsletter confirm: subscription not found', [
                 'subscription' => $subscription,
                 'route_params' => $request->route()?->parameters() ?? [],
             ]);
+
             return redirect()
                 ->route('welcome', ['locale' => $locale])
                 ->with('error', 'Invalid or expired confirmation link.');
@@ -87,7 +137,7 @@ class NewsletterSubscriptionController extends Controller
             ]);
 
             if ($updated === 0) {
-                \Log::error('Newsletter confirm: update failed', [
+                Log::error('Newsletter confirm: update failed', [
                     'subscription_id' => $subscriptionModel->id,
                 ]);
             }
@@ -96,10 +146,11 @@ class NewsletterSubscriptionController extends Controller
         $subscriptionModel->refresh();
 
         if ($subscriptionModel->status !== 'subscribed') {
-            \Log::error('Newsletter confirm: status not updated', [
+            Log::error('Newsletter confirm: status not updated', [
                 'subscription_id' => $subscriptionModel->id,
                 'status' => $subscriptionModel->status,
             ]);
+
             return redirect()
                 ->route('welcome', ['locale' => $locale])
                 ->with('error', 'Unable to confirm subscription. Please try again.');

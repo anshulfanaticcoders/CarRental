@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\NewsletterSubscription;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -31,7 +32,14 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('newsletter', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            $email = NewsletterSubscription::normalizeEmail((string) $request->input('email', 'missing'));
+            $email = $email === '' ? 'missing' : $email;
+
+            return [
+                Limit::perMinute(5)->by('ip:'.$request->ip()),
+                Limit::perHour(3)->by('email:'.$email),
+                Limit::perHour(10)->by('email-ip:'.$email.'|'.$request->ip()),
+            ];
         });
 
         // General mobile-app traffic — keyed by Sanctum user id when authenticated,
