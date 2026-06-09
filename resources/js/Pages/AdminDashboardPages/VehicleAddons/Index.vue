@@ -124,27 +124,14 @@
                 </div>
             </div>
 
-            <!-- Alert Dialog for Delete Confirmation -->
-            <AlertDialog v-model:open="isDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Do you really want to delete this addon? This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting" class="bg-red-600 hover:bg-red-700">
-                            <span v-if="isDeleting" class="flex items-center gap-2">
-                                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Deleting...
-                            </span>
-                            <span v-else>Delete</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isDeleteDialogOpen"
+                title="Delete addon?"
+                description="This addon will be removed using the existing admin delete route. This action cannot be undone."
+                confirm-label="Delete addon"
+                :processing="isDeleting"
+                @confirm="confirmDelete"
+            />
         </div>
     </AdminDashboardLayout>
 </template>
@@ -169,17 +156,7 @@ import CreateUser from "@/Pages/AdminDashboardPages/VehicleAddons/CreateUser.vue
 import EditUser from "@/Pages/AdminDashboardPages/VehicleAddons/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/VehicleAddons/ViewUser.vue";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/Components/ui/alert-dialog'
+import AdminConfirmDialog from "@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue";
 
 const props = defineProps({
     users: Object,
@@ -222,12 +199,14 @@ const confirmDelete = () => {
     router.delete(`/booking-addons/${deleteUserId.value}`, {
         onSuccess: () => {
             toast.success('Addon deleted successfully');
-            isDeleteDialogOpen.value = false;
-            isDeleting.value = false;
         },
-        onError: (errors) => {
+        onError: () => {
             toast.error('Failed to delete addon');
+        },
+        onFinish: () => {
             isDeleting.value = false;
+            isDeleteDialogOpen.value = false;
+            deleteUserId.value = null;
         }
     });
 };

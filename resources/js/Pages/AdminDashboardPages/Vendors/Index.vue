@@ -129,23 +129,14 @@
                 </DialogContent>
             </Dialog>
 
-            <!-- Alert Dialog for Delete Confirmation -->
-            <AlertDialog v-model:open="isDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Do you really want to delete this vendor? This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isDeleteDialogOpen"
+                title="Delete vendor?"
+                description="This vendor will be removed using the existing admin delete route. This action cannot be undone."
+                confirm-label="Delete vendor"
+                :processing="isDeleting"
+                @confirm="confirmDelete"
+            />
 
             <!-- Bulk Actions Bar (WordPress style) -->
             <div v-if="users.data.length > 0" class="flex flex-wrap items-center gap-3 rounded-xl border bg-white px-4 py-3">
@@ -179,18 +170,15 @@
                                 </TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Vendor Name</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Company Name</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Company Email</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Company</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Country</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Passport Front</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Passport Back</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Date Created</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="(vendorProfile,index) in users.data" :key="vendorProfile.id" class="hover:bg-muted/25 transition-colors">
+                            <template v-for="(vendorProfile,index) in users.data" :key="vendorProfile.id">
+                            <TableRow class="hover:bg-muted/25 transition-colors">
                                 <TableCell class="px-4 py-3">
                                     <Checkbox
                                         :checked="selectedIds.includes(vendorProfile.user_id)"
@@ -203,10 +191,12 @@
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="font-medium">{{ vendorProfile.user?.first_name }} {{ vendorProfile.user?.last_name }}</div>
-                                    <div class="text-sm text-muted-foreground">ID: {{ vendorProfile.user_id }}</div>
+                                    <div class="text-sm text-muted-foreground">User ID: {{ vendorProfile.user_id }}</div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">{{ vendorProfile.company_name || 'N/A' }}</TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">{{ vendorProfile.company_email || 'N/A' }}</TableCell>
+                                <TableCell class="px-4 py-3">
+                                    <div class="font-medium">{{ vendorProfile.company_name || 'N/A' }}</div>
+                                    <div class="text-sm text-muted-foreground">{{ vendorProfile.company_email || 'No company email' }}</div>
+                                </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div v-if="vendorCountry(vendorProfile).code" class="flex items-center gap-2">
                                         <img
@@ -228,38 +218,12 @@
                                     </Badge>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div v-if="vendorProfile.user?.vendor_document?.passport_front" class="relative group cursor-pointer" @click="openImageModal(vendorProfile.user.vendor_document.passport_front)">
-                                        <img
-                                            :src="vendorProfile.user.vendor_document.passport_front"
-                                            alt="Passport Front"
-                                            class="w-20 h-16 object-cover rounded-lg border border-gray-200 hover:border-blue-400 transition-all pointer-events-none"
-                                        />
-                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
-                                            <Image class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </div>
-                                    </div>
-                                    <div v-else class="w-20 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
-                                        No Image
-                                    </div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div v-if="vendorProfile.user?.vendor_document?.passport_back" class="relative group cursor-pointer" @click="openImageModal(vendorProfile.user.vendor_document.passport_back)">
-                                        <img
-                                            :src="vendorProfile.user.vendor_document.passport_back"
-                                            alt="Passport Back"
-                                            class="w-20 h-16 object-cover rounded-lg border border-gray-200 hover:border-blue-400 transition-all pointer-events-none"
-                                        />
-                                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
-                                            <Image class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </div>
-                                    </div>
-                                    <div v-else class="w-20 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
-                                        No Image
-                                    </div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">{{ formatDate(vendorProfile.created_at) }}</TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="flex justify-end gap-2">
+                                    <div class="flex flex-wrap justify-end gap-2">
+                                        <Button size="sm" variant="outline" @click="toggleVendorDetails(vendorProfile.id)" class="flex items-center gap-1">
+                                            <ChevronUp v-if="isVendorDetailsOpen(vendorProfile.id)" class="w-3 h-3" />
+                                            <ChevronDown v-else class="w-3 h-3" />
+                                            Details
+                                        </Button>
                                         <Button v-if="vendorProfile.status === 'pending'" size="sm" class="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" @click="quickStatusUpdate(vendorProfile, 'approved')">
                                             <UserCheck class="w-3 h-3" />
                                             Approve
@@ -293,6 +257,84 @@
                                     </div>
                                 </TableCell>
                             </TableRow>
+                            <TableRow v-if="isVendorDetailsOpen(vendorProfile.id)" class="bg-muted/20">
+                                <TableCell colspan="7" class="px-4 py-4">
+                                    <div class="grid gap-4 md:grid-cols-3">
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Record</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Vendor profile ID</dt>
+                                                    <dd class="font-medium">{{ vendorProfile.id }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">User ID</dt>
+                                                    <dd class="font-medium">{{ vendorProfile.user_id }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Created</dt>
+                                                    <dd class="font-medium">{{ formatDate(vendorProfile.created_at) }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Company name</dt>
+                                                    <dd class="font-medium">{{ vendorProfile.company_name || 'N/A' }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Company email</dt>
+                                                    <dd class="break-all font-medium">{{ vendorProfile.company_email || 'N/A' }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Country</dt>
+                                                    <dd class="font-medium">{{ vendorCountry(vendorProfile).name || 'N/A' }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Documents</p>
+                                            <div class="mt-3 grid grid-cols-2 gap-3">
+                                                <button
+                                                    v-if="vendorProfile.user?.vendor_document?.passport_front"
+                                                    type="button"
+                                                    class="group relative overflow-hidden rounded-lg border bg-background text-left"
+                                                    @click="openImageModal(vendorProfile.user.vendor_document.passport_front)"
+                                                >
+                                                    <img
+                                                        :src="vendorProfile.user.vendor_document.passport_front"
+                                                        alt="Passport Front"
+                                                        class="h-24 w-full object-cover transition-opacity group-hover:opacity-80"
+                                                    />
+                                                    <span class="block px-2 py-1 text-xs font-medium">Passport front</span>
+                                                </button>
+                                                <div v-else class="flex h-[124px] items-center justify-center rounded-lg border bg-background/60 text-xs text-muted-foreground">
+                                                    No front image
+                                                </div>
+                                                <button
+                                                    v-if="vendorProfile.user?.vendor_document?.passport_back"
+                                                    type="button"
+                                                    class="group relative overflow-hidden rounded-lg border bg-background text-left"
+                                                    @click="openImageModal(vendorProfile.user.vendor_document.passport_back)"
+                                                >
+                                                    <img
+                                                        :src="vendorProfile.user.vendor_document.passport_back"
+                                                        alt="Passport Back"
+                                                        class="h-24 w-full object-cover transition-opacity group-hover:opacity-80"
+                                                    />
+                                                    <span class="block px-2 py-1 text-xs font-medium">Passport back</span>
+                                                </button>
+                                                <div v-else class="flex h-[124px] items-center justify-center rounded-lg border bg-background/60 text-xs text-muted-foreground">
+                                                    No back image
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                            </template>
                         </TableBody>
                     </Table>
                 </div>
@@ -313,23 +355,24 @@
                 </div>
             </div>
 
-            <AlertDialog v-model:open="isBulkDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete selected vendors?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete {{ selectedIds.length }} vendor{{ selectedIds.length > 1 ? 's' : '' }}. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel :disabled="isBulkDeleting">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmBulkDelete" :disabled="isBulkDeleting">
-                            <span v-if="isBulkDeleting">Deleting...</span>
-                            <span v-else>Delete {{ selectedIds.length }} Vendor{{ selectedIds.length > 1 ? 's' : '' }}</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isBulkDeleteDialogOpen"
+                title="Delete selected vendors?"
+                :description="`This will permanently delete ${selectedIds.length} vendor${selectedIds.length > 1 ? 's' : ''}. Existing bulk delete behavior is unchanged.`"
+                :confirm-label="`Delete ${selectedIds.length} Vendor${selectedIds.length > 1 ? 's' : ''}`"
+                :processing="isBulkDeleting"
+                @confirm="confirmBulkDelete"
+            />
+
+            <AdminConfirmDialog
+                v-model:open="isStatusConfirmOpen"
+                :title="statusConfirmCopy.title"
+                :description="statusConfirmCopy.description"
+                :confirm-label="statusConfirmCopy.confirmLabel"
+                :variant="statusConfirmCopy.variant"
+                :processing="isStatusUpdating"
+                @confirm="confirmQuickStatusUpdate"
+            />
         </div>
     </AdminDashboardLayout>
 </template>
@@ -365,24 +408,15 @@ import {
   Eye,
   Edit,
   Trash2,
-  Image
+  ChevronDown,
+  ChevronUp
 } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import EditUser from "@/Pages/AdminDashboardPages/Vendors/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Vendors/ViewUser.vue";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/Components/ui/alert-dialog'
+import AdminConfirmDialog from "@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue";
 
 const props = defineProps({
     users: Object,
@@ -419,6 +453,7 @@ const vendorCountry = (vendor) => {
 
 // Bulk selection
 const selectedIds = ref([]);
+const expandedVendorRows = ref([]);
 const bulkAction = ref('');
 const isBulkDeleteDialogOpen = ref(false);
 const isBulkDeleting = ref(false);
@@ -442,6 +477,17 @@ const toggleSelectAllOnPage = (checked) => {
     } else {
         selectedIds.value = selectedIds.value.filter((id) => !visibleIds.value.includes(id));
     }
+};
+
+const isVendorDetailsOpen = (id) => expandedVendorRows.value.includes(id);
+
+const toggleVendorDetails = (id) => {
+    if (isVendorDetailsOpen(id)) {
+        expandedVendorRows.value = expandedVendorRows.value.filter((rowId) => rowId !== id);
+        return;
+    }
+
+    expandedVendorRows.value = [id];
 };
 
 const applyBulkAction = () => {
@@ -477,10 +523,26 @@ const isViewDialogOpen = ref(false);
 const isImageModalOpen = ref(false)
 const isDeleteDialogOpen = ref(false)
 const isDeleting = ref(false)
+const isStatusConfirmOpen = ref(false)
+const isStatusUpdating = ref(false)
 const selectedImage = ref('')
 const editForm = ref({});
 const viewForm = ref({});
 const deleteVendorProfileId = ref(null);
+const statusPendingVendor = ref(null);
+const statusPendingValue = ref('');
+
+const statusConfirmCopy = computed(() => {
+    const isApproval = statusPendingValue.value === 'approved';
+    const vendorName = statusPendingVendor.value?.company_name || 'this vendor';
+
+    return {
+        title: isApproval ? 'Approve vendor?' : 'Reject vendor?',
+        description: `This will ${isApproval ? 'approve' : 'reject'} ${vendorName} using the existing vendor status update route.`,
+        confirmLabel: isApproval ? 'Approve vendor' : 'Reject vendor',
+        variant: isApproval ? 'warning' : 'danger',
+    };
+});
 
 // Handle search input
 const handleSearch = () => {
@@ -527,7 +589,18 @@ watch(statusFilter, (newValue) => {
 });
 
 const quickStatusUpdate = (user, status) => {
-    if (!confirm(`Are you sure you want to ${status === 'approved' ? 'approve' : 'reject'} ${user.company_name || 'this vendor'}?`)) return;
+    statusPendingVendor.value = user;
+    statusPendingValue.value = status;
+    isStatusConfirmOpen.value = true;
+};
+
+const confirmQuickStatusUpdate = () => {
+    if (!statusPendingVendor.value || !statusPendingValue.value) return;
+
+    const user = statusPendingVendor.value;
+    const status = statusPendingValue.value;
+    isStatusUpdating.value = true;
+
     router.put(`/vendors/${user.id}`, { status }, {
         preserveScroll: true,
         onSuccess: () => {
@@ -535,6 +608,12 @@ const quickStatusUpdate = (user, status) => {
         },
         onError: () => {
             toast.error('Failed to update vendor status');
+        },
+        onFinish: () => {
+            isStatusUpdating.value = false;
+            isStatusConfirmOpen.value = false;
+            statusPendingVendor.value = null;
+            statusPendingValue.value = '';
         },
     });
 };
@@ -561,17 +640,17 @@ const openDeleteDialog = (vendorProfileId) => {
 
 const confirmDelete = () => {
     isDeleting.value = true;
-    isDeleteDialogOpen.value = false;
     router.delete(`/vendors/${deleteVendorProfileId.value}`, {
         onSuccess: () => {
             toast.success('Vendor deleted successfully');
-            isDeleting.value = false;
-            deleteVendorProfileId.value = null;
         },
-        onError: (errors) => {
+        onError: () => {
             toast.error('Failed to delete vendor');
+        },
+        onFinish: () => {
             isDeleting.value = false;
             deleteVendorProfileId.value = null;
+            isDeleteDialogOpen.value = false;
         }
     });
 };

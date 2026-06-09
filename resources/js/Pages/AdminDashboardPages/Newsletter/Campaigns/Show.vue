@@ -161,6 +161,16 @@
                     </div>
                 </div>
             </div>
+
+            <AdminConfirmDialog
+                v-model:open="isActionConfirmOpen"
+                :title="campaignActionCopy.title"
+                :description="campaignActionCopy.description"
+                :confirm-label="campaignActionCopy.confirmLabel"
+                :variant="campaignActionCopy.variant"
+                :processing="isActionProcessing"
+                @confirm="confirmCampaignAction"
+            />
         </div>
     </AdminDashboardLayout>
 </template>
@@ -175,6 +185,7 @@ import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Send, Clock } from 'lucide-vue-next';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 
 const props = defineProps({
     campaign: Object,
@@ -183,9 +194,30 @@ const props = defineProps({
 });
 
 const showScheduleDialog = ref(false);
+const isActionConfirmOpen = ref(false);
+const isActionProcessing = ref(false);
+const pendingCampaignAction = ref(null);
 
 const scheduleForm = useForm({
     scheduled_at: '',
+});
+
+const campaignActionCopy = computed(() => {
+    if (pendingCampaignAction.value === 'cancel') {
+        return {
+            title: 'Cancel campaign?',
+            description: 'Unsent campaign emails will not be delivered. Existing campaign data and delivery logs stay available.',
+            confirmLabel: 'Cancel campaign',
+            variant: 'danger',
+        };
+    }
+
+    return {
+        title: 'Send campaign now?',
+        description: 'This will send the campaign to all active subscribers using the existing newsletter send route.',
+        confirmLabel: 'Send now',
+        variant: 'warning',
+    };
 });
 
 const sentPercent = computed(() => {
@@ -234,10 +266,8 @@ const sendTestEmail = () => {
 };
 
 const sendNow = () => {
-    if (!window.confirm('Send this campaign to all active subscribers now?')) return;
-    router.post(`/admin/newsletter-campaigns/${props.campaign.id}/send`, {}, {
-        preserveScroll: true,
-    });
+    pendingCampaignAction.value = 'send';
+    isActionConfirmOpen.value = true;
 };
 
 const scheduleCampaign = () => {
@@ -250,9 +280,21 @@ const scheduleCampaign = () => {
 };
 
 const cancelCampaign = () => {
-    if (!window.confirm('Cancel this campaign? Unsent emails will not be delivered.')) return;
-    router.post(`/admin/newsletter-campaigns/${props.campaign.id}/cancel`, {}, {
+    pendingCampaignAction.value = 'cancel';
+    isActionConfirmOpen.value = true;
+};
+
+const confirmCampaignAction = () => {
+    const actionPath = pendingCampaignAction.value === 'cancel' ? 'cancel' : 'send';
+
+    isActionProcessing.value = true;
+    router.post(`/admin/newsletter-campaigns/${props.campaign.id}/${actionPath}`, {}, {
         preserveScroll: true,
+        onFinish: () => {
+            isActionProcessing.value = false;
+            isActionConfirmOpen.value = false;
+            pendingCampaignAction.value = null;
+        },
     });
 };
 </script>

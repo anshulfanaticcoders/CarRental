@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { usePage, router } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
 import dayjs from 'dayjs';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 
 const page = usePage();
 
@@ -29,6 +30,9 @@ const isDialogOpen = ref(false);
 const isEditing = ref(false);
 const processing = ref(false);
 const currentOfferId = ref(null);
+const isDeleteDialogOpen = ref(false);
+const deleteProcessing = ref(false);
+const offerPendingDelete = ref(null);
 
 const form = reactive({
   name: '',
@@ -161,11 +165,22 @@ const saveOffer = () => {
 };
 
 const deleteOffer = (offer) => {
-  if (!window.confirm(`Delete offer "${offer.title || offer.name}"?`)) {
-    return;
-  }
+  offerPendingDelete.value = offer;
+  isDeleteDialogOpen.value = true;
+};
 
-  router.delete(route('admin.offers.destroy', offer.id));
+const confirmDeleteOffer = () => {
+  if (!offerPendingDelete.value) return;
+
+  deleteProcessing.value = true;
+  router.delete(route('admin.offers.destroy', offerPendingDelete.value.id), {
+    preserveScroll: true,
+    onFinish: () => {
+      deleteProcessing.value = false;
+      isDeleteDialogOpen.value = false;
+      offerPendingDelete.value = null;
+    },
+  });
 };
 
 const goToPage = (nextPage) => {
@@ -366,6 +381,15 @@ const placementLabel = (placement) => placementLabels[placement] || placement;
       <div v-if="offers.last_page > 1" class="flex justify-end pr-2">
         <Pagination :current-page="offers.current_page" :total-pages="offers.last_page" @page-change="goToPage" />
       </div>
+
+      <AdminConfirmDialog
+        v-model:open="isDeleteDialogOpen"
+        title="Delete offer?"
+        :description="`This will remove ${offerPendingDelete?.title || offerPendingDelete?.name || 'this offer'} from the active admin offer list.`"
+        confirm-label="Delete offer"
+        :processing="deleteProcessing"
+        @confirm="confirmDeleteOffer"
+      />
     </div>
   </AdminDashboardLayout>
 </template>

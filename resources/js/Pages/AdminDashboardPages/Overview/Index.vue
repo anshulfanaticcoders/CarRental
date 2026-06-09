@@ -14,7 +14,7 @@
                     </TabsList>
 
                     <!-- ========== OVERVIEW TAB ========== -->
-                    <TabsContent value="revenue" class="space-y-4">
+                    <TabsContent value="revenue" class="space-y-4 px-3 pb-4 pt-2 sm:px-4 sm:pb-5">
                         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                             <div class="flex items-center space-x-2">
                                 <Select v-model="revenuePeriod" @update:modelValue="onRevenuePeriodChange">
@@ -115,7 +115,7 @@
                                     <CardTitle class="text-base">Booking Overview</CardTitle>
                                     <CardDescription>Monthly booking status breakdown</CardDescription>
                                 </CardHeader>
-                                <CardContent class="pl-2">
+                                <CardContent class="px-4 pb-5 pt-2 sm:px-5">
                                     <BarChart class="h-72" :data="bookingOverview" :categories="['completed', 'confirmed', 'pending', 'cancelled']" index="name" :colors="['#10B981', '#153B4F', '#FFC633', '#EA3C3C']" :stacked="true" :rounded-corners="4" />
                                 </CardContent>
                             </Card>

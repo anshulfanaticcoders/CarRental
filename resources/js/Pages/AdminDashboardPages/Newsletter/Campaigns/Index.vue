@@ -153,6 +153,15 @@
                 </div>
             </div>
         </div>
+
+        <AdminConfirmDialog
+            v-model:open="isDeleteDialogOpen"
+            title="Delete campaign?"
+            :description="`This will delete ${campaignPendingDelete?.subject || 'this draft campaign'} from newsletter campaigns.`"
+            confirm-label="Delete campaign"
+            :processing="isDeleting"
+            @confirm="confirmDeleteCampaign"
+        />
     </AdminDashboardLayout>
 </template>
 
@@ -173,6 +182,7 @@ import {
 import { Search, Plus, Eye, Pencil, Trash2, Send, Download } from 'lucide-vue-next';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 
 const props = defineProps({
     campaigns: Object,
@@ -184,6 +194,9 @@ const props = defineProps({
 const ALL_STATUS_VALUE = 'all';
 const search = ref(props.filters?.search || '');
 const status = ref(props.filters?.status || ALL_STATUS_VALUE);
+const isDeleteDialogOpen = ref(false);
+const isDeleting = ref(false);
+const campaignPendingDelete = ref(null);
 
 const normalizedStatus = () => (
     status.value === ALL_STATUS_VALUE ? '' : status.value
@@ -230,9 +243,21 @@ const statusBadgeVariant = (statusValue) => {
 };
 
 const deleteCampaign = (campaign) => {
-    if (!window.confirm(`Delete campaign "${campaign.subject}"?`)) return;
-    router.delete(`/admin/newsletter-campaigns/${campaign.id}`, {
+    campaignPendingDelete.value = campaign;
+    isDeleteDialogOpen.value = true;
+};
+
+const confirmDeleteCampaign = () => {
+    if (!campaignPendingDelete.value) return;
+
+    isDeleting.value = true;
+    router.delete(`/admin/newsletter-campaigns/${campaignPendingDelete.value.id}`, {
         preserveScroll: true,
+        onFinish: () => {
+            isDeleting.value = false;
+            isDeleteDialogOpen.value = false;
+            campaignPendingDelete.value = null;
+        },
     });
 };
 </script>

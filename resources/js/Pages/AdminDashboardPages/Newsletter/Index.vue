@@ -160,81 +160,45 @@
                 </div>
             </div>
 
-            <AlertDialog v-model:open="isBulkDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete selected subscribers?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete {{ selectedIds.length }} subscriber{{ selectedIds.length > 1 ? 's' : '' }}. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel :disabled="isBulkDeleting">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmBulkDelete" :disabled="isBulkDeleting">
-                            <span v-if="isBulkDeleting">Deleting...</span>
-                            <span v-else>Delete {{ selectedIds.length }} Subscriber{{ selectedIds.length > 1 ? 's' : '' }}</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isBulkDeleteDialogOpen"
+                title="Delete selected subscribers?"
+                :description="`This will permanently delete ${selectedIds.length} subscriber${selectedIds.length > 1 ? 's' : ''}. Existing bulk delete behavior is unchanged.`"
+                :confirm-label="`Delete ${selectedIds.length} Subscriber${selectedIds.length > 1 ? 's' : ''}`"
+                :processing="isBulkDeleting"
+                @confirm="confirmBulkDelete"
+            />
 
-            <AlertDialog v-model:open="isBulkCancelDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel selected subscriptions?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Mark {{ selectedIds.length }} subscriber{{ selectedIds.length > 1 ? 's' : '' }} as unsubscribed. They will stop receiving newsletter emails.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel :disabled="isBulkCancelling">Keep subscribed</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmBulkCancel" :disabled="isBulkCancelling">
-                            <span v-if="isBulkCancelling">Cancelling...</span>
-                            <span v-else>Unsubscribe {{ selectedIds.length }}</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isBulkCancelDialogOpen"
+                title="Cancel selected subscriptions?"
+                :description="`Mark ${selectedIds.length} subscriber${selectedIds.length > 1 ? 's' : ''} as unsubscribed. They will stop receiving newsletter emails.`"
+                :confirm-label="`Unsubscribe ${selectedIds.length}`"
+                cancel-label="Keep subscribed"
+                variant="warning"
+                :processing="isBulkCancelling"
+                @confirm="confirmBulkCancel"
+            />
 
-            <AlertDialog v-model:open="isDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete subscriber?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            <template v-if="deleteTarget">
-                                This will permanently delete <span class="font-medium text-foreground">{{ deleteTarget.email }}</span>. This action cannot be undone.
-                            </template>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel :disabled="isDeleting">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
-                            <span v-if="isDeleting">Deleting...</span>
-                            <span v-else>Delete</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isDeleteDialogOpen"
+                title="Delete subscriber?"
+                :description="deleteTarget ? `This will permanently delete ${deleteTarget.email}. This action cannot be undone.` : ''"
+                confirm-label="Delete subscriber"
+                :processing="isDeleting"
+                @confirm="confirmDelete"
+            />
 
-            <AlertDialog v-model:open="isCancelDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            <template v-if="cancelTarget">
-                                Mark <span class="font-medium text-foreground">{{ cancelTarget.email }}</span> as unsubscribed? They will stop receiving newsletter emails.
-                            </template>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel :disabled="isCancelling">Keep subscribed</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmCancel" :disabled="isCancelling">
-                            <span v-if="isCancelling">Cancelling...</span>
-                            <span v-else>Unsubscribe</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isCancelDialogOpen"
+                title="Cancel subscription?"
+                :description="cancelTarget ? `Mark ${cancelTarget.email} as unsubscribed? They will stop receiving newsletter emails.` : ''"
+                confirm-label="Unsubscribe"
+                cancel-label="Keep subscribed"
+                variant="warning"
+                :processing="isCancelling"
+                @confirm="confirmCancel"
+            />
         </div>
     </AdminDashboardLayout>
 </template>
@@ -254,20 +218,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/Components/ui/alert-dialog';
 import { Search, Mail, Trash2 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 
 const props = defineProps({
     subscriptions: Object,

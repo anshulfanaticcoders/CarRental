@@ -143,17 +143,15 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Customer</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Transaction ID</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Currency</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission Total</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission Collected</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission Pending</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Payment Method</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Date</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="(payment, index) in payments.data" :key="payment.id" class="hover:bg-muted/25 transition-colors">
+                            <template v-for="(payment, index) in payments.data" :key="payment.id">
+                            <TableRow class="hover:bg-muted/25 transition-colors">
                                 <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
                                     {{ (payments.current_page - 1) * payments.per_page + index + 1 }}
                                 </TableCell>
@@ -169,27 +167,12 @@
                                     {{ payment.transaction_id }}
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <Badge :class="getCurrencyBadgeClass(getAdminAmounts(payment).currency)" class="text-xs">
-                                        {{ getAdminAmounts(payment).currency }}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="font-medium">
                                         {{ formatCurrency(getAdminAmounts(payment).total, getAdminAmounts(payment).currency) }}
                                     </div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="text-green-600 font-medium">
-                                        {{ formatCurrency(getAdminAmounts(payment).paid, getAdminAmounts(payment).currency) }}
+                                    <div class="text-xs text-muted-foreground">
+                                        {{ getAdminAmounts(payment).currency }} · {{ payment.payment_method || 'No method' }}
                                     </div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="text-yellow-600 font-medium">
-                                        {{ formatCurrency(getAdminAmounts(payment).pending, getAdminAmounts(payment).currency) }}
-                                    </div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="text-sm">{{ payment.payment_method }}</div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <Badge :variant="getPaymentStatusBadgeVariant(payment.payment_status)" class="capitalize">
@@ -199,7 +182,76 @@
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="text-sm">{{ formatDate(payment.created_at) }}</div>
                                 </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3 text-right">
+                                    <Button size="sm" variant="outline" @click="togglePaymentDetails(payment.id)" class="inline-flex items-center gap-1">
+                                        <ChevronUp v-if="isPaymentDetailsOpen(payment.id)" class="w-3 h-3" />
+                                        <ChevronDown v-else class="w-3 h-3" />
+                                        Details
+                                    </Button>
+                                </TableCell>
                             </TableRow>
+                            <TableRow v-if="isPaymentDetailsOpen(payment.id)" class="bg-muted/20">
+                                <TableCell colspan="7" class="px-4 py-4">
+                                    <div class="grid gap-4 md:grid-cols-3">
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Transaction ID</dt>
+                                                    <dd class="break-all font-mono font-medium">{{ payment.transaction_id || 'N/A' }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Method</dt>
+                                                    <dd class="font-medium">{{ payment.payment_method || 'N/A' }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Currency</dt>
+                                                    <dd>
+                                                        <Badge :class="getCurrencyBadgeClass(getAdminAmounts(payment).currency)" class="text-xs">
+                                                            {{ getAdminAmounts(payment).currency }}
+                                                        </Badge>
+                                                    </dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Commission</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Total</dt>
+                                                    <dd class="font-medium">{{ formatCurrency(getAdminAmounts(payment).total, getAdminAmounts(payment).currency) }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Collected</dt>
+                                                    <dd class="font-medium text-green-600">{{ formatCurrency(getAdminAmounts(payment).paid, getAdminAmounts(payment).currency) }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Pending</dt>
+                                                    <dd class="font-medium text-yellow-600">{{ formatCurrency(getAdminAmounts(payment).pending, getAdminAmounts(payment).currency) }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Related Booking</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Booking number</dt>
+                                                    <dd class="font-mono font-medium">{{ payment.booking?.booking_number || 'N/A' }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Customer</dt>
+                                                    <dd class="font-medium">{{ getCustomerName(payment) }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Customer email</dt>
+                                                    <dd class="break-all font-medium">{{ getCustomerEmail(payment) }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                            </template>
                         </TableBody>
                     </Table>
                 </div>
@@ -227,6 +279,7 @@
 import { ref, watch, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import {Table, TableHeader, TableRow, TableHead, TableBody, TableCell} from "@/Components/ui/table";
+import { Button } from "@/Components/ui/button";
 import { Badge } from "@/Components/ui/badge";
 import { Input } from "@/Components/ui/input";
 import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
@@ -242,7 +295,9 @@ import {
     CheckCircle,
     Clock,
     XCircle,
-    Search
+    Search,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-vue-next';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
@@ -270,6 +325,18 @@ function debounce(func, wait) {
 }
 
 const search = ref(props.filters?.search || '');
+const expandedPaymentRows = ref([]);
+
+const isPaymentDetailsOpen = (id) => expandedPaymentRows.value.includes(id);
+
+const togglePaymentDetails = (id) => {
+    if (isPaymentDetailsOpen(id)) {
+        expandedPaymentRows.value = expandedPaymentRows.value.filter((rowId) => rowId !== id);
+        return;
+    }
+
+    expandedPaymentRows.value = [id];
+};
 
 // Initialize filters with proper currency value
 const filters = ref({

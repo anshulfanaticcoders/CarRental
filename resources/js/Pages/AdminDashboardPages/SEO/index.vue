@@ -88,27 +88,14 @@
                 </div>
             </div>
 
-            <AlertDialog v-model:open="isDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete SEO meta?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            <template v-if="deleteTarget">
-                                This will permanently delete the SEO entry for
-                                <span class="font-medium text-foreground">{{ deleteTarget.route_name }}</span>.
-                                This action cannot be undone.
-                            </template>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel :disabled="isDeleting">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
-                            <span v-if="isDeleting">Deleting...</span>
-                            <span v-else>Delete</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isDeleteDialogOpen"
+                title="Delete SEO meta?"
+                :description="deleteTarget ? `This will permanently delete the SEO entry for ${deleteTarget.route_name}. This action cannot be undone.` : ''"
+                confirm-label="Delete SEO meta"
+                :processing="isDeleting"
+                @confirm="confirmDelete"
+            />
         </div>
     </AdminDashboardLayout>
 </template>
@@ -121,12 +108,9 @@ import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/Components/ui/table';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
-import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/Components/ui/alert-dialog';
 import { Search, Plus, Edit, Trash2, Globe } from 'lucide-vue-next';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 
 const props = defineProps({
     seoMetas: Object,

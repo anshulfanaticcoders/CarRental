@@ -123,27 +123,14 @@
                 <ViewUser :user="viewForm" @close="isViewDialogOpen = false" />
             </Dialog>
 
-            <!-- Alert Dialog for Delete Confirmation -->
-            <AlertDialog v-model:open="isDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Do you really want to delete this user? This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
-                            <span v-if="isDeleting" class="flex items-center gap-2">
-                                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Deleting...
-                            </span>
-                            <span v-else>Delete</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isDeleteDialogOpen"
+                title="Delete user?"
+                description="This user will be removed using the existing admin delete route. This action cannot be undone."
+                confirm-label="Delete user"
+                :processing="isDeleting"
+                @confirm="confirmDelete"
+            />
 
             <!-- Bulk Actions Bar (WordPress style) -->
             <div v-if="users.data.length > 0" class="flex flex-wrap items-center gap-3 rounded-xl border bg-white px-4 py-3">
@@ -178,16 +165,14 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Name</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Email</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Phone</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Country</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Role</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Date Created</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="(user,index) in users.data" :key="user.id" class="hover:bg-muted/25 transition-colors">
+                            <template v-for="(user,index) in users.data" :key="user.id">
+                            <TableRow class="hover:bg-muted/25 transition-colors">
                                 <TableCell class="px-4 py-3">
                                     <Checkbox
                                         :checked="selectedIds.includes(user.id)"
@@ -215,22 +200,6 @@
                                         {{ user.email }}
                                     </div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">{{ user.phone || 'N/A' }}</TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div v-if="userCountry(user).code" class="flex items-center gap-2">
-                                        <img
-                                            :src="`https://flagcdn.com/w20/${userCountry(user).code.toLowerCase()}.png`"
-                                            :alt="userCountry(user).name"
-                                            width="20"
-                                            height="15"
-                                            class="rounded-sm border border-slate-200"
-                                            loading="lazy"
-                                            @error="$event.target.style.visibility = 'hidden'"
-                                        />
-                                        <span class="text-sm">{{ userCountry(user).name }}</span>
-                                    </div>
-                                    <span v-else class="text-sm text-muted-foreground">—</span>
-                                </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <Badge :variant="getRoleBadgeVariant(user.role)" class="capitalize">
                                         {{ user.role }}
@@ -241,9 +210,13 @@
                                         {{ user.status }}
                                     </Badge>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">{{ formatDate(user.created_at) }}</TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="flex justify-end gap-2">
+                                    <div class="flex flex-wrap justify-end gap-2">
+                                        <Button size="sm" variant="outline" @click="toggleUserDetails(user.id)" class="flex items-center gap-1">
+                                            <ChevronUp v-if="isUserDetailsOpen(user.id)" class="w-3 h-3" />
+                                            <ChevronDown v-else class="w-3 h-3" />
+                                            Details
+                                        </Button>
                                         <Button size="sm" variant="outline" @click="openViewDialog(user)" class="flex items-center gap-1">
                                             <Eye class="w-3 h-3" />
                                             View
@@ -259,6 +232,70 @@
                                     </div>
                                 </TableCell>
                             </TableRow>
+                            <TableRow v-if="isUserDetailsOpen(user.id)" class="bg-muted/20">
+                                <TableCell colspan="7" class="px-4 py-4">
+                                    <div class="grid gap-4 md:grid-cols-3">
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Email</dt>
+                                                    <dd class="break-all font-medium">{{ user.email || 'N/A' }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Phone</dt>
+                                                    <dd class="font-medium">{{ user.phone || 'N/A' }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Country</dt>
+                                                    <dd class="font-medium">{{ userCountry(user).name || 'N/A' }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profile</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Address</dt>
+                                                    <dd class="font-medium">{{ user.profile?.address_line1 || 'N/A' }}</dd>
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <dt class="text-muted-foreground">City</dt>
+                                                        <dd class="font-medium">{{ user.profile?.city || 'N/A' }}</dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-muted-foreground">Postal code</dt>
+                                                        <dd class="font-medium">{{ user.profile?.postal_code || 'N/A' }}</dd>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Date of birth</dt>
+                                                    <dd class="font-medium">{{ user.profile?.date_of_birth || 'N/A' }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Record</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">User ID</dt>
+                                                    <dd class="font-medium">{{ user.id }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Role</dt>
+                                                    <dd class="font-medium capitalize">{{ user.role }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Created</dt>
+                                                    <dd class="font-medium">{{ formatDate(user.created_at) }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                            </template>
                         </TableBody>
                     </Table>
                 </div>
@@ -288,23 +325,14 @@
                 </div>
             </div>
 
-            <AlertDialog v-model:open="isBulkDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete selected users?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete {{ selectedIds.length }} user{{ selectedIds.length > 1 ? 's' : '' }}. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel :disabled="isBulkDeleting">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmBulkDelete" :disabled="isBulkDeleting">
-                            <span v-if="isBulkDeleting">Deleting...</span>
-                            <span v-else>Delete {{ selectedIds.length }} User{{ selectedIds.length > 1 ? 's' : '' }}</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isBulkDeleteDialogOpen"
+                title="Delete selected users?"
+                :description="`This will permanently delete ${selectedIds.length} user${selectedIds.length > 1 ? 's' : ''}. Existing bulk delete behavior is unchanged.`"
+                :confirm-label="`Delete ${selectedIds.length} User${selectedIds.length > 1 ? 's' : ''}`"
+                :processing="isBulkDeleting"
+                @confirm="confirmBulkDelete"
+            />
         </div>
     </AdminDashboardLayout>
 </template>
@@ -341,7 +369,9 @@ import {
   Search,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-vue-next';
 import { Dialog, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
@@ -349,17 +379,7 @@ import CreateUser from "@/Pages/AdminDashboardPages/Users/CreateUser.vue";
 import EditUser from "@/Pages/AdminDashboardPages/Users/EditUser.vue";
 import ViewUser from "@/Pages/AdminDashboardPages/Users/ViewUser.vue";
 import Pagination from "@/Pages/AdminDashboardPages/Users/Pagination.vue";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/Components/ui/alert-dialog'
+import AdminConfirmDialog from "@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue";
 
 const props = defineProps({
     users: Object,
@@ -395,6 +415,7 @@ const userCountry = (user) => {
 
 // Bulk selection
 const selectedIds = ref([]);
+const expandedUserRows = ref([]);
 const bulkAction = ref('');
 const isBulkDeleteDialogOpen = ref(false);
 const isBulkDeleting = ref(false);
@@ -418,6 +439,17 @@ const toggleSelectAllOnPage = (checked) => {
     } else {
         selectedIds.value = selectedIds.value.filter((id) => !visibleIds.value.includes(id));
     }
+};
+
+const isUserDetailsOpen = (id) => expandedUserRows.value.includes(id);
+
+const toggleUserDetails = (id) => {
+    if (isUserDetailsOpen(id)) {
+        expandedUserRows.value = expandedUserRows.value.filter((rowId) => rowId !== id);
+        return;
+    }
+
+    expandedUserRows.value = [id];
 };
 
 const applyBulkAction = () => {
@@ -519,12 +551,14 @@ const confirmDelete = () => {
     router.delete(`/users/${deleteUserId.value}`, {
         onSuccess: () => {
             toast.success('User deleted successfully');
-            isDeleteDialogOpen.value = false;
-            isDeleting.value = false;
         },
-        onError: (errors) => {
+        onError: () => {
             toast.error('Failed to delete user');
+        },
+        onFinish: () => {
             isDeleting.value = false;
+            isDeleteDialogOpen.value = false;
+            deleteUserId.value = null;
         }
     });
 };

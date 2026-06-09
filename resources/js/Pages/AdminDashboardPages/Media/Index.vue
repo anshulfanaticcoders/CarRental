@@ -3,20 +3,11 @@ import { Head, useForm, usePage, router } from '@inertiajs/vue3';
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { Dialog, DialogContent } from '@/Components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/Components/ui/alert-dialog';
 import { Button } from '@/Components/ui/button';
 import { useToast } from '@/Components/ui/toast/use-toast';
 import { Toaster } from '@/Components/ui/toast';
 import { ref } from 'vue';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 
 const props = defineProps({
   mediaItems: Object,
@@ -72,6 +63,7 @@ const submitUpload = () => {
 
 const isDeleteDialogOpen = ref(false);
 const mediaToDelete = ref(null);
+const isDeletingMedia = ref(false);
 
 const openDeleteDialog = (mediaId) => {
   mediaToDelete.value = mediaId;
@@ -80,6 +72,7 @@ const openDeleteDialog = (mediaId) => {
 
 const deleteMedia = () => {
   if (mediaToDelete.value) {
+    isDeletingMedia.value = true;
     router.delete(route('admin.media.destroy', mediaToDelete.value), {
       preserveScroll: true,
       onSuccess: () => {
@@ -99,6 +92,9 @@ const deleteMedia = () => {
           description: errors.message || 'An error occurred while deleting the media file.',
           variant: 'destructive',
         });
+      },
+      onFinish: () => {
+        isDeletingMedia.value = false;
       },
     });
   }
@@ -224,26 +220,10 @@ const cancelUploadSelection = () => {
                             class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-2 rounded">
                       Copy URL
                     </button>
-                    <AlertDialog>
-                      <AlertDialogTrigger as-child>
-                        <Button @click="openDeleteDialog(item.id)"
-                                class="text-xs bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded">
-                          Delete
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Media File?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete this media file? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel @click="cancelDelete">Cancel</AlertDialogCancel>
-                          <AlertDialogAction @click="deleteMedia">Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <Button @click="openDeleteDialog(item.id)"
+                            class="text-xs bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded">
+                      Delete
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -288,6 +268,15 @@ const cancelUploadSelection = () => {
 
             <!-- Toast Container -->
             <Toaster />
+
+            <AdminConfirmDialog
+              v-model:open="isDeleteDialogOpen"
+              title="Delete media file?"
+              description="This media file will be deleted using the existing admin media delete route. This action cannot be undone."
+              confirm-label="Delete media"
+              :processing="isDeletingMedia"
+              @confirm="deleteMedia"
+            />
           </div>
         </div>
       </div>

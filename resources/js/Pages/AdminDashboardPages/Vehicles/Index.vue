@@ -169,17 +169,14 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold w-[96px]">Image</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[220px]">Vendor</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[180px]">Vehicle</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[260px]">Office</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[140px]">Prices</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[150px]">Date Added</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold min-w-[110px]">Status</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right min-w-[180px]">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
+                            <template v-for="(vehicle,index) in visibleVehicles" :key="vehicle.id">
                             <TableRow
-                                v-for="(vehicle,index) in visibleVehicles"
-                                :key="vehicle.id"
                                 class="hover:bg-muted/25 transition-colors"
                                 :class="{ 'opacity-60': isVehiclePendingDeletion(vehicle.id) }"
                             >
@@ -226,13 +223,6 @@
                                     </div>
                                 </TableCell>
                                 <TableCell class="px-4 py-4 align-top">
-                                    <div class="max-w-[260px] min-w-[260px] space-y-1 text-sm">
-                                        <div class="break-words font-medium leading-5 text-foreground">{{ officeName(vehicle) }}</div>
-                                        <div class="break-words leading-5 text-muted-foreground">{{ officeMeta(vehicle) }}</div>
-                                        <div class="break-words text-xs leading-5 text-muted-foreground">{{ officeAddress(vehicle) }}</div>
-                                    </div>
-                                </TableCell>
-                                <TableCell class="px-4 py-4 align-top">
                                     <div class="min-w-[140px] space-y-1 text-sm font-medium">
                                         <div v-if="vehicle.price_per_day" class="text-green-600">
                                             {{ vehicleCurrency(vehicle) }}{{ vehicle.price_per_day }}/Day
@@ -240,7 +230,6 @@
                                         <span v-else class="text-muted-foreground">Not Set</span>
                                     </div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-4 align-top text-sm text-slate-700">{{ formatDate(vehicle.created_at) }}</TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-4 align-top">
                                     <Badge :variant="getStatusBadgeVariant(vehicle.status)" class="capitalize">
                                         {{ vehicle.status }}
@@ -251,7 +240,12 @@
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-4 align-top">
-                                    <div class="flex justify-end gap-2">
+                                    <div class="flex flex-wrap justify-end gap-2">
+                                        <Button size="sm" variant="outline" @click="toggleVehicleDetails(vehicle.id)" class="flex items-center gap-1" :disabled="isVehiclePendingDeletion(vehicle.id)">
+                                            <ChevronUp v-if="isVehicleDetailsOpen(vehicle.id)" class="w-3 h-3" />
+                                            <ChevronDown v-else class="w-3 h-3" />
+                                            Details
+                                        </Button>
                                         <Button size="sm" variant="outline" @click="openViewDialog(vehicle)" class="flex items-center gap-1" :disabled="isVehiclePendingDeletion(vehicle.id)">
                                             <Eye class="w-3 h-3" />
                                             View
@@ -267,6 +261,64 @@
                                     </div>
                                 </TableCell>
                             </TableRow>
+                            <TableRow v-if="isVehicleDetailsOpen(vehicle.id)" class="bg-muted/20">
+                                <TableCell colspan="8" class="px-4 py-4">
+                                    <div class="grid gap-4 lg:grid-cols-3">
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vehicle</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Vehicle ID</dt>
+                                                    <dd class="font-medium">{{ vehicle.id }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Spec</dt>
+                                                    <dd class="font-medium">{{ [vehicle.color, vehicle.transmission, vehicle.fuel].filter(Boolean).join(' · ') || 'N/A' }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Date added</dt>
+                                                    <dd class="font-medium">{{ formatDate(vehicle.created_at) }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Office</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Name</dt>
+                                                    <dd class="font-medium">{{ officeName(vehicle) }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Meta</dt>
+                                                    <dd class="font-medium">{{ officeMeta(vehicle) }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Address</dt>
+                                                    <dd class="font-medium">{{ officeAddress(vehicle) }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vendor & Pricing</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Vendor</dt>
+                                                    <dd class="font-medium">{{ vendorCompanyName(vehicle) }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Contact</dt>
+                                                    <dd class="break-all font-medium">{{ vendorContactSummary(vehicle) }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Daily price</dt>
+                                                    <dd class="font-medium">{{ vehicle.price_per_day ? `${vehicleCurrency(vehicle)}${vehicle.price_per_day}` : 'Not Set' }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                            </template>
                         </TableBody>
                     </Table>
                 </div>
@@ -300,46 +352,23 @@
                 </div>
             </div>
 
-            <!-- Alert Dialog for Delete Confirmation -->
-            <AlertDialog v-model:open="isDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Do you really want to delete this vehicle? Its Upcloud images, related API bookings, and booking damage-protection files will also be removed. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel @click="isDeleteDialogOpen = false">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
-                            <span v-if="isDeleting" class="flex items-center gap-2">
-                                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Deleting...
-                            </span>
-                            <span v-else>Delete</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isDeleteDialogOpen"
+                title="Delete vehicle?"
+                description="This starts the existing vehicle delete flow, including Upcloud images, related API bookings, and booking damage-protection files. This action cannot be undone."
+                confirm-label="Delete vehicle"
+                :processing="isDeleting"
+                @confirm="confirmDelete"
+            />
 
-            <AlertDialog v-model:open="isBulkDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete selected vehicles?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete {{ selectedVehicleIds.length }} vehicle{{ selectedVehicleIds.length > 1 ? 's' : '' }}, their images from Upcloud, related API bookings, and booking damage-protection files.
-                            This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel @click="isBulkDeleteDialogOpen = false">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmBulkDelete" :disabled="isBulkDeleting">
-                            <span v-if="isBulkDeleting">Deleting...</span>
-                            <span v-else>Delete {{ selectedVehicleIds.length }} Vehicle{{ selectedVehicleIds.length > 1 ? 's' : '' }}</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isBulkDeleteDialogOpen"
+                title="Delete selected vehicles?"
+                :description="`This starts deletion for ${selectedVehicleIds.length} vehicle${selectedVehicleIds.length > 1 ? 's' : ''}, their images from Upcloud, related API bookings, and booking damage-protection files.`"
+                :confirm-label="`Delete ${selectedVehicleIds.length} Vehicle${selectedVehicleIds.length > 1 ? 's' : ''}`"
+                :processing="isBulkDeleting"
+                @confirm="confirmBulkDelete"
+            />
         </div>
     </AdminDashboardLayout>
 </template>
@@ -377,6 +406,8 @@ import {
   Trash2,
   Image,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/Components/ui/dialog";
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
@@ -384,16 +415,7 @@ import ViewUser from "@/Pages/AdminDashboardPages/Vehicles/ViewUser.vue";
 import EditVehicleDialog from "@/Pages/AdminDashboardPages/Vehicles/EditVehicleDialog.vue";
 import { useCurrencyConversion } from "@/composables/useCurrencyConversion";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/Components/ui/alert-dialog'
+import AdminConfirmDialog from "@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue";
 
 const { getCurrencySymbol } = useCurrencyConversion();
 
@@ -422,6 +444,7 @@ const isBulkDeleteDialogOpen = ref(false);
 const isDeleting = ref(false);
 const isBulkDeleting = ref(false);
 const bulkAction = ref('');
+const expandedVehicleRows = ref([]);
 
 const applyBulkAction = () => {
     if (!bulkAction.value) return;
@@ -580,6 +603,17 @@ const acceptDeletedVehicleIds = (ids) => {
 const isVehiclePendingDeletion = (vehicleId) => pendingDeletionIds.value.includes(vehicleId);
 
 const isVehicleSelected = (vehicleId) => selectedVehicleIds.value.includes(vehicleId);
+
+const isVehicleDetailsOpen = (vehicleId) => expandedVehicleRows.value.includes(vehicleId);
+
+const toggleVehicleDetails = (vehicleId) => {
+    if (isVehicleDetailsOpen(vehicleId)) {
+        expandedVehicleRows.value = expandedVehicleRows.value.filter((id) => id !== vehicleId);
+        return;
+    }
+
+    expandedVehicleRows.value = [vehicleId];
+};
 
 const toggleVehicleSelection = (vehicleId, checked) => {
     if (checked) {

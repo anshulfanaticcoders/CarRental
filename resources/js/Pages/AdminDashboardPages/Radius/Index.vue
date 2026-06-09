@@ -123,6 +123,15 @@
                 </form>
             </DialogContent>
         </Dialog>
+
+        <AdminConfirmDialog
+            v-model:open="isDeleteRadiusDialogOpen"
+            title="Delete radius?"
+            description="This radius rule will be removed for the selected city, state, and country combination."
+            confirm-label="Delete radius"
+            :processing="isDeletingRadius"
+            @confirm="confirmRadiusDelete"
+        />
     </AdminDashboardLayout>
 </template>
 
@@ -149,6 +158,7 @@ import InputLabel from "@/Components/InputLabel.vue";
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { useToast } from 'vue-toastification';
 import { debounce } from 'lodash';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 
 const toast = useToast();
 const props = defineProps({
@@ -164,6 +174,9 @@ const editingRadius = ref(null);
 const formError = ref(null);
 const editFormError = ref(null);
 const search = ref('');
+const isDeleteRadiusDialogOpen = ref(false);
+const isDeletingRadius = ref(false);
+const radiusPendingDeleteId = ref(null);
 
 // Form for creating a new radius
 const form = useForm({
@@ -349,12 +362,20 @@ const confirmDeleteRadius = (combination) => {
         (r.country === combination.country || (!r.country && !combination.country))
     );
 
-    if (existingRadius && confirm('Are you sure you want to delete this radius?')) {
-        deleteRadius(existingRadius.id);
+    if (existingRadius) {
+        radiusPendingDeleteId.value = existingRadius.id;
+        isDeleteRadiusDialogOpen.value = true;
     }
 };
 
+const confirmRadiusDelete = () => {
+    if (!radiusPendingDeleteId.value) return;
+
+    deleteRadius(radiusPendingDeleteId.value);
+};
+
 const deleteRadius = (id) => {
+    isDeletingRadius.value = true;
     router.delete(route('radiuses.destroy', id), {
         preserveScroll: true,
         onSuccess: () => {
@@ -370,6 +391,11 @@ const deleteRadius = (id) => {
                     timeout: 5000,
                 });
             });
+        },
+        onFinish: () => {
+            isDeletingRadius.value = false;
+            isDeleteRadiusDialogOpen.value = false;
+            radiusPendingDeleteId.value = null;
         },
     });
 };

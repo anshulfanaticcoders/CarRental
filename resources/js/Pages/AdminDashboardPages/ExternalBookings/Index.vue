@@ -43,15 +43,14 @@
                                 <TableHead>Vehicle</TableHead>
                                 <TableHead>Driver</TableHead>
                                 <TableHead>Consumer</TableHead>
-                                <TableHead>Vendor</TableHead>
-                                <TableHead>Dates</TableHead>
                                 <TableHead class="text-right">Amount</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead class="text-right w-24">Actions</TableHead>
+                                <TableHead class="text-right w-44">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="booking in bookings.data" :key="booking.id">
+                            <template v-for="booking in bookings.data" :key="booking.id">
+                            <TableRow>
                                 <TableCell>
                                     <span class="font-mono text-xs font-semibold text-indigo-700">{{ booking.booking_number }}</span>
                                     <span class="block text-[11px] text-gray-400 mt-0.5">{{ formatDate(booking.created_at) }}</span>
@@ -66,15 +65,6 @@
                                 <TableCell>
                                     <Badge class="bg-blue-50 text-blue-700 border-blue-200">{{ booking.consumer?.name || 'N/A' }}</Badge>
                                 </TableCell>
-                                <TableCell>
-                                    <span class="text-sm text-gray-700">{{ booking.vehicle?.vendor?.vendor_profile?.company_name || booking.vehicle?.vendor?.first_name || 'N/A' }}</span>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap">
-                                    <span class="text-sm text-gray-700">{{ formatDateCompact(booking.pickup_date) }}</span>
-                                    <span class="text-gray-300 mx-1">&rarr;</span>
-                                    <span class="text-sm text-gray-700">{{ formatDateCompact(booking.return_date) }}</span>
-                                    <span class="block text-[11px] text-gray-400 mt-0.5">{{ booking.total_days }} day{{ booking.total_days !== 1 ? 's' : '' }}</span>
-                                </TableCell>
                                 <TableCell class="text-right whitespace-nowrap">
                                     <span class="font-semibold text-gray-900">{{ getCurrencySymbol(booking.currency) }}{{ formatNumber(booking.total_amount) }}</span>
                                 </TableCell>
@@ -85,13 +75,74 @@
                                     </Badge>
                                 </TableCell>
                                 <TableCell class="text-right">
-                                    <Link :href="route('admin.external-bookings.show', booking.id)">
-                                        <Button size="sm" variant="outline"><Eye class="w-4 h-4" /></Button>
-                                    </Link>
+                                    <div class="flex flex-wrap justify-end gap-2">
+                                        <Button size="sm" variant="outline" @click="toggleBookingDetails(booking.id)" class="inline-flex items-center gap-1">
+                                            <ChevronUp v-if="isBookingDetailsOpen(booking.id)" class="w-3 h-3" />
+                                            <ChevronDown v-else class="w-3 h-3" />
+                                            Details
+                                        </Button>
+                                        <Link :href="route('admin.external-bookings.show', booking.id)">
+                                            <Button size="sm" variant="outline"><Eye class="w-4 h-4" /></Button>
+                                        </Link>
+                                    </div>
                                 </TableCell>
                             </TableRow>
+                            <TableRow v-if="isBookingDetailsOpen(booking.id)" class="bg-muted/20">
+                                <TableCell colspan="7" class="px-4 py-4">
+                                    <div class="grid gap-4 md:grid-cols-3">
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Trip</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Pickup</dt>
+                                                    <dd class="font-medium">{{ formatDateCompact(booking.pickup_date) }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Return</dt>
+                                                    <dd class="font-medium">{{ formatDateCompact(booking.return_date) }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Duration</dt>
+                                                    <dd class="font-medium">{{ booking.total_days }} day{{ booking.total_days !== 1 ? 's' : '' }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vendor</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Company</dt>
+                                                    <dd class="font-medium">{{ booking.vehicle?.vendor?.vendor_profile?.company_name || booking.vehicle?.vendor?.first_name || 'N/A' }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Vehicle</dt>
+                                                    <dd class="font-medium">{{ booking.vehicle_name || (booking.vehicle?.brand + ' ' + booking.vehicle?.model) || 'N/A' }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Record</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Consumer</dt>
+                                                    <dd class="font-medium">{{ booking.consumer?.name || 'N/A' }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Driver email</dt>
+                                                    <dd class="break-all font-medium">{{ booking.driver_email || 'N/A' }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Created</dt>
+                                                    <dd class="font-medium">{{ formatDate(booking.created_at) }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                            </template>
                             <TableRow v-if="bookings.data.length === 0">
-                                <TableCell colspan="9" class="text-center py-8 text-gray-500">No external bookings found.</TableCell>
+                                <TableCell colspan="7" class="text-center py-8 text-gray-500">No external bookings found.</TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>
@@ -120,7 +171,7 @@ import { Badge } from '@/Components/ui/badge';
 import { Input } from '@/Components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
-import { Eye } from 'lucide-vue-next';
+import { ChevronDown, ChevronUp, Eye } from 'lucide-vue-next';
 import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
 const props = defineProps({
@@ -132,6 +183,18 @@ const props = defineProps({
 const search = ref(props.filters?.search || '');
 const statusFilter = ref(props.filters?.status || 'all');
 const consumerFilter = ref(props.filters?.api_consumer_id ? String(props.filters.api_consumer_id) : 'all');
+const expandedBookingRows = ref([]);
+
+const isBookingDetailsOpen = (id) => expandedBookingRows.value.includes(id);
+
+const toggleBookingDetails = (id) => {
+    if (isBookingDetailsOpen(id)) {
+        expandedBookingRows.value = expandedBookingRows.value.filter((rowId) => rowId !== id);
+        return;
+    }
+
+    expandedBookingRows.value = [id];
+};
 
 const applyFilters = (params = {}) => {
     router.get(route('admin.external-bookings.index'), {

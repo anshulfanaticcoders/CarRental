@@ -63,15 +63,13 @@
                             <TableHead>ID</TableHead>
                             <TableHead>Image</TableHead>
                             <TableHead>Name</TableHead>
-                            <TableHead>Description</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead>Created At</TableHead>
-                            <TableHead>Updated At</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="(user,index) in users.data" :key="user.id">
+                        <template v-for="(user,index) in users.data" :key="user.id">
+                        <TableRow>
                             <TableCell>
                                 <Checkbox
                                     :checked="isCategorySelected(user.id)"
@@ -87,7 +85,6 @@
                                 >
                             </TableCell>
                             <TableCell class="font-medium">{{ user.name }}</TableCell>
-                            <TableCell class="text-sm text-gray-600 max-w-xs truncate">{{ user.description }}</TableCell>
                             <TableCell>
                                 <div class="flex items-center gap-2">
                                     <Switch
@@ -101,10 +98,11 @@
                                     </Badge>
                                 </div>
                             </TableCell>
-                            <TableCell class="text-sm">{{ formatDate(user.created_at) }}</TableCell>
-                            <TableCell class="text-sm">{{ formatDate(user.updated_at) }}</TableCell>
                             <TableCell class="text-right">
-                                <div class="flex justify-end gap-2">
+                                <div class="flex flex-wrap justify-end gap-2">
+                                    <Button size="sm" variant="outline" @click="toggleCategoryDetails(user.id)">
+                                        {{ isCategoryDetailsOpen(user.id) ? 'Hide' : 'Details' }}
+                                    </Button>
                                     <Button size="sm" variant="outline" @click="openViewDialog(user)">
                                         View
                                     </Button>
@@ -117,6 +115,35 @@
                                 </div>
                             </TableCell>
                         </TableRow>
+                        <TableRow v-if="isCategoryDetailsOpen(user.id)" class="bg-muted/20">
+                            <TableCell colspan="6" class="px-4 py-4">
+                                <div class="grid gap-4 md:grid-cols-3">
+                                    <div class="rounded-lg border bg-background/40 p-4">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</p>
+                                        <p class="mt-3 text-sm font-medium">{{ user.description || 'No description' }}</p>
+                                    </div>
+                                    <div class="rounded-lg border bg-background/40 p-4">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Image</p>
+                                        <p class="mt-3 break-all text-sm font-medium">{{ user.image || 'No image' }}</p>
+                                        <p class="mt-2 text-xs text-muted-foreground">Alt: {{ user.alt_text || user.name || 'N/A' }}</p>
+                                    </div>
+                                    <div class="rounded-lg border bg-background/40 p-4">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Record</p>
+                                        <dl class="mt-3 space-y-2 text-sm">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <dt class="text-muted-foreground">Created</dt>
+                                                <dd class="font-medium">{{ formatDate(user.created_at) }}</dd>
+                                            </div>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <dt class="text-muted-foreground">Updated</dt>
+                                                <dd class="font-medium">{{ formatDate(user.updated_at) }}</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                        </template>
                     </TableBody>
                 </Table>
             </div>
@@ -215,6 +242,7 @@ const editForm = ref({});
 const viewForm = ref({});
 const deleteUserId = ref(null);
 const selectedCategories = ref([]);
+const expandedCategoryRows = ref([]);
 
 // Loading states
 const isDeleting = ref(false);
@@ -260,6 +288,17 @@ const toggleAllSelection = (checked) => {
 
 const clearSelection = () => {
     selectedCategories.value = [];
+};
+
+const isCategoryDetailsOpen = (categoryId) => expandedCategoryRows.value.includes(categoryId);
+
+const toggleCategoryDetails = (categoryId) => {
+    if (isCategoryDetailsOpen(categoryId)) {
+        expandedCategoryRows.value = expandedCategoryRows.value.filter((id) => id !== categoryId);
+        return;
+    }
+
+    expandedCategoryRows.value = [categoryId];
 };
 
 const openBulkDeleteDialog = () => {

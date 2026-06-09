@@ -75,6 +75,15 @@
                 </div>
             </div>
         </div>
+
+        <AdminConfirmDialog
+            v-model:open="isDeleteDialogOpen"
+            title="Delete page?"
+            description="This page will be removed from the admin content list. Existing backend delete behavior is unchanged."
+            confirm-label="Delete page"
+            :processing="isDeleting"
+            @confirm="confirmDeletePage"
+        />
     </AdminDashboardLayout>
 </template>
 
@@ -86,6 +95,7 @@ import { Button } from '@/Components/ui/button';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
 import { ref } from 'vue';
 import { Input } from '@/Components/ui/input';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 
 const props = defineProps({
     pages: Object,
@@ -93,11 +103,26 @@ const props = defineProps({
 });
 
 const search = ref(props.filters?.search || '');
+const isDeleteDialogOpen = ref(false);
+const isDeleting = ref(false);
+const pagePendingDeleteId = ref(null);
 
 const deletePage = (id) => {
-    if (confirm('Are you sure you want to delete this page?')) {
-        router.delete(route('admin.pages.destroy', id));
-    }
+    pagePendingDeleteId.value = id;
+    isDeleteDialogOpen.value = true;
+};
+
+const confirmDeletePage = () => {
+    if (!pagePendingDeleteId.value) return;
+
+    isDeleting.value = true;
+    router.delete(route('admin.pages.destroy', pagePendingDeleteId.value), {
+        onFinish: () => {
+            isDeleting.value = false;
+            isDeleteDialogOpen.value = false;
+            pagePendingDeleteId.value = null;
+        },
+    });
 };
 
 // Handle search input

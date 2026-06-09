@@ -1,7 +1,8 @@
 <script setup>
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue'; // Changed to AdminDashboardLayout
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { defineProps } from 'vue';
+import { defineProps, ref } from 'vue';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 // Assuming you might want icons, adjust if not using lucide-vue-next or if SEO index uses different icons
 // import { PlusIcon, PencilIcon, TrashIcon } from 'lucide-vue-next'; 
 
@@ -14,14 +15,27 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString();
 };
 
+const isDeleteDialogOpen = ref(false);
+const isDeleting = ref(false);
+const schemaPendingDeleteId = ref(null);
+
 const confirmDelete = (id) => {
-  if (confirm('Are you sure you want to delete this schema?')) {
-    router.delete(route('admin.schemas.destroy', id), {
-      preserveScroll: true,
-      // onSuccess: () => { /* Handle success if needed */ },
-      // onError: (errors) => { console.error('Error deleting schema:', errors); alert('Error deleting schema.'); }
-    });
-  }
+  schemaPendingDeleteId.value = id;
+  isDeleteDialogOpen.value = true;
+};
+
+const deleteSchema = () => {
+  if (!schemaPendingDeleteId.value) return;
+
+  isDeleting.value = true;
+  router.delete(route('admin.schemas.destroy', schemaPendingDeleteId.value), {
+    preserveScroll: true,
+    onFinish: () => {
+      isDeleting.value = false;
+      isDeleteDialogOpen.value = false;
+      schemaPendingDeleteId.value = null;
+    },
+  });
 };
 </script>
 
@@ -119,5 +133,14 @@ const confirmDelete = (id) => {
         </div>
       </div>
     </div>
+
+    <AdminConfirmDialog
+      v-model:open="isDeleteDialogOpen"
+      title="Delete schema?"
+      description="This schema script will be removed from the admin schema registry."
+      confirm-label="Delete schema"
+      :processing="isDeleting"
+      @confirm="deleteSchema"
+    />
   </AdminDashboardLayout>
 </template>

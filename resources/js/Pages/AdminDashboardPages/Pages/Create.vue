@@ -296,8 +296,8 @@ const submit = () => {
                         :init="{
                           height: 500,
                           menubar: false,
-                          skin: 'oxide',
-                          content_css: 'default',
+                          skin: 'oxide-dark',
+                          content_css: 'dark',
                           toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image',
                           plugins: 'lists link image',
                         }"

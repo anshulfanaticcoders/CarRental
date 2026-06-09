@@ -161,27 +161,24 @@
                             <TableRow class="bg-muted/50">
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">ID</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Booking #</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Plan</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Customer</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Vehicle</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Dates</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Total Days</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Trip</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Payment</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Status</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Actions</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow v-for="(booking,index) in users.data" :key="booking.id" class="hover:bg-muted/25 transition-colors">
+                            <template v-for="(booking,index) in users.data" :key="booking.id">
+                            <TableRow class="hover:bg-muted/25 transition-colors">
                                 <TableCell class="whitespace-nowrap px-4 py-3 font-medium">
                                     {{ (users.current_page - 1) * users.per_page + index + 1 }}
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3 font-mono">
-                                    {{ booking.booking_number }}
-                                </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <Badge variant="outline" class="capitalize">
+                                    <div class="font-mono font-medium">{{ booking.booking_number }}</div>
+                                    <Badge variant="outline" class="mt-1 capitalize">
                                         {{ booking.plan }}
                                     </Badge>
                                 </TableCell>
@@ -193,20 +190,17 @@
                                     <div class="font-medium">{{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}</div>
                                     <div class="text-sm text-muted-foreground">{{ booking.vehicle?.color || 'N/A' }}</div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                <TableCell class="px-4 py-3">
                                     <div class="text-sm">
                                         <div class="font-medium">{{ formatDate(booking.created_at) }}</div>
-                                        <div class="text-muted-foreground text-xs flex items-center gap-2">
-                                            <span>{{ booking.pickup_location }}</span>
+                                        <div class="text-muted-foreground text-xs">
+                                            <span class="line-clamp-1">{{ booking.pickup_location }}</span>
                                             <span v-if="booking.return_location && booking.return_location !== booking.pickup_location"
                                                 class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[#22d3ee]/15 text-[#0b2230] border border-[#22d3ee]/40">
                                                 One-way
                                             </span>
                                         </div>
                                     </div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="font-medium">{{ booking.total_days || 0 }} days</div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <div class="text-sm">
@@ -241,7 +235,13 @@
                                         Refund pending
                                     </div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                <TableCell class="whitespace-nowrap px-4 py-3 text-right">
+                                    <div class="flex flex-wrap justify-end gap-2">
+                                    <Button size="sm" variant="outline" @click="toggleBookingDetails(booking.id)" class="flex items-center gap-1">
+                                        <ChevronUp v-if="isBookingDetailsOpen(booking.id)" class="w-3 h-3" />
+                                        <ChevronDown v-else class="w-3 h-3" />
+                                        Details
+                                    </Button>
                                     <Button
                                         v-if="booking.booking_status !== 'cancelled'"
                                         variant="destructive"
@@ -252,8 +252,75 @@
                                         Cancel
                                     </Button>
                                     <span v-else class="text-sm text-muted-foreground">--</span>
+                                    </div>
                                 </TableCell>
                             </TableRow>
+                            <TableRow v-if="isBookingDetailsOpen(booking.id)" class="bg-muted/20">
+                                <TableCell colspan="9" class="px-4 py-4">
+                                    <div class="grid gap-4 lg:grid-cols-3">
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Booking</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Booking number</dt>
+                                                    <dd class="font-mono font-medium">{{ booking.booking_number }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Plan</dt>
+                                                    <dd class="font-medium capitalize">{{ booking.plan }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Total days</dt>
+                                                    <dd class="font-medium">{{ booking.total_days || 0 }} days</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Created</dt>
+                                                    <dd class="font-medium">{{ formatDate(booking.created_at) }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Route</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Pickup</dt>
+                                                    <dd class="font-medium">{{ booking.pickup_location || 'N/A' }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Return</dt>
+                                                    <dd class="font-medium">{{ booking.return_location || booking.pickup_location || 'N/A' }}</dd>
+                                                </div>
+                                                <div v-if="booking.provider_source">
+                                                    <dt class="text-muted-foreground">Provider</dt>
+                                                    <dd class="font-medium">{{ booking.provider_source }} · {{ booking.provider_booking_ref || 'Reference missing' }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Currency</dt>
+                                                    <dd class="font-medium">{{ getAdminAmounts(booking).currency }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Total</dt>
+                                                    <dd class="font-medium">{{ formatCurrency(getAdminAmounts(booking).total, getAdminAmounts(booking).currency) }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Collected</dt>
+                                                    <dd class="font-medium text-green-600">{{ formatCurrency(getAdminAmounts(booking).paid, getAdminAmounts(booking).currency) }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Pending</dt>
+                                                    <dd class="font-medium text-yellow-600">{{ formatCurrency(getAdminAmounts(booking).pending, getAdminAmounts(booking).currency) }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                            </template>
                         </TableBody>
                     </Table>
                 </div>
@@ -346,7 +413,9 @@ import {
   CheckCircle,
   CheckSquare,
   XCircle,
-  Search
+  Search,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-vue-next';
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
@@ -361,6 +430,18 @@ const props = defineProps({
 
 const search = ref(props.filters.search || '');
 const statusFilter = ref(props.currentStatus || 'all');
+const expandedBookingRows = ref([]);
+
+const isBookingDetailsOpen = (id) => expandedBookingRows.value.includes(id);
+
+const toggleBookingDetails = (id) => {
+    if (isBookingDetailsOpen(id)) {
+        expandedBookingRows.value = expandedBookingRows.value.filter((rowId) => rowId !== id);
+        return;
+    }
+
+    expandedBookingRows.value = [id];
+};
 
 // Cancel modal state
 const showCancelModal = ref(false);

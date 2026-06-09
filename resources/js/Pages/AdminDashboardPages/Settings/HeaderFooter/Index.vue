@@ -90,32 +90,53 @@
         </div>
       </div>
     </div>
+
+    <AdminConfirmDialog
+      v-model:open="isDeleteDialogOpen"
+      title="Delete script entry?"
+      description="This will remove the stored header and footer script entry from admin settings."
+      confirm-label="Delete script"
+      :processing="isDeleting"
+      @confirm="deleteScriptEntry"
+    />
   </AdminDashboardLayout>
 </template>
 
 <script setup>
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Link, router } from '@inertiajs/vue3';
-import { defineProps } from 'vue';
+import { defineProps, ref } from 'vue';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 
 const props = defineProps({
   headerFooterScripts: Object, // Contains data and links for pagination
   existingScript: Object, // The single existing script entry, or null
 });
 
+const isDeleteDialogOpen = ref(false);
+const isDeleting = ref(false);
+const scriptPendingDeleteId = ref(null);
+
 const confirmDelete = (id) => {
-  if (confirm('Are you sure you want to delete this script entry?')) {
-    router.delete(route('admin.header-footer-scripts.destroy', id), {
-      preserveScroll: true,
-      onSuccess: () => {
-        // Optionally, refresh data or rely on Inertia's automatic reload
-      },
-      onError: (errors) => {
-        console.error('Error deleting script entry:', errors);
-        alert('Error deleting script entry. Check console for details.');
-      }
-    });
-  }
+  scriptPendingDeleteId.value = id;
+  isDeleteDialogOpen.value = true;
+};
+
+const deleteScriptEntry = () => {
+  if (!scriptPendingDeleteId.value) return;
+
+  isDeleting.value = true;
+  router.delete(route('admin.header-footer-scripts.destroy', scriptPendingDeleteId.value), {
+    preserveScroll: true,
+    onError: (errors) => {
+      console.error('Error deleting script entry:', errors);
+    },
+    onFinish: () => {
+      isDeleting.value = false;
+      isDeleteDialogOpen.value = false;
+      scriptPendingDeleteId.value = null;
+    },
+  });
 };
 </script>
 

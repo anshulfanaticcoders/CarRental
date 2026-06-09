@@ -46,8 +46,8 @@
                         :init="{
                             height: 500,
                             menubar: true,
-                            skin: 'oxide',
-                            content_css: 'default',
+                            skin: 'oxide-dark',
+                            content_css: 'dark',
                             toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image | code',
                             plugins: 'lists link image code',
                         }"

@@ -138,43 +138,23 @@
                 </div>
             </div>
 
-            <AlertDialog v-model:open="isDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete blog?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            <template v-if="deleteTarget">
-                                This will permanently delete <span class="font-medium text-foreground">{{ deleteTarget.title }}</span>. This action cannot be undone.
-                            </template>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel :disabled="isDeleting">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmDelete" :disabled="isDeleting">
-                            <span v-if="isDeleting">Deleting...</span>
-                            <span v-else>Delete</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isDeleteDialogOpen"
+                title="Delete blog?"
+                :description="deleteTarget ? `This will permanently delete ${deleteTarget.title}. This action cannot be undone.` : ''"
+                confirm-label="Delete blog"
+                :processing="isDeleting"
+                @confirm="confirmDelete"
+            />
 
-            <AlertDialog v-model:open="isBulkDeleteDialogOpen">
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete selected blogs?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete {{ selectedIds.length }} blog{{ selectedIds.length > 1 ? 's' : '' }}. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel :disabled="isBulkDeleting">Cancel</AlertDialogCancel>
-                        <AlertDialogAction @click="confirmBulkDelete" :disabled="isBulkDeleting">
-                            <span v-if="isBulkDeleting">Deleting...</span>
-                            <span v-else>Delete {{ selectedIds.length }} Blog{{ selectedIds.length > 1 ? 's' : '' }}</span>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AdminConfirmDialog
+                v-model:open="isBulkDeleteDialogOpen"
+                title="Delete selected blogs?"
+                :description="`This will permanently delete ${selectedIds.length} blog${selectedIds.length > 1 ? 's' : ''}. Existing bulk delete behavior is unchanged.`"
+                :confirm-label="`Delete ${selectedIds.length} Blog${selectedIds.length > 1 ? 's' : ''}`"
+                :processing="isBulkDeleting"
+                @confirm="confirmBulkDelete"
+            />
         </div>
     </AdminDashboardLayout>
 </template>
@@ -190,12 +170,9 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
-import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/Components/ui/alert-dialog';
 import { Search, Plus, Edit, Trash2, FileText, Eye, EyeOff } from 'lucide-vue-next';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import AdminConfirmDialog from '@/Pages/AdminDashboardPages/Shared/AdminConfirmDialog.vue';
 
 const props = defineProps({
     blogs: Object,
