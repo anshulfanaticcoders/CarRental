@@ -747,6 +747,11 @@ body.admin-dark-active #app {
     border-left-color: rgba(34, 211, 238, 0.42);
 }
 
+.admin-shell-dark .admin-sidebar-submenu-content[data-state="open"] {
+    height: auto !important;
+    overflow: visible !important;
+}
+
 .admin-shell-dark :where(.bg-white, .bg-background, .bg-card) {
     background-color: var(--admin-surface) !important;
 }
@@ -1227,38 +1232,140 @@ body.admin-dark-active #nprogress .peg {
 
 .admin-route-loading-panel {
     position: fixed;
-    top: 5rem;
-    left: 50%;
+    inset: 0;
     z-index: 70;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.58rem;
-    min-height: 2.35rem;
-    transform: translateX(-50%);
-    border: 1px solid rgba(34, 211, 238, 0.24);
-    border-radius: 999px;
-    background: linear-gradient(135deg, rgba(10, 29, 40, 0.9), rgba(13, 39, 54, 0.86));
+    display: grid;
+    place-items: center;
+    pointer-events: auto;
+    cursor: wait;
+    touch-action: none;
+    background:
+        radial-gradient(circle at center, rgba(34, 211, 238, 0.09), transparent 18rem),
+        rgba(2, 9, 14, 0.36);
+    backdrop-filter: blur(4px) saturate(0.92);
+    -webkit-backdrop-filter: blur(4px) saturate(0.92);
     color: #d8edf7;
-    padding: 0.42rem 0.78rem 0.42rem 0.52rem;
     font-family: var(--jakarta-font-family);
-    font-size: 0.74rem;
-    font-weight: 800;
-    letter-spacing: 0.01em;
-    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(34, 211, 238, 0.08);
+    overscroll-behavior: contain;
 }
 
-.admin-route-loading-spinner {
-    width: 1.22rem;
-    height: 1.22rem;
+body.admin-route-loading {
+    cursor: wait;
+}
+
+.admin-route-loading-card {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: min(12.5rem, calc(100vw - 2rem));
+    min-height: 10.25rem;
+    overflow: hidden;
+    border: 1px solid rgba(34, 211, 238, 0.24);
+    border-radius: 1.35rem;
+    background:
+        linear-gradient(145deg, rgba(8, 28, 39, 0.96), rgba(12, 43, 58, 0.92)),
+        var(--admin-surface);
+    box-shadow:
+        0 24px 64px rgba(0, 0, 0, 0.38),
+        0 0 0 1px rgba(34, 211, 238, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.admin-route-loading-card::before {
+    content: "";
+    position: absolute;
+    inset: 0.75rem;
+    border-radius: 1rem;
+    background:
+        radial-gradient(circle at 50% 38%, rgba(34, 211, 238, 0.16), transparent 46%),
+        linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.18), transparent);
+    opacity: 0.72;
+}
+
+.admin-route-loading-card::after {
+    content: "";
+    position: absolute;
+    right: 1.55rem;
+    bottom: 2.3rem;
+    left: 1.55rem;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(103, 232, 249, 0.76), rgba(16, 185, 129, 0.52), transparent);
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.34);
+}
+
+.admin-route-loading-lottie {
+    position: relative;
+    z-index: 1;
+    width: clamp(7.2rem, 11vw, 9.75rem);
+    height: clamp(7.2rem, 11vw, 9.75rem);
+    margin-block: -0.55rem -0.4rem;
+    filter: drop-shadow(0 0 18px rgba(34, 211, 238, 0.42)) drop-shadow(0 14px 32px rgba(0, 0, 0, 0.28));
+}
+
+.admin-route-loading-fallback {
+    display: grid;
+    place-items: center;
+}
+
+.admin-route-loading-fallback span {
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 2px solid rgba(34, 211, 238, 0.18);
+    border-top-color: rgba(103, 232, 249, 0.92);
     border-radius: 999px;
-    border: 2px solid rgba(103, 232, 249, 0.16);
-    border-top-color: #67e8f9;
-    border-right-color: rgba(16, 185, 129, 0.9);
-    animation: admin-route-spin 820ms linear infinite;
+    animation: admin-route-fallback-spin 780ms linear infinite;
 }
 
-@keyframes admin-route-spin {
-    to { transform: rotate(360deg); }
+.admin-route-loading-text {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 1.05rem;
+    color: #d8edf7;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.admin-route-loading-dots {
+    display: inline-flex;
+    width: 1.1em;
+    justify-content: flex-start;
+}
+
+.admin-route-loading-dots span {
+    opacity: 0.28;
+    animation: admin-route-dot-pulse 1.05s ease-in-out infinite;
+}
+
+.admin-route-loading-dots span:nth-child(2) {
+    animation-delay: 140ms;
+}
+
+.admin-route-loading-dots span:nth-child(3) {
+    animation-delay: 280ms;
+}
+
+@keyframes admin-route-dot-pulse {
+    0%, 20%, 100% {
+        opacity: 0.28;
+        transform: translateY(0);
+    }
+
+    45% {
+        opacity: 1;
+        transform: translateY(-1px);
+    }
+}
+
+@keyframes admin-route-fallback-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.admin-route-loading-panel :where(svg) {
+    display: block;
+    overflow: visible;
 }
 
 .admin-command-backdrop {
@@ -2242,11 +2349,17 @@ body.admin-dark-active :where([role="alertdialog"] .border-input.bg-background:h
     .admin-command-backdrop,
     .admin-command-panel,
     .admin-route-loading-panel,
-    .admin-route-loading-spinner,
+    .admin-route-loading-lottie,
+    .admin-route-loading-fallback span,
     body.admin-dark-active [data-radix-popper-content-wrapper] * {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         scroll-behavior: auto !important;
         transition-duration: 0.01ms !important;
+    }
+
+    .admin-route-loading-dots span {
+        opacity: 1 !important;
+        transform: none !important;
     }
 }

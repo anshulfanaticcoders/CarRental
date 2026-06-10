@@ -330,6 +330,15 @@ const getPrimaryMenuUrl = (menuItem: NavItem) => {
     || (menuItem.url !== '#' ? menuItem.url : '');
 };
 
+const announceAdminRouteLoading = () => {
+  window.dispatchEvent(new CustomEvent('admin-route-loading:start'));
+};
+
+const visitAdminRouteWithLoader = (url: string) => {
+  announceAdminRouteLoading();
+  window.setTimeout(() => router.visit(url), 50);
+};
+
 const visitCollapsedMenu = (event: MouseEvent, menuItem: NavItem) => {
   if (sidebarState.value !== 'collapsed') {
     return;
@@ -343,7 +352,23 @@ const visitCollapsedMenu = (event: MouseEvent, menuItem: NavItem) => {
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
-  router.visit(targetUrl);
+  visitAdminRouteWithLoader(targetUrl);
+};
+
+const visitSubmenu = (event: MouseEvent, url: string) => {
+  const clickButton = event.button ?? 0;
+
+  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || clickButton !== 0) {
+    return;
+  }
+
+  event.preventDefault();
+
+  if (currentPath.value === url) {
+    return;
+  }
+
+  visitAdminRouteWithLoader(url);
 };
 
 router.on('navigate', () => {
@@ -434,7 +459,7 @@ onMounted(() => {
                 </CollapsibleTrigger>
 
                 <!-- Submenu -->
-                <CollapsibleContent>
+                <CollapsibleContent class="admin-sidebar-submenu-content">
                   <SidebarMenuSub
                     class="!ml-4 !pl-3.5 !border-l-[1.5px] group-data-[collapsible=icon]:hidden"
                     :class="isMenuActive(item) ? 'sb-tree-line-active' : 'sb-tree-line'"
@@ -443,18 +468,20 @@ onMounted(() => {
                       v-for="subItem in item.items"
                       :key="subItem.title"
                     >
-                      <SidebarMenuSubButton as-child>
+                      <SidebarMenuSubButton
+                        as-child
+                        :is-active="isSubmenuActive(subItem.url)"
+                        class="admin-sidebar-submenu-link !h-7 !text-[13px] !rounded-md !py-1.5 transition-[color,background-color,padding,transform] duration-150 focus-visible:!ring-2 focus-visible:!ring-[#22d3ee]/45"
+                        :class="isSubmenuActive(subItem.url)
+                          ? '!bg-[rgba(34,211,238,0.08)] !font-semibold !text-[#67e8f9]'
+                          : '!font-normal !text-[#8da3b4] hover:!bg-[rgba(21,59,79,0.36)] hover:!pl-4 hover:!text-white'"
+                      >
                         <a
                           :href="subItem.url"
-                          class="relative !text-[13px] !rounded transition-[color,background-color,padding,transform] duration-150 !py-1.5"
-                          :class="[
-                            isSubmenuActive(subItem.url)
-                              ? '!text-[#67e8f9] !font-semibold !bg-[rgba(34,211,238,0.08)]'
-                              : '!text-[#8da3b4] !font-normal hover:!text-white hover:!bg-[rgba(21,59,79,0.36)] hover:!pl-4'
-                          ]"
+                          @click="visitSubmenu($event, subItem.url)"
                         >
                           <span v-if="isSubmenuActive(subItem.url)" class="sb-active-dot" />
-                          <span>{{ subItem.title }}</span>
+                          <span class="truncate">{{ subItem.title }}</span>
                         </a>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>

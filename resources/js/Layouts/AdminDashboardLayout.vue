@@ -42,7 +42,6 @@ const bellIconRef = ref(null);
 const showAdminSearch = ref(false);
 const adminSearchQuery = ref('');
 const adminSearchInputRef = ref(null);
-const isRouteLoading = ref(false);
 
 const toggleDropdown = () => {
   showDropdown.value = !showDropdown.value;
@@ -183,11 +182,20 @@ const closeAdminSearch = () => {
   adminSearchQuery.value = '';
 };
 
+const announceAdminRouteLoading = () => {
+  window.dispatchEvent(new CustomEvent('admin-route-loading:start'));
+};
+
+const visitAdminRouteWithLoader = (url) => {
+  announceAdminRouteLoading();
+  window.setTimeout(() => router.visit(url), 50);
+};
+
 const visitAdminSearchResult = (item) => {
   closeAdminSearch();
 
   if (window.location.pathname !== item.url) {
-    router.visit(item.url);
+    visitAdminRouteWithLoader(item.url);
   }
 };
 
@@ -268,7 +276,7 @@ const handleNotificationClick = async (notification) => {
   await markAsRead(notification);
   const link = getNotificationLink(notification);
   if (link && link !== '#') {
-    router.visit(link);
+    visitAdminRouteWithLoader(link);
   }
   showingNotificationDropdown.value = false;
 };
@@ -348,8 +356,6 @@ const profileInitials = computed(() => {
 
 let adminTableObserver = null;
 let tableEnhanceFrame = 0;
-let removeAdminRouteStartListener = null;
-let removeAdminRouteFinishListener = null;
 
 const normalizeTableLabel = (value) => value.replace(/\s+/g, ' ').trim();
 
@@ -521,39 +527,22 @@ const setupAdminTableObserver = () => {
   adminTableObserver.observe(content, { childList: true, subtree: true });
 };
 
-const setAdminRouteLoading = (isLoading) => {
-  isRouteLoading.value = isLoading;
-  document.body.classList.toggle('admin-route-loading', isLoading);
-};
-
 onMounted(() => {
   document.body.classList.add('admin-dark-active');
   fetchAdminProfile();
   fetchNotifications();
   setupAdminTableObserver();
-  removeAdminRouteStartListener = router.on('start', () => setAdminRouteLoading(true));
-  removeAdminRouteFinishListener = router.on('finish', () => {
-    setAdminRouteLoading(false);
-    enhanceAdminTables();
-  });
   document.addEventListener('click', closeDropdownsOnOutsideClick);
   document.addEventListener('keydown', handleAdminShortcut);
 });
 
 onUnmounted(() => {
   document.body.classList.remove('admin-dark-active');
-  document.body.classList.remove('admin-route-loading');
   if (tableEnhanceFrame) {
     window.cancelAnimationFrame(tableEnhanceFrame);
   }
   adminTableObserver?.disconnect();
   adminTableObserver = null;
-  if (typeof removeAdminRouteStartListener === 'function') {
-    removeAdminRouteStartListener();
-  }
-  if (typeof removeAdminRouteFinishListener === 'function') {
-    removeAdminRouteFinishListener();
-  }
   document.removeEventListener('click', closeDropdownsOnOutsideClick);
   document.removeEventListener('keydown', handleAdminShortcut);
 });
@@ -827,20 +816,6 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
-          </div>
-        </Transition>
-
-        <Transition
-          enter-active-class="transition duration-180 admin-ease-product"
-          enter-from-class="opacity-0 -translate-y-1"
-          enter-to-class="opacity-100 translate-y-0"
-          leave-active-class="transition duration-150 ease-in"
-          leave-from-class="opacity-100 translate-y-0"
-          leave-to-class="opacity-0 -translate-y-1"
-        >
-          <div v-if="isRouteLoading" class="admin-route-loading-panel" role="status" aria-live="polite">
-            <span class="admin-route-loading-spinner"></span>
-            <span>Loading admin view</span>
           </div>
         </Transition>
 
