@@ -20,6 +20,7 @@ class TriggerProviderReservationJob implements ShouldQueue
     use SerializesModels;
 
     public int $tries = 5;
+
     public int $timeout = 120;
 
     /** Backoff in seconds — 1m, 5m, 10m, 30m, 1h. */
@@ -37,6 +38,7 @@ class TriggerProviderReservationJob implements ShouldQueue
             Log::warning('TriggerProviderReservationJob: booking not found', [
                 'booking_id' => $this->bookingId,
             ]);
+
             return;
         }
         if (! empty($booking->provider_booking_ref)) {
@@ -44,6 +46,7 @@ class TriggerProviderReservationJob implements ShouldQueue
                 'booking_id' => $booking->id,
                 'provider_booking_ref' => $booking->provider_booking_ref,
             ]);
+
             return;
         }
 
@@ -52,7 +55,7 @@ class TriggerProviderReservationJob implements ShouldQueue
 
     public function failed(Throwable $e): void
     {
-        Log::error('TriggerProviderReservationJob exhausted retries — refunding customer', [
+        Log::error('TriggerProviderReservationJob exhausted retries - manual refund review required', [
             'booking_id' => $this->bookingId,
             'error' => $e->getMessage(),
         ]);
@@ -62,24 +65,24 @@ class TriggerProviderReservationJob implements ShouldQueue
             return;
         }
 
-        // Mark booking as reservation-failed so admin/vendor dashboards surface it.
+        // Mark booking as cancelled. No supplier reference means no valid reservation.
         $booking->update([
-            'booking_status' => 'reservation_failed',
-            'payment_status' => 'refund_pending',
+            'booking_status' => 'cancelled',
+            'payment_status' => 'payment_cancelled',
+            'cancellation_reason' => 'Payment cancelled: supplier did not confirm the reservation or return a provider reference.',
             'provider_metadata' => array_merge(
                 $booking->provider_metadata ?? [],
                 [
+                    'manual_refund_required' => true,
                     'reservation_final_error' => substr($e->getMessage(), 0, 500),
                     'reservation_failed_at' => now()->toIso8601String(),
                 ]
             ),
         ]);
 
-        if ($booking->stripe_payment_intent_id) {
-            app(StripeBookingService::class)->issueRefundForFailedReservation(
-                $booking->stripe_payment_intent_id,
-                'External provider could not confirm reservation after retries'
-            );
-        }
+        app(StripeBookingService::class)->recordManualRefundForFailedReservation(
+            $booking->stripe_payment_intent_id,
+            'External provider could not confirm reservation after retries'
+        );
     }
 }

@@ -281,6 +281,15 @@ const resolveRenteonSubProvider = () => {
     return names[code] || props.vehicle?.provider_code || 'Renteon';
 };
 const providerBadge = computed(() => {
+    const partnerSupplierName = `${props.vehicle?.partner_supplier_name || ''}`.trim();
+    if (partnerSupplierName) {
+        return {
+            label: partnerSupplierName,
+            className: 'bg-slate-900 text-white',
+            ribbonClassName: 'bg-gradient-to-r from-slate-900 to-slate-800 text-white',
+        };
+    }
+
     const src = source.value;
     if (!src) return null;
     const badgeMap = {

@@ -14,6 +14,20 @@ const sameOffice = (left = {}, right = {}) => {
 
     return (nameMatches && (addressMatches || cityMatches)) || (addressMatches && cityMatches);
 };
+const resolveCurrency = (vehicle, fallback = 'EUR') => vehicle?.currency || vehicle?.pricing?.currency || vehicle?.benefits?.deposit_currency || fallback;
+const formatCurrencyAmount = (amount, currency = 'EUR') => {
+    const numeric = parseFloat(amount || 0);
+
+    try {
+        return new Intl.NumberFormat(undefined, {
+            style: 'currency',
+            currency,
+            maximumFractionDigits: 2,
+        }).format(Number.isFinite(numeric) ? numeric : 0);
+    } catch {
+        return `${currency} ${(Number.isFinite(numeric) ? numeric : 0).toFixed(2)}`;
+    }
+};
 
 /**
  * @param {{ vehicle: Object, numberOfDays: number }} props
@@ -23,32 +37,43 @@ export function createSurpriceAdapter(props, { currentPackage } = {}) {
     // ── Packages (Standard + Full Coverage from FDW) ────────────────
     const packages = computed(() => {
         const standardPkgs = resolveStandardPackages(props.vehicle);
-        if (standardPkgs.length > 0) return standardPkgs;
-
-        const total = parseFloat(props.vehicle?.total_price || props.vehicle?.pricing?.total_price || 0);
-        if (total <= 0) return [];
         const currency = props.vehicle?.currency || props.vehicle?.pricing?.currency || 'EUR';
-        const perDay = parseFloat(props.vehicle?.price_per_day || props.vehicle?.pricing?.price_per_day || 0)
-            || (props.numberOfDays > 0 ? +(total / props.numberOfDays).toFixed(2) : total);
         const sd = props.vehicle?.supplier_data || {};
         const excess = parseFloat(sd.excess_amount || props.vehicle?.benefits?.excess_amount || 0);
         const deposit = parseFloat(sd.deposit_amount || props.vehicle?.benefits?.deposit_amount || 0);
 
-        const pkgs = [{
-            type: 'BAS',
-            name: 'Standard',
-            subtitle: 'CDW & Theft Waiver included',
-            total,
-            price_per_day: perDay,
-            currency,
-            excess,
-            deposit,
-            isBestValue: true,
-        }];
+        const pkgs = standardPkgs.length > 0
+            ? standardPkgs.map((pkg) => ({
+                ...pkg,
+                currency: pkg.currency || currency,
+                excess: pkg.excess ?? excess,
+                deposit: pkg.deposit ?? deposit,
+            }))
+            : [];
+
+        if (pkgs.length === 0) {
+            const total = parseFloat(props.vehicle?.total_price || props.vehicle?.pricing?.total_price || 0);
+            if (total <= 0) return [];
+            const perDay = parseFloat(props.vehicle?.price_per_day || props.vehicle?.pricing?.price_per_day || 0)
+                || (props.numberOfDays > 0 ? +(total / props.numberOfDays).toFixed(2) : total);
+
+            pkgs.push({
+                type: 'BAS',
+                name: 'Standard',
+                subtitle: 'CDW & Theft Waiver included',
+                total,
+                price_per_day: perDay,
+                currency,
+                excess,
+                deposit,
+                isBestValue: true,
+            });
+        }
 
         // Full Coverage from FDW data
         const fdwTotal = parseFloat(sd.fdw_total_amount || 0);
-        if (fdwTotal > 0) {
+        const hasFullCoverage = pkgs.some(pkg => `${pkg.type || ''}`.toUpperCase() === 'FDW');
+        if (!hasFullCoverage && fdwTotal > 0) {
             const fdwPerDay = props.numberOfDays > 0 ? +(fdwTotal / props.numberOfDays).toFixed(2) : fdwTotal;
             pkgs.push({
                 type: 'FDW',
@@ -59,6 +84,9 @@ export function createSurpriceAdapter(props, { currentPackage } = {}) {
                 currency,
                 excess: parseFloat(sd.fdw_excess_amount || 0),
                 deposit: parseFloat(sd.fdw_deposit_amount || 0),
+                provider_rate_id: sd.fdw_vendor_rate_id || null,
+                surprice_vendor_rate_id: sd.fdw_vendor_rate_id || null,
+                surprice_rate_code: sd.fdw_rate_code || null,
                 isBestValue: false,
             });
         }
@@ -101,6 +129,7 @@ export function createSurpriceAdapter(props, { currentPackage } = {}) {
         const selectedPkg = currentPackage?.value || 'BAS';
         const isFullCoverage = selectedPkg === 'FDW';
         const sd = props.vehicle?.supplier_data || {};
+        const currency = resolveCurrency(props.vehicle);
 
         if (isFullCoverage) {
             const fdwDeposit = parseFloat(sd.fdw_deposit_amount || 0);
@@ -108,13 +137,13 @@ export function createSurpriceAdapter(props, { currentPackage } = {}) {
             items.push({ label: 'TW (Theft Waiver)', detail: 'Included — Zero Excess' });
             items.push({ label: 'FDW (Full Damage Waiver)', detail: 'Included' });
             if (fdwDeposit > 0) {
-                items.push({ label: 'Reduced Deposit', detail: `€${fdwDeposit}` });
+                items.push({ label: 'Reduced Deposit', detail: formatCurrencyAmount(fdwDeposit, currency) });
             }
         } else {
             const excess = parseFloat(sd.excess_amount || props.vehicle?.benefits?.excess_amount || 0);
             if (excess > 0) {
-                items.push({ label: 'CDW (Collision Damage Waiver)', detail: `Included (excess: €${excess})` });
-                items.push({ label: 'TW (Theft Waiver)', detail: `Included (excess: €${excess})` });
+                items.push({ label: 'CDW (Collision Damage Waiver)', detail: `Included (excess: ${formatCurrencyAmount(excess, currency)})` });
+                items.push({ label: 'TW (Theft Waiver)', detail: `Included (excess: ${formatCurrencyAmount(excess, currency)})` });
             }
         }
         items.push({ label: 'Third Party Liability (TPL)', detail: 'Included' });
@@ -128,13 +157,21 @@ export function createSurpriceAdapter(props, { currentPackage } = {}) {
 
     const highlights = computed(() => {
         const items = [];
-        const deposit = parseFloat(props.vehicle?.security_deposit || props.vehicle?.benefits?.deposit_amount || 0);
+        const currency = resolveCurrency(props.vehicle);
+        const sd = props.vehicle?.supplier_data || {};
+        const selectedPkg = currentPackage?.value || 'BAS';
+        const isFullCoverage = selectedPkg === 'FDW';
+        const deposit = isFullCoverage
+            ? parseFloat(sd.fdw_deposit_amount || props.vehicle?.benefits?.deposit_amount || 0)
+            : parseFloat(props.vehicle?.security_deposit || sd.deposit_amount || props.vehicle?.benefits?.deposit_amount || 0);
         if (deposit > 0) {
-            items.push({ label: 'Security Deposit', value: `€${deposit}`, type: 'warning' });
+            items.push({ label: 'Security Deposit', value: formatCurrencyAmount(deposit, currency), type: 'warning' });
         }
-        const excess = parseFloat(props.vehicle?.benefits?.excess_amount || 0);
+        const excess = isFullCoverage
+            ? parseFloat(sd.fdw_excess_amount || 0)
+            : parseFloat(sd.excess_amount || props.vehicle?.benefits?.excess_amount || 0);
         if (excess > 0) {
-            items.push({ label: 'CDW Excess', value: `€${excess}`, type: 'warning' });
+            items.push({ label: 'CDW Excess', value: formatCurrencyAmount(excess, currency), type: 'warning' });
         }
         return items;
     });

@@ -110,7 +110,7 @@
                         <Search class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
                             v-model="search"
-                            placeholder="Search bookings by number, customer, vehicle..."
+                            placeholder="Search bookings by number, customer, vehicle, provider ref..."
                             class="pl-10 pr-4 h-12 text-base"
                         />
                     </div>
@@ -163,6 +163,7 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Booking #</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Customer</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Vehicle</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Provider</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Trip</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Commission</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Payment</TableHead>
@@ -187,8 +188,25 @@
                                     <div class="text-sm text-muted-foreground">{{ booking.customer?.email }}</div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="font-medium">{{ booking.vehicle?.brand }} {{ booking.vehicle?.model }}</div>
-                                    <div class="text-sm text-muted-foreground">{{ booking.vehicle?.color || 'N/A' }}</div>
+                                    <div class="max-w-[220px]">
+                                        <div class="font-medium leading-snug whitespace-normal">{{ getVehicleName(booking) }}</div>
+                                        <div class="text-sm text-muted-foreground">{{ getVehicleMeta(booking) }}</div>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="px-4 py-3">
+                                    <div class="min-w-[180px] space-y-1.5">
+                                        <div class="inline-flex items-center gap-1.5 rounded-full border border-[#22d3ee]/35 bg-[#22d3ee]/10 px-2.5 py-1 text-xs font-semibold text-[#22d3ee]">
+                                            <Building2 class="h-3.5 w-3.5" />
+                                            {{ getProviderName(booking) }}
+                                        </div>
+                                        <div class="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                            <KeyRound class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                            <span class="font-mono text-foreground">{{ getProviderRef(booking) }}</span>
+                                        </div>
+                                        <div v-if="getGatewayBookingId(booking)" class="text-[11px] text-muted-foreground">
+                                            Gateway: <span class="font-mono">{{ getGatewayBookingId(booking) }}</span>
+                                        </div>
+                                    </div>
                                 </TableCell>
                                 <TableCell class="px-4 py-3">
                                     <div class="text-sm">
@@ -256,8 +274,8 @@
                                 </TableCell>
                             </TableRow>
                             <TableRow v-if="isBookingDetailsOpen(booking.id)" class="bg-muted/20">
-                                <TableCell colspan="9" class="px-4 py-4">
-                                    <div class="grid gap-4 lg:grid-cols-3">
+                                <TableCell colspan="10" class="px-4 py-4">
+                                    <div class="grid gap-4 xl:grid-cols-4">
                                         <div class="rounded-lg border bg-background/40 p-4">
                                             <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Booking</p>
                                             <dl class="mt-3 space-y-2 text-sm">
@@ -280,6 +298,27 @@
                                             </dl>
                                         </div>
                                         <div class="rounded-lg border bg-background/40 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vehicle & Provider</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div>
+                                                    <dt class="text-muted-foreground">Vehicle</dt>
+                                                    <dd class="font-medium">{{ getVehicleName(booking) }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Provider</dt>
+                                                    <dd class="font-medium">{{ getProviderName(booking) }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-muted-foreground">Provider reference</dt>
+                                                    <dd class="font-mono font-medium">{{ getProviderRef(booking) }}</dd>
+                                                </div>
+                                                <div v-if="getGatewayBookingId(booking)">
+                                                    <dt class="text-muted-foreground">Gateway booking id</dt>
+                                                    <dd class="font-mono font-medium">{{ getGatewayBookingId(booking) }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+                                        <div class="rounded-lg border bg-background/40 p-4">
                                             <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Route</p>
                                             <dl class="mt-3 space-y-2 text-sm">
                                                 <div>
@@ -289,10 +328,6 @@
                                                 <div>
                                                     <dt class="text-muted-foreground">Return</dt>
                                                     <dd class="font-medium">{{ booking.return_location || booking.pickup_location || 'N/A' }}</dd>
-                                                </div>
-                                                <div v-if="booking.provider_source">
-                                                    <dt class="text-muted-foreground">Provider</dt>
-                                                    <dd class="font-medium">{{ booking.provider_source }} · {{ booking.provider_booking_ref || 'Reference missing' }}</dd>
                                                 </div>
                                             </dl>
                                         </div>
@@ -415,7 +450,9 @@ import {
   XCircle,
   Search,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Building2,
+  KeyRound
 } from 'lucide-vue-next';
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
@@ -560,6 +597,71 @@ const isProviderPending = (booking) => {
         && booking.provider_source !== 'internal'
         && !booking.provider_booking_ref
         && ['pending', 'confirmed'].includes(booking.booking_status);
+};
+
+const providerNames = {
+    adobe_car: 'Adobe Car',
+    click2rent: 'Click2Rent',
+    easirent: 'Easirent',
+    emr: 'EMR',
+    favrica: 'Favrica',
+    green_motion: 'Green Motion',
+    greenmotion: 'Green Motion',
+    internal: 'Internal Fleet',
+    locauto_rent: 'Locauto',
+    ok_mobility: 'OK Mobility',
+    recordgo: 'Record Go',
+    renteon: 'Renteon',
+    sicily_by_car: 'Sicily by Car',
+    surprice: 'Surprice',
+    usave: 'U-Save',
+    wheelsys: 'Wheelsys',
+    xdrive: 'XDrive',
+};
+
+const getProviderName = (booking) => {
+    const source = String(booking?.provider_source || '').trim().toLowerCase();
+    if (!source) return 'Unknown provider';
+
+    return providerNames[source] || source
+        .split(/[_-]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+};
+
+const getProviderRef = (booking) => {
+    if (booking?.provider_source === 'internal') {
+        return booking.booking_reference || `Internal #${booking.booking_number}`;
+    }
+
+    return booking?.provider_booking_ref || 'Reference missing';
+};
+
+const getGatewayBookingId = (booking) => {
+    return booking?.provider_metadata?.gateway_booking_id
+        || booking?.provider_metadata?.manual_recovery?.gateway_booking_id
+        || null;
+};
+
+const getVehicleName = (booking) => {
+    const localVehicle = `${booking?.vehicle?.brand || ''} ${booking?.vehicle?.model || ''}`.trim();
+    if (localVehicle) return localVehicle;
+
+    return booking?.vehicle_name || booking?.provider_metadata?.vehicle_name || 'Vehicle name missing';
+};
+
+const getVehicleMeta = (booking) => {
+    if (booking?.vehicle?.color) return booking.vehicle.color;
+
+    const sipp = booking?.provider_metadata?.surprice?.acriss_code
+        || booking?.provider_metadata?.recordgo?.acriss_code
+        || booking?.provider_metadata?.sbc?.vehicle_id
+        || booking?.provider_vehicle_id;
+
+    if (sipp) return `Class ${sipp}`;
+
+    return booking?.provider_source === 'internal' ? 'Internal vehicle' : 'Gateway vehicle';
 };
 
 const getPaymentBadgeVariant = (paymentStatus) => {

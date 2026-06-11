@@ -194,20 +194,28 @@ class BookingDashboardController extends Controller
         $statusFilter = $request->query('status', $status); // Get status from query or use method status
 
         $bookings = Booking::when($search, function ($query) use ($search) {
-            $query->where('plan', 'like', "%{$search}%")
-                ->orWhere('booking_number', 'like', "%{$search}%")
-                ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                    $customerQuery->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('vehicle', function ($vehicleQuery) use ($search) {
-                    $vehicleQuery->where('brand', 'like', "%{$search}%")
-                        ->orWhere('color', 'like', "%{$search}%");
-                })
-                ->orWhereHas('vehicle.vendorProfileData', function ($vendorQuery) use ($search) {
-                    $vendorQuery->where('company_name', 'like', "%{$search}%")
-                        ->orWhere('company_email', 'like', "%{$search}%");
-                });
+            $query->where(function ($searchQuery) use ($search) {
+                $searchQuery->where('plan', 'like', "%{$search}%")
+                    ->orWhere('booking_number', 'like', "%{$search}%")
+                    ->orWhere('vehicle_name', 'like', "%{$search}%")
+                    ->orWhere('provider_source', 'like', "%{$search}%")
+                    ->orWhere('provider_vehicle_id', 'like', "%{$search}%")
+                    ->orWhere('provider_booking_ref', 'like', "%{$search}%")
+                    ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                        $customerQuery->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('vehicle', function ($vehicleQuery) use ($search) {
+                        $vehicleQuery->where('brand', 'like', "%{$search}%")
+                            ->orWhere('model', 'like', "%{$search}%")
+                            ->orWhere('color', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('vehicle.vendorProfileData', function ($vendorQuery) use ($search) {
+                        $vendorQuery->where('company_name', 'like', "%{$search}%")
+                            ->orWhere('company_email', 'like', "%{$search}%");
+                    });
+            });
         });
 
         if ($statusFilter === 'provider_pending') {

@@ -16,6 +16,7 @@ use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -407,12 +408,38 @@ class InternalProviderController extends Controller
             ], 409);
         }
 
+        $availabilityLock = Cache::lock("api-booking-vehicle-{$vehicle->id}", 30);
+        $lockAcquired = false;
+        try {
+            $availabilityLock->block(10);
+            $lockAcquired = true;
+        } catch (\Throwable $e) {
+            Log::warning('Internal provider booking lock timeout', [
+                'vehicle_id' => $vehicle->id,
+                'api_consumer_id' => $validated['api_consumer_id'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => [
+                    'code' => 'VEHICLE_LOCK_TIMEOUT',
+                    'message' => 'The vehicle is being booked by another customer. Please retry shortly.',
+                    'status' => 409,
+                ],
+            ], 409);
+        }
+
         if (! $this->internalVehicleAvailabilityService->isVehicleAvailable($vehicle, [
             'pickup_date' => $validated['pickup_date'],
             'pickup_time' => $validated['pickup_time'],
             'dropoff_date' => $validated['dropoff_date'],
             'dropoff_time' => $validated['dropoff_time'],
         ])) {
+            if ($lockAcquired) {
+                $this->releaseAvailabilityLockQuietly($availabilityLock, $vehicle->id);
+                $lockAcquired = false;
+            }
+
             return response()->json([
                 'error' => [
                     'code' => 'VEHICLE_UNAVAILABLE',
@@ -514,6 +541,10 @@ class InternalProviderController extends Controller
             }
 
             DB::commit();
+            if ($lockAcquired) {
+                $this->releaseAvailabilityLockQuietly($availabilityLock, $vehicle->id);
+                $lockAcquired = false;
+            }
 
             $booking->load('extras');
             $this->dispatchBookingCreatedNotificationsAfterResponse($booking, $vehicle, $consumer, $isSandbox);
@@ -568,6 +599,9 @@ class InternalProviderController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
+            if ($lockAcquired) {
+                $this->releaseAvailabilityLockQuietly($availabilityLock, $vehicle->id);
+            }
             Log::error('Internal provider booking creation failed', [
                 'error' => $e->getMessage(),
                 'vehicle_id' => $validated['vehicle_id'],
@@ -581,6 +615,18 @@ class InternalProviderController extends Controller
                     'status' => 500,
                 ],
             ], 500);
+        }
+    }
+
+    private function releaseAvailabilityLockQuietly(mixed $lock, int $vehicleId): void
+    {
+        try {
+            $lock->release();
+        } catch (\Throwable $e) {
+            Log::warning('Internal provider booking lock release failed', [
+                'vehicle_id' => $vehicleId,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

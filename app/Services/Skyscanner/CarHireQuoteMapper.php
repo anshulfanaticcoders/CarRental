@@ -7,8 +7,7 @@ class CarHireQuoteMapper
     public function __construct(
         private readonly CarHireFieldStrategyService $fieldStrategyService,
         private readonly CarHireQuoteValidationService $quoteValidationService,
-    ) {
-    }
+    ) {}
 
     public function map(array $quote): array
     {
@@ -48,6 +47,10 @@ class CarHireQuoteMapper
         $pickup = is_array($location['pickup'] ?? null) ? $location['pickup'] : [];
         $dropoff = is_array($location['dropoff'] ?? null) ? $location['dropoff'] : [];
 
+        if (! $this->hasLocationDetails($dropoff)) {
+            $dropoff = $pickup;
+        }
+
         $pickupId = $this->fieldStrategyService->resolveLocationIdentifier($pickup);
         $dropoffId = $this->fieldStrategyService->resolveLocationIdentifier($dropoff);
 
@@ -81,6 +84,17 @@ class CarHireQuoteMapper
         }
 
         return array_values(array_unique($flags));
+    }
+
+    private function hasLocationDetails(array $location): bool
+    {
+        foreach (['name', 'address', 'city', 'country', 'country_code', 'iata', 'latitude', 'longitude'] as $key) {
+            if ($this->nullableString($location[$key] ?? null) !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function nullableString(mixed $value): ?string

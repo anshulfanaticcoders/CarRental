@@ -32,12 +32,29 @@ class CarHirePublicResponseSerializer
             'free_esim_included' => array_key_exists('free_esim_included', $quote) ? (bool) $quote['free_esim_included'] : null,
             'applied_offers' => $this->appliedOffers($quote['applied_offers'] ?? null),
             'vehicle' => $this->vehicle($quote['vehicle'] ?? []),
+            'supplier' => $this->supplier($quote['supplier'] ?? []),
             'specs' => $this->specs($quote['specs'] ?? []),
             'pricing' => $this->assoc($quote['pricing'] ?? null),
             'policies' => $this->assoc($quote['policies'] ?? null),
+            'insurance_options' => $this->insuranceOptions($quote['insurance_options'] ?? null),
+            'coverages' => $this->coverages($quote['coverages'] ?? null),
             'pickup_location_details' => $this->location($quote['pickup_location_details'] ?? []),
             'dropoff_location_details' => $this->location($quote['dropoff_location_details'] ?? []),
             'deeplink' => $this->deeplink($quote['deeplink'] ?? []),
+        ], static fn ($value) => $value !== null);
+    }
+
+    private function supplier(mixed $supplier): ?array
+    {
+        $supplier = $this->assoc($supplier);
+
+        if ($supplier === null) {
+            return null;
+        }
+
+        return array_filter([
+            'name' => $this->nullableString($supplier['name'] ?? null),
+            'code' => 'vrooem',
         ], static fn ($value) => $value !== null);
     }
 
@@ -129,12 +146,12 @@ class CarHirePublicResponseSerializer
 
     private function appliedOffers(mixed $offers): ?array
     {
-        if (!is_array($offers)) {
+        if (! is_array($offers)) {
             return null;
         }
 
         $normalized = array_values(array_filter(array_map(function ($offer) {
-            if (!is_array($offer)) {
+            if (! is_array($offer)) {
                 return null;
             }
 
@@ -165,6 +182,41 @@ class CarHirePublicResponseSerializer
             'medium' => $luggage['medium'] ?? null,
             'large' => $luggage['large'] ?? null,
         ], static fn ($value) => $value !== null);
+    }
+
+    private function insuranceOptions(mixed $options): ?array
+    {
+        if (! is_array($options)) {
+            return null;
+        }
+
+        $normalized = array_values(array_filter(array_map(function ($option) {
+            if (! is_array($option)) {
+                return null;
+            }
+
+            return array_filter([
+                'id' => $this->nullableString($option['id'] ?? null),
+                'name' => $this->nullableString($option['name'] ?? null),
+                'coverage_type' => $this->nullableString($option['coverage_type'] ?? null),
+                'included' => array_key_exists('included', $option) ? (bool) $option['included'] : null,
+                'daily_rate' => $option['daily_rate'] ?? null,
+                'total_price' => $option['total_price'] ?? null,
+                'currency' => $this->nullableString($option['currency'] ?? null),
+                'excess_amount' => $option['excess_amount'] ?? null,
+                'deposit_amount' => $option['deposit_amount'] ?? null,
+                'description' => $this->nullableString($option['description'] ?? null),
+            ], static fn ($value) => $value !== null);
+        }, $options)));
+
+        return $normalized === [] ? null : $normalized;
+    }
+
+    private function coverages(mixed $coverages): ?array
+    {
+        $coverages = $this->assoc($coverages);
+
+        return $coverages === [] ? null : $coverages;
     }
 
     private function assoc(mixed $value): ?array

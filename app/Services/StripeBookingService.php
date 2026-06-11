@@ -108,9 +108,13 @@ class StripeBookingService
                     'session_id' => $session->id,
                     'vehicle_id' => $lockedVehicleId,
                 ]);
-                $this->refundStripePayment(
+                $this->recordManualRefundRequired(
                     $session->payment_intent ?? null,
-                    'Could not reserve vehicle inventory in time'
+                    'Could not reserve vehicle inventory in time',
+                    [
+                        'session_id' => $session->id,
+                        'vehicle_id' => $lockedVehicleId,
+                    ]
                 );
                 throw new \RuntimeException('Availability lock timeout for vehicle '.$lockedVehicleId);
             }
@@ -147,7 +151,7 @@ class StripeBookingService
                     ]);
                 if (! $stillAvailable) {
                     DB::rollBack();
-                    Log::warning('StripeBookingService: Vehicle no longer available — issuing refund', [
+                    Log::warning('StripeBookingService: Vehicle no longer available - manual refund required', [
                         'session_id' => $session->id,
                         'vehicle_id' => $internalVehicle->id,
                         'pickup_date' => $metadata->pickup_date,
@@ -164,9 +168,13 @@ class StripeBookingService
                         BookingHold::whereKey($metadata->booking_hold_id)->update(['status' => 'released']);
                     }
 
-                    $this->refundStripePayment(
+                    $this->recordManualRefundRequired(
                         $session->payment_intent ?? null,
-                        'Vehicle no longer available for the requested dates'
+                        'Vehicle no longer available for the requested dates',
+                        [
+                            'session_id' => $session->id,
+                            'vehicle_id' => $internalVehicle->id,
+                        ]
                     );
                     $availabilityLock?->release();
 
@@ -490,49 +498,34 @@ class StripeBookingService
     /**
      * Public proxy callable from the reservation-failed job's failed() handler.
      */
-    public function issueRefundForFailedReservation(?string $paymentIntentId, string $reason): bool
+    public function recordManualRefundForFailedReservation(?string $paymentIntentId, string $reason): bool
     {
-        return $this->refundStripePayment($paymentIntentId, $reason);
+        return $this->recordManualRefundRequired($paymentIntentId, $reason);
     }
 
     /**
-     * Issue a Stripe refund for a payment that cleared but for which we cannot
-     * fulfil the booking (e.g. inventory race). Best-effort: failures are logged
-     * but do not bubble — manual reconciliation in Stripe dashboard remains.
+     * Record payments that need manual refund/reconciliation. Vrooem handles
+     * provider payouts and customer refunds manually, so app code must not call
+     * Stripe Refund APIs automatically.
      */
-    private function refundStripePayment(?string $paymentIntentId, string $reason): bool
+    private function recordManualRefundRequired(?string $paymentIntentId, string $reason, array $context = []): bool
     {
         if (! $paymentIntentId) {
-            Log::error('StripeBookingService: Cannot refund — no payment_intent ID', ['reason' => $reason]);
-
-            return false;
-        }
-        try {
-            \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
-            $refund = \Stripe\Refund::create([
-                'payment_intent' => $paymentIntentId,
-                'reason' => 'requested_by_customer',
-                'metadata' => [
-                    'internal_reason' => substr($reason, 0, 500),
-                    'refunded_at' => now()->toIso8601String(),
-                ],
-            ]);
-            Log::info('StripeBookingService: Refund issued', [
-                'payment_intent_id' => $paymentIntentId,
-                'refund_id' => $refund->id,
+            Log::error('StripeBookingService: Manual refund required but no payment_intent ID was available', [
                 'reason' => $reason,
-            ]);
-
-            return true;
-        } catch (\Throwable $e) {
-            Log::error('StripeBookingService: Stripe refund failed — manual reconciliation required', [
-                'payment_intent_id' => $paymentIntentId,
-                'reason' => $reason,
-                'error' => $e->getMessage(),
+                ...$context,
             ]);
 
             return false;
         }
+
+        Log::warning('StripeBookingService: Manual refund/reconciliation required', [
+            'payment_intent_id' => $paymentIntentId,
+            'reason' => $reason,
+            ...$context,
+        ]);
+
+        return true;
     }
 
     protected function findOrCreateCustomer($metadata): array
@@ -1295,22 +1288,27 @@ class StripeBookingService
             'provider_source' => $booking->provider_source,
         ]);
 
+        $gateway = null;
+
         try {
             $gateway = app(VrooemGatewayService::class);
 
-            $gatewayVehicleId = $metadata->gateway_vehicle_id ?? null;
-            if (! $gatewayVehicleId) {
-                Log::warning('VrooemGateway: No gateway_vehicle_id in metadata, falling back to vehicle_id', [
-                    'booking_id' => $booking->id,
-                    'vehicle_id' => $metadata->vehicle_id ?? 'N/A',
-                ]);
-                $gatewayVehicleId = $metadata->vehicle_id ?? '';
+            $gatewayVehicleId = trim((string) ($metadata->gateway_vehicle_id ?? ''));
+            if ($gatewayVehicleId === '') {
+                throw new \RuntimeException('Missing gateway_vehicle_id for external booking '.$booking->id);
+            }
+
+            $gatewaySearchId = trim((string) ($metadata->gateway_search_id ?? ''));
+            if ($gatewaySearchId === '') {
+                throw new \RuntimeException('Missing gateway_search_id for external booking '.$booking->id);
             }
 
             $nameParts = explode(' ', $metadata->customer_name ?? '', 2);
+            $providerSource = $booking->provider_source ?? $metadata->vehicle_source ?? null;
+            $selectedPackage = strtoupper((string) ($metadata->package ?? ''));
             $reservationPayload = [
                 'vehicle_id' => $gatewayVehicleId,
-                'search_id' => $metadata->gateway_search_id ?? ($metadata->search_session_id ?? ''),
+                'search_id' => $gatewaySearchId,
                 'driver' => [
                     'first_name' => $nameParts[0] ?? '',
                     'last_name' => $nameParts[1] ?? '',
@@ -1322,6 +1320,9 @@ class StripeBookingService
                     'postal_code' => $metadata->customer_postal_code ?? null,
                     'country' => $metadata->customer_country ?? null,
                 ],
+                'insurance_id' => $providerSource === 'surprice' && $selectedPackage === 'FDW'
+                    ? 'ins_surprice_fdw'
+                    : null,
                 'flight_number' => $metadata->flight_number ?? null,
                 'extras' => collect($booking->extras ?? [])->map(function ($extra) {
                     return [
@@ -1357,8 +1358,8 @@ class StripeBookingService
 
             $result = $gateway->createBooking($reservationPayload);
 
-            if ($result && ! empty($result['supplier_booking_id'])) {
-                $providerBookingRef = $result['supplier_booking_id'];
+            if ($this->isConfirmedGatewayReservation($result)) {
+                $providerBookingRef = (string) $result['supplier_booking_id'];
                 Log::info('VrooemGateway: Reservation successful', [
                     'booking_id' => $booking->id,
                     'gateway_booking_id' => $result['gateway_booking_id'] ?? null,
@@ -1386,15 +1387,16 @@ class StripeBookingService
                 'booking_id' => $booking->id,
                 'result' => $result,
             ]);
+            $failureContext = $this->gatewayReservationFailureContext($result, $gateway->getLastError());
             $booking->update([
                 'provider_metadata' => array_merge(
                     $booking->provider_metadata ?? [],
-                    ['gateway_error' => 'No booking reference returned']
+                    $failureContext
                 ),
             ]);
-            // Throw so the queue job retries; failed() handler refunds after exhaustion.
+            // Throw so the queue job retries; failed() handler marks manual review after exhaustion.
             throw new \RuntimeException(
-                'Gateway returned no supplier_booking_id for booking '.$booking->id
+                'Gateway did not return a confirmed supplier reservation for booking '.$booking->id
             );
         } catch (\Exception $e) {
             Log::error('VrooemGateway: Reservation error', [
@@ -1404,10 +1406,117 @@ class StripeBookingService
             $booking->update([
                 'provider_metadata' => array_merge(
                     $booking->provider_metadata ?? [],
-                    ['gateway_error' => $e->getMessage()]
+                    $this->gatewayReservationFailureContext(null, $gateway?->getLastError(), $e->getMessage())
                 ),
             ]);
             throw $e;
         }
+    }
+
+    private function isConfirmedGatewayReservation(?array $result): bool
+    {
+        if (! $result) {
+            return false;
+        }
+
+        $status = strtolower(trim((string) ($result['status'] ?? '')));
+        $supplierBookingId = trim((string) ($result['supplier_booking_id'] ?? ''));
+
+        return $status === 'confirmed' && $supplierBookingId !== '';
+    }
+
+    private function gatewayReservationFailureContext(?array $result, ?array $lastError = null, ?string $fallback = null): array
+    {
+        $message = $this->extractGatewayReservationError($result, $lastError, $fallback);
+
+        return [
+            'gateway_error' => $message,
+            'reservation_last_error' => $message,
+            'reservation_last_failed_at' => now()->toIso8601String(),
+            'reservation_gateway_result' => $this->summarizeGatewayBookingResult($result),
+            'reservation_gateway_last_error' => $this->sanitizeGatewayMetadata($lastError),
+        ];
+    }
+
+    private function extractGatewayReservationError(?array $result, ?array $lastError = null, ?string $fallback = null): string
+    {
+        foreach ([
+            data_get($result, 'supplier_data.error'),
+            data_get($result, 'supplier_data.message'),
+            data_get($result, 'supplier_data.detail'),
+            data_get($result, 'supplier_data.errors.0.message'),
+            data_get($lastError, 'body_preview'),
+            data_get($lastError, 'message'),
+            $fallback,
+        ] as $candidate) {
+            if (is_array($candidate)) {
+                $candidate = json_encode($candidate);
+            }
+
+            $candidate = trim((string) $candidate);
+            if ($candidate !== '') {
+                return Str::limit($candidate, 500, '');
+            }
+        }
+
+        return 'No booking reference returned';
+    }
+
+    private function summarizeGatewayBookingResult(?array $result): ?array
+    {
+        if (! $result) {
+            return null;
+        }
+
+        return $this->sanitizeGatewayMetadata([
+            'id' => $result['id'] ?? null,
+            'supplier_id' => $result['supplier_id'] ?? null,
+            'supplier_booking_id' => $result['supplier_booking_id'] ?? null,
+            'status' => $result['status'] ?? null,
+            'vehicle_name' => $result['vehicle_name'] ?? null,
+            'total_price' => $result['total_price'] ?? null,
+            'currency' => $result['currency'] ?? null,
+            'supplier_data' => $result['supplier_data'] ?? null,
+        ]);
+    }
+
+    private function sanitizeGatewayMetadata(mixed $value, int $depth = 0): mixed
+    {
+        if ($value === null || $depth > 5) {
+            return null;
+        }
+
+        if (is_array($value)) {
+            $sanitized = [];
+            foreach ($value as $key => $child) {
+                $normalizedKey = strtolower((string) $key);
+                if (in_array($normalizedKey, [
+                    'authorization',
+                    'api_key',
+                    'token',
+                    'email',
+                    'phone',
+                    'customer',
+                    'customerinfo',
+                    'first_name',
+                    'last_name',
+                    'name',
+                ], true)) {
+                    $sanitized[$key] = '[redacted]';
+
+                    continue;
+                }
+
+                $sanitized[$key] = $this->sanitizeGatewayMetadata($child, $depth + 1);
+            }
+
+            return $sanitized;
+        }
+
+        if (is_string($value)) {
+            return Str::limit($value, 2000, '');
+        }
+
+        return $value;
     }
 }

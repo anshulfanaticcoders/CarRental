@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Jobs\TriggerProviderReservationJob;
 use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\StripeCheckoutPayload;
@@ -13,7 +14,6 @@ use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
-use App\Jobs\TriggerProviderReservationJob;
 use App\Notifications\Booking\GuestBookingCreatedNotification;
 use App\Services\CurrencyConversionService;
 use App\Services\StripeBookingService;
@@ -46,7 +46,7 @@ class StripeBookingServiceAccountingTest extends TestCase
 
         app()->instance(CurrencyConversionService::class, $conversionService);
 
-        return new StripeBookingService();
+        return new StripeBookingService;
     }
 
     private function createAdminUser(): User
@@ -176,7 +176,7 @@ class StripeBookingServiceAccountingTest extends TestCase
 
         app()->instance(CurrencyConversionService::class, $conversionService);
 
-        $service = new StripeBookingService();
+        $service = new StripeBookingService;
 
         $session = (object) [
             'id' => 'cs_test_accounting',
@@ -489,10 +489,9 @@ class StripeBookingServiceAccountingTest extends TestCase
 
         Bus::fake([TriggerProviderReservationJob::class]);
 
-        $service = new class () extends StripeBookingService {
-            protected function notifyBookingCreated($booking, $customer, ?string $tempPassword = null): void
-            {
-            }
+        $service = new class extends StripeBookingService
+        {
+            protected function notifyBookingCreated($booking, $customer, ?string $tempPassword = null): void {}
         };
 
         $session = (object) [
@@ -575,7 +574,8 @@ class StripeBookingServiceAccountingTest extends TestCase
             ]);
         app()->instance(VrooemGatewayService::class, $gateway);
 
-        $service = new class () extends StripeBookingService {
+        $service = new class extends StripeBookingService
+        {
             public function invokeTriggerGatewayReservation(Booking $booking, object $metadata): void
             {
                 $this->triggerGatewayReservation($booking, $metadata);
@@ -625,7 +625,8 @@ class StripeBookingServiceAccountingTest extends TestCase
             'provider_vehicle_id' => 'B_BASIC-POA',
         ]);
 
-        $service = new class () extends StripeBookingService {
+        $service = new class extends StripeBookingService
+        {
             public function invokeBuildProviderMetadataFromSession(object $metadata, Booking $booking): array
             {
                 return $this->buildProviderMetadataFromSession($metadata, $booking);
@@ -653,6 +654,77 @@ class StripeBookingServiceAccountingTest extends TestCase
         $this->assertSame('B', data_get($providerMetadata, 'sbc.vehicle_category_id'));
         $this->assertSame('IT014', data_get($providerMetadata, 'sbc.pickup_location_id'));
         $this->assertSame('IT014', data_get($providerMetadata, 'sbc.dropoff_location_id'));
+    }
+
+    #[Test]
+    public function it_refuses_gateway_reservation_when_gateway_vehicle_id_is_missing(): void
+    {
+        $booking = $this->createExternalBooking();
+
+        $gateway = Mockery::mock(VrooemGatewayService::class);
+        $gateway->shouldNotReceive('createBooking');
+        app()->instance(VrooemGatewayService::class, $gateway);
+
+        $service = new class extends StripeBookingService
+        {
+            public function invokeTriggerGatewayReservation(Booking $booking, object $metadata): void
+            {
+                $this->triggerGatewayReservation($booking, $metadata);
+            }
+        };
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Missing gateway_vehicle_id');
+
+        $service->invokeTriggerGatewayReservation($booking, (object) [
+            'gateway_search_id' => 'search_123',
+            'customer_name' => 'Provider Customer',
+            'customer_email' => 'provider@example.com',
+            'customer_phone' => '+10000000005',
+            'customer_driver_age' => 35,
+        ]);
+    }
+
+    #[Test]
+    public function it_treats_gateway_pending_response_as_reservation_failure(): void
+    {
+        $booking = $this->createExternalBooking();
+
+        $gateway = Mockery::mock(VrooemGatewayService::class);
+        $gateway->shouldReceive('createBooking')
+            ->once()
+            ->andReturn([
+                'id' => 'gw_booking_pending',
+                'supplier_booking_id' => 'SUP-PENDING-1',
+                'status' => 'pending',
+                'supplier_id' => 'recordgo',
+            ]);
+        $gateway->shouldReceive('getLastError')->andReturn(null);
+        app()->instance(VrooemGatewayService::class, $gateway);
+
+        $service = new class extends StripeBookingService
+        {
+            public function invokeTriggerGatewayReservation(Booking $booking, object $metadata): void
+            {
+                $this->triggerGatewayReservation($booking, $metadata);
+            }
+        };
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Gateway did not return a confirmed supplier reservation');
+
+        $service->invokeTriggerGatewayReservation($booking, (object) [
+            'gateway_vehicle_id' => 'gw_vehicle_1',
+            'gateway_search_id' => 'search_123',
+            'customer_name' => 'Provider Customer',
+            'customer_email' => 'provider@example.com',
+            'customer_phone' => '+10000000005',
+            'customer_driver_age' => 35,
+            'pickup_date' => '2026-06-24',
+            'pickup_time' => '09:00',
+            'dropoff_date' => '2026-06-26',
+            'dropoff_time' => '09:00',
+        ]);
     }
 
     #[Test]
@@ -697,7 +769,7 @@ class StripeBookingServiceAccountingTest extends TestCase
             ],
         ]);
 
-        $metadata = new class([
+        $metadataPayload = [
             'vehicle_source' => 'greenmotion',
             'vehicle_id' => 'gm-123',
             'vehicle_brand' => 'Example',
@@ -729,7 +801,10 @@ class StripeBookingServiceAccountingTest extends TestCase
             'offer_discount_amount' => 17.25,
             'booking_total_display' => 189.75,
             'extras_payload_id' => (string) $payload->id,
-        ]) {
+        ];
+
+        $metadata = new class($metadataPayload)
+        {
             public function __construct(private array $data)
             {
                 foreach ($data as $key => $value) {
@@ -776,7 +851,7 @@ class StripeBookingServiceAccountingTest extends TestCase
         ]);
 
         return Booking::create(array_merge([
-            'booking_number' => 'BKGW-' . uniqid(),
+            'booking_number' => 'BKGW-'.uniqid(),
             'customer_id' => $customer->id,
             'provider_source' => 'recordgo',
             'provider_vehicle_id' => 'vehicle-1',

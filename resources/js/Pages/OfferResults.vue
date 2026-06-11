@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Head, Link, usePage } from '@inertiajs/vue3'
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue'
 import Footer from '@/Components/Footer.vue'
@@ -196,7 +196,7 @@ const selectedProtectionCode = ref<string | null>(null)
 const selectedCheckoutData = ref<CheckoutData | null>(null)
 const relatedCardsLimit = ref(20)
 const page = usePage<SharedPageProps>()
-const { selectedCurrency, convertPrice, fetchExchangeRates, getCurrencySymbol } = useCurrencyConversion()
+const { getCurrencySymbol } = useCurrencyConversion()
 
 const vehicle = computed(() => props.quote.vehicle ?? {})
 const pricing = computed(() => props.quote.pricing ?? {})
@@ -220,7 +220,7 @@ const bookingCurrencyCode = computed(() => {
   return `${vehiclePricing?.currency ?? pricing.value.currency ?? search.value.currency ?? 'EUR'}`
 })
 const bookingCurrencySymbol = computed(() => resolveCurrencySymbol(bookingCurrencyCode.value))
-const displayCurrencyCode = computed(() => `${selectedCurrency.value ?? pricing.value.currency ?? search.value.currency ?? 'EUR'}`)
+const displayCurrencyCode = computed(() => `${pricing.value.currency ?? search.value.currency ?? 'EUR'}`)
 const currentLocale = computed(() => page.props.locale ?? search.value.language ?? 'en')
 
 const _t = (key: string, fallback: string, replacements: Record<string, string | number> = {}) => {
@@ -336,17 +336,16 @@ const formatDisplayAmount = (amount?: number | null, sourceCurrency?: string | n
   }
 
   const normalizedSource = `${sourceCurrency || pricing.value.currency || search.value.currency || 'EUR'}`
-  const normalizedDisplay = displayCurrencyCode.value || normalizedSource
-  const convertedAmount = convertPrice(amount, normalizedSource)
+  const normalizedDisplay = normalizedSource || displayCurrencyCode.value
 
   try {
     return new Intl.NumberFormat(currentLocale.value, {
       style: 'currency',
       currency: normalizedDisplay,
       maximumFractionDigits: 2,
-    }).format(convertedAmount)
+    }).format(amount)
   } catch {
-    return `${getCurrencySymbol(normalizedDisplay)}${convertedAmount.toFixed(2)}`
+    return `${getCurrencySymbol(normalizedDisplay)}${amount.toFixed(2)}`
   }
 }
 
@@ -444,6 +443,7 @@ const quoteCardVehicle = (quote: Quote): Record<string, unknown> => {
       price_per_day: (contextVehicle.pricing as Record<string, unknown> | undefined)?.price_per_day ?? quotePricing.price_per_day,
     },
     supplier_name: quoteSupplierName(quote),
+    partner_supplier_name: quoteSupplierName(quote),
     sipp_code: contextVehicle.sipp_code ?? quoteVehicle.sipp_code,
     transmission: contextVehicle.transmission ?? quoteVehicle.transmission,
     fuel: contextVehicle.fuel ?? quoteVehicle.fuel_type,
@@ -503,10 +503,6 @@ const handleBackToExtras = () => {
 }
 
 const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.bookingContexts?.[quoteId])
-
-onMounted(() => {
-  fetchExchangeRates()
-})
 </script>
 
 <template>

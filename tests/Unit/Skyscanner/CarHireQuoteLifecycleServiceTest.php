@@ -70,6 +70,10 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
                 'pricing' => [
                     'currency' => 'EUR',
                     'total_price' => 90.0,
+                    'deposit_amount' => 500.0,
+                    'deposit_currency' => 'EUR',
+                    'excess_amount' => 1000.0,
+                    'excess_theft_amount' => 1200.0,
                 ],
                 'policies' => [
                     'mileage_policy' => 'limited',
@@ -82,11 +86,17 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
                         'location_type' => 'airport',
                         'iata' => 'RAK',
                     ],
-                    'dropoff' => [
-                        'provider_location_id' => '3272373056',
-                        'name' => 'Marrakech Airport',
-                        'location_type' => 'airport',
-                        'iata' => 'RAK',
+                    'dropoff' => [],
+                ],
+                'insurance_options' => [
+                    [
+                        'id' => 'cdw-basic',
+                        'name' => 'Collision Damage Waiver',
+                        'coverage_type' => 'CDW',
+                        'included' => true,
+                        'currency' => 'EUR',
+                        'excess_amount' => 1000.0,
+                        'deposit_amount' => 500.0,
                     ],
                 ],
             ],
@@ -118,6 +128,9 @@ class CarHireQuoteLifecycleServiceTest extends TestCase
         $this->assertSame('EUR', $quote['pricing']['currency']);
         $this->assertSame('3272373056', $quote['search']['pickup_location_id']);
         $this->assertSame('Marrakech Airport', $quote['pickup_location_details']['name']);
+        $this->assertSame('Marrakech Airport', $quote['dropoff_location_details']['name']);
+        $this->assertSame('CDW', $quote['insurance_options'][0]['coverage_type']);
+        $this->assertSame(1000.0, $quote['coverages']['cdw']['excess_amount']);
         $this->assertStringContainsString('/offers/'.$quote['quote_id'], $quote['deeplink']['landing_page_url']);
         $this->assertStringNotContainsString('skyscanner', $quote['deeplink']['landing_page_url']);
         $this->assertStringContainsString('/api/skyscanner/redirect', $quote['deeplink']['quote_redirect_url']);

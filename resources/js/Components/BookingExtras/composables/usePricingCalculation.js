@@ -55,6 +55,7 @@ export function usePricingCalculation({
     const pricingCurrency = computed(() => {
         return resolveVehicleCurrency(currentProduct.value, props.vehicle);
     });
+    const shouldUsePartnerQuoteCurrency = computed(() => Boolean(`${props.vehicle?.partner_supplier_name || ''}`.trim()));
 
     const vehicleTotalCurrency = computed(() => {
         return resolveVehicleCurrency(currentProduct.value, props.vehicle);
@@ -64,6 +65,20 @@ export function usePricingCalculation({
 
     const formatPrice = (val) => {
         const currencyCode = pricingCurrency.value;
+        const numeric = parseFloat(val);
+
+        if (shouldUsePartnerQuoteCurrency.value) {
+            try {
+                return new Intl.NumberFormat(undefined, {
+                    style: 'currency',
+                    currency: currencyCode,
+                    maximumFractionDigits: 2,
+                }).format(Number.isFinite(numeric) ? numeric : 0);
+            } catch {
+                return `${currencyCode} ${(Number.isFinite(numeric) ? numeric : 0).toFixed(2)}`;
+            }
+        }
+
         const converted = convertPrice(parseFloat(val), currencyCode);
         return `${getSelectedCurrencySymbol()}${converted.toFixed(2)}`;
     };

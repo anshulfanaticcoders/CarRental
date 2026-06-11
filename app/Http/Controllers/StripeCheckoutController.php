@@ -10,6 +10,7 @@ use App\Models\StripeCheckoutPayload;
 use App\Models\Vehicle;
 use App\Models\VehicleOperatingHour;
 use App\Services\Bookings\LocationDetailsNormalizer;
+use App\Services\Bookings\ProviderBookingContract;
 use App\Services\CheckoutIdentityGuardService;
 use App\Services\CurrencyConversionService;
 use App\Services\OfferService;
@@ -834,6 +835,10 @@ class StripeCheckoutController extends Controller
                         $vehicle['optional_extras'] = [];
                     }
                 }
+                $vehicle = $this->mergeVerifiedVehicleContext($vehicle, $verifiedPrices['vehicle_context'] ?? null);
+                if (empty($validated['gateway_search_id']) && ! empty($vehicle['gateway_search_id'])) {
+                    $validated['gateway_search_id'] = $vehicle['gateway_search_id'];
+                }
 
                 $extrasVerification = $priceVerificationService->verifyAndResolveExtras(
                     $validated['detailed_extras'] ?? [],
@@ -866,6 +871,24 @@ class StripeCheckoutController extends Controller
                 return response()->json([
                     'error' => 'Pricing context expired. Please refresh your search and try again.',
                     'code' => 'MISSING_SEARCH_SESSION',
+                ], 422);
+            }
+
+            $providerContract = app(ProviderBookingContract::class);
+            $contractValidation = $providerContract->validateCheckout($validated);
+            if (! ($contractValidation['valid'] ?? false)) {
+                Log::error('Provider checkout blocked: missing reservation context', [
+                    'provider_source' => $providerSource,
+                    'missing_fields' => $contractValidation['missing_fields'] ?? [],
+                    'vehicle_id' => $validated['vehicle']['id'] ?? null,
+                    'gateway_vehicle_id' => $providerContract->gatewayVehicleId($validated),
+                    'gateway_search_id' => $validated['gateway_search_id'] ?? null,
+                ]);
+
+                return response()->json([
+                    'error' => $contractValidation['message'] ?? 'This supplier quote is missing reservation details. Please refresh search results and try again.',
+                    'code' => $contractValidation['code'] ?? 'PROVIDER_BOOKING_CONTEXT_MISSING',
+                    'missing_fields' => $contractValidation['missing_fields'] ?? [],
                 ], 422);
             }
 
@@ -974,6 +997,10 @@ class StripeCheckoutController extends Controller
             }
 
             $selectedVehicleContext = $this->resolveSelectedVehicleContext(
+                $validated['vehicle'] ?? [],
+                $validated['package'] ?? null
+            );
+            $surpriceContext = $this->resolveSurpriceReservationContext(
                 $validated['vehicle'] ?? [],
                 $validated['package'] ?? null
             );
@@ -1102,10 +1129,10 @@ class StripeCheckoutController extends Controller
                 'click2rent_car_id' => $validated['vehicle']['click2rent_car_id'] ?? null,
                 'click2rent_package_id' => $validated['vehicle']['click2rent_package_id'] ?? null,
                 'click2rent_hire_point_id' => $validated['vehicle']['click2rent_hire_point_id'] ?? null,
-                'surprice_vendor_rate_id' => $validated['vehicle']['surprice_vendor_rate_id'] ?? null,
-                'surprice_rate_code' => $validated['vehicle']['surprice_rate_code'] ?? null,
-                'surprice_extended_pickup_code' => $validated['vehicle']['surprice_extended_pickup_code'] ?? null,
-                'surprice_extended_dropoff_code' => $validated['vehicle']['surprice_extended_dropoff_code'] ?? null,
+                'surprice_vendor_rate_id' => $surpriceContext['vendor_rate_id'] ?? null,
+                'surprice_rate_code' => $surpriceContext['rate_code'] ?? null,
+                'surprice_extended_pickup_code' => $surpriceContext['extended_pickup_code'] ?? null,
+                'surprice_extended_dropoff_code' => $surpriceContext['extended_dropoff_code'] ?? null,
                 // Cancellation policy
                 'cancellation_deadline' => $validated['vehicle']['cancellation']['deadline'] ?? null,
                 'cancellation_free' => $validated['vehicle']['cancellation']['available'] ?? null,
@@ -1458,6 +1485,88 @@ class StripeCheckoutController extends Controller
         return collect($vehicle['products'])->first(fn ($entry) => is_array($entry)) ?: null;
     }
 
+    private function mergeVerifiedVehicleContext(array $vehicle, mixed $context): array
+    {
+        if (! is_array($context) || $context === []) {
+            return $vehicle;
+        }
+
+        foreach ($context as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            $vehicle[$key] = $value;
+        }
+
+        return $vehicle;
+    }
+
+    private function resolveSurpriceReservationContext(array $vehicle, ?string $package = null): array
+    {
+        $supplierData = is_array($vehicle['supplier_data'] ?? null) ? $vehicle['supplier_data'] : [];
+        $useFdw = $package === 'FDW';
+        $pickupId = $this->firstFilled($vehicle['provider_pickup_id'] ?? null, $supplierData['pickup_code'] ?? null);
+        $dropoffId = $this->firstFilled(
+            $vehicle['provider_return_id'] ?? null,
+            $vehicle['provider_dropoff_id'] ?? null,
+            $supplierData['dropoff_code'] ?? null,
+            $pickupId
+        );
+
+        return [
+            'vendor_rate_id' => $useFdw
+                ? $this->firstFilled($supplierData['fdw_vendor_rate_id'] ?? null)
+                : $this->firstFilled(
+                    $vehicle['surprice_vendor_rate_id'] ?? null,
+                    $vehicle['provider_rate_id'] ?? null,
+                    $supplierData['vendor_rate_id'] ?? null
+                ),
+            'rate_code' => $useFdw
+                ? $this->firstFilled($supplierData['fdw_rate_code'] ?? null)
+                : $this->firstFilled(
+                    $vehicle['surprice_rate_code'] ?? null,
+                    $supplierData['rate_code'] ?? null
+                ),
+            'extended_pickup_code' => $this->firstFilled(
+                $vehicle['surprice_extended_pickup_code'] ?? null,
+                $supplierData['pickup_ext_code'] ?? null,
+                $this->extendedSurpriceLocationCode($pickupId)
+            ),
+            'extended_dropoff_code' => $this->firstFilled(
+                $vehicle['surprice_extended_dropoff_code'] ?? null,
+                $supplierData['dropoff_ext_code'] ?? null,
+                $this->extendedSurpriceLocationCode($dropoffId),
+                $this->extendedSurpriceLocationCode($pickupId)
+            ),
+        ];
+    }
+
+    private function extendedSurpriceLocationCode(?string $providerLocationId): ?string
+    {
+        if (! $providerLocationId || ! str_contains($providerLocationId, ':')) {
+            return null;
+        }
+
+        return $this->firstFilled(explode(':', $providerLocationId, 2)[1] ?? null);
+    }
+
+    private function firstFilled(...$values): ?string
+    {
+        foreach ($values as $value) {
+            if ($value === null) {
+                continue;
+            }
+
+            $value = trim((string) $value);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
     private function resolveSelectedVehicleContext(array $vehicle, ?string $package): array
     {
         $selectedProduct = $this->resolveSelectedProduct($vehicle, $package);
@@ -1482,6 +1591,17 @@ class StripeCheckoutController extends Controller
             'excess_amount' => $benefits['excess_amount'] ?? ($vehicle['pricing']['excess_amount'] ?? null),
             'excess_theft_amount' => $benefits['excess_theft_amount'] ?? ($vehicle['pricing']['excess_theft_amount'] ?? null),
         ];
+
+        if (($vehicle['source'] ?? null) === 'surprice' && $package === 'FDW') {
+            $supplierData = is_array($vehicle['supplier_data'] ?? null) ? $vehicle['supplier_data'] : [];
+
+            return [
+                ...$context,
+                'deposit_amount' => $supplierData['fdw_deposit_amount'] ?? $context['deposit_amount'],
+                'excess_amount' => $supplierData['fdw_excess_amount'] ?? 0,
+                'excess_theft_amount' => $supplierData['fdw_excess_amount'] ?? 0,
+            ];
+        }
 
         if (($vehicle['source'] ?? null) !== 'renteon' || ! $selectedProduct) {
             return $context;
@@ -1839,6 +1959,15 @@ class StripeCheckoutController extends Controller
 
     private function resolvePackageTotal(array $vehicle, ?string $package, int $days, string $source, array $validated): ?float
     {
+        if ($source === 'surprice' && $package === 'FDW') {
+            $supplierData = is_array($vehicle['supplier_data'] ?? null) ? $vehicle['supplier_data'] : [];
+            $fdwTotal = $supplierData['fdw_total_amount'] ?? null;
+
+            if ($fdwTotal !== null && is_numeric($fdwTotal) && (float) $fdwTotal > 0) {
+                return (float) $fdwTotal;
+            }
+        }
+
         if (! empty($vehicle['products']) && is_array($vehicle['products']) && $package) {
             foreach ($vehicle['products'] as $product) {
                 if (! is_array($product)) {
@@ -2184,6 +2313,10 @@ class StripeCheckoutController extends Controller
 
     private function resolveBookingOutcomeState(Booking $booking, string $fallback): string
     {
+        if ($booking->booking_status === 'cancelled' && $booking->payment_status === 'payment_cancelled') {
+            return 'payment_cancelled';
+        }
+
         if ($booking->booking_status === 'reservation_failed') {
             return 'reservation_failed';
         }

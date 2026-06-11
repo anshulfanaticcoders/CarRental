@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 
 import { createSurpriceAdapter } from '../../resources/js/Components/BookingExtras/adapters/surpriceAdapter.js';
 
@@ -64,6 +64,65 @@ test('surprice adapter uses real products when products array is populated', () 
     assert.equal(pkgs[0].total, 200);
     assert.equal(pkgs[1].type, 'PLU');
     assert.equal(pkgs[1].total, 260);
+});
+
+test('surprice adapter appends FDW package when BAS product exists', () => {
+    const props = reactive({
+        vehicle: makeSurpriceVehicle({
+            products: [
+                { type: 'BAS', name: 'Basic Package', total: 390.91, currency: 'EUR' },
+            ],
+            supplier_data: {
+                fdw_total_amount: 1200,
+                fdw_deposit_amount: 300,
+                fdw_excess_amount: 0,
+                fdw_vendor_rate_id: 'fdw-rate-1',
+                fdw_rate_code: 'Vrooem FDW',
+            },
+        }),
+        numberOfDays: 10,
+    });
+
+    const adapter = createSurpriceAdapter(props);
+    const pkgs = adapter.packages.value;
+
+    assert.equal(pkgs.length, 2);
+    assert.equal(pkgs[0].type, 'BAS');
+    assert.equal(pkgs[1].type, 'FDW');
+    assert.equal(pkgs[1].total, 1200);
+    assert.equal(pkgs[1].price_per_day, 120);
+    assert.equal(pkgs[1].surprice_vendor_rate_id, 'fdw-rate-1');
+    assert.equal(pkgs[1].surprice_rate_code, 'Vrooem FDW');
+});
+
+test('surprice highlights use supplier deposit and excess for BAS and FDW', () => {
+    const currentPackage = ref('BAS');
+    const props = reactive({
+        vehicle: makeSurpriceVehicle({
+            benefits: {},
+            supplier_data: {
+                deposit_amount: 900,
+                excess_amount: 1200,
+                fdw_deposit_amount: 300,
+                fdw_excess_amount: 0,
+            },
+        }),
+        numberOfDays: 10,
+    });
+
+    const adapter = createSurpriceAdapter(props, { currentPackage });
+
+    assert.deepEqual(
+        adapter.highlights.value.map(item => [item.label, item.value]),
+        [['Security Deposit', '€900.00'], ['CDW Excess', '€1,200.00']]
+    );
+
+    currentPackage.value = 'FDW';
+
+    assert.deepEqual(
+        adapter.highlights.value.map(item => [item.label, item.value]),
+        [['Security Deposit', '€300.00']]
+    );
 });
 
 // ── computeNetTotal ────────────────────────────────────────────────

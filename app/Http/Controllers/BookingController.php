@@ -46,6 +46,16 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
+        Log::warning('Legacy booking endpoint blocked', [
+            'path' => $request->path(),
+            'ip' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'error' => 'Legacy booking endpoint is disabled. Please restart checkout and use secure payment flow.',
+            'code' => 'LEGACY_BOOKING_DISABLED',
+        ], 410);
+
         // print_r($request->all());
         // die();
         $validatedData = $request->validate([

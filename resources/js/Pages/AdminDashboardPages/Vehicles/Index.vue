@@ -262,56 +262,56 @@
                                 </TableCell>
                             </TableRow>
                             <TableRow v-if="isVehicleDetailsOpen(vehicle.id)" class="bg-muted/20">
-                                <TableCell colspan="8" class="px-4 py-4">
-                                    <div class="grid gap-4 lg:grid-cols-3">
-                                        <div class="rounded-lg border bg-background/40 p-4">
+                                <TableCell colspan="8" class="max-w-0 overflow-hidden px-3 py-3">
+                                    <div class="vehicle-details-expanded grid max-w-full min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)_minmax(0,0.82fr)]">
+                                        <div class="min-w-0 rounded-lg border bg-background/40 p-4">
                                             <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vehicle</p>
                                             <dl class="mt-3 space-y-2 text-sm">
-                                                <div class="flex items-center justify-between gap-3">
+                                                <div class="grid grid-cols-[minmax(88px,0.42fr)_minmax(0,1fr)] items-start gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2">
                                                     <dt class="text-muted-foreground">Vehicle ID</dt>
-                                                    <dd class="font-medium">{{ vehicle.id }}</dd>
+                                                    <dd class="min-w-0 break-words text-right font-medium">{{ vehicle.id }}</dd>
                                                 </div>
-                                                <div>
+                                                <div class="grid grid-cols-[minmax(88px,0.42fr)_minmax(0,1fr)] items-start gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2">
                                                     <dt class="text-muted-foreground">Spec</dt>
                                                     <dd class="font-medium">{{ [vehicle.color, vehicle.transmission, vehicle.fuel].filter(Boolean).join(' · ') || 'N/A' }}</dd>
                                                 </div>
-                                                <div class="flex items-center justify-between gap-3">
+                                                <div class="grid grid-cols-[minmax(88px,0.42fr)_minmax(0,1fr)] items-start gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2">
                                                     <dt class="text-muted-foreground">Date added</dt>
-                                                    <dd class="font-medium">{{ formatDate(vehicle.created_at) }}</dd>
+                                                    <dd class="min-w-0 break-words text-right font-medium">{{ formatDate(vehicle.created_at) }}</dd>
                                                 </div>
                                             </dl>
                                         </div>
-                                        <div class="rounded-lg border bg-background/40 p-4">
+                                        <div class="min-w-0 rounded-lg border bg-background/40 p-4">
                                             <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Office</p>
                                             <dl class="mt-3 space-y-2 text-sm">
-                                                <div>
+                                                <div class="grid grid-cols-[minmax(88px,0.32fr)_minmax(0,1fr)] items-start gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2">
                                                     <dt class="text-muted-foreground">Name</dt>
-                                                    <dd class="font-medium">{{ officeName(vehicle) }}</dd>
+                                                    <dd class="min-w-0 break-words text-right font-medium">{{ officeName(vehicle) }}</dd>
                                                 </div>
-                                                <div>
+                                                <div class="grid grid-cols-[minmax(88px,0.32fr)_minmax(0,1fr)] items-start gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2">
                                                     <dt class="text-muted-foreground">Meta</dt>
-                                                    <dd class="font-medium">{{ officeMeta(vehicle) }}</dd>
+                                                    <dd class="min-w-0 break-words text-right font-medium">{{ officeMeta(vehicle) }}</dd>
                                                 </div>
-                                                <div>
+                                                <div class="grid grid-cols-[minmax(88px,0.32fr)_minmax(0,1fr)] items-start gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2">
                                                     <dt class="text-muted-foreground">Address</dt>
-                                                    <dd class="font-medium">{{ officeAddress(vehicle) }}</dd>
+                                                    <dd class="min-w-0 break-words text-right font-medium">{{ officeAddress(vehicle) }}</dd>
                                                 </div>
                                             </dl>
                                         </div>
-                                        <div class="rounded-lg border bg-background/40 p-4">
+                                        <div class="min-w-0 rounded-lg border bg-background/40 p-4">
                                             <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vendor & Pricing</p>
                                             <dl class="mt-3 space-y-2 text-sm">
-                                                <div>
+                                                <div class="grid grid-cols-[minmax(88px,0.42fr)_minmax(0,1fr)] items-start gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2">
                                                     <dt class="text-muted-foreground">Vendor</dt>
-                                                    <dd class="font-medium">{{ vendorCompanyName(vehicle) }}</dd>
+                                                    <dd class="min-w-0 break-words text-right font-medium">{{ vendorCompanyName(vehicle) }}</dd>
                                                 </div>
-                                                <div>
+                                                <div class="grid grid-cols-[minmax(88px,0.42fr)_minmax(0,1fr)] items-start gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2">
                                                     <dt class="text-muted-foreground">Contact</dt>
-                                                    <dd class="break-all font-medium">{{ vendorContactSummary(vehicle) }}</dd>
+                                                    <dd class="min-w-0 break-all text-right font-medium">{{ vendorContactSummary(vehicle) }}</dd>
                                                 </div>
-                                                <div class="flex items-center justify-between gap-3">
+                                                <div class="grid grid-cols-[minmax(88px,0.42fr)_minmax(0,1fr)] items-start gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2">
                                                     <dt class="text-muted-foreground">Daily price</dt>
-                                                    <dd class="font-medium">{{ vehicle.price_per_day ? `${vehicleCurrency(vehicle)}${vehicle.price_per_day}` : 'Not Set' }}</dd>
+                                                    <dd class="min-w-0 break-words text-right font-medium">{{ vehicle.price_per_day ? `${vehicleCurrency(vehicle)}${vehicle.price_per_day}` : 'Not Set' }}</dd>
                                                 </div>
                                             </dl>
                                         </div>
@@ -792,3 +792,20 @@ const getStatusBadgeVariant = (status) => {
     }
 };
 </script>
+
+<style scoped>
+.vehicle-details-expanded,
+.vehicle-details-expanded * {
+    min-width: 0;
+}
+
+.vehicle-details-expanded {
+    width: min(100%, 72rem);
+    max-width: min(72rem, calc(100vw - 26rem));
+}
+
+.vehicle-details-expanded dd {
+    overflow-wrap: anywhere;
+    text-align: right;
+}
+</style>

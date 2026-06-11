@@ -57,14 +57,14 @@ class SkyscannerSearchApiTest extends TestCase
             'company_email' => 'fleet@example.com',
             'company_phone_number' => '+971500000000',
             'company_address' => 'Terminal 1',
-            'company_gst_number' => 'GST-DXB-' . $vendor->id,
+            'company_gst_number' => 'GST-DXB-'.$vendor->id,
             'status' => 'approved',
         ]);
 
         $location = VendorLocation::create([
             'vendor_id' => $vendor->id,
             'name' => 'Dubai Airport (DXB)',
-            'code' => 'vl-' . $vendor->id . '-dxb-auth',
+            'code' => 'vl-'.$vendor->id.'-dxb-auth',
             'address_line_1' => 'Dubai Airport Terminal 1',
             'city' => 'Dubai',
             'state' => null,
@@ -137,14 +137,14 @@ class SkyscannerSearchApiTest extends TestCase
             'company_email' => 'fleet@example.com',
             'company_phone_number' => '+971500000000',
             'company_address' => 'Terminal 1',
-            'company_gst_number' => 'GST-DXB-' . $vendor->id,
+            'company_gst_number' => 'GST-DXB-'.$vendor->id,
             'status' => 'approved',
         ]);
 
         $location = VendorLocation::create([
             'vendor_id' => $vendor->id,
             'name' => 'Dubai Airport (DXB)',
-            'code' => 'vl-' . $vendor->id . '-dxb',
+            'code' => 'vl-'.$vendor->id.'-dxb',
             'address_line_1' => 'Dubai Airport Terminal 1',
             'city' => 'Dubai',
             'state' => null,
@@ -217,14 +217,14 @@ class SkyscannerSearchApiTest extends TestCase
             'company_email' => 'fleet@example.com',
             'company_phone_number' => '+212500000000',
             'company_address' => 'Terminal 2',
-            'company_gst_number' => 'GST-RAK-' . $vendor->id,
+            'company_gst_number' => 'GST-RAK-'.$vendor->id,
             'status' => 'approved',
         ]);
 
         $location = VendorLocation::create([
             'vendor_id' => $vendor->id,
             'name' => 'Menara Airport',
-            'code' => 'vl-' . $vendor->id . '-rak',
+            'code' => 'vl-'.$vendor->id.'-rak',
             'address_line_1' => 'Menara Airport Terminal 2',
             'city' => 'Marrakech',
             'state' => null,
@@ -253,7 +253,7 @@ class SkyscannerSearchApiTest extends TestCase
 
         $response = $this
             ->withHeader('x-api-key', 'secret-key')
-            ->getJson('/api/quotes/EUR/' . $location->id . '/' . $location->id . '/2026-06-15T09:00/2026-06-18T09:00/35');
+            ->getJson('/api/quotes/EUR/'.$location->id.'/'.$location->id.'/2026-06-15T09:00/2026-06-18T09:00/35');
 
         $response->assertOk();
         $response->assertJsonCount(1, 'quotes');
@@ -346,8 +346,9 @@ class SkyscannerSearchApiTest extends TestCase
         $response->assertJsonCount(1, 'quotes');
         $response->assertJsonPath('quotes.0.vehicle.display_name', 'Hyundai i10 or similar');
         $response->assertJsonPath('quotes.0.pricing.currency', 'EUR');
+        $response->assertJsonPath('quotes.0.supplier.name', 'Vrooem');
+        $response->assertJsonPath('quotes.0.supplier.code', 'vrooem');
         $response->assertJsonMissingPath('quotes.0.vehicle.provider_vehicle_id');
-        $response->assertJsonMissingPath('quotes.0.supplier');
         $response->assertJsonMissingPath('search');
     }
 
@@ -399,6 +400,10 @@ class SkyscannerSearchApiTest extends TestCase
                         'currency' => 'EUR',
                         'total_price' => 120.0,
                         'price_per_day' => 40.0,
+                        'deposit_amount' => 500.0,
+                        'deposit_currency' => 'EUR',
+                        'excess_amount' => 1000.0,
+                        'excess_theft_amount' => 1200.0,
                     ],
                     'policies' => [],
                     'location' => [
@@ -427,6 +432,25 @@ class SkyscannerSearchApiTest extends TestCase
                     'extras_preview' => [
                         ['code' => 'gps'],
                     ],
+                    'insurance_options' => [
+                        [
+                            'id' => 'cdw-basic',
+                            'name' => 'Collision Damage Waiver',
+                            'coverage_type' => 'CDW',
+                            'included' => true,
+                            'currency' => 'EUR',
+                            'excess_amount' => 1000.0,
+                            'deposit_amount' => 500.0,
+                        ],
+                        [
+                            'id' => 'tw-basic',
+                            'name' => 'Theft Waiver',
+                            'coverage_type' => 'TW',
+                            'included' => true,
+                            'currency' => 'EUR',
+                            'excess_amount' => 1200.0,
+                        ],
+                    ],
                     'data_quality_flags' => ['missing_postal_code'],
                     'booking_context' => [
                         'provider_payload' => [
@@ -449,12 +473,16 @@ class SkyscannerSearchApiTest extends TestCase
         $response->assertJsonPath('quotes.0.vehicle.display_name', 'Hyundai i10 or similar');
         $response->assertJsonPath('quotes.0.free_esim_included', true);
         $response->assertJsonPath('quotes.0.specs.sipp_code', 'ECMR');
+        $response->assertJsonPath('quotes.0.supplier.name', 'Vrooem');
+        $response->assertJsonPath('quotes.0.supplier.code', 'vrooem');
+        $response->assertJsonPath('quotes.0.insurance_options.0.coverage_type', 'CDW');
+        $response->assertJsonPath('quotes.0.coverages.cdw.excess_amount', 1000);
+        $response->assertJsonPath('quotes.0.coverages.tw.excess_amount', 1200);
         $response->assertJsonMissingPath('quotes.0.vehicle.source');
         $response->assertJsonMissingPath('quotes.0.vehicle.provider_code');
         $response->assertJsonMissingPath('quotes.0.vehicle.provider_product_id');
         $response->assertJsonMissingPath('quotes.0.vehicle.provider_rate_id');
         $response->assertJsonMissingPath('quotes.0.vehicle.booking_context');
-        $response->assertJsonMissingPath('quotes.0.supplier');
         $response->assertJsonMissingPath('quotes.0.specs.sipp_source');
         $response->assertJsonMissingPath('quotes.0.pickup_location_details.provider_location_id');
         $response->assertJsonMissingPath('quotes.0.pickup_location_details.provider_location_source');
@@ -501,14 +529,14 @@ class SkyscannerSearchApiTest extends TestCase
             'company_email' => 'fleet@example.com',
             'company_phone_number' => '+971500000000',
             'company_address' => 'Terminal 1',
-            'company_gst_number' => 'GST-DXB-' . $vendor->id,
+            'company_gst_number' => 'GST-DXB-'.$vendor->id,
             'status' => 'approved',
         ]);
 
         $location = VendorLocation::create([
             'vendor_id' => $vendor->id,
             'name' => 'Dubai Airport (DXB)',
-            'code' => 'vl-' . $vendor->id . '-dxb-image',
+            'code' => 'vl-'.$vendor->id.'-dxb-image',
             'address_line_1' => 'Dubai Airport Terminal 1',
             'city' => 'Dubai',
             'state' => null,
@@ -529,7 +557,7 @@ class SkyscannerSearchApiTest extends TestCase
 
         $image = $vehicle->images()->firstOrFail();
         $image->update([
-            'image_path' => 'vehicle_images/WhatsApp Image 2026-04-15 ' . $vehicle->id . '.jpg',
+            'image_path' => 'vehicle_images/WhatsApp Image 2026-04-15 '.$vehicle->id.'.jpg',
             'image_url' => 'https://example.com/stale-internal-image.jpg',
         ]);
 
@@ -549,7 +577,7 @@ class SkyscannerSearchApiTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath(
             'quotes.0.vehicle.image_url',
-            'https://my-public-bucket.4tcl8.upcloudobjects.com/vehicle_images/WhatsApp%20Image%202026-04-15%20' . $vehicle->id . '.jpg'
+            'https://my-public-bucket.4tcl8.upcloudobjects.com/vehicle_images/WhatsApp%20Image%202026-04-15%20'.$vehicle->id.'.jpg'
         );
     }
 
@@ -595,8 +623,8 @@ class SkyscannerSearchApiTest extends TestCase
 
         VehicleImage::create([
             'vehicle_id' => $vehicle->id,
-            'image_path' => 'vehicle_images/' . $vehicle->id . '.jpg',
-            'image_url' => 'https://example.com/internal/' . $vehicle->id . '.jpg',
+            'image_path' => 'vehicle_images/'.$vehicle->id.'.jpg',
+            'image_url' => 'https://example.com/internal/'.$vehicle->id.'.jpg',
             'image_type' => 'primary',
         ]);
 

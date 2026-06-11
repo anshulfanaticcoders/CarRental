@@ -108,6 +108,12 @@ class GatewayVehicleTransformer
             'provider_vehicle_id' => $providerVehicleId,
             'provider_product_id' => $gv['provider_product_id'] ?? ($supplierData['product_id'] ?? null),
             'provider_rate_id' => $gv['provider_rate_id'] ?? ($supplierData['rate_id'] ?? ($supplierData['vendor_rate_id'] ?? null)),
+            'surprice_vendor_rate_id' => $rawSupplierId === 'surprice'
+                ? ($gv['provider_rate_id'] ?? ($supplierData['vendor_rate_id'] ?? null))
+                : null,
+            'surprice_rate_code' => $rawSupplierId === 'surprice' ? ($supplierData['rate_code'] ?? null) : null,
+            'surprice_extended_pickup_code' => $rawSupplierId === 'surprice' ? ($supplierData['pickup_ext_code'] ?? null) : null,
+            'surprice_extended_dropoff_code' => $rawSupplierId === 'surprice' ? ($supplierData['dropoff_ext_code'] ?? null) : null,
             'availability_status' => $gv['availability_status'] ?? ($supplierData['availability_status'] ?? null),
             'location_id' => $pickup['supplier_location_id'] ?? '',
             'source' => $supplierId,
@@ -688,6 +694,12 @@ class GatewayVehicleTransformer
             'provider_vehicle_id' => $gv['provider_vehicle_id'] ?? null,
             'provider_product_id' => $gv['provider_product_id'] ?? ($providerPayload['product_id'] ?? null),
             'provider_rate_id' => $gv['provider_rate_id'] ?? ($providerPayload['rate_id'] ?? ($providerPayload['vendor_rate_id'] ?? null)),
+            'surprice_vendor_rate_id' => $source === 'surprice'
+                ? ($gv['provider_rate_id'] ?? ($providerPayload['vendor_rate_id'] ?? null))
+                : null,
+            'surprice_rate_code' => $source === 'surprice' ? ($providerPayload['rate_code'] ?? null) : null,
+            'surprice_extended_pickup_code' => $source === 'surprice' ? ($providerPayload['pickup_ext_code'] ?? null) : null,
+            'surprice_extended_dropoff_code' => $source === 'surprice' ? ($providerPayload['dropoff_ext_code'] ?? null) : null,
             'availability_status' => $gv['availability_status'] ?? ($providerPayload['availability_status'] ?? ($providerPayload['availability'] ?? null)),
             'location_id' => $pickup['provider_location_id'] ?? '',
             'source' => $source,

@@ -34,11 +34,15 @@ class CarHireQuoteLifecycleService
             'supplier' => $this->publicSupplier(is_array($vehicle['supplier'] ?? null) ? $vehicle['supplier'] : []),
             'specs' => $this->buildSpecsSnapshot($vehicle),
             'pricing' => $vehicle['pricing'] ?? [],
+            'net_pricing' => is_array($vehicle['net_pricing'] ?? null) ? $vehicle['net_pricing'] : ($vehicle['pricing'] ?? []),
             'policies' => $vehicle['policies'] ?? [],
             'pickup_location_details' => $pickupLocation,
-            'dropoff_location_details' => $dropoffLocation,
+            'dropoff_location_details' => $this->hasLocationDetails($dropoffLocation) ? $dropoffLocation : $pickupLocation,
             'products' => is_array($vehicle['products'] ?? null) ? $vehicle['products'] : [],
+            'booking_products' => is_array($vehicle['booking_products'] ?? null) ? $vehicle['booking_products'] : (is_array($vehicle['products'] ?? null) ? $vehicle['products'] : []),
             'extras_preview' => is_array($vehicle['extras_preview'] ?? null) ? $vehicle['extras_preview'] : [],
+            'insurance_options' => is_array($vehicle['insurance_options'] ?? null) ? $vehicle['insurance_options'] : [],
+            'coverages' => $this->buildCoveragesSnapshot($vehicle),
             'deeplink' => [
                 'landing_page_url' => $this->buildOfferLandingUrl($quoteId),
                 'quote_redirect_url' => $this->buildQuoteRedirectUrl($quoteId),
@@ -172,6 +176,72 @@ class CarHireQuoteLifecycleService
             'luggage_medium' => $specs['luggage_medium'] ?? null,
             'luggage_large' => $specs['luggage_large'] ?? null,
         ];
+    }
+
+    private function hasLocationDetails(array $location): bool
+    {
+        foreach (['name', 'address', 'city', 'country', 'country_code', 'iata', 'latitude', 'longitude'] as $key) {
+            $value = trim((string) ($location[$key] ?? ''));
+
+            if ($value !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function buildCoveragesSnapshot(array $vehicle): array
+    {
+        $insuranceOptions = is_array($vehicle['insurance_options'] ?? null) ? $vehicle['insurance_options'] : [];
+        $pricing = is_array($vehicle['pricing'] ?? null) ? $vehicle['pricing'] : [];
+        $currency = (string) ($pricing['currency'] ?? 'EUR');
+        $coverages = [];
+
+        foreach ($insuranceOptions as $option) {
+            if (! is_array($option)) {
+                continue;
+            }
+
+            $type = strtolower(trim((string) ($option['coverage_type'] ?? $option['type'] ?? $option['id'] ?? '')));
+
+            if (str_contains($type, 'cdw') || str_contains($type, 'collision')) {
+                $key = 'cdw';
+            } elseif (in_array($type, ['tp', 'third_party', 'third-party'], true) || str_contains($type, 'third')) {
+                $key = 'tp';
+            } elseif (in_array($type, ['tw', 'theft'], true) || str_contains($type, 'theft')) {
+                $key = 'tw';
+            } else {
+                continue;
+            }
+
+            $coverages[$key] = array_filter([
+                'included' => array_key_exists('included', $option) ? (bool) $option['included'] : null,
+                'excess_amount' => $option['excess_amount'] ?? null,
+                'deposit_amount' => $option['deposit_amount'] ?? null,
+                'currency' => $option['currency'] ?? $currency,
+                'description' => $option['description'] ?? $option['name'] ?? null,
+            ], static fn ($value) => $value !== null && $value !== '');
+        }
+
+        if (! isset($coverages['cdw']) && array_key_exists('excess_amount', $pricing)) {
+            $coverages['cdw'] = array_filter([
+                'included' => true,
+                'excess_amount' => $pricing['excess_amount'],
+                'deposit_amount' => $pricing['deposit_amount'] ?? null,
+                'currency' => $pricing['deposit_currency'] ?? $currency,
+            ], static fn ($value) => $value !== null && $value !== '');
+        }
+
+        if (! isset($coverages['tw']) && array_key_exists('excess_theft_amount', $pricing)) {
+            $coverages['tw'] = array_filter([
+                'included' => true,
+                'excess_amount' => $pricing['excess_theft_amount'],
+                'currency' => $pricing['deposit_currency'] ?? $currency,
+            ], static fn ($value) => $value !== null && $value !== '');
+        }
+
+        return $coverages;
     }
 
     private function buildOfferLandingUrl(string $quoteId): ?string

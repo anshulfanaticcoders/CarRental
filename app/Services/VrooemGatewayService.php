@@ -184,7 +184,11 @@ class VrooemGatewayService
                 Log::info('VrooemGateway: Sending request', ['method' => $method, 'url' => $fullUrl]);
                 $response = $http->$method($fullUrl);
             } else {
-                Log::info('VrooemGateway: Sending request', ['method' => $method, 'url' => $url, 'body' => $params]);
+                Log::info('VrooemGateway: Sending request', [
+                    'method' => $method,
+                    'url' => $url,
+                    'body' => $this->redactForLog($params),
+                ]);
                 $response = $http->$method($url, $params);
             }
 
@@ -206,7 +210,7 @@ class VrooemGatewayService
                     'method' => $method,
                     'url' => $url,
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'body_length' => strlen($response->body()),
                 ]);
 
                 return null;
@@ -228,6 +232,43 @@ class VrooemGatewayService
 
             return null;
         }
+    }
+
+    private function redactForLog(array $payload): array
+    {
+        $sensitive = [
+            'address',
+            'city',
+            'country',
+            'customer',
+            'driver',
+            'driving_license_country',
+            'driving_license_number',
+            'email',
+            'first_name',
+            'last_name',
+            'phone',
+            'postal_code',
+        ];
+
+        $redact = function ($value, ?string $key = null) use (&$redact, $sensitive) {
+            if ($key !== null && in_array(strtolower($key), $sensitive, true)) {
+                return '[redacted]';
+            }
+
+            if (is_array($value)) {
+                $clean = [];
+                foreach ($value as $childKey => $childValue) {
+                    $clean[$childKey] = $redact($childValue, is_string($childKey) ? $childKey : null);
+                }
+
+                return $clean;
+            }
+
+            return $value;
+        };
+
+        return $redact($payload);
     }
 
     /**

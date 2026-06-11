@@ -10,8 +10,8 @@ class PriceVerificationService
     /**
      * Store original provider prices when search results are generated
      *
-     * @param string $searchSessionId Unique identifier for this search session
-     * @param array $vehicles Array of vehicles from search results
+     * @param  string  $searchSessionId  Unique identifier for this search session
+     * @param  array  $vehicles  Array of vehicles from search results
      * @return array Map of vehicle_id => [price_hash, price_token]
      */
     public function storeOriginalPrices(string $searchSessionId, array $vehicles): array
@@ -24,7 +24,7 @@ class PriceVerificationService
                 ?? $vehicle['provider_vehicle_id']
                 ?? $vehicle['unified_location_id']
                 ?? null;
-            if (!$vehicleId) {
+            if (! $vehicleId) {
                 continue;
             }
 
@@ -46,6 +46,7 @@ class PriceVerificationService
                 'stored_at' => now()->toIso8601String(),
                 'search_session' => $searchSessionId,
                 'offer_fingerprint' => $offerFingerprint,
+                'vehicle_context' => $this->extractBookingContext($vehicle),
             ];
 
             // Cache for 2 hours (typical user session duration)
@@ -61,7 +62,7 @@ class PriceVerificationService
             // Generate hash for client verification (HMAC signature)
             $priceMap[$vehicleId] = [
                 'price_hash' => $this->generatePriceHash($priceData),
-                'vehicle_id_hash' => hash('sha256', $vehicleId . $searchSessionId),
+                'vehicle_id_hash' => hash('sha256', $vehicleId.$searchSessionId),
             ];
         }
 
@@ -71,8 +72,7 @@ class PriceVerificationService
     /**
      * Verify that client-sent prices match original stored prices
      *
-     * @param string $searchSessionId
-     * @param array $vehicleData Vehicle data sent from client
+     * @param  array  $vehicleData  Vehicle data sent from client
      * @return array ['valid' => bool, 'error' => string|null, 'original_prices' => array|null]
      */
     public function verifyPrices(string $searchSessionId, array $vehicleData): array
@@ -84,7 +84,7 @@ class PriceVerificationService
             ?? null;
         $clientSentHash = $vehicleData['price_hash'] ?? null;
 
-        if (!$vehicleId) {
+        if (! $vehicleId) {
             return [
                 'valid' => false,
                 'error' => 'Price verification failed: Missing vehicle ID',
@@ -94,7 +94,7 @@ class PriceVerificationService
         $priceKey = $this->getPriceCacheKey($searchSessionId, $vehicleId);
         $storedData = Cache::get($priceKey);
 
-        if (!$storedData) {
+        if (! $storedData) {
             Log::warning('Price verification failed: Original pricing data not found', [
                 'vehicle_id' => $vehicleId,
                 'search_session' => $searchSessionId,
@@ -110,7 +110,7 @@ class PriceVerificationService
         // Verify hash
         $expectedHash = $this->generatePriceHash($storedData);
 
-        if (!hash_equals($expectedHash, $clientSentHash ?? '')) {
+        if (! hash_equals($expectedHash, $clientSentHash ?? '')) {
             Log::warning('Price manipulation detected - hash mismatch', [
                 'vehicle_id' => $vehicleId,
                 'search_session' => $searchSessionId,
@@ -154,7 +154,7 @@ class PriceVerificationService
         }
 
         // Verify products if present
-        if (isset($vehicleData['products']) && !empty($storedData['products'])) {
+        if (isset($vehicleData['products']) && ! empty($storedData['products'])) {
             $clientProducts = $vehicleData['products'];
             $storedProducts = $storedData['products'];
 
@@ -164,7 +164,7 @@ class PriceVerificationService
 
                 if ($productType && $storedProductTotal !== null) {
                     $matchingClientProduct = collect($clientProducts)->first(
-                        fn($p) => ($p['type'] ?? null) === $productType
+                        fn ($p) => ($p['type'] ?? null) === $productType
                     );
 
                     if ($matchingClientProduct) {
@@ -200,13 +200,12 @@ class PriceVerificationService
     /**
      * Get verified prices for booking (always use server-side values)
      *
-     * @param string $searchSessionId
-     * @param string $vehicleId
      * @return array|null Original price data
      */
     public function getVerifiedPrices(string $searchSessionId, string $vehicleId): ?array
     {
         $priceKey = $this->getPriceCacheKey($searchSessionId, $vehicleId);
+
         return Cache::get($priceKey);
     }
 
@@ -227,7 +226,7 @@ class PriceVerificationService
             $priceData['offer_fingerprint'] ?? null,
         ]);
 
-        return hash('sha256', $dataToHash . config('app.key'));
+        return hash('sha256', $dataToHash.config('app.key'));
     }
 
     /**
@@ -235,14 +234,62 @@ class PriceVerificationService
      */
     private function getPriceCacheKey(string $searchSessionId, string $vehicleId): string
     {
-        return "price_verify_" . sha1($searchSessionId . '_' . $vehicleId);
+        return 'price_verify_'.sha1($searchSessionId.'_'.$vehicleId);
+    }
+
+    private function extractBookingContext(array $vehicle): array
+    {
+        $supplierData = is_array($vehicle['supplier_data'] ?? null) ? $vehicle['supplier_data'] : [];
+        $source = strtolower((string) ($vehicle['source'] ?? 'unknown'));
+
+        $context = [
+            'id' => $vehicle['id'] ?? null,
+            'gateway_vehicle_id' => $vehicle['gateway_vehicle_id'] ?? ($vehicle['id'] ?? null),
+            'gateway_search_id' => $vehicle['gateway_search_id'] ?? null,
+            'provider_vehicle_id' => $vehicle['provider_vehicle_id'] ?? null,
+            'provider_product_id' => $vehicle['provider_product_id'] ?? null,
+            'provider_rate_id' => $vehicle['provider_rate_id'] ?? ($supplierData['rate_id'] ?? ($supplierData['vendor_rate_id'] ?? null)),
+            'provider_pickup_id' => $vehicle['provider_pickup_id'] ?? ($supplierData['pickup_code'] ?? null),
+            'provider_return_id' => $vehicle['provider_return_id'] ?? ($vehicle['provider_dropoff_id'] ?? ($supplierData['dropoff_code'] ?? ($supplierData['pickup_code'] ?? null))),
+            'provider_dropoff_id' => $vehicle['provider_dropoff_id'] ?? ($vehicle['provider_return_id'] ?? ($supplierData['dropoff_code'] ?? ($supplierData['pickup_code'] ?? null))),
+            'source' => $source,
+            'sipp_code' => $vehicle['sipp_code'] ?? ($supplierData['sipp_code'] ?? null),
+            'supplier_data' => $supplierData,
+            'quoteid' => $vehicle['quoteid'] ?? ($supplierData['quote_id'] ?? null),
+            'rate_id' => $vehicle['rate_id'] ?? ($supplierData['rate_id'] ?? null),
+            'availability_id' => $vehicle['availability_id'] ?? ($supplierData['availability_id'] ?? null),
+            'connector_id' => $vehicle['connector_id'] ?? ($supplierData['connector_id'] ?? null),
+            'provider_pickup_office_id' => $vehicle['provider_pickup_office_id'] ?? ($supplierData['pickup_office_id'] ?? null),
+            'provider_dropoff_office_id' => $vehicle['provider_dropoff_office_id'] ?? ($supplierData['dropoff_office_id'] ?? null),
+            'pricelist_id' => $vehicle['pricelist_id'] ?? ($supplierData['pricelist_id'] ?? null),
+            'price_date' => $vehicle['price_date'] ?? ($supplierData['price_date'] ?? null),
+            'prepaid' => $vehicle['prepaid'] ?? ($supplierData['prepaid'] ?? null),
+            'ok_mobility_token' => $vehicle['ok_mobility_token'] ?? ($supplierData['token'] ?? null),
+            'ok_mobility_group_id' => $vehicle['ok_mobility_group_id'] ?? ($supplierData['group_id'] ?? null),
+            'ok_mobility_rate_code' => $vehicle['ok_mobility_rate_code'] ?? ($supplierData['rate_code'] ?? null),
+            'recordgo_sellcode_ver' => $vehicle['recordgo_sellcode_ver'] ?? ($supplierData['sell_code_ver'] ?? null),
+            'recordgo_selected_product' => $vehicle['recordgo_selected_product'] ?? null,
+            'recordgo_products' => $vehicle['recordgo_products'] ?? null,
+            'products' => $vehicle['products'] ?? null,
+        ];
+
+        if ($source === 'surprice') {
+            $context['surprice_vendor_rate_id'] = $vehicle['surprice_vendor_rate_id']
+                ?? $context['provider_rate_id']
+                ?? ($supplierData['vendor_rate_id'] ?? null);
+            $context['surprice_rate_code'] = $vehicle['surprice_rate_code'] ?? ($supplierData['rate_code'] ?? null);
+            $context['surprice_extended_pickup_code'] = $vehicle['surprice_extended_pickup_code'] ?? ($supplierData['pickup_ext_code'] ?? null);
+            $context['surprice_extended_dropoff_code'] = $vehicle['surprice_extended_dropoff_code'] ?? ($supplierData['dropoff_ext_code'] ?? null);
+        }
+
+        return array_filter($context, static fn ($value) => $value !== null && $value !== '');
     }
 
     /**
      * Verify extras prices against stored vehicle data
      *
-     * @param array $clientExtras Extras sent from client
-     * @param array $storedData Original stored vehicle data
+     * @param  array  $clientExtras  Extras sent from client
+     * @param  array  $storedData  Original stored vehicle data
      * @return array ['valid' => bool, 'error' => string|null]
      */
     public function verifyExtrasPrices(array $clientExtras, array $storedData): array
@@ -260,7 +307,7 @@ class PriceVerificationService
         $resolvedExtras = [];
 
         foreach ($clientExtras as $extra) {
-            if (!is_array($extra)) {
+            if (! is_array($extra)) {
                 continue;
             }
 
@@ -273,19 +320,20 @@ class PriceVerificationService
             }
 
             $storedExtra = collect($storedData['extras'] ?? [])
-                ->first(fn($candidate) => $this->resolveExtraIdentifier($candidate) === $extraId);
+                ->first(fn ($candidate) => $this->resolveExtraIdentifier($candidate) === $extraId);
 
-            if (!$storedExtra) {
+            if (! $storedExtra) {
                 // Skip validation for provider-built protection plans (not from search extras)
                 if (str_starts_with($extraId, 'adobe_protection_') || str_starts_with($extraId, 'locauto_protection_') || str_starts_with($extraId, 'ins_')) {
                     $resolvedExtras[] = array_merge($extra, ['qty' => max(1, (int) ($extra['qty'] ?? $extra['quantity'] ?? 1))]);
+
                     continue;
                 }
 
                 Log::warning('Price manipulation detected - unknown selected extra', [
                     'extra_id' => $extraId,
                     'available_extra_ids' => collect($storedData['extras'] ?? [])
-                        ->map(fn($candidate) => $this->resolveExtraIdentifier($candidate))
+                        ->map(fn ($candidate) => $this->resolveExtraIdentifier($candidate))
                         ->filter()
                         ->values()
                         ->all(),
@@ -357,6 +405,7 @@ class PriceVerificationService
         }
 
         $normalized = trim((string) $identifier);
+
         return $normalized !== '' ? $normalized : null;
     }
 

@@ -402,3 +402,38 @@ Concise durable memory for significant completed work.
 - Decision: moved admin route loading overlay to the root Inertia app with lazy Lottie loading, timer-delayed admin visits so the loader paints before page switches, restored the sidebar submenu button contract, forced open submenu content to reserve height, aligned collapsed sidebar/search route jumps with the same loader path, and made the loading layer blur/dim the page while blocking background clicks. No backend routes, database queries, API calls, form handlers, or permissions were changed.
 - Verification: `git diff --check` passed; `npm run build` passed with existing project warnings. Browser QA in an authenticated admin session verified the loader appears with the car Lottie and `Loading...`, applies blur with `pointer-events: auto`, then clears after dashboard/profile/vendors/vehicles/bookings/affiliates route switches, header search result navigation, collapsed sidebar icon navigation, and mobile 375px sidebar route navigation.
 - Follow-ups: existing non-loader Vue warnings around dialog close listeners remain outside this pass; continue page-by-page visual polish separately if needed.
+
+### 2026-06-10 - Skyscanner API and offer-page parity fixes
+- Scope: `CarRental` Skyscanner quote API serialization, quote snapshots, provider customer pricing, offer-page checkout currency display, partner supplier labels, and Surprice coverage amount labels.
+- Decision: public Skyscanner quotes now return Vrooem as supplier, gross customer-facing provider prices, pickup and drop-off location details, insurance/coverage data, and hidden net pricing for checkout so the 15% service price is not double-counted. Partner offer/customization pages preserve the quote currency and Vrooem supplier label through package, extras, summary, and pay-now/pay-arrival rows.
+- Verification: PHP syntax checks passed for touched Skyscanner services; targeted Pint passed; `npm run build` passed with existing warnings; browser smoke via headless Chrome verified local Skyscanner external quote API-to-offer-to-customization parity for price, currency, Vrooem supplier display, pickup/drop-off, coverages, deposit/excess, extras, package, and summary.
+- Test notes: focused PHPUnit could not run after the local `carrental_testing` database became unavailable; before that environment issue, the focused Skyscanner feature/unit tests passed earlier in the session.
+
+### 2026-06-11 - Surprice reservation failure hardening
+- Scope: `CarRental` checkout price cache, Surprice checkout metadata, gateway reservation failure logging, gateway vehicle transform, and `vrooem-gateway` Surprice booking adapter.
+- Decision: persisted booking-critical supplier context in the verified price cache, restored Surprice reservation identifiers before Stripe checkout metadata is stored, blocked checkout when a Surprice quote is missing mandatory reservation context, and preserved sanitized gateway/supplier failure payloads on failed reservations. Gateway now fails Surprice bookings with explicit missing-context or missing-reference errors instead of returning an empty supplier booking id with no useful reason.
+- Verification: PHP syntax checks passed for touched Laravel files; touched-file Pint passed; gateway Surprice adapter `py_compile` passed; booking-critical Laravel unit tests passed with 37 tests/534 assertions.
+- Test notes: gateway `ruff` and `pytest` were unavailable in the local Python environment; full `PriceVerificationServiceTest` still needs the local `carrental_testing` database restored.
+
+### 2026-06-11 - Booking failure zero-tolerance hardening
+- Scope: `CarRental` provider checkout validation, Stripe-to-gateway reservation handling, internal provider API booking lock, legacy booking endpoint, gateway booking schema, gateway booking response normalization, and gateway booking cache TTL.
+- Decision: added a central `ProviderBookingContract` so external Stripe sessions are blocked before payment when gateway/search/provider context is missing. Removed unsafe gateway vehicle id fallback, require confirmed gateway status plus supplier reference, store booking-safe provider context in the verified price cache, redact PII from gateway POST logs, and block the old `POST /booking` path with a 410 response. Gateway booking requests now reject blank vehicle/search ids and invalid extra quantities, normalize adapter responses, and expose structured failure context instead of accepting empty confirmations.
+- Verification: PHP syntax checks passed for touched Laravel files; focused Pint passed for the new contract, touched tests, and hardened service/controller files; `ProviderBookingContractTest` passed with 3 tests/8 assertions; gateway `ruff check`, gateway `ruff format --check`, and `tests/test_booking_service.py` passed with 3 tests.
+- Test notes: DB-backed `StripeBookingServiceAccountingTest --filter gateway` is blocked because local MySQL database `carrental_testing` does not exist. Separate Pint on legacy `BookingController.php` still reports pre-existing formatter debt; the new 410 guard is syntax-clean. No database creation or destructive action was run.
+
+### 2026-06-11 - Manual refund policy correction
+- Scope: `CarRental` Stripe booking failure handling and provider reservation retry failure job.
+- Decision: removed automated Stripe refund creation from failed reservation and inventory-race paths. Failed paid bookings still move to `refund_pending`/rescue visibility, but the app now logs manual refund/reconciliation requirements instead of calling Stripe Refund APIs.
+- Verification: PHP syntax checks passed for `StripeBookingService` and `TriggerProviderReservationJob`; targeted Pint passed for both files; grep confirmed no remaining `Stripe\Refund`/`Refund::create`/auto-refund call patterns in PHP app/tests.
+- Follow-ups: handle all customer refunds and provider payout corrections manually in Stripe/admin workflows.
+
+### 2026-06-11 - Provider no-reference cancellation outcome
+- Scope: `CarRental` external provider reservation retry failure and Stripe booking outcome routing.
+- Decision: if provider reservation retries exhaust without a supplier reference, the saved booking now becomes `cancelled` with `payment_status = payment_cancelled` and cancellation reason `Payment cancelled: supplier did not confirm the reservation or return a provider reference.` Manual refund/reconciliation is still logged, but no Stripe refund API is called.
+- Verification: PHP syntax checks passed for `TriggerProviderReservationJob` and `StripeCheckoutController`; targeted Pint passed for both files; grep confirmed no automated Stripe refund call patterns in PHP app/tests.
+
+### 2026-06-11 - Surprice FDW and extras booking parity
+- Scope: `CarRental` Surprice booking extras adapter, Stripe checkout Surprice package context, provider booking contract, Stripe-to-gateway reservation payload, and `vrooem-gateway` Surprice booking adapter.
+- Decision: Surprice FDW/full coverage is now exposed as a package when supplier data contains FDW totals, checkout uses FDW total/deposit/excess and requires FDW vendor rate context before payment, and gateway reservation switches to the FDW rate when selected. Selected Surprice extras are now attached to the Surprice reservation payload instead of only being built locally.
+- Verification: Surprice JS pricing tests passed with 11 tests; PHP syntax checks passed for touched checkout/contract/booking service files; gateway Surprice adapter tests passed with 10 tests; `npm run build` passed with existing project warnings.
+- Follow-ups: run one Surprice sandbox/live test booking with a selected extra before promising Surprice extras are provider-confirmed in production.
