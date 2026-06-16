@@ -152,8 +152,8 @@ const emit = defineEmits(['show-details-modal', 'proceed-to-checkout', 'back']);
                 <!-- Marquee -->
                 <div v-if="effectivePaymentPercentage > 0" class="overflow-hidden rounded-lg bg-[#1e3a5f]/5 py-1.5">
                     <div class="marquee-track flex whitespace-nowrap gap-8 text-[10px] font-semibold text-[#1e3a5f]/70">
-                        <span>Secure Checkout &bull; Best Price Guarantee &bull; Free Cancellation &bull; 24/7 Support &bull;</span>
-                        <span>Secure Checkout &bull; Best Price Guarantee &bull; Free Cancellation &bull; 24/7 Support &bull;</span>
+                        <span>Secure Checkout &bull; Verified Supplier Pricing &bull; 24/7 Support &bull;</span>
+                        <span>Secure Checkout &bull; Verified Supplier Pricing &bull; 24/7 Support &bull;</span>
                     </div>
                 </div>
             </div>

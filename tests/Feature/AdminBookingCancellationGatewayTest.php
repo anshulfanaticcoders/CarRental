@@ -76,6 +76,40 @@ class AdminBookingCancellationGatewayTest extends TestCase
         $this->assertSame('confirmed', $booking->booking_status);
     }
 
+    public function test_admin_cancellation_uses_canonical_supplier_fallback_when_supplier_metadata_is_missing(): void
+    {
+        Notification::fake();
+        config(['vrooem.enabled' => false]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $booking = $this->createBooking([
+            'provider_source' => 'recordgo',
+            'provider_booking_ref' => 'SUP-BOOK-1',
+            'provider_metadata' => [
+                'gateway_booking_id' => 'gw_1',
+            ],
+        ]);
+
+        $this->mock(VrooemGatewayService::class, function ($mock): void {
+            $mock->shouldReceive('cancelBooking')
+                ->once()
+                ->with('gw_1', 'recordgo', 'SUP-BOOK-1', 'Need to cancel')
+                ->andReturn(['status' => 'cancelled']);
+        });
+
+        $response = $this
+            ->actingAs($admin)
+            ->from(route('customer-bookings.index'))
+            ->post(route('customer-bookings.cancel', ['id' => $booking->id]), [
+                'cancellation_reason' => 'Need to cancel',
+            ]);
+
+        $response->assertRedirect();
+
+        $booking->refresh();
+        $this->assertSame('cancelled', $booking->booking_status);
+    }
+
     private function createBooking(array $overrides = []): Booking
     {
         $customerUser = User::factory()->create();
@@ -89,7 +123,7 @@ class AdminBookingCancellationGatewayTest extends TestCase
         ]);
 
         return Booking::create(array_merge([
-            'booking_number' => 'BKADMIN-' . uniqid(),
+            'booking_number' => 'BKADMIN-'.uniqid(),
             'customer_id' => $customer->id,
             'vehicle_id' => null,
             'provider_source' => 'recordgo',

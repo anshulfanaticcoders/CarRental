@@ -1,6 +1,37 @@
 import { computed } from 'vue';
 import { useEmptyLocationData, defaultComputeNetTotal } from './shared.js';
 
+const complementCategory = (complement) => `${complement?.complementCategory || ''}`.trim().toUpperCase();
+
+const complementPrice = (complement) => {
+    const value = parseFloat(
+        complement?.priceTaxIncComplementDiscount
+        ?? complement?.priceTaxIncComplement
+        ?? complement?.total_for_booking
+        ?? complement?.total_price
+        ?? 0
+    );
+    return Number.isFinite(value) ? value : 0;
+};
+
+const complementDailyPrice = (complement) => {
+    const value = parseFloat(
+        complement?.priceTaxIncDayDiscount
+        ?? complement?.priceTaxIncDay
+        ?? complement?.daily_rate
+        ?? 0
+    );
+    return Number.isFinite(value) ? value : 0;
+};
+
+const preauthValue = (complement, type) => {
+    const entries = complement?.['preauth&Excess'] || complement?.preauthExcess || [];
+    if (!Array.isArray(entries)) return null;
+    const match = entries.find(item => `${item?.type || ''}`.toLowerCase() === type.toLowerCase());
+    const value = parseFloat(match?.value ?? null);
+    return Number.isFinite(value) ? value : null;
+};
+
 /**
  * @param {{ vehicle: Object, numberOfDays: number }} props
  * @param {{ currentPackage: import('vue').Ref<string>, stripHtml: (value: string) => string }} options
@@ -39,6 +70,18 @@ export function createRecordGoAdapter(props, { currentPackage, stripHtml }) {
             if (refuel) benefits.push(refuel);
             const kmPolicy = product?.km_policy?.kmPolicyTransName || product?.km_policy?.kmPolicyName;
             if (kmPolicy) benefits.push(kmPolicy);
+            (product?.complements_included || [])
+                .filter(complement => complementCategory(complement) === 'COVERAGE')
+                .forEach((complement) => {
+                    const name = complement.complementName ? stripHtml(complement.complementName) : null;
+                    const description = complement.complementDescription ? stripHtml(complement.complementDescription) : null;
+                    const preauth = preauthValue(complement, 'Preauth');
+                    const excess = preauthValue(complement, 'Excess');
+                    if (name) benefits.push(name);
+                    if (description) benefits.push(description);
+                    if (preauth !== null) benefits.push(`Preauthorisation: ${preauth}`);
+                    if (excess !== null) benefits.push(`Excess: ${excess}`);
+                });
 
             return {
                 type: product.type || `RG_${index}`,
@@ -79,9 +122,18 @@ export function createRecordGoAdapter(props, { currentPackage, stripHtml }) {
     });
 
     const recordGoAutomaticComplements = computed(() => {
-        return recordGoSelectedProduct.value?.complements_automatic
+        const complements = recordGoSelectedProduct.value?.complements_automatic
             || recordGoSelectedProduct.value?.complements_autom
             || [];
+
+        if (!Array.isArray(complements)) return [];
+
+        return complements.filter((complement) => (
+            complement?.applied === true
+            || complement?.is_applied === true
+            || complement?.included === true
+            || complement?.selected === true
+        ));
     });
 
     const recordGoAssociatedComplements = computed(() => {
@@ -93,7 +145,9 @@ export function createRecordGoAdapter(props, { currentPackage, stripHtml }) {
         // Primary: complements_associated from selected RecordGo product
         const complements = recordGoAssociatedComplements.value;
         if (complements.length > 0) {
-            return complements.map((extra, index) => {
+            return complements
+                .filter(extra => complementCategory(extra) !== 'COVERAGE')
+                .map((extra, index) => {
                 const id = extra.id || `ext_recordgo_${extra.complementId ?? index}`;
                 return {
                     id,
@@ -128,8 +182,33 @@ export function createRecordGoAdapter(props, { currentPackage, stripHtml }) {
         }));
     });
 
-    const protectionPlans = computed(() => []);
-    const allExtras = computed(() => [...optionalExtras.value]);
+    const protectionPlans = computed(() => {
+        return recordGoAssociatedComplements.value
+            .filter(extra => complementCategory(extra) === 'COVERAGE')
+            .map((extra, index) => {
+                const id = extra.id || `ext_recordgo_protection_${extra.complementId ?? index}`;
+                const total = complementPrice(extra);
+                const daily = complementDailyPrice(extra);
+                return {
+                    id,
+                    code: extra.complementId,
+                    name: extra.complementName ? stripHtml(extra.complementName) : 'Protection',
+                    description: extra.complementDescription ? stripHtml(extra.complementDescription)
+                        : (extra.complementSubtitle ? stripHtml(extra.complementSubtitle) : null),
+                    price: total,
+                    total_for_booking: total,
+                    daily_rate: daily,
+                    amount: daily || total,
+                    currency: props.vehicle?.currency || null,
+                    required: false,
+                    numberAllowed: extra.maxUnits || extra.complementUnits || null,
+                    type: 'protection',
+                    purpose: 'protection',
+                    recordgo_payload: extra,
+                };
+            });
+    });
+    const allExtras = computed(() => [...protectionPlans.value, ...optionalExtras.value]);
 
     const includedItems = computed(() => {
         const items = [];
@@ -137,12 +216,6 @@ export function createRecordGoAdapter(props, { currentPackage, stripHtml }) {
             items.push({
                 label: c.complementName ? stripHtml(c.complementName) : 'Included',
                 detail: 'Included',
-            });
-        });
-        recordGoAutomaticComplements.value.forEach(c => {
-            items.push({
-                label: c.complementName ? stripHtml(c.complementName) : 'Automatic',
-                detail: 'Automatic',
             });
         });
         return items;

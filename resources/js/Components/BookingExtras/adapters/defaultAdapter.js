@@ -10,6 +10,11 @@ const normalizeGenericProduct = (product, index, vehicle, numberOfDays) => {
     const total = toNumber(product?.total ?? product?.total_price ?? vehicle?.total_price);
     const pricePerDay = toNumber(product?.price_per_day ?? product?.daily_rate)
         || (numberOfDays > 0 ? +(total / numberOfDays).toFixed(2) : total);
+    const depositCurrency = product?.deposit_currency
+        || product?.excess_currency
+        || vehicle?.benefits?.deposit_currency
+        || vehicle?.pricing?.deposit_currency
+        || null;
 
     return {
         type: product?.type || `PKG_${index + 1}`,
@@ -19,6 +24,8 @@ const normalizeGenericProduct = (product, index, vehicle, numberOfDays) => {
         total,
         deposit: product?.deposit != null ? toNumber(product.deposit) : null,
         excess: product?.excess != null ? toNumber(product.excess) : null,
+        deposit_currency: depositCurrency,
+        excess_currency: product?.excess_currency || depositCurrency,
         excessTheft: product?.excess_theft_amount != null ? toNumber(product.excess_theft_amount) : null,
         benefits: Array.isArray(product?.benefits) ? product.benefits : [],
         isBestValue: Boolean(product?.isBestValue ?? index === 0),
@@ -27,9 +34,19 @@ const normalizeGenericProduct = (product, index, vehicle, numberOfDays) => {
     };
 };
 
-const normalizeGenericProtection = (extra, index) => {
+const resolveSupplierCurrency = (extra, vehicle) => extra?.currency
+    || vehicle?.benefits?.deposit_currency
+    || vehicle?.pricing?.deposit_currency
+    || vehicle?.pricing?.currency
+    || vehicle?.currency
+    || 'EUR';
+
+const normalizeGenericProtection = (extra, index, vehicle) => {
     const total = toNumber(extra?.total_for_booking ?? extra?.total_price ?? extra?.price ?? extra?.amount);
     const dailyRate = toNumber(extra?.daily_rate);
+    const excessAmount = extra?.excess_amount != null
+        ? toNumber(extra.excess_amount)
+        : (vehicle?.benefits?.excess_amount != null ? toNumber(vehicle.benefits.excess_amount) : null);
 
     return {
         id: extra?.id || extra?.code || extra?.coverage_type || `insurance_${index + 1}`,
@@ -40,14 +57,38 @@ const normalizeGenericProtection = (extra, index) => {
         daily_rate: dailyRate,
         total_for_booking: total,
         amount: total,
-        currency: extra?.currency || 'EUR',
+        currency: resolveSupplierCurrency(extra, vehicle),
         numberAllowed: 1,
         maxQuantity: 1,
         required: false,
-        excess: extra?.excess_amount != null ? toNumber(extra.excess_amount) : null,
+        excess: excessAmount,
         type: 'insurance',
         included: Boolean(extra?.included),
     };
+};
+
+const isProtectionExtra = (extra) => {
+    const type = `${extra?.type || extra?.purpose || extra?.service_type || extra?.service_group || ''}`.toLowerCase();
+    const code = `${extra?.code || extra?.coverage_type || extra?.id || ''}`.toLowerCase();
+    const name = `${extra?.name || extra?.description || ''}`.toLowerCase();
+
+    return [type, code, name].some((value) => (
+        value.includes('insurance')
+        || value.includes('protection')
+        || value.includes('coverage')
+        || value.includes('waiver')
+        || value.includes('cdw')
+        || value.includes('scdw')
+        || value === 'lcf'
+    ));
+};
+
+const includedDetail = (extra) => {
+    if (extra.description) return extra.description;
+    if (extra.excess !== null && extra.excess !== undefined) {
+        return `Supplier terms apply; excess ${extra.currency} ${extra.excess.toFixed(2)}`;
+    }
+    return 'Supplier included item';
 };
 
 const normalizeGenericExtra = (extra, index) => {
@@ -107,9 +148,12 @@ const buildGenericLocationData = (vehicle) => {
  */
 export function createDefaultAdapter(props) {
     const standardPackages = useStandardPackages(props);
+    const providerExtras = computed(() => Array.isArray(props.vehicle?.extras) ? props.vehicle.extras : []);
     const genericInsurance = computed(() => {
         const insurance = Array.isArray(props.vehicle?.insurance_options) ? props.vehicle.insurance_options : [];
-        return insurance.map((extra, index) => normalizeGenericProtection(extra, index));
+        const protectionExtras = providerExtras.value.filter(isProtectionExtra);
+
+        return [...insurance, ...protectionExtras].map((extra, index) => normalizeGenericProtection(extra, index, props.vehicle));
     });
     const protectionPlans = computed(() => {
         return genericInsurance.value.filter((extra) => !extra.included && extra.total_for_booking > 0);
@@ -119,12 +163,13 @@ export function createDefaultAdapter(props) {
             .filter((extra) => extra.included || extra.total_for_booking <= 0)
             .map((extra) => ({
                 label: extra.name,
-                detail: 'Included',
+                detail: includedDetail(extra),
             }));
     });
     const vehicleExtras = computed(() => {
-        const extras = Array.isArray(props.vehicle?.extras) ? props.vehicle.extras : [];
-        return extras.map((extra, index) => normalizeGenericExtra(extra, index));
+        return providerExtras.value
+            .filter((extra) => !isProtectionExtra(extra))
+            .map((extra, index) => normalizeGenericExtra(extra, index));
     });
     const optionalExtras = computed(() => {
         return vehicleExtras.value.length > 0 ? vehicleExtras.value : (props.optionalExtras || []);

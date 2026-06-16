@@ -15,6 +15,13 @@ const sameOffice = (left = {}, right = {}) => {
     return (nameMatches && (addressMatches || cityMatches)) || (addressMatches && cityMatches);
 };
 const resolveCurrency = (vehicle, fallback = 'EUR') => vehicle?.currency || vehicle?.pricing?.currency || vehicle?.benefits?.deposit_currency || fallback;
+const resolveDepositCurrency = (vehicle, supplierData = {}, fallback = 'EUR') => (
+    supplierData.deposit_currency
+    || supplierData.excess_currency
+    || vehicle?.benefits?.deposit_currency
+    || vehicle?.pricing?.deposit_currency
+    || fallback
+);
 const formatCurrencyAmount = (amount, currency = 'EUR') => {
     const numeric = parseFloat(amount || 0);
 
@@ -39,14 +46,19 @@ export function createSurpriceAdapter(props, { currentPackage } = {}) {
         const standardPkgs = resolveStandardPackages(props.vehicle);
         const currency = props.vehicle?.currency || props.vehicle?.pricing?.currency || 'EUR';
         const sd = props.vehicle?.supplier_data || {};
+        const depositCurrency = resolveDepositCurrency(props.vehicle, sd, currency);
         const excess = parseFloat(sd.excess_amount || props.vehicle?.benefits?.excess_amount || 0);
+        const theftExcess = parseFloat(sd.theft_excess || props.vehicle?.benefits?.excess_theft_amount || excess || 0);
         const deposit = parseFloat(sd.deposit_amount || props.vehicle?.benefits?.deposit_amount || 0);
 
         const pkgs = standardPkgs.length > 0
             ? standardPkgs.map((pkg) => ({
                 ...pkg,
                 currency: pkg.currency || currency,
+                deposit_currency: pkg.deposit_currency || depositCurrency,
+                excess_currency: pkg.excess_currency || depositCurrency,
                 excess: pkg.excess ?? excess,
+                excess_theft_amount: pkg.excess_theft_amount ?? theftExcess,
                 deposit: pkg.deposit ?? deposit,
             }))
             : [];
@@ -60,11 +72,14 @@ export function createSurpriceAdapter(props, { currentPackage } = {}) {
             pkgs.push({
                 type: 'BAS',
                 name: 'Standard',
-                subtitle: 'CDW & Theft Waiver included',
+                subtitle: 'Base supplier rate',
                 total,
                 price_per_day: perDay,
                 currency,
+                deposit_currency: depositCurrency,
+                excess_currency: depositCurrency,
                 excess,
+                excess_theft_amount: theftExcess,
                 deposit,
                 isBestValue: true,
             });
@@ -78,11 +93,14 @@ export function createSurpriceAdapter(props, { currentPackage } = {}) {
             pkgs.push({
                 type: 'FDW',
                 name: 'Full Coverage',
-                subtitle: 'Zero excess — full peace of mind',
+                subtitle: 'Supplier FDW rate',
                 total: fdwTotal,
                 price_per_day: fdwPerDay,
                 currency,
+                deposit_currency: depositCurrency,
+                excess_currency: depositCurrency,
                 excess: parseFloat(sd.fdw_excess_amount || 0),
+                excess_theft_amount: parseFloat(sd.fdw_excess_amount || 0),
                 deposit: parseFloat(sd.fdw_deposit_amount || 0),
                 provider_rate_id: sd.fdw_vendor_rate_id || null,
                 surprice_vendor_rate_id: sd.fdw_vendor_rate_id || null,
@@ -133,23 +151,18 @@ export function createSurpriceAdapter(props, { currentPackage } = {}) {
 
         if (isFullCoverage) {
             const fdwDeposit = parseFloat(sd.fdw_deposit_amount || 0);
-            items.push({ label: 'CDW (Collision Damage Waiver)', detail: 'Included — Zero Excess' });
-            items.push({ label: 'TW (Theft Waiver)', detail: 'Included — Zero Excess' });
-            items.push({ label: 'FDW (Full Damage Waiver)', detail: 'Included' });
+            items.push({ label: 'FDW (Full Damage Waiver)', detail: 'Supplier FDW rate selected' });
+            items.push({ label: 'Excess', detail: formatCurrencyAmount(0, currency) });
             if (fdwDeposit > 0) {
                 items.push({ label: 'Reduced Deposit', detail: formatCurrencyAmount(fdwDeposit, currency) });
             }
         } else {
             const excess = parseFloat(sd.excess_amount || props.vehicle?.benefits?.excess_amount || 0);
             if (excess > 0) {
-                items.push({ label: 'CDW (Collision Damage Waiver)', detail: `Included (excess: ${formatCurrencyAmount(excess, currency)})` });
-                items.push({ label: 'TW (Theft Waiver)', detail: `Included (excess: ${formatCurrencyAmount(excess, currency)})` });
+                items.push({ label: 'Supplier excess', detail: formatCurrencyAmount(excess, currency) });
             }
         }
-        items.push({ label: 'Third Party Liability (TPL)', detail: 'Included' });
         items.push({ label: 'Unlimited Mileage', detail: 'Included' });
-        items.push({ label: 'VAT & Airport Surcharge', detail: 'Included' });
-        items.push({ label: 'Breakdown Assistance', detail: 'Included' });
         return items;
     });
 

@@ -676,9 +676,15 @@ class GatewaySearchServiceTest extends TestCase
         $item = collect($props['vehicles']->items())->first();
 
         $this->assertNotNull($item);
+        $this->assertArrayHasKey('supplier_data', $item);
+        $this->assertArrayHasKey('provider_pickup_id', $item);
+        $this->assertArrayHasKey('provider_return_id', $item);
         $this->assertArrayHasKey('recordgo_products', $item);
         $this->assertCount(2, $item['recordgo_products']);
         $this->assertSame(['BAS', 'PRE'], array_column($item['recordgo_products'], 'type'));
+        $this->assertArrayHasKey('product_id', $item['recordgo_products'][0]);
+        $this->assertArrayHasKey('product_ver', $item['recordgo_products'][0]);
+        $this->assertArrayHasKey('rate_prod_ver', $item['recordgo_products'][1]);
     }
 
     #[Test]

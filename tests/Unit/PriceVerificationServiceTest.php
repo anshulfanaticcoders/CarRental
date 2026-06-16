@@ -71,6 +71,7 @@ class PriceVerificationServiceTest extends TestCase
                     'id' => 'child-seat',
                     'total_for_booking' => 10.00,
                     'daily_rate' => 2.50,
+                    'max_quantity' => 2,
                     'name' => 'Child seat',
                 ],
             ],
@@ -82,6 +83,30 @@ class PriceVerificationServiceTest extends TestCase
         $this->assertSame(2, $result['extras'][0]['qty']);
         $this->assertSame(10.00, $result['extras'][0]['total_for_booking']);
         $this->assertSame('Child seat', $result['extras'][0]['name']);
+    }
+
+    public function test_it_rejects_extra_quantity_above_supplier_limit(): void
+    {
+        $service = app(PriceVerificationService::class);
+
+        $result = $service->verifyAndResolveExtras([
+            [
+                'id' => 'child-seat',
+                'qty' => 3,
+                'total_for_booking' => 10.00,
+            ],
+        ], [
+            'extras' => [
+                [
+                    'id' => 'child-seat',
+                    'total_for_booking' => 10.00,
+                    'max_quantity' => 2,
+                ],
+            ],
+        ]);
+
+        $this->assertFalse($result['valid']);
+        $this->assertSame('Price verification failed: Extra quantity exceeds supplier limit.', $result['error']);
     }
 
     public function test_it_stores_canonical_nested_pricing_for_internal_search_vehicles(): void

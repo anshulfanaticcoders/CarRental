@@ -259,7 +259,7 @@ class GatewaySearchService
                     }
                 }
 
-                return $vehicle;
+                return $this->publicVehiclePayload(is_array($vehicle) ? $vehicle : (array) $vehicle);
             }),
             $vehicles->total(),
             $vehicles->perPage(),
@@ -314,6 +314,93 @@ class GatewaySearchService
         $lng = (float) $lng;
 
         return abs($lat) < 0.000001 && abs($lng) < 0.000001;
+    }
+
+    private function publicVehiclePayload(array $vehicle): array
+    {
+        $public = $this->stripSensitiveProviderKeys($vehicle);
+
+        if (isset($public['location']) && is_array($public['location'])) {
+            $public['location'] = $this->publicLocationPayload($public['location']);
+        }
+
+        foreach (['pickup_location', 'dropoff_location', 'pickup_office', 'dropoff_office', 'location_details', 'dropoff_location_details'] as $key) {
+            if (isset($public[$key]) && is_array($public[$key])) {
+                $public[$key] = $this->publicLocationPayload($public[$key]);
+            }
+        }
+
+        return $public;
+    }
+
+    private function stripSensitiveProviderKeys(array $payload): array
+    {
+        $sensitiveKeys = [
+            'raw',
+            'raw_payload',
+            'quoteid',
+            'quote_id',
+            'token',
+            'ok_mobility_token',
+            'ok_mobility_group_id',
+            'ok_mobility_rate_code',
+            'connector_id',
+            'pricelist_id',
+            'pricelist_code',
+            'price_date',
+            'availability_id',
+            'rate_id',
+            'vendor_rate_id',
+            'surprice_vendor_rate_id',
+            'surprice_rate_code',
+            'surprice_extended_pickup_code',
+            'surprice_extended_dropoff_code',
+            'recordgo_sellcode_ver',
+            'provider_net_amount',
+            'provider_vat_amount',
+            'provider_gross_amount',
+        ];
+
+        foreach ($payload as $key => $value) {
+            if (in_array((string) $key, $sensitiveKeys, true)) {
+                unset($payload[$key]);
+
+                continue;
+            }
+
+            if (is_array($value)) {
+                $payload[$key] = $this->isListArray($value)
+                    ? array_map(fn ($entry) => is_array($entry) ? $this->stripSensitiveProviderKeys($entry) : $entry, $value)
+                    : $this->stripSensitiveProviderKeys($value);
+            }
+        }
+
+        return $payload;
+    }
+
+    private function isListArray(array $value): bool
+    {
+        return $value === [] || array_keys($value) === range(0, count($value) - 1);
+    }
+
+    private function publicLocationPayload(array $location): array
+    {
+        unset(
+            $location['provider_location_id'],
+            $location['supplier_location_id'],
+            $location['vendor_location_id'],
+            $location['pickup_id'],
+            $location['dropoff_id'],
+            $location['extended_location_code']
+        );
+
+        foreach ($location as $key => $value) {
+            if (is_array($value)) {
+                $location[$key] = $this->publicLocationPayload($value);
+            }
+        }
+
+        return $location;
     }
 
     private function internalPickupId(?array $location): ?string

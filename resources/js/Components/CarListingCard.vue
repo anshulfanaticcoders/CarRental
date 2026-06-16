@@ -161,7 +161,12 @@ const fuelPolicyLabel = computed(() => {
 // Get Adobe Cars base daily rate (tdr)
 const adobeBaseRate = computed(() => {
     if (!isAdobeCars.value) return 0;
-    return parseFloat(props.vehicle.tdr) || 0;
+    return parseFloat(
+        props.vehicle?.total_price
+        ?? props.vehicle?.total
+        ?? props.vehicle?.pricing?.total_price
+        ?? 0
+    ) || 0;
 });
 
 // Get Adobe Cars protection plans (PLI, LDW, SPP)
@@ -184,7 +189,7 @@ const adobeProtectionPlans = computed(() => {
         protections.push({
             code: 'LDW',
             name: 'Car Protection',
-            amount: parseFloat(props.vehicle.ldw),
+            amount: (parseFloat(props.vehicle.ldw) || 0) * numberOfRentalDays.value,
             required: false
         });
     }
@@ -194,7 +199,7 @@ const adobeProtectionPlans = computed(() => {
         protections.push({
             code: 'SPP',
             name: 'Extended Protection',
-            amount: parseFloat(props.vehicle.spp),
+            amount: (parseFloat(props.vehicle.spp) || 0) * numberOfRentalDays.value,
             required: false
         });
     }
@@ -267,7 +272,7 @@ const internalVendorPlans = computed(() => {
         total: basePrice * numberOfRentalDays.value,
         price_per_day: basePrice,
         deposit: securityDeposit,
-        benefits: ['Base rental rate', 'Standard coverage'],
+        benefits: ['Base rental rate'],
         is_basic: true,
         isSelected: !selectedInternalPlan.value,
         currency,
@@ -283,7 +288,7 @@ const internalVendorPlans = computed(() => {
             total: (parseFloat(plan.price) || 0) * numberOfRentalDays.value,
             price_per_day: parseFloat(plan.price) || 0,
             deposit: securityDeposit,
-            benefits: features.length > 0 ? features : ['Custom vendor package'],
+            benefits: features.length > 0 ? features : [],
             is_basic: false,
             isSelected: selectedInternalPlan.value?.id === plan.id,
             vendorPlanId: plan.id,
@@ -398,7 +403,7 @@ const getBenefits = (product) => {
     }
 
     if (product.fuelpolicy === 'FF') {
-        benefits.push('Free Fuel / Full to Full');
+        benefits.push('Full-to-full fuel policy');
     } else if (product.fuelpolicy === 'SL') {
         benefits.push('Like for Like fuel policy');
     }
@@ -416,17 +421,8 @@ const getBenefits = (product) => {
         benefits.push(`Extra distance charge: ${getSelectedCurrencySymbol()}${convertedExtra.toFixed(2)}`);
     }
 
-    // Static based on type (only what's not in API)
-    if (type === 'BAS') {
-        benefits.push('Non-refundable');
-        benefits.push('Non-amendable');
-    }
-
-    if (type === 'PMP') {
-    }
-
-    if (type === 'PLU' || type === 'PRE' || type === 'PMP') {
-        benefits.push('Cancellation in line with T&Cs');
+    if (Array.isArray(product.benefits)) {
+        benefits.push(...product.benefits.filter(Boolean));
     }
 
     if (product.minage !== undefined && product.minage !== null && `${product.minage}`.trim() !== '') {
@@ -868,6 +864,9 @@ onUnmounted(() => {
                             <li v-if="plan.deposit">
                                 <img :src="check" class="w-4 h-4 opacity-100" />
                                 <span :class="{ 'font-semibold text-gray-900': true }">Deposit: {{ getSelectedCurrencySymbol() }}{{ plan.deposit.toFixed(2) }}</span>
+                            </li>
+                            <li v-if="!plan.benefits.length && !plan.deposit" class="plan-neutral-note">
+                                Supplier has not provided detailed benefits for this package.
                             </li>
                         </ul>
                         <button class="plan-select-btn">
@@ -1479,6 +1478,16 @@ onUnmounted(() => {
     font-size: 0.875rem;
     color: var(--gray-600);
     margin-bottom: 0.5rem;
+}
+
+.plan-features .plan-neutral-note {
+    display: block;
+    border: 1px dashed var(--gray-200);
+    border-radius: 0.75rem;
+    background: var(--gray-50);
+    padding: 0.75rem;
+    color: var(--gray-500);
+    line-height: 1.4;
 }
 
 .plan-select-btn {

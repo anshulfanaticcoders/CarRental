@@ -368,6 +368,20 @@ class PriceVerificationService
             }
 
             $quantity = max(1, (int) ($extra['qty'] ?? $extra['quantity'] ?? 1));
+            $maxQuantity = $this->resolveExtraMaxQuantity($storedExtra);
+            if ($quantity > $maxQuantity) {
+                Log::warning('Price manipulation detected - extra quantity exceeds supplier limit', [
+                    'extra_id' => $extraId,
+                    'max_quantity' => $maxQuantity,
+                    'received_quantity' => $quantity,
+                ]);
+
+                return [
+                    'valid' => false,
+                    'error' => 'Price verification failed: Extra quantity exceeds supplier limit.',
+                ];
+            }
+
             $resolvedExtras[] = array_merge($storedExtra, [
                 'qty' => $quantity,
                 'quantity' => $quantity,
@@ -421,5 +435,18 @@ class PriceVerificationService
             ?? null;
 
         return $raw !== null ? (float) $raw : null;
+    }
+
+    private function resolveExtraMaxQuantity(array $extra): int
+    {
+        $raw = $extra['max_quantity']
+            ?? $extra['maxQuantity']
+            ?? $extra['numberAllowed']
+            ?? $extra['allow_quantity']
+            ?? 1;
+
+        $max = (int) $raw;
+
+        return $max > 0 ? $max : 1;
     }
 }

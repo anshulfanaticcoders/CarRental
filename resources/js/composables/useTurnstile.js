@@ -4,6 +4,7 @@ const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api
 
 let turnstileScriptPromise = null;
 let turnstileRenderQueue = Promise.resolve();
+let turnstileContainerSequence = 0;
 
 function waitForTurnstile(resolve, reject, attempts = 0) {
     if (typeof window !== 'undefined' && window.turnstile) {
@@ -57,29 +58,78 @@ function queueTurnstileRender(callback) {
     return queuedRender;
 }
 
+function createTurnstileError(message) {
+    const error = new Error(message);
+    error.isTurnstileError = true;
+
+    return error;
+}
+
 export function useTurnstile(options = {}) {
     const turnstileContainer = ref(null);
     const turnstileToken = ref('');
     const turnstileError = ref('');
     const turnstileReady = ref(false);
     let widgetId = null;
+    let pendingTokenPromise = null;
+    let pendingTokenResolve = null;
+    let pendingTokenReject = null;
+
+    const ensureContainerSelector = () => {
+        if (!turnstileContainer.value) return null;
+
+        if (!turnstileContainer.value.id) {
+            turnstileContainerSequence += 1;
+            turnstileContainer.value.id = `turnstile-widget-${turnstileContainerSequence}`;
+        }
+
+        return `#${turnstileContainer.value.id}`;
+    };
+
+    const resolvePendingToken = (token) => {
+        pendingTokenResolve?.(token);
+        pendingTokenPromise = null;
+        pendingTokenResolve = null;
+        pendingTokenReject = null;
+    };
+
+    const rejectPendingToken = (message) => {
+        pendingTokenReject?.(createTurnstileError(message));
+        pendingTokenPromise = null;
+        pendingTokenResolve = null;
+        pendingTokenReject = null;
+    };
+
+    const waitForToken = () => {
+        if (!pendingTokenPromise) {
+            pendingTokenPromise = new Promise((resolve, reject) => {
+                pendingTokenResolve = resolve;
+                pendingTokenReject = reject;
+            });
+        }
+
+        return pendingTokenPromise;
+    };
 
     const renderTurnstile = async () => {
-        if (typeof window === 'undefined' || widgetId !== null) return;
+        if (typeof window === 'undefined') return null;
+        if (widgetId !== null) return widgetId;
 
         const siteKey = options.siteKey || import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
         if (!siteKey) {
             turnstileError.value = 'Security check is not configured.';
-            return;
+            return null;
         }
 
-        if (!turnstileContainer.value) return;
+        const containerSelector = ensureContainerSelector();
+        if (!containerSelector) return null;
 
         try {
             await queueTurnstileRender(async () => {
                 const turnstile = await loadTurnstile();
-                if (!turnstileContainer.value || widgetId !== null) return;
+                const queuedContainerSelector = ensureContainerSelector();
+                if (!queuedContainerSelector || widgetId !== null) return;
 
                 const renderOptions = {
                     sitekey: siteKey,
@@ -88,31 +138,74 @@ export function useTurnstile(options = {}) {
                     callback: (token) => {
                         turnstileToken.value = token;
                         turnstileError.value = '';
+                        resolvePendingToken(token);
                     },
                     'expired-callback': () => {
                         turnstileToken.value = '';
-                        turnstileError.value = 'Security check expired. Please complete it again.';
+                        const message = 'Security check expired. Please complete it again.';
+                        turnstileError.value = message;
+                        rejectPendingToken(message);
                     },
                     'error-callback': () => {
                         turnstileToken.value = '';
-                        turnstileError.value = 'Security check failed to load. Please refresh and try again.';
+                        const message = 'Security check failed to load. Please refresh and try again.';
+                        turnstileError.value = message;
+                        rejectPendingToken(message);
+                    },
+                    'timeout-callback': () => {
+                        turnstileToken.value = '';
+                        const message = 'Security check timed out. Please try again.';
+                        turnstileError.value = message;
+                        rejectPendingToken(message);
                     },
                 };
 
-                if (options.action) {
-                    renderOptions.action = options.action;
-                }
+                if (options.action) renderOptions.action = options.action;
+                if (options.appearance) renderOptions.appearance = options.appearance;
+                if (options.execution) renderOptions.execution = options.execution;
+                if (options.language) renderOptions.language = options.language;
 
-                widgetId = turnstile.render(turnstileContainer.value, renderOptions);
+                widgetId = turnstile.render(queuedContainerSelector, renderOptions);
                 turnstileReady.value = true;
             });
         } catch (error) {
             turnstileError.value = 'Security check failed to load. Please refresh and try again.';
         }
+
+        return widgetId;
+    };
+
+    const executeTurnstile = async () => {
+        if (turnstileToken.value) return turnstileToken.value;
+
+        const renderedWidgetId = await renderTurnstile();
+
+        if (turnstileToken.value) return turnstileToken.value;
+
+        if (typeof window === 'undefined' || !window.turnstile || renderedWidgetId === null) {
+            const message = turnstileError.value || 'Security verification failed. Please try again.';
+            throw createTurnstileError(message);
+        }
+
+        const tokenPromise = waitForToken();
+
+        try {
+            const containerSelector = ensureContainerSelector();
+            if (!containerSelector) throw createTurnstileError('Security verification failed. Please try again.');
+
+            window.turnstile.execute(containerSelector);
+        } catch (error) {
+            const message = 'Security verification failed. Please try again.';
+            turnstileError.value = message;
+            rejectPendingToken(message);
+        }
+
+        return tokenPromise;
     };
 
     const resetTurnstile = () => {
         turnstileToken.value = '';
+        rejectPendingToken('Security check reset.');
 
         if (typeof window !== 'undefined' && window.turnstile && widgetId !== null) {
             window.turnstile.reset(widgetId);
@@ -126,6 +219,8 @@ export function useTurnstile(options = {}) {
     });
 
     onUnmounted(() => {
+        rejectPendingToken('Security check removed.');
+
         if (typeof window !== 'undefined' && window.turnstile && widgetId !== null) {
             window.turnstile.remove(widgetId);
         }
@@ -140,6 +235,7 @@ export function useTurnstile(options = {}) {
         turnstileToken,
         turnstileError,
         turnstileReady,
+        executeTurnstile,
         renderTurnstile,
         resetTurnstile,
     };

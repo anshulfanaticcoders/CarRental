@@ -14,28 +14,40 @@ const {
     turnstileContainer,
     turnstileToken,
     turnstileError,
+    executeTurnstile,
     resetTurnstile,
-} = useTurnstile({ action: 'newsletter_homepage', theme: 'dark' });
-const submitDisabled = computed(() => loading.value || !turnstileToken.value);
+} = useTurnstile({
+    action: 'newsletter_homepage',
+    appearance: 'interaction-only',
+    execution: 'execute',
+    theme: 'dark',
+    defer: true,
+});
+const submitDisabled = computed(() => loading.value);
 
 const subscribe = async () => {
     if (loading.value) return;
     error.value = ''; success.value = '';
     if (!email.value) { error.value = 'Please enter your email.'; return; }
-    if (!turnstileToken.value) { error.value = turnstileError.value || 'Please complete the security check.'; return; }
     loading.value = true;
     try {
+        const turnstileResponse = turnstileToken.value || await executeTurnstile();
+
         await axios.post('/api/newsletter/subscriptions', {
             email: email.value,
             source: 'homepage_cta',
             locale: page.props.locale,
-            cf_turnstile_response: turnstileToken.value,
+            cf_turnstile_response: turnstileResponse,
         });
         success.value = 'Check your inbox to confirm your subscription.';
         email.value = '';
         resetTurnstile();
     } catch (err) {
-        if (err?.response?.status === 409) error.value = err.response?.data?.message || 'This email is already subscribed.';
+        if (err?.isTurnstileError) {
+            error.value = turnstileError.value || 'Security verification failed. Please try again.';
+            resetTurnstile();
+        }
+        else if (err?.response?.status === 409) error.value = err.response?.data?.message || 'This email is already subscribed.';
         else if (err?.response?.status === 422) {
             const errors = err.response?.data?.errors || {};
             error.value = errors.cf_turnstile_response?.[0] || errors.email?.[0] || 'Please enter a valid email.';
@@ -123,7 +135,7 @@ useScrollAnimation('.nl-section', '.nl-card', {
 .nl-fine { font-size: 0.76rem; color: rgba(255,255,255,0.3); margin-top: 1rem; }
 .nl-error { font-size: 0.85rem; color: #f87171; margin-top: 0.75rem; }
 .nl-success { font-size: 0.85rem; color: #34d399; margin-top: 0.75rem; }
-.nl-turnstile { display: flex; justify-content: center; min-height: 65px; margin-top: 1rem; }
+.nl-turnstile { display: flex; justify-content: center; min-height: 0; margin-top: 1rem; }
 
 @media (max-width: 768px) { .nl-form { flex-direction: column; } }
 </style>

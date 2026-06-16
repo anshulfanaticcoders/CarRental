@@ -133,6 +133,24 @@ class SearchOrchestratorServiceTest extends TestCase
         $this->assertSame(['gm-1', 'gm-2'], $filtered->pluck('id')->all());
     }
 
+    public function test_it_accepts_gateway_supplier_alias_when_filtering_adobe_vehicles(): void
+    {
+        $service = new SearchOrchestratorService($this->createMock(LocationSearchService::class));
+
+        $vehicles = collect([
+            ['source' => 'adobe', 'id' => 'adobe-1'],
+            ['source' => 'easirent', 'id' => 'easirent-1'],
+        ]);
+
+        $filtered = $service->filterGatewayVehiclesForRequestedProvider($vehicles, [
+            'provider' => 'adobe_car',
+        ]);
+
+        $this->assertInstanceOf(Collection::class, $filtered);
+        $this->assertCount(1, $filtered);
+        $this->assertSame(['adobe-1'], $filtered->pluck('id')->all());
+    }
+
     public function test_it_excludes_gateway_vehicles_for_internal_only_searches(): void
     {
         $service = new SearchOrchestratorService($this->createMock(LocationSearchService::class));

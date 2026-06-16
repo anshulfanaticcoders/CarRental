@@ -8,7 +8,7 @@ export function useExtrasState() {
     };
 
     const getMaxQuantity = (extra) => {
-        const max = extra.numberAllowed || extra.maxQuantity || null;
+        const max = extra.numberAllowed || extra.maxQuantity || extra.max_quantity || null;
         return max ? Math.max(parseInt(max), 1) : 1;
     };
 

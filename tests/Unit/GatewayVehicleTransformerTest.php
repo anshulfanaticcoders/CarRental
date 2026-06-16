@@ -292,6 +292,121 @@ class GatewayVehicleTransformerTest extends TestCase
         $this->assertStringNotContainsString('deposit + rental charges', $termsText);
     }
 
+    public function test_easirent_canonical_payload_exposes_supplier_policy_terms(): void
+    {
+        $gv = [
+            'id' => 'gw_easirent_1',
+            'source' => 'easirent',
+            'provider_code' => 'easirent',
+            'display_name' => 'Buick Encore or similar',
+            'brand' => 'Buick',
+            'model' => 'Encore',
+            'category' => 'suv',
+            'image' => 'https://example.com/easirent.jpg',
+            'specs' => [
+                'sipp_code' => 'CFAR',
+                'transmission' => 'automatic',
+                'fuel' => 'petrol',
+                'seating_capacity' => 5,
+                'doors' => 5,
+                'air_conditioning' => true,
+            ],
+            'pricing' => [
+                'currency' => 'EUR',
+                'price_per_day' => 45.0,
+                'total_price' => 180.0,
+                'deposit_amount' => 500.0,
+                'deposit_currency' => 'USD',
+                'excess_amount' => 500.0,
+            ],
+            'policies' => [
+                'fuel_policy' => 'Full-to-full / like-for-like',
+                'cancellation' => [
+                    'free_cancellation' => false,
+                    'description' => 'Cancellation must be made before pickup. No-show fees apply.',
+                ],
+            ],
+            'products' => [
+                [
+                    'type' => 'POA',
+                    'name' => 'Pay at Pick-up',
+                    'total' => 180.0,
+                    'price_per_day' => 45.0,
+                    'currency' => 'EUR',
+                    'deposit' => 500.0,
+                    'excess' => 500.0,
+                    'benefits' => ['Pay at pickup', 'Credit card required for deposit'],
+                ],
+            ],
+            'insurance_options' => [
+                [
+                    'id' => 'ins_easirent_basic',
+                    'name' => 'Basic supplier insurance terms',
+                    'coverage_type' => 'basic',
+                    'daily_rate' => 0,
+                    'total_price' => 0,
+                    'currency' => 'USD',
+                    'excess_amount' => 500.0,
+                    'included' => true,
+                    'description' => 'Supplier terms require proof of coverage unless local Easirent coverage is purchased at the counter.',
+                ],
+            ],
+            'location' => [
+                'pickup' => ['provider_location_id' => 'MCO', 'name' => 'Orlando Airport'],
+                'dropoff' => ['provider_location_id' => 'MCO', 'name' => 'Orlando Airport'],
+            ],
+            'booking_context' => [
+                'provider_payload' => [
+                    'terms' => [
+                        [
+                            'name' => 'Payment & Deposit',
+                            'conditions' => [
+                                'A valid credit card in the main driver\'s name is required for the security deposit.',
+                                'Debit cards are not accepted for the deposit.',
+                            ],
+                        ],
+                    ],
+                    'driver_requirements' => [
+                        'Valid_credit_card_in_main_driver_name_required_for_deposit' => '1',
+                        'mileage_type' => 'Unlimited for 1-29 day rentals except local renters',
+                    ],
+                    'rental_policies' => [
+                        ['label' => 'Security Deposit', 'value' => 'USD 500.00'],
+                        ['label' => 'Counter Extras', 'value' => 'Paid locally when available'],
+                    ],
+                    'deposit_amount' => 500.0,
+                    'deposit_currency' => 'USD',
+                    'excess_amount' => 500.0,
+                    'excess_currency' => 'USD',
+                    'fuel_policy' => 'Full-to-full / like-for-like',
+                ],
+            ],
+            'extras_preview' => [],
+        ];
+
+        $result = $this->transformer->transform($gv, 4);
+
+        $this->assertSame('Payment & Deposit', $result['terms'][0]['name']);
+        $this->assertArrayHasKey(
+            'Valid_credit_card_in_main_driver_name_required_for_deposit',
+            $result['driver_requirements']
+        );
+        $this->assertSame('Unlimited for 1-29 day rentals except local renters', $result['driver_requirements']['mileage_type']);
+        $this->assertSame(['Security Deposit', 'Counter Extras'], array_column($result['rental_policies'], 'label'));
+        $this->assertSame(['Pay at pickup', 'Credit card required for deposit'], $result['products'][0]['benefits']);
+        $this->assertSame(500.0, $result['products'][0]['deposit']);
+        $this->assertSame(500.0, $result['products'][0]['excess']);
+        $this->assertSame('USD', $result['products'][0]['deposit_currency']);
+        $this->assertSame('USD', $result['products'][0]['excess_currency']);
+        $this->assertSame(500.0, $result['benefits']['deposit_amount']);
+        $this->assertSame(500.0, $result['benefits']['excess_amount']);
+        $this->assertSame('USD', $result['insurance_options'][0]['currency']);
+        $this->assertSame(
+            'Supplier terms require proof of coverage unless local Easirent coverage is purchased at the counter.',
+            $result['insurance_options'][0]['description']
+        );
+    }
+
     public function test_locauto_counter_only_extras_are_not_customer_selectable(): void
     {
         $gv = $this->makeGatewayVehicle('locauto_rent', [

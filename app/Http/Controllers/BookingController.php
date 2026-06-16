@@ -2,43 +2,46 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\NewMessage;
+use App\Models\Booking;
+use App\Models\BookingExtra;
+use App\Models\BookingPayment;
+use App\Models\Customer;
 use App\Models\Message;
 use App\Models\Plan;
 use App\Models\User;
-use App\Models\VendorVehiclePlan;
 use App\Models\Vehicle;
+use App\Models\VehicleOperatingHour;
 use App\Models\VendorProfile;
+use App\Models\VendorVehiclePlan;
 use App\Notifications\Booking\BookingCancelledNotification;
 use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
-use App\Events\NewMessage;
-use Illuminate\Http\Request;
-use App\Models\Booking;
-use App\Models\BookingPayment;
-use App\Models\BookingExtra;
-use App\Models\Customer;
-use App\Models\VehicleOperatingHour;
-use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Log;
 use App\Services\BookingAmountService;
 use App\Services\Bookings\InternalBookingSnapshotService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use App\Services\VrooemGatewayService;
-use Stripe\Stripe;
-use Stripe\PaymentIntent;
-use Stripe\Customer as StripeCustomer;
-use Inertia\Inertia;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Session;
+use Inertia\Inertia;
+use Stripe\Customer as StripeCustomer;
+use Stripe\PaymentIntent;
+use Stripe\Stripe;
+
 class BookingController extends Controller
 {
     public function allowAccess(Request $request, $locale)
     {
         Session::put('can_access_booking_page', true);
+
         return response()->json(['message' => 'Access to booking page granted.'], 200);
     }
+
     public function create()
     {
         return Inertia::render('Booking/Create');
@@ -103,21 +106,23 @@ class BookingController extends Controller
             $pickupTime = $validatedData['pickup_time'];
             $returnTime = $validatedData['return_time'];
 
-            if (!$vehicle->isAvailableAt($pickupDay, $pickupTime)) {
+            if (! $vehicle->isAvailableAt($pickupDay, $pickupTime)) {
                 $hours = $vehicle->getOperatingHoursForDay($pickupDay);
                 $dayName = VehicleOperatingHour::DAY_NAMES[$pickupDay] ?? 'this day';
                 $msg = $hours && $hours->is_open
                     ? "Pickup is not available on {$dayName} at {$pickupTime}. Operating hours: {$hours->open_time}–{$hours->close_time}."
                     : "This vehicle is not available for pickup on {$dayName}s. Please select a different date.";
+
                 return back()->withErrors(['pickup_time' => $msg])->withInput();
             }
 
-            if (!$vehicle->isAvailableAt($returnDay, $returnTime)) {
+            if (! $vehicle->isAvailableAt($returnDay, $returnTime)) {
                 $hours = $vehicle->getOperatingHoursForDay($returnDay);
                 $dayName = VehicleOperatingHour::DAY_NAMES[$returnDay] ?? 'this day';
                 $msg = $hours && $hours->is_open
                     ? "Return is not available on {$dayName} at {$returnTime}. Operating hours: {$hours->open_time}–{$hours->close_time}."
                     : "This vehicle is not available for return on {$dayName}s. Please select a different date.";
+
                 return back()->withErrors(['return_time' => $msg])->withInput();
             }
         }
@@ -152,10 +157,9 @@ class BookingController extends Controller
             ]);
         }
 
-
         // Vehicle already loaded above with operatingHours
 
-        if (!app(InternalVehicleAvailabilityService::class)->isVehicleAvailable($vehicle, [
+        if (! app(InternalVehicleAvailabilityService::class)->isVehicleAvailable($vehicle, [
             'pickup_date' => $validatedData['pickup_date'],
             'pickup_time' => $validatedData['pickup_time'],
             'dropoff_date' => $validatedData['return_date'],
@@ -227,10 +231,9 @@ class BookingController extends Controller
         }
 
         // Insert all extras at once
-        if (!empty($extrasData)) {
+        if (! empty($extrasData)) {
             BookingExtra::insert($extrasData);
         }
-
 
         // Initialize Stripe
         Stripe::setApiKey(config('stripe.secret'));
@@ -241,7 +244,7 @@ class BookingController extends Controller
         } else {
             // Create a new Stripe customer
             $stripeCustomer = StripeCustomer::create([
-                'name' => $customer->first_name . ' ' . $customer->last_name,
+                'name' => $customer->first_name.' '.$customer->last_name,
                 'email' => $customer->email,
                 'phone' => $customer->phone,
                 'payment_method' => $request->input('payment_method_id'),
@@ -266,7 +269,7 @@ class BookingController extends Controller
                 'payment_method' => $request->input('payment_method_id'),
                 'off_session' => true, // Allow payments even if the user is not present
                 'confirm' => true, // Automatically confirm the payment
-                'description' => 'Car Rental Booking - Booking #' . $booking->booking_number,
+                'description' => 'Car Rental Booking - Booking #'.$booking->booking_number,
                 'metadata' => [
                     'booking_id' => $booking->id,
                 ],
@@ -333,7 +336,7 @@ class BookingController extends Controller
             } catch (\Exception $e) {
                 Log::warning('BookingController::store - Failed to create welcome message', [
                     'error' => $e->getMessage(),
-                    'booking_id' => $booking->id
+                    'booking_id' => $booking->id,
                 ]);
                 // Don't fail the booking if welcome message fails
             }
@@ -360,7 +363,7 @@ class BookingController extends Controller
         $paymentIntentId = $request->query('payment_intent');
         $sessionId = $request->query('session_id');
 
-        if (!$paymentIntentId && !$sessionId) {
+        if (! $paymentIntentId && ! $sessionId) {
             return response()->json(['error' => 'Payment Intent ID or Session ID is required'], 400);
         }
 
@@ -369,18 +372,18 @@ class BookingController extends Controller
 
         if ($paymentIntentId) {
             $payment = BookingPayment::where('transaction_id', $paymentIntentId)->first();
-        } else if ($sessionId) {
+        } elseif ($sessionId) {
             $payment = BookingPayment::where('transaction_id', $sessionId)->first();
         }
 
-        if (!$payment) {
+        if (! $payment) {
             return response()->json(['error' => 'Payment not found'], 404);
         }
 
         // Fetch booking details
         $booking = Booking::with(['extras', 'customer', 'vehicle.vendorProfile', 'vehicle.vendorLocation'])->find($payment->booking_id);
 
-        if (!$booking) {
+        if (! $booking) {
             return response()->json(['error' => 'Booking not found'], 404);
         }
 
@@ -441,9 +444,10 @@ class BookingController extends Controller
             ->get();
 
         return Inertia::render('Vendor/Bookings', [
-            'bookings' => $bookings
+            'bookings' => $bookings,
         ]);
     }
+
     public function getVendorPaymentHistory()
     {
         $vendorId = auth()->id();
@@ -473,17 +477,16 @@ class BookingController extends Controller
                 'current_page' => $payments->currentPage(),
                 'last_page' => $payments->lastPage(),
                 'per_page' => $payments->perPage(),
-            ]
+            ],
         ]);
     }
-
 
     // Method for Pending Bookings
     public function getPendingBookings()
     {
         $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $pendingBookings = !empty($customerIds) ?
+        $pendingBookings = ! empty($customerIds) ?
             Booking::whereIn('customer_id', $customerIds)
                 ->where('booking_status', 'pending')
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile')
@@ -501,7 +504,7 @@ class BookingController extends Controller
     {
         $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $confirmedBookings = !empty($customerIds) ?
+        $confirmedBookings = ! empty($customerIds) ?
             Booking::whereIn('customer_id', $customerIds)
                 ->where('booking_status', 'confirmed')
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'vehicle.benefits')
@@ -510,7 +513,7 @@ class BookingController extends Controller
             collect();
 
         return Inertia::render('Profile/Bookings/ConfirmedBookings', [
-            'bookings' => $confirmedBookings
+            'bookings' => $confirmedBookings,
         ]);
     }
 
@@ -518,7 +521,7 @@ class BookingController extends Controller
     {
         $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $completedBookings = !empty($customerIds) ?
+        $completedBookings = ! empty($customerIds) ?
             Booking::whereIn('customer_id', $customerIds)
                 ->where('booking_status', 'completed')
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'vehicle.vendorProfileData', 'review')
@@ -546,7 +549,7 @@ class BookingController extends Controller
         // Authorize: Ensure the booking belongs to the current user
         $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        if (empty($customerIds) || !in_array($booking->customer_id, $customerIds, true)) {
+        if (empty($customerIds) || ! in_array($booking->customer_id, $customerIds, true)) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -578,7 +581,7 @@ class BookingController extends Controller
             $vendorProfile = $booking->vehicle->vendorProfileData;
 
             // Load vendor user if vendorProfile exists
-            if ($vendorProfile && !$vendorProfile->relationLoaded('user')) {
+            if ($vendorProfile && ! $vendorProfile->relationLoaded('user')) {
                 $vendorProfile->load('user');
             }
         } else {
@@ -609,14 +612,14 @@ class BookingController extends Controller
                 'fuel' => null,
                 'seating_capacity' => null,
                 'images' => $booking->vehicle_image ? [
-                    ['image_url' => $booking->vehicle_image, 'image_type' => 'primary']
+                    ['image_url' => $booking->vehicle_image, 'image_type' => 'primary'],
                 ] : [],
                 'category' => [
-                    'name' => 'Standard'
+                    'name' => 'Standard',
                 ],
                 'latitude' => is_array($pickupDetails) ? ($pickupDetails['latitude'] ?? null) : null,
                 'longitude' => is_array($pickupDetails) ? ($pickupDetails['longitude'] ?? null) : null,
-                'full_vehicle_address' => !empty($addressParts)
+                'full_vehicle_address' => ! empty($addressParts)
                     ? implode(', ', $addressParts)
                     : $booking->pickup_location,
             ];
@@ -677,7 +680,7 @@ class BookingController extends Controller
         // Authorize: Ensure the booking belongs to the current user
         $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        if (empty($customerIds) || !in_array($booking->customer_id, $customerIds, true)) {
+        if (empty($customerIds) || ! in_array($booking->customer_id, $customerIds, true)) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -730,19 +733,19 @@ class BookingController extends Controller
                 'fuel' => 'Petrol',
                 'seating_capacity' => 5,
                 'images' => $booking->vehicle_image ? [
-                    ['image_url' => $booking->vehicle_image, 'image_type' => 'primary']
+                    ['image_url' => $booking->vehicle_image, 'image_type' => 'primary'],
                 ] : [],
                 'category' => ['name' => 'Standard'],
             ];
         }
 
         // Ensure vendorProfile has user loaded
-        if ($vendorProfile && !$vendorProfile->relationLoaded('user')) {
+        if ($vendorProfile && ! $vendorProfile->relationLoaded('user')) {
             $vendorProfile->load('user');
         }
 
         // Normalize provider metadata
-        if (!empty($booking->provider_metadata) && is_string($booking->provider_metadata)) {
+        if (! empty($booking->provider_metadata) && is_string($booking->provider_metadata)) {
             $booking->provider_metadata = json_decode($booking->provider_metadata, true);
         }
 
@@ -754,8 +757,8 @@ class BookingController extends Controller
                ?? $booking->payments->first();
 
         // Create normalized payment object with guaranteed fields
-        if (!$payment) {
-            $payment = (object)[
+        if (! $payment) {
+            $payment = (object) [
                 'payment_method' => $booking->stripe_payment_intent_id ? 'Stripe' : 'Card',
                 'method' => $booking->stripe_payment_intent_id ? 'Stripe' : 'Card',
                 'transaction_id' => $booking->stripe_payment_intent_id ?? $booking->stripe_session_id ?? 'N/A',
@@ -789,7 +792,6 @@ class BookingController extends Controller
         return $pdf->download("booking-{$booking->booking_number}.pdf");
     }
 
-
     public function getCustomerBookingsForMessages()
     {
         $userId = Auth::id();
@@ -797,7 +799,7 @@ class BookingController extends Controller
 
         if (empty($customerIds)) {
             return Inertia::render('Messages/Index', [
-                'bookings' => []
+                'bookings' => [],
             ]);
         }
 
@@ -807,7 +809,7 @@ class BookingController extends Controller
                 'vehicle.images',
                 'vehicle.category',
                 'vehicle.vendorProfile',
-                'payments'
+                'payments',
             ])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -821,10 +823,9 @@ class BookingController extends Controller
         }
 
         return Inertia::render('Messages/Index', [
-            'bookings' => $bookings
+            'bookings' => $bookings,
         ]);
     }
-
 
     public function cancelBooking(Request $request)
     {
@@ -839,7 +840,7 @@ class BookingController extends Controller
                 return;
             }
 
-            $booking->notes = ($existingNotes ? $existingNotes . "\n" : '') . $note;
+            $booking->notes = ($existingNotes ? $existingNotes."\n" : '').$note;
         };
 
         // Validate the request
@@ -854,16 +855,16 @@ class BookingController extends Controller
         // Make sure the booking belongs to the authenticated user
         $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        if (empty($customerIds) || !in_array($booking->customer_id, $customerIds, true)) {
+        if (empty($customerIds) || ! in_array($booking->customer_id, $customerIds, true)) {
             return response()->json([
-                'message' => 'Unauthorized action'
+                'message' => 'Unauthorized action',
             ], 403);
         }
 
         // Check if booking is already cancelled
         if ($booking->booking_status === 'cancelled') {
             return response()->json([
-                'message' => 'Booking is already cancelled'
+                'message' => 'Booking is already cancelled',
             ], 400);
         }
 
@@ -873,10 +874,11 @@ class BookingController extends Controller
         if ($cancellationDeadline) {
             $deadlineDate = \Carbon\Carbon::parse($cancellationDeadline);
             if (now()->isAfter($deadlineDate)) {
-                $message = 'Free cancellation period has expired. The deadline was ' . $deadlineDate->format('M d, Y H:i') . '. Please contact support for assistance.';
+                $message = 'Free cancellation period has expired. The deadline was '.$deadlineDate->format('M d, Y H:i').'. Please contact support for assistance.';
                 if ($request->wantsJson()) {
                     return response()->json(['message' => $message], 422);
                 }
+
                 return redirect()->back()->with('error', $message);
             }
         }
@@ -889,13 +891,14 @@ class BookingController extends Controller
         $canUseGatewayCancellation = $isExternalProvider
             && $gatewayBookingId !== ''
             && $gatewaySupplierId !== ''
-            && !empty($booking->provider_booking_ref);
+            && ! empty($booking->provider_booking_ref);
 
-        if ($isExternalProvider && !$canUseGatewayCancellation) {
+        if ($isExternalProvider && ! $canUseGatewayCancellation) {
             $message = 'Provider gateway cancellation metadata is missing.';
             if ($request->wantsJson()) {
                 return response()->json(['message' => $message], 422);
             }
+
             return redirect()->back()->with('error', $message);
         }
 
@@ -917,6 +920,7 @@ class BookingController extends Controller
                     if ($request->wantsJson()) {
                         return response()->json(['message' => $message], 502);
                     }
+
                     return redirect()->back()->with('error', $message);
                 }
 
@@ -929,13 +933,14 @@ class BookingController extends Controller
                     'error' => $e->getMessage(),
                 ]);
 
-                $appendBookingNote($booking, 'Gateway Cancel failed: ' . $e->getMessage());
+                $appendBookingNote($booking, 'Gateway Cancel failed: '.$e->getMessage());
                 $booking->save();
 
                 $message = 'Failed to cancel reservation with provider gateway.';
                 if ($request->wantsJson()) {
                     return response()->json(['message' => $message], 502);
                 }
+
                 return redirect()->back()->with('error', $message);
             }
         }
@@ -983,7 +988,7 @@ class BookingController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return [];
         }
 
@@ -1016,14 +1021,13 @@ class BookingController extends Controller
     {
         return match ($providerSource) {
             'greenmotion' => 'green_motion',
-            'usave' => 'u_save',
+            'usave' => 'usave',
             'adobe' => 'adobe_car',
             'okmobility' => 'ok_mobility',
-            'recordgo' => 'record_go',
+            'recordgo' => 'recordgo',
             default => (string) ($providerSource ?? ''),
         };
     }
-
 
     public function getCustomerPaymentHistory(Request $request)
     {
@@ -1052,7 +1056,7 @@ class BookingController extends Controller
                 'total' => $payments->total(),
                 'from' => $payments->firstItem(),
                 'to' => $payments->lastItem(),
-            ]
+            ],
         ]);
     }
 
@@ -1060,7 +1064,7 @@ class BookingController extends Controller
     {
         $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $cancelledBookings = !empty($customerIds) ?
+        $cancelledBookings = ! empty($customerIds) ?
             Booking::whereIn('customer_id', $customerIds)
                 ->where('booking_status', 'cancelled')
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile')
@@ -1080,7 +1084,7 @@ class BookingController extends Controller
     {
         $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $bookings = !empty($customerIds) ?
+        $bookings = ! empty($customerIds) ?
             Booking::whereIn('customer_id', $customerIds)
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'extras', 'amounts', 'offers')
                 ->orderBy('created_at', 'desc')

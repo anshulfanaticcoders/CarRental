@@ -40,14 +40,14 @@ class GatewaySearchParamsBuilder
         // doesn't need to look them up in its own database.
         if ($location && ! empty($location['providers'])) {
             $providerLocations = $location['providers'];
-            $requestedProvider = strtolower(trim((string) ($validated['provider'] ?? 'mixed')));
+            $requestedProvider = $this->normalizeProviderId($validated['provider'] ?? 'mixed');
             $requestedPickupId = trim((string) ($validated['provider_pickup_id'] ?? ''));
             $requestedPickupUnifiedId = (int) ($resolvedUnifiedLocationId ?? $validated['unified_location_id'] ?? 0);
             $requestedDropoffUnifiedId = (int) ($params['dropoff_unified_location_id'] ?? 0);
 
             if ($requestedProvider !== '' && $requestedProvider !== 'mixed') {
                 $providerLocations = array_values(array_filter($providerLocations, function (array $providerLocation) use ($requestedProvider) {
-                    return strtolower(trim((string) ($providerLocation['provider'] ?? ''))) === $requestedProvider;
+                    return $this->normalizeProviderId($providerLocation['provider'] ?? '') === $requestedProvider;
                 }));
             }
 
@@ -67,7 +67,7 @@ class GatewaySearchParamsBuilder
                 $dropoffProviders = $this->providerIds($dropoffLocation['providers'] ?? []);
 
                 $providerLocations = array_values(array_filter($providerLocations, function (array $providerLocation) use ($dropoffProviders) {
-                    $provider = strtolower(trim((string) ($providerLocation['provider'] ?? '')));
+                    $provider = $this->normalizeProviderId($providerLocation['provider'] ?? '');
 
                     return $provider !== '' && in_array($provider, $dropoffProviders, true);
                 }));
@@ -79,6 +79,10 @@ class GatewaySearchParamsBuilder
 
             $params['provider_locations'] = $providerLocations;
             $params['country_code'] = $location['country_code'] ?? null;
+
+            if ($requestedProvider !== '' && $requestedProvider !== 'mixed' && ! empty($providerLocations)) {
+                $params['providers'] = implode(',', $this->providerIds($providerLocations));
+            }
         }
 
         return $params;
@@ -88,12 +92,24 @@ class GatewaySearchParamsBuilder
     {
         $ids = [];
         foreach ($providers as $provider) {
-            $id = strtolower(trim((string) ($provider['provider'] ?? '')));
+            $id = $this->normalizeProviderId($provider['provider'] ?? '');
             if ($id !== '') {
                 $ids[] = $id;
             }
         }
 
         return array_values(array_unique($ids));
+    }
+
+    private function normalizeProviderId(mixed $provider): string
+    {
+        $provider = strtolower(trim((string) $provider));
+
+        return match ($provider) {
+            'adobe_car' => 'adobe',
+            'green_motion' => 'greenmotion',
+            'ok_mobility' => 'okmobility',
+            default => $provider,
+        };
     }
 }

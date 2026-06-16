@@ -540,7 +540,7 @@ const getSelectedExtrasDetails = computed(() => {
     for (const [id, qty] of Object.entries(selectedExtras.value)) {
         const extra = allExtras.find(e => e.id === id) || props.optionalExtras?.find(e => e.id === id);
         if (!extra) continue;
-        if (isOkMobility.value && coverCodes.has(normalizeExtraCode(extra.code))) continue;
+        const isOkMobilityCover = isOkMobility.value && coverCodes.has(normalizeExtraCode(extra.code));
         const total = isSicilyByCar.value
             ? getSelectedSicilyByCarExtraTotal(extra, qty)
             : (extra.total_for_booking !== undefined && extra.total_for_booking !== null
@@ -554,7 +554,7 @@ const getSelectedExtrasDetails = computed(() => {
             excess: extra.excess ?? null, recordgo_payload: extra.recordgo_payload ?? null,
             currency: extra.currency ?? null, required: extra.required || false,
             numberAllowed: extra.numberAllowed ?? null, prepay_available: extra.prepay_available ?? null,
-            service_id: extra.service_id, code: extra.code, purpose: extra.purpose ?? null
+            service_id: extra.service_id, code: extra.code, purpose: extra.purpose ?? (isOkMobilityCover ? 'protection' : null)
         });
     }
 
@@ -651,7 +651,7 @@ const getIconColorClass = (name) => {
 const isKeyBenefit = (text) => { if (!text) return false; const l = text.toLowerCase(); return l.includes('excess') || l.includes('deposit') || l.includes('free') || l.includes('unlimited'); };
 const getShortProtectionName = (description) => { if (!description) return ''; return description.includes('/') ? description.split('/')[0].trim() : description; };
 const getPackageDisplayName = (type) => ({ 'BAS': 'Basic', 'PLU': 'Plus', 'PRE': 'Premium', 'PMP': 'Premium Plus', 'PLI': 'Liability Protection', 'LDW': 'Car Protection', 'SPP': 'Extended Protection' }[type] || type);
-const getPackageSubtitle = (type) => ({ 'BAS': 'Essential Cover', 'PLU': 'Enhanced Cover', 'PRE': 'Full Cover', 'PMP': 'Ultimate Cover', 'PLI': 'Essential Cover', 'LDW': 'Standard Cover', 'SPP': 'Maximum Cover' }[type] || '');
+const getPackageSubtitle = (type) => ({ 'BAS': 'Base rate option', 'PLU': 'Supplier rate option', 'PRE': 'Supplier rate option', 'PMP': 'Supplier rate option', 'PLI': 'Protection rate option', 'LDW': 'Protection rate option', 'SPP': 'Protection rate option' }[type] || '');
 const currentPackageLabel = computed(() => {
     if (currentProduct.value?.name) return currentProduct.value.name;
     if (isOkMobility.value) { const pkg = (adapter.okMobilityPackages?.value ?? availablePackages.value).find(item => item.type === currentPackage.value); if (pkg?.name) return pkg.name; }
@@ -662,17 +662,14 @@ const getBenefits = (product) => {
     if (!product) return [];
     if (product.benefits && Array.isArray(product.benefits)) return product.benefits;
     const benefits = [];
-    if (product.excess !== undefined && parseFloat(product.excess) === 0) benefits.push('Glass and tyres covered');
     if (product.debitcard === 'Y') benefits.push('Debit Card Accepted');
-    if (product.fuelpolicy === 'FF') benefits.push('Free Fuel / Full to Full');
+    if (product.fuelpolicy === 'FF') benefits.push('Full-to-full fuel policy');
     else if (product.fuelpolicy === 'SL') benefits.push('Like for Like fuel policy');
     if (product.costperextradistance !== undefined && parseFloat(product.costperextradistance) === 0) benefits.push('Unlimited mileage');
     else if (product.mileage && product.mileage !== 'Unlimited' && product.mileage !== 'unlimited') {
         const mv = parseFloat(`${product.mileage}`.trim());
         benefits.push(Number.isFinite(mv) && `${product.mileage}`.trim() === `${mv}` ? `KM Limit: ${product.mileage}` : `Mileage: ${product.mileage}`);
     } else if (product.mileage === 'Unlimited' || product.mileage === 'unlimited') benefits.push('Unlimited mileage');
-    if (product.type === 'BAS') { benefits.push('Non-refundable'); benefits.push('Non-amendable'); }
-    if (['PLU', 'PRE', 'PMP'].includes(product.type)) benefits.push('Cancellation in line with T&Cs');
     return benefits;
 };
 

@@ -27,6 +27,22 @@ const isPackageSelected = (pkg) => props.isAdobeCars && pkg.isAddOn
     : props.selectedPackageType === pkg.type;
 
 const packageBenefits = (pkg) => props.getBenefits(pkg).slice(0, 5);
+const hasPackageValue = (value) => value !== null && value !== undefined && value !== '';
+const hasPackageMetrics = (pkg) => hasPackageValue(pkg.deposit) || hasPackageValue(pkg.excess) || pkg.mileage;
+const formatPackageMetric = (amount, currency) => {
+    if (!currency) return props.formatPrice(amount);
+
+    const numeric = Number.parseFloat(amount);
+    try {
+        return new Intl.NumberFormat(undefined, {
+            style: 'currency',
+            currency,
+            maximumFractionDigits: 2,
+        }).format(Number.isFinite(numeric) ? numeric : 0);
+    } catch {
+        return `${currency} ${(Number.isFinite(numeric) ? numeric : 0).toFixed(2)}`;
+    }
+};
 
 const selectPackage = (pkg) => {
     if (props.isAdobeCars && pkg.isAddOn) {
@@ -65,7 +81,7 @@ const locautoActionLabel = (protection) => {
                         <Sparkles class="w-4 h-4" />
                         Rental package
                     </div>
-                    <h3 class="mt-1 text-lg font-bold text-[#153b4f]">Choose your cover level</h3>
+                    <h3 class="mt-1 text-lg font-bold text-[#153b4f]">Choose your rental package</h3>
                 </div>
                 <span class="hidden sm:inline-flex rounded-full border border-[#153b4f]/15 bg-white px-3 py-1.5 text-xs font-semibold text-[#153b4f]">
                     {{ availablePackages.length }} options
@@ -100,14 +116,14 @@ const locautoActionLabel = (protection) => {
                     </div>
                 </div>
 
-                <div v-if="pkg.deposit || pkg.excess || pkg.mileage" class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div v-if="pkg.deposit" class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
+                <div v-if="hasPackageMetrics(pkg)" class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div v-if="hasPackageValue(pkg.deposit)" class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
                         <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Deposit</div>
-                        <div class="text-xs font-semibold text-slate-800">{{ formatPrice(pkg.deposit) }}</div>
+                        <div class="text-xs font-semibold text-slate-800">{{ formatPackageMetric(pkg.deposit, pkg.deposit_currency) }}</div>
                     </div>
-                    <div v-if="pkg.excess" class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
+                    <div v-if="hasPackageValue(pkg.excess)" class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
                         <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Excess</div>
-                        <div class="text-xs font-semibold text-slate-800">{{ formatPrice(pkg.excess) }}</div>
+                        <div class="text-xs font-semibold text-slate-800">{{ formatPackageMetric(pkg.excess, pkg.excess_currency || pkg.deposit_currency) }}</div>
                     </div>
                     <div v-if="pkg.mileage" class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
                         <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Mileage</div>
@@ -129,6 +145,10 @@ const locautoActionLabel = (protection) => {
                         <span>{{ benefit }}</span>
                     </li>
                 </ul>
+
+                <div v-else class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                    Supplier has not provided detailed benefits for this package.
+                </div>
 
                 <div class="mt-5 flex items-end justify-between gap-3 border-t border-slate-100 pt-4">
                     <div>

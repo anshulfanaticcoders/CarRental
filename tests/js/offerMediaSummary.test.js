@@ -25,3 +25,26 @@ test('buildOfferMediaSummary returns compact offer facts for the media side pane
         { icon: 'shield', label: 'Cancellation', value: 'Free up to 2 days before pickup' },
     ]);
 });
+
+test('buildOfferMediaSummary omits cancellation when supplier terms are missing', () => {
+    const items = buildOfferMediaSummary({
+        supplierName: 'Supplier',
+        pickupOffice: 'Airport',
+        cancellation: null,
+    });
+
+    assert.equal(items.some(item => item.label === 'Cancellation'), false);
+});
+
+test('buildOfferMediaSummary does not invent non-refundable cancellation terms', () => {
+    const items = buildOfferMediaSummary({
+        supplierName: 'Supplier',
+        pickupOffice: 'Airport',
+        cancellation: {
+            available: false,
+        },
+    });
+
+    assert.equal(items.some(item => /non-refundable/i.test(item.value)), false);
+    assert.equal(items.some(item => item.label === 'Cancellation'), false);
+});

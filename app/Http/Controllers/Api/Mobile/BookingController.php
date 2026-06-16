@@ -51,6 +51,7 @@ class BookingController extends Controller
                     'session_id' => $data['session_id'],
                     'error' => $e->getMessage(),
                 ]);
+
                 return response()->json([
                     'status' => 'pending',
                     'message' => 'Confirming payment with Stripe…',
@@ -197,7 +198,7 @@ class BookingController extends Controller
             if (now()->isAfter($deadlineDate)) {
                 return response()->json([
                     'message' => 'Free cancellation period has expired (deadline '
-                        . $deadlineDate->format('M d, Y H:i') . '). Contact support for assistance.',
+                        .$deadlineDate->format('M d, Y H:i').'). Contact support for assistance.',
                 ], 422);
             }
         } elseif (! $isExternal) {
@@ -256,21 +257,23 @@ class BookingController extends Controller
                 );
 
                 if ($response === null) {
-                    $booking->notes = trim(($booking->notes ?? '') . "\nGateway Cancel failed: empty response.");
+                    $booking->notes = trim(($booking->notes ?? '')."\nGateway Cancel failed: empty response.");
                     $booking->save();
+
                     return response()->json([
                         'message' => 'Failed to cancel reservation with provider. Try again or contact support.',
                     ], 502);
                 }
 
-                $booking->notes = trim(($booking->notes ?? '') . "\nGateway Cancel: cancellation requested.");
+                $booking->notes = trim(($booking->notes ?? '')."\nGateway Cancel: cancellation requested.");
             } catch (\Throwable $e) {
                 Log::error('Mobile cancel: gateway failed', [
                     'booking_id' => $booking->id,
                     'error' => $e->getMessage(),
                 ]);
-                $booking->notes = trim(($booking->notes ?? '') . "\nGateway Cancel failed: " . $e->getMessage());
+                $booking->notes = trim(($booking->notes ?? '')."\nGateway Cancel failed: ".$e->getMessage());
                 $booking->save();
+
                 return response()->json([
                     'message' => 'Failed to cancel reservation with provider. Try again or contact support.',
                 ], 502);
@@ -319,10 +322,10 @@ class BookingController extends Controller
     {
         return match ($providerSource) {
             'greenmotion' => 'green_motion',
-            'usave' => 'u_save',
+            'usave' => 'usave',
             'adobe' => 'adobe_car',
             'okmobility' => 'ok_mobility',
-            'recordgo' => 'record_go',
+            'recordgo' => 'recordgo',
             default => (string) ($providerSource ?? ''),
         };
     }
@@ -344,8 +347,13 @@ class BookingController extends Controller
     {
         $host = rtrim(request()->getSchemeAndHttpHost(), '/');
         $absolutize = function (?string $path) use ($host): ?string {
-            if (! $path) return null;
-            if (preg_match('#^https?://#i', $path)) return $path;
+            if (! $path) {
+                return null;
+            }
+            if (preg_match('#^https?://#i', $path)) {
+                return $path;
+            }
+
             return $host.'/'.ltrim($path, '/');
         };
 
@@ -427,7 +435,7 @@ class BookingController extends Controller
 
         $fuelPolicy = $policiesData['fuel_policy'] ?? $policiesData['fuelpolicy'] ?? $metadata['fuel_policy'] ?? null;
 
-        $mileage = 'Unlimited';
+        $mileage = null;
         if (! empty($policiesData['limited_km_per_day'])) {
             $range = $policiesData['limited_km_per_day_range'] ?? null;
             $pricePerKm = $policiesData['price_per_km_per_day'] ?? null;
@@ -437,14 +445,20 @@ class BookingController extends Controller
             }
         } elseif (isset($policiesData['unlimited_mileage']) && ! $policiesData['unlimited_mileage']) {
             $mileage = $policiesData['included_km'] ?? 'Limited';
-        } elseif (! empty($policiesData['mileage']) && $policiesData['mileage'] !== 'Unlimited') {
+        } elseif (isset($policiesData['unlimited_mileage']) && $policiesData['unlimited_mileage']) {
+            $mileage = 'Unlimited';
+        } elseif (! empty($policiesData['mileage'])) {
             $mileage = $policiesData['mileage'];
         }
 
-        $cancellation = 'Non-refundable';
+        $cancellation = null;
         if (! empty($policiesData['cancellation_available_per_day'])) {
             $days = $policiesData['cancellation_available_per_day_date'] ?? null;
             $cancellation = $days ? "Free cancellation ({$days} days before)" : 'Free cancellation';
+        } elseif (! empty($policiesData['cancellation_policy'])) {
+            $cancellation = $policiesData['cancellation_policy'];
+        } elseif (! empty($metadata['cancellation_policy'])) {
+            $cancellation = $metadata['cancellation_policy'];
         }
 
         $minAge = $policiesData['minimum_driver_age'] ?? $metadata['min_age'] ?? null;
@@ -479,8 +493,13 @@ class BookingController extends Controller
                 'plan_type' => $b->plan,
                 'plan_description' => $description,
                 'features' => is_array($features) ? array_map(function ($f) {
-                    if (is_string($f)) return $f;
-                    if (is_array($f)) return $f['name'] ?? $f['label'] ?? $f['feature'] ?? null;
+                    if (is_string($f)) {
+                        return $f;
+                    }
+                    if (is_array($f)) {
+                        return $f['name'] ?? $f['label'] ?? $f['feature'] ?? null;
+                    }
+
                     return null;
                 }, $features) : [],
             ];
@@ -678,8 +697,13 @@ class BookingController extends Controller
     {
         $host = rtrim(request()->getSchemeAndHttpHost(), '/');
         $absolutize = function (?string $path) use ($host): ?string {
-            if (! $path) return null;
-            if (preg_match('#^https?://#i', $path)) return $path;
+            if (! $path) {
+                return null;
+            }
+            if (preg_match('#^https?://#i', $path)) {
+                return $path;
+            }
+
             return $host.'/'.ltrim($path, '/');
         };
 

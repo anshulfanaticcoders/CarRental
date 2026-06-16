@@ -13,15 +13,19 @@ export const buildOfferMediaSummary = ({
         .filter(Boolean)
         .join(' • ');
 
-    const cancellationValue = cancellation?.available
-        ? `Free up to ${Number(cancellation?.daysBeforePickup ?? 0)} days before pickup`
-        : 'Non-refundable';
+    const cancellationValue = (() => {
+        if (!cancellation) return null;
+        if (cancellation.available) {
+            return `Free up to ${Number(cancellation?.daysBeforePickup ?? 0)} days before pickup`;
+        }
+        return compact(cancellation.description);
+    })();
 
     return [
         compact(supplierName) ? { icon: 'badge', label: 'Supplier', value: compact(supplierName) } : null,
         compact(pickupOffice) ? { icon: 'pin', label: 'Pickup', value: compact(pickupOffice) } : null,
         specs ? { icon: 'gauge', label: 'Specs', value: specs } : null,
         compact(mileagePolicy) ? { icon: 'road', label: 'Mileage', value: compact(mileagePolicy) } : null,
-        { icon: 'shield', label: 'Cancellation', value: cancellationValue },
+        cancellationValue ? { icon: 'shield', label: 'Cancellation', value: cancellationValue } : null,
     ].filter(Boolean);
 };

@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from 'vue'
+
 const props = defineProps({
     vehicle: { type: Object, required: true },
     currentProduct: { type: Object, default: null },
@@ -15,12 +17,26 @@ const depositType = computed({
     set: (v) => emit('update:selectedDepositType', v),
 })
 
-import { computed } from 'vue'
-
 const depositAmount = computed(() => props.currentProduct?.deposit ?? props.vehicle?.security_deposit ?? props.vehicle?.benefits?.deposit_amount ?? null)
 const depositCurrency = computed(() => props.currentProduct?.deposit_currency ?? props.vehicle?.benefits?.deposit_currency ?? null)
 const excessAmount = computed(() => props.currentProduct?.excess ?? props.vehicle?.benefits?.excess_amount ?? null)
 const excessTheftAmount = computed(() => props.currentProduct?.excess_theft_amount ?? props.vehicle?.benefits?.excess_theft_amount ?? null)
+const excessCurrency = computed(() => props.currentProduct?.excess_currency ?? props.currentProduct?.deposit_currency ?? props.vehicle?.benefits?.deposit_currency ?? null)
+const hasValue = (value) => value !== null && value !== undefined && value !== ''
+const formatSupplierAmount = (amount, currency) => {
+    if (!currency) return props.formatPrice(amount)
+
+    const numeric = Number.parseFloat(amount)
+    try {
+        return new Intl.NumberFormat(undefined, {
+            style: 'currency',
+            currency,
+            maximumFractionDigits: 2,
+        }).format(Number.isFinite(numeric) ? numeric : 0)
+    } catch {
+        return `${currency} ${(Number.isFinite(numeric) ? numeric : 0).toFixed(2)}`
+    }
+}
 </script>
 
 <template>
@@ -30,24 +46,24 @@ const excessTheftAmount = computed(() => props.currentProduct?.excess_theft_amou
             Deposit &amp; Excess
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div v-if="vehicle?.security_deposit > 0 && !currentProduct?.deposit" class="bg-amber-50/70 rounded-xl p-4 border border-amber-200/60">
+            <div v-if="vehicle?.security_deposit > 0 && !hasValue(currentProduct?.deposit)" class="bg-amber-50/70 rounded-xl p-4 border border-amber-200/60">
                 <p class="text-xs font-bold text-amber-700 uppercase tracking-wider">Security Deposit</p>
                 <p class="text-2xl font-bold text-gray-900 mt-1">{{ formatPrice(vehicle?.security_deposit) }}</p>
                 <p class="text-xs text-gray-500 mt-1">Blocked on credit card at pick-up</p>
             </div>
-            <div v-else-if="depositAmount" class="bg-amber-50/70 rounded-xl p-4 border border-amber-200/60">
+            <div v-else-if="hasValue(depositAmount)" class="bg-amber-50/70 rounded-xl p-4 border border-amber-200/60">
                 <p class="text-xs font-bold text-amber-700 uppercase tracking-wider">Deposit Amount</p>
-                <p class="text-2xl font-bold text-gray-900 mt-1">{{ formatPrice(depositAmount) }}</p>
-                <p v-if="depositCurrency" class="text-xs text-gray-500 mt-1">Currency: {{ depositCurrency }}</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ formatSupplierAmount(depositAmount, depositCurrency) }}</p>
+                <p v-if="depositCurrency" class="text-xs text-gray-500 mt-1">Supplier currency: {{ depositCurrency }}</p>
             </div>
-            <div v-if="excessAmount" class="bg-orange-50/70 rounded-xl p-4 border border-orange-200/60">
+            <div v-if="hasValue(excessAmount)" class="bg-orange-50/70 rounded-xl p-4 border border-orange-200/60">
                 <p class="text-xs font-bold text-orange-700 uppercase tracking-wider">Excess Amount</p>
-                <p class="text-2xl font-bold text-gray-900 mt-1">{{ formatPrice(excessAmount) }}</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ formatSupplierAmount(excessAmount, excessCurrency) }}</p>
                 <p class="text-xs text-gray-500 mt-1">Maximum liability per incident</p>
             </div>
-            <div v-if="excessTheftAmount" class="bg-orange-50/70 rounded-xl p-4 border border-orange-200/60">
+            <div v-if="hasValue(excessTheftAmount)" class="bg-orange-50/70 rounded-xl p-4 border border-orange-200/60">
                 <p class="text-xs font-bold text-orange-700 uppercase tracking-wider">Theft Excess</p>
-                <p class="text-2xl font-bold text-gray-900 mt-1">{{ formatPrice(excessTheftAmount) }}</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ formatSupplierAmount(excessTheftAmount, excessCurrency) }}</p>
             </div>
         </div>
 
@@ -62,7 +78,7 @@ const excessTheftAmount = computed(() => props.currentProduct?.excess_theft_amou
                 </div>
                 <div>
                     <h5 class="text-sm font-bold text-gray-900">How would you like to pay the deposit at pickup?</h5>
-                    <p class="text-xs text-gray-500 mt-0.5">The vendor requires a deposit of <strong>{{ formatPrice(depositAmount) }}</strong> when you collect the vehicle.</p>
+                    <p class="text-xs text-gray-500 mt-0.5">The vendor requires a deposit of <strong>{{ formatSupplierAmount(depositAmount, depositCurrency) }}</strong> when you collect the vehicle.</p>
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">

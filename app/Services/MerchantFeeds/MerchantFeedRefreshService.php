@@ -23,7 +23,7 @@ class MerchantFeedRefreshService
 
     public function refresh(string $feedName = 'awin'): array
     {
-        $now = CarbonImmutable::now();
+        $now = CarbonImmutable::instance(now());
         $window = $this->buildWindow($feedName, $now);
         $seen = [
             'internal' => [],

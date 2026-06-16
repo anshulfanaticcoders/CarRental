@@ -104,8 +104,9 @@ export function createAdobeAdapter(props) {
         if (pli) {
             items.push({ label: 'Liability Protection (PLI)', detail: `Mandatory — $${pli.amount.toFixed(2)}` });
         }
-        items.push({ label: 'Third Party Liability', detail: 'Included' });
-        items.push({ label: 'Unlimited Mileage', detail: 'Included' });
+        if (pli && items.length > 0) {
+            items[items.length - 1].detail = 'Mandatory - added in booking summary';
+        }
         return items;
     });
     const taxBreakdown = computed(() => null);

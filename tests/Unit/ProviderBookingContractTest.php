@@ -85,4 +85,27 @@ class ProviderBookingContractTest extends TestCase
         $this->assertContains('vehicle.surprice_vendor_rate_id', $result['missing_fields']);
         $this->assertContains('vehicle.surprice_rate_code', $result['missing_fields']);
     }
+
+    public function test_it_applies_ok_mobility_contract_for_frontend_source_alias(): void
+    {
+        $result = (new ProviderBookingContract)->validateCheckout([
+            'gateway_search_id' => 'search_123',
+            'package' => 'BAS',
+            'customer' => [
+                'name' => 'Test Customer',
+                'email' => 'test@example.com',
+                'phone' => '+10000000000',
+                'driver_age' => 35,
+            ],
+            'vehicle' => [
+                'source' => 'okmobility',
+                'gateway_vehicle_id' => 'gw_ok_1',
+            ],
+        ]);
+
+        $this->assertFalse($result['valid']);
+        $this->assertContains('vehicle.ok_mobility_token', $result['missing_fields']);
+        $this->assertContains('vehicle.ok_mobility_group_id', $result['missing_fields']);
+        $this->assertContains('vehicle.ok_mobility_rate_code', $result['missing_fields']);
+    }
 }

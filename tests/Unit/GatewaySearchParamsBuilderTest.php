@@ -141,8 +141,51 @@ class GatewaySearchParamsBuilderTest extends TestCase
         ]);
 
         $this->assertSame('MA', $params['country_code']);
+        $this->assertSame('greenmotion', $params['providers']);
         $this->assertCount(1, $params['provider_locations']);
         $this->assertSame('greenmotion', $params['provider_locations'][0]['provider']);
+    }
+
+    public function test_it_accepts_gateway_supplier_alias_for_adobe_provider_searches(): void
+    {
+        $locationSearchService = $this->createMock(LocationSearchService::class);
+        $locationSearchService->expects($this->once())
+            ->method('resolveSearchLocation')
+            ->with([
+                'unified_location_id' => 4277689257,
+                'provider' => 'adobe_car',
+                'provider_pickup_id' => 'OCO',
+            ])
+            ->willReturn([
+                'unified_location_id' => 4277689257,
+                'country_code' => 'CR',
+                'providers' => [
+                    [
+                        'provider' => 'adobe',
+                        'pickup_id' => 'OCO',
+                        'original_name' => 'Aeropuerto San Jose Sjo Airport',
+                    ],
+                    [
+                        'provider' => 'easirent',
+                        'pickup_id' => 'SJO',
+                        'original_name' => 'San Jose Airport',
+                    ],
+                ],
+            ]);
+
+        $builder = new GatewaySearchParamsBuilder($locationSearchService);
+
+        $params = $builder->build([
+            'unified_location_id' => 4277689257,
+            'provider' => 'adobe_car',
+            'provider_pickup_id' => 'OCO',
+        ]);
+
+        $this->assertSame('CR', $params['country_code']);
+        $this->assertSame('adobe', $params['providers']);
+        $this->assertCount(1, $params['provider_locations']);
+        $this->assertSame('adobe', $params['provider_locations'][0]['provider']);
+        $this->assertSame('OCO', $params['provider_locations'][0]['pickup_id']);
     }
 
     public function test_it_filters_one_way_provider_locations_to_providers_present_at_dropoff(): void
@@ -229,5 +272,6 @@ class GatewaySearchParamsBuilderTest extends TestCase
 
         $this->assertSame('BE', $params['country_code']);
         $this->assertSame([], $params['provider_locations']);
+        $this->assertArrayNotHasKey('providers', $params);
     }
 }

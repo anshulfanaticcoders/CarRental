@@ -653,56 +653,6 @@ class StripeCheckoutController extends Controller
                 $validated['vehicle'] = $vehicle;
             }
 
-            if ($providerSource === 'recordgo') {
-                $missing = [];
-                $vehicle = $validated['vehicle'] ?? [];
-                $countryCode = strtoupper((string) ($validated['country'] ?? ''));
-                if ($countryCode === '') {
-                    $countryCode = 'IT';
-                }
-
-                $recordgoProducts = $vehicle['recordgo_products'] ?? [];
-                $selectedRecordGo = null;
-                if (is_array($recordgoProducts)) {
-                    foreach ($recordgoProducts as $product) {
-                        if (($product['type'] ?? null) === ($validated['package'] ?? null)) {
-                            $selectedRecordGo = $product;
-                            break;
-                        }
-                    }
-                    if (! $selectedRecordGo && ! empty($recordgoProducts)) {
-                        $selectedRecordGo = $recordgoProducts[0];
-                    }
-                }
-
-                $vehicle['recordgo_selected_product'] = $selectedRecordGo;
-                $validated['vehicle'] = $vehicle;
-
-                if (empty($vehicle['provider_pickup_id'])) {
-                    $missing[] = 'vehicle.provider_pickup_id';
-                }
-                if (empty($vehicle['provider_dropoff_id'])) {
-                    $missing[] = 'vehicle.provider_dropoff_id';
-                }
-                if (empty($vehicle['sipp_code'])) {
-                    $missing[] = 'vehicle.sipp_code';
-                }
-
-                if (! $selectedRecordGo || empty($selectedRecordGo['product_id']) || empty($selectedRecordGo['product_ver']) || empty($selectedRecordGo['rate_prod_ver'])) {
-                    $missing[] = 'recordgo.product_id/product_ver/rate_prod_ver';
-                }
-                if (empty($vehicle['recordgo_sellcode_ver'])) {
-                    $missing[] = 'vehicle.recordgo_sellcode_ver';
-                }
-
-                if (! empty($missing)) {
-                    return response()->json([
-                        'error' => 'Missing required Record Go booking details. Please refresh and try again.',
-                        'missing_fields' => $missing,
-                    ], 422);
-                }
-            }
-
             $vehicle = $validated['vehicle'] ?? [];
             [$pickupLocationDetails, $dropoffLocationDetails] = $this->resolveCheckoutLocationDetails($validated);
 
@@ -729,53 +679,6 @@ class StripeCheckoutController extends Controller
                 if (! empty($missing)) {
                     return response()->json([
                         'error' => 'Please complete the required driver details before checkout.',
-                        'missing_fields' => $missing,
-                    ], 422);
-                }
-
-                $quoteId = $validated['quoteid'] ?? ($validated['vehicle']['quoteid'] ?? null);
-                if (! $quoteId) {
-                    return response()->json([
-                        'error' => 'Quote expired or missing. Please search again.',
-                    ], 422);
-                }
-
-                if (empty($validated['package'])) {
-                    return response()->json([
-                        'error' => 'Please select a package before checkout.',
-                    ], 422);
-                }
-            }
-
-            if ($providerSource === 'sicily_by_car') {
-                $missing = [];
-                $customer = $validated['customer'] ?? [];
-
-                if (empty($customer['name'])) {
-                    $missing[] = 'customer.name';
-                }
-                if (empty($customer['email'])) {
-                    $missing[] = 'customer.email';
-                }
-                if (empty($customer['phone'])) {
-                    $missing[] = 'customer.phone';
-                }
-                if (empty($customer['driver_age'])) {
-                    $missing[] = 'customer.driver_age';
-                }
-
-                if (empty($vehicle['provider_pickup_id'])) {
-                    $missing[] = 'vehicle.provider_pickup_id';
-                }
-                if (empty($vehicle['provider_vehicle_id'])) {
-                    $missing[] = 'vehicle.provider_vehicle_id';
-                }
-                if (empty($vehicle['rate_id'])) {
-                    $missing[] = 'vehicle.rate_id';
-                }
-                if (! empty($missing)) {
-                    return response()->json([
-                        'error' => 'Missing required Sicily By Car booking details. Please refresh and try again.',
                         'missing_fields' => $missing,
                     ], 422);
                 }
@@ -872,6 +775,17 @@ class StripeCheckoutController extends Controller
                     'error' => 'Pricing context expired. Please refresh your search and try again.',
                     'code' => 'MISSING_SEARCH_SESSION',
                 ], 422);
+            }
+
+            [$pickupLocationDetails, $dropoffLocationDetails] = $this->resolveCheckoutLocationDetails($validated);
+
+            if ($providerSource === 'recordgo') {
+                $vehicle = $validated['vehicle'] ?? [];
+                $vehicle['recordgo_selected_product'] = $this->resolveRecordGoSelectedProduct(
+                    $vehicle,
+                    $validated['package'] ?? null
+                );
+                $validated['vehicle'] = $vehicle;
             }
 
             $providerContract = app(ProviderBookingContract::class);
@@ -1483,6 +1397,22 @@ class StripeCheckoutController extends Controller
         }
 
         return collect($vehicle['products'])->first(fn ($entry) => is_array($entry)) ?: null;
+    }
+
+    private function resolveRecordGoSelectedProduct(array $vehicle, ?string $package): ?array
+    {
+        $products = $vehicle['recordgo_products'] ?? [];
+        if (! is_array($products) || $products === []) {
+            return null;
+        }
+
+        foreach ($products as $product) {
+            if (is_array($product) && $package !== null && ($product['type'] ?? null) === $package) {
+                return $product;
+            }
+        }
+
+        return collect($products)->first(fn ($product) => is_array($product)) ?: null;
     }
 
     private function mergeVerifiedVehicleContext(array $vehicle, mixed $context): array

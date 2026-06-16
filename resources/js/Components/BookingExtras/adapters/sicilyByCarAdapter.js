@@ -61,7 +61,7 @@ export function createSicilyByCarAdapter(props) {
         return [...sicilyByCarProtectionPlans.value, ...sicilyByCarOptionalExtras.value];
     });
 
-    // ── Base Total ──────────────────────────────────────────────────────
+    // Base Total
     const baseTotal = computed(() => {
         const total = parseFloat(props.vehicle?.total_price || 0);
         if (total > 0) return total;
@@ -69,7 +69,7 @@ export function createSicilyByCarAdapter(props) {
         return daily > 0 ? daily * props.numberOfDays : 0;
     });
 
-    // ── Packages ────────────────────────────────────────────────────────
+    // Packages
     const packages = computed(() => {
         const benefits = [];
         if (props.vehicle?.rate_name) {
@@ -107,7 +107,7 @@ export function createSicilyByCarAdapter(props) {
             const code = `${service?.code || service?.id || ''}`.toUpperCase();
             let detail = 'Included';
             if (excess && excess > 0 && (code === 'CDW' || code === 'TLW')) {
-                detail = `Included (excess: €${excess})`;
+                detail = `Included (excess: EUR ${excess})`;
             }
             return {
                 label: service?.description || service?.name || service?.id || 'Included Service',

@@ -30,6 +30,27 @@ test('normalizes greenmotion products into canonical plan format', () => {
     assert.equal(plans[1].isSelected, false);
 });
 
+test('greenmotion plans do not invent cancellation or non-refundable claims', () => {
+    const plans = normalizeProtectionPlans({
+        vehicle: {
+            source: 'greenmotion',
+            products: [
+                { type: 'BAS', total: 90, currency: 'EUR' },
+                { type: 'PRE', total: 150, currency: 'EUR' },
+            ],
+            currency: 'EUR',
+        },
+        rentalDays: 3,
+        selectedId: 'BAS',
+        convertPrice: identity,
+    });
+
+    const allBenefits = plans.flatMap(plan => plan.benefits);
+
+    assert.equal(allBenefits.some(benefit => /non-refundable/i.test(benefit)), false);
+    assert.equal(allBenefits.some(benefit => /cancellation/i.test(benefit)), false);
+});
+
 test('normalizes locauto plans with basic + protections', () => {
     const plans = normalizeProtectionPlans({
         vehicle: {

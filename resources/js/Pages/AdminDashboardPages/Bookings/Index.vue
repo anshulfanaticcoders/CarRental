@@ -209,10 +209,19 @@
                                     </div>
                                 </TableCell>
                                 <TableCell class="px-4 py-3">
-                                    <div class="text-sm">
-                                        <div class="font-medium">{{ formatDate(booking.created_at) }}</div>
+                                    <div class="min-w-[190px] space-y-1 text-sm">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">From</span>
+                                            <span class="font-medium">{{ formatTripDate(booking.trip_from_date || booking.pickup_date) }}</span>
+                                            <span class="text-xs text-muted-foreground">{{ booking.trip_from_time || booking.pickup_time || '' }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">To</span>
+                                            <span class="font-medium">{{ formatTripDate(booking.trip_to_date || booking.return_date) }}</span>
+                                            <span class="text-xs text-muted-foreground">{{ booking.trip_to_time || booking.return_time || '' }}</span>
+                                        </div>
                                         <div class="text-muted-foreground text-xs">
-                                            <span class="line-clamp-1">{{ booking.pickup_location }}</span>
+                                            <span class="block max-w-[180px] truncate">{{ booking.pickup_location }}</span>
                                             <span v-if="booking.return_location && booking.return_location !== booking.pickup_location"
                                                 class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[#22d3ee]/15 text-[#0b2230] border border-[#22d3ee]/40">
                                                 One-way
@@ -294,6 +303,14 @@
                                                 <div class="flex items-center justify-between gap-3">
                                                     <dt class="text-muted-foreground">Created</dt>
                                                     <dd class="font-medium">{{ formatDate(booking.created_at) }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Trip from</dt>
+                                                    <dd class="font-medium">{{ formatTripDate(booking.trip_from_date || booking.pickup_date) }} {{ booking.trip_from_time || booking.pickup_time || '' }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Trip to</dt>
+                                                    <dd class="font-medium">{{ formatTripDate(booking.trip_to_date || booking.return_date) }} {{ booking.trip_to_time || booking.return_time || '' }}</dd>
                                                 </div>
                                             </dl>
                                         </div>
@@ -681,8 +698,22 @@ const getPaymentBadgeVariant = (paymentStatus) => {
     }
 };
 const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
     const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return 'N/A';
     return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+};
+
+const formatTripDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+
+    const value = String(dateStr);
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+        return `${match[3]}/${match[2]}/${match[1]}`;
+    }
+
+    return formatDate(value);
 };
 
 // Currency symbol function

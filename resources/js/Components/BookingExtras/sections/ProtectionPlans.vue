@@ -18,6 +18,7 @@ const emit = defineEmits(['toggle-extra', 'update-extra-quantity']);
 
 const isSelected = (extra) => Boolean(props.selectedExtras?.[extra.id]);
 const selectedQuantity = (extra) => props.selectedExtras?.[extra.id] || (extra.required ? 1 : 0);
+const maxQuantity = (extra) => Math.max(parseInt(extra.numberAllowed || extra.maxQuantity || extra.max_quantity || 1), 1);
 const planPrice = (extra) => {
     if (props.isSicilyByCar) return props.getExtraPerDay(extra);
     return extra.total_for_booking != null ? extra.total_for_booking : (extra.daily_rate != null ? extra.daily_rate : (extra.price / props.numberOfDays));
@@ -86,7 +87,7 @@ const selectedCount = computed(() => (props.plans || []).reduce((sum, extra) => 
                     </div>
                 </div>
 
-                <div v-if="extra.numberAllowed && extra.numberAllowed > 1" class="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-4" @click.stop>
+                <div v-if="maxQuantity(extra) > 1" class="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-4" @click.stop>
                     <button type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-slate-600 transition-colors"
                         @click.stop="emit('update-extra-quantity', extra, -1)"
                         :disabled="selectedQuantity(extra) <= (extra.required ? 1 : 0)">
@@ -95,7 +96,7 @@ const selectedCount = computed(() => (props.plans || []).reduce((sum, extra) => 
                     <span class="w-8 text-center text-sm font-bold text-slate-900">{{ selectedQuantity(extra) }}</span>
                     <button type="button" class="w-8 h-8 rounded-full bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8f] text-white flex items-center justify-center hover:shadow-md hover:shadow-[#1e3a5f]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                         @click.stop="emit('update-extra-quantity', extra, 1)"
-                        :disabled="selectedQuantity(extra) >= extra.numberAllowed">
+                        :disabled="selectedQuantity(extra) >= maxQuantity(extra)">
                         <Plus class="w-4 h-4" />
                     </button>
                 </div>

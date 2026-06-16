@@ -29,7 +29,7 @@ class SearchOrchestratorService
 
     public function resolveProviderEntries(array $validated): array
     {
-        $providerName = $validated['provider'] ?? 'mixed';
+        $providerName = $this->normalizeProviderId($validated['provider'] ?? 'mixed');
         $providerName = $providerName ?: 'mixed';
         $locationLat = $validated['latitude'] ?? null;
         $locationLng = $validated['longitude'] ?? null;
@@ -62,7 +62,7 @@ class SearchOrchestratorService
 
             if ($providerName !== 'mixed') {
                 $providerEntriesSource = array_values(array_filter($providerEntriesSource, function ($provider) use ($providerName) {
-                    return ($provider['provider'] ?? null) === $providerName;
+                    return $this->normalizeProviderId($provider['provider'] ?? null) === $providerName;
                 }));
             }
 
@@ -89,7 +89,7 @@ class SearchOrchestratorService
             $dropoffProviders = $this->resolveDropoffProviderSet((int) $dropoffUnifiedId);
 
             $providerEntries = array_values(array_filter($providerEntries, function ($entry) use ($dropoffProviders) {
-                $provider = strtolower(trim((string) ($entry['provider'] ?? '')));
+                $provider = $this->normalizeProviderId($entry['provider'] ?? '');
                 if (! in_array($provider, self::ONE_WAY_PROVIDERS, true)) {
                     return false;
                 }
@@ -140,7 +140,7 @@ class SearchOrchestratorService
 
         $providers = [];
         foreach ($dropoffLocation['providers'] as $provider) {
-            $id = strtolower(trim((string) ($provider['provider'] ?? '')));
+            $id = $this->normalizeProviderId($provider['provider'] ?? '');
             if ($id !== '') {
                 $providers[] = $id;
             }
@@ -151,7 +151,7 @@ class SearchOrchestratorService
 
     public function filterGatewayVehiclesForRequestedProvider(Collection $vehicles, array $validated): Collection
     {
-        $providerName = strtolower(trim((string) ($validated['provider'] ?? 'mixed')));
+        $providerName = $this->normalizeProviderId($validated['provider'] ?? 'mixed');
 
         if ($providerName === '' || $providerName === 'mixed') {
             return $vehicles->values();
@@ -167,8 +167,20 @@ class SearchOrchestratorService
                     ? strtolower(trim((string) ($vehicle['source'] ?? '')))
                     : strtolower(trim((string) ($vehicle->source ?? '')));
 
-                return $source === $providerName;
+                return $this->normalizeProviderId($source) === $providerName;
             })
             ->values();
+    }
+
+    private function normalizeProviderId(mixed $provider): string
+    {
+        $provider = strtolower(trim((string) $provider));
+
+        return match ($provider) {
+            'adobe_car' => 'adobe',
+            'green_motion' => 'greenmotion',
+            'ok_mobility' => 'okmobility',
+            default => $provider,
+        };
     }
 }

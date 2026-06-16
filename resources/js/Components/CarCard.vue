@@ -80,14 +80,11 @@ onMounted(() => {
                     </div>
 
                     <div class="benefits mt-[2rem] grid grid-cols-2 gap-3">
-                        <span class="flex gap-3 items-center text-[12px]">
+                        <span v-if="vehicle?.benefits?.cancellation_available_per_day" class="flex gap-3 items-center text-[12px]">
                             <img :src="check" alt="" />Free Cancellation
                         </span>
-                        <span class="flex gap-3 items-center text-[12px]">
+                        <span v-if="`${vehicle.mileage || ''}`.toLowerCase() === 'unlimited'" class="flex gap-3 items-center text-[12px]">
                             <img :src="check" alt="" />Unlimited mileage
-                        </span>
-                        <span class="flex gap-3 items-center text-[12px]">
-                            <img :src="check" alt="" />Unlimited kilometers
                         </span>
                     </div>
 

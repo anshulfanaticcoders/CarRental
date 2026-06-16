@@ -104,25 +104,6 @@ defineProps({
         </div>
     </section>
 
-    <!-- Included Services (SicilyByCar) -->
-    <section v-if="isSicilyByCar && sicilyByCarIncludedServices.length > 0" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 fade-in-up">
-        <h3 class="text-base font-bold text-[#1e3a5f] mb-3 flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Included Services
-        </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div v-for="service in sicilyByCarIncludedServices" :key="service.id" class="flex items-start gap-3 p-3 rounded-xl bg-emerald-50/50 border border-emerald-100/60">
-                <div class="check-icon bg-emerald-500 text-white mt-0.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                </div>
-                <div>
-                    <p class="text-sm font-semibold text-gray-900">{{ service.description || service.id }}</p>
-                    <p v-if="service.excess != null" class="text-xs text-gray-500">Excess: {{ formatPrice(service.excess) }}</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- Included Coverage (RecordGo) -->
     <section v-if="isRecordGo && recordGoIncludedComplements.length > 0" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 fade-in-up">
         <h3 class="text-base font-bold text-[#1e3a5f] mb-3 flex items-center gap-2">

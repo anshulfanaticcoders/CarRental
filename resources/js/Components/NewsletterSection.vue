@@ -14,9 +14,16 @@ const {
     turnstileContainer,
     turnstileToken,
     turnstileError,
+    executeTurnstile,
     resetTurnstile,
-} = useTurnstile({ action: 'newsletter_homepage', theme: 'light' });
-const submitDisabled = computed(() => loading.value || !turnstileToken.value);
+} = useTurnstile({
+    action: 'newsletter_homepage',
+    appearance: 'interaction-only',
+    execution: 'execute',
+    theme: 'light',
+    defer: true,
+});
+const submitDisabled = computed(() => loading.value);
 
 const subscribe = async () => {
     if (loading.value) return;
@@ -28,25 +35,25 @@ const subscribe = async () => {
         return;
     }
 
-    if (!turnstileToken.value) {
-        error.value = turnstileError.value || 'Please complete the security check.';
-        return;
-    }
-
     loading.value = true;
 
     try {
+        const turnstileResponse = turnstileToken.value || await executeTurnstile();
+
         await axios.post('/api/newsletter/subscriptions', {
             email: email.value,
             source: 'homepage_cta',
             locale: page.props.locale,
-            cf_turnstile_response: turnstileToken.value,
+            cf_turnstile_response: turnstileResponse,
         });
         success.value = 'Check your inbox to confirm your subscription.';
         email.value = '';
         resetTurnstile();
     } catch (err) {
-        if (err?.response?.status === 409) {
+        if (err?.isTurnstileError) {
+            error.value = turnstileError.value || 'Security verification failed. Please try again.';
+            resetTurnstile();
+        } else if (err?.response?.status === 409) {
             error.value = err.response?.data?.message || 'This email is already subscribed.';
         } else if (err?.response?.status === 422) {
             const errors = err.response?.data?.errors || {};
@@ -475,7 +482,7 @@ const subscribe = async () => {
 .nl-feedback--success { color: #059669; }
 
 .nl-turnstile {
-    min-height: 65px;
+    min-height: 0;
     margin-top: 0.85rem;
 }
 

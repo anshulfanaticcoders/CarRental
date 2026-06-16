@@ -65,6 +65,7 @@ class GatewayVehicleTransformer
                 'currency' => $ins['currency'] ?? 'EUR',
                 'excess_amount' => $ins['excess_amount'] ?? null,
                 'included' => $ins['included'] ?? false,
+                'description' => $ins['description'] ?? null,
             ];
         })->all();
 
@@ -93,12 +94,17 @@ class GatewayVehicleTransformer
         $cancellationData = null;
         $cp = $gv['cancellation_policy'] ?? [];
         if (! empty($cp)) {
+            $freeCancellation = array_key_exists('free_cancellation', $cp)
+                ? (bool) $cp['free_cancellation']
+                : null;
+
             $cancellationData = [
-                'available' => $cp['free_cancellation'] ?? true,
-                'penalty' => ! ($cp['free_cancellation'] ?? true),
+                'available' => $freeCancellation,
+                'penalty' => $freeCancellation === null ? null : ! $freeCancellation,
                 'amount' => $cp['cancellation_fee'] ?? 0,
                 'currency' => $cp['cancellation_fee_currency'] ?? 'EUR',
                 'deadline' => $cp['free_cancellation_until'] ?? null,
+                'description' => $cp['description'] ?? null,
             ];
         }
 
@@ -329,22 +335,32 @@ class GatewayVehicleTransformer
         $supplierData = $gv['supplier_data'] ?? [];
         $rawProducts = $supplierData['products'] ?? [];
         if (! empty($rawProducts) && is_array($rawProducts)) {
-            return collect($rawProducts)->map(function ($p) use ($rentalDays) {
+            return collect($rawProducts)->map(function ($p) use ($rentalDays, $supplierData, $gv) {
                 $total = (float) ($p['total'] ?? 0);
+                $pricePerDay = $p['price_per_day'] ?? null;
+                $depositCurrency = $p['deposit_currency']
+                    ?? $p['excess_currency']
+                    ?? $supplierData['deposit_currency']
+                    ?? $supplierData['excess_currency']
+                    ?? ($gv['pricing']['deposit_currency'] ?? null);
+                $excessCurrency = $p['excess_currency'] ?? $depositCurrency;
 
                 return [
                     'type' => $p['type'] ?? 'BAS',
-                    'name' => $this->getProductName($p['type'] ?? 'BAS'),
+                    'name' => $p['name'] ?? $this->getProductName($p['type'] ?? 'BAS'),
                     'total' => $total,
-                    'price_per_day' => $rentalDays > 0 ? round($total / $rentalDays, 2) : $total,
+                    'price_per_day' => $pricePerDay !== null ? (float) $pricePerDay : ($rentalDays > 0 ? round($total / $rentalDays, 2) : $total),
                     'currency' => $p['currency'] ?? 'EUR',
                     'excess' => $p['excess'] ?? null,
                     'deposit' => $p['deposit'] ?? null,
+                    'deposit_currency' => $depositCurrency,
+                    'excess_currency' => $excessCurrency,
                     'mileage' => $p['mileage'] ?? 0,
                     'costperextradistance' => $p['costperextradistance'] ?? null,
-                    'fuelpolicy' => $p['fuelpolicy'] ?? '',
+                    'fuelpolicy' => $p['fuelpolicy'] ?? ($p['fuel_policy'] ?? ''),
                     'minage' => $p['minage'] ?? 0,
                     'debitcard' => $p['debitcard'] ?? '',
+                    'benefits' => $p['benefits'] ?? [],
                 ];
             })->all();
         }
@@ -412,6 +428,12 @@ class GatewayVehicleTransformer
 
     private function extractTerms(string $supplierId, array $supplierData, array $gv = []): ?array
     {
+        foreach ([$supplierData['terms'] ?? null, $supplierData['supplier_terms'] ?? null] as $terms) {
+            if (is_array($terms) && $terms !== []) {
+                return array_values(array_filter($terms, fn ($term) => is_array($term)));
+            }
+        }
+
         // RecordGo: product T&Cs from productTTCC
         if (in_array($supplierId, ['record_go', 'recordgo'], true)) {
             $productData = $supplierData['product_data'] ?? ($supplierData['products'][0] ?? null);
@@ -486,6 +508,12 @@ class GatewayVehicleTransformer
     private function extractDriverRequirements(string $supplierId, array $supplierData, array $gv): ?array
     {
         $requirements = [];
+        $providerRequirements = $supplierData['driver_requirements'] ?? null;
+        if (is_array($providerRequirements)) {
+            foreach ($providerRequirements as $key => $value) {
+                $requirements[$key] = $value;
+            }
+        }
 
         $productData = $supplierData['product_data'] ?? [];
         $minAge = $gv['min_driver_age'] ?? ($supplierData['min_driver_age'] ?? ($productData['min_age'] ?? null));
@@ -538,7 +566,7 @@ class GatewayVehicleTransformer
             'fuel_policy' => $supplierData['fuel_policy'] ?? ($gv['policies']['fuel_policy'] ?? null),
             'deposit_amount' => $depositAmount,
             'deposit_currency' => $depositCurrency,
-            'excess_amount' => ! empty($gv['insurance_options']) ? ($gv['insurance_options'][0]['excess_amount'] ?? null) : null,
+            'excess_amount' => ! empty($gv['insurance_options']) ? ($gv['insurance_options'][0]['excess_amount'] ?? null) : ($supplierData['excess_amount'] ?? null),
             'excess_theft_amount' => $supplierData['excess_theft_amount'] ?? ($supplierData['theft_excess'] ?? null),
         ];
 
@@ -561,6 +589,16 @@ class GatewayVehicleTransformer
 
     private function extractRentalPolicies(string $supplierId, array $gv): ?array
     {
+        foreach ([
+            $gv['rental_policies'] ?? null,
+            $gv['supplier_data']['rental_policies'] ?? null,
+            $gv['booking_context']['provider_payload']['rental_policies'] ?? null,
+        ] as $policies) {
+            if (is_array($policies) && $policies !== []) {
+                return array_values(array_filter($policies, fn ($policy) => is_array($policy)));
+            }
+        }
+
         if ($supplierId !== 'locauto_rent' && $supplierId !== 'locauto') {
             return null;
         }
@@ -740,7 +778,7 @@ class GatewayVehicleTransformer
             'luggageMed' => isset($specs['luggage_medium']) ? (string) $specs['luggage_medium'] : null,
             'luggageLarge' => isset($specs['luggage_large']) ? (string) $specs['luggage_large'] : null,
             'products' => ! empty($products)
-                ? $this->mapCanonicalProducts($products, $currency, $pricePerDay)
+                ? $this->mapCanonicalProducts($products, $currency, $pricePerDay, $providerPayload, $pricing)
                 : [['type' => 'BAS', 'name' => 'Basic Package', 'total' => $totalPrice, 'price_per_day' => $pricePerDay, 'currency' => $currency]],
             'tdr' => $providerPayload['tdr'] ?? $totalPrice,
             'quoteid' => $providerPayload['quote_id'] ?? null,
@@ -825,9 +863,16 @@ class GatewayVehicleTransformer
         ];
     }
 
-    private function mapCanonicalProducts(array $products, string $currency, float $fallbackDailyRate): array
+    private function mapCanonicalProducts(array $products, string $currency, float $fallbackDailyRate, array $providerPayload = [], array $pricing = []): array
     {
-        return collect($products)->filter(fn ($product) => is_array($product))->map(function ($product) use ($currency, $fallbackDailyRate) {
+        return collect($products)->filter(fn ($product) => is_array($product))->map(function ($product) use ($currency, $fallbackDailyRate, $providerPayload, $pricing) {
+            $depositCurrency = $product['deposit_currency']
+                ?? $product['excess_currency']
+                ?? ($providerPayload['deposit_currency'] ?? null)
+                ?? ($providerPayload['excess_currency'] ?? null)
+                ?? ($pricing['deposit_currency'] ?? null);
+            $excessCurrency = $product['excess_currency'] ?? $depositCurrency;
+
             return [
                 'type' => $product['type'] ?? 'BAS',
                 'name' => $product['name'] ?? $this->getProductName($product['type'] ?? 'BAS'),
@@ -836,6 +881,8 @@ class GatewayVehicleTransformer
                 'currency' => $product['currency'] ?? $currency,
                 'excess' => $product['excess'] ?? null,
                 'deposit' => $product['deposit'] ?? null,
+                'deposit_currency' => $depositCurrency,
+                'excess_currency' => $excessCurrency,
                 'mileage' => $product['mileage_limit_km'] ?? null,
                 'costperextradistance' => $product['cost_per_extra_km'] ?? null,
                 'fuelpolicy' => $product['fuel_policy'] ?? '',
@@ -1013,7 +1060,7 @@ class GatewayVehicleTransformer
                 'coverage_type' => 'basic',
                 'daily_rate' => 0,
                 'total_price' => 0,
-                'currency' => 'EUR',
+                'currency' => $providerPayload['excess_currency'] ?? ($providerPayload['deposit_currency'] ?? ($gv['pricing']['currency'] ?? 'EUR')),
                 'excess_amount' => $excess,
                 'deposit_amount' => $deposit,
                 'included' => true,

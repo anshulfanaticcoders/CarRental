@@ -328,7 +328,7 @@ export function useBookingData(booking, vehicle, payment) {
     const benefits = meta?.benefits || meta?.benefit || {};
 
     // Mileage: check limited_km fields, unlimited_mileage, included_km, and general mileage field
-    let mileageText = 'Unlimited';
+    let mileageText = null;
     if (benefits?.limited_km_per_day == 1 || benefits?.limited_km_per_day === true) {
       const range = benefits?.limited_km_per_day_range;
       const pricePerKm = benefits?.price_per_km_per_day;
@@ -341,10 +341,14 @@ export function useBookingData(booking, vehicle, payment) {
     }
 
     // Cancellation: check cancellation_available_per_day + deadline
-    let cancellationText = 'Non-refundable';
+    let cancellationText = null;
     if (benefits?.cancellation_available_per_day == 1 || benefits?.cancellation_available_per_day === true) {
       const days = benefits?.cancellation_available_per_day_date;
       cancellationText = days ? `Free cancellation (${days} days before)` : 'Free cancellation';
+    } else if (meta?.cancellation_policy?.description) {
+      cancellationText = meta.cancellation_policy.description;
+    } else if (meta?.policies?.cancellation?.description) {
+      cancellationText = meta.policies.cancellation.description;
     }
 
     // Provider conditions from supplier_data (Locauto YAML, etc.)

@@ -3,7 +3,7 @@ import ApplicationLogo from "./ApplicationLogo.vue";
 import { Link } from "@inertiajs/vue3";
 import paypalLogos from "../../assets/paymentIcons.svg";
 import axios from 'axios';
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useLocalizedRoutes } from '@/composables/useLocalizedRoutes';
 import { useTurnstile } from '@/composables/useTurnstile';
 import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, Linkedin } from 'lucide-vue-next';
@@ -16,11 +16,16 @@ const {
     turnstileContainer,
     turnstileToken,
     turnstileError,
-    renderTurnstile,
+    executeTurnstile,
     resetTurnstile,
-} = useTurnstile({ action: 'newsletter_footer', theme: 'dark', defer: true });
-const newsletterSubmitDisabled = computed(() => newsletterLoading.value || !turnstileToken.value);
-let footerTurnstileObserver = null;
+} = useTurnstile({
+    action: 'newsletter_footer',
+    appearance: 'interaction-only',
+    execution: 'execute',
+    theme: 'dark',
+    defer: true,
+});
+const newsletterSubmitDisabled = computed(() => newsletterLoading.value);
 
 const {
     currentLocale,
@@ -72,25 +77,25 @@ const submitNewsletter = async () => {
         return;
     }
 
-    if (!turnstileToken.value) {
-        newsletterError.value = turnstileError.value || 'Please complete the security check.';
-        return;
-    }
-
     newsletterLoading.value = true;
 
     try {
+        const turnstileResponse = turnstileToken.value || await executeTurnstile();
+
         await axios.post('/api/newsletter/subscriptions', {
             email: newsletterEmail.value,
             source: 'footer',
             locale: currentLocale.value,
-            cf_turnstile_response: turnstileToken.value,
+            cf_turnstile_response: turnstileResponse,
         });
         newsletterSuccess.value = 'Check your inbox to confirm your subscription.';
         newsletterEmail.value = '';
         resetTurnstile();
     } catch (error) {
-        if (error?.response?.status === 409) {
+        if (error?.isTurnstileError) {
+            newsletterError.value = turnstileError.value || 'Security verification failed. Please try again.';
+            resetTurnstile();
+        } else if (error?.response?.status === 409) {
             newsletterError.value = error.response?.data?.message || 'This email is already subscribed.';
         } else if (error?.response?.status === 422) {
             const errors = error.response?.data?.errors || {};
@@ -120,25 +125,6 @@ const loadFooterData = async () => {
 
 if (typeof window !== 'undefined') {
     watch(currentLocale, loadFooterData, { immediate: true });
-
-    onMounted(() => {
-        if (!('IntersectionObserver' in window) || !turnstileContainer.value) return;
-
-        footerTurnstileObserver = new IntersectionObserver((entries) => {
-            if (!entries.some((entry) => entry.isIntersecting)) return;
-
-            renderTurnstile();
-            footerTurnstileObserver?.disconnect();
-            footerTurnstileObserver = null;
-        }, { rootMargin: '200px 0px' });
-
-        footerTurnstileObserver.observe(turnstileContainer.value);
-    });
-
-    onUnmounted(() => {
-        footerTurnstileObserver?.disconnect();
-        footerTurnstileObserver = null;
-    });
 }
 </script>
 
@@ -151,7 +137,7 @@ if (typeof window !== 'undefined') {
                     <Link :href="welcomeHref()">
                         <ApplicationLogo logoColor="#FFFFFF" />
                     </Link>
-                    <p class="footer-brand-desc">Compare and book rental cars across Europe's best providers. Best prices guaranteed, free cancellation on most bookings.</p>
+                    <p class="footer-brand-desc">Compare and book rental cars across Europe's best providers with verified supplier pricing, secure checkout, and 24/7 support.</p>
                     <div class="footer-social">
                         <a href="#" class="footer-social-icon" aria-label="Facebook">
                             <Facebook :size="18" />
@@ -223,7 +209,7 @@ if (typeof window !== 'undefined') {
                     <h3>Stay in the loop</h3>
                     <p>Get exclusive deals, travel tips, and new destination alerts.</p>
                 </div>
-                <div class="footer-nl-form-wrap" @focusin="renderTurnstile" @pointerenter="renderTurnstile">
+                <div class="footer-nl-form-wrap">
                     <form class="footer-nl-form" @submit.prevent="submitNewsletter">
                         <input v-model="newsletterEmail" type="email" placeholder="Your email address" :disabled="newsletterLoading" />
                         <button type="submit" :disabled="newsletterSubmitDisabled">
@@ -406,7 +392,7 @@ if (typeof window !== 'undefined') {
 }
 
 .footer-turnstile {
-    min-height: 65px;
+    min-height: 0;
 }
 
 .footer-nl-form input {

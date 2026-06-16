@@ -128,10 +128,10 @@ class BookingDashboardController extends Controller
     {
         return match ($providerSource) {
             'greenmotion' => 'green_motion',
-            'usave' => 'u_save',
+            'usave' => 'usave',
             'adobe' => 'adobe_car',
             'okmobility' => 'ok_mobility',
-            'recordgo' => 'record_go',
+            'recordgo' => 'recordgo',
             default => (string) ($providerSource ?? ''),
         };
     }
@@ -233,6 +233,15 @@ class BookingDashboardController extends Controller
         $bookings = $bookings->orderBy('created_at', 'desc')
             ->with(['customer', 'vehicle.vendorProfileData', 'payments', 'vendorProfile', 'amounts'])
             ->paginate(7);
+
+        $bookings->through(function (Booking $booking) {
+            $booking->trip_from_date = optional($booking->pickup_date)->toDateString();
+            $booking->trip_from_time = $booking->pickup_time;
+            $booking->trip_to_date = optional($booking->return_date)->toDateString();
+            $booking->trip_to_time = $booking->return_time;
+
+            return $booking;
+        });
 
         // Get booking status counts
         $statusCounts = [

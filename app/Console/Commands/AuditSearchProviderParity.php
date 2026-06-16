@@ -309,6 +309,7 @@ class AuditSearchProviderParity extends Command
         $rawVehicles = collect($raw['vehicles'] ?? [])->filter(fn ($vehicle) => is_array($vehicle))->values();
         $mapped = collect($transformed)->filter(fn ($vehicle) => is_array($vehicle))->values();
         $pricingWarnings = [];
+        $unsupportedClaims = [];
 
         foreach ($rawVehicles->zip($mapped) as $pair) {
             [$rawVehicle, $mappedVehicle] = $pair;
@@ -333,10 +334,15 @@ class AuditSearchProviderParity extends Command
             if ($rawCurrency !== '' && $mappedCurrency !== '' && $rawCurrency !== $mappedCurrency) {
                 $pricingWarnings[] = ['vehicle_id' => $rawVehicle['id'] ?? null, 'field' => 'currency', 'raw' => $rawCurrency, 'mapped' => $mappedCurrency];
             }
+
+            $unsupportedClaims = array_merge(
+                $unsupportedClaims,
+                $this->findUnsupportedClaims($rawVehicle, $mappedVehicle)
+            );
         }
 
         $packageCount = $mapped->sum(fn (array $vehicle): int => count($vehicle['products'] ?? []));
-        $protectionCount = $mapped->sum(fn (array $vehicle): int => count($vehicle['insurance_options'] ?? []) + count($vehicle['protections'] ?? []));
+        $protectionCount = $mapped->sum(fn (array $vehicle): int => $this->countProtectionSources($vehicle));
         $extrasCount = $mapped->sum(fn (array $vehicle): int => count($vehicle['extras'] ?? []));
         $quantityExtraCount = $mapped->sum(function (array $vehicle): int {
             return collect($vehicle['extras'] ?? [])->filter(function ($extra): bool {
@@ -360,6 +366,9 @@ class AuditSearchProviderParity extends Command
         if ($pricingWarnings !== []) {
             $gaps[] = count($pricingWarnings).' pricing parity warning(s).';
         }
+        if ($unsupportedClaims !== []) {
+            $gaps[] = count($unsupportedClaims).' unsupported customer-facing claim(s).';
+        }
 
         return [
             'package_count' => $packageCount,
@@ -368,9 +377,202 @@ class AuditSearchProviderParity extends Command
             'quantity_extra_count' => $quantityExtraCount,
             'pricing_warning_count' => count($pricingWarnings),
             'pricing_warnings' => $pricingWarnings,
+            'unsupported_claim_count' => count($unsupportedClaims),
+            'unsupported_claims' => $unsupportedClaims,
             'sample_vehicle_names' => $mapped->take((int) $this->option('vehicles-per-provider'))->map(fn (array $vehicle) => $vehicle['model'] ?: ($vehicle['brand'] ?? $vehicle['id'] ?? 'Vehicle'))->values()->all(),
             'gaps' => $gaps,
         ];
+    }
+
+    private function countProtectionSources(array $vehicle): int
+    {
+        $protectionItems = collect(array_merge($vehicle['insurance_options'] ?? [], $vehicle['protections'] ?? []))
+            ->filter(fn ($item): bool => is_array($item));
+        $count = $protectionItems->count();
+        $knownCodes = $protectionItems
+            ->map(fn (array $item): string => strtolower(trim((string) ($item['code'] ?? $item['type'] ?? ''))))
+            ->filter()
+            ->values()
+            ->all();
+
+        $source = $this->normalizeProviderId($vehicle['source'] ?? '');
+
+        if ($source === 'recordgo') {
+            return $count + count($this->recordGoCoverageKeys($vehicle));
+        }
+
+        if ($source === 'okmobility' || $source === 'ok_mobility') {
+            return $count + $this->countOkMobilityProtectionExtras($vehicle);
+        }
+
+        if (! in_array($source, ['adobe', 'adobe_car'], true)) {
+            return $count;
+        }
+
+        foreach (['pli', 'ldw', 'spp'] as $field) {
+            if (! in_array($field, $knownCodes, true) && $this->hasProviderProtectionValue($vehicle, $field)) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    private function countOkMobilityProtectionExtras(array $vehicle): int
+    {
+        return collect($vehicle['extras'] ?? [])
+            ->filter(function ($extra): bool {
+                if (! is_array($extra)) {
+                    return false;
+                }
+
+                $code = strtoupper(trim((string) ($extra['code'] ?? $extra['id'] ?? '')));
+                $type = strtolower(trim((string) ($extra['type'] ?? '')));
+                $purpose = strtolower(trim((string) ($extra['purpose'] ?? '')));
+
+                return in_array($code, ['OPC', 'OPCO'], true)
+                    || $type === 'insurance'
+                    || $purpose === 'protection';
+            })
+            ->count();
+    }
+
+    private function recordGoCoverageKeys(array $vehicle): array
+    {
+        $keys = [];
+        $paths = [
+            'recordgo_products.*.complements_included',
+            'recordgo_products.*.complements_associated',
+            'booking_context.provider_payload.included_complements',
+            'booking_context.provider_payload.product_data.complements_included',
+            'booking_context.provider_payload.product_data.complements_associated',
+        ];
+
+        foreach ($paths as $path) {
+            foreach ($this->flattenRecordGoComplements(data_get($vehicle, $path, [])) as $complement) {
+                if (strtoupper(trim((string) ($complement['complementCategory'] ?? ''))) !== 'COVERAGE') {
+                    continue;
+                }
+
+                $keys[] = implode(':', [
+                    trim((string) ($complement['complementId'] ?? '')),
+                    trim((string) ($complement['rateComplVer'] ?? '')),
+                    strtolower(trim((string) ($complement['complementName'] ?? 'coverage'))),
+                ]);
+            }
+        }
+
+        return array_values(array_unique(array_filter($keys)));
+    }
+
+    private function flattenRecordGoComplements(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $items = [];
+        foreach ($value as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            if (array_key_exists('complementCategory', $item)) {
+                $items[] = $item;
+
+                continue;
+            }
+
+            array_push($items, ...$this->flattenRecordGoComplements($item));
+        }
+
+        return $items;
+    }
+
+    private function hasProviderProtectionValue(array $vehicle, string $field): bool
+    {
+        foreach ([$field, "booking_context.provider_payload.{$field}"] as $path) {
+            $value = data_get($vehicle, $path);
+            if (is_numeric($value)) {
+                return true;
+            }
+            if (is_string($value) && trim($value) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function findUnsupportedClaims(array $rawVehicle, array $mappedVehicle): array
+    {
+        $claims = [];
+        $hasCancellationSource = $this->hasCancellationSource($rawVehicle, $mappedVehicle);
+
+        $cancellationAvailable = data_get($mappedVehicle, 'cancellation.available');
+        if ($cancellationAvailable === true && ! $hasCancellationSource) {
+            $claims[] = [
+                'vehicle_id' => $mappedVehicle['id'] ?? ($rawVehicle['id'] ?? null),
+                'field' => 'cancellation.available',
+                'claim' => 'Free cancellation',
+                'status' => 'unsupported_claim',
+            ];
+        }
+
+        foreach (($mappedVehicle['products'] ?? []) as $index => $product) {
+            if (! is_array($product)) {
+                continue;
+            }
+
+            foreach (($product['benefits'] ?? []) as $benefit) {
+                if (! is_string($benefit) || ! $this->isCancellationClaim($benefit)) {
+                    continue;
+                }
+
+                if ($hasCancellationSource) {
+                    continue;
+                }
+
+                $claims[] = [
+                    'vehicle_id' => $mappedVehicle['id'] ?? ($rawVehicle['id'] ?? null),
+                    'field' => "products.{$index}.benefits",
+                    'claim' => $benefit,
+                    'status' => 'unsupported_claim',
+                ];
+            }
+        }
+
+        return $claims;
+    }
+
+    private function hasCancellationSource(array $rawVehicle, array $mappedVehicle): bool
+    {
+        $rawCancellation = data_get($rawVehicle, 'policies.cancellation')
+            ?? data_get($rawVehicle, 'cancellation_policy');
+        $mappedCancellation = data_get($mappedVehicle, 'policies.cancellation')
+            ?? data_get($mappedVehicle, 'cancellation');
+
+        foreach ([$rawCancellation, $mappedCancellation] as $candidate) {
+            if (is_array($candidate) && $candidate !== []) {
+                return true;
+            }
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isCancellationClaim(string $value): bool
+    {
+        $normalized = strtolower($value);
+
+        return str_contains($normalized, 'free cancellation')
+            || str_contains($normalized, 'non-refundable')
+            || str_contains($normalized, 'non refundable')
+            || str_contains($normalized, 'non-amendable')
+            || str_contains($normalized, 'non amendable');
     }
 
     private function findProviderLocations(array $locations, string $supplierId): array

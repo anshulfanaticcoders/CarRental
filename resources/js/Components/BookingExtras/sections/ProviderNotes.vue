@@ -39,16 +39,41 @@ const fuelPolicyDescription = computed(() => {
 
 const benefits = computed(() => legacy.value?.benefits || props.vehicle?.benefits || null)
 
-const hasCancellationPolicy = computed(() => {
+const cancellationPolicySource = computed(() => {
     const cancel = props.vehicle?.policies?.cancellation;
-    if (cancel) return cancel.free_cancellation || cancel.available;
-    return benefits.value?.cancellation_available_per_day;
+    if (cancel && (
+        Object.prototype.hasOwnProperty.call(cancel, 'available')
+        || Object.prototype.hasOwnProperty.call(cancel, 'free_cancellation')
+        || cancel.description
+        || cancel.amount
+        || cancel.fee
+    )) {
+        return cancel;
+    }
+
+    if (benefits.value && Object.prototype.hasOwnProperty.call(benefits.value, 'cancellation_available_per_day')) {
+        return {
+            available: benefits.value.cancellation_available_per_day == 1 || benefits.value.cancellation_available_per_day === true,
+            days_before: benefits.value.cancellation_available_per_day_date,
+            fee: benefits.value.cancellation_fee_per_day,
+        };
+    }
+
+    return null;
+})
+const hasCancellationInfo = computed(() => cancellationPolicySource.value !== null)
+const hasCancellationPolicy = computed(() => {
+    const cancel = cancellationPolicySource.value;
+    return cancel?.free_cancellation === true || cancel?.available === true;
 })
 const cancelBeforeDays = computed(() => {
-    return props.vehicle?.policies?.cancellation?.days_before || benefits.value?.cancellation_available_per_day_date || 0;
+    return cancellationPolicySource.value?.days_before || cancellationPolicySource.value?.days_before_pickup || benefits.value?.cancellation_available_per_day_date || 0;
 })
 const cancellationFee = computed(() => {
-    return props.vehicle?.policies?.cancellation?.fee || benefits.value?.cancellation_fee_per_day || 0;
+    return cancellationPolicySource.value?.fee || cancellationPolicySource.value?.amount || benefits.value?.cancellation_fee_per_day || 0;
+})
+const cancellationDescription = computed(() => {
+    return cancellationPolicySource.value?.description || null;
 })
 
 const securityDeposit = computed(() => {
@@ -142,8 +167,8 @@ const vendorName = computed(() => {
                 </div>
 
                 <!-- Cancellation Policy -->
-                <div class="rounded-xl p-4 border" :class="hasCancellationPolicy ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'">
-                    <p class="text-xs font-bold uppercase tracking-wider mb-1" :class="hasCancellationPolicy ? 'text-emerald-700' : 'text-red-700'">Cancellation Policy</p>
+                <div v-if="hasCancellationInfo" class="rounded-xl p-4 border" :class="hasCancellationPolicy ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'">
+                    <p class="text-xs font-bold uppercase tracking-wider mb-1" :class="hasCancellationPolicy ? 'text-emerald-700' : 'text-amber-700'">Cancellation Policy</p>
                     <template v-if="hasCancellationPolicy">
                         <p class="text-sm text-gray-700">
                             <span class="font-semibold text-emerald-700">Free cancellation</span> if cancelled
@@ -157,7 +182,9 @@ const vendorName = computed(() => {
                         </p>
                     </template>
                     <p v-else class="text-sm text-gray-700">
-                        <span class="font-semibold text-red-600">Non-refundable.</span> This booking cannot be cancelled once confirmed.
+                        <span class="font-semibold text-amber-700">Supplier cancellation terms apply.</span>
+                        <span v-if="cancellationDescription"> {{ cancellationDescription }}</span>
+                        <span v-else-if="cancellationFee > 0"> Fee: {{ depositCurrency }} {{ cancellationFee }}.</span>
                     </p>
                 </div>
 

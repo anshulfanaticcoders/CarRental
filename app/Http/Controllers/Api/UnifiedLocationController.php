@@ -29,7 +29,7 @@ class UnifiedLocationController extends Controller
                     ]);
                 }
 
-                return response()->json($location ? [$location] : []);
+                return response()->json($location ? [$this->publicLocation($location)] : []);
             }
 
             $searchTerm = $validated['search_term'] ?? null;
@@ -45,7 +45,7 @@ class UnifiedLocationController extends Controller
                     ]);
                 }
 
-                return response()->json($results);
+                return response()->json($this->publicLocations($results));
             }
 
             $results = $locations->getAllLocations($limit);
@@ -56,7 +56,7 @@ class UnifiedLocationController extends Controller
                 ]);
             }
 
-            return response()->json($results);
+            return response()->json($this->publicLocations($results));
         } catch (ValidationException) {
             return response()->json([]);
         } catch (\Throwable $exception) {
@@ -84,5 +84,35 @@ class UnifiedLocationController extends Controller
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function publicLocations(array $locations): array
+    {
+        return collect($locations)
+            ->filter(fn ($location) => is_array($location))
+            ->map(fn (array $location): array => $this->publicLocation($location))
+            ->values()
+            ->all();
+    }
+
+    private function publicLocation(array $location): array
+    {
+        $providers = collect($location['providers'] ?? [])->filter(fn ($provider) => is_array($provider));
+
+        return [
+            'unified_location_id' => $location['unified_location_id'] ?? null,
+            'name' => $location['name'] ?? null,
+            'address' => $location['address'] ?? null,
+            'city' => $location['city'] ?? null,
+            'state' => $location['state'] ?? null,
+            'country' => $location['country'] ?? null,
+            'country_code' => $location['country_code'] ?? null,
+            'iata' => $location['iata'] ?? null,
+            'latitude' => $location['latitude'] ?? null,
+            'longitude' => $location['longitude'] ?? null,
+            'location_type' => $location['location_type'] ?? 'unknown',
+            'provider_count' => (int) ($location['provider_count'] ?? $providers->count()),
+            'supports_one_way' => $providers->contains(fn (array $provider): bool => (bool) ($provider['supports_one_way'] ?? false)),
+        ];
     }
 }

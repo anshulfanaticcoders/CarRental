@@ -142,7 +142,7 @@ export function createLocautoAdapter(props) {
     const appendMaxChargeNote = (description, extra) => {
         const maxChargeDays = parseInt(extra?.max_charge_days ?? extra?.supplier_data?.max_charge_days ?? 0, 10);
         const baseDescription = `${description || ''}`.trim();
-        if (!Number.isFinite(maxChargeDays) || maxChargeDays <= 0) return baseDescription;
+        if (!Number.isFinite(maxChargeDays) || maxChargeDays <= 0 || maxChargeDays >= 9999) return baseDescription;
         return `${baseDescription} Max charge: ${maxChargeDays} days.`.trim();
     };
     const selectableExtras = computed(() => {

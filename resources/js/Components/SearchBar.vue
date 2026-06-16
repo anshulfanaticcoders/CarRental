@@ -64,7 +64,7 @@
                   readonly />
               </div>
               <!-- One-way badge -->
-              <div v-if="form.dropoff_location_id && form.dropoff_location_id !== form.provider_pickup_id" class="mt-1 flex items-center gap-1">
+              <div v-if="isOneWaySearch" class="mt-1 flex items-center gap-1">
                 <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
                   One-way rental
                 </span>
@@ -663,9 +663,6 @@ const isProviderLocation = ref(true);
 const isMobile = ref(false);
 const dropoffSearchResults = ref([]);
 const showDropoffSearchBox = ref(false);
-const selectedLocationProviders = ref([]);
-const showProviderSelection = ref(false);
-const dropoffProvider = ref(null);
 const selectedPickupLocation = ref(null);
 const hasSelectedPickupLocation = ref(false); // Track if user selected from dropdown
 const hasSelectedDropoffLocation = ref(false); // Track if user selected dropoff from dropdown
@@ -679,6 +676,13 @@ const dropoffPlaceholder = computed(() => {
     return 'Same as pickup';
   }
   return 'Select drop-off location (or same as pickup)';
+});
+
+const isOneWaySearch = computed(() => {
+  const pickupId = String(form.value.unified_location_id || '');
+  const dropoffId = String(form.value.dropoff_unified_location_id || '');
+
+  return pickupId !== '' && dropoffId !== '' && pickupId !== dropoffId;
 });
 
 // Clear error messages
@@ -873,133 +877,33 @@ const selectLocation = (result) => {
   searchPerformed.value = false;
   searchResults.value = [];
 
-  // Check if it has our own location and/or external providers
-  const hasInternalLocation = !!result.our_location_id;
-  const hasProviders = result.providers && result.providers.length > 0;
-
-  if (hasInternalLocation && !hasProviders) {
-    // Only internal location, no external providers
-    form.value.provider = 'internal';
-    form.value.provider_pickup_id = null;
-    form.value.dropoff_where = form.value.where;
-    form.value.dropoff_location_id = null;
-    form.value.dropoff_unified_location_id = null;
-    form.value.dropoff_latitude = null;
-    form.value.dropoff_longitude = null;
-    dropoffSearchResults.value = [];
-    isProviderLocation.value = true;
-    return;
-  }
-
-  if (hasProviders) {
-    const preferredProvider = getPreferredProviderEntry(result.providers);
-
-    // Has external providers - always use 'mixed' to fetch from ALL providers
-    // (including internal if hasInternalLocation is true)
+  if ((result.provider_count || 0) > 0) {
     form.value.provider = 'mixed';
-
-    // Keep a deterministic provider reference only for provider-specific dropoff UI.
-    form.value.provider_pickup_id = preferredProvider?.pickup_id || null;
-    dropoffProvider.value = preferredProvider?.provider || null;
+    form.value.provider_pickup_id = null;
 
     // Set default dropoff to be same as pickup while keeping mixed provider
     form.value.dropoff_where = form.value.where;
-    form.value.dropoff_location_id = preferredProvider?.pickup_id || null;
+    form.value.dropoff_location_id = null;
     form.value.dropoff_unified_location_id = result.unified_location_id || null;
     form.value.dropoff_latitude = result.latitude || null;
     form.value.dropoff_longitude = result.longitude || null;
 
-    // Fetch dropoff locations from the best available provider without overriding mixed.
-    if (preferredProvider && providerSupportsDropoffList(preferredProvider.provider)) {
-      fetchDropoffLocations(preferredProvider.provider, preferredProvider.pickup_id);
-    }
+    fetchDropoffLocationsByUnifiedId(result.unified_location_id);
   } else {
-    // No providers and not an internal location, reset
     isProviderLocation.value = false;
     form.value.provider = null;
     form.value.provider_pickup_id = null;
     form.value.unified_location_id = null;
-    dropoffProvider.value = null;
+    dropoffSearchResults.value = [];
   }
 };
 
-// Providers whose gateway adapter supports one-way rentals. Keep in sync with
-// vrooem-gateway adapters where `supports_one_way = True` and with
-// SearchOrchestratorService::ONE_WAY_PROVIDERS on the Laravel side.
-const providersWithDropoffList = new Set([
-  'greenmotion',
-  'usave',
-  'adobe',
-  'click2rent',
-  'easirent',
-  'locauto_rent',
-  'recordgo',
-  'renteon',
-  'surprice',
-  'sicily_by_car',
-]);
-const providerSupportsDropoffList = (provider) => providersWithDropoffList.has(provider);
-const providerHasDropoffs = (provider) => Array.isArray(provider?.dropoffs) && provider.dropoffs.length > 0;
-const providerSupportsOneWay = (provider) => provider?.supports_one_way === true;
-
-const getPreferredProviderEntry = (providers = []) => {
-  return [...providers]
-    .filter((provider) => provider?.provider && provider?.pickup_id)
-    .sort((left, right) => {
-      const leftScore = [
-        providerHasDropoffs(left) ? 1 : 0,
-        providerSupportsOneWay(left) ? 1 : 0,
-        providerSupportsDropoffList(left.provider) ? 1 : 0,
-      ];
-      const rightScore = [
-        providerHasDropoffs(right) ? 1 : 0,
-        providerSupportsOneWay(right) ? 1 : 0,
-        providerSupportsDropoffList(right.provider) ? 1 : 0,
-      ];
-
-      for (let index = 0; index < leftScore.length; index += 1) {
-        if (leftScore[index] !== rightScore[index]) {
-          return rightScore[index] - leftScore[index];
-        }
-      }
-
-      const providerComparison = String(left.provider).localeCompare(String(right.provider));
-      if (providerComparison !== 0) {
-        return providerComparison;
-      }
-
-      return String(left.pickup_id).localeCompare(String(right.pickup_id));
-    })[0] ?? null;
-};
-
-const selectProvider = async (provider) => {
-  form.value.provider = provider.provider;
-  form.value.provider_pickup_id = provider.pickup_id;
-  showProviderSelection.value = false;
-  selectedLocationProviders.value = [];
-
-  // Set default dropoff to be same as pickup
-  form.value.dropoff_where = form.value.where;
-  form.value.dropoff_location_id = form.value.provider_pickup_id;
-  form.value.dropoff_unified_location_id = form.value.unified_location_id;
-  form.value.dropoff_latitude = form.value.latitude;
-  form.value.dropoff_longitude = form.value.longitude;
-
-  isProviderLocation.value = true;
-  dropoffSearchResults.value = [];
-
-  if (providerSupportsDropoffList(provider.provider)) {
-    await fetchDropoffLocations(provider.provider, provider.pickup_id);
-  }
-};
-
-
-const fetchDropoffLocations = async (provider, locationId) => {
-  if (!provider || !locationId) return;
+const fetchDropoffLocationsByUnifiedId = async (unifiedLocationId) => {
+  if (!unifiedLocationId) return;
 
   try {
-    const response = await axios.get(`/api/${provider}/dropoff-locations/${locationId}`);
-    let dropoffs = response.data.locations || response.data;
+    const response = await axios.get(`/api/mobile/locations/${unifiedLocationId}/dropoffs`);
+    let dropoffs = response.data.results || [];
 
     // Always surface the pickup location as an option so the user can revert
     // a one-way search back to round-trip without clearing the field. If the
@@ -1037,16 +941,7 @@ const selectDropoffLocation = (result) => {
   form.value.dropoff_unified_location_id = result.unified_location_id || null;
   form.value.dropoff_latitude = result.latitude || null;
   form.value.dropoff_longitude = result.longitude || null;
-
-  const providerToFind = form.value.provider === 'mixed' ? dropoffProvider.value : form.value.provider;
-  const providerData = result.providers.find(p => p.provider === providerToFind);
-
-  if (providerData) {
-    form.value.dropoff_location_id = providerData.pickup_id;
-  } else {
-    console.error('Selected provider not available at the chosen dropoff location.');
-    form.value.dropoff_location_id = null;
-  }
+  form.value.dropoff_location_id = null;
 
   showDropoffSearchBox.value = false;
   showMobileDropoffPicker.value = false;
@@ -1085,6 +980,10 @@ const submit = async () => {
 
     let packageType = '';
     form.value.package_type = packageType;
+    if (form.value.provider === 'mixed') {
+      form.value.provider_pickup_id = null;
+      form.value.dropoff_location_id = null;
+    }
 
     // Create URL parameters object
     const urlParams = new URLSearchParams(form.value).toString();
@@ -1172,45 +1071,18 @@ onMounted(async () => {
     form.value.dropoff_longitude = props.prefill.dropoff_longitude || null;
     form.value.dropoff_where = props.prefill.dropoff_where || "";
 
-    if (props.prefill.provider && props.prefill.provider !== 'internal' && props.prefill.provider_pickup_id) {
+    if (props.prefill.unified_location_id) {
       isProviderLocation.value = true;
-
-      let providerForDropoff = props.prefill.provider;
-      let pickupIdForDropoff = props.prefill.provider_pickup_id;
-
-      // When provider is 'mixed', look up the actual provider from the unified location
-      if (providerForDropoff === 'mixed' && props.prefill.unified_location_id) {
-        try {
-          const res = await axios.get('/api/unified-locations', {
-            params: { unified_location_id: props.prefill.unified_location_id }
-          });
-          const locationData = res.data?.[0];
-          if (locationData?.providers?.length) {
-            const preferredProvider = getPreferredProviderEntry(locationData.providers);
-            if (preferredProvider) {
-              providerForDropoff = preferredProvider.provider;
-              pickupIdForDropoff = preferredProvider.pickup_id;
-              dropoffProvider.value = preferredProvider.provider;
-            }
-          }
-        } catch (e) {
-          console.error('Failed to resolve dropoff provider from unified location:', e);
-        }
-      }
-
-      if (providerSupportsDropoffList(providerForDropoff)) {
-        await fetchDropoffLocations(providerForDropoff, pickupIdForDropoff);
-      }
+      await fetchDropoffLocationsByUnifiedId(props.prefill.unified_location_id);
 
       if (props.prefill.dropoff_where) {
         form.value.dropoff_where = props.prefill.dropoff_where;
-      } else if (props.prefill.dropoff_location_id) {
+      } else if (props.prefill.dropoff_unified_location_id) {
         const dropoffLocation = dropoffSearchResults.value.find(
-          loc => loc.provider_location_id === props.prefill.dropoff_location_id
+          loc => String(loc.unified_location_id) === String(props.prefill.dropoff_unified_location_id)
         );
         if (dropoffLocation) {
-          const locationName = dropoffLocation.label + (dropoffLocation.below_label ? `, ${dropoffLocation.below_label}` : '');
-          form.value.dropoff_where = locationName;
+          form.value.dropoff_where = buildLocationInputValue(dropoffLocation);
         }
       }
     }

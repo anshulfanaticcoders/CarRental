@@ -18,25 +18,6 @@ const normalizeExtraCodeList = (value) => {
 
 const OK_MOBILITY_COVER_CODES = ['OPC', 'OPCO'];
 
-const okMobilityBasicFeatures = [
-    { label: 'Civil liability insurance', included: true },
-    { label: 'Cover against damage to bodywork, windows and wheels', included: false },
-    { label: 'Roadside assistance', included: false },
-    { label: 'Telemedicine services', included: false },
-];
-const okMobilityPremiumFeatures = [
-    { label: 'Civil liability insurance', included: true },
-    { label: 'Cover against damage to bodywork, windows and wheels', included: true },
-    { label: 'Roadside assistance', included: false },
-    { label: 'Telemedicine services', included: false },
-];
-const okMobilitySuperPremiumFeatures = [
-    { label: 'Civil liability insurance', included: true },
-    { label: 'Cover against damage to bodywork, windows and wheels', included: true },
-    { label: 'Roadside assistance', included: true },
-    { label: 'Telemedicine services', included: true },
-];
-
 /**
  * @param {Object} props
  * @param {Object} props.vehicle
@@ -154,11 +135,16 @@ export function createOkMobilityAdapter(props) {
     const okMobilityCancellationSummary = computed(() => {
         const cancellation = okMobilityCancellation.value;
         if (!cancellation) return null;
-        const available = cancellation.available === true || `${cancellation.available}`.toLowerCase() === 'true';
-        const penalty = cancellation.penalty === true || `${cancellation.penalty}`.toLowerCase() === 'true';
-        const amount = parseFloat(cancellation.amount ?? 0);
+        const available = cancellation.available === true
+            || `${cancellation.available}`.toLowerCase() === 'true'
+            || cancellation.free_cancellation === true
+            || `${cancellation.free_cancellation}`.toLowerCase() === 'true';
+        const amount = parseFloat(cancellation.amount ?? cancellation.cancellation_fee ?? 0);
+        const penalty = cancellation.penalty === true
+            || `${cancellation.penalty}`.toLowerCase() === 'true'
+            || (Number.isFinite(amount) && amount > 0);
         const currency = cancellation.currency || props.vehicle?.currency || null;
-        const deadline = cancellation.deadline || null;
+        const deadline = cancellation.deadline || cancellation.free_cancellation_until || null;
         return {
             available,
             penalty,
@@ -269,39 +255,15 @@ export function createOkMobilityAdapter(props) {
     });
 
     const packages = computed(() => {
-        const pkgs = [
-            {
-                type: 'BAS',
-                name: 'Basic Cover',
-                subtitle: 'Basic Cover',
-                total: okMobilityBaseTotal.value,
-                deposit: 0,
-                benefits: [],
-                coverFeatures: okMobilityBasicFeatures,
-                isBestValue: okMobilityCoverExtras.value.length === 0,
-                isAddOn: false
-            }
-        ];
-
-        okMobilityCoverExtras.value.forEach((extra) => {
-            const extraTotal = getOkMobilityExtraTotal(extra);
-            const code = normalizeExtraCode(extra.code);
-            const isSuperPremium = code === 'OPCO';
-            pkgs.push({
-                type: code || extra.code,
-                name: extra.name || (isSuperPremium ? 'Super Premium Cover' : 'Premium Cover'),
-                subtitle: 'Excess Waiver',
-                total: okMobilityBaseTotal.value + extraTotal,
-                deposit: 0,
-                benefits: [],
-                coverFeatures: isSuperPremium ? okMobilitySuperPremiumFeatures : okMobilityPremiumFeatures,
-                isBestValue: code === 'OPC',
-                isAddOn: false,
-                extraId: extra.id
-            });
-        });
-
-        return pkgs;
+        return [{
+            type: 'BAS',
+            name: 'Basic Package',
+            subtitle: 'Supplier base rate',
+            total: okMobilityBaseTotal.value,
+            benefits: [],
+            isBestValue: okMobilityCoverExtras.value.length === 0,
+            isAddOn: false
+        }];
     });
 
     const optionalExtras = computed(() => {
@@ -309,7 +271,22 @@ export function createOkMobilityAdapter(props) {
         return okMobilityNormalizedExtras.value.filter(extra => !coverCodes.has(normalizeExtraCode(extra.code)));
     });
 
-    const protectionPlans = computed(() => []);
+    const protectionPlans = computed(() => okMobilityCoverExtras.value.map((extra) => {
+        const total = getOkMobilityExtraTotal(extra);
+        const daily = props.numberOfDays > 0 ? total / props.numberOfDays : total;
+        return {
+            ...extra,
+            id: extra.id || `okmobility_protection_${normalizeExtraCode(extra.code)}`,
+            code: normalizeExtraCode(extra.code),
+            name: extra.name || extra.code || 'Protection',
+            description: extra.description || 'Supplier cover option.',
+            price: total,
+            total_for_booking: total,
+            daily_rate: daily,
+            amount: daily,
+            purpose: 'protection',
+        };
+    }));
 
     const allExtras = okMobilityNormalizedExtras;
 

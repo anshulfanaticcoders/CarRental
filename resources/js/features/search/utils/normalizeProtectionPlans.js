@@ -80,11 +80,12 @@ function buildGMBenefits(product, convertPrice, currency) {
         benefits.push(`Excess: ${convertPrice(excess, currency).toFixed(2)}`);
     }
     if (product.debitcard === 'Y') benefits.push('Debit Card Accepted');
-    if (product.fuelpolicy === 'FF') benefits.push('Free Fuel / Full to Full');
+    if (product.fuelpolicy === 'FF') benefits.push('Full-to-full fuel policy');
     else if (product.fuelpolicy === 'SL') benefits.push('Like for Like fuel policy');
     if (parseNum(product.costperextradistance) === 0) benefits.push('Unlimited mileage');
-    if (product.type === 'BAS') { benefits.push('Non-refundable'); benefits.push('Non-amendable'); }
-    if (['PLU', 'PRE', 'PMP'].includes(product.type)) benefits.push('Cancellation in line with T&Cs');
+    if (Array.isArray(product.benefits)) {
+        benefits.push(...product.benefits.filter(Boolean));
+    }
     return benefits;
 }
 
@@ -186,7 +187,7 @@ function normalizeInternal(vehicle, days, selectedId, convertPrice) {
         dailyPrice: convertPrice(pricePerDay, currency),
         totalPrice: convertPrice(pricePerDay * days, currency),
         currency,
-        benefits: ['Base rental rate', 'Standard coverage'],
+        benefits: ['Base rental rate'],
         deposit: deposit ? convertPrice(deposit, currency) : null,
         isSelected: selectedId === null || selectedId === 'BAS',
         isBasic: true,
@@ -202,7 +203,7 @@ function normalizeInternal(vehicle, days, selectedId, convertPrice) {
             dailyPrice: convertPrice(planPrice, currency),
             totalPrice: convertPrice(planPrice * days, currency),
             currency,
-            benefits: features.length > 0 ? features : ['Custom vendor package'],
+            benefits: features.length > 0 ? features : [],
             deposit: deposit ? convertPrice(deposit, currency) : null,
             isSelected: selectedId === `${plan.id}`,
             isBasic: false,

@@ -9,8 +9,14 @@ class ProviderBookingContract
         'adobe_car' => 'adobe_car',
         'green_motion' => 'greenmotion',
         'greenmotion' => 'greenmotion',
+        'okmobility' => 'ok_mobility',
+        'ok_mobility' => 'ok_mobility',
         'record_go' => 'recordgo',
         'recordgo' => 'recordgo',
+        'sicilybycar' => 'sicily_by_car',
+        'sicily_by_car' => 'sicily_by_car',
+        'u_save' => 'usave',
+        'usave' => 'usave',
     ];
 
     public function validateCheckout(array $validated): array

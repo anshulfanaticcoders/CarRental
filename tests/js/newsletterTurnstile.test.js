@@ -17,7 +17,19 @@ for (const component of newsletterComponents) {
         assert.match(source, /useTurnstile/);
         assert.match(source, /turnstileContainer/);
         assert.match(source, /turnstileToken/);
-        assert.match(source, /cf_turnstile_response:\s*turnstileToken\.value/);
+        assert.match(source, /executeTurnstile/);
+        assert.match(source, /appearance:\s*'interaction-only'/);
+        assert.match(source, /execution:\s*'execute'/);
+        assert.match(source, /cf_turnstile_response:\s*turnstileResponse/);
         assert.match(source, /resetTurnstile\(\)/);
     });
 }
+
+test('Turnstile composable supports official execute mode callbacks', () => {
+    const source = readFileSync(path.join(repoRoot, 'resources/js/composables/useTurnstile.js'), 'utf8');
+
+    assert.match(source, /renderOptions\.appearance\s*=\s*options\.appearance/);
+    assert.match(source, /renderOptions\.execution\s*=\s*options\.execution/);
+    assert.match(source, /executeTurnstile/);
+    assert.match(source, /window\.turnstile\.execute/);
+});

@@ -27,6 +27,8 @@ test('default adapter maps arbitrary provider products into booking packages', (
             total: 129.28,
             deposit: null,
             excess: null,
+            deposit_currency: null,
+            excess_currency: null,
             excessTheft: null,
             benefits: [],
             isBestValue: true,
@@ -41,6 +43,8 @@ test('default adapter maps arbitrary provider products into booking packages', (
             total: 116.09,
             deposit: null,
             excess: null,
+            deposit_currency: null,
+            excess_currency: null,
             excessTheft: null,
             benefits: [],
             isBestValue: false,
@@ -53,6 +57,13 @@ test('default adapter maps arbitrary provider products into booking packages', (
 test('default adapter exposes included insurance and generic extras from gateway vehicles', () => {
     const adapter = createDefaultAdapter({
         vehicle: {
+            pricing: {
+                deposit_currency: 'USD',
+            },
+            benefits: {
+                deposit_currency: 'USD',
+                excess_amount: 500,
+            },
             insurance_options: [
                 {
                     id: 'ins_cdw_basic',
@@ -60,8 +71,8 @@ test('default adapter exposes included insurance and generic extras from gateway
                     coverage_type: 'basic',
                     included: true,
                     total_price: 0,
-                    currency: 'EUR',
                     excess_amount: 500,
+                    description: 'Supplier terms require proof of coverage unless local coverage is purchased.',
                 },
             ],
             extras: [
@@ -82,7 +93,7 @@ test('default adapter exposes included insurance and generic extras from gateway
     assert.deepEqual(adapter.includedItems.value, [
         {
             label: 'CDW',
-            detail: 'Included',
+            detail: 'Supplier terms require proof of coverage unless local coverage is purchased.',
         },
     ]);
 
@@ -101,6 +112,68 @@ test('default adapter exposes included insurance and generic extras from gateway
             maxQuantity: 1,
             required: false,
             type: 'optional',
+        },
+    ]);
+});
+
+test('default adapter preserves supplier deposit and excess currency for generic products', () => {
+    const adapter = createDefaultAdapter({
+        vehicle: {
+            currency: 'EUR',
+            pricing: {
+                deposit_currency: 'USD',
+            },
+            benefits: {
+                deposit_currency: 'USD',
+            },
+            products: [
+                {
+                    type: 'POA',
+                    name: 'Pay at Pick-up',
+                    total: 105.47,
+                    price_per_day: 26.37,
+                    currency: 'EUR',
+                    deposit: 500,
+                    excess: 500,
+                },
+            ],
+        },
+        optionalExtras: [],
+        numberOfDays: 4,
+    });
+
+    assert.equal(adapter.packages.value[0].deposit_currency, 'USD');
+    assert.equal(adapter.packages.value[0].excess_currency, 'USD');
+});
+
+test('default adapter falls back to supplier excess when included insurance has no description', () => {
+    const adapter = createDefaultAdapter({
+        vehicle: {
+            pricing: {
+                deposit_currency: 'USD',
+            },
+            benefits: {
+                deposit_currency: 'USD',
+                excess_amount: 500,
+            },
+            insurance_options: [
+                {
+                    id: 'ins_cdw_basic',
+                    name: 'CDW',
+                    coverage_type: 'basic',
+                    included: true,
+                    total_price: 0,
+                },
+            ],
+        },
+        optionalExtras: [],
+        numberOfDays: 3,
+    });
+
+    assert.deepEqual(adapter.includedItems.value, [
+        {
+            label: 'CDW',
+            detail: 'Supplier terms apply; excess USD 500.00',
         },
     ]);
 });
@@ -146,4 +219,49 @@ test('default adapter exposes generic provider location details when present', (
         pickupInstructions: 'Take the Easirent shuttle from bays A11-A13.',
         dropoffInstructions: 'Return to 1777 McCoy Road, Orlando, Florida 32809.',
     });
+});
+
+test('default adapter separates insurance extras from ordinary add-ons', () => {
+    const adapter = createDefaultAdapter({
+        vehicle: {
+            currency: 'EUR',
+            extras: [
+                {
+                    id: 'ext_favrica_LCF',
+                    code: 'LCF',
+                    name: 'Loss & Damage Coverage (LCF)',
+                    type: 'insurance',
+                    total_for_booking: 14.97,
+                    daily_rate: 3.74,
+                    currency: 'EUR',
+                },
+                {
+                    id: 'ext_favrica_SCDW',
+                    code: 'SCDW',
+                    name: 'Super Collision Damage Waiver (SCDW)',
+                    type: 'insurance',
+                    total_for_booking: 18.71,
+                    daily_rate: 4.68,
+                    currency: 'EUR',
+                },
+                {
+                    id: 'ext_favrica_Baby_Seat',
+                    code: 'Seat',
+                    name: 'Baby Seat',
+                    type: 'equipment',
+                    total_for_booking: 11.23,
+                    daily_rate: 2.81,
+                    currency: 'EUR',
+                },
+            ],
+        },
+        optionalExtras: [],
+        numberOfDays: 4,
+    });
+
+    assert.deepEqual(adapter.protectionPlans.value.map((item) => item.name), [
+        'Loss & Damage Coverage (LCF)',
+        'Super Collision Damage Waiver (SCDW)',
+    ]);
+    assert.deepEqual(adapter.optionalExtras.value.map((item) => item.name), ['Baby Seat']);
 });
