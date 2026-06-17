@@ -22,8 +22,7 @@ class CarHireRedirectController extends Controller
         private readonly CarHireTrackingService $trackingService,
         private readonly CarHireAuditLogService $auditLogService,
         private readonly CarHirePublicResponseSerializer $publicResponseSerializer,
-    ) {
-    }
+    ) {}
 
     public function __invoke(Request $request): JsonResponse|RedirectResponse
     {
@@ -31,13 +30,13 @@ class CarHireRedirectController extends Controller
         $signature = (string) $request->query('signature', '');
 
         if ($quoteId === '') {
-            return response()->json([
+            return $this->noStoreJson([
                 'error' => 'quote_id_required',
             ], 400);
         }
 
-        if ($signature !== '' && !$this->securityService->hasValidSignature($request->query())) {
-            return response()->json([
+        if ($signature !== '' && ! $this->securityService->hasValidSignature($request->query())) {
+            return $this->noStoreJson([
                 'error' => 'invalid_signature',
             ], 403);
         }
@@ -45,7 +44,7 @@ class CarHireRedirectController extends Controller
         $quote = $this->quoteStoreService->get($quoteId);
 
         if ($quote === null) {
-            return response()->json([
+            return $this->noStoreJson([
                 'error' => 'quote_not_found',
             ], 404);
         }
@@ -53,7 +52,7 @@ class CarHireRedirectController extends Controller
         $validation = $this->quoteLifecycleService->revalidate($quote);
 
         if (($validation['valid'] ?? false) !== true) {
-            if (!$this->shouldReturnJson($request)) {
+            if (! $this->shouldReturnJson($request)) {
                 $landingPageUrl = $this->buildLandingPageUrl($quote, (string) $request->query('skyscanner_redirectid', ''), $quoteId);
 
                 if ($landingPageUrl !== null) {
@@ -61,7 +60,7 @@ class CarHireRedirectController extends Controller
                 }
             }
 
-            return response()->json([
+            return $this->noStoreJson([
                 'error' => 'quote_expired',
             ], 410);
         }
@@ -85,7 +84,7 @@ class CarHireRedirectController extends Controller
             ];
         }
 
-        if (!$this->shouldReturnJson($request)) {
+        if (! $this->shouldReturnJson($request)) {
             $landingPageUrl = $this->buildLandingPageUrl($quote, $redirectId, $quoteId);
 
             if ($landingPageUrl !== null) {
@@ -93,7 +92,7 @@ class CarHireRedirectController extends Controller
             }
         }
 
-        return response()->json(
+        return $this->noStoreJson(
             $this->publicResponseSerializer->redirectPayload($quote, $tracking),
         );
     }
@@ -116,5 +115,13 @@ class CarHireRedirectController extends Controller
         }
 
         return $landingPageUrl;
+    }
+
+    private function noStoreJson(array $payload, int $status = 200): JsonResponse
+    {
+        return response()->json($payload, $status)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 }

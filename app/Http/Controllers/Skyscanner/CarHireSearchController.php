@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Skyscanner;
 
 use App\Http\Controllers\Controller;
 use App\Services\Skyscanner\CarHirePublicResponseSerializer;
-use App\Services\Skyscanner\CarHireSecurityService;
 use App\Services\Skyscanner\CarHireSearchService;
+use App\Services\Skyscanner\CarHireSecurityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,15 +15,14 @@ class CarHireSearchController extends Controller
         private readonly CarHireSearchService $searchService,
         private readonly CarHireSecurityService $securityService,
         private readonly CarHirePublicResponseSerializer $publicResponseSerializer,
-    ) {
-    }
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
         $authHeader = (string) config('skyscanner.testing_access.auth_header', 'x-api-key');
         $apiKey = $request->header($authHeader);
 
-        if (!$this->securityService->hasValidApiKey($apiKey)) {
+        if (! $this->securityService->hasValidApiKey($apiKey)) {
             return response()->json([
                 'error' => 'invalid_api_key',
             ], 401);
@@ -42,7 +41,7 @@ class CarHireSearchController extends Controller
             'currency' => ['nullable', 'string', 'size:3'],
         ])->validate();
 
-        return response()->json(
+        return $this->noStoreJson(
             $this->publicResponseSerializer->searchPayload(
                 $this->searchService->search($validated),
             ),
@@ -73,7 +72,7 @@ class CarHireSearchController extends Controller
     private function splitDateTime(string $value): array
     {
         $normalized = trim($value);
-        if ($normalized === '' || !str_contains($normalized, 'T')) {
+        if ($normalized === '' || ! str_contains($normalized, 'T')) {
             return [];
         }
 
@@ -83,5 +82,13 @@ class CarHireSearchController extends Controller
             'date' => $date,
             'time' => $time,
         ];
+    }
+
+    private function noStoreJson(array $payload, int $status = 200): JsonResponse
+    {
+        return response()->json($payload, $status)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 }

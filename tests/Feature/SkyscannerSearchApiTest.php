@@ -97,6 +97,7 @@ class SkyscannerSearchApiTest extends TestCase
             ]);
 
         $response->assertOk();
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
         $response->assertJsonCount(1, 'quotes');
         $response->assertJsonPath('quotes.0.quote_id', fn ($value) => is_string($value) && $value !== '');
         $response->assertJsonPath('quotes.0.vehicle.display_name', 'Toyota Yaris');

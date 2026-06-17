@@ -36,6 +36,24 @@ export const grossUpAmount = (value, rate) => {
     return Math.round((numeric * multiplier) * 100) / 100;
 };
 
+export const isPartnerQuoteVehicle = (vehicle = {}) => {
+    return Boolean(`${vehicle?.partner_supplier_name ?? ''}`.trim());
+};
+
+export const resolveEffectiveProviderMarkupRate = (vehicle = {}, rate = 0) => {
+    if (isPartnerQuoteVehicle(vehicle)) {
+        return 0;
+    }
+
+    return resolveProviderMarkupRate({ provider_markup_rate: rate }, 0);
+};
+
+export const shouldUseCommissionOnlyForVehicle = (vehicle = {}, rate = 0) => {
+    const source = `${vehicle?.source ?? ''}`.trim();
+
+    return source !== '' && resolveEffectiveProviderMarkupRate(vehicle, rate) > 0;
+};
+
 const roundMoney = (value) => {
     const numeric = parseFloat(value);
     if (!Number.isFinite(numeric)) {

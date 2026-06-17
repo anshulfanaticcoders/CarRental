@@ -34,7 +34,7 @@ class CarHireRedirectControllerTest extends TestCase
     {
         $store = app(CarHireQuoteStoreService::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-123',
@@ -51,13 +51,14 @@ class CarHireRedirectControllerTest extends TestCase
         $payload = $response->getData(true);
 
         $this->assertSame(200, $response->getStatusCode());
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
         $this->assertSame('quote-123', $payload['quote']['quote_id']);
         $this->assertSame('Toyota Yaris', $payload['quote']['vehicle']['display_name']);
     }
 
     public function test_it_hides_internal_quote_fields_from_redirect_json_response(): void
     {
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-123',
@@ -133,7 +134,8 @@ class CarHireRedirectControllerTest extends TestCase
         $this->assertArrayNotHasKey('provider_product_id', $payload['quote']['vehicle']);
         $this->assertArrayNotHasKey('provider_rate_id', $payload['quote']['vehicle']);
         $this->assertArrayNotHasKey('booking_context', $payload['quote']['vehicle']);
-        $this->assertArrayNotHasKey('supplier', $payload['quote']);
+        $this->assertSame('Green Motion', $payload['quote']['supplier']['name']);
+        $this->assertSame('vrooem', $payload['quote']['supplier']['code']);
         $this->assertArrayNotHasKey('sipp_source', $payload['quote']['specs']);
         $this->assertArrayNotHasKey('provider_location_id', $payload['quote']['pickup_location_details']);
         $this->assertArrayNotHasKey('provider_location_source', $payload['quote']['pickup_location_details']);
@@ -151,20 +153,21 @@ class CarHireRedirectControllerTest extends TestCase
 
         $quote = [
             'quote_id' => 'quote-123',
-            'expires_at' => CarbonImmutable::create(2026, 4, 11, 10, 30, 0, 'UTC')->toIso8601String(),
+            'expires_at' => CarbonImmutable::create(2026, 7, 11, 10, 30, 0, 'UTC')->toIso8601String(),
             'vehicle' => [
                 'display_name' => 'Toyota Yaris',
             ],
         ];
 
         $store->put($quote);
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 31, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 31, 0, 'UTC'));
 
         $response = $this->getJson('/api/skyscanner/redirect?quote_id=quote-123');
 
         $payload = $response->getData(true);
 
         $this->assertSame(410, $response->getStatusCode());
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
         $this->assertSame('quote_expired', $payload['error']);
     }
 
@@ -176,7 +179,7 @@ class CarHireRedirectControllerTest extends TestCase
         $quote = [
             'quote_id' => 'quote-expired',
             'case_id' => 'PSM-46100',
-            'expires_at' => CarbonImmutable::create(2026, 4, 11, 10, 30, 0, 'UTC')->toIso8601String(),
+            'expires_at' => CarbonImmutable::create(2026, 7, 11, 10, 30, 0, 'UTC')->toIso8601String(),
             'vehicle' => [
                 'display_name' => 'Toyota Yaris',
             ],
@@ -186,7 +189,7 @@ class CarHireRedirectControllerTest extends TestCase
         ];
 
         $store->put($quote);
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 31, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 31, 0, 'UTC'));
 
         $response = $controller(Request::create('/api/skyscanner/redirect', 'GET', [
             'quote_id' => 'quote-expired',
@@ -214,7 +217,7 @@ class CarHireRedirectControllerTest extends TestCase
         $auditLog = app(CarHireAuditLogService::class);
         $security = app(CarHireSecurityService::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
         config([
             'skyscanner.signing_secret' => 'top-secret',
         ]);
@@ -232,7 +235,7 @@ class CarHireRedirectControllerTest extends TestCase
         $store->put($quote);
         $params = $security->buildSignedRedirectParams('quote-123', 'rid-123');
 
-        $response = $this->getJson('/api/skyscanner/redirect?' . http_build_query($params));
+        $response = $this->getJson('/api/skyscanner/redirect?'.http_build_query($params));
 
         $payload = $response->getData(true);
         $correlation = $tracking->getRedirectCorrelation('rid-123');
@@ -261,7 +264,7 @@ class CarHireRedirectControllerTest extends TestCase
             'skyscanner.signing_secret' => 'top-secret',
         ]);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-123',
@@ -277,7 +280,7 @@ class CarHireRedirectControllerTest extends TestCase
         $params = $security->buildSignedRedirectParams('quote-123', 'rid-123');
         $params['quote_id'] = 'quote-999';
 
-        $response = $this->getJson('/api/skyscanner/redirect?' . http_build_query($params));
+        $response = $this->getJson('/api/skyscanner/redirect?'.http_build_query($params));
         $payload = $response->getData(true);
 
         $this->assertSame(403, $response->getStatusCode());
@@ -291,7 +294,7 @@ class CarHireRedirectControllerTest extends TestCase
         $tracking = app(CarHireTrackingService::class);
         $controller = app(CarHireRedirectController::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-123',

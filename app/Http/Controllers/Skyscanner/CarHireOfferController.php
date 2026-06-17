@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Skyscanner;
 
 use App\Http\Controllers\Controller;
 use App\Services\Skyscanner\CarHireOfferBookingAdapter;
+use App\Services\Skyscanner\CarHirePublicResponseSerializer;
 use App\Services\Skyscanner\CarHireQuoteLifecycleService;
 use App\Services\Skyscanner\CarHireQuoteStoreService;
 use Illuminate\Http\Request;
@@ -17,8 +18,8 @@ class CarHireOfferController extends Controller
         private readonly CarHireQuoteStoreService $quoteStoreService,
         private readonly CarHireQuoteLifecycleService $quoteLifecycleService,
         private readonly CarHireOfferBookingAdapter $offerBookingAdapter,
-    ) {
-    }
+        private readonly CarHirePublicResponseSerializer $publicResponseSerializer,
+    ) {}
 
     public function show(Request $request, string $locale, string $quoteId): Response
     {
@@ -38,7 +39,7 @@ class CarHireOfferController extends Controller
 
         $bookingContexts = [];
 
-        if (!$isExpired) {
+        if (! $isExpired) {
             foreach ($quotes as $offerQuote) {
                 $offerQuoteId = (string) ($offerQuote['quote_id'] ?? '');
 
@@ -51,16 +52,16 @@ class CarHireOfferController extends Controller
         }
 
         return Inertia::render('OfferResults', [
-            'quote' => $quote,
+            'quote' => $this->buildDisplayQuote($quote),
             'offerResults' => [
                 'selected_quote_id' => $quoteId,
                 'search' => $offerResults['search'] ?? ($quote['search'] ?? []),
-                'quotes' => $quotes,
+                'quotes' => array_map(fn (array $offerQuote): array => $this->buildDisplayQuote($offerQuote), $quotes),
             ],
-            'bookingContext' => !$isExpired ? $this->offerBookingAdapter->build($quote) : null,
+            'bookingContext' => ! $isExpired ? $this->offerBookingAdapter->build($quote) : null,
             'bookingContexts' => $bookingContexts,
             'quoteStatus' => [
-                'valid' => !$isExpired,
+                'valid' => ! $isExpired,
                 'expired' => $isExpired,
                 'reason' => $validation['reason'] ?? null,
                 'message' => $isExpired
@@ -71,9 +72,22 @@ class CarHireOfferController extends Controller
         ]);
     }
 
+    private function buildDisplayQuote(array $quote): array
+    {
+        $displayQuote = $this->publicResponseSerializer->quote($quote);
+
+        foreach (['search', 'products', 'extras_preview', 'inclusions'] as $key) {
+            if (is_array($quote[$key] ?? null)) {
+                $displayQuote[$key] = $quote[$key];
+            }
+        }
+
+        return $displayQuote;
+    }
+
     private function buildSearchAgainUrl(string $locale, array $quote): string
     {
-        if (!Route::has('search')) {
+        if (! Route::has('search')) {
             return '/';
         }
 

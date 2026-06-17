@@ -1,6 +1,11 @@
 ﻿import { computed } from 'vue';
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
-import { computeBookingChargeBreakdown } from '@/utils/platformPricing';
+import {
+    computeBookingChargeBreakdown,
+    resolveEffectiveProviderMarkupRate,
+    shouldUseCommissionOnlyForVehicle,
+    toProviderGrossMultiplier,
+} from '@/utils/platformPricing';
 import { getSicilyByCarExtraTotal } from '@/utils/sicilyByCarExtras';
 import { normalizeCurrencyCode as registryNormalizeCurrencyCode } from '@/utils/currencyRegistry';
 
@@ -56,6 +61,8 @@ export function usePricingCalculation({
         return resolveVehicleCurrency(currentProduct.value, props.vehicle);
     });
     const shouldUsePartnerQuoteCurrency = computed(() => Boolean(`${props.vehicle?.partner_supplier_name || ''}`.trim()));
+    const effectiveProviderMarkupRate = computed(() => resolveEffectiveProviderMarkupRate(props.vehicle, providerMarkupRate.value));
+    const effectiveProviderGrossMultiplier = computed(() => toProviderGrossMultiplier(effectiveProviderMarkupRate.value));
 
     const vehicleTotalCurrency = computed(() => {
         return resolveVehicleCurrency(currentProduct.value, props.vehicle);
@@ -85,7 +92,7 @@ export function usePricingCalculation({
 
     const formatRentalPrice = (val) => {
         const numeric = parseFloat(val ?? 0);
-        return formatPrice(numeric * providerGrossMultiplier.value);
+        return formatPrice(numeric * effectiveProviderGrossMultiplier.value);
     };
 
     // â”€â”€ Per-extra price helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -188,7 +195,7 @@ export function usePricingCalculation({
     });
 
     const shouldUseCommissionOnly = computed(() => {
-        return Boolean(`${props.vehicle?.source ?? ''}`.trim()) && providerMarkupRate.value > 0;
+        return shouldUseCommissionOnlyForVehicle(props.vehicle, providerMarkupRate.value);
     });
 
     const bookingChargeBreakdown = computed(() => {
@@ -196,7 +203,7 @@ export function usePricingCalculation({
         const percent = props.paymentPercentage && props.paymentPercentage > 0 ? props.paymentPercentage : 15;
         return computeBookingChargeBreakdown({
             netTotal: parseFloat(netGrandTotal.value || 0),
-            markupRate: providerMarkupRate.value,
+            markupRate: effectiveProviderMarkupRate.value,
             depositPercentage: percent,
             useCommissionOnly: shouldUseCommissionOnly.value,
         });

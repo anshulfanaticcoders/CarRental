@@ -74,6 +74,15 @@ test('default adapter exposes included insurance and generic extras from gateway
                     excess_amount: 500,
                     description: 'Supplier terms require proof of coverage unless local coverage is purchased.',
                 },
+                {
+                    id: 'ins_premium',
+                    name: 'Premium Cover',
+                    coverage_type: 'premium',
+                    included: false,
+                    daily_rate: 6,
+                    total_price: 18,
+                    currency: 'EUR',
+                },
             ],
             extras: [
                 {
@@ -96,6 +105,9 @@ test('default adapter exposes included insurance and generic extras from gateway
             detail: 'Supplier terms require proof of coverage unless local coverage is purchased.',
         },
     ]);
+    assert.equal(adapter.protectionPlans.value.length, 1);
+    assert.equal(adapter.protectionPlans.value[0].name, 'Premium Cover');
+    assert.equal(adapter.protectionPlans.value[0].total_for_booking, 18);
 
     assert.deepEqual(adapter.optionalExtras.value, [
         {

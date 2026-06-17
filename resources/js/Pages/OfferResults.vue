@@ -95,6 +95,7 @@ type Product = {
   deposit?: number | null
   deposit_currency?: string | null
   is_basic?: boolean | null
+  currency?: string | null
 }
 
 type AppliedOffer = {
@@ -103,6 +104,33 @@ type AppliedOffer = {
   title?: string | null
   description?: string | null
   effect_type?: string | null
+}
+
+type InsuranceOption = {
+  id?: string | null
+  name?: string | null
+  coverage_type?: string | null
+  included?: boolean | null
+  daily_rate?: number | null
+  total_price?: number | null
+  currency?: string | null
+  excess_amount?: number | null
+  deposit_amount?: number | null
+  description?: string | null
+}
+
+type CoverageSnapshot = Record<string, {
+  included?: boolean | null
+  excess_amount?: number | null
+  deposit_amount?: number | null
+  currency?: string | null
+  description?: string | null
+}>
+
+type OfferFact = {
+  key: string
+  label: string
+  detail: string
 }
 
 type Quote = {
@@ -116,6 +144,9 @@ type Quote = {
   dropoff_location_details?: LocationDetails
   search?: Search
   products?: Product[]
+  extras_preview?: Array<Record<string, unknown>> | null
+  insurance_options?: InsuranceOption[] | null
+  coverages?: CoverageSnapshot | null
   free_esim_included?: boolean | null
   applied_offers?: AppliedOffer[] | null
   inclusions?: string[] | null
@@ -204,7 +235,6 @@ const policies = computed(() => props.quote.policies ?? {})
 const pickupLocation = computed(() => props.quote.pickup_location_details ?? {})
 const dropoffLocation = computed(() => props.quote.dropoff_location_details ?? {})
 const search = computed(() => props.quote.search ?? {})
-const featuredProduct = computed(() => props.quote.products?.[0] ?? null)
 const displayedQuotes = computed(() => props.offerResults.quotes ?? [])
 const alternativeQuotes = computed(() => displayedQuotes.value.filter((offer) => offer.quote_id !== props.quote.quote_id))
 const visibleAlternativeQuotes = computed(() => alternativeQuotes.value.slice(0, relatedCardsLimit.value))
@@ -233,6 +263,22 @@ const _t = (key: string, fallback: string, replacements: Record<string, string |
   return translation
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
+const asRecordArray = (value: unknown): Array<Record<string, unknown>> => Array.isArray(value) ? value.filter(isRecord) : []
+const asRecord = (value: unknown): Record<string, unknown> => isRecord(value) ? value : {}
+const toFiniteNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : null
+}
+const stringValue = (value: unknown): string | null => {
+  const text = `${value ?? ''}`.trim()
+  return text === '' ? null : text
+}
+
 const displayName = computed(() => vehicle.value.display_name ?? [vehicle.value.brand, vehicle.value.model].filter(Boolean).join(' '))
 const pageTitle = computed(() => `${displayName.value || _t('selected_offer_title', 'Selected Offer')} | Vrooem`)
 const offerAvailabilityText = computed(() => {
@@ -255,6 +301,28 @@ const luggageSummary = computed(() => {
 })
 
 const supplierDisplayName = computed(() => quoteSupplierName(props.quote))
+const primaryOfferVehicle = computed<Record<string, unknown>>(() => props.bookingContext?.vehicle ?? {})
+const offerProducts = computed(() => asRecordArray(primaryOfferVehicle.value.products ?? props.quote.products))
+const offerExtras = computed(() => asRecordArray(primaryOfferVehicle.value.extras_preview ?? primaryOfferVehicle.value.extras ?? props.quote.extras_preview))
+const featuredProduct = computed<Product | null>(() => {
+  const product = offerProducts.value[0]
+
+  if (!product) {
+    return null
+  }
+
+  return {
+    type: stringValue(product.type),
+    name: stringValue(product.name),
+    subtitle: stringValue(product.subtitle),
+    total: toFiniteNumber(product.total),
+    price_per_day: toFiniteNumber(product.price_per_day),
+    deposit: toFiniteNumber(product.deposit),
+    deposit_currency: stringValue(product.deposit_currency),
+    is_basic: product.is_basic === true,
+    currency: stringValue(product.currency),
+  }
+})
 
 const partnerSourceLabel = computed(() => {
   const source = `${props.quote.case_id || vehicle.value.provider_code || vehicle.value.supplier_code || ''}`.toLowerCase()
@@ -348,6 +416,77 @@ const formatDisplayAmount = (amount?: number | null, sourceCurrency?: string | n
     return `${getCurrencySymbol(normalizedDisplay)}${amount.toFixed(2)}`
   }
 }
+
+const offerInsuranceOptions = computed(() => asRecordArray(primaryOfferVehicle.value.insurance_options ?? props.quote.insurance_options))
+const offerCoverages = computed(() => asRecord(primaryOfferVehicle.value.coverages ?? props.quote.coverages))
+const formatFactAmount = (amount: unknown, currency?: unknown) => {
+  const numeric = toFiniteNumber(amount)
+  return numeric === null ? null : formatDisplayAmount(numeric, stringValue(currency) || pricing.value.currency || search.value.currency || 'EUR')
+}
+const offerPackageFacts = computed<OfferFact[]>(() => offerProducts.value.map((product, index) => {
+  const label = stringValue(product.name) || stringValue(product.type) || _t('package', 'Package')
+  const total = formatFactAmount(product.total, product.currency)
+  const subtitle = stringValue(product.subtitle)
+
+  return {
+    key: `product-${stringValue(product.type) || index}`,
+    label,
+    detail: [subtitle, total].filter(Boolean).join(' · ') || _t('available_on_offer', 'Available on this offer'),
+  }
+}))
+const offerInsuranceFacts = computed<OfferFact[]>(() => offerInsuranceOptions.value.map((option, index) => {
+  const label = stringValue(option.name) || stringValue(option.coverage_type) || _t('insurance_cover', 'Insurance cover')
+  const currency = stringValue(option.currency) || pricing.value.currency || search.value.currency || 'EUR'
+  const total = toFiniteNumber(option.total_price)
+  const dailyRate = toFiniteNumber(option.daily_rate)
+  const included = option.included === true || total === 0
+  const price = included
+    ? _t('included', 'Included')
+    : (formatFactAmount(total, currency) ?? (dailyRate !== null ? `${formatDisplayAmount(dailyRate, currency)} / ${_t('day_lower', 'day')}` : null))
+  const excess = formatFactAmount(option.excess_amount, currency)
+  const detail = [stringValue(option.description), price, excess ? `${_t('excess', 'Excess')} ${excess}` : null].filter(Boolean).join(' · ')
+
+  return {
+    key: `insurance-${stringValue(option.id) || stringValue(option.coverage_type) || index}`,
+    label,
+    detail: detail || _t('available_on_offer', 'Available on this offer'),
+  }
+}))
+const offerCoverageFacts = computed<OfferFact[]>(() => Object.entries(offerCoverages.value).map(([key, coverage]) => {
+  const item = asRecord(coverage)
+  const currency = stringValue(item.currency) || pricing.value.currency || search.value.currency || 'EUR'
+  const excess = formatFactAmount(item.excess_amount, currency)
+  const deposit = formatFactAmount(item.deposit_amount, currency)
+  const detail = [
+    stringValue(item.description),
+    item.included === true ? _t('included', 'Included') : null,
+    excess ? `${_t('excess', 'Excess')} ${excess}` : null,
+    deposit ? `${_t('deposit', 'Deposit')} ${deposit}` : null,
+  ].filter(Boolean).join(' · ')
+
+  return {
+    key: `coverage-${key}`,
+    label: `${key.toUpperCase()} ${_t('coverage', 'coverage')}`,
+    detail: detail || _t('available_on_offer', 'Available on this offer'),
+  }
+}))
+const offerExtraFacts = computed<OfferFact[]>(() => offerExtras.value.map((extra, index) => {
+  const label = stringValue(extra.name) || stringValue(extra.code) || _t('extra', 'Extra')
+  const total = formatFactAmount(extra.total_for_booking ?? extra.total_price ?? extra.price ?? extra.amount, extra.currency)
+  const detail = [stringValue(extra.description), total].filter(Boolean).join(' · ')
+
+  return {
+    key: `extra-${stringValue(extra.id) || stringValue(extra.code) || index}`,
+    label,
+    detail: detail || _t('available_on_offer', 'Available on this offer'),
+  }
+}))
+const offerParityFacts = computed<OfferFact[]>(() => [
+  ...offerPackageFacts.value,
+  ...offerInsuranceFacts.value,
+  ...offerCoverageFacts.value,
+  ...offerExtraFacts.value,
+])
 
 const formatDateTime = (date?: string | null, time?: string | null) => {
   if (!date) {
@@ -452,6 +591,11 @@ const quoteCardVehicle = (quote: Quote): Record<string, unknown> => {
     doors: contextVehicle.doors ?? quoteVehicle.doors,
     mileage: contextVehicle.mileage ?? quote.policies?.mileage_policy,
     benefits: contextVehicle.benefits ?? {},
+    products: contextVehicle.products ?? quote.products ?? [],
+    extras: contextVehicle.extras ?? quote.extras_preview ?? [],
+    extras_preview: contextVehicle.extras_preview ?? quote.extras_preview ?? [],
+    insurance_options: contextVehicle.insurance_options ?? quote.insurance_options ?? [],
+    coverages: contextVehicle.coverages ?? quote.coverages ?? {},
   }
 }
 
@@ -757,6 +901,10 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
                 <div v-if="hasFreeEsim" class="or-included">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2M10 6h4M10 10h4M10 14h2"/></svg>
                   <div><strong>{{ _t('free_esim_included', 'Free eSIM included') }}</strong><span>{{ _t('free_esim_auto', 'Added automatically for every eligible booking.') }}</span></div>
+                </div>
+                <div v-for="fact in offerParityFacts" :key="fact.key" class="or-included">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8z"/><path d="M9 12l2 2 4-4"/></svg>
+                  <div><strong>{{ fact.label }}</strong><span>{{ fact.detail }}</span></div>
                 </div>
                 <div class="or-included">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8z"/></svg>

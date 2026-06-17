@@ -12,18 +12,29 @@ class CarHireOfferBookingAdapter
     {
         $pickupLocation = $this->normalizeLocationDetails($quote['pickup_location_details'] ?? []);
         $dropoffLocation = $this->normalizeLocationDetails($quote['dropoff_location_details'] ?? []);
+        $vehicle = is_array($quote['vehicle'] ?? null) ? $quote['vehicle'] : [];
+        $supplier = is_array($quote['supplier'] ?? null) ? $quote['supplier'] : [];
+        $baseProviderPayload = is_array(data_get($vehicle, 'booking_context.provider_payload'))
+            ? data_get($vehicle, 'booking_context.provider_payload')
+            : [];
         $publicPricing = is_array($quote['pricing'] ?? null) ? $quote['pricing'] : [];
         $netPricing = is_array($quote['net_pricing'] ?? null) ? $quote['net_pricing'] : [];
         $pricing = $publicPricing !== [] ? $publicPricing : $netPricing;
-        $products = $this->normalizeProducts($quote['booking_products'] ?? ($quote['products'] ?? []), $pricing, $netPricing);
-        $optionalExtras = $this->normalizeOptionalExtras($quote['extras_preview'] ?? []);
+        $productSource = $this->quoteFirstArray(
+            $quote['booking_products'] ?? null,
+            $quote['products'] ?? null,
+            $baseProviderPayload['products'] ?? null,
+        );
+        $products = $this->normalizeProducts($productSource, $pricing, $netPricing);
+        $quoteExtras = $this->normalizeOptionalExtras(is_array($quote['extras_preview'] ?? null) ? $quote['extras_preview'] : []);
+        $providerExtras = $this->buildAdapterExtras($baseProviderPayload['extras'] ?? null, []);
+        $optionalExtras = $quoteExtras !== [] ? $quoteExtras : $providerExtras;
         $search = is_array($quote['search'] ?? null) ? $quote['search'] : [];
-        $policies = is_array($quote['policies'] ?? null) ? $quote['policies'] : [];
-        $coverages = is_array($quote['coverages'] ?? null) ? $quote['coverages'] : [];
+        $policies = $this->assocFirstArray($quote['policies'] ?? null, $baseProviderPayload['policies'] ?? null);
+        $coverages = $this->assocFirstArray($quote['coverages'] ?? null, $baseProviderPayload['coverages'] ?? null);
         $quoteInsuranceOptions = $this->arrayValue($quote['insurance_options'] ?? null);
-        $vehicle = is_array($quote['vehicle'] ?? null) ? $quote['vehicle'] : [];
-        $supplier = is_array($quote['supplier'] ?? null) ? $quote['supplier'] : [];
-        $benefits = $this->buildBenefits($quote);
+        $quoteWithCanonicalPolicies = array_merge($quote, ['policies' => $policies]);
+        $benefits = $this->buildBenefits($quoteWithCanonicalPolicies);
         $currency = $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR'));
         $totalPrice = $this->floatOrNull($pricing['total_price'] ?? null);
         $pricePerDay = $this->floatOrNull($pricing['price_per_day'] ?? null);
@@ -31,22 +42,21 @@ class CarHireOfferBookingAdapter
         $source = $this->stringOrNull($vehicle['source'] ?? null)
             ?? $this->stringOrNull($supplier['code'] ?? null)
             ?? 'internal';
-        $baseProviderPayload = is_array(data_get($vehicle, 'booking_context.provider_payload'))
-            ? data_get($vehicle, 'booking_context.provider_payload')
-            : [];
         $providerInsuranceOptions = $this->arrayValue($baseProviderPayload['insurance_options'] ?? null);
         $insuranceOptions = $quoteInsuranceOptions !== [] ? $quoteInsuranceOptions : $providerInsuranceOptions;
         $providerPayload = array_merge($baseProviderPayload, [
             'source' => $source,
             'currency' => $currency,
             'security_deposit' => $depositAmount,
-            'pricing' => $pricing,
+            'display_pricing' => $pricing,
             'net_pricing' => $netPricing,
             'products' => $products,
-            'booking_products' => is_array($quote['booking_products'] ?? null) ? $quote['booking_products'] : [],
+            'booking_products' => $productSource,
+            'extras' => $optionalExtras,
             'extras_preview' => $optionalExtras,
             'insurance_options' => $insuranceOptions,
             'coverages' => $coverages,
+            'policies' => $policies,
             'vendorPlans' => $this->buildVendorPlans($products),
             'vendor_plans' => $this->buildVendorPlans($products),
             'vendorProfileData' => array_merge(
@@ -73,7 +83,7 @@ class CarHireOfferBookingAdapter
             'addons' => $optionalExtras,
             'images' => $this->buildImages($vehicle),
         ]);
-        $adapterExtras = $this->buildAdapterExtras($providerPayload['extras'] ?? null, $optionalExtras);
+        $adapterExtras = $this->buildAdapterExtras($optionalExtras, []);
         $pickupOffice = is_array($providerPayload['pickup_office'] ?? null) ? $providerPayload['pickup_office'] : null;
         $dropoffOffice = is_array($providerPayload['dropoff_office'] ?? null) ? $providerPayload['dropoff_office'] : null;
 
@@ -285,6 +295,7 @@ class CarHireOfferBookingAdapter
 
             return [
                 'id' => $this->stringOrNull($extra['id'] ?? null),
+                'code' => $this->stringOrNull($extra['code'] ?? ($extra['id'] ?? null)),
                 'name' => $this->stringOrNull($extra['name'] ?? null),
                 'addon_id' => $this->stringOrNull($extra['code'] ?? ($extra['id'] ?? null)),
                 'extra_name' => $this->stringOrNull($extra['name'] ?? null),
@@ -294,6 +305,7 @@ class CarHireOfferBookingAdapter
                 'daily_rate' => $this->floatOrNull($extra['daily_rate'] ?? null),
                 'total_for_booking' => $this->floatOrNull($extra['total_for_booking'] ?? null),
                 'currency' => $this->stringOrNull($extra['currency'] ?? null),
+                'max_quantity' => (int) ($extra['max_quantity'] ?? 1),
             ];
         }, $extras)));
     }
@@ -434,5 +446,27 @@ class CarHireOfferBookingAdapter
     private function arrayValue(mixed $value): array
     {
         return is_array($value) ? array_values($value) : [];
+    }
+
+    private function quoteFirstArray(mixed ...$values): array
+    {
+        foreach ($values as $value) {
+            if (is_array($value) && $value !== []) {
+                return array_values($value);
+            }
+        }
+
+        return [];
+    }
+
+    private function assocFirstArray(mixed ...$values): array
+    {
+        foreach ($values as $value) {
+            if (is_array($value) && $value !== []) {
+                return $value;
+            }
+        }
+
+        return [];
     }
 }

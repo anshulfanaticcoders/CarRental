@@ -246,6 +246,246 @@ class CarHireOfferBookingAdapterTest extends TestCase
         $this->assertSame('Vrooem', $context['vehicle']['booking_context']['provider_payload']['vendorProfileData']['company_name']);
     }
 
+    public function test_it_carries_quote_level_insurance_and_coverages_into_booking_context(): void
+    {
+        $service = app(CarHireOfferBookingAdapter::class);
+
+        $context = $service->build([
+            'quote_id' => 'quote-insurance-123',
+            'vehicle' => [
+                'provider_vehicle_id' => 'gm-vehicle-1',
+                'source' => 'greenmotion',
+                'provider_code' => 'greenmotion',
+                'display_name' => 'Hyundai i10 or similar',
+                'booking_context' => [
+                    'provider_payload' => [
+                        'source' => 'greenmotion',
+                    ],
+                ],
+            ],
+            'supplier' => [
+                'code' => 'greenmotion',
+                'name' => 'Green Motion',
+            ],
+            'pricing' => [
+                'currency' => 'EUR',
+                'total_price' => 138.0,
+                'price_per_day' => 46.0,
+                'deposit_amount' => 500.0,
+                'deposit_currency' => 'EUR',
+                'excess_amount' => 1000.0,
+            ],
+            'insurance_options' => [
+                [
+                    'id' => 'cdw-basic',
+                    'name' => 'Collision Damage Waiver',
+                    'coverage_type' => 'CDW',
+                    'included' => true,
+                    'total_price' => 0,
+                    'currency' => 'EUR',
+                    'excess_amount' => 1000.0,
+                    'description' => 'Included supplier collision cover.',
+                ],
+            ],
+            'coverages' => [
+                'cdw' => [
+                    'included' => true,
+                    'excess_amount' => 1000.0,
+                    'currency' => 'EUR',
+                    'description' => 'Included supplier collision cover.',
+                ],
+            ],
+            'pickup_location_details' => [
+                'provider_location_id' => 'gm-dxb-1',
+                'name' => 'Dubai Airport',
+            ],
+            'dropoff_location_details' => [
+                'provider_location_id' => 'gm-dxb-1',
+                'name' => 'Dubai Airport',
+            ],
+            'products' => [],
+            'extras_preview' => [
+                [
+                    'id' => 'gps',
+                    'code' => 'GPS',
+                    'name' => 'GPS',
+                    'daily_rate' => 5.00,
+                    'total_for_booking' => 15.00,
+                    'currency' => 'EUR',
+                ],
+            ],
+            'search' => [
+                'pickup_date' => '2026-05-10',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-05-13',
+                'dropoff_time' => '09:00',
+                'currency' => 'EUR',
+            ],
+        ]);
+
+        $this->assertSame('Collision Damage Waiver', $context['vehicle']['insurance_options'][0]['name']);
+        $this->assertSame('Collision Damage Waiver', $context['vehicle']['booking_context']['provider_payload']['insurance_options'][0]['name']);
+        $this->assertSame(1000.0, $context['vehicle']['coverages']['cdw']['excess_amount']);
+        $this->assertSame(1000.0, $context['vehicle']['booking_context']['provider_payload']['coverages']['cdw']['excess_amount']);
+        $this->assertSame('GPS', $context['vehicle']['extras_preview'][0]['name']);
+        $this->assertSame('GPS', $context['vehicle']['booking_context']['provider_payload']['extras_preview'][0]['name']);
+    }
+
+    public function test_it_falls_back_to_provider_offer_fields_when_quote_fields_are_missing(): void
+    {
+        $service = app(CarHireOfferBookingAdapter::class);
+
+        $context = $service->build([
+            'quote_id' => 'quote-provider-fallback-123',
+            'vehicle' => [
+                'provider_vehicle_id' => 'gm-vehicle-2',
+                'source' => 'greenmotion',
+                'provider_code' => 'greenmotion',
+                'display_name' => 'Toyota Yaris or similar',
+                'booking_context' => [
+                    'provider_payload' => [
+                        'source' => 'greenmotion',
+                        'products' => [
+                            [
+                                'type' => 'BAS',
+                                'name' => 'Basic',
+                                'total' => 120.0,
+                                'price_per_day' => 40.0,
+                                'currency' => 'EUR',
+                                'is_basic' => true,
+                            ],
+                        ],
+                        'extras' => [
+                            [
+                                'id' => 'seat',
+                                'code' => 'CHILD_SEAT',
+                                'name' => 'Child seat',
+                                'price' => 7.0,
+                                'currency' => 'EUR',
+                            ],
+                        ],
+                        'insurance_options' => [
+                            [
+                                'id' => 'provider-cdw',
+                                'name' => 'Provider CDW',
+                                'coverage_type' => 'CDW',
+                                'included' => true,
+                                'total_price' => 0,
+                                'currency' => 'EUR',
+                            ],
+                        ],
+                        'coverages' => [
+                            'cdw' => [
+                                'included' => true,
+                                'excess_amount' => 900.0,
+                                'currency' => 'EUR',
+                            ],
+                        ],
+                        'policies' => [
+                            'fuel_policy' => 'Same to same',
+                        ],
+                    ],
+                ],
+            ],
+            'supplier' => [
+                'code' => 'greenmotion',
+                'name' => 'Green Motion',
+            ],
+            'pricing' => [
+                'currency' => 'EUR',
+                'total_price' => 120.0,
+                'price_per_day' => 40.0,
+            ],
+            'pickup_location_details' => [
+                'name' => 'Dubai Airport',
+            ],
+            'dropoff_location_details' => [
+                'name' => 'Dubai Airport',
+            ],
+            'search' => [
+                'pickup_date' => '2026-05-10',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-05-13',
+                'dropoff_time' => '09:00',
+                'currency' => 'EUR',
+            ],
+        ]);
+
+        $this->assertSame('Basic', $context['vehicle']['products'][0]['name']);
+        $this->assertSame('Child seat', $context['vehicle']['extras_preview'][0]['name']);
+        $this->assertSame('Provider CDW', $context['vehicle']['insurance_options'][0]['name']);
+        $this->assertSame(900.0, $context['vehicle']['coverages']['cdw']['excess_amount']);
+        $this->assertSame('Same to same', $context['vehicle']['policies']['fuel_policy']);
+    }
+
+    public function test_it_uses_public_quote_pricing_for_offer_booking_context_totals(): void
+    {
+        $service = app(CarHireOfferBookingAdapter::class);
+
+        $context = $service->build([
+            'quote_id' => 'quote-priced-123',
+            'vehicle' => [
+                'provider_vehicle_id' => 'gw-vehicle-1',
+                'source' => 'surprice',
+                'provider_code' => 'surprice',
+                'display_name' => 'Nissan Sunny or similar',
+            ],
+            'supplier' => [
+                'code' => 'surprice',
+                'name' => 'Surprice',
+            ],
+            'pricing' => [
+                'currency' => 'EUR',
+                'total_price' => 138.0,
+                'price_per_day' => 46.0,
+                'customer_price_markup_rate' => 0.15,
+            ],
+            'net_pricing' => [
+                'currency' => 'EUR',
+                'total_price' => 120.0,
+                'price_per_day' => 40.0,
+            ],
+            'booking_products' => [
+                [
+                    'type' => 'BAS',
+                    'name' => 'Basic',
+                    'total' => 120.0,
+                    'price_per_day' => 40.0,
+                    'currency' => 'EUR',
+                    'is_basic' => true,
+                ],
+                [
+                    'type' => 'PRE',
+                    'name' => 'Premium',
+                    'total' => 150.0,
+                    'price_per_day' => 50.0,
+                    'currency' => 'EUR',
+                ],
+            ],
+            'pickup_location_details' => [
+                'name' => 'Dubai Airport',
+            ],
+            'dropoff_location_details' => [
+                'name' => 'Dubai Airport',
+            ],
+            'search' => [
+                'pickup_date' => '2026-05-10',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-05-13',
+                'dropoff_time' => '09:00',
+                'currency' => 'EUR',
+            ],
+        ]);
+
+        $this->assertSame(138.0, $context['vehicle']['total_price']);
+        $this->assertSame(46.0, $context['vehicle']['price_per_day']);
+        $this->assertSame(138.0, $context['vehicle']['products'][0]['total']);
+        $this->assertSame(46.0, $context['vehicle']['products'][0]['price_per_day']);
+        $this->assertSame(172.5, $context['vehicle']['products'][1]['total']);
+        $this->assertSame(57.5, $context['vehicle']['products'][1]['price_per_day']);
+        $this->assertSame(120.0, $context['vehicle']['booking_context']['provider_payload']['net_pricing']['total_price']);
+    }
+
     public function test_it_mirrors_provider_pricing_and_payload_fields_needed_by_booking_adapters(): void
     {
         $service = app(CarHireOfferBookingAdapter::class);
@@ -364,7 +604,8 @@ class CarHireOfferBookingAdapterTest extends TestCase
         $this->assertSame('OK DXB - Airport', $context['vehicle']['pickup_station_name']);
         $this->assertCount(1, $context['vehicle']['extras']);
         $this->assertSame('GPS', $context['vehicle']['extras'][0]['code']);
-        $this->assertSame(15.0, $context['vehicle']['extras'][0]['price']);
+        $this->assertSame(5.0, $context['vehicle']['extras'][0]['price']);
+        $this->assertSame(15.0, $context['vehicle']['extras'][0]['total_for_booking']);
         $this->assertSame(400.0, $context['vehicle']['benefits']['deposit_amount']);
     }
 }
