@@ -47,3 +47,37 @@ test('recordgo adapter hides non-applied automatic complements from customer UI'
         { label: 'Basic Cover', detail: 'Included' },
     ]);
 });
+
+test('recordgo adapter uses supplier complement ids for coverage protections', () => {
+    const adapter = createRecordGoAdapter({
+        vehicle: {
+            source: 'recordgo',
+            currency: 'EUR',
+            total_price: 145.64,
+            recordgo_products: [
+                {
+                    type: 'RG_PRE',
+                    name: 'Just Go',
+                    total: 145.64,
+                    complements_included: [],
+                    complements_automatic: [],
+                    complements_associated: [
+                        {
+                            complementId: 44,
+                            complementName: 'Full Cover',
+                            complementCategory: 'COVERAGE',
+                            priceTaxIncComplement: 18.5,
+                        },
+                    ],
+                },
+            ],
+        },
+        numberOfDays: 2,
+    }, {
+        currentPackage: ref('RG_PRE'),
+        stripHtml,
+    });
+
+    assert.equal(adapter.protectionPlans.value[0].id, 'ext_recordgo_44');
+    assert.equal(adapter.protectionPlans.value[0].code, 44);
+});

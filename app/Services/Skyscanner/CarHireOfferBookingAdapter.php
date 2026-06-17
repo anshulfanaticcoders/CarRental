@@ -12,10 +12,15 @@ class CarHireOfferBookingAdapter
     {
         $pickupLocation = $this->normalizeLocationDetails($quote['pickup_location_details'] ?? []);
         $dropoffLocation = $this->normalizeLocationDetails($quote['dropoff_location_details'] ?? []);
-        $products = $this->normalizeProducts($quote['booking_products'] ?? ($quote['products'] ?? []));
+        $publicPricing = is_array($quote['pricing'] ?? null) ? $quote['pricing'] : [];
+        $netPricing = is_array($quote['net_pricing'] ?? null) ? $quote['net_pricing'] : [];
+        $pricing = $publicPricing !== [] ? $publicPricing : $netPricing;
+        $products = $this->normalizeProducts($quote['booking_products'] ?? ($quote['products'] ?? []), $pricing, $netPricing);
         $optionalExtras = $this->normalizeOptionalExtras($quote['extras_preview'] ?? []);
         $search = is_array($quote['search'] ?? null) ? $quote['search'] : [];
-        $pricing = is_array($quote['net_pricing'] ?? null) ? $quote['net_pricing'] : (is_array($quote['pricing'] ?? null) ? $quote['pricing'] : []);
+        $policies = is_array($quote['policies'] ?? null) ? $quote['policies'] : [];
+        $coverages = is_array($quote['coverages'] ?? null) ? $quote['coverages'] : [];
+        $quoteInsuranceOptions = $this->arrayValue($quote['insurance_options'] ?? null);
         $vehicle = is_array($quote['vehicle'] ?? null) ? $quote['vehicle'] : [];
         $supplier = is_array($quote['supplier'] ?? null) ? $quote['supplier'] : [];
         $benefits = $this->buildBenefits($quote);
@@ -29,10 +34,19 @@ class CarHireOfferBookingAdapter
         $baseProviderPayload = is_array(data_get($vehicle, 'booking_context.provider_payload'))
             ? data_get($vehicle, 'booking_context.provider_payload')
             : [];
+        $providerInsuranceOptions = $this->arrayValue($baseProviderPayload['insurance_options'] ?? null);
+        $insuranceOptions = $quoteInsuranceOptions !== [] ? $quoteInsuranceOptions : $providerInsuranceOptions;
         $providerPayload = array_merge($baseProviderPayload, [
             'source' => $source,
             'currency' => $currency,
             'security_deposit' => $depositAmount,
+            'pricing' => $pricing,
+            'net_pricing' => $netPricing,
+            'products' => $products,
+            'booking_products' => is_array($quote['booking_products'] ?? null) ? $quote['booking_products'] : [],
+            'extras_preview' => $optionalExtras,
+            'insurance_options' => $insuranceOptions,
+            'coverages' => $coverages,
             'vendorPlans' => $this->buildVendorPlans($products),
             'vendor_plans' => $this->buildVendorPlans($products),
             'vendorProfileData' => array_merge(
@@ -92,6 +106,7 @@ class CarHireOfferBookingAdapter
                 'extras_included' => $this->arrayValue($providerPayload['extras_included'] ?? null),
                 'extras_required' => $this->arrayValue($providerPayload['extras_required'] ?? null),
                 'extras_available' => $this->arrayValue($providerPayload['extras_available'] ?? null),
+                'extras_preview' => $optionalExtras,
                 'pickup_station_name' => $this->stringOrNull($providerPayload['pickup_station_name'] ?? ($pickupOffice['name'] ?? null)),
                 'dropoff_station_name' => $this->stringOrNull($providerPayload['dropoff_station_name'] ?? ($dropoffOffice['name'] ?? null)),
                 'station' => $this->stringOrNull($providerPayload['station'] ?? ($providerPayload['pickup_station_name'] ?? ($pickupOffice['name'] ?? null))),
@@ -102,10 +117,12 @@ class CarHireOfferBookingAdapter
                 'rate_name' => $this->stringOrNull($providerPayload['rate_name'] ?? null),
                 'payment_type' => $this->stringOrNull($providerPayload['payment_type'] ?? null),
                 'mileage' => $this->stringOrNull($providerPayload['mileage'] ?? null),
-                'fuel_policy' => $this->stringOrNull($providerPayload['fuel_policy'] ?? ($quote['policies']['fuel_policy'] ?? null)),
-                'cancellation' => is_array($providerPayload['cancellation'] ?? null) ? $providerPayload['cancellation'] : ($quote['policies']['cancellation'] ?? null),
+                'fuel_policy' => $this->stringOrNull($providerPayload['fuel_policy'] ?? ($policies['fuel_policy'] ?? null)),
+                'cancellation' => is_array($providerPayload['cancellation'] ?? null) ? $providerPayload['cancellation'] : ($policies['cancellation'] ?? null),
+                'policies' => $policies,
+                'coverages' => $coverages,
                 'options' => $this->arrayValue($providerPayload['options'] ?? null),
-                'insurance_options' => $this->arrayValue($providerPayload['insurance_options'] ?? null),
+                'insurance_options' => $insuranceOptions,
                 'provider_gross_amount' => $this->floatOrNull($providerPayload['provider_gross_amount'] ?? null),
                 'provider_net_amount' => $this->floatOrNull($providerPayload['provider_net_amount'] ?? null),
                 'provider_vat_amount' => $this->floatOrNull($providerPayload['provider_vat_amount'] ?? null),
@@ -209,26 +226,52 @@ class CarHireOfferBookingAdapter
         ];
     }
 
-    private function normalizeProducts(array $products): array
+    private function normalizeProducts(array $products, array $pricing = [], array $netPricing = []): array
     {
-        return array_values(array_filter(array_map(function ($product) {
+        $publicTotal = $this->floatOrNull($pricing['total_price'] ?? null);
+        $publicPricePerDay = $this->floatOrNull($pricing['price_per_day'] ?? null);
+        $netTotal = $this->floatOrNull($netPricing['total_price'] ?? null);
+        $markupRate = $this->floatOrNull($pricing['customer_price_markup_rate'] ?? null);
+        $multiplier = $markupRate !== null ? 1 + max(0, $markupRate) : null;
+
+        if ($multiplier === null && $publicTotal !== null && $netTotal !== null && $netTotal > 0) {
+            $multiplier = $publicTotal / $netTotal;
+        }
+
+        return array_values(array_filter(array_map(function ($product) use ($pricing, $publicTotal, $publicPricePerDay, $multiplier) {
             if (! is_array($product)) {
                 return null;
+            }
+
+            $isBasic = (bool) ($product['is_basic'] ?? false) || ($product['type'] ?? null) === 'BAS';
+            $total = $this->floatOrNull($product['total'] ?? null);
+            $pricePerDay = $this->floatOrNull($product['price_per_day'] ?? null);
+
+            if ($isBasic && $publicTotal !== null) {
+                $total = $publicTotal;
+            } elseif ($total !== null && $multiplier !== null) {
+                $total = round($total * $multiplier, 2);
+            }
+
+            if ($isBasic && $publicPricePerDay !== null) {
+                $pricePerDay = $publicPricePerDay;
+            } elseif ($pricePerDay !== null && $multiplier !== null) {
+                $pricePerDay = round($pricePerDay * $multiplier, 2);
             }
 
             return [
                 'type' => $this->stringOrNull($product['type'] ?? null),
                 'name' => $this->stringOrNull($product['name'] ?? null),
                 'subtitle' => $this->stringOrNull($product['subtitle'] ?? null),
-                'total' => $this->floatOrNull($product['total'] ?? null),
-                'price_per_day' => $this->floatOrNull($product['price_per_day'] ?? null),
+                'total' => $total,
+                'price_per_day' => $pricePerDay,
                 'deposit' => $this->floatOrNull($product['deposit'] ?? null),
                 'deposit_currency' => $this->stringOrNull($product['deposit_currency'] ?? null),
                 'excess' => $this->floatOrNull($product['excess'] ?? null),
                 'excess_theft_amount' => $this->floatOrNull($product['excess_theft_amount'] ?? null),
                 'benefits' => is_array($product['benefits'] ?? null) ? $product['benefits'] : [],
-                'currency' => $this->stringOrNull($product['currency'] ?? null),
-                'is_basic' => (bool) ($product['is_basic'] ?? false),
+                'currency' => $this->stringOrNull($product['currency'] ?? ($pricing['currency'] ?? null)),
+                'is_basic' => $isBasic,
             ];
         }, $products)));
     }

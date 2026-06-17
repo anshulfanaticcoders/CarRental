@@ -311,6 +311,7 @@ class StripeBookingServiceAccountingTest extends TestCase
                 'customer_email' => 'internal-customer@example.com',
                 'customer_phone' => '+10000000003',
                 'customer_driver_age' => 35,
+                'user_id' => $customerUser->id,
                 'payment_method' => 'card',
             ],
         ];
@@ -618,6 +619,125 @@ class StripeBookingServiceAccountingTest extends TestCase
     }
 
     #[Test]
+    public function it_forwards_driver_license_number_to_gateway_reservation_requests(): void
+    {
+        $booking = $this->createExternalBooking([
+            'provider_source' => 'greenmotion',
+        ]);
+
+        $gateway = Mockery::mock(VrooemGatewayService::class);
+        $gateway->shouldReceive('createBooking')
+            ->once()
+            ->withArgs(function (array $payload): bool {
+                $this->assertSame('LIC-123456', data_get($payload, 'driver.driving_license_number'));
+
+                return true;
+            })
+            ->andReturn([
+                'id' => 'gw_booking_gm_1',
+                'supplier_booking_id' => 'GM-TEST-REF-1',
+                'status' => 'confirmed',
+                'supplier_id' => 'greenmotion',
+            ]);
+        app()->instance(VrooemGatewayService::class, $gateway);
+
+        $service = new class extends StripeBookingService
+        {
+            public function invokeTriggerGatewayReservation(Booking $booking, object $metadata): void
+            {
+                $this->triggerGatewayReservation($booking, $metadata);
+            }
+        };
+
+        $service->invokeTriggerGatewayReservation($booking, (object) [
+            'gateway_vehicle_id' => 'gw_gm_vehicle_1',
+            'gateway_search_id' => 'search_gm_1',
+            'customer_name' => 'Provider Customer',
+            'customer_email' => 'provider@example.com',
+            'customer_phone' => '+10000000005',
+            'customer_driver_age' => 35,
+            'driver_license_number' => 'LIC-123456',
+            'pickup_date' => '2026-06-24',
+            'pickup_time' => '09:00',
+            'dropoff_date' => '2026-06-26',
+            'dropoff_time' => '09:00',
+        ]);
+    }
+
+    #[Test]
+    public function it_forwards_checkout_vehicle_context_to_gateway_reservation_requests(): void
+    {
+        $booking = $this->createExternalBooking([
+            'provider_source' => 'recordgo',
+        ]);
+        $payload = StripeCheckoutPayload::create([
+            'payload' => [
+                'gateway_vehicle_context' => [
+                    'id' => 'gw_recordgo_vehicle_1',
+                    'gateway_vehicle_id' => 'gw_recordgo_vehicle_1',
+                    'search_id' => 'search_recordgo_1',
+                    'gateway_search_id' => 'search_recordgo_1',
+                    'supplier_id' => 'recordgo',
+                    'supplier_vehicle_id' => 'EDMR',
+                    'name' => 'Fiat 500',
+                    'pricing' => [
+                        'currency' => 'EUR',
+                        'total_price' => 100,
+                        'daily_rate' => 50,
+                    ],
+                    'supplier_data' => [
+                        'product_id' => 123,
+                    ],
+                    'context_valid_until' => now()->addHour()->toIso8601String(),
+                ],
+            ],
+        ]);
+
+        $gateway = Mockery::mock(VrooemGatewayService::class);
+        $gateway->shouldReceive('createBooking')
+            ->once()
+            ->withArgs(function (array $payload): bool {
+                $this->assertSame('gw_recordgo_vehicle_1', data_get($payload, 'vehicle_id'));
+                $this->assertSame('search_recordgo_1', data_get($payload, 'search_id'));
+                $this->assertSame('gw_recordgo_vehicle_1', data_get($payload, 'vehicle_context.id'));
+                $this->assertSame('search_recordgo_1', data_get($payload, 'vehicle_context.search_id'));
+                $this->assertSame('recordgo', data_get($payload, 'vehicle_context.supplier_id'));
+                $this->assertSame(123, data_get($payload, 'vehicle_context.supplier_data.product_id'));
+
+                return true;
+            })
+            ->andReturn([
+                'id' => 'gw_booking_recordgo_1',
+                'supplier_booking_id' => 'RG-TEST-REF-1',
+                'status' => 'confirmed',
+                'supplier_id' => 'recordgo',
+            ]);
+        app()->instance(VrooemGatewayService::class, $gateway);
+
+        $service = new class extends StripeBookingService
+        {
+            public function invokeTriggerGatewayReservation(Booking $booking, object $metadata): void
+            {
+                $this->triggerGatewayReservation($booking, $metadata);
+            }
+        };
+
+        $service->invokeTriggerGatewayReservation($booking, (object) [
+            'gateway_vehicle_id' => 'gw_recordgo_vehicle_1',
+            'gateway_search_id' => 'search_recordgo_1',
+            'extras_payload_id' => $payload->id,
+            'customer_name' => 'Provider Customer',
+            'customer_email' => 'provider@example.com',
+            'customer_phone' => '+10000000005',
+            'customer_driver_age' => 35,
+            'pickup_date' => '2026-06-24',
+            'pickup_time' => '09:00',
+            'dropoff_date' => '2026-06-26',
+            'dropoff_time' => '09:00',
+        ]);
+    }
+
+    #[Test]
     public function it_persists_extended_sicily_by_car_supplier_context_in_provider_metadata(): void
     {
         $booking = $this->createExternalBooking([
@@ -663,6 +783,7 @@ class StripeBookingServiceAccountingTest extends TestCase
 
         $gateway = Mockery::mock(VrooemGatewayService::class);
         $gateway->shouldNotReceive('createBooking');
+        $gateway->shouldReceive('getLastError')->andReturn(null);
         app()->instance(VrooemGatewayService::class, $gateway);
 
         $service = new class extends StripeBookingService

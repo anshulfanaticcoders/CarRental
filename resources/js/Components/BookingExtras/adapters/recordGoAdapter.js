@@ -32,6 +32,17 @@ const preauthValue = (complement, type) => {
     return Number.isFinite(value) ? value : null;
 };
 
+const complementExtraId = (extra, index) => {
+    const existing = `${extra?.id || ''}`.trim();
+    if (existing.startsWith('ext_recordgo_') && !existing.startsWith('ext_recordgo_protection_')) {
+        return existing;
+    }
+
+    const legacyId = existing.replace(/^ext_recordgo_protection_/, '');
+    const complementId = extra?.complementId ?? (legacyId || index);
+    return `ext_recordgo_${complementId ?? index}`;
+};
+
 /**
  * @param {{ vehicle: Object, numberOfDays: number }} props
  * @param {{ currentPackage: import('vue').Ref<string>, stripHtml: (value: string) => string }} options
@@ -148,7 +159,7 @@ export function createRecordGoAdapter(props, { currentPackage, stripHtml }) {
             return complements
                 .filter(extra => complementCategory(extra) !== 'COVERAGE')
                 .map((extra, index) => {
-                const id = extra.id || `ext_recordgo_${extra.complementId ?? index}`;
+                const id = complementExtraId(extra, index);
                 return {
                     id,
                     code: extra.complementId,
@@ -186,7 +197,7 @@ export function createRecordGoAdapter(props, { currentPackage, stripHtml }) {
         return recordGoAssociatedComplements.value
             .filter(extra => complementCategory(extra) === 'COVERAGE')
             .map((extra, index) => {
-                const id = extra.id || `ext_recordgo_protection_${extra.complementId ?? index}`;
+                const id = complementExtraId(extra, index);
                 const total = complementPrice(extra);
                 const daily = complementDailyPrice(extra);
                 return {

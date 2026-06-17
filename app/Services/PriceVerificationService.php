@@ -47,6 +47,7 @@ class PriceVerificationService
                 'search_session' => $searchSessionId,
                 'offer_fingerprint' => $offerFingerprint,
                 'vehicle_context' => $this->extractBookingContext($vehicle),
+                'gateway_vehicle_context' => $this->extractGatewayVehicleContext($vehicle),
             ];
 
             // Cache for 2 hours (typical user session duration)
@@ -285,6 +286,209 @@ class PriceVerificationService
         return array_filter($context, static fn ($value) => $value !== null && $value !== '');
     }
 
+    private function extractGatewayVehicleContext(array $vehicle): array
+    {
+        $vehicleId = trim((string) ($vehicle['gateway_vehicle_id'] ?? $vehicle['id'] ?? ''));
+        $source = strtolower(trim((string) ($vehicle['source'] ?? '')));
+
+        if ($vehicleId === '' || $source === '' || $source === 'internal') {
+            return [];
+        }
+
+        $supplierData = is_array($vehicle['supplier_data'] ?? null)
+            ? $vehicle['supplier_data']
+            : $this->extractLegacyProviderPayload($vehicle);
+        $pricing = is_array($vehicle['pricing'] ?? null) ? $vehicle['pricing'] : [];
+        $totalPrice = $vehicle['total']
+            ?? $vehicle['total_price']
+            ?? $pricing['total_price']
+            ?? null;
+        $dailyRate = $vehicle['daily_rate']
+            ?? $vehicle['price_per_day']
+            ?? $pricing['daily_rate']
+            ?? $pricing['price_per_day']
+            ?? null;
+
+        $context = [
+            'id' => $vehicleId,
+            'gateway_vehicle_id' => $vehicleId,
+            'search_id' => $vehicle['gateway_search_id'] ?? null,
+            'gateway_search_id' => $vehicle['gateway_search_id'] ?? null,
+            'supplier_id' => $source,
+            'supplier_vehicle_id' => $vehicle['supplier_vehicle_id']
+                ?? $vehicle['provider_vehicle_id']
+                ?? $vehicleId,
+            'provider_product_id' => $vehicle['provider_product_id'] ?? null,
+            'provider_rate_id' => $vehicle['provider_rate_id']
+                ?? $vehicle['rate_id']
+                ?? ($supplierData['rate_id'] ?? null),
+            'name' => $this->gatewayVehicleName($vehicle),
+            'category' => $this->normalizeGatewayVehicleCategory($vehicle['category'] ?? $vehicle['vehicle_category'] ?? null),
+            'make' => $vehicle['make'] ?? $vehicle['brand'] ?? null,
+            'model' => $vehicle['model'] ?? null,
+            'image_url' => $vehicle['image_url'] ?? $vehicle['image'] ?? null,
+            'transmission' => $this->normalizeGatewayTransmission($vehicle['transmission'] ?? ($vehicle['specs']['transmission'] ?? null)),
+            'fuel_type' => $this->normalizeGatewayFuel($vehicle['fuel_type'] ?? $vehicle['fuel'] ?? ($vehicle['specs']['fuel'] ?? null)),
+            'seats' => $this->nullableInt($vehicle['seats'] ?? ($vehicle['specs']['seats'] ?? null)),
+            'doors' => $this->nullableInt($vehicle['doors'] ?? ($vehicle['specs']['doors'] ?? null)),
+            'bags_large' => $this->nullableInt($vehicle['bags_large'] ?? ($vehicle['specs']['bags_large'] ?? null)),
+            'bags_small' => $this->nullableInt($vehicle['bags_small'] ?? ($vehicle['specs']['bags_small'] ?? null)),
+            'air_conditioning' => $vehicle['air_conditioning'] ?? ($vehicle['specs']['air_conditioning'] ?? null),
+            'mileage_policy' => $this->normalizeGatewayMileagePolicy($vehicle['mileage_policy'] ?? null),
+            'mileage_limit_km' => $this->nullableInt($vehicle['mileage_limit_km'] ?? ($vehicle['policies']['mileage_limit_km'] ?? null)),
+            'sipp_code' => $vehicle['sipp_code'] ?? ($supplierData['sipp_code'] ?? null),
+            'pickup_location' => $this->normalizeGatewayLocation($vehicle['pickup_location'] ?? null),
+            'dropoff_location' => $this->normalizeGatewayLocation($vehicle['dropoff_location'] ?? null),
+            'pricing' => [
+                'currency' => strtoupper((string) ($vehicle['currency'] ?? $pricing['currency'] ?? 'EUR')),
+                'total_price' => (float) ($totalPrice ?? 0),
+                'daily_rate' => (float) ($dailyRate ?? $totalPrice ?? 0),
+                'deposit_amount' => isset($pricing['deposit_amount']) ? (float) $pricing['deposit_amount'] : null,
+                'deposit_currency' => $pricing['deposit_currency'] ?? null,
+            ],
+            'supplier_data' => $supplierData,
+            'raw_payload' => $vehicle['raw_payload'] ?? $this->extractLegacyProviderPayload($vehicle),
+            'min_driver_age' => $this->nullableInt($vehicle['min_driver_age'] ?? null),
+            'max_driver_age' => $this->nullableInt($vehicle['max_driver_age'] ?? null),
+            'context_valid_until' => now()->addHours(2)->toIso8601String(),
+        ];
+
+        return $this->removeEmptyContextValues($context);
+    }
+
+    private function extractLegacyProviderPayload(array $vehicle): array
+    {
+        $payload = $vehicle['booking_context']['provider_payload'] ?? [];
+
+        return is_array($payload) ? $payload : [];
+    }
+
+    private function gatewayVehicleName(array $vehicle): string
+    {
+        $brandModel = trim(implode(' ', array_filter([
+            $vehicle['brand'] ?? $vehicle['make'] ?? null,
+            $vehicle['model'] ?? null,
+        ])));
+
+        foreach ([$brandModel, $vehicle['display_name'] ?? null, $vehicle['name'] ?? null, $vehicle['provider_vehicle_id'] ?? null] as $candidate) {
+            $candidate = trim((string) $candidate);
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return 'Rental vehicle';
+    }
+
+    private function normalizeGatewayVehicleCategory(mixed $value): string
+    {
+        $category = strtolower(trim((string) $value));
+
+        return in_array($category, [
+            'mini',
+            'economy',
+            'compact',
+            'intermediate',
+            'standard',
+            'fullsize',
+            'premium',
+            'luxury',
+            'suv',
+            'van',
+            'other',
+        ], true) ? $category : 'other';
+    }
+
+    private function normalizeGatewayTransmission(mixed $value): ?string
+    {
+        $value = strtolower(trim((string) $value));
+        if ($value === '') {
+            return null;
+        }
+
+        return str_contains($value, 'auto') ? 'automatic' : 'manual';
+    }
+
+    private function normalizeGatewayFuel(mixed $value): ?string
+    {
+        $fuel = strtolower(trim((string) $value));
+        if ($fuel === '') {
+            return null;
+        }
+
+        foreach (['petrol', 'diesel', 'electric', 'hybrid', 'lpg'] as $allowed) {
+            if (str_contains($fuel, $allowed)) {
+                return $allowed;
+            }
+        }
+
+        return 'unknown';
+    }
+
+    private function normalizeGatewayMileagePolicy(mixed $value): ?string
+    {
+        $policy = strtolower(trim((string) $value));
+        if ($policy === '') {
+            return null;
+        }
+
+        return str_contains($policy, 'unlimited') ? 'unlimited' : 'limited';
+    }
+
+    private function normalizeGatewayLocation(mixed $location): array
+    {
+        if (! is_array($location)) {
+            return [];
+        }
+
+        return $this->removeEmptyContextValues([
+            'id' => $location['id'] ?? $location['provider_location_id'] ?? null,
+            'supplier_location_id' => $location['supplier_location_id'] ?? $location['provider_location_id'] ?? null,
+            'name' => $location['name'] ?? null,
+            'city' => $location['city'] ?? $location['address_city'] ?? null,
+            'country_code' => $location['country_code'] ?? $location['country'] ?? null,
+            'latitude' => isset($location['latitude']) ? (float) $location['latitude'] : null,
+            'longitude' => isset($location['longitude']) ? (float) $location['longitude'] : null,
+            'location_type' => $location['location_type'] ?? null,
+            'airport_code' => $location['airport_code'] ?? null,
+            'address' => $location['address'] ?? $location['address_1'] ?? null,
+            'phone' => $location['phone'] ?? $location['telephone'] ?? null,
+            'email' => $location['email'] ?? null,
+            'is_airport' => $location['is_airport'] ?? null,
+            'operating_hours' => $location['operating_hours'] ?? null,
+            'pickup_instructions' => $location['pickup_instructions'] ?? $location['collection_details'] ?? null,
+            'dropoff_instructions' => $location['dropoff_instructions'] ?? null,
+            'out_of_hours' => $location['out_of_hours'] ?? null,
+        ]);
+    }
+
+    private function nullableInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    private function removeEmptyContextValues(array $values): array
+    {
+        $clean = [];
+        foreach ($values as $key => $value) {
+            if (is_array($value)) {
+                $value = $this->removeEmptyContextValues($value);
+            }
+
+            if ($value === null || $value === '' || $value === []) {
+                continue;
+            }
+
+            $clean[$key] = $value;
+        }
+
+        return $clean;
+    }
+
     /**
      * Verify extras prices against stored vehicle data
      *
@@ -302,7 +506,7 @@ class PriceVerificationService
         ];
     }
 
-    public function verifyAndResolveExtras(array $clientExtras, array $storedData): array
+    public function verifyAndResolveExtras(array $clientExtras, array $storedData, ?string $selectedPackage = null): array
     {
         $resolvedExtras = [];
 
@@ -321,6 +525,7 @@ class PriceVerificationService
 
             $storedExtra = collect($storedData['extras'] ?? [])
                 ->first(fn ($candidate) => $this->resolveExtraIdentifier($candidate) === $extraId);
+            $storedExtra ??= $this->resolveRecordGoProductComplement($extraId, $storedData, $selectedPackage);
 
             if (! $storedExtra) {
                 // Skip validation for provider-built protection plans (not from search extras)
@@ -332,11 +537,7 @@ class PriceVerificationService
 
                 Log::warning('Price manipulation detected - unknown selected extra', [
                     'extra_id' => $extraId,
-                    'available_extra_ids' => collect($storedData['extras'] ?? [])
-                        ->map(fn ($candidate) => $this->resolveExtraIdentifier($candidate))
-                        ->filter()
-                        ->values()
-                        ->all(),
+                    'available_extra_ids' => $this->availableExtraIdentifiers($storedData, $selectedPackage),
                 ]);
 
                 return [
@@ -421,6 +622,115 @@ class PriceVerificationService
         $normalized = trim((string) $identifier);
 
         return $normalized !== '' ? $normalized : null;
+    }
+
+    private function resolveRecordGoProductComplement(string $extraId, array $storedData, ?string $selectedPackage): ?array
+    {
+        if (! str_starts_with($extraId, 'ext_recordgo_')) {
+            return null;
+        }
+
+        foreach ($this->recordGoProductsForPackage($storedData, $selectedPackage) as $product) {
+            $complements = $product['complements_associated']
+                ?? $product['complementsAssociated']
+                ?? [];
+            if (! is_array($complements)) {
+                continue;
+            }
+
+            foreach ($complements as $complement) {
+                if (! is_array($complement)) {
+                    continue;
+                }
+
+                $complementId = $complement['complementId'] ?? null;
+                if ($complementId === null || "ext_recordgo_{$complementId}" !== $extraId) {
+                    continue;
+                }
+
+                $total = $complement['priceTaxIncComplementDiscount']
+                    ?? $complement['priceTaxIncComplement']
+                    ?? $complement['total_for_booking']
+                    ?? $complement['total_price']
+                    ?? $complement['price']
+                    ?? null;
+                $daily = $complement['priceTaxIncDayDiscount']
+                    ?? $complement['priceTaxIncDay']
+                    ?? $complement['daily_rate']
+                    ?? null;
+
+                return array_filter([
+                    'id' => $extraId,
+                    'option_id' => $extraId,
+                    'code' => (string) $complementId,
+                    'name' => strip_tags((string) ($complement['complementName'] ?? 'RecordGo Extra')),
+                    'description' => isset($complement['complementDescription'])
+                        ? strip_tags((string) $complement['complementDescription'])
+                        : null,
+                    'total_for_booking' => $total !== null ? (float) $total : null,
+                    'total_price' => $total !== null ? (float) $total : null,
+                    'price' => $total !== null ? (float) $total : null,
+                    'daily_rate' => $daily !== null ? (float) $daily : null,
+                    'max_quantity' => $complement['maxUnits'] ?? $complement['maxQuantity'] ?? 1,
+                    'type' => strtolower((string) ($complement['complementCategory'] ?? 'optional')),
+                    'recordgo_payload' => $complement,
+                ], static fn ($value) => $value !== null && $value !== '');
+            }
+        }
+
+        return null;
+    }
+
+    private function recordGoProductsForPackage(array $storedData, ?string $selectedPackage): array
+    {
+        $products = [];
+        foreach ([
+            $storedData['recordgo_products'] ?? null,
+            $storedData['vehicle_context']['recordgo_products'] ?? null,
+            $storedData['vehicle_context']['supplier_data']['products'] ?? null,
+            $storedData['supplier_data']['products'] ?? null,
+            $storedData['products'] ?? null,
+        ] as $candidateProducts) {
+            if (is_array($candidateProducts)) {
+                foreach ($candidateProducts as $product) {
+                    if (is_array($product)) {
+                        $products[] = $product;
+                    }
+                }
+            }
+        }
+
+        if ($selectedPackage === null || $selectedPackage === '') {
+            return $products;
+        }
+
+        return array_values(array_filter(
+            $products,
+            static fn (array $product): bool => (string) ($product['type'] ?? '') === $selectedPackage
+        ));
+    }
+
+    private function availableExtraIdentifiers(array $storedData, ?string $selectedPackage): array
+    {
+        $identifiers = collect($storedData['extras'] ?? [])
+            ->map(fn ($candidate) => is_array($candidate) ? $this->resolveExtraIdentifier($candidate) : null)
+            ->filter()
+            ->values()
+            ->all();
+
+        foreach ($this->recordGoProductsForPackage($storedData, $selectedPackage) as $product) {
+            $complements = $product['complements_associated'] ?? [];
+            if (! is_array($complements)) {
+                continue;
+            }
+            foreach ($complements as $complement) {
+                if (is_array($complement) && isset($complement['complementId'])) {
+                    $identifiers[] = 'ext_recordgo_'.$complement['complementId'];
+                }
+            }
+        }
+
+        return array_values(array_unique($identifiers));
     }
 
     private function resolveExtraReferencePrice(array $extra): ?float

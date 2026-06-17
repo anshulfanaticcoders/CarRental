@@ -696,6 +696,7 @@ class StripeCheckoutController extends Controller
             }
 
             $priceVerificationService = app(PriceVerificationService::class);
+            $verifiedGatewayVehicleContext = [];
 
             if ($searchSessionId) {
                 $verification = $priceVerificationService->verifyPrices($searchSessionId, $vehicle);
@@ -739,13 +740,17 @@ class StripeCheckoutController extends Controller
                     }
                 }
                 $vehicle = $this->mergeVerifiedVehicleContext($vehicle, $verifiedPrices['vehicle_context'] ?? null);
+                if (is_array($verifiedPrices['gateway_vehicle_context'] ?? null)) {
+                    $verifiedGatewayVehicleContext = $verifiedPrices['gateway_vehicle_context'];
+                }
                 if (empty($validated['gateway_search_id']) && ! empty($vehicle['gateway_search_id'])) {
                     $validated['gateway_search_id'] = $vehicle['gateway_search_id'];
                 }
 
                 $extrasVerification = $priceVerificationService->verifyAndResolveExtras(
                     $validated['detailed_extras'] ?? [],
-                    $verifiedPrices
+                    $verifiedPrices,
+                    $validated['package'] ?? null
                 );
 
                 if (! $extrasVerification['valid']) {
@@ -913,6 +918,12 @@ class StripeCheckoutController extends Controller
             $selectedVehicleContext = $this->resolveSelectedVehicleContext(
                 $validated['vehicle'] ?? [],
                 $validated['package'] ?? null
+            );
+            $gatewayVehicleContext = $this->prepareGatewayVehicleContextForReservation(
+                $verifiedGatewayVehicleContext,
+                $validated['vehicle'] ?? [],
+                $selectedVehicleContext,
+                $validated['gateway_search_id'] ?? null
             );
             $surpriceContext = $this->resolveSurpriceReservationContext(
                 $validated['vehicle'] ?? [],
@@ -1096,6 +1107,7 @@ class StripeCheckoutController extends Controller
                 'fuel_type' => $validated['vehicle']['fuel_type'] ?? $validated['vehicle']['fuel'] ?? ($validated['vehicle']['specs']['fuel'] ?? null),
                 'mileage' => $validated['vehicle']['mileage'] ?? ($validated['vehicle']['policies']['mileage_limit_km'] ?? null),
                 'transmission' => $validated['vehicle']['transmission'] ?? ($validated['vehicle']['specs']['transmission'] ?? null),
+                'gateway_vehicle_context' => $gatewayVehicleContext ?: null,
                 // Store full metadata here â€” StripeBookingService merges this back
                 'full_metadata' => array_filter($fullMetadata, fn ($v) => $v !== null && $v !== ''),
             ];
@@ -1161,13 +1173,15 @@ class StripeCheckoutController extends Controller
                 }
             }
 
+            $vehicleCheckoutName = $this->resolveVehicleCheckoutName($validated['vehicle']);
+
             // Build line items for Stripe
             $lineItems = [
                 [
                     'price_data' => [
                         'currency' => strtolower($currencyCode),
                         'product_data' => [
-                            'name' => $validated['vehicle']['brand'].' '.$validated['vehicle']['model'],
+                            'name' => $vehicleCheckoutName,
                             'description' => $validated['package'].' Package - '.$validated['number_of_days'].' day(s)',
                             'images' => $vehicleImage ? [$vehicleImage] : [],
                         ],
@@ -1304,7 +1318,7 @@ class StripeCheckoutController extends Controller
 
             Log::info('Stripe Checkout Session created', [
                 'session_id' => $session->id,
-                'vehicle' => $validated['vehicle']['brand'].' '.$validated['vehicle']['model'],
+                'vehicle' => $vehicleCheckoutName,
                 'amount' => $payableAmount,
             ]);
 
@@ -1430,6 +1444,117 @@ class StripeCheckoutController extends Controller
         }
 
         return $vehicle;
+    }
+
+    private function prepareGatewayVehicleContextForReservation(
+        mixed $context,
+        array $vehicle,
+        array $selectedVehicleContext,
+        ?string $gatewaySearchId
+    ): array {
+        if (! is_array($context) || $context === []) {
+            return [];
+        }
+
+        $gatewayVehicleId = $this->firstFilled(
+            $selectedVehicleContext['gateway_vehicle_id'] ?? null,
+            $context['id'] ?? null,
+            $context['gateway_vehicle_id'] ?? null,
+            $vehicle['gateway_vehicle_id'] ?? null,
+            $vehicle['id'] ?? null
+        );
+        if (! $gatewayVehicleId) {
+            return [];
+        }
+
+        $context['id'] = $gatewayVehicleId;
+        $context['gateway_vehicle_id'] = $gatewayVehicleId;
+
+        $resolvedGatewaySearchId = $this->firstFilled(
+            $gatewaySearchId,
+            $context['search_id'] ?? null,
+            $context['gateway_search_id'] ?? null,
+            $vehicle['gateway_search_id'] ?? null
+        );
+        if ($resolvedGatewaySearchId) {
+            $context['search_id'] = $resolvedGatewaySearchId;
+            $context['gateway_search_id'] = $resolvedGatewaySearchId;
+        }
+
+        $context['supplier_id'] = $this->firstFilled($context['supplier_id'] ?? null, $vehicle['source'] ?? null);
+        $context['supplier_vehicle_id'] = $this->firstFilled(
+            $context['supplier_vehicle_id'] ?? null,
+            $vehicle['supplier_vehicle_id'] ?? null,
+            $vehicle['provider_vehicle_id'] ?? null,
+            $gatewayVehicleId
+        );
+
+        $supplierData = is_array($context['supplier_data'] ?? null) ? $context['supplier_data'] : [];
+        foreach ([
+            'connector_id' => 'connector_id',
+            'provider_pickup_office_id' => 'pickup_office_id',
+            'provider_dropoff_office_id' => 'dropoff_office_id',
+            'pricelist_id' => 'pricelist_id',
+            'price_date' => 'price_date',
+            'prepaid' => 'prepaid',
+        ] as $from => $to) {
+            if (array_key_exists($from, $selectedVehicleContext)
+                && $selectedVehicleContext[$from] !== null
+                && $selectedVehicleContext[$from] !== ''
+            ) {
+                $supplierData[$to] = $selectedVehicleContext[$from];
+            }
+        }
+        $context['supplier_data'] = $supplierData;
+
+        if (empty($context['context_valid_until'])) {
+            $context['context_valid_until'] = now()->addHours(2)->toIso8601String();
+        }
+
+        return $this->removeEmptyContextValues($context);
+    }
+
+    private function removeEmptyContextValues(array $values): array
+    {
+        $clean = [];
+        foreach ($values as $key => $value) {
+            if (is_array($value)) {
+                $value = $this->removeEmptyContextValues($value);
+            }
+
+            if ($value === null || $value === '' || $value === []) {
+                continue;
+            }
+
+            $clean[$key] = $value;
+        }
+
+        return $clean;
+    }
+
+    private function resolveVehicleCheckoutName(array $vehicle): string
+    {
+        $brandModel = trim(implode(' ', array_filter([
+            trim((string) ($vehicle['brand'] ?? '')),
+            trim((string) ($vehicle['model'] ?? '')),
+        ])));
+
+        foreach ([
+            $brandModel,
+            $vehicle['display_name'] ?? null,
+            $vehicle['name'] ?? null,
+            $vehicle['provider_vehicle_id'] ?? null,
+            $vehicle['sipp_code'] ?? null,
+            $vehicle['id'] ?? null,
+        ] as $candidate) {
+            $candidate = trim((string) $candidate);
+
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return 'Rental vehicle';
     }
 
     private function resolveSurpriceReservationContext(array $vehicle, ?string $package = null): array

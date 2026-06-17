@@ -109,6 +109,85 @@ class PriceVerificationServiceTest extends TestCase
         $this->assertSame('Price verification failed: Extra quantity exceeds supplier limit.', $result['error']);
     }
 
+    public function test_it_resolves_recordgo_complements_from_selected_product_context(): void
+    {
+        $service = app(PriceVerificationService::class);
+
+        $result = $service->verifyAndResolveExtras([
+            [
+                'id' => 'ext_recordgo_44',
+                'qty' => 1,
+                'total_for_booking' => 18.50,
+            ],
+        ], [
+            'extras' => [
+                ['id' => 'ext_recordgo_11', 'total_for_booking' => 7.00],
+            ],
+            'vehicle_context' => [
+                'recordgo_products' => [
+                    [
+                        'type' => 'RG_BASE',
+                        'complements_associated' => [
+                            ['complementId' => 24, 'complementName' => 'Base Cover', 'priceTaxIncComplement' => 9.00],
+                        ],
+                    ],
+                    [
+                        'type' => 'RG_PRE',
+                        'complements_associated' => [
+                            [
+                                'complementId' => 44,
+                                'complementName' => 'Full Cover',
+                                'complementCategory' => 'COVERAGE',
+                                'priceTaxIncComplement' => 18.50,
+                                'priceTaxIncDay' => 9.25,
+                                'maxUnits' => 1,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ], 'RG_PRE');
+
+        $this->assertTrue($result['valid']);
+        $this->assertSame('ext_recordgo_44', $result['extras'][0]['id']);
+        $this->assertSame(18.50, $result['extras'][0]['total_for_booking']);
+        $this->assertSame(1, $result['extras'][0]['qty']);
+        $this->assertArrayNotHasKey('purpose', $result['extras'][0]);
+    }
+
+    public function test_it_rejects_recordgo_complements_outside_selected_product_context(): void
+    {
+        $service = app(PriceVerificationService::class);
+
+        $result = $service->verifyAndResolveExtras([
+            [
+                'id' => 'ext_recordgo_44',
+                'qty' => 1,
+                'total_for_booking' => 18.50,
+            ],
+        ], [
+            'vehicle_context' => [
+                'recordgo_products' => [
+                    [
+                        'type' => 'RG_BASE',
+                        'complements_associated' => [
+                            ['complementId' => 24, 'complementName' => 'Base Cover', 'priceTaxIncComplement' => 9.00],
+                        ],
+                    ],
+                    [
+                        'type' => 'RG_PRE',
+                        'complements_associated' => [
+                            ['complementId' => 44, 'complementName' => 'Full Cover', 'priceTaxIncComplement' => 18.50],
+                        ],
+                    ],
+                ],
+            ],
+        ], 'RG_BASE');
+
+        $this->assertFalse($result['valid']);
+        $this->assertSame('Price verification failed: Selected extra is no longer available.', $result['error']);
+    }
+
     public function test_it_stores_canonical_nested_pricing_for_internal_search_vehicles(): void
     {
         Cache::flush();
@@ -151,6 +230,60 @@ class PriceVerificationServiceTest extends TestCase
         $this->assertSame(30.0, $verified['original_prices']['original_daily_rate']);
         $this->assertSame('EUR', $verified['original_prices']['currency']);
         $this->assertSame('internal_addon_11', $verified['original_prices']['extras'][0]['id']);
+    }
+
+    public function test_it_stores_gateway_vehicle_context_for_external_search_vehicles(): void
+    {
+        Cache::flush();
+        $offerService = $this->createMock(OfferService::class);
+        $offerService->method('getOfferFingerprint')->willReturn('no-active-offers');
+        $this->app->instance(OfferService::class, $offerService);
+
+        $service = app(PriceVerificationService::class);
+        $priceMap = $service->storeOriginalPrices('search_gateway_context', [[
+            'id' => 'gw_recordgo_vehicle_1',
+            'gateway_vehicle_id' => 'gw_recordgo_vehicle_1',
+            'gateway_search_id' => 'search_recordgo_1',
+            'source' => 'recordgo',
+            'provider_vehicle_id' => 'EDMR',
+            'brand' => 'Fiat',
+            'model' => '500',
+            'category' => 'mini',
+            'sipp_code' => 'EDMR',
+            'transmission' => 'Manual',
+            'fuel_type' => 'Petrol',
+            'pricing' => [
+                'currency' => 'EUR',
+                'daily_rate' => 50.0,
+                'total_price' => 100.0,
+            ],
+            'supplier_data' => [
+                'product_id' => 123,
+                'rate_id' => 'RATE1',
+            ],
+        ]]);
+
+        $verified = $service->verifyPrices('search_gateway_context', [
+            'id' => 'gw_recordgo_vehicle_1',
+            'price_hash' => $priceMap['gw_recordgo_vehicle_1']['price_hash'],
+            'pricing' => [
+                'total_price' => 100.0,
+            ],
+        ]);
+
+        $context = $verified['original_prices']['gateway_vehicle_context'];
+
+        $this->assertTrue($verified['valid']);
+        $this->assertSame('gw_recordgo_vehicle_1', $context['id']);
+        $this->assertSame('search_recordgo_1', $context['search_id']);
+        $this->assertSame('recordgo', $context['supplier_id']);
+        $this->assertSame('EDMR', $context['supplier_vehicle_id']);
+        $this->assertSame('Fiat 500', $context['name']);
+        $this->assertSame(123, data_get($context, 'supplier_data.product_id'));
+        $this->assertSame('RATE1', data_get($context, 'supplier_data.rate_id'));
+        $this->assertSame('EUR', data_get($context, 'pricing.currency'));
+        $this->assertSame(100.0, data_get($context, 'pricing.total_price'));
+        $this->assertNotEmpty($context['context_valid_until'] ?? null);
     }
 
     public function test_price_hash_changes_when_offer_fingerprint_changes(): void

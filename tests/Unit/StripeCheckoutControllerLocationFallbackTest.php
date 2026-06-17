@@ -146,6 +146,48 @@ class StripeCheckoutControllerLocationFallbackTest extends TestCase
         $this->assertNull($dropoff);
     }
 
+    public function test_it_counts_recordgo_resolved_complements_as_provider_options_total(): void
+    {
+        $controller = $this->makeController();
+
+        $result = $this->computeServerTotals($controller, [
+            'vehicle' => [
+                'source' => 'recordgo',
+                'products' => [
+                    ['type' => 'RG_PRE', 'total' => 100.00, 'currency' => 'EUR'],
+                ],
+            ],
+            'package' => 'RG_PRE',
+            'number_of_days' => 2,
+            'detailed_extras' => [
+                [
+                    'id' => 'ext_recordgo_44',
+                    'qty' => 1,
+                    'total_for_booking' => 18.50,
+                ],
+            ],
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(18.50, $result['provider_options_total']);
+        $this->assertSame(118.50, $result['provider_grand_total']);
+        $this->assertSame(118.50, $result['booking_total_net']);
+    }
+
+    public function test_it_uses_display_name_for_checkout_when_brand_and_model_are_empty(): void
+    {
+        $controller = $this->makeController();
+
+        $result = $this->resolveVehicleCheckoutName($controller, [
+            'brand' => '',
+            'model' => '',
+            'display_name' => 'CGMR',
+            'provider_vehicle_id' => 'CGMR',
+        ]);
+
+        $this->assertSame('CGMR', $result);
+    }
+
     private function makeController(): StripeCheckoutController
     {
         return new StripeCheckoutController(Mockery::mock(StripeBookingService::class));
@@ -160,5 +202,24 @@ class StripeCheckoutControllerLocationFallbackTest extends TestCase
         $result = $method->invoke($controller, $validated);
 
         return $result;
+    }
+
+    private function computeServerTotals(StripeCheckoutController $controller, array $validated): array
+    {
+        $method = new ReflectionMethod($controller, 'computeServerTotals');
+        $method->setAccessible(true);
+
+        /** @var array<string, mixed> $result */
+        $result = $method->invoke($controller, $validated, 'EUR', 'EUR', 15.0);
+
+        return $result;
+    }
+
+    private function resolveVehicleCheckoutName(StripeCheckoutController $controller, array $vehicle): string
+    {
+        $method = new ReflectionMethod($controller, 'resolveVehicleCheckoutName');
+        $method->setAccessible(true);
+
+        return $method->invoke($controller, $vehicle);
     }
 }

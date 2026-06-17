@@ -17,6 +17,12 @@ Concise durable memory for significant completed work.
 - Follow-ups: remaining work, if any.
 ```
 
+### 2026-06-16 - Booking payload contract fixes
+- Scope: `CarRental` Stripe gateway reservation payload and unit test; `vrooem-gateway` booking/search cache binding and tests.
+- Decision: forward checkout driver licence into gateway `driver.driving_license_number`; cache originating gateway `search_id` with vehicles/searches and reject mismatched booking contexts while allowing legacy cache entries without a search id.
+- Verification: PHP syntax checks passed; focused Stripe booking service test file passed; Pint check passed; gateway booking/search pytest passed; gateway ruff check passed with pre-existing `E501` ignored; Python compile passed; diff checks passed.
+- Follow-ups: none.
+
 ### 2026-06-08 - Newsletter Turnstile protection
 - Scope: `CarRental` newsletter subscribe API, footer/homepage/shared newsletter forms, shared Turnstile composable, and focused tests.
 - Decision: require Cloudflare Turnstile on public newsletter subscriptions before creating/updating records or sending confirmation emails; add IP and normalized-email throttles; keep double opt-in unchanged.
@@ -482,3 +488,26 @@ Concise durable memory for significant completed work.
 - Decision: Easirent US offers now expose supplier-document-backed deposit/excess, payment/deposit card rules, fuel/mileage, pickup, cancellation/no-show, and counter-only service terms while keeping API quote prices dynamic. Removed unsupported free-cancellation wording for Easirent and passed generic provider terms, driver requirements, rental policies, and package benefits through Laravel so the customize page can render source-backed data for any provider.
 - Verification: PHP syntax checks passed for touched transformer/test files; Pint passed for touched Laravel files; `GatewayVehicleTransformerTest --filter=Easirent` passed; gateway targeted `ruff check`, `ruff format --check`, and Easirent/search-vehicle payload tests passed with 9 tests.
 - Follow-ups: local browser still showed the old Easirent payload because the active gateway Docker image does not mount app code. Docker rebuild was attempted but blocked by Docker Hub metadata timeout for `python:3.11-slim`; rebuild/redeploy gateway before browser QA.
+
+### 2026-06-16 - RecordGo checkout payload cleanup
+- Scope: `CarRental` RecordGo extras adapter, checkout price verification, Stripe checkout naming fallback, and related unit/JS tests.
+- Decision: RecordGo protection plans now use real supplier complement IDs, checkout resolves selected RecordGo complements from the selected package's server-trusted product context, and Stripe line item names fall back to display/SIPP/provider IDs when brand/model are empty.
+- Verification: browser RecordGo ATH search returned 11 vehicles; selected package, full coverage, and additional driver reached Stripe Checkout without payment. Targeted PHPUnit, JS adapter test, Pint, gateway booking/search tests, and `npm run build` passed with existing build warnings.
+- Follow-ups: Renteon and Locauto live clean status still depends on getting provider vehicles; retry with VPN/IP state changed if searches return no results.
+
+### 2026-06-17 - Gateway reservation cache-miss fallback
+- Scope: `CarRental` checkout price cache, Stripe checkout payload storage, Stripe-to-gateway reservation payload, and `vrooem-gateway` booking schema/service/tests.
+- Decision: checkout now stores a server-verified gateway vehicle snapshot with the Stripe payload and forwards it to the gateway reservation request. Gateway still uses Redis cached vehicles first, but cache hits must match the checkout search ID. Expired or ambiguous cache entries can only continue through Laravel's guarded snapshot after matching vehicle/search IDs and checking snapshot expiry.
+- Verification: PHP syntax checks passed for touched Laravel files; Pint passed for touched Laravel files; `PriceVerificationServiceTest` and `StripeBookingServiceAccountingTest` passed with 21 tests/103 assertions; focused gateway `ruff check`, `ruff format --check`, and `tests/test_booking_service.py` passed with 10 tests.
+- Follow-ups: no live payment, Stripe redirect continuation, or provider reservation API call was run for this change.
+
+### 2026-06-17 - Gateway Redis memory cap
+- Scope: `vrooem-gateway` Docker Compose Redis runtime configuration.
+- Decision: Redis now starts with `--maxmemory 256mb --maxmemory-policy allkeys-lru`, capping cache memory and evicting least-recently-used temporary keys before Redis can grow without bound.
+- Verification: `docker compose config` passed; Redis/gateway were restarted; live Redis config reports `maxmemory=268435456` and `maxmemory-policy=allkeys-lru`; gateway `/health` is healthy and `/ready` reports Redis/MySQL connected.
+
+### 2026-06-17 - Gateway unified location refresh for remaining suppliers
+- Scope: `vrooem-gateway` generated `data/unified_locations.json` and live provider checkout audit for the remaining suppliers.
+- Decision: refreshed the gateway unified-location JSON from live supplier location APIs after VPN/IP access was restored. The refreshed file now includes GreenMotion, USave, Sicily by Car, and Wheelsys mappings.
+- Verification: `python -m app.scripts.refresh_locations_json` completed with 16/16 providers succeeded, 2,047 unified locations, and zero provider failures. Refreshed mapping counts: GreenMotion 511, USave 260, Sicily by Car 15, Wheelsys 1. Gateway was restarted and `/health` returned healthy. Live-safe checkout payload audit passed for GreenMotion, USave, and Sicily by Car with 3/3 clean and zero issues; no Stripe payment or provider reservation was made.
+- Follow-ups: Wheelsys can now be found in unified locations, but its only station returned supplier stop-sale responses with zero rates across tested windows, so no real Wheelsys checkout payload can be audited until Wheelsys returns sellable inventory.

@@ -746,6 +746,7 @@ class StripeBookingService
             'fuel_type' => null,
             'mileage' => null,
             'transmission' => null,
+            'gateway_vehicle_context' => null,
         ];
 
         $payloadId = $metadata->extras_payload_id ?? null;
@@ -770,6 +771,9 @@ class StripeBookingService
                     $resolved['fuel_type'] = $payload['fuel_type'] ?? null;
                     $resolved['mileage'] = $payload['mileage'] ?? null;
                     $resolved['transmission'] = $payload['transmission'] ?? null;
+                    $resolved['gateway_vehicle_context'] = is_array($payload['gateway_vehicle_context'] ?? null)
+                        ? $payload['gateway_vehicle_context']
+                        : null;
                 } else {
                     Log::warning('StripeBookingService: Extras payload missing', [
                         'payload_id' => $payloadId,
@@ -1278,6 +1282,47 @@ class StripeBookingService
         return $summary;
     }
 
+    private function resolveGatewayVehicleContextForReservation(
+        $metadata,
+        string $gatewayVehicleId,
+        string $gatewaySearchId
+    ): array {
+        $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+        $context = $extrasPayload['gateway_vehicle_context'] ?? null;
+
+        if (! is_array($context) || $context === []) {
+            return [];
+        }
+
+        $contextVehicleId = trim((string) ($context['id'] ?? $context['gateway_vehicle_id'] ?? ''));
+        if ($contextVehicleId !== '' && $contextVehicleId !== $gatewayVehicleId) {
+            Log::warning('StripeBookingService: Gateway vehicle context vehicle mismatch', [
+                'expected_vehicle_id' => $gatewayVehicleId,
+                'context_vehicle_id' => $contextVehicleId,
+            ]);
+
+            return [];
+        }
+
+        $contextSearchId = trim((string) ($context['search_id'] ?? $context['gateway_search_id'] ?? ''));
+        if ($contextSearchId !== '' && $contextSearchId !== $gatewaySearchId) {
+            Log::warning('StripeBookingService: Gateway vehicle context search mismatch', [
+                'expected_search_id' => $gatewaySearchId,
+                'context_search_id' => $contextSearchId,
+                'vehicle_id' => $gatewayVehicleId,
+            ]);
+
+            return [];
+        }
+
+        $context['id'] = $gatewayVehicleId;
+        $context['gateway_vehicle_id'] = $gatewayVehicleId;
+        $context['search_id'] = $gatewaySearchId;
+        $context['gateway_search_id'] = $gatewaySearchId;
+
+        return $context;
+    }
+
     /**
      * Trigger reservation via Vrooem Gateway (replaces all provider-specific trigger methods).
      */
@@ -1306,6 +1351,11 @@ class StripeBookingService
             $nameParts = explode(' ', $metadata->customer_name ?? '', 2);
             $providerSource = $booking->provider_source ?? $metadata->vehicle_source ?? null;
             $selectedPackage = strtoupper((string) ($metadata->package ?? ''));
+            $gatewayVehicleContext = $this->resolveGatewayVehicleContextForReservation(
+                $metadata,
+                $gatewayVehicleId,
+                $gatewaySearchId
+            );
             $reservationPayload = [
                 'vehicle_id' => $gatewayVehicleId,
                 'search_id' => $gatewaySearchId,
@@ -1315,6 +1365,7 @@ class StripeBookingService
                     'email' => $metadata->customer_email ?? '',
                     'phone' => $metadata->customer_phone ?? '',
                     'age' => (int) ($metadata->customer_driver_age ?? 30),
+                    'driving_license_number' => $metadata->driver_license_number ?? null,
                     'address' => $metadata->customer_address ?? null,
                     'city' => $metadata->customer_city ?? null,
                     'postal_code' => $metadata->customer_postal_code ?? null,
@@ -1337,6 +1388,10 @@ class StripeBookingService
                 'laravel_booking_id' => $booking->id,
                 'laravel_booking_number' => $booking->booking_number,
             ];
+
+            if ($gatewayVehicleContext !== []) {
+                $reservationPayload['vehicle_context'] = $gatewayVehicleContext;
+            }
 
             if (($booking->provider_source ?? $metadata->vehicle_source ?? null) === 'sicily_by_car') {
                 $reservationPayload = array_merge($reservationPayload, array_filter([
