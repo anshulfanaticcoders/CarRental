@@ -163,6 +163,8 @@ type BookingContext = {
   initial_package?: string | null
   initial_protection_code?: string | null
   optional_extras?: Array<Record<string, unknown>>
+  search_session_id?: string | null
+  gateway_search_id?: string | null
   location_name?: string | null
   pickup_location?: string | null
   dropoff_location?: string | null
@@ -278,6 +280,8 @@ const stringValue = (value: unknown): string | null => {
   const text = `${value ?? ''}`.trim()
   return text === '' ? null : text
 }
+const checkoutSearchSessionId = computed(() => stringValue(currentBookingContext.value?.search_session_id ?? selectedVehicle.value?.search_session_id ?? null))
+const checkoutGatewaySearchId = computed(() => stringValue(currentBookingContext.value?.gateway_search_id ?? selectedVehicle.value?.gateway_search_id ?? null))
 
 const displayName = computed(() => vehicle.value.display_name ?? [vehicle.value.brand, vehicle.value.model].filter(Boolean).join(' '))
 const pageTitle = computed(() => `${displayName.value || _t('selected_offer_title', 'Selected Offer')} | Vrooem`)
@@ -1032,6 +1036,7 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
       :driver-requirements="currentBookingContext.driver_requirements || null"
       :terms="currentBookingContext.terms || null"
       :payment-percentage="currentBookingContext.payment_percentage || 15"
+      :search-session-id="checkoutSearchSessionId"
       @back="handleBackToResults"
       @proceed-to-checkout="handleProceedToCheckout"
     />
@@ -1064,6 +1069,8 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
       :location-instructions="currentBookingContext.location_instructions || null"
       :driver-requirements="currentBookingContext.driver_requirements || null"
       :terms="currentBookingContext.terms || null"
+      :search-session-id="checkoutSearchSessionId"
+      :gateway-search-id="checkoutGatewaySearchId"
       :selected-deposit-type="selectedCheckoutData.selected_deposit_type || null"
       @back="handleBackToExtras"
     />

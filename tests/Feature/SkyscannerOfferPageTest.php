@@ -233,6 +233,9 @@ class SkyscannerOfferPageTest extends TestCase
                 'booking_context' => [
                     'provider_payload' => [
                         'source' => 'greenmotion',
+                        'gateway_search_id' => 'gw-search-parity',
+                        'search_id' => 'gw-search-parity',
+                        'gateway_vehicle_id' => 'gw-gm-vehicle-42',
                         'products' => [
                             [
                                 'type' => 'BAS',
@@ -464,7 +467,13 @@ class SkyscannerOfferPageTest extends TestCase
             ->where('quote.pickup_location_details.address', $apiQuote['pickup_location_details']['address'])
             ->where('quote.pickup_location_details.city', $apiQuote['pickup_location_details']['city'])
             ->where('quote.dropoff_location_details.name', $apiQuote['dropoff_location_details']['name'])
+            ->where('bookingContext.search_session_id', 'skyscanner_offer_quote-parity')
+            ->where('bookingContext.gateway_search_id', 'gw-search-parity')
             ->where('bookingContext.vehicle.quoteid', $apiQuote['quote_id'])
+            ->where('bookingContext.vehicle.search_session_id', 'skyscanner_offer_quote-parity')
+            ->where('bookingContext.vehicle.gateway_search_id', 'gw-search-parity')
+            ->where('bookingContext.vehicle.gateway_vehicle_id', 'gw-gm-vehicle-42')
+            ->where('bookingContext.vehicle.price_hash', fn ($value) => is_string($value) && strlen($value) === 64)
             ->where('bookingContext.vehicle.display_name', $apiQuote['vehicle']['display_name'])
             ->where('bookingContext.vehicle.sipp_code', $apiQuote['vehicle']['sipp_code'])
             ->where('bookingContext.vehicle.total_price', $apiQuote['pricing']['total_price'])
@@ -486,6 +495,9 @@ class SkyscannerOfferPageTest extends TestCase
             ->where('bookingContext.location_details.address_1', $apiQuote['pickup_location_details']['address'])
             ->where('bookingContext.vehicle.booking_context.provider_payload.insurance_options', $apiQuote['insurance_options'])
             ->where('bookingContext.vehicle.booking_context.provider_payload.coverages', $apiQuote['coverages'])
+            ->where('bookingContext.vehicle.booking_context.provider_payload.gateway_search_id', 'gw-search-parity')
+            ->where('bookingContext.vehicle.booking_context.provider_payload.search_id', 'gw-search-parity')
+            ->where('bookingContext.vehicle.booking_context.provider_payload.gateway_vehicle_id', 'gw-gm-vehicle-42')
             ->where('bookingContext.vehicle.booking_context.provider_payload.extras_preview.0.name', 'GPS Navigation')
         );
     }

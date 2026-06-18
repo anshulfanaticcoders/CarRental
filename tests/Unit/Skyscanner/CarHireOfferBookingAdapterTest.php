@@ -184,6 +184,9 @@ class CarHireOfferBookingAdapterTest extends TestCase
                 'booking_context' => [
                     'provider_payload' => [
                         'source' => 'greenmotion',
+                        'gateway_search_id' => 'gw-search-123',
+                        'search_id' => 'gw-search-123',
+                        'gateway_vehicle_id' => 'gw-gm-vehicle-1',
                         'provider_code' => 'greenmotion',
                         'product_id' => 'product-77',
                         'rate_id' => 'rate-88',
@@ -242,7 +245,12 @@ class CarHireOfferBookingAdapterTest extends TestCase
         $this->assertSame('greenmotion', $context['vehicle']['provider_code']);
         $this->assertSame('product-77', $context['vehicle']['provider_product_id']);
         $this->assertSame('rate-88', $context['vehicle']['provider_rate_id']);
+        $this->assertSame('gw-search-123', $context['gateway_search_id']);
+        $this->assertSame('gw-search-123', $context['vehicle']['gateway_search_id']);
+        $this->assertSame('gw-gm-vehicle-1', $context['vehicle']['gateway_vehicle_id']);
         $this->assertSame('greenmotion', $context['vehicle']['booking_context']['provider_payload']['source']);
+        $this->assertSame('gw-search-123', $context['vehicle']['booking_context']['provider_payload']['gateway_search_id']);
+        $this->assertSame('gw-gm-vehicle-1', $context['vehicle']['booking_context']['provider_payload']['gateway_vehicle_id']);
         $this->assertSame('Vrooem', $context['vehicle']['booking_context']['provider_payload']['vendorProfileData']['company_name']);
     }
 

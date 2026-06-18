@@ -1359,6 +1359,7 @@ class StripeBookingService
             $reservationPayload = [
                 'vehicle_id' => $gatewayVehicleId,
                 'search_id' => $gatewaySearchId,
+                'package' => $selectedPackage !== '' ? $selectedPackage : null,
                 'driver' => [
                     'first_name' => $nameParts[0] ?? '',
                     'last_name' => $nameParts[1] ?? '',

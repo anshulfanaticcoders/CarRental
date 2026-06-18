@@ -42,10 +42,20 @@ class CarHireOfferBookingAdapter
         $source = $this->stringOrNull($vehicle['source'] ?? null)
             ?? $this->stringOrNull($supplier['code'] ?? null)
             ?? 'internal';
+        $gatewaySearchId = $this->stringOrNull(
+            $quote['gateway_search_id']
+                ?? ($vehicle['gateway_search_id']
+                ?? ($baseProviderPayload['gateway_search_id']
+                ?? ($baseProviderPayload['search_id'] ?? null)))
+        );
+        $gatewayVehicleId = $this->stringOrNull($vehicle['gateway_vehicle_id'] ?? ($baseProviderPayload['gateway_vehicle_id'] ?? null));
         $providerInsuranceOptions = $this->arrayValue($baseProviderPayload['insurance_options'] ?? null);
         $insuranceOptions = $quoteInsuranceOptions !== [] ? $quoteInsuranceOptions : $providerInsuranceOptions;
         $providerPayload = array_merge($baseProviderPayload, [
             'source' => $source,
+            'gateway_search_id' => $gatewaySearchId,
+            'search_id' => $gatewaySearchId,
+            'gateway_vehicle_id' => $gatewayVehicleId,
             'currency' => $currency,
             'security_deposit' => $depositAmount,
             'display_pricing' => $pricing,
@@ -136,7 +146,8 @@ class CarHireOfferBookingAdapter
                 'provider_gross_amount' => $this->floatOrNull($providerPayload['provider_gross_amount'] ?? null),
                 'provider_net_amount' => $this->floatOrNull($providerPayload['provider_net_amount'] ?? null),
                 'provider_vat_amount' => $this->floatOrNull($providerPayload['provider_vat_amount'] ?? null),
-                'gateway_vehicle_id' => $this->stringOrNull($providerPayload['gateway_vehicle_id'] ?? null),
+                'gateway_vehicle_id' => $gatewayVehicleId,
+                'gateway_search_id' => $gatewaySearchId,
                 'connector_id' => $this->stringOrNull($providerPayload['connector_id'] ?? null),
                 'provider_pickup_office_id' => $this->stringOrNull($providerPayload['provider_pickup_office_id'] ?? null),
                 'provider_dropoff_office_id' => $this->stringOrNull($providerPayload['provider_dropoff_office_id'] ?? null),
@@ -193,6 +204,7 @@ class CarHireOfferBookingAdapter
             'initial_package' => $this->resolveInitialPackage($products),
             'initial_protection_code' => null,
             'optional_extras' => $optionalExtras,
+            'gateway_search_id' => $gatewaySearchId,
             'location_name' => $pickupLocation['name'] ?? null,
             'pickup_location' => $pickupLocation['name'] ?? null,
             'dropoff_location' => $dropoffLocation['name'] ?? ($pickupLocation['name'] ?? null),
