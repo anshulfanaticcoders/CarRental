@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Trabber;
 
 use App\Http\Controllers\Controller;
+use App\Services\PriceVerificationService;
 use App\Services\Trabber\TrabberOfferBookingAdapter;
 use App\Services\Trabber\TrabberOfferPageService;
 use App\Services\Trabber\TrabberOfferStoreService;
@@ -16,6 +17,7 @@ class OfferController extends Controller
         private readonly TrabberOfferStoreService $offers,
         private readonly TrabberOfferPageService $offerPage,
         private readonly TrabberOfferBookingAdapter $bookingAdapter,
+        private readonly PriceVerificationService $priceVerificationService,
     ) {}
 
     public function __invoke(Request $request, string $locale, string $offerId): Response
@@ -40,7 +42,15 @@ class OfferController extends Controller
 
                 $bookingContexts[$offerQuoteId] = $this->bookingAdapter->build($offerQuote);
             }
+
+            if (! isset($bookingContexts[$offerId])) {
+                $bookingContexts[$offerId] = $this->bookingAdapter->build($quote);
+            }
+
+            $bookingContexts = $this->prepareBookingContextsForCheckout($offerId, $bookingContexts);
         }
+
+        $selectedBookingContext = $bookingContexts[$offerId] ?? null;
 
         return Inertia::render('OfferResults', [
             'quote' => $quote,
@@ -49,7 +59,7 @@ class OfferController extends Controller
                 'search' => $quote['search'] ?? [],
                 'quotes' => $quotes,
             ],
-            'bookingContext' => ! $isExpired ? $this->bookingAdapter->build($quote) : null,
+            'bookingContext' => ! $isExpired ? $selectedBookingContext : null,
             'bookingContexts' => $bookingContexts,
             'quoteStatus' => [
                 'valid' => ! $isExpired,
@@ -61,6 +71,108 @@ class OfferController extends Controller
                 'search_again_url' => $this->offerPage->searchAgainUrl($locale, $quote),
             ],
         ]);
+    }
+
+    private function prepareBookingContextsForCheckout(string $offerId, array $bookingContexts): array
+    {
+        if ($bookingContexts === []) {
+            return [];
+        }
+
+        $searchSessionId = $this->buildSearchSessionId($offerId);
+        $vehicles = [];
+
+        foreach ($bookingContexts as $contextOfferId => $context) {
+            if (! is_array($context)) {
+                continue;
+            }
+
+            $context['search_session_id'] = $searchSessionId;
+            $vehicle = is_array($context['vehicle'] ?? null) ? $context['vehicle'] : [];
+
+            if ($vehicle !== []) {
+                $vehicle['search_session_id'] = $searchSessionId;
+                $gatewaySearchId = $this->resolveGatewaySearchId($context, $vehicle);
+
+                if ($gatewaySearchId !== null) {
+                    $context['gateway_search_id'] = $gatewaySearchId;
+                    $vehicle['gateway_search_id'] = $gatewaySearchId;
+
+                    if (is_array($vehicle['booking_context']['provider_payload'] ?? null)) {
+                        $vehicle['booking_context']['provider_payload']['gateway_search_id'] = $gatewaySearchId;
+                        $vehicle['booking_context']['provider_payload']['search_id'] = $gatewaySearchId;
+                    }
+                }
+
+                $context['vehicle'] = $vehicle;
+                $vehicles[] = $vehicle;
+            }
+
+            $bookingContexts[$contextOfferId] = $context;
+        }
+
+        if ($vehicles === []) {
+            return $bookingContexts;
+        }
+
+        $priceMap = $this->priceVerificationService->storeOriginalPrices($searchSessionId, $vehicles);
+
+        foreach ($bookingContexts as $contextOfferId => $context) {
+            $vehicle = is_array($context['vehicle'] ?? null) ? $context['vehicle'] : [];
+            $vehicleId = $this->resolveVehicleId($vehicle);
+
+            if ($vehicleId !== null && isset($priceMap[$vehicleId]['price_hash'])) {
+                $vehicle['price_hash'] = $priceMap[$vehicleId]['price_hash'];
+                $context['vehicle'] = $vehicle;
+            }
+
+            $bookingContexts[$contextOfferId] = $context;
+        }
+
+        return $bookingContexts;
+    }
+
+    private function buildSearchSessionId(string $offerId): string
+    {
+        $normalizedOfferId = preg_replace('/[^A-Za-z0-9_-]+/', '-', $offerId) ?: sha1($offerId);
+
+        return 'trabber_offer_'.$normalizedOfferId;
+    }
+
+    private function resolveGatewaySearchId(array $context, array $vehicle): ?string
+    {
+        foreach ([
+            $context['gateway_search_id'] ?? null,
+            $vehicle['gateway_search_id'] ?? null,
+            data_get($vehicle, 'booking_context.provider_payload.gateway_search_id'),
+            data_get($vehicle, 'booking_context.provider_payload.search_id'),
+        ] as $candidate) {
+            $normalized = trim((string) $candidate);
+
+            if ($normalized !== '') {
+                return $normalized;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveVehicleId(array $vehicle): ?string
+    {
+        foreach ([
+            $vehicle['id'] ?? null,
+            $vehicle['gateway_vehicle_id'] ?? null,
+            $vehicle['provider_vehicle_id'] ?? null,
+            $vehicle['unified_location_id'] ?? null,
+        ] as $candidate) {
+            $normalized = trim((string) $candidate);
+
+            if ($normalized !== '') {
+                return $normalized;
+            }
+        }
+
+        return null;
     }
 
     private function quotesForPayload(array $payload, array $selectedQuote, string $selectedOfferId): array

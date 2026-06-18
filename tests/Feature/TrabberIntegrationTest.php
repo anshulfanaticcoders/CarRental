@@ -524,6 +524,15 @@ class TrabberIntegrationTest extends TestCase
                 ->has('bookingContext.vehicle.products', 3)
                 ->has('bookingContext.optional_extras', 2)
                 ->where('quote.products.1.name', 'Plus')
+                ->where('bookingContext.search_session_id', 'trabber_offer_'.$offerId)
+                ->where('bookingContext.gateway_search_id', 'gateway-search-bcn')
+                ->where('bookingContext.vehicle.search_session_id', 'trabber_offer_'.$offerId)
+                ->where('bookingContext.vehicle.gateway_search_id', 'gateway-search-bcn')
+                ->where('bookingContext.vehicle.gateway_vehicle_id', 'okmobility_bcn_001')
+                ->where('bookingContext.vehicle.price_hash', fn ($value) => is_string($value) && strlen($value) === 64)
+                ->where('bookingContext.vehicle.booking_context.provider_payload.gateway_search_id', 'gateway-search-bcn')
+                ->where('bookingContext.vehicle.booking_context.provider_payload.search_id', 'gateway-search-bcn')
+                ->where('bookingContext.vehicle.booking_context.provider_payload.gateway_vehicle_id', 'okmobility_bcn_001')
                 ->where('bookingContext.optional_extras.0.name', 'GPS')
             );
     }

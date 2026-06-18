@@ -535,3 +535,9 @@ Concise durable memory for significant completed work.
 - Decision: offer pages now attach a `skyscanner_offer_*` price-verification session, `price_hash`, gateway search ID, and gateway vehicle ID to the booking context before rendering checkout. OfferResults passes those IDs to BookingExtrasStep/BookingCheckoutStep, so Pay Now sends the same server-verified context as normal search checkout instead of a null search session.
 - Verification: PHP syntax checks passed for touched Skyscanner controller/adapter/tests; `php artisan test tests\Feature\SkyscannerOfferPageTest.php tests\Unit\Skyscanner\CarHireOfferBookingAdapterTest.php` passed with 9 tests/207 assertions; `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings.
 - Follow-ups: no Stripe payment or provider reservation was made during this fix.
+
+### 2026-06-18 - Trabber offer checkout verification context
+- Scope: `CarRental` Trabber gateway offer search, offer page checkout handoff, offer booking adapter, and Trabber integration tests.
+- Decision: Trabber external offers now carry gateway search/vehicle IDs from gateway search results through the stored offer payload, normalized quote, booking context, and shared OfferResults checkout props. Trabber offer pages now attach a `trabber_offer_*` price-verification session and `price_hash` before rendering checkout, matching the Skyscanner offer-page fix.
+- Verification: PHP syntax checks passed for touched Trabber controller/services/test; Pint passed for touched Trabber PHP files; `php artisan test tests\Feature\TrabberIntegrationTest.php` passed with 13 tests/143 assertions; the focused external provider offer-page test passed with 1 test/40 assertions after formatting.
+- Follow-ups: no Stripe payment or provider reservation was made during this fix.

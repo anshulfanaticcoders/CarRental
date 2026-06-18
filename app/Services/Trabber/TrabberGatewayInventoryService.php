@@ -37,12 +37,15 @@ class TrabberGatewayInventoryService
         }
 
         $rentalDays = $this->calculateRentalDays($criteria);
+        $gatewaySearchId = trim((string) ($result['search_id'] ?? '')) ?: null;
 
         return collect($result['vehicles'] ?? [])
             ->filter(fn ($vehicle) => is_array($vehicle))
-            ->map(function (array $vehicle) use ($rentalDays) {
+            ->map(function (array $vehicle) use ($rentalDays, $gatewaySearchId) {
                 try {
-                    return $this->vehicleTransformer->transform($vehicle, $rentalDays);
+                    $transformed = $this->vehicleTransformer->transform($vehicle, $rentalDays);
+
+                    return $this->attachGatewayContext($transformed, $gatewaySearchId);
                 } catch (\Throwable $e) {
                     Log::warning('Trabber gateway vehicle transform failed', [
                         'vehicle_id' => $vehicle['id'] ?? null,
@@ -55,6 +58,40 @@ class TrabberGatewayInventoryService
             ->filter(fn ($vehicle) => is_array($vehicle) && $this->shouldIncludeVehicle($vehicle))
             ->values()
             ->all();
+    }
+
+    private function attachGatewayContext(array $vehicle, ?string $gatewaySearchId): array
+    {
+        $gatewayVehicleId = trim((string) ($vehicle['gateway_vehicle_id'] ?? ($vehicle['id'] ?? ''))) ?: null;
+
+        if ($gatewayVehicleId !== null) {
+            $vehicle['gateway_vehicle_id'] = $gatewayVehicleId;
+        }
+
+        if ($gatewaySearchId !== null) {
+            $vehicle['gateway_search_id'] = $gatewaySearchId;
+        }
+
+        if ($gatewaySearchId === null && $gatewayVehicleId === null) {
+            return $vehicle;
+        }
+
+        $bookingContext = is_array($vehicle['booking_context'] ?? null) ? $vehicle['booking_context'] : [];
+        $providerPayload = is_array($bookingContext['provider_payload'] ?? null) ? $bookingContext['provider_payload'] : [];
+
+        if ($gatewayVehicleId !== null) {
+            $providerPayload['gateway_vehicle_id'] = $gatewayVehicleId;
+        }
+
+        if ($gatewaySearchId !== null) {
+            $providerPayload['gateway_search_id'] = $gatewaySearchId;
+            $providerPayload['search_id'] = $gatewaySearchId;
+        }
+
+        $bookingContext['provider_payload'] = $providerPayload;
+        $vehicle['booking_context'] = $bookingContext;
+
+        return $vehicle;
     }
 
     private function normalizeCriteria(array $criteria, array $pickupLocation, ?array $dropoffLocation): array

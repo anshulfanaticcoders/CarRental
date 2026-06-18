@@ -113,6 +113,12 @@ class TrabberOfferPageService
 
         return [
             'provider_vehicle_id' => $this->stringOrNull($vehicle['provider_vehicle_id'] ?? $vehicle['id'] ?? null),
+            'gateway_vehicle_id' => $this->stringOrNull($vehicle['gateway_vehicle_id'] ?? data_get($vehicle, 'booking_context.provider_payload.gateway_vehicle_id')),
+            'gateway_search_id' => $this->stringOrNull(
+                $vehicle['gateway_search_id']
+                    ?? data_get($vehicle, 'booking_context.provider_payload.gateway_search_id')
+                    ?? data_get($vehicle, 'booking_context.provider_payload.search_id')
+            ),
             'source' => $this->stringOrNull($vehicle['source'] ?? $supplier['code'] ?? null),
             'provider_code' => $this->stringOrNull($vehicle['provider_code'] ?? $supplier['code'] ?? null),
             'provider_product_id' => $this->stringOrNull($vehicle['provider_product_id'] ?? null),
