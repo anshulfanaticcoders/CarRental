@@ -8,6 +8,7 @@ use App\Notifications\Affiliate\BusinessRegistrationAdminNotification;
 use App\Notifications\Affiliate\BusinessRegistrationNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AffiliateRegistrationTest extends TestCase
@@ -92,6 +93,36 @@ class AffiliateRegistrationTest extends TestCase
             ->assertJson(['message' => 'Email is valid']);
     }
 
+    public function test_guest_can_create_affiliate_account_with_registry_currency(): void
+    {
+        Notification::fake();
+
+        $payload = [
+            'first_name' => 'Anshul',
+            'last_name' => 'Partner',
+            'email' => 'affiliate.inr@example.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'business_name' => 'Hotel Hayat',
+            'business_type' => 'hotel',
+            'contact_phone' => '+91888776552',
+            'city' => 'Dharamsala',
+            'country' => 'India',
+            'currency' => 'INR',
+        ];
+
+        $response = $this->post(route('affiliate.register.store', ['locale' => 'en']), $payload);
+
+        $response->assertRedirect(route('affiliate.dashboard', ['locale' => 'en']));
+
+        $this->assertDatabaseHas('affiliate_businesses', [
+            'contact_email' => $payload['email'],
+            'contact_phone' => $payload['contact_phone'],
+            'country' => $payload['country'],
+            'currency' => 'INR',
+        ]);
+    }
+
     public function test_validate_email_rejects_existing_email(): void
     {
         User::factory()->create([
@@ -100,6 +131,30 @@ class AffiliateRegistrationTest extends TestCase
 
         $response = $this->postJson(route('validate-email', ['locale' => 'en']), [
             'email' => 'taken-affiliate@example.test',
+        ]);
+
+        $response
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_validate_email_rejects_existing_affiliate_business_email(): void
+    {
+        AffiliateBusiness::create([
+            'uuid' => (string) Str::uuid(),
+            'name' => 'Existing Partner',
+            'business_type' => 'hotel',
+            'contact_email' => 'existing-business@example.test',
+            'contact_phone' => '+971501111111',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+            'verification_status' => 'pending',
+            'status' => 'active',
+        ]);
+
+        $response = $this->postJson(route('validate-email', ['locale' => 'en']), [
+            'email' => 'existing-business@example.test',
         ]);
 
         $response
@@ -116,6 +171,31 @@ class AffiliateRegistrationTest extends TestCase
         $response = $this->postJson(route('validate-contact', ['locale' => 'en']), [
             'email' => 'new-affiliate@example.test',
             'phone' => '+971501234567',
+        ]);
+
+        $response
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['phone']);
+    }
+
+    public function test_validate_contact_rejects_existing_affiliate_business_phone(): void
+    {
+        AffiliateBusiness::create([
+            'uuid' => (string) Str::uuid(),
+            'name' => 'Existing Phone Partner',
+            'business_type' => 'hotel',
+            'contact_email' => 'existing-phone-business@example.test',
+            'contact_phone' => '+971501222222',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+            'verification_status' => 'pending',
+            'status' => 'active',
+        ]);
+
+        $response = $this->postJson(route('validate-contact', ['locale' => 'en']), [
+            'email' => 'new-affiliate@example.test',
+            'phone' => '+971501222222',
         ]);
 
         $response
@@ -161,6 +241,42 @@ class AffiliateRegistrationTest extends TestCase
         Notification::assertNothingSent();
     }
 
+    public function test_affiliate_registration_rejects_duplicate_email_without_server_error(): void
+    {
+        Notification::fake();
+
+        User::factory()->create([
+            'email' => 'duplicate-affiliate@example.test',
+        ]);
+
+        $payload = [
+            'first_name' => 'Duplicate',
+            'last_name' => 'Email',
+            'email' => 'duplicate-affiliate@example.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'business_name' => 'Duplicate Email Partner',
+            'business_type' => 'travel_agency',
+            'contact_phone' => '+971501333333',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+        ];
+
+        $response = $this
+            ->from(route('affiliate.register', ['locale' => 'en']))
+            ->post(route('affiliate.register.store', ['locale' => 'en']), $payload);
+
+        $response
+            ->assertRedirect(route('affiliate.register', ['locale' => 'en']))
+            ->assertSessionHasErrors(['email']);
+
+        $this->assertDatabaseMissing('affiliate_businesses', [
+            'contact_email' => $payload['email'],
+        ]);
+        Notification::assertNothingSent();
+    }
+
     public function test_affiliate_registration_rejects_duplicate_contact_phone_without_server_error(): void
     {
         Notification::fake();
@@ -178,6 +294,51 @@ class AffiliateRegistrationTest extends TestCase
             'business_name' => 'Duplicate Phone Partner',
             'business_type' => 'travel_agency',
             'contact_phone' => '+971501234567',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+        ];
+
+        $response = $this
+            ->from(route('affiliate.register', ['locale' => 'en']))
+            ->post(route('affiliate.register.store', ['locale' => 'en']), $payload);
+
+        $response
+            ->assertRedirect(route('affiliate.register', ['locale' => 'en']))
+            ->assertSessionHasErrors(['contact_phone']);
+
+        $this->assertDatabaseMissing('affiliate_businesses', [
+            'contact_email' => $payload['email'],
+        ]);
+        Notification::assertNothingSent();
+    }
+
+    public function test_affiliate_registration_rejects_existing_affiliate_contact_phone_without_server_error(): void
+    {
+        Notification::fake();
+
+        AffiliateBusiness::create([
+            'uuid' => (string) Str::uuid(),
+            'name' => 'Existing Affiliate Phone',
+            'business_type' => 'hotel',
+            'contact_email' => 'existing-affiliate-phone@example.test',
+            'contact_phone' => '+971501444444',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+            'verification_status' => 'pending',
+            'status' => 'active',
+        ]);
+
+        $payload = [
+            'first_name' => 'Duplicate',
+            'last_name' => 'AffiliatePhone',
+            'email' => 'new-affiliate-phone@example.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'business_name' => 'Duplicate Affiliate Phone Partner',
+            'business_type' => 'travel_agency',
+            'contact_phone' => '+971501444444',
             'city' => 'Dubai',
             'country' => 'United Arab Emirates',
             'currency' => 'EUR',

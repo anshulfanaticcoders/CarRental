@@ -72,6 +72,10 @@
                                 </div>
 
                                 <form @submit.prevent="submitForm">
+                                    <div v-if="stepErrors.registration || form.errors.registration" class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">
+                                        {{ stepErrors.registration || form.errors.registration }}
+                                    </div>
+
                                     <!-- Step 1: Account -->
                                     <div v-show="currentStep === 1">
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -171,12 +175,12 @@
                                                     <span class="af-icon"><MapPin class="w-4 h-4" /></span>
                                                     <input v-model="form.city" type="text" class="af-input" placeholder="Malaga" />
                                                 </div>
-                                                <p v-if="stepErrors.city" class="text-red-500 text-xs mt-1">{{ stepErrors.city }}</p>
+                                                <p v-if="stepErrors.city || form.errors.city" class="text-red-500 text-xs mt-1">{{ stepErrors.city || form.errors.city }}</p>
                                             </div>
                                             <div>
                                                 <label class="af-label">Country</label>
                                                 <input v-model="form.country" type="text" class="af-input" placeholder="Spain" />
-                                                <p v-if="stepErrors.country" class="text-red-500 text-xs mt-1">{{ stepErrors.country }}</p>
+                                                <p v-if="stepErrors.country || form.errors.country" class="text-red-500 text-xs mt-1">{{ stepErrors.country || form.errors.country }}</p>
                                             </div>
                                         </div>
                                         <div class="flex justify-between mt-6 pt-4 border-t border-slate-100">
@@ -200,6 +204,7 @@
                                                 <span class="af-icon"><Landmark class="w-4 h-4" /></span>
                                                 <input v-model="form.bank_name" type="text" class="af-input" placeholder="Banco Santander" />
                                             </div>
+                                            <p v-if="form.errors.bank_name" class="text-red-500 text-xs mt-1">{{ form.errors.bank_name }}</p>
                                         </div>
                                         <div class="mb-4">
                                             <label class="af-label">IBAN</label>
@@ -207,6 +212,7 @@
                                                 <span class="af-icon"><CreditCard class="w-4 h-4" /></span>
                                                 <input v-model="form.bank_iban" type="text" class="af-input" placeholder="ES91 2100 0418 4502 0005 1332" />
                                             </div>
+                                            <p v-if="form.errors.bank_iban" class="text-red-500 text-xs mt-1">{{ form.errors.bank_iban }}</p>
                                         </div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <div>
@@ -215,6 +221,7 @@
                                                     <span class="af-icon"><Globe class="w-4 h-4" /></span>
                                                     <input v-model="form.bank_bic" type="text" class="af-input" placeholder="BSCHESMMXXX" />
                                                 </div>
+                                                <p v-if="form.errors.bank_bic" class="text-red-500 text-xs mt-1">{{ form.errors.bank_bic }}</p>
                                             </div>
                                             <div>
                                                 <label class="af-label">Account Holder Name</label>
@@ -222,6 +229,7 @@
                                                     <span class="af-icon"><User class="w-4 h-4" /></span>
                                                     <input v-model="form.bank_account_name" type="text" class="af-input" placeholder="Hotel Playa del Sol S.L." />
                                                 </div>
+                                                <p v-if="form.errors.bank_account_name" class="text-red-500 text-xs mt-1">{{ form.errors.bank_account_name }}</p>
                                             </div>
                                         </div>
                                         <div class="mb-4">
@@ -230,14 +238,8 @@
                                                 <option v-for="currency in payoutCurrencyOptions" :key="currency.code" :value="currency.code">
                                                     {{ currency.code }} - {{ currency.name }}
                                                 </option>
-                                                <option value="SEK">SEK - Swedish Krona</option>
-                                                <option value="NOK">NOK - Norwegian Krone</option>
-                                                <option value="DKK">DKK - Danish Krone</option>
-                                                <option value="PLN">PLN - Polish Zloty</option>
-                                                <option value="CZK">CZK - Czech Koruna</option>
-                                                <option value="HUF">HUF - Hungarian Forint</option>
-                                                <option value="TRY">TRY - Turkish Lira</option>
                                             </select>
+                                            <p v-if="form.errors.currency" class="text-red-500 text-xs mt-1">{{ form.errors.currency }}</p>
                                         </div>
                                         <p class="text-[0.75rem] text-slate-400 mt-1">Bank details are used for commission payouts only. Select the currency your bank account uses.</p>
                                         <div class="flex justify-between mt-6 pt-4 border-t border-slate-100">
@@ -555,6 +557,14 @@ const applyServerValidationErrors = (error, fieldMap = {}) => {
     return true;
 };
 
+const applyValidationServiceError = (message) => {
+    stepErrors.value = {
+        ...stepErrors.value,
+        registration: message,
+    };
+    toast.error(message);
+};
+
 const nextStep = async () => {
     if (!validateStep(currentStep.value)) return;
 
@@ -569,7 +579,7 @@ const nextStep = async () => {
         } catch (error) {
             isValidating.value = false;
             if (!applyServerValidationErrors(error)) {
-                stepErrors.value = { ...stepErrors.value, email: 'This email is already taken.' };
+                applyValidationServiceError('We could not validate your email right now. Please try again.');
             }
             return;
         }
@@ -588,7 +598,7 @@ const nextStep = async () => {
                 currentStep.value = 1;
             }
             if (!applyServerValidationErrors(error, { phone: 'contact_phone' })) {
-                stepErrors.value = { ...stepErrors.value, contact_phone: 'This phone number cannot be used.' };
+                applyValidationServiceError('We could not validate your contact details right now. Please try again.');
             }
             return;
         }
@@ -625,7 +635,7 @@ const submitForm = async () => {
         isValidating.value = false;
         currentStep.value = error.response?.data?.errors?.email ? 1 : 2;
         if (!applyServerValidationErrors(error, { phone: 'contact_phone' })) {
-            stepErrors.value = { ...stepErrors.value, contact_phone: 'This phone number cannot be used.' };
+            applyValidationServiceError('We could not validate your contact details right now. Please try again.');
         }
         return;
     }

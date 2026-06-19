@@ -598,3 +598,13 @@ Concise durable memory for significant completed work.
 - Scope: `CarRental` affiliate registration multi-step form and backend store rules.
 - Decision: Step 2 now requires phone/city/country, validates phone format locally, checks phone/email uniqueness through `/validate-contact` before allowing Bank/Terms, and final submit re-runs the same server check before posting. Backend store validation now requires phone/city/country and uses the shared phone format rule.
 - Verification: `AffiliateRegistrationTest` passed with 7 tests/41 assertions; Pint passed for touched PHP/test files; `npm run build` passed with existing Browserslist/Vite/lottie/chunk warnings. Browser smoke confirmed duplicate phone stays on Business step with 422 `/validate-contact`, and valid phone reaches affiliate dashboard.
+
+### 2026-06-19 - Affiliate registration payout currency parity
+- Scope: `CarRental` affiliate registration payout currency validation and Bank Info form display.
+- Decision: backend registration now validates payout currency against the shared selectable currency registry instead of a hard-coded short list, so currencies exposed in the dropdown such as `INR` can be submitted. The Bank Info step now shows server-side currency errors and no longer appends duplicate hard-coded currency options.
+- Verification: live browser video review reproduced the India/INR path as a 302 validation bounce, not a current 500; `AffiliateRegistrationTest` passed with 8 tests/44 assertions including an `INR` registration case; `npm run build` passed with existing Browserslist/Vite/lottie/chunk warnings.
+
+### 2026-06-19 - Affiliate registration no raw duplicate-data errors
+- Scope: `CarRental` affiliate registration validation endpoints, final registration store, and register form error display.
+- Decision: email and phone uniqueness now checks both `users` and `affiliate_businesses`, final database duplicate-key failures are converted to field validation messages, and the form has a visible general registration error area plus later-step field errors.
+- Verification: `AffiliateRegistrationTest` passed with 12 tests/62 assertions; Pint passed for touched PHP/test files; `npm run build` passed with existing Browserslist/Vite/lottie/chunk warnings. Browser smoke confirmed duplicate email returns 422 and shows “This email is already taken...”; duplicate phone returns 422 and shows “This phone number is already taken...”.
