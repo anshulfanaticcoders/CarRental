@@ -63,6 +63,29 @@ test('bypasses provider markup for partner quote vehicles with public prices', (
     );
 });
 
+test('uses deposit-percentage totals for internal checkout vehicles', () => {
+    const vehicle = {
+        source: 'internal',
+    };
+
+    assert.equal(resolveEffectiveProviderMarkupRate(vehicle, 0.15), 0.15);
+    assert.equal(shouldUseCommissionOnlyForVehicle(vehicle, 0.15), false);
+
+    assert.deepEqual(
+        computeBookingChargeBreakdown({
+            netTotal: 391.62,
+            markupRate: 0,
+            depositPercentage: 15,
+            useCommissionOnly: shouldUseCommissionOnlyForVehicle(vehicle, 0.15),
+        }),
+        {
+            grandTotal: 391.62,
+            payableAmount: 58.74,
+            pendingAmount: 332.88,
+        },
+    );
+});
+
 test('keeps provider markup for ordinary provider checkout vehicles', () => {
     const vehicle = {
         source: 'greenmotion',

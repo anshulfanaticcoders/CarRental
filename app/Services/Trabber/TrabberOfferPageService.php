@@ -45,7 +45,7 @@ class TrabberOfferPageService
             'policies' => $this->policies($vehicle, $offer),
             'pickup_location_details' => $this->locationDetails(Arr::get($payload, 'search.pickup_location', [])),
             'dropoff_location_details' => $this->locationDetails(Arr::get($payload, 'search.dropoff_location', [])),
-            'products' => $this->products($vehicle, $pricing),
+            'products' => $this->products($vehicle, $pricing, $netPricing),
             'booking_products' => $this->products($vehicle, $netPricing),
             'extras_preview' => $this->extrasPreview($vehicle),
             'deeplink' => [
@@ -415,17 +415,26 @@ class TrabberOfferPageService
         ];
     }
 
-    private function products(array $vehicle, array $pricing): array
+    private function products(array $vehicle, array $pricing, array $netPricing = []): array
     {
+        $publicTotal = $this->floatOrNull($pricing['total_price'] ?? null);
+        $publicPricePerDay = $this->floatOrNull($pricing['price_per_day'] ?? null);
+        $netTotal = $this->floatOrNull($netPricing['total_price'] ?? null);
+        $multiplier = null;
+
+        if ($publicTotal !== null && $netTotal !== null && $netTotal > 0) {
+            $multiplier = $publicTotal / $netTotal;
+        }
+
         if (is_array($vehicle['products'] ?? null) && $vehicle['products'] !== []) {
-            return $vehicle['products'];
+            return $this->displayProducts($vehicle['products'], $pricing, $publicTotal, $publicPricePerDay, $multiplier);
         }
 
         $providerProducts = data_get($vehicle, 'booking_context.provider_payload.products');
         if (is_array($providerProducts) && $providerProducts !== []) {
             $products = array_values(array_filter($providerProducts, 'is_array'));
             if ($products !== []) {
-                return $products;
+                return $this->displayProducts($products, $pricing, $publicTotal, $publicPricePerDay, $multiplier);
             }
         }
 
@@ -441,6 +450,35 @@ class TrabberOfferPageService
             'currency' => $pricing['currency'] ?? null,
             'is_basic' => true,
         ]];
+    }
+
+    private function displayProducts(array $products, array $pricing, ?float $publicTotal, ?float $publicPricePerDay, ?float $multiplier): array
+    {
+        return array_values(array_filter(array_map(function ($product) use ($pricing, $publicTotal, $publicPricePerDay, $multiplier) {
+            if (! is_array($product)) {
+                return null;
+            }
+
+            $isBasic = (bool) ($product['is_basic'] ?? false) || ($product['type'] ?? null) === 'BAS';
+
+            if ($isBasic && $publicTotal !== null) {
+                $product['total'] = $publicTotal;
+            } elseif (array_key_exists('total', $product) && $multiplier !== null) {
+                $product['total'] = round((float) $product['total'] * $multiplier, 2);
+            }
+
+            if ($isBasic && $publicPricePerDay !== null) {
+                $product['price_per_day'] = $publicPricePerDay;
+            } elseif (array_key_exists('price_per_day', $product) && $multiplier !== null) {
+                $product['price_per_day'] = round((float) $product['price_per_day'] * $multiplier, 2);
+            }
+
+            if (! isset($product['currency']) && isset($pricing['currency'])) {
+                $product['currency'] = $pricing['currency'];
+            }
+
+            return $product;
+        }, $products)));
     }
 
     private function extrasPreview(array $vehicle): array

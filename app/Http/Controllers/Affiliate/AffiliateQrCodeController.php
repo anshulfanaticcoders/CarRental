@@ -4,13 +4,11 @@ namespace App\Http\Controllers\Affiliate;
 
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate\AffiliateBusiness;
-use App\Models\Affiliate\AffiliateBusinessLocation;
-use App\Models\Affiliate\AffiliateQrCode;
 use App\Models\Affiliate\AffiliateDashboardSession;
+use App\Models\Affiliate\AffiliateQrCode;
 use App\Services\Affiliate\AffiliateQrCodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Response;
 
@@ -27,7 +25,7 @@ class AffiliateQrCodeController extends Controller
     {
         $session = AffiliateDashboardSession::findByToken($token);
 
-        if (!$session || !$session->isValid()) {
+        if (! $session || ! $session->isValid()) {
             abort(403, 'Invalid or expired dashboard access token');
         }
 
@@ -66,9 +64,9 @@ class AffiliateQrCodeController extends Controller
             'last_segment' => $actualToken,
             'route_token' => $token,
             'all_segments_count' => count($segments),
-            'segment_details' => array_map(function($index, $segment) {
+            'segment_details' => array_map(function ($index, $segment) {
                 return ['index' => $index, 'segment' => $segment, 'length' => strlen($segment)];
-            }, array_keys($segments), $segments)
+            }, array_keys($segments), $segments),
         ]);
 
         $business = AffiliateBusiness::where('dashboard_access_token', $actualToken)->first();
@@ -87,7 +85,7 @@ class AffiliateQrCodeController extends Controller
             'verification_status' => $business ? $business->verification_status : 'N/A',
         ]);
 
-        if (!$business) {
+        if (! $business) {
             abort(403, 'Invalid or expired dashboard access token');
         }
 
@@ -131,7 +129,7 @@ class AffiliateQrCodeController extends Controller
 
         $business = AffiliateBusiness::where('dashboard_access_token', $actualToken)->first();
 
-        if (!$business) {
+        if (! $business) {
             \Log::error('Business not found for QR code creation', [
                 'actual_token' => $actualToken,
                 'route_token' => $token,
@@ -157,7 +155,7 @@ class AffiliateQrCodeController extends Controller
         try {
             $validated = [];
 
-            if (!empty($locationData['location_id'])) {
+            if (! empty($locationData['location_id'])) {
                 $validated = $request->validate([
                     'new_location_data.id' => [
                         'required',
@@ -166,9 +164,9 @@ class AffiliateQrCodeController extends Controller
                         function ($attribute, $value, $fail) use ($business) {
                             // Check if QR code already exists for this location and business
                             $existingQrCode = AffiliateQrCode::where('business_id', $business->id)
-                                                          ->where('location_id', $value)
-                                                          ->where('status', '!=', 'suspended')
-                                                          ->first();
+                                ->where('location_id', $value)
+                                ->where('status', '!=', 'suspended')
+                                ->first();
 
                             if ($existingQrCode) {
                                 $fail('A QR code already exists for this location. Each location can only have one active QR code.');
@@ -199,11 +197,12 @@ class AffiliateQrCodeController extends Controller
             return redirect()->route('affiliate.qr-codes.index', ['token' => $actualToken])
                 ->with('success', 'QR code generated successfully!');
         } catch (\Exception $e) {
-            \Log::error('QR code generation failed: ' . $e->getMessage(), [
+            \Log::error('QR code generation failed: '.$e->getMessage(), [
                 'business_id' => $business->id,
                 'validated_data' => $validated,
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return back()->with('error', 'Failed to generate QR code. Please try again.');
         }
     }
@@ -215,7 +214,7 @@ class AffiliateQrCodeController extends Controller
     {
         $session = AffiliateDashboardSession::findByToken($token);
 
-        if (!$session || !$session->isValid()) {
+        if (! $session || ! $session->isValid()) {
             abort(403, 'Invalid or expired dashboard access token');
         }
 
@@ -247,7 +246,7 @@ class AffiliateQrCodeController extends Controller
     {
         $session = AffiliateDashboardSession::findByToken($token);
 
-        if (!$session || !$session->isValid()) {
+        if (! $session || ! $session->isValid()) {
             abort(403, 'Invalid or expired dashboard access token');
         }
 
@@ -256,7 +255,7 @@ class AffiliateQrCodeController extends Controller
 
         try {
             // Check if QR code has an image path
-            if (!$qrCode->qr_image_path) {
+            if (! $qrCode->qr_image_path) {
                 // Generate QR code on-demand if no image exists
                 $qrData = [
                     'type' => 'affiliate_qr',
@@ -267,7 +266,7 @@ class AffiliateQrCodeController extends Controller
                     'version' => '1.0',
                 ];
 
-                $qrUrl = url('/affiliate/track/' . base64_encode(json_encode($qrData)));
+                $qrUrl = url('/affiliate/track/'.base64_encode(json_encode($qrData)));
                 $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
                     ->size(800)
                     ->errorCorrection('H')
@@ -284,13 +283,13 @@ class AffiliateQrCodeController extends Controller
 
             // Try to get image from storage
             $disk = Storage::disk('upcloud');
-            if (!$disk->exists($qrCode->qr_image_path)) {
+            if (! $disk->exists($qrCode->qr_image_path)) {
                 abort(404, 'QR code image file not found in storage');
             }
 
             $qrImageContent = $disk->get($qrCode->qr_image_path);
 
-            if (!$qrImageContent) {
+            if (! $qrImageContent) {
                 abort(404, 'QR code image content could not be read');
             }
 
@@ -308,12 +307,12 @@ class AffiliateQrCodeController extends Controller
                 ->header('Cache-Control', 'public, max-age=3600') // Cache for 1 hour
                 ->header('Expires', now()->addHour()->toRfc1123String());
         } catch (\Exception $e) {
-            \Log::error('QR code image view failed: ' . $e->getMessage(), [
+            \Log::error('QR code image view failed: '.$e->getMessage(), [
                 'qr_code_id' => $qrCode->id,
                 'image_path' => $qrCode->qr_image_path,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            abort(404, 'QR code image not found: ' . $e->getMessage());
+            abort(404, 'QR code image not found: '.$e->getMessage());
         }
     }
 
@@ -348,10 +347,10 @@ class AffiliateQrCodeController extends Controller
 
             // Try both session and direct token approach
             $session = AffiliateDashboardSession::findByToken($actualToken);
-            if (!$session || !$session->isValid()) {
+            if (! $session || ! $session->isValid()) {
                 // Fallback to direct business lookup
                 $business = AffiliateBusiness::where('dashboard_access_token', $actualToken)->first();
-                if (!$business) {
+                if (! $business) {
                     \Log::error('Business not found', [
                         'actualToken' => $actualToken,
                         'routeToken' => $token,
@@ -372,7 +371,7 @@ class AffiliateQrCodeController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('QR Code download preparation failed: ' . $e->getMessage(), [
+            \Log::error('QR Code download preparation failed: '.$e->getMessage(), [
                 'token' => $token,
                 'qrCodeId' => $qrCodeId,
                 'exception' => $e->getTraceAsString(),
@@ -382,19 +381,19 @@ class AffiliateQrCodeController extends Controller
 
         try {
             // Check if QR code has an image path
-            if (!$qrCode->qr_image_path) {
+            if (! $qrCode->qr_image_path) {
                 abort(404, 'QR code image not found - no image path stored');
             }
 
             // Try to get image from storage
             $disk = Storage::disk('upcloud');
-            if (!$disk->exists($qrCode->qr_image_path)) {
+            if (! $disk->exists($qrCode->qr_image_path)) {
                 abort(404, 'QR code image file not found in storage');
             }
 
             $qrImageContent = $disk->get($qrCode->qr_image_path);
 
-            if (!$qrImageContent) {
+            if (! $qrImageContent) {
                 abort(404, 'QR code image content could not be read');
             }
 
@@ -423,7 +422,7 @@ class AffiliateQrCodeController extends Controller
             };
 
             // Use a user-friendly filename with the correct extension
-            $filename = 'qr-code-' . ($qrCode->short_code ?: $qrCode->id) . '.' . $extension;
+            $filename = 'qr-code-'.($qrCode->short_code ?: $qrCode->id).'.'.$extension;
 
             \Log::info('QR Code download final', [
                 'detected_extension' => $extension,
@@ -433,17 +432,17 @@ class AffiliateQrCodeController extends Controller
 
             return Response::make($qrImageContent)
                 ->header('Content-Type', $contentType)
-                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+                ->header('Content-Disposition', 'attachment; filename="'.$filename.'"')
                 ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 ->header('Pragma', 'no-cache')
                 ->header('Expires', '0');
         } catch (\Exception $e) {
-            \Log::error('QR code download failed: ' . $e->getMessage(), [
+            \Log::error('QR code download failed: '.$e->getMessage(), [
                 'qr_code_id' => $qrCode->id,
                 'image_path' => $qrCode->qr_image_path,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            abort(404, 'QR code image not found: ' . $e->getMessage());
+            abort(404, 'QR code image not found: '.$e->getMessage());
         }
     }
 
@@ -454,7 +453,7 @@ class AffiliateQrCodeController extends Controller
     {
         $session = AffiliateDashboardSession::findByToken($token);
 
-        if (!$session || !$session->isValid()) {
+        if (! $session || ! $session->isValid()) {
             abort(403, 'Invalid or expired dashboard access token');
         }
 
@@ -477,7 +476,7 @@ class AffiliateQrCodeController extends Controller
     {
         $session = AffiliateDashboardSession::findByToken($token);
 
-        if (!$session || !$session->isValid()) {
+        if (! $session || ! $session->isValid()) {
             abort(403, 'Invalid or expired dashboard access token');
         }
 
@@ -498,7 +497,7 @@ class AffiliateQrCodeController extends Controller
     {
         $session = AffiliateDashboardSession::findByToken($token);
 
-        if (!$session || !$session->isValid()) {
+        if (! $session || ! $session->isValid()) {
             abort(403, 'Invalid or expired dashboard access token');
         }
 
@@ -531,7 +530,7 @@ class AffiliateQrCodeController extends Controller
 
         $business = AffiliateBusiness::where('dashboard_access_token', $actualToken)->first();
 
-        if (!$business) {
+        if (! $business) {
             abort(403, 'Invalid or expired dashboard access token');
         }
         $qrCode = $business->qrCodes()->findOrFail($qrCodeId);
@@ -545,7 +544,7 @@ class AffiliateQrCodeController extends Controller
                 Storage::disk('upcloud')->delete($qrCode->qr_pdf_path);
             }
         } catch (\Exception $e) {
-            \Log::error('Failed to delete QR code image: ' . $e->getMessage());
+            \Log::error('Failed to delete QR code image: '.$e->getMessage());
         }
 
         // Delete QR code record (will cascade delete customer scans)
@@ -572,7 +571,7 @@ class AffiliateQrCodeController extends Controller
 
         $business = AffiliateBusiness::where('dashboard_access_token', $actualToken)->first();
 
-        if (!$business) {
+        if (! $business) {
             abort(403, 'Invalid or expired dashboard access token');
         }
 
@@ -594,7 +593,7 @@ class AffiliateQrCodeController extends Controller
                     Storage::disk('upcloud')->delete($qrCode->qr_pdf_path);
                 }
             } catch (\Exception $e) {
-                \Log::error('Failed to delete QR code image: ' . $e->getMessage());
+                \Log::error('Failed to delete QR code image: '.$e->getMessage());
             }
 
             // Delete QR code record (will cascade delete customer scans)
@@ -612,28 +611,30 @@ class AffiliateQrCodeController extends Controller
     /**
      * QR code landing page (short code).
      */
-    public function qrLanding(string $shortCode, Request $request)
+    public function qrLanding(string $locale, string $shortCode, Request $request)
     {
         $qrCode = AffiliateQrCode::where('short_code', $shortCode)
-                               ->where('status', 'active')
-                               ->first();
+            ->where('status', 'active')
+            ->first();
 
-        if (!$qrCode || !$qrCode->isValid()) {
+        if (! $qrCode || ! $qrCode->isValid()) {
             return redirect('/')->with('error', 'QR code not found or expired');
         }
 
         // Create scan record
-        $trackingData = json_encode([
+        $trackingData = [
             'type' => 'affiliate_qr',
             'business_id' => $qrCode->business_id,
+            'location_id' => $qrCode->location_id,
             'qr_id' => $shortCode,
             'timestamp' => now()->timestamp,
             'version' => '1.0',
-        ]);
+        ];
+        $trackingData = rtrim(strtr(base64_encode(json_encode($trackingData)), '+/', '-_'), '=');
 
         $result = $this->qrCodeService->processQrScan($trackingData, $request);
 
-        if (!$result) {
+        if (! $result) {
             return redirect('/')->with('error', 'Failed to process QR code scan');
         }
 
@@ -648,7 +649,8 @@ class AffiliateQrCodeController extends Controller
                 'business_name' => $qrCode->business->name,
                 'scanned_at' => $result['customer_scan']->created_at->toISOString(),
             ]]);
-            return redirect('/en/vehicles')->with('info', 'You have already activated your discount from ' . $qrCode->business->name . '. Your exclusive offer is still active!');
+
+            return redirect('/en/vehicles')->with('info', 'You have already activated your discount from '.$qrCode->business->name.'. Your exclusive offer is still active!');
         }
 
         // Store affiliate data
@@ -671,12 +673,12 @@ class AffiliateQrCodeController extends Controller
     /**
      * Track QR code scan (public endpoint).
      */
-    public function track($trackingData, Request $request)
+    public function track(string $locale, string $trackingData, Request $request)
     {
         try {
             $result = $this->qrCodeService->processQrScan($trackingData, $request);
 
-            if (!$result) {
+            if (! $result) {
                 // Invalid QR code or tracking data - redirect to homepage with error
                 return redirect()->route('welcome', ['locale' => app()->getLocale()])
                     ->with('error', 'Invalid or expired QR code');
@@ -693,8 +695,9 @@ class AffiliateQrCodeController extends Controller
                     'business_name' => $result['business']->name,
                     'scanned_at' => $result['customer_scan']->created_at->toISOString(),
                 ]]);
+
                 return redirect()->route('welcome', ['locale' => app()->getLocale()])
-                    ->with('info', 'You have already activated your discount from ' . $result['business']->name . '. Your exclusive offer is still active!');
+                    ->with('info', 'You have already activated your discount from '.$result['business']->name.'. Your exclusive offer is still active!');
             }
 
             // Store affiliate data in session
@@ -712,10 +715,10 @@ class AffiliateQrCodeController extends Controller
 
             // Redirect to main website with affiliate discount applied
             return redirect()->route('welcome', ['locale' => app()->getLocale()])
-                ->with('success', 'QR code scanned successfully! You now have access to exclusive discounts from ' . $result['business']->name . '.');
+                ->with('success', 'QR code scanned successfully! You now have access to exclusive discounts from '.$result['business']->name.'.');
 
         } catch (\Exception $e) {
-            \Log::error('QR code tracking failed: ' . $e->getMessage());
+            \Log::error('QR code tracking failed: '.$e->getMessage());
 
             // Redirect to homepage with error message
             return redirect()->route('welcome', ['locale' => app()->getLocale()])
@@ -730,7 +733,7 @@ class AffiliateQrCodeController extends Controller
     {
         $session = AffiliateDashboardSession::findByToken($token);
 
-        if (!$session || !$session->isValid()) {
+        if (! $session || ! $session->isValid()) {
             abort(403, 'Invalid or expired dashboard access token');
         }
 

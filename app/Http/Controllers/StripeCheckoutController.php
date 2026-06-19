@@ -200,10 +200,9 @@ class StripeCheckoutController extends Controller
 
     private function isExternalProviderSource(?string $source): bool
     {
-        // Apply platform fee to ALL vehicles including internal
         $normalized = strtolower(trim((string) $source));
 
-        return $normalized !== '';
+        return $normalized !== '' && $normalized !== 'internal';
     }
 
     private function resolveProviderMarkupPercent(): float
@@ -234,6 +233,25 @@ class StripeCheckoutController extends Controller
         }
 
         return round($netAmount * (1 + $markupRate), 2);
+    }
+
+    private function shouldApplyTrabberAttribution(?string $searchSessionId, array $validated): bool
+    {
+        $candidates = [
+            $searchSessionId,
+            $validated['search_session_id'] ?? null,
+            $validated['quoteid'] ?? null,
+            $validated['vehicle']['quoteid'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            $normalized = strtolower(trim((string) $candidate));
+            if ($normalized !== '' && str_starts_with($normalized, 'trabber_offer_')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function compactStripeMetadata(array $metadata): array
@@ -930,7 +948,9 @@ class StripeCheckoutController extends Controller
                 $validated['package'] ?? null
             );
             $vehicleProviderPayload = $this->resolveVehicleLegacyPayload($validated['vehicle'] ?? []);
-            $trabberAttribution = app(TrabberAttributionService::class)->fromRequest($request);
+            $trabberAttribution = $this->shouldApplyTrabberAttribution($searchSessionId ?? null, $validated)
+                ? app(TrabberAttributionService::class)->fromRequest($request)
+                : [];
 
             // Build the FULL metadata (no Stripe key limit here â€” stored in our DB)
             $fullMetadata = [

@@ -3,6 +3,11 @@
 namespace Tests\Unit;
 
 use App\Jobs\TriggerProviderReservationJob;
+use App\Models\Affiliate\AffiliateBusiness;
+use App\Models\Affiliate\AffiliateBusinessLocation;
+use App\Models\Affiliate\AffiliateCommission;
+use App\Models\Affiliate\AffiliateCustomerScan;
+use App\Models\Affiliate\AffiliateQrCode;
 use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\StripeCheckoutPayload;
@@ -229,7 +234,13 @@ class StripeBookingServiceAccountingTest extends TestCase
         $this->assertSame('USD', $booking->amounts->vendor_currency);
         $this->assertEqualsWithDelta(10554.14, (float) $booking->base_price, 0.01);
         $this->assertEqualsWithDelta(5277.07, (float) $booking->extra_charges, 0.01);
+        $this->assertEqualsWithDelta(2064.94, (float) $booking->amount_paid, 0.01);
+        $this->assertEqualsWithDelta(13766.27, (float) $booking->pending_amount, 0.01);
 
+        $this->assertEqualsWithDelta(15831.21, (float) $booking->amounts->booking_total_amount, 0.01);
+        $this->assertEqualsWithDelta(2064.94, (float) $booking->amounts->booking_paid_amount, 0.01);
+        $this->assertEqualsWithDelta(13766.27, (float) $booking->amounts->booking_pending_amount, 0.01);
+        $this->assertEqualsWithDelta(5277.07, (float) $booking->amounts->booking_extra_amount, 0.01);
         $this->assertEqualsWithDelta(19.37, (float) $booking->amounts->admin_total_amount, 0.01);
         $this->assertEqualsWithDelta(19.37, (float) $booking->amounts->admin_paid_amount, 0.01);
         $this->assertEqualsWithDelta(0.00, (float) $booking->amounts->admin_pending_amount, 0.01);
@@ -957,6 +968,182 @@ class StripeBookingServiceAccountingTest extends TestCase
             $booking->offers->pluck('effect_type')->sort()->values()->all()
         );
         $this->assertSame('Summer Discount', $booking->offers->firstWhere('effect_type', 'price_discount_percentage')?->name);
+    }
+
+    #[Test]
+    public function it_creates_affiliate_commission_for_the_booking_customer_user(): void
+    {
+        Notification::fake();
+        Bus::fake([TriggerProviderReservationJob::class]);
+
+        config([
+            'awin.enabled' => false,
+            'currency.base_currency' => 'EUR',
+            'currency.default' => 'EUR',
+            'vrooem.enabled' => false,
+        ]);
+
+        $service = $this->makeServiceWithIdentityConversions();
+        $this->createAdminUser();
+
+        $customerUser = User::create([
+            'first_name' => 'Smoke',
+            'last_name' => 'Customer',
+            'email' => 'smoke-affiliate@example.com',
+            'phone' => '+10000000011',
+            'password' => bcrypt('password'),
+            'role' => 'customer',
+            'status' => 'active',
+        ]);
+
+        $customer = Customer::create([
+            'user_id' => $customerUser->id,
+            'first_name' => 'Smoke',
+            'last_name' => 'Customer',
+            'email' => 'smoke-affiliate@example.com',
+            'phone' => '+10000000011',
+            'driver_age' => 35,
+        ]);
+
+        $affiliateOwner = User::create([
+            'first_name' => 'Affiliate',
+            'last_name' => 'Owner',
+            'email' => 'affiliate-owner@example.com',
+            'phone' => '+10000000012',
+            'password' => bcrypt('password'),
+            'role' => 'affiliate',
+            'status' => 'active',
+        ]);
+
+        $business = AffiliateBusiness::create([
+            'uuid' => '00000000-0000-4000-8000-000000000101',
+            'user_id' => $affiliateOwner->id,
+            'name' => 'Smoke Travel',
+            'business_type' => 'travel_agency',
+            'contact_email' => 'affiliate-owner@example.com',
+            'contact_phone' => '+10000000012',
+            'legal_address' => 'Airport Road',
+            'city' => 'Dubai',
+            'country' => 'AE',
+            'postal_code' => '00000',
+            'currency' => 'EUR',
+            'verification_status' => 'verified',
+            'status' => 'active',
+            'dashboard_access_token' => 'AFF-SMOKE-TEST-TOKEN',
+            'verified_at' => now(),
+        ]);
+
+        $location = AffiliateBusinessLocation::create([
+            'uuid' => '00000000-0000-4000-8000-000000000102',
+            'business_id' => $business->id,
+            'location_code' => 'SMOKE-DXB',
+            'name' => 'Smoke Travel Desk',
+            'address_line_1' => 'Airport Road',
+            'city' => 'Dubai',
+            'country' => 'AE',
+            'postal_code' => '00000',
+            'latitude' => 25.251369,
+            'longitude' => 55.347204,
+            'verification_status' => 'verified',
+            'is_active' => true,
+            'verified_at' => now(),
+        ]);
+
+        $qrCode = AffiliateQrCode::create([
+            'uuid' => '00000000-0000-4000-8000-000000000103',
+            'business_id' => $business->id,
+            'location_id' => $location->id,
+            'qr_code_value' => 'affiliate-smoke-code',
+            'qr_hash' => hash('sha256', 'affiliate-smoke-code'),
+            'short_code' => 'AFFSMOKE',
+            'qr_url' => 'https://vrooem.test/qr/AFFSMOKE',
+            'qr_image_path' => 'affiliate/smoke.png',
+            'discount_type' => 'percentage',
+            'discount_value' => 0,
+            'status' => 'active',
+            'total_scans' => 1,
+            'unique_scans' => 1,
+        ]);
+
+        $scan = AffiliateCustomerScan::create([
+            'uuid' => '00000000-0000-4000-8000-000000000104',
+            'qr_code_id' => $qrCode->id,
+            'customer_id' => $customerUser->id,
+            'session_id' => 'affiliate-smoke-session',
+            'scan_token' => 'affiliate-smoke-scan-token',
+            'tracking_url' => 'https://vrooem.test/qr/AFFSMOKE',
+            'ip_address' => '127.0.0.1',
+            'device_type' => 'desktop',
+            'location_detection_method' => 'manual',
+            'matched_location_id' => $location->id,
+            'scan_date' => now()->toDateString(),
+            'scan_hour' => (int) now()->format('G'),
+            'scan_result' => 'success',
+            'booking_initiated' => true,
+            'booking_completed' => false,
+        ]);
+
+        $session = (object) [
+            'id' => 'cs_test_affiliate_commission',
+            'payment_intent' => 'pi_test_affiliate_commission',
+            'metadata' => (object) [
+                'user_id' => $customerUser->id,
+                'vehicle_source' => 'internal',
+                'vehicle_id' => null,
+                'vehicle_brand' => 'Example',
+                'vehicle_model' => 'Sedan',
+                'pickup_date' => '2026-04-15',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-04-18',
+                'dropoff_time' => '09:00',
+                'pickup_location' => 'Dubai Airport',
+                'dropoff_location' => 'Dubai Airport',
+                'package' => 'BAS',
+                'number_of_days' => 3,
+                'currency' => 'EUR',
+                'provider_currency' => 'EUR',
+                'total_amount' => 230.00,
+                'total_amount_net' => 200.00,
+                'payable_amount' => 30.00,
+                'pending_amount' => 200.00,
+                'vehicle_total' => 200.00,
+                'extras_total' => 0.00,
+                'provider_vehicle_total' => 200.00,
+                'provider_extras_total' => 0.00,
+                'provider_grand_total' => 200.00,
+                'deposit_percentage' => 15.00,
+                'customer_name' => 'Smoke Customer',
+                'customer_email' => 'smoke-affiliate@example.com',
+                'customer_phone' => '+10000000011',
+                'customer_driver_age' => 35,
+                'affiliate_business_id' => $business->id,
+                'affiliate_scan_id' => $scan->id,
+                'payment_method' => 'card',
+            ],
+        ];
+
+        $booking = $service->createBookingFromSession($session);
+        $commission = AffiliateCommission::where('booking_id', $booking->id)->firstOrFail();
+
+        $this->assertSame($customer->id, $booking->customer_id);
+        $this->assertSame($customerUser->id, $commission->customer_id);
+        $this->assertNotSame($customer->id, $commission->customer_id);
+        $this->assertSame($business->id, $commission->business_id);
+        $this->assertSame($location->id, $commission->location_id);
+        $this->assertSame($scan->id, $commission->qr_scan_id);
+        $this->assertSame('platform', $commission->booking_type);
+        $this->assertSame('pending', $commission->status);
+        $this->assertEqualsWithDelta(200.00, (float) $commission->booking_amount, 0.01);
+        $this->assertEqualsWithDelta(6.00, (float) $commission->commission_amount, 0.01);
+
+        $scan->refresh();
+        $qrCode->refresh();
+
+        $this->assertTrue($scan->booking_completed);
+        $this->assertSame($booking->id, $scan->booking_id);
+        $this->assertSame('platform', $scan->booking_type);
+        $this->assertSame(1, $qrCode->conversion_count);
+        $this->assertEqualsWithDelta(200.00, (float) $qrCode->total_revenue_generated, 0.01);
     }
 
     private function createExternalBooking(array $overrides = []): Booking

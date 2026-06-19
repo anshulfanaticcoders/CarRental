@@ -174,6 +174,54 @@ class StripeCheckoutControllerLocationFallbackTest extends TestCase
         $this->assertSame(118.50, $result['booking_total_net']);
     }
 
+    public function test_it_does_not_apply_external_markup_to_internal_partner_offer_totals(): void
+    {
+        $controller = $this->makeController();
+
+        $result = $this->computeServerTotals($controller, [
+            'vehicle' => [
+                'source' => 'internal',
+                'products' => [
+                    ['type' => 'BAS', 'total' => 1560.00, 'currency' => 'AED'],
+                ],
+            ],
+            'package' => 'BAS',
+            'number_of_days' => 3,
+            'total_amount' => 1665.00,
+            'detailed_extras' => [
+                [
+                    'id' => 'internal_addon_223',
+                    'qty' => 1,
+                    'total_for_booking' => 105.00,
+                ],
+            ],
+        ], 'AED', 'AED');
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(105.00, $result['provider_options_total']);
+        $this->assertSame(1665.00, $result['booking_total']);
+        $this->assertSame(1665.00, $result['booking_total_net']);
+        $this->assertSame(249.75, $result['booking_deposit']);
+        $this->assertSame(0.0, $result['provider_commission_rate']);
+    }
+
+    public function test_it_only_applies_trabber_attribution_to_trabber_offer_sessions(): void
+    {
+        $controller = $this->makeController();
+
+        $this->assertFalse($this->shouldApplyTrabberAttribution(
+            $controller,
+            'skyscanner_offer_59ac3f15-e82c-4d67-8113-77c8a27cbeea',
+            ['quoteid' => '59ac3f15-e82c-4d67-8113-77c8a27cbeea']
+        ));
+
+        $this->assertTrue($this->shouldApplyTrabberAttribution(
+            $controller,
+            'trabber_offer_3c11aec8-adca-470b-bde4-a0f2cb4c4933',
+            ['quoteid' => '3c11aec8-adca-470b-bde4-a0f2cb4c4933']
+        ));
+    }
+
     public function test_it_uses_display_name_for_checkout_when_brand_and_model_are_empty(): void
     {
         $controller = $this->makeController();
@@ -204,15 +252,31 @@ class StripeCheckoutControllerLocationFallbackTest extends TestCase
         return $result;
     }
 
-    private function computeServerTotals(StripeCheckoutController $controller, array $validated): array
+    private function computeServerTotals(
+        StripeCheckoutController $controller,
+        array $validated,
+        string $bookingCurrency = 'EUR',
+        string $providerCurrency = 'EUR'
+    ): array
     {
         $method = new ReflectionMethod($controller, 'computeServerTotals');
         $method->setAccessible(true);
 
         /** @var array<string, mixed> $result */
-        $result = $method->invoke($controller, $validated, 'EUR', 'EUR', 15.0);
+        $result = $method->invoke($controller, $validated, $bookingCurrency, $providerCurrency, 15.0);
 
         return $result;
+    }
+
+    private function shouldApplyTrabberAttribution(
+        StripeCheckoutController $controller,
+        ?string $searchSessionId,
+        array $validated
+    ): bool {
+        $method = new ReflectionMethod($controller, 'shouldApplyTrabberAttribution');
+        $method->setAccessible(true);
+
+        return $method->invoke($controller, $searchSessionId, $validated);
     }
 
     private function resolveVehicleCheckoutName(StripeCheckoutController $controller, array $vehicle): string

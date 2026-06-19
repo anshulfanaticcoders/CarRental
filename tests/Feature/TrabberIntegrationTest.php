@@ -16,6 +16,7 @@ use App\Models\VehicleCategory;
 use App\Models\VehicleImage;
 use App\Models\VendorLocation;
 use App\Models\VendorProfile;
+use App\Services\CurrencyConversionService;
 use App\Services\LocationSearchService;
 use App\Services\OfferService;
 use App\Services\Trabber\TrabberAttributionService;
@@ -214,7 +215,7 @@ class TrabberIntegrationTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('OfferResults')
             ->where('quote.pricing.total_price', 149.49)
-            ->where("bookingContexts.{$offerId}.vehicle.total_price", 129.99)
+            ->where("bookingContexts.{$offerId}.vehicle.total_price", 149.49)
         );
     }
 
@@ -499,6 +500,159 @@ class TrabberIntegrationTest extends TestCase
         $response->assertJsonPath('offers.0.coverages.tp.included', true);
         $response->assertJsonPath('offers.0.coverages.tw.excess_amount', 1200);
         $response->assertJsonPath('meta.inventory_scope', 'mixed');
+    }
+
+    public function test_trabber_search_converts_customer_prices_to_requested_currency(): void
+    {
+        config(['trabber.inventory_scope' => 'mixed']);
+
+        $unifiedLocation = [
+            'unified_location_id' => 3385755165,
+            'name' => 'Dubai Airport (DXB)',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'country_code' => 'AE',
+            'latitude' => 25.251369,
+            'longitude' => 55.347204,
+            'iata' => 'DXB',
+            'providers' => [
+                ['provider' => 'surprice', 'pickup_id' => 'DXB:DXBA01'],
+            ],
+        ];
+
+        $this->mock(LocationSearchService::class, function ($mock) use ($unifiedLocation): void {
+            $mock->shouldReceive('getAllLocations')->andReturn([$unifiedLocation]);
+            $mock->shouldReceive('resolveSearchLocation')->andReturn($unifiedLocation);
+            $mock->shouldReceive('getLocationByUnifiedId')->andReturn($unifiedLocation);
+        });
+
+        $this->mock(CurrencyConversionService::class, function ($mock): void {
+            $mock->shouldReceive('convert')
+                ->with(1.0, 'AED', 'EUR')
+                ->andReturn([
+                    'success' => true,
+                    'converted_amount' => 0.25,
+                    'from_currency' => 'AED',
+                    'to_currency' => 'EUR',
+                    'rate' => 0.25,
+                ]);
+        });
+
+        $this->mock(VrooemGatewayService::class, function ($mock): void {
+            $mock->shouldReceive('searchVehicles')
+                ->once()
+                ->andReturn([
+                    'vehicles' => [[
+                        'id' => 'surprice_aed_001',
+                        'supplier_id' => 'surprice',
+                        'supplier_vehicle_id' => 'SP-AED-001',
+                        'make' => 'Kia',
+                        'model' => 'Sportage',
+                        'category' => 'suv',
+                        'image_url' => 'https://example.com/kia-sportage.jpg',
+                        'pricing' => [
+                            'total_price' => 400.0,
+                            'daily_rate' => 133.33,
+                            'currency' => 'AED',
+                            'deposit_amount' => 1500.0,
+                            'deposit_currency' => 'AED',
+                        ],
+                        'pickup_location' => [
+                            'supplier_location_id' => 'DXB:DXBA01',
+                            'name' => 'Dubai Airport',
+                            'address' => 'Dubai Airport Terminal 1',
+                            'latitude' => 25.251369,
+                            'longitude' => 55.347204,
+                            'is_airport' => true,
+                        ],
+                        'dropoff_location' => [
+                            'supplier_location_id' => 'DXB:DXBA01',
+                            'name' => 'Dubai Airport',
+                            'address' => 'Dubai Airport Terminal 1',
+                            'latitude' => 25.251369,
+                            'longitude' => 55.347204,
+                            'is_airport' => true,
+                        ],
+                        'transmission' => 'automatic',
+                        'fuel_type' => 'petrol',
+                        'seats' => 5,
+                        'bags_large' => 2,
+                        'mileage_policy' => 'limited',
+                        'mileage_limit_km' => 750,
+                        'sipp_code' => 'IFAR',
+                        'extras' => [
+                            [
+                                'id' => 'gps',
+                                'name' => 'GPS',
+                                'daily_rate' => 10.0,
+                                'total_price' => 30.0,
+                                'total_for_booking' => 30.0,
+                                'currency' => 'AED',
+                            ],
+                        ],
+                        'supplier_data' => [
+                            'provider_code' => 'surprice',
+                            'fuel_policy_label' => 'Full to Full',
+                        ],
+                    ]],
+                    'provider_status' => [],
+                    'search_id' => 'gateway-search-aed',
+                ]);
+        });
+
+        $response = $this
+            ->withHeader('x-api-key', 'trabber-secret')
+            ->postJson('/api/trabber/car-hire/search', [
+                'pickup' => ['iata' => 'DXB'],
+                'dropoff' => ['iata' => 'DXB'],
+                'pickup_date_time' => '2026-08-20 10:00:00',
+                'dropoff_date_time' => '2026-08-23 10:00:00',
+                'currency' => 'EUR',
+                'language' => 'en',
+                'driver_age' => 35,
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('meta.currency', 'EUR');
+        $response->assertJsonPath('offers.0.price', 115);
+        $response->assertJsonPath('offers.0.currency', 'EUR');
+        $response->assertJsonPath('offers.0.pricing.total_price', 115);
+        $response->assertJsonPath('offers.0.pricing.currency', 'EUR');
+        $response->assertJsonPath('offers.0.pricing.deposit_amount', 1500);
+        $response->assertJsonPath('offers.0.pricing.deposit_currency', 'AED');
+        $response->assertJsonPath('offers.0.vehicle.display_name', 'Kia Sportage');
+
+        $offerId = (string) $response->json('offers.0.offer_id');
+
+        $this->get(route('trabber.offer', [
+            'locale' => 'en',
+            'offerId' => $offerId,
+        ]))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('OfferResults')
+                ->where('quote.pricing.currency', 'EUR')
+                ->where('quote.pricing.total_price', 115)
+                ->where('quote.products.0.currency', 'EUR')
+                ->where('quote.products.0.total', 115)
+                ->where('quote.booking_products.0.currency', 'EUR')
+                ->where('quote.booking_products.0.total', 100)
+                ->where('quote.extras_preview.0.currency', 'EUR')
+                ->where('quote.extras_preview.0.total_for_booking', 7.5)
+                ->where('bookingContext.vehicle.currency', 'EUR')
+                ->where('bookingContext.vehicle.pricing.currency', 'EUR')
+                ->where('bookingContext.vehicle.pricing.total_price', 115)
+                ->where('bookingContext.vehicle.total_price', 115)
+                ->where('bookingContext.vehicle.partner_supplier_name', 'Vrooem')
+                ->where('bookingContext.vehicle.products.0.currency', 'EUR')
+                ->where('bookingContext.vehicle.products.0.total', 115)
+                ->where('bookingContext.optional_extras.0.currency', 'EUR')
+                ->where('bookingContext.optional_extras.0.total_for_booking', 7.5)
+                ->where('bookingContext.vehicle.booking_context.provider_payload.currency', 'EUR')
+                ->where('bookingContext.vehicle.booking_context.provider_payload.display_pricing.total_price', 115)
+                ->where('bookingContext.vehicle.booking_context.provider_payload.net_pricing.total_price', 100)
+                ->where('bookingContext.vehicle.booking_context.provider_payload.booking_products.0.total', 100)
+                ->where('bookingContext.vehicle.booking_context.provider_payload.gateway_search_id', 'gateway-search-aed')
+            );
     }
 
     public function test_trabber_offer_page_preserves_provider_products_and_extras(): void

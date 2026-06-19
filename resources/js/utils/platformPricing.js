@@ -49,9 +49,9 @@ export const resolveEffectiveProviderMarkupRate = (vehicle = {}, rate = 0) => {
 };
 
 export const shouldUseCommissionOnlyForVehicle = (vehicle = {}, rate = 0) => {
-    const source = `${vehicle?.source ?? ''}`.trim();
+    const source = `${vehicle?.source ?? ''}`.trim().toLowerCase();
 
-    return source !== '' && resolveEffectiveProviderMarkupRate(vehicle, rate) > 0;
+    return source !== '' && source !== 'internal' && resolveEffectiveProviderMarkupRate(vehicle, rate) > 0;
 };
 
 const roundMoney = (value) => {

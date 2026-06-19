@@ -4,6 +4,15 @@ import { defaultComputeNetTotal } from './shared.js';
 
 const round2 = (v) => Math.round(v * 100) / 100;
 
+const normalizeInternalAddonId = (id) => {
+  const normalized = `${id ?? ''}`.trim();
+  if (!normalized) return '';
+
+  return normalized.startsWith('internal_addon_')
+    ? normalized
+    : `internal_addon_${normalized}`;
+};
+
 export function createInternalAdapter(props, { formatPrice }) {
   const legacyPayload = computed(() => getSearchVehicleLegacyPayload(props.vehicle));
 
@@ -56,10 +65,13 @@ export function createInternalAdapter(props, { formatPrice }) {
   const optionalExtras = computed(() => {
     const addons = legacyPayload.value?.addons || [];
     return addons.map(addon => {
-      const dailyRate = parseFloat(addon.price) || 0;
-      const totalForBooking = round2(dailyRate * props.numberOfDays);
+      const dailyRate = parseFloat(addon.daily_rate ?? addon.price) || 0;
+      const totalForBooking = addon.total_for_booking !== undefined && addon.total_for_booking !== null
+        ? parseFloat(addon.total_for_booking) || 0
+        : round2(dailyRate * props.numberOfDays);
+      const addonId = normalizeInternalAddonId(addon.id ?? addon.addon_id ?? addon.code);
       return {
-        id: `internal_addon_${addon.id}`,
+        id: addonId,
         code: addon.addon_id?.toString() || addon.id?.toString(),
         name: addon.extra_name || 'Extra',
         description: addon.description || addon.extra_name || 'Optional Add-on',

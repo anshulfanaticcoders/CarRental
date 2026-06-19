@@ -4,6 +4,7 @@ namespace App\Services\Trabber;
 
 use App\Models\Vehicle;
 use App\Models\VendorLocation;
+use App\Services\CurrencyConversionService;
 use App\Services\OfferService;
 use App\Services\Pricing\PayablePercentageService;
 use App\Services\Search\InternalSearchVehicleFactory;
@@ -25,7 +26,8 @@ class TrabberSearchService
         private readonly TrabberOfferStoreService $offerStore,
         private readonly PayablePercentageService $payablePercentageService,
         private readonly TrabberFuelPolicyFormatter $fuelPolicyFormatter,
-        private readonly OfferService $offerService
+        private readonly OfferService $offerService,
+        private readonly CurrencyConversionService $currencyConversionService
     ) {}
 
     public function search(array $criteria): array
@@ -50,6 +52,7 @@ class TrabberSearchService
         $dropoffDateTime = Carbon::parse($criteria['dropoff_date_time']);
         $rentalDays = max(1, (int) ceil($pickupDateTime->diffInMinutes($dropoffDateTime) / 1440));
         $currency = strtoupper((string) ($criteria['currency'] ?? config('trabber.default_currency', 'EUR')));
+        $currency = $this->normalizeCurrency($currency);
 
         $offers = [];
         $searchPayload = $this->searchPayload(
@@ -167,13 +170,18 @@ class TrabberSearchService
             ?? 0
         ), 2);
         $markupRate = $this->payablePercentageService->rate();
-        $grossPrice = $this->grossAmount($price, $markupRate);
         $rentalDays = $this->rentalDays($searchPayload);
+        $sourceCurrency = $this->sourceCurrency($vehicle, $currency);
+        $currencyContext = $this->customerCurrencyContext($sourceCurrency, $currency);
+        $customerPrice = $this->customerAmount($price, $currencyContext);
+        $grossPrice = $this->grossAmount($customerPrice, $markupRate);
+        $customerVehicle = $this->vehicleWithCustomerCurrency($vehicle, $currencyContext);
         $netPricePerDay = $rentalDays > 0 ? round($price / $rentalDays, 2) : $price;
+        $customerNetPricePerDay = $rentalDays > 0 ? round($customerPrice / $rentalDays, 2) : $customerPrice;
         $grossPricePerDay = $rentalDays > 0 ? round($grossPrice / $rentalDays, 2) : $grossPrice;
         $vehicleName = $this->displayName($vehicle, 'Vehicle');
         $supplierName = self::PUBLIC_SUPPLIER_NAME;
-        $offerCurrency = Arr::get($vehicle, 'pricing.currency') ?: ($vehicle['currency'] ?? $currency);
+        $offerCurrency = $currencyContext['currency'];
         $fuelPolicy = $this->fuelPolicyFormatter->label(
             Arr::get($vehicle, 'policies.fuel_policy_label'),
             Arr::get($vehicle, 'supplier_data.fuel_policy_label'),
@@ -183,7 +191,7 @@ class TrabberSearchService
             $vehicle['fuel_policy'] ?? null,
             Arr::get($vehicle, 'benefits.fuel_policy'),
         );
-        $pricing = $this->pricingSnapshot($vehicle, $grossPrice, $grossPricePerDay, $offerCurrency);
+        $pricing = $this->pricingSnapshot($customerVehicle, $grossPrice, $grossPricePerDay, $offerCurrency);
         $mileage = $this->mileageDetails($vehicle);
         $policies = $this->policiesSnapshot($vehicle, $fuelPolicy, $mileage);
         $pickupLocationDetails = $this->locationDetails($vehicle, $searchPayload, 'pickup');
@@ -200,8 +208,8 @@ class TrabberSearchService
             'inclusions' => $this->resolveInclusions($vehicle, $resolvedOffers),
             'free_esim_included' => (bool) ($resolvedOffers['free_esim_included'] ?? false),
             'applied_offers' => $this->normalizeAppliedOffers($resolvedOffers['applied_offers'] ?? []),
-            'vehicle' => $this->vehicleSnapshot($vehicle, $supplierName),
-            'specs' => $this->specsSnapshot($vehicle),
+            'vehicle' => $this->vehicleSnapshot($customerVehicle, $supplierName),
+            'specs' => $this->specsSnapshot($customerVehicle),
             'pricing' => $pricing,
             'policies' => $policies,
             'pickup_location_details' => $pickupLocationDetails,
@@ -220,15 +228,17 @@ class TrabberSearchService
 
         $this->offerStore->put($offerId, [
             'offer' => $offer,
-            'vehicle' => $vehicle,
+            'vehicle' => $customerVehicle,
             'search' => $searchPayload,
             'trabber_pricing' => [
                 'markup_rate' => $markupRate,
                 'payment_percentage' => round($markupRate * 100, 2),
-                'net_total_price' => round($price, 2),
+                'net_total_price' => round($customerPrice, 2),
                 'gross_total_price' => $grossPrice,
-                'net_price_per_day' => $netPricePerDay,
+                'net_price_per_day' => $customerNetPricePerDay,
                 'gross_price_per_day' => $grossPricePerDay,
+                'source_currency' => $sourceCurrency,
+                'currency' => $offerCurrency,
             ],
             'created_at' => now('UTC')->toIso8601String(),
             'expires_at' => now('UTC')->addMinutes((int) config('trabber.offer_ttl_minutes', 60))->toIso8601String(),
@@ -338,6 +348,119 @@ class TrabberSearchService
             'excess_amount' => $this->numberOrNull($sourcePricing['excess_amount'] ?? data_get($vehicle, 'benefits.excess_amount')),
             'excess_theft_amount' => $this->numberOrNull($sourcePricing['excess_theft_amount'] ?? data_get($vehicle, 'benefits.excess_theft_amount')),
         ]);
+    }
+
+    private function vehicleWithCustomerCurrency(array $vehicle, array $currencyContext): array
+    {
+        $vehicle['currency'] = $currencyContext['currency'];
+
+        if (is_array($vehicle['pricing'] ?? null)) {
+            $vehicle['pricing'] = $this->customerPricing($vehicle['pricing'], $currencyContext);
+        }
+
+        foreach (['products', 'extras_preview', 'extras', 'options', 'insurance_options'] as $key) {
+            if (is_array($vehicle[$key] ?? null)) {
+                $vehicle[$key] = $this->customerMoneyList($vehicle[$key], $currencyContext);
+            }
+        }
+
+        foreach (['total_price', 'price_per_day', 'daily_rate', 'total', 'price_per_week', 'price_per_month'] as $key) {
+            if (array_key_exists($key, $vehicle)) {
+                $vehicle[$key] = $this->customerAmountOrOriginal($vehicle[$key], $currencyContext);
+            }
+        }
+
+        return $vehicle;
+    }
+
+    private function customerPricing(array $pricing, array $currencyContext): array
+    {
+        foreach (['total_price', 'price_per_day', 'daily_rate', 'total'] as $key) {
+            if (array_key_exists($key, $pricing)) {
+                $pricing[$key] = $this->customerAmountOrOriginal($pricing[$key], $currencyContext);
+            }
+        }
+
+        $pricing['currency'] = $currencyContext['currency'];
+
+        return $pricing;
+    }
+
+    private function customerMoneyList(array $items, array $currencyContext): array
+    {
+        return array_values(array_map(function ($item) use ($currencyContext) {
+            if (! is_array($item)) {
+                return $item;
+            }
+
+            foreach (['total', 'price_per_day', 'daily_rate', 'price', 'total_price', 'amount', 'total_for_booking'] as $key) {
+                if (array_key_exists($key, $item)) {
+                    $item[$key] = $this->customerAmountOrOriginal($item[$key], $currencyContext);
+                }
+            }
+
+            $item['currency'] = $currencyContext['currency'];
+
+            foreach (['total_for_booking_currency', 'Total_for_this_booking_currency'] as $key) {
+                if (array_key_exists($key, $item)) {
+                    $item[$key] = $currencyContext['currency'];
+                }
+            }
+
+            return $item;
+        }, $items));
+    }
+
+    private function customerCurrencyContext(string $sourceCurrency, string $requestedCurrency): array
+    {
+        $sourceCurrency = $this->normalizeCurrency($sourceCurrency);
+        $requestedCurrency = $this->normalizeCurrency($requestedCurrency);
+
+        if ($sourceCurrency === $requestedCurrency) {
+            return [
+                'currency' => $requestedCurrency,
+                'source_currency' => $sourceCurrency,
+                'rate' => 1.0,
+            ];
+        }
+
+        $conversion = $this->currencyConversionService->convert(1.0, $sourceCurrency, $requestedCurrency);
+
+        if (! ($conversion['success'] ?? false)) {
+            return [
+                'currency' => $sourceCurrency,
+                'source_currency' => $sourceCurrency,
+                'rate' => 1.0,
+            ];
+        }
+
+        return [
+            'currency' => $this->normalizeCurrency($conversion['to_currency'] ?? $requestedCurrency),
+            'source_currency' => $this->normalizeCurrency($conversion['from_currency'] ?? $sourceCurrency),
+            'rate' => (float) ($conversion['converted_amount'] ?? $conversion['rate'] ?? 1.0),
+        ];
+    }
+
+    private function sourceCurrency(array $vehicle, string $fallback): string
+    {
+        return $this->normalizeCurrency(
+            Arr::get($vehicle, 'pricing.currency')
+                ?? ($vehicle['currency'] ?? data_get($vehicle, 'benefits.deposit_currency') ?? $fallback)
+        );
+    }
+
+    private function customerAmountOrOriginal(mixed $amount, array $currencyContext): mixed
+    {
+        if (! is_numeric($amount)) {
+            return $amount;
+        }
+
+        return $this->customerAmount((float) $amount, $currencyContext);
+    }
+
+    private function customerAmount(float $amount, array $currencyContext): float
+    {
+        return round($amount * (float) ($currencyContext['rate'] ?? 1.0), 2);
     }
 
     private function policiesSnapshot(array $vehicle, ?string $fuelPolicy, array $mileage): array
@@ -720,6 +843,13 @@ class TrabberSearchService
     private function grossAmount(float $amount, float $markupRate): float
     {
         return round($amount * (1 + max(0, $markupRate)), 2);
+    }
+
+    private function normalizeCurrency(mixed $currency): string
+    {
+        $currency = strtoupper(trim((string) ($currency ?? '')));
+
+        return $currency !== '' ? $currency : 'EUR';
     }
 
     private function rentalDays(array $searchPayload): int

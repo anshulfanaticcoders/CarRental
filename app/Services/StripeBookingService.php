@@ -189,6 +189,13 @@ class StripeBookingService
             $bookingExtraCharges = isset($metadata->extras_total)
                 ? (float) $metadata->extras_total
                 : 0.0;
+            $bookingTotalAmount = (float) ($metadata->total_amount ?? $existingBooking?->total_amount ?? 0);
+            $bookingPaidAmount = (float) ($metadata->payable_amount ?? $existingBooking?->amount_paid ?? 0);
+            $bookingPendingAmount = isset($metadata->pending_amount)
+                ? (float) $metadata->pending_amount
+                : ($bookingTotalAmount > 0
+                    ? max(round($bookingTotalAmount - $bookingPaidAmount, 2), 0)
+                    : (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? $existingBooking?->pending_amount ?? 0));
 
             if ($existingBooking) {
                 $booking = $existingBooking;
@@ -215,9 +222,9 @@ class StripeBookingService
                         ? $bookingExtraCharges
                         : ($booking->extra_charges ?? 0),
                     'tax_amount' => 0,
-                    'total_amount' => (float) ($metadata->total_amount ?? $booking->total_amount ?? 0),
-                    'amount_paid' => (float) ($metadata->payable_amount ?? $booking->amount_paid ?? 0),
-                    'pending_amount' => (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? $metadata->pending_amount ?? $booking->pending_amount ?? 0),
+                    'total_amount' => $bookingTotalAmount,
+                    'amount_paid' => $bookingPaidAmount,
+                    'pending_amount' => $bookingPendingAmount,
                     'booking_currency' => $bookingCurrency,
                     'payment_status' => 'partial',
                     'booking_status' => 'confirmed',
@@ -246,9 +253,9 @@ class StripeBookingService
                     'base_price' => $bookingBasePrice,
                     'extra_charges' => $bookingExtraCharges,
                     'tax_amount' => 0,
-                    'total_amount' => (float) ($metadata->total_amount ?? 0),
-                    'amount_paid' => (float) ($metadata->payable_amount ?? 0),
-                    'pending_amount' => (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? 0),
+                    'total_amount' => $bookingTotalAmount,
+                    'amount_paid' => $bookingPaidAmount,
+                    'pending_amount' => $bookingPendingAmount,
                     'booking_currency' => $bookingCurrency,
                     'payment_status' => 'partial',
                     'booking_status' => 'confirmed',
@@ -295,9 +302,7 @@ class StripeBookingService
             }
 
             $vehicleTotal = (float) ($metadata->vehicle_total ?? 0);
-            $extraAmount = $vehicleTotal > 0
-                ? $vehicleTotal + $extrasTotal
-                : (float) ($metadata->total_amount ?? 0);
+            $extraAmount = $extrasTotal > 0 ? $extrasTotal : 0;
 
             // Prepare provider's ORIGINAL amounts (in vendor's currency)
             $providerAmounts = null;
@@ -427,11 +432,17 @@ class StripeBookingService
                     'customer_scan_id' => $metadata->affiliate_scan_id ?? null,
                 ];
                 $basePrice = (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? 0);
+                $affiliateCustomerUserId = $customer->user_id
+                    ?? ($metadata->user_id ?? null)
+                    ?? (! empty($metadata->affiliate_scan_id)
+                        ? \App\Models\Affiliate\AffiliateCustomerScan::whereKey($metadata->affiliate_scan_id)->value('customer_id')
+                        : null);
+
                 app(\App\Services\Affiliate\ScoutCommissionService::class)->createCommission(
                     $booking->id,
-                    $customer->id,
+                    $affiliateCustomerUserId ? (int) $affiliateCustomerUserId : null,
                     $basePrice,
-                    'stripe',
+                    'platform',
                     $affiliateData,
                     $booking->booking_currency ?? 'EUR'
                 );

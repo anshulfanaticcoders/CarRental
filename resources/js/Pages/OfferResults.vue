@@ -406,15 +406,16 @@ const rentalSummary = computed(() => {
 })
 
 const paymentPercentage = computed(() => currentBookingContext.value?.payment_percentage || 15)
+const roundCurrencyAmount = (amount: number) => Math.round((amount + Number.EPSILON) * 100) / 100
 const estimatedPayNowAmount = computed(() => {
   const total = toFiniteNumber(pricing.value.total_price)
-  return total === null ? null : Number(((total * paymentPercentage.value) / 100).toFixed(2))
+  return total === null ? null : roundCurrencyAmount((total * paymentPercentage.value) / 100)
 })
 const estimatedPayLaterAmount = computed(() => {
   const total = toFiniteNumber(pricing.value.total_price)
   return total === null || estimatedPayNowAmount.value === null
     ? null
-    : Number((total - estimatedPayNowAmount.value).toFixed(2))
+    : roundCurrencyAmount(total - estimatedPayNowAmount.value)
 })
 
 const formatAmount = (amount?: number | null, currency?: string | null) => {

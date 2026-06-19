@@ -12,13 +12,23 @@ class TrabberOfferBookingAdapter
     {
         $pickupLocation = $this->normalizeLocationDetails($quote['pickup_location_details'] ?? []);
         $dropoffLocation = $this->normalizeLocationDetails($quote['dropoff_location_details'] ?? []);
-        $products = $this->normalizeProducts($quote['booking_products'] ?? ($quote['products'] ?? []));
         $optionalExtras = $this->normalizeOptionalExtras($quote['extras_preview'] ?? []);
         $search = is_array($quote['search'] ?? null) ? $quote['search'] : [];
-        $pricing = is_array($quote['net_pricing'] ?? null) ? $quote['net_pricing'] : (is_array($quote['pricing'] ?? null) ? $quote['pricing'] : []);
+        $publicPricing = is_array($quote['pricing'] ?? null) ? $quote['pricing'] : [];
+        $netPricing = is_array($quote['net_pricing'] ?? null) ? $quote['net_pricing'] : [];
+        $pricing = $publicPricing !== [] ? $publicPricing : $netPricing;
         $vehicle = is_array($quote['vehicle'] ?? null) ? $quote['vehicle'] : [];
         $supplier = is_array($quote['supplier'] ?? null) ? $quote['supplier'] : [];
         $benefits = $this->buildBenefits($quote);
+        $baseProviderPayload = is_array(data_get($vehicle, 'booking_context.provider_payload'))
+            ? data_get($vehicle, 'booking_context.provider_payload')
+            : [];
+        $productSource = $this->quoteFirstArray(
+            $quote['booking_products'] ?? null,
+            $quote['products'] ?? null,
+            $baseProviderPayload['products'] ?? null,
+        );
+        $products = $this->normalizeProducts($productSource, $pricing, $netPricing);
         $currency = $this->stringOrNull($pricing['currency'] ?? ($search['currency'] ?? 'EUR'));
         $totalPrice = $this->floatOrNull($pricing['total_price'] ?? null);
         $pricePerDay = $this->floatOrNull($pricing['price_per_day'] ?? null);
@@ -26,9 +36,6 @@ class TrabberOfferBookingAdapter
         $source = $this->stringOrNull($vehicle['source'] ?? null)
             ?? $this->stringOrNull($supplier['code'] ?? null)
             ?? 'internal';
-        $baseProviderPayload = is_array(data_get($vehicle, 'booking_context.provider_payload'))
-            ? data_get($vehicle, 'booking_context.provider_payload')
-            : [];
         $gatewaySearchId = $this->stringOrNull(
             $quote['gateway_search_id']
                 ?? ($vehicle['gateway_search_id']
@@ -43,6 +50,12 @@ class TrabberOfferBookingAdapter
             'gateway_vehicle_id' => $gatewayVehicleId,
             'currency' => $currency,
             'security_deposit' => $depositAmount,
+            'display_pricing' => $pricing,
+            'net_pricing' => $netPricing,
+            'products' => $products,
+            'booking_products' => $productSource,
+            'extras' => $optionalExtras,
+            'extras_preview' => $optionalExtras,
             'vendorPlans' => $this->buildVendorPlans($products),
             'vendor_plans' => $this->buildVendorPlans($products),
             'vendorProfileData' => array_merge(
@@ -89,6 +102,7 @@ class TrabberOfferBookingAdapter
                 'currency' => $currency,
                 'total_price' => $totalPrice,
                 'price_per_day' => $pricePerDay,
+                'partner_supplier_name' => self::PUBLIC_SUPPLIER_NAME,
                 'security_deposit' => $depositAmount,
                 'deposit' => $depositAmount,
                 'benefits' => $benefits,
@@ -101,6 +115,7 @@ class TrabberOfferBookingAdapter
                 'extras_included' => $this->arrayValue($providerPayload['extras_included'] ?? null),
                 'extras_required' => $this->arrayValue($providerPayload['extras_required'] ?? null),
                 'extras_available' => $this->arrayValue($providerPayload['extras_available'] ?? null),
+                'extras_preview' => $optionalExtras,
                 'pickup_station_name' => $this->stringOrNull($providerPayload['pickup_station_name'] ?? ($pickupOffice['name'] ?? null)),
                 'dropoff_station_name' => $this->stringOrNull($providerPayload['dropoff_station_name'] ?? ($dropoffOffice['name'] ?? null)),
                 'station' => $this->stringOrNull($providerPayload['station'] ?? ($providerPayload['pickup_station_name'] ?? ($pickupOffice['name'] ?? null))),
@@ -220,26 +235,51 @@ class TrabberOfferBookingAdapter
         ];
     }
 
-    private function normalizeProducts(array $products): array
+    private function normalizeProducts(array $products, array $pricing = [], array $netPricing = []): array
     {
-        return array_values(array_filter(array_map(function ($product) {
+        $publicTotal = $this->floatOrNull($pricing['total_price'] ?? null);
+        $publicPricePerDay = $this->floatOrNull($pricing['price_per_day'] ?? null);
+        $netTotal = $this->floatOrNull($netPricing['total_price'] ?? null);
+        $multiplier = null;
+
+        if ($publicTotal !== null && $netTotal !== null && $netTotal > 0) {
+            $multiplier = $publicTotal / $netTotal;
+        }
+
+        return array_values(array_filter(array_map(function ($product) use ($pricing, $publicTotal, $publicPricePerDay, $multiplier) {
             if (! is_array($product)) {
                 return null;
+            }
+
+            $isBasic = (bool) ($product['is_basic'] ?? false) || ($product['type'] ?? null) === 'BAS';
+            $total = $this->floatOrNull($product['total'] ?? null);
+            $pricePerDay = $this->floatOrNull($product['price_per_day'] ?? null);
+
+            if ($isBasic && $publicTotal !== null) {
+                $total = $publicTotal;
+            } elseif ($total !== null && $multiplier !== null) {
+                $total = round($total * $multiplier, 2);
+            }
+
+            if ($isBasic && $publicPricePerDay !== null) {
+                $pricePerDay = $publicPricePerDay;
+            } elseif ($pricePerDay !== null && $multiplier !== null) {
+                $pricePerDay = round($pricePerDay * $multiplier, 2);
             }
 
             return [
                 'type' => $this->stringOrNull($product['type'] ?? null),
                 'name' => $this->stringOrNull($product['name'] ?? null),
                 'subtitle' => $this->stringOrNull($product['subtitle'] ?? null),
-                'total' => $this->floatOrNull($product['total'] ?? null),
-                'price_per_day' => $this->floatOrNull($product['price_per_day'] ?? null),
+                'total' => $total,
+                'price_per_day' => $pricePerDay,
                 'deposit' => $this->floatOrNull($product['deposit'] ?? null),
                 'deposit_currency' => $this->stringOrNull($product['deposit_currency'] ?? null),
                 'excess' => $this->floatOrNull($product['excess'] ?? null),
                 'excess_theft_amount' => $this->floatOrNull($product['excess_theft_amount'] ?? null),
                 'benefits' => is_array($product['benefits'] ?? null) ? $product['benefits'] : [],
-                'currency' => $this->stringOrNull($product['currency'] ?? null),
-                'is_basic' => (bool) ($product['is_basic'] ?? false),
+                'currency' => $this->stringOrNull($product['currency'] ?? ($pricing['currency'] ?? null)),
+                'is_basic' => $isBasic,
             ];
         }, $products)));
     }
@@ -402,5 +442,16 @@ class TrabberOfferBookingAdapter
     private function arrayValue(mixed $value): array
     {
         return is_array($value) ? array_values($value) : [];
+    }
+
+    private function quoteFirstArray(mixed ...$values): array
+    {
+        foreach ($values as $value) {
+            if (is_array($value) && $value !== []) {
+                return array_values($value);
+            }
+        }
+
+        return [];
     }
 }
