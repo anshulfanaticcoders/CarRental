@@ -593,3 +593,8 @@ Concise durable memory for significant completed work.
 - Scope: `CarRental` affiliate registration backend validation and register form error display.
 - Decision: `contact_phone` now validates against the unique `users.phone` index before creating the affiliate user, and duplicate-phone errors return users to the business details step with a visible phone-field validation error instead of a 500.
 - Verification: `AffiliateRegistrationTest` passed with 5 tests/33 assertions; Pint passed for touched PHP/test files; `npm run build` passed with existing Browserslist/Vite/lottie/chunk warnings.
+
+### 2026-06-19 - Affiliate registration strict step validation
+- Scope: `CarRental` affiliate registration multi-step form and backend store rules.
+- Decision: Step 2 now requires phone/city/country, validates phone format locally, checks phone/email uniqueness through `/validate-contact` before allowing Bank/Terms, and final submit re-runs the same server check before posting. Backend store validation now requires phone/city/country and uses the shared phone format rule.
+- Verification: `AffiliateRegistrationTest` passed with 7 tests/41 assertions; Pint passed for touched PHP/test files; `npm run build` passed with existing Browserslist/Vite/lottie/chunk warnings. Browser smoke confirmed duplicate phone stays on Business step with 422 `/validate-contact`, and valid phone reaches affiliate dashboard.

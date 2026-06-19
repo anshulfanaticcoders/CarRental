@@ -161,7 +161,7 @@
                                                     <span class="af-icon"><Phone class="w-4 h-4" /></span>
                                                     <input v-model="form.contact_phone" type="tel" class="af-input" placeholder="+34 612 345 678" />
                                                 </div>
-                                                <p v-if="form.errors.contact_phone" class="text-red-500 text-xs mt-1">{{ form.errors.contact_phone }}</p>
+                                                <p v-if="stepErrors.contact_phone || form.errors.contact_phone" class="text-red-500 text-xs mt-1">{{ stepErrors.contact_phone || form.errors.contact_phone }}</p>
                                             </div>
                                         </div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -184,9 +184,10 @@
                                                 <ChevronLeft class="w-4 h-4" :stroke-width="2.5" />
                                                 Back
                                             </button>
-                                            <button type="button" @click="nextStep" class="af-btn-primary">
-                                                Continue
-                                                <ChevronRight class="w-4 h-4" :stroke-width="2.5" />
+                                            <button type="button" @click="nextStep" :disabled="isValidating" class="af-btn-primary">
+                                                <span v-if="isValidating">Validating...</span>
+                                                <span v-else>Continue</span>
+                                                <ChevronRight v-if="!isValidating" class="w-4 h-4" :stroke-width="2.5" />
                                             </button>
                                         </div>
                                     </div>
@@ -281,12 +282,13 @@
                                                 <ChevronLeft class="w-4 h-4" :stroke-width="2.5" />
                                                 Back
                                             </button>
-                                            <button type="submit" :disabled="form.processing || !agreeTerms || !agreePrivacy"
+                                            <button type="submit" :disabled="form.processing || isValidating || !agreeTerms || !agreePrivacy"
                                                 class="af-btn-primary flex-1 ml-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
                                                 <span v-if="form.processing" class="flex items-center gap-2">
                                                     <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                                     Creating account...
                                                 </span>
+                                                <span v-else-if="isValidating">Validating...</span>
                                                 <span v-else>Create Partner Account</span>
                                             </button>
                                         </div>
@@ -526,12 +528,31 @@ const validateStep = (step) => {
     if (step === 2) {
         if (!form.business_name.trim()) errors.business_name = 'Business name is required.';
         if (!form.business_type) errors.business_type = 'Select a business type.';
+        if (!form.contact_phone.trim()) {
+            errors.contact_phone = 'Phone number is required.';
+        } else if (!/^\+?[0-9\s-]{7,20}$/.test(form.contact_phone)) {
+            errors.contact_phone = 'Enter a valid phone number.';
+        }
         if (!form.city.trim()) errors.city = 'City is required.';
         if (!form.country.trim()) errors.country = 'Country is required.';
     }
 
     stepErrors.value = errors;
     return Object.keys(errors).length === 0;
+};
+
+const applyServerValidationErrors = (error, fieldMap = {}) => {
+    const errors = error.response?.data?.errors;
+    if (!errors) return false;
+
+    stepErrors.value = Object.entries(errors).reduce((mappedErrors, [field, messages]) => {
+        const mappedField = fieldMap[field] || field;
+        mappedErrors[mappedField] = Array.isArray(messages) ? messages[0] : messages;
+
+        return mappedErrors;
+    }, { ...stepErrors.value });
+
+    return true;
 };
 
 const nextStep = async () => {
@@ -547,10 +568,27 @@ const nextStep = async () => {
             currentStep.value++;
         } catch (error) {
             isValidating.value = false;
-            if (error.response?.data?.errors?.email) {
-                stepErrors.value = { ...stepErrors.value, email: error.response.data.errors.email[0] };
-            } else {
+            if (!applyServerValidationErrors(error)) {
                 stepErrors.value = { ...stepErrors.value, email: 'This email is already taken.' };
+            }
+            return;
+        }
+    } else if (currentStep.value === 2) {
+        isValidating.value = true;
+        try {
+            await axios.post(route('validate-contact'), {
+                email: form.email,
+                phone: form.contact_phone,
+            });
+            isValidating.value = false;
+            currentStep.value++;
+        } catch (error) {
+            isValidating.value = false;
+            if (error.response?.data?.errors?.email) {
+                currentStep.value = 1;
+            }
+            if (!applyServerValidationErrors(error, { phone: 'contact_phone' })) {
+                stepErrors.value = { ...stepErrors.value, contact_phone: 'This phone number cannot be used.' };
             }
             return;
         }
@@ -566,7 +604,33 @@ const prevStep = () => {
     }
 };
 
-const submitForm = () => {
+const submitForm = async () => {
+    if (!validateStep(1)) {
+        currentStep.value = 1;
+        return;
+    }
+
+    if (!validateStep(2)) {
+        currentStep.value = 2;
+        return;
+    }
+
+    isValidating.value = true;
+    try {
+        await axios.post(route('validate-contact'), {
+            email: form.email,
+            phone: form.contact_phone,
+        });
+    } catch (error) {
+        isValidating.value = false;
+        currentStep.value = error.response?.data?.errors?.email ? 1 : 2;
+        if (!applyServerValidationErrors(error, { phone: 'contact_phone' })) {
+            stepErrors.value = { ...stepErrors.value, contact_phone: 'This phone number cannot be used.' };
+        }
+        return;
+    }
+    isValidating.value = false;
+
     form.post(route('affiliate.register.store', { locale: locale.value }), {
         onSuccess: () => {
             toast.success('Account created! Your application is pending approval.');

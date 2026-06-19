@@ -7,6 +7,7 @@ use App\Models\Affiliate\AffiliateBusiness;
 use App\Models\User;
 use App\Notifications\Affiliate\BusinessRegistrationAdminNotification;
 use App\Notifications\Affiliate\BusinessRegistrationNotification;
+use App\Rules\PhoneNumber;
 use App\Services\Seo\SeoMetaResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,9 +44,9 @@ class AffiliateRegisteredController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'business_name' => 'required|string|max:255',
             'business_type' => 'required|string|max:100',
-            'contact_phone' => 'nullable|string|max:30|unique:users,phone',
-            'city' => 'nullable|string|max:100',
-            'country' => 'nullable|string|max:100',
+            'contact_phone' => ['required', 'string', 'max:20', 'unique:users,phone', new PhoneNumber],
+            'city' => 'required|string|max:100',
+            'country' => 'required|string|max:100',
             'bank_name' => 'nullable|string|max:100',
             'bank_iban' => 'nullable|string|max:50',
             'bank_bic' => 'nullable|string|max:20',

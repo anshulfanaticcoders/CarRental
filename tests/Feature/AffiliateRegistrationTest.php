@@ -107,6 +107,34 @@ class AffiliateRegistrationTest extends TestCase
             ->assertJsonValidationErrors(['email']);
     }
 
+    public function test_validate_contact_rejects_existing_phone(): void
+    {
+        User::factory()->create([
+            'phone' => '+971501234567',
+        ]);
+
+        $response = $this->postJson(route('validate-contact', ['locale' => 'en']), [
+            'email' => 'new-affiliate@example.test',
+            'phone' => '+971501234567',
+        ]);
+
+        $response
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['phone']);
+    }
+
+    public function test_validate_contact_accepts_new_email_and_phone(): void
+    {
+        $response = $this->postJson(route('validate-contact', ['locale' => 'en']), [
+            'email' => 'new-affiliate@example.test',
+            'phone' => '+971509999999',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJson(['message' => 'Contact information is valid']);
+    }
+
     public function test_affiliate_registration_returns_validation_errors_for_missing_required_fields(): void
     {
         Notification::fake();
@@ -124,6 +152,9 @@ class AffiliateRegistrationTest extends TestCase
                 'password',
                 'business_name',
                 'business_type',
+                'contact_phone',
+                'city',
+                'country',
             ]);
 
         $this->assertDatabaseCount('affiliate_businesses', 0);
