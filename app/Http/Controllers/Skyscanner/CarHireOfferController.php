@@ -209,36 +209,39 @@ class CarHireOfferController extends Controller
         $pickup = is_array($quote['pickup_location_details'] ?? null) ? $quote['pickup_location_details'] : [];
         $dropoff = is_array($quote['dropoff_location_details'] ?? null) ? $quote['dropoff_location_details'] : [];
         $source = strtolower(trim((string) data_get($quote, 'vehicle.source', data_get($quote, 'supplier.code', 'internal'))));
-        $provider = $source === '' ? 'mixed' : $source;
-        $pickupUnifiedLocationId = $this->resolveSearchAgainUnifiedLocationId($search, $pickup, 'pickup_location_id', $provider);
-        $dropoffUnifiedLocationId = $this->resolveSearchAgainUnifiedLocationId($search, $dropoff, 'dropoff_location_id', $provider)
+        $sourceProvider = $source === '' ? 'mixed' : $source;
+        $pickupSearchLocation = $this->resolveSearchAgainLocation($search, $pickup, 'pickup_location_id', $sourceProvider);
+        $dropoffSearchLocation = $this->resolveSearchAgainLocation($search, $dropoff, 'dropoff_location_id', $sourceProvider);
+        $pickupUnifiedLocationId = $this->positiveIntegerOrNull($pickupSearchLocation['unified_location_id'] ?? null);
+        $dropoffUnifiedLocationId = $this->positiveIntegerOrNull($dropoffSearchLocation['unified_location_id'] ?? null)
             ?? $pickupUnifiedLocationId;
+        $dropoffSearchLocation = $dropoffUnifiedLocationId === $pickupUnifiedLocationId
+            ? $this->mergeSearchAgainLocation($dropoff, $pickupSearchLocation, $dropoffUnifiedLocationId)
+            : $dropoffSearchLocation;
 
         return route('search', array_filter([
             'locale' => $locale,
-            'where' => $pickup['name'] ?? null,
-            'city' => $pickup['city'] ?? null,
-            'country' => $pickup['country'] ?? null,
-            'latitude' => $pickup['latitude'] ?? null,
-            'longitude' => $pickup['longitude'] ?? null,
+            'where' => $pickupSearchLocation['name'] ?? null,
+            'city' => $pickupSearchLocation['city'] ?? null,
+            'country' => $pickupSearchLocation['country'] ?? null,
+            'latitude' => $pickupSearchLocation['latitude'] ?? null,
+            'longitude' => $pickupSearchLocation['longitude'] ?? null,
             'unified_location_id' => $pickupUnifiedLocationId,
-            'provider' => $provider,
-            'provider_pickup_id' => $provider === 'internal' ? null : ($pickup['provider_location_id'] ?? null),
+            'provider' => 'mixed',
             'date_from' => $search['pickup_date'] ?? null,
             'date_to' => $search['dropoff_date'] ?? null,
             'start_time' => $search['pickup_time'] ?? null,
             'end_time' => $search['dropoff_time'] ?? null,
             'age' => $search['driver_age'] ?? null,
             'currency' => $search['currency'] ?? null,
-            'dropoff_where' => $dropoff['name'] ?? null,
+            'dropoff_where' => $dropoffSearchLocation['name'] ?? null,
             'dropoff_unified_location_id' => $dropoffUnifiedLocationId,
-            'dropoff_location_id' => $provider === 'internal' ? null : ($dropoff['provider_location_id'] ?? null),
-            'dropoff_latitude' => $dropoff['latitude'] ?? null,
-            'dropoff_longitude' => $dropoff['longitude'] ?? null,
+            'dropoff_latitude' => $dropoffSearchLocation['latitude'] ?? null,
+            'dropoff_longitude' => $dropoffSearchLocation['longitude'] ?? null,
         ], static fn ($value) => $value !== null && $value !== ''));
     }
 
-    private function resolveSearchAgainUnifiedLocationId(array $search, array $location, string $searchKey, string $provider): ?int
+    private function resolveSearchAgainLocation(array $search, array $location, string $searchKey, string $provider): array
     {
         foreach ([
             $search[$searchKey] ?? null,
@@ -248,14 +251,14 @@ class CarHireOfferController extends Controller
             $normalized = $this->positiveIntegerOrNull($candidate);
 
             if ($normalized !== null) {
-                return $normalized;
+                return $this->mergeSearchAgainLocation($location, $this->locationSearchService->getLocationByUnifiedId($normalized), $normalized);
             }
         }
 
         $providerPickupId = trim((string) ($location['provider_location_id'] ?? ''));
 
         if ($providerPickupId === '' || $provider === 'internal' || $provider === 'mixed') {
-            return null;
+            return $location;
         }
 
         $searchPayload = [
@@ -272,13 +275,16 @@ class CarHireOfferController extends Controller
         $resolvedUnifiedLocationId = $this->positiveIntegerOrNull($resolvedLocation['unified_location_id'] ?? null);
 
         if ($resolvedUnifiedLocationId !== null) {
-            return $resolvedUnifiedLocationId;
+            return $this->mergeSearchAgainLocation($location, $resolvedLocation, $resolvedUnifiedLocationId);
         }
 
-        return $this->resolveFallbackSearchAgainUnifiedLocationId($searchPayload, $location);
+        return $this->mergeSearchAgainLocation(
+            $location,
+            $this->resolveFallbackSearchAgainLocation($searchPayload, $location)
+        );
     }
 
-    private function resolveFallbackSearchAgainUnifiedLocationId(array $searchPayload, array $location): ?int
+    private function resolveFallbackSearchAgainLocation(array $searchPayload, array $location): ?array
     {
         foreach ($this->searchAgainLocationTerms($location) as $term) {
             foreach ($this->locationSearchService->searchLocations($term, 10) as $candidate) {
@@ -286,7 +292,7 @@ class CarHireOfferController extends Controller
                     continue;
                 }
 
-                return $this->positiveIntegerOrNull($candidate['unified_location_id'] ?? null);
+                return $candidate;
             }
         }
 
@@ -295,10 +301,29 @@ class CarHireOfferController extends Controller
                 continue;
             }
 
-            return $this->positiveIntegerOrNull($candidate['unified_location_id'] ?? null);
+            return $candidate;
         }
 
         return null;
+    }
+
+    private function mergeSearchAgainLocation(array $location, ?array $resolvedLocation, ?int $unifiedLocationId = null): array
+    {
+        $merged = $location;
+
+        if (is_array($resolvedLocation)) {
+            foreach (['unified_location_id', 'name', 'city', 'country', 'country_code', 'latitude', 'longitude'] as $key) {
+                if (($resolvedLocation[$key] ?? null) !== null && $resolvedLocation[$key] !== '') {
+                    $merged[$key] = $resolvedLocation[$key];
+                }
+            }
+        }
+
+        if ($unifiedLocationId !== null) {
+            $merged['unified_location_id'] = $unifiedLocationId;
+        }
+
+        return $merged;
     }
 
     private function searchAgainLocationTerms(array $location): array

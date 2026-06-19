@@ -608,9 +608,15 @@ class SkyscannerOfferPageTest extends TestCase
             ->component('OfferResults')
             ->where('quoteStatus.expired', true)
             ->where('quoteStatus.search_again_url', function (string $url): bool {
-                return str_contains($url, 'unified_location_id=3385755165')
-                    && str_contains($url, 'dropoff_unified_location_id=3385755165')
-                    && str_contains($url, 'provider_pickup_id=DXB-T1');
+                parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+
+                return ($query['where'] ?? null) === 'Dubai Airport (DXB)'
+                    && ($query['dropoff_where'] ?? null) === 'Dubai Airport (DXB)'
+                    && ($query['unified_location_id'] ?? null) === '3385755165'
+                    && ($query['dropoff_unified_location_id'] ?? null) === '3385755165'
+                    && ($query['provider'] ?? null) === 'mixed'
+                    && ! isset($query['provider_pickup_id'])
+                    && ! isset($query['dropoff_location_id']);
             })
         );
     }

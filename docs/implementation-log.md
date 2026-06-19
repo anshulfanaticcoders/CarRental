@@ -566,3 +566,8 @@ Concise durable memory for significant completed work.
 - Scope: `CarRental` Skyscanner and Trabber expired offer recovery links.
 - Decision: expired offer pages now generate the `Search again` URL only when needed and recover missing `unified_location_id` values from stored unified IDs, provider location lookup, search text, or nearest-location fallback. This keeps stale provider-location cache data from sending customers to a malformed search URL.
 - Verification: PHP syntax checks passed for touched controllers/services/tests; `SkyscannerOfferPageTest` passed with 4 tests/159 assertions; `TrabberIntegrationTest` passed with 14 tests/157 assertions; `npm run build` passed with existing Vite warnings. Browser smoke confirmed the expired-offer button includes `unified_location_id=3385755165`, returns `200 OK`, and click-navigates to `/en/s` instead of home.
+
+### 2026-06-19 - Expired partner offer canonical search recovery
+- Scope: `CarRental` Skyscanner and Trabber expired offer `Search again` links.
+- Decision: recovery links now rebuild pickup/dropoff display and coordinates from the canonical unified location record and always reopen mixed inventory. Provider terminal labels and provider-only filters such as `provider_pickup_id=DXB-T1` are no longer carried into customer search URLs.
+- Verification: Pint passed for touched PHP/test files; `php artisan test tests\Feature\SkyscannerOfferPageTest.php tests\Feature\TrabberIntegrationTest.php` passed with 18 tests/316 assertions; browser smoke confirmed the clicked link lands on `Dubai Airport (DXB)`, has `provider=mixed`, shows no `Dubai Airport Terminal 1` text, and displays `102 cars available` locally.
