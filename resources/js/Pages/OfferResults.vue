@@ -305,6 +305,16 @@ const luggageSummary = computed(() => {
 })
 
 const supplierDisplayName = computed(() => quoteSupplierName(props.quote))
+const supplierInitials = computed(() => {
+  const initials = supplierDisplayName.value
+    .split(/\s+/)
+    .map((part) => part.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+  return initials || 'VR'
+})
 const primaryOfferVehicle = computed<Record<string, unknown>>(() => props.bookingContext?.vehicle ?? {})
 const offerProducts = computed(() => asRecordArray(primaryOfferVehicle.value.products ?? props.quote.products))
 const offerExtras = computed(() => asRecordArray(primaryOfferVehicle.value.extras_preview ?? primaryOfferVehicle.value.extras ?? props.quote.extras_preview))
@@ -355,10 +365,6 @@ const hasFreeEsim = computed(() => {
   return `${appliedOfferText} ${inclusionText}`.toLowerCase().includes('esim')
 })
 
-const noticeMetaText = computed(() => hasFreeEsim.value
-  ? _t('free_esim_included_booking', 'Free eSIM included with this booking')
-  : _t('package_extras_next_step', 'Package and extras continue in the next step'))
-
 const mileageSummary = computed(() => {
   const policy = policies.value.mileage_policy
   const limit = policies.value.mileage_limit_km
@@ -374,6 +380,21 @@ const mileageSummary = computed(() => {
   return policy || _t('not_specified', 'Not specified')
 })
 
+const transmissionSummary = computed(() => {
+  const transmission = `${vehicle.value.transmission || ''}`.trim()
+  const normalized = transmission.toLowerCase()
+
+  if (normalized === 'automatic') {
+    return _t('auto', 'Auto')
+  }
+
+  if (normalized === 'manual') {
+    return _t('manual', 'Manual')
+  }
+
+  return transmission || '-'
+})
+
 const fuelPolicySummary = computed(() => policies.value.fuel_policy || _t('not_specified', 'Not specified'))
 
 const rentalSummary = computed(() => {
@@ -382,6 +403,18 @@ const rentalSummary = computed(() => {
   return search.value.driver_age
     ? `${days}, ${_t('age_label', 'age')} ${search.value.driver_age}`
     : days
+})
+
+const paymentPercentage = computed(() => currentBookingContext.value?.payment_percentage || 15)
+const estimatedPayNowAmount = computed(() => {
+  const total = toFiniteNumber(pricing.value.total_price)
+  return total === null ? null : Number(((total * paymentPercentage.value) / 100).toFixed(2))
+})
+const estimatedPayLaterAmount = computed(() => {
+  const total = toFiniteNumber(pricing.value.total_price)
+  return total === null || estimatedPayNowAmount.value === null
+    ? null
+    : Number((total - estimatedPayNowAmount.value).toFixed(2))
 })
 
 const formatAmount = (amount?: number | null, currency?: string | null) => {
@@ -474,6 +507,10 @@ const offerCoverageFacts = computed<OfferFact[]>(() => Object.entries(offerCover
     detail: detail || _t('available_on_offer', 'Available on this offer'),
   }
 }))
+const offerProtectionFacts = computed<OfferFact[]>(() => [
+  ...offerInsuranceFacts.value,
+  ...offerCoverageFacts.value,
+])
 const offerExtraFacts = computed<OfferFact[]>(() => offerExtras.value.map((extra, index) => {
   const label = stringValue(extra.name) || stringValue(extra.code) || _t('extra', 'Extra')
   const total = formatFactAmount(extra.total_for_booking ?? extra.total_price ?? extra.price ?? extra.amount, extra.currency)
@@ -485,13 +522,6 @@ const offerExtraFacts = computed<OfferFact[]>(() => offerExtras.value.map((extra
     detail: detail || _t('available_on_offer', 'Available on this offer'),
   }
 }))
-const offerParityFacts = computed<OfferFact[]>(() => [
-  ...offerPackageFacts.value,
-  ...offerInsuranceFacts.value,
-  ...offerCoverageFacts.value,
-  ...offerExtraFacts.value,
-])
-
 const formatDateTime = (date?: string | null, time?: string | null) => {
   if (!date) {
     return _t('not_specified', 'Not specified')
@@ -699,53 +729,6 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
     </div>
   </section>
 
-  <section v-if="bookingStep === 'results'" class="or-partner-band">
-    <div class="or-offer-container or-partner-inner">
-      <div class="or-partner-copy">
-        <nav class="or-crumbs">
-          <Link href="/">{{ _t('home', 'Home') }}</Link>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-          <span>{{ _t('partner_offer', 'Partner offer') }}</span>
-        </nav>
-        <span class="or-source-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c.552 0 1.005-.449.95-.998a10 10 0 00-8.952-8.952C12.45 1.995 12 2.448 12 3v1a8 8 0 018 8h1z"/><path d="M3 12c-.552 0-1.005.449-.95.998a10 10 0 008.952 8.952c.55.055.998-.398.998-.95v-1a8 8 0 01-8-8H3z"/></svg>
-          {{ partnerSourceLabel }}
-        </span>
-        <h1 class="or-hero-title">
-          {{ displayName || _t('selected_car_rental', 'Selected car rental') }}
-          <em v-if="pickupLocation.name">{{ _t('at_location', 'at :location', { location: pickupLocation.name }) }}</em>
-        </h1>
-        <p class="or-hero-sub">
-          {{ _t('offer_page_intro', 'Your selected car is ready to review. Pricing, office details, and booking options stay together before checkout.') }}
-        </p>
-      </div>
-
-      <div class="or-trip-strip" aria-label="Trip summary">
-        <div class="or-trip-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <div>
-            <span>{{ _t('pickup', 'Pickup') }}</span>
-            <strong>{{ [pickupLocation.iata, formatDateTime(search.pickup_date, search.pickup_time)].filter(Boolean).join(', ') }}</strong>
-          </div>
-        </div>
-        <div class="or-trip-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l5 5-5 5"/><path d="M4 4v7a4 4 0 004 4h12"/></svg>
-          <div>
-            <span>{{ _t('dropoff', 'Drop-off') }}</span>
-            <strong>{{ [dropoffLocation.iata, formatDateTime(search.dropoff_date, search.dropoff_time)].filter(Boolean).join(', ') }}</strong>
-          </div>
-        </div>
-        <div class="or-trip-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          <div>
-            <span>{{ _t('rental', 'Rental') }}</span>
-            <strong>{{ rentalSummary }}</strong>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <div class="or-page">
     <section v-if="bookingStep === 'results'" class="or-body">
       <div class="or-offer-container or-body-inner">
@@ -763,18 +746,11 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
           </Link>
         </div>
 
-        <div class="or-notice-row">
-          <div class="or-notice-copy">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8z"/><path d="M9 12l2 2 4-4"/></svg>
-            <span>{{ _t('selected_offer_preserved', 'Selected offer preserved from partner') }}</span>
-          </div>
-          <span class="or-notice-meta">{{ noticeMetaText }}</span>
-        </div>
-
         <div class="or-grid">
           <div class="or-col-main">
             <article class="or-vehicle">
               <div class="or-vehicle-media">
+                <span class="or-car-badge">{{ _t('selected_offer', 'Selected offer') }}</span>
                 <img v-if="vehicle.image_url" :src="vehicle.image_url" :alt="displayName || _t('vehicle_image', 'Vehicle image')" />
                 <div v-else class="or-vehicle-empty">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 16H9m10 0h3v-3.15a1 1 0 00-.84-.99L16 11l-2.7-3.6a1 1 0 00-.8-.4H5.24a2 2 0 00-1.8 1.1l-.8 1.63A6 6 0 002 12.42V16h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
@@ -783,151 +759,215 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
               </div>
 
               <div class="or-vehicle-body">
-                <div class="or-badge-row">
-                  <span class="or-badge or-badge-good">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
-                    {{ _t('selected_offer', 'Selected offer') }}
-                  </span>
-                  <span v-if="hasFreeEsim" class="or-badge or-badge-cyan">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2M10 6h4M10 10h4M10 14h2"/></svg>
-                    {{ _t('free_esim', 'Free eSIM') }}
-                  </span>
-                  <span class="or-badge">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9h1M9 13h1M9 17h1"/></svg>
-                    {{ locationTypeLabel(pickupLocation) }}
-                  </span>
-                  <span v-if="vehicle.category" class="or-badge">{{ vehicle.category }}</span>
+                <div class="or-supplier-row">
+                  <span class="or-supplier"><span class="or-supplier-mark">{{ supplierInitials }}</span>{{ supplierDisplayName }}</span>
+                  <span class="or-rating">{{ offerAvailabilityText }}</span>
                 </div>
-
-                <div class="or-vehicle-head">
-                  <div class="or-vehicle-title">
-                    <h2>{{ displayName || _t('vehicle_offer', 'Vehicle offer') }}</h2>
-                    <p>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V7l8-4 8 4v14M9 21v-7h6v7M9 9h.01M15 9h.01"/></svg>
-                      {{ supplierDisplayName }}
-                    </p>
-                  </div>
-                  <div class="or-price-block">
-                    <span>{{ _t('total_from', 'Total from') }}</span>
-                    <strong>{{ formatDisplayAmount(pricing.total_price, pricing.currency || search.currency) }}</strong>
-                    <small>{{ formatDisplayAmount(pricing.price_per_day, pricing.currency || search.currency) }} {{ _t('per_day_lower', 'per day') }}</small>
-                  </div>
-                </div>
+                <h2 class="or-car-title">{{ displayName || _t('vehicle_offer', 'Vehicle offer') }}</h2>
+                <p class="or-car-subtitle">
+                  {{ _t('offer_review_copy', 'Review the selected vehicle, supplier, and key specs before checkout.') }}
+                </p>
 
                 <div class="or-spec-grid">
                   <div class="or-spec">
-                    <div class="or-spec-icon or-icon-seat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2M17 11a4 4 0 100-8"/></svg></div>
-                    <div class="or-spec-text"><span>{{ _t('seats', 'Seats') }}</span><strong>{{ vehicle.seats != null ? _t('seats_count', ':count seats', { count: vehicle.seats }) : _t('not_applicable', 'N/A') }}</strong></div>
+                    <span class="or-spec-icon or-icon-seat" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 19v-6a4 4 0 0 1 8 0v6"/><path d="M5 21h14"/><circle cx="12" cy="6" r="3"/></svg>
+                    </span>
+                    <span class="or-spec-text">
+                      <span>{{ _t('seats', 'Seats') }}</span>
+                      <strong>{{ vehicle.seats != null ? vehicle.seats : _t('not_applicable', 'N/A') }}</strong>
+                    </span>
                   </div>
                   <div class="or-spec">
-                    <div class="or-spec-icon or-icon-lug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="7" width="14" height="13" rx="2"/><path d="M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M9 12v5M15 12v5"/></svg></div>
-                    <div class="or-spec-text"><span>{{ _t('bags', 'Bags') }}</span><strong>{{ luggageSummary }}</strong></div>
+                    <span class="or-spec-icon or-icon-lug" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="7" width="14" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M9 12v4M15 12v4"/></svg>
+                    </span>
+                    <span class="or-spec-text">
+                      <span>{{ _t('bags', 'Bags') }}</span>
+                      <strong>{{ luggageSummary }}</strong>
+                    </span>
                   </div>
                   <div class="or-spec">
-                    <div class="or-spec-icon or-icon-trans"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8M6 8h12a2 2 0 012 2v6"/></svg></div>
-                    <div class="or-spec-text"><span>{{ _t('gearbox', 'Gearbox') }}</span><strong>{{ vehicle.transmission || '-' }}</strong></div>
+                    <span class="or-spec-icon or-icon-trans" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M8 6h8"/><path d="M6 8v8"/><path d="M18 8v3a3 3 0 0 1-3 3H6"/></svg>
+                    </span>
+                    <span class="or-spec-text">
+                      <span>{{ _t('gearbox', 'Gearbox') }}</span>
+                      <strong>{{ transmissionSummary }}</strong>
+                    </span>
                   </div>
                   <div class="or-spec">
-                    <div class="or-spec-icon or-icon-fuel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22V4a2 2 0 012-2h8a2 2 0 012 2v18M3 22h12M6 7h6M18 8l3-3v11a2 2 0 01-4 0V8a2 2 0 012-2"/></svg></div>
-                    <div class="or-spec-text"><span>{{ _t('fuel', 'Fuel') }}</span><strong>{{ fuelPolicySummary }}</strong></div>
+                    <span class="or-spec-icon or-icon-mileage" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15l4-5"/><path d="M7 15h10"/><path d="M5 19h14"/></svg>
+                    </span>
+                    <span class="or-spec-text">
+                      <span>{{ _t('mileage', 'Mileage') }}</span>
+                      <strong>{{ mileageSummary }}</strong>
+                    </span>
                   </div>
-                  <div class="or-spec">
-                    <div class="or-spec-icon or-icon-ac"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg></div>
-                    <div class="or-spec-text"><span>{{ _t('comfort', 'Comfort') }}</span><strong>{{ vehicle.air_conditioning ? _t('air_conditioning', 'Air conditioning') : _t('not_specified', 'Not specified') }}</strong></div>
-                  </div>
-                  <div class="or-spec">
-                    <div class="or-spec-icon or-icon-mileage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/><path d="M7 8l-4 4 4 4"/><path d="M17 8l4 4-4 4"/></svg></div>
-                    <div class="or-spec-text"><span>{{ _t('mileage', 'Mileage') }}</span><strong>{{ mileageSummary }}</strong></div>
-                  </div>
+                </div>
+
+                <div class="or-confidence" aria-label="Checkout confidence">
+                  <span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7 10 17l-5-5"/></svg>
+                    {{ _t('selected_car_retained', 'Selected car retained') }}
+                  </span>
+                  <span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8z"/><path d="m9 12 2 2 4-4"/></svg>
+                    {{ _t('partner_tracking_preserved', 'Partner tracking preserved') }}
+                  </span>
+                  <span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h3"/></svg>
+                    {{ _t('stripe_checkout_next', 'Stripe checkout next') }}
+                  </span>
                 </div>
               </div>
             </article>
-          </div>
 
-          <div class="or-post-grid">
-            <section class="or-panel or-panel-pad">
+            <section class="or-panel or-trip-review" aria-label="Trip and pickup details">
               <div class="or-section-head">
                 <div>
-                  <h3>{{ _t('pickup_return_offices', 'Pickup and return offices') }}</h3>
-                  <p>{{ _t('office_details_visible', 'Office details stay visible without making the page feel like a form.') }}</p>
+                  <span class="or-section-label">{{ _t('trip_details', 'Trip details') }}</span>
+                  <h3>{{ _t('pickup_return_and_policies', 'Pickup, return, and counter policies') }}</h3>
+                  <p>{{ _t('trip_details_single_place', 'Check timings, office address, and counter terms before payment.') }}</p>
                 </div>
               </div>
-
-              <div class="or-office-grid">
-                <article class="or-office-card">
-                  <div class="or-office-top">
-                    <div>
-                      <h4>{{ pickupLocation.name || _t('not_specified', 'Not specified') }}</h4>
-                      <p>{{ pickupLocation.address || _t('address_not_specified', 'Address not specified') }}</p>
-                    </div>
-                    <span class="or-office-type">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 16l20-5-20-5v4l12 1-12 1v4z"/></svg>
-                      {{ locationTypeLabel(pickupLocation) }}
-                    </span>
-                  </div>
-                  <div class="or-mini-data">
-                    <span v-if="formatCoordinate(pickupLocation)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-12M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z"/></svg>{{ formatCoordinate(pickupLocation) }}</span>
-                    <span v-if="pickupLocation.phone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>{{ pickupLocation.phone }}</span>
-                    <span v-if="pickupLocation.pickup_instructions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 01-4 4H7l-4 4V7a4 4 0 014-4h10a4 4 0 014 4v8z"/></svg>{{ pickupLocation.pickup_instructions }}</span>
-                    <span v-if="!formatCoordinate(pickupLocation) && !pickupLocation.phone && !pickupLocation.pickup_instructions">{{ formatLocationMeta(pickupLocation) }}</span>
-                  </div>
-                </article>
-
-                <article class="or-office-card">
-                  <div class="or-office-top">
-                    <div>
-                      <h4>{{ dropoffLocation.name || pickupLocation.name || _t('not_specified', 'Not specified') }}</h4>
-                      <p>{{ dropoffLocation.address || pickupLocation.address || _t('return_same_office', 'Return the car to the selected office.') }}</p>
-                    </div>
-                    <span class="or-office-type">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-15-6.7L3 13"/></svg>
-                      {{ locationTypeLabel(dropoffLocation) }}
-                    </span>
-                  </div>
-                  <div class="or-mini-data">
-                    <span v-if="formatCoordinate(dropoffLocation)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-12M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z"/></svg>{{ formatCoordinate(dropoffLocation) }}</span>
-                    <span v-if="dropoffLocation.phone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>{{ dropoffLocation.phone }}</span>
-                    <span v-if="dropoffLocation.dropoff_instructions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 01-4 4H7l-4 4V7a4 4 0 014-4h10a4 4 0 014 4v8z"/></svg>{{ dropoffLocation.dropoff_instructions }}</span>
-                    <span v-if="!formatCoordinate(dropoffLocation) && !dropoffLocation.phone && !dropoffLocation.dropoff_instructions">{{ formatLocationMeta(dropoffLocation) }}</span>
-                  </div>
-                </article>
-              </div>
-            </section>
-
-            <section class="or-panel or-panel-pad">
-              <div class="or-section-head">
-                <div>
-                  <h3>{{ _t('what_offer_includes', 'What this offer includes') }}</h3>
-                  <p>{{ _t('offer_includes_grouped', 'The essentials are grouped as quick scan facts instead of scattered panels.') }}</p>
+              <div class="or-trip-detail-grid">
+                <div class="or-trip-detail">
+                  <span class="or-trip-detail-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M16 3v4M8 3v4M4 10h16"/></svg>
+                  </span>
+                  <span class="or-trip-detail-copy">
+                    <small>{{ _t('rental_dates', 'Rental dates') }}</small>
+                    <strong>{{ formatDateTime(search.pickup_date, search.pickup_time) }}</strong>
+                    <em>{{ formatDateTime(search.dropoff_date, search.dropoff_time) }} · {{ rentalSummary }}</em>
+                  </span>
                 </div>
-              </div>
-              <div class="or-included-grid">
-                <div v-if="hasFreeEsim" class="or-included">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2M10 6h4M10 10h4M10 14h2"/></svg>
-                  <div><strong>{{ _t('free_esim_included', 'Free eSIM included') }}</strong><span>{{ _t('free_esim_auto', 'Added automatically for every eligible booking.') }}</span></div>
+                <div class="or-trip-detail">
+                  <span class="or-trip-detail-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 10c0 4.5-8 12-8 12S4 14.5 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+                  </span>
+                  <span class="or-trip-detail-copy">
+                    <small>{{ _t('pickup_office', 'Pickup office') }}</small>
+                    <strong>{{ pickupLocation.name || _t('not_specified', 'Not specified') }}</strong>
+                    <em>{{ pickupLocation.address || pickupLocation.pickup_instructions || formatLocationMeta(pickupLocation) }}</em>
+                    <em v-if="pickupLocation.phone || formatCoordinate(pickupLocation)">{{ [pickupLocation.phone, formatCoordinate(pickupLocation)].filter(Boolean).join(' / ') }}</em>
+                  </span>
                 </div>
-                <div v-for="fact in offerParityFacts" :key="fact.key" class="or-included">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8z"/><path d="M9 12l2 2 4-4"/></svg>
-                  <div><strong>{{ fact.label }}</strong><span>{{ fact.detail }}</span></div>
+                <div class="or-trip-detail">
+                  <span class="or-trip-detail-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>
+                  </span>
+                  <span class="or-trip-detail-copy">
+                    <small>{{ _t('return_office', 'Return office') }}</small>
+                    <strong>{{ dropoffLocation.name || pickupLocation.name || _t('same_as_pickup', 'Same as pickup') }}</strong>
+                    <em>{{ dropoffLocation.address || dropoffLocation.dropoff_instructions || pickupLocation.address || _t('return_same_office', 'Return the car to the selected office.') }}</em>
+                  </span>
                 </div>
-                <div class="or-included">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8z"/></svg>
-                  <div><strong>{{ _t('security_deposit', 'Security deposit') }}</strong><span>{{ formatDisplayAmount(pricing.deposit_amount, pricing.deposit_currency || pricing.currency || search.currency) }}</span></div>
-                </div>
-                <div class="or-included">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
-                  <div><strong>{{ _t('verified_partner_handoff', 'Verified partner handoff') }}</strong><span>{{ _t('partner_tracking_preserved', 'Offer opened with partner tracking preserved.') }}</span></div>
-                </div>
-                <div class="or-included">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-                  <div><strong>{{ _t('secure_checkout', 'Secure checkout') }}</strong><span>{{ _t('checkout_options_continue', 'Package, protection, and optional extras continue next.') }}</span></div>
+                <div class="or-trip-detail">
+                  <span class="or-trip-detail-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+                  </span>
+                  <span class="or-trip-detail-copy">
+                    <small>{{ _t('counter_policies', 'Counter policies') }}</small>
+                    <strong>{{ _t('fuel_policy_value', 'Fuel policy: :policy', { policy: fuelPolicySummary }) }}</strong>
+                    <em>{{ _t('mileage_value', 'Mileage: :value', { value: mileageSummary }) }}</em>
+                    <em>{{ _t('deposit_value', 'Deposit: :value', { value: formatDisplayAmount(pricing.deposit_amount, pricing.deposit_currency || pricing.currency || search.currency) }) }}</em>
+                  </span>
                 </div>
               </div>
             </section>
 
-            <section class="or-panel or-panel-pad or-related-panel">
+            <div class="or-post-grid">
+            <section class="or-panel or-includes-panel">
               <div class="or-section-head">
                 <div>
+                  <span class="or-section-label">{{ _t('offer_details', 'Offer details') }}</span>
+                  <h3>{{ _t('what_this_offer_includes', 'What this offer includes') }}</h3>
+                  <p>{{ _t('offer_includes_single_place', 'Package, protection, extras, and charges are grouped here for a quick scan.') }}</p>
+                </div>
+              </div>
+              <div class="or-include-groups">
+                <div class="or-include-group">
+                  <div class="or-include-head">
+                    <span class="or-include-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 17h14l-1.5-5.5A2 2 0 0 0 15.6 10H8.4a2 2 0 0 0-1.9 1.5L5 17Z"/><path d="M7 17v2M17 17v2"/><path d="M8 14h8"/></svg>
+                    </span>
+                    <div>
+                      <small>{{ _t('rental_package', 'Rental package') }}</small>
+                      <strong>{{ featuredProduct?.name || _t('standard_offer', 'Standard offer') }}</strong>
+                    </div>
+                  </div>
+                  <ul class="or-include-list">
+                    <li v-for="fact in offerPackageFacts" :key="fact.key">
+                      <span>{{ fact.label }}</span>
+                      <em>{{ fact.detail }}</em>
+                    </li>
+                    <li v-if="offerPackageFacts.length === 0">
+                      <span>{{ featuredProduct?.name || _t('standard_offer', 'Standard offer') }}</span>
+                      <em>{{ featuredProduct?.subtitle || _t('standard_supplier_cover', 'Standard supplier cover') }}</em>
+                    </li>
+                  </ul>
+                </div>
+
+                <div class="or-include-group">
+                  <div class="or-include-head">
+                    <span class="or-include-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8Z"/><path d="m9 12 2 2 4-4"/></svg>
+                    </span>
+                    <div>
+                      <small>{{ _t('protection', 'Protection') }}</small>
+                      <strong>{{ _t('cover_and_deposit', 'Cover and deposit') }}</strong>
+                    </div>
+                  </div>
+                  <ul class="or-include-list">
+                    <li v-for="fact in offerProtectionFacts" :key="fact.key">
+                      <span>{{ fact.label }}</span>
+                      <em>{{ fact.detail }}</em>
+                    </li>
+                    <li v-if="offerProtectionFacts.length === 0">
+                      <span>{{ _t('supplier_cover', 'Supplier cover') }}</span>
+                      <em>{{ _t('available_on_offer', 'Available on this offer') }}</em>
+                    </li>
+                    <li>
+                      <span>{{ _t('security_deposit', 'Security deposit') }}</span>
+                      <em>{{ formatDisplayAmount(pricing.deposit_amount, pricing.deposit_currency || pricing.currency || search.currency) }}</em>
+                    </li>
+                  </ul>
+                </div>
+
+                <div class="or-include-group">
+                  <div class="or-include-head">
+                    <span class="or-include-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20"/><path d="m17 5-5-3-5 3"/><path d="m17 19-5 3-5-3"/><path d="M5 12h14"/></svg>
+                    </span>
+                    <div>
+                      <small>{{ _t('extras', 'Extras') }}</small>
+                      <strong>{{ _t('addons_and_inclusions', 'Add-ons and inclusions') }}</strong>
+                    </div>
+                  </div>
+                  <ul class="or-include-list">
+                    <li v-for="fact in offerExtraFacts" :key="fact.key">
+                      <span>{{ fact.label }}</span>
+                      <em>{{ fact.detail }}</em>
+                    </li>
+                    <li v-if="hasFreeEsim">
+                      <span>{{ _t('free_esim', 'Free eSIM') }}</span>
+                      <em>{{ _t('included', 'Included') }}</em>
+                    </li>
+                    <li v-if="offerExtraFacts.length === 0 && !hasFreeEsim">
+                      <span>{{ _t('no_required_extras', 'No required add-ons') }}</span>
+                      <em>{{ _t('included', 'Included') }}</em>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            <section v-if="alternativeQuotes.length > 0" class="or-panel or-panel-pad or-related-panel">
+              <div class="or-section-head">
+                <div>
+                  <span class="or-section-label">{{ _t('alternatives', 'Alternatives') }}</span>
                   <h3>{{ _t('you_might_also_like', 'You might also like') }}</h3>
                   <p>{{ _t('selected_offer_stays_hero', 'Choose another available car without losing partner tracking.') }}</p>
                 </div>
@@ -952,7 +992,6 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
                 </CarListingCard>
               </div>
 
-              <p v-else class="or-empty">{{ _t('no_alternative_offers', 'No alternative offers were returned for this search.') }}</p>
               <div v-if="canLoadMoreAlternativeQuotes" class="or-load-more-wrap">
                 <button type="button" class="or-load-more" @click="loadMoreAlternativeQuotes">
                   {{ _t('load_more', 'Load more') }}
@@ -961,50 +1000,62 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
               </div>
             </section>
           </div>
+          </div>
 
           <aside class="or-col-side">
             <div class="or-summary">
               <div class="or-summary-top">
+                <div class="or-summary-status">
+                  <span>{{ _t('checkout_summary', 'Checkout summary') }}</span>
+                  <strong>{{ dayCountText(currentBookingContext?.number_of_days || 1) }}</strong>
+                </div>
                 <span class="or-summary-eyebrow">{{ _t('total_rental_price', 'Total rental price') }}</span>
                 <strong class="or-summary-total">{{ formatDisplayAmount(pricing.total_price, pricing.currency || search.currency) }}</strong>
-                <p class="or-summary-days">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                  {{ forDayCountText(currentBookingContext?.number_of_days || 1) }}, {{ _t('includes_vrooem_service_price', 'includes Vrooem service price') }}
-                </p>
+                <p class="or-summary-days">{{ forDayCountText(currentBookingContext?.number_of_days || 1) }}</p>
               </div>
 
               <div class="or-summary-body">
-                <div class="or-summary-row">
-                  <span>{{ _t('per_day', 'Per day') }}</span>
-                  <strong>{{ formatDisplayAmount(pricing.price_per_day, pricing.currency || search.currency) }}</strong>
+                <div v-if="featuredProduct" class="or-summary-row">
+                  <span class="or-summary-row-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 17h14l-1.5-5.5A2 2 0 0 0 15.6 10H8.4a2 2 0 0 0-1.9 1.5L5 17Z"/><path d="M7 17v2M17 17v2"/><path d="M8 14h8"/></svg>
+                  </span>
+                  <span class="or-summary-row-copy">
+                    <span class="or-summary-row-label">{{ featuredProduct.name || _t('standard_offer', 'Standard offer') }}</span>
+                  </span>
+                  <strong>{{ formatDisplayAmount(featuredProduct.total ?? pricing.total_price, featuredProduct.currency || pricing.currency || search.currency) }}</strong>
+                </div>
+                <div v-for="(extra, index) in offerExtras.slice(0, 1)" :key="`summary-extra-${stringValue(extra.id) || stringValue(extra.code) || index}`" class="or-summary-row">
+                  <span class="or-summary-row-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20"/><path d="m17 5-5-3-5 3"/><path d="m17 19-5 3-5-3"/><path d="M5 12h14"/></svg>
+                  </span>
+                  <span class="or-summary-row-copy">
+                    <span class="or-summary-row-label">{{ stringValue(extra.name) || stringValue(extra.code) || _t('extra', 'Extra') }}</span>
+                    <small v-if="stringValue(extra.description)">{{ stringValue(extra.description) }}</small>
+                  </span>
+                  <strong>{{ formatFactAmount(extra.total_for_booking ?? extra.total_price ?? extra.price ?? extra.amount, extra.currency) || _t('included', 'Included') }}</strong>
                 </div>
                 <div class="or-summary-row">
-                  <span>{{ _t('deposit', 'Deposit') }}</span>
-                  <strong>{{ formatDisplayAmount(pricing.deposit_amount, pricing.deposit_currency || pricing.currency || search.currency) }}</strong>
+                  <span class="or-summary-row-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M16 12h2"/><path d="M7 10h5"/></svg>
+                  </span>
+                  <span class="or-summary-row-copy">
+                    <span class="or-summary-row-label">{{ _t('pay_on_arrival', 'Pay on arrival') }}</span>
+                    <small>{{ _t('paid_at_counter', 'Paid at pickup counter') }}</small>
+                  </span>
+                  <strong>{{ formatDisplayAmount(estimatedPayLaterAmount, pricing.currency || search.currency) }}</strong>
                 </div>
-                <div class="or-summary-row">
-                  <span>{{ _t('mileage', 'Mileage') }}</span>
-                  <strong>{{ mileageSummary }}</strong>
-                </div>
-                <div class="or-summary-row">
-                  <span>{{ _t('fuel_policy', 'Fuel policy') }}</span>
-                  <strong>{{ fuelPolicySummary }}</strong>
-                </div>
-
-                <div v-if="featuredProduct" class="or-product">
-                  <span class="or-product-eyebrow">{{ _t('selected_product', 'Selected product') }}</span>
-                  <p class="or-product-name">{{ featuredProduct.name || _t('standard_offer', 'Standard offer') }}</p>
-                  <p v-if="featuredProduct.subtitle" class="or-product-sub">{{ featuredProduct.subtitle }}</p>
+                <div class="or-due-card">
+                  <span>{{ _t('pay_now_percent', 'Pay now :percent%', { percent: paymentPercentage }) }}</span>
+                  <strong>{{ formatDisplayAmount(estimatedPayNowAmount, pricing.currency || search.currency) }}</strong>
                 </div>
 
                 <button type="button" class="or-btn-primary or-btn-block" :disabled="!canBookQuote(quote.quote_id)" @click="startBooking(quote.quote_id)">
-                  <span>{{ isExpired ? _t('offer_expired', 'Offer expired') : _t('continue_to_booking', 'Continue to booking') }}</span>
+                  <span>{{ isExpired ? _t('offer_expired', 'Offer expired') : _t('continue_to_checkout', 'Continue to checkout') }}</span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                 </button>
 
                 <p class="or-summary-note">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
-                  {{ _t('secure_checkout_package_note', 'Secure checkout. Package, protection, and optional extras continue in the next step.') }}
+                  {{ _t('secure_checkout_package_note', 'Stripe protected payment. Supplier booking is created only after payment confirmation.') }}
                 </p>
               </div>
             </div>
@@ -2918,6 +2969,2830 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
   .or-btn-primary,
   .or-load-more {
     transition-duration: 1ms;
+  }
+}
+
+/* Approved live offer design */
+.or-page {
+  --or-brand: #153b4f;
+  --or-brand-dark: #0b2230;
+  --or-brand-deep: #071923;
+  --or-brand-soft: #f0f8fc;
+  --or-brand-2: #1c4d66;
+  --or-accent: #22d3ee;
+  --or-accent-dark: #0891b2;
+  --or-line: #e2e8f0;
+  --or-slate-50: #f8fafc;
+  --or-slate-100: #f1f5f9;
+  --or-slate-500: #64748b;
+  --or-slate-600: #475569;
+  --or-slate-700: #334155;
+  --or-slate-900: #0f172a;
+  --or-success: #10b981;
+  --or-shadow-sm: 0 8px 24px rgba(21, 59, 79, 0.08);
+  --or-shadow-md: 0 16px 40px rgba(21, 59, 79, 0.12);
+  --or-shadow-lg: 0 26px 56px rgba(21, 59, 79, 0.16);
+  --or-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --or-dur: 0.3s;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 44%, #f1f5f9 100%);
+  color: var(--or-slate-900);
+  font-family: "IBM Plex Sans", sans-serif;
+  overflow-x: hidden;
+}
+
+.or-offer-container {
+  width: min(92%, 1440px);
+  margin-inline: auto;
+}
+
+.or-partner-band {
+  position: relative;
+  color: #fff;
+  background:
+    radial-gradient(circle at 10% 16%, rgba(34, 211, 238, 0.26), transparent 34%),
+    radial-gradient(circle at 80% 72%, rgba(46, 167, 173, 0.18), transparent 38%),
+    linear-gradient(135deg, #0b2230 0%, #153b4f 50%, #071923 100%);
+  overflow: hidden;
+}
+
+.or-partner-band::before {
+  content: none;
+}
+
+.or-partner-inner {
+  min-height: 340px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 430px);
+  align-items: end;
+  gap: clamp(28px, 6vw, 76px);
+  padding-block: 38px 54px;
+}
+
+.or-partner-inner > * {
+  min-width: 0;
+}
+
+.or-progress-preview {
+  width: min(100%, 520px);
+  height: 42px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  margin-bottom: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px) saturate(1.25);
+}
+
+.or-progress-preview span {
+  min-width: 0;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.84rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.or-progress-preview span::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.or-progress-preview .is-active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.or-progress-preview .is-active::before {
+  background: var(--or-accent);
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.14);
+}
+
+.or-source-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 13px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--or-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.or-source-pill::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: var(--or-accent);
+}
+
+.or-hero-title {
+  max-width: 760px;
+  margin: 0;
+  color: #fff;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: clamp(2.25rem, 5.4vw, 4.65rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+.or-hero-sub {
+  max-width: 680px;
+  margin: 16px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: clamp(1rem, 2vw, 1.12rem);
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.or-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.or-hero-chips span {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.86rem;
+  font-weight: 700;
+  backdrop-filter: blur(14px) saturate(1.25);
+}
+
+.or-hero-chips span::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--or-accent);
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12);
+}
+
+.or-trip-card {
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px) saturate(1.3);
+  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.16);
+}
+
+.or-route-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.or-route-status strong {
+  color: #fff;
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+.or-route-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 14px;
+}
+
+.or-route-point span {
+  display: block;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.or-route-point strong {
+  display: block;
+  margin-top: 5px;
+  color: #fff;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.or-route-line {
+  width: 54px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.08), var(--or-accent), rgba(34, 211, 238, 0.08));
+}
+
+.or-route-date {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.or-route-date span {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.or-body {
+  position: relative;
+  z-index: 2;
+  margin-top: 0;
+  padding: 0 0 72px;
+}
+
+.or-body-inner {
+  display: grid;
+  gap: 34px;
+}
+
+.or-proof-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: -24px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--or-shadow-md);
+  overflow: hidden;
+}
+
+.or-proof-item {
+  min-width: 0;
+  padding: 18px 20px;
+  border-right: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+.or-proof-item:last-child {
+  border-right: 0;
+}
+
+.or-proof-item span {
+  display: block;
+  color: var(--or-slate-600);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.or-proof-item strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--or-brand);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.or-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 28px;
+  align-items: start;
+}
+
+.or-col-main {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+}
+
+.or-col-side {
+  min-width: 0;
+  margin-top: 0;
+  position: static;
+  align-self: start;
+}
+
+.or-post-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  min-width: 0;
+}
+
+.or-panel,
+.or-vehicle {
+  min-width: 0;
+  border: 1px solid rgba(226, 232, 240, 0.88);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 10px 30px rgba(21, 59, 79, 0.06);
+  overflow: hidden;
+}
+
+.or-panel-pad {
+  padding: 22px 24px 24px;
+}
+
+.or-vehicle {
+  display: grid;
+  grid-template-columns: minmax(280px, 42%) 1fr;
+  border-color: rgba(21, 59, 79, 0.16);
+  box-shadow: var(--or-shadow-md);
+}
+
+.or-vehicle::before {
+  content: none;
+}
+
+.or-vehicle-media {
+  min-height: 360px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  border-bottom: 0;
+  background: linear-gradient(145deg, #eef8fb, #fff 48%, #dceef6);
+  overflow: hidden;
+}
+
+.or-vehicle-media::before {
+  content: "";
+  position: absolute;
+  inset: auto -12% -32% -12%;
+  height: 58%;
+  background: radial-gradient(ellipse at center, rgba(21, 59, 79, 0.18), transparent 64%);
+}
+
+.or-vehicle-media::after {
+  content: "";
+  position: absolute;
+  inset: 24px;
+  border: 1px solid rgba(21, 59, 79, 0.08);
+  border-radius: 22px;
+  pointer-events: none;
+}
+
+.or-vehicle-media img {
+  position: relative;
+  z-index: 1;
+  width: min(88%, 520px);
+  height: auto;
+  max-height: 282px;
+  object-fit: contain;
+  border-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 20px 24px rgba(21, 59, 79, 0.2));
+}
+
+.or-car-badge {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--or-brand);
+  font-size: 0.78rem;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(21, 59, 79, 0.08);
+}
+
+.or-vehicle-empty {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  color: var(--or-slate-600);
+  text-align: center;
+}
+
+.or-vehicle-empty svg {
+  width: 56px;
+  height: 56px;
+}
+
+.or-vehicle-body {
+  padding: 28px;
+}
+
+.or-supplier-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.or-supplier {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--or-brand);
+  font-weight: 800;
+}
+
+.or-supplier-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--or-brand), #2ea7ad);
+  font-size: 0.82rem;
+  box-shadow: 0 10px 20px rgba(21, 59, 79, 0.14);
+}
+
+.or-rating {
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: var(--or-brand);
+  background: var(--or-brand-soft);
+  font-size: 0.84rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.or-car-title {
+  margin: 0;
+  color: var(--or-slate-900);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.48rem);
+  font-weight: 800;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.or-car-subtitle {
+  margin: 10px 0 22px;
+  color: var(--or-slate-600);
+  font-size: 1rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.or-spec-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.or-spec {
+  min-height: 78px;
+  display: block;
+  padding: 13px;
+  border: 1px solid var(--or-line);
+  border-radius: 14px;
+  background: var(--or-slate-50);
+  transition: transform var(--or-dur) var(--or-ease), border-color var(--or-dur) var(--or-ease), background-color var(--or-dur) var(--or-ease);
+}
+
+.or-spec:hover {
+  transform: translateY(-1px);
+  border-color: rgba(21, 59, 79, 0.34);
+  background: var(--or-brand-soft);
+}
+
+.or-spec span {
+  display: block;
+  color: var(--or-slate-500);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.or-spec strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--or-brand);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 0.98rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.or-confidence {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.or-confidence span,
+.or-summary-checks span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--or-slate-700);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.or-confidence span {
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.or-confidence span::before,
+.or-summary-checks span::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--or-success);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+
+.or-timeline {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.or-time-box {
+  padding: 23px 24px;
+  border-right: 1px solid var(--or-line);
+}
+
+.or-time-box:last-child {
+  border-right: 0;
+}
+
+.or-section-label {
+  color: var(--or-slate-500);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.or-time-box h3,
+.or-section-head h3 {
+  margin: 7px 0 6px;
+  color: var(--or-brand);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.or-time-box p,
+.or-section-head p {
+  margin: 0;
+  color: var(--or-slate-600);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.or-time-box small {
+  display: block;
+  margin-top: 10px;
+  color: var(--or-slate-500);
+  font-weight: 700;
+}
+
+.or-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.or-included-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.or-included {
+  min-height: 74px;
+  display: block;
+  padding: 16px;
+  border: 1px solid var(--or-line);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.or-included strong {
+  display: block;
+  color: var(--or-slate-900);
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.or-included span {
+  display: block;
+  margin-top: 4px;
+  color: var(--or-slate-600);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.or-summary {
+  position: sticky;
+  top: 94px;
+  overflow: hidden;
+  border: 1px solid rgba(21, 59, 79, 0.13);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: var(--or-shadow-lg);
+}
+
+.or-summary-top {
+  padding: 24px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--or-brand-dark), var(--or-brand));
+}
+
+.or-summary-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.or-summary-status strong {
+  color: var(--or-accent);
+}
+
+.or-summary-eyebrow {
+  display: block;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.or-summary-total {
+  display: block;
+  margin-top: 8px;
+  color: #fff;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: clamp(2.15rem, 4vw, 2.7rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.or-summary-days {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.or-summary-body {
+  display: block;
+  padding: 22px 24px 24px;
+}
+
+.or-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.78);
+  color: var(--or-slate-600);
+  font-size: 0.92rem;
+}
+
+.or-summary-row strong {
+  color: var(--or-slate-900);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.or-due-card {
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid #bbf7d0;
+  border-radius: 17px;
+  background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
+}
+
+.or-due-card span {
+  display: block;
+  color: #047857;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.or-due-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #065f46;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1.75rem;
+}
+
+.or-product {
+  margin: 0 0 18px;
+  padding: 13px;
+  border: 1px solid #bae6fd;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f0f8fc 0%, #e0f2fe 100%);
+}
+
+.or-summary-checks {
+  display: grid;
+  gap: 9px;
+  margin: 16px 0 18px;
+}
+
+.or-btn-primary {
+  min-height: 54px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--or-brand), var(--or-brand-2));
+  box-shadow: 0 14px 28px rgba(21, 59, 79, 0.18);
+  transition: transform var(--or-dur) var(--or-ease), box-shadow var(--or-dur) var(--or-ease), filter var(--or-dur) var(--or-ease);
+}
+
+.or-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 38px rgba(21, 59, 79, 0.22);
+  filter: saturate(1.08);
+}
+
+.or-btn-primary:focus-visible,
+.or-load-more:focus-visible,
+.or-alert-btn:focus-visible {
+  outline: 3px solid rgba(34, 211, 238, 0.45);
+  outline-offset: 3px;
+}
+
+.or-btn-block {
+  width: 100%;
+  margin-top: 0;
+  padding: 0 22px;
+}
+
+.or-summary-note {
+  display: block;
+  margin: 14px 0 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--or-slate-600);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.or-related-panel {
+  overflow: hidden;
+}
+
+.or-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  min-width: 0;
+}
+
+.or-count {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border-radius: 999px;
+  color: var(--or-brand);
+  background: var(--or-brand-soft);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.or-empty {
+  margin: 0;
+  padding: 24px;
+  border: 1px dashed var(--or-line);
+  border-radius: 14px;
+  background: var(--or-slate-50);
+  color: var(--or-slate-600);
+  text-align: center;
+}
+
+.or-load-more-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.or-load-more {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 18px;
+  border: 1px solid var(--or-brand);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--or-brand);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--or-dur) var(--or-ease), box-shadow var(--or-dur) var(--or-ease), background-color var(--or-dur) var(--or-ease), color var(--or-dur) var(--or-ease);
+}
+
+.or-load-more:hover {
+  transform: translateY(-1px);
+  background: var(--or-brand);
+  color: #fff;
+  box-shadow: var(--or-shadow-sm);
+}
+
+.or-load-more svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (min-width: 1180px) {
+  .or-post-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .or-related-panel {
+    grid-column: 1 / -1;
+  }
+
+  .or-related-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .or-partner-inner,
+  .or-grid,
+  .or-vehicle {
+    grid-template-columns: 1fr;
+  }
+
+  .or-summary {
+    position: static;
+  }
+
+  .or-proof-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .or-proof-item:nth-child(2) {
+    border-right: 0;
+  }
+
+  .or-proof-item:nth-child(-n+2) {
+    border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+  }
+}
+
+@media (max-width: 760px) {
+  .or-partner-inner {
+    min-height: auto;
+    padding-block: 28px 44px;
+  }
+
+  .or-progress-preview {
+    display: none;
+  }
+
+  .or-hero-title {
+    font-size: 2.3rem;
+  }
+
+  .or-route-row,
+  .or-proof-strip,
+  .or-timeline,
+  .or-spec-grid,
+  .or-confidence,
+  .or-included-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .or-route-line {
+    width: 1px;
+    height: 28px;
+    margin-left: 10px;
+  }
+
+  .or-proof-item,
+  .or-proof-item:nth-child(2),
+  .or-proof-item:nth-child(-n+2) {
+    border-right: 0;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+  }
+
+  .or-proof-item:last-child {
+    border-bottom: 0;
+  }
+
+  .or-time-box {
+    border-right: 0;
+    border-bottom: 1px solid var(--or-line);
+  }
+
+  .or-time-box:last-child {
+    border-bottom: 0;
+  }
+
+  .or-panel-pad,
+  .or-vehicle-body,
+  .or-summary-top,
+  .or-summary-body {
+    padding-inline: 18px;
+  }
+
+  .or-supplier-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .or-rating {
+    white-space: normal;
+  }
+
+  .or-vehicle-media {
+    min-height: 290px;
+    padding: 18px;
+  }
+
+  .or-vehicle-media::after {
+    inset: 16px;
+  }
+
+  .or-related-grid {
+    grid-template-columns: 1fr;
+  }
+
+  :global(.floating-widget) {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .or-partner-copy,
+  .or-trip-card,
+  .or-proof-strip,
+  .or-post-grid,
+  .or-col-main > *,
+  .or-summary {
+    animation: none;
+  }
+
+  .or-spec,
+  .or-btn-primary,
+  .or-load-more,
+  .or-hero-chips span {
+    transition-duration: 1ms;
+  }
+}
+
+/* Calmer offer page revision */
+.or-page {
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 52%, #f6fafc 100%);
+}
+
+.or-partner-band {
+  background:
+    linear-gradient(135deg, rgba(11, 34, 48, 0.96) 0%, rgba(21, 59, 79, 0.98) 55%, rgba(7, 25, 35, 0.98) 100%);
+}
+
+.or-partner-inner {
+  min-height: 272px;
+  align-items: center;
+  gap: clamp(32px, 7vw, 92px);
+  padding-block: 30px 42px;
+}
+
+.or-progress-preview {
+  width: min(100%, 410px);
+  height: 36px;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.055);
+  backdrop-filter: none;
+}
+
+.or-progress-preview span {
+  height: 26px;
+  font-size: 0.78rem;
+}
+
+.or-source-pill {
+  margin-bottom: 11px;
+  color: rgba(34, 211, 238, 0.92);
+}
+
+.or-hero-title {
+  max-width: 680px;
+  font-size: clamp(2.35rem, 4.1vw, 3.9rem);
+  line-height: 1.08;
+}
+
+.or-hero-sub {
+  max-width: 610px;
+  margin-top: 14px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+.or-hero-chips {
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.or-hero-chips span {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.86rem;
+  backdrop-filter: none;
+}
+
+.or-hero-chips span::before {
+  width: 6px;
+  height: 6px;
+  box-shadow: none;
+}
+
+.or-trip-card {
+  padding: 0 0 0 32px;
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.or-route-status {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+}
+
+.or-route-line {
+  width: 42px;
+  background: rgba(34, 211, 238, 0.7);
+}
+
+.or-route-date span {
+  padding: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.or-body {
+  padding: 42px 0 72px;
+}
+
+.or-body-inner {
+  gap: 28px;
+}
+
+.or-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+  gap: 30px;
+}
+
+.or-panel,
+.or-vehicle {
+  border-color: rgba(226, 232, 240, 0.95);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 26px rgba(21, 59, 79, 0.055);
+}
+
+.or-vehicle {
+  grid-template-columns: minmax(300px, 38%) minmax(0, 1fr);
+  box-shadow: 0 14px 40px rgba(21, 59, 79, 0.085);
+}
+
+.or-vehicle-media {
+  min-height: 330px;
+  padding: 24px;
+  background: linear-gradient(145deg, #f0f8fc 0%, #ffffff 72%);
+}
+
+.or-vehicle-media::before,
+.or-vehicle-media::after {
+  content: none;
+}
+
+.or-vehicle-media img {
+  width: min(82%, 390px);
+  max-height: 245px;
+  filter: drop-shadow(0 18px 20px rgba(21, 59, 79, 0.14));
+}
+
+.or-car-badge {
+  top: 16px;
+  left: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 6px 16px rgba(21, 59, 79, 0.06);
+}
+
+.or-vehicle-body {
+  padding: 30px 32px;
+}
+
+.or-supplier-row {
+  margin-bottom: 18px;
+}
+
+.or-supplier-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.or-rating {
+  background: #eef8fb;
+  color: #1c4d66;
+}
+
+.or-car-title {
+  max-width: 660px;
+  font-size: clamp(1.7rem, 2.35vw, 2.15rem);
+  line-height: 1.12;
+}
+
+.or-car-subtitle {
+  max-width: 650px;
+  margin-bottom: 24px;
+}
+
+.or-spec-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 4px;
+  padding-block: 18px;
+  border-top: 1px solid var(--or-line);
+  border-bottom: 1px solid var(--or-line);
+}
+
+.or-spec {
+  min-height: auto;
+  padding: 0 16px;
+  border: 0;
+  border-right: 1px solid var(--or-line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.or-spec:first-child {
+  padding-left: 0;
+}
+
+.or-spec:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.or-spec:hover {
+  transform: none;
+  background: transparent;
+  border-color: var(--or-line);
+}
+
+.or-spec strong {
+  font-size: 1rem;
+}
+
+.or-confidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin-top: 20px;
+}
+
+.or-confidence span {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--or-slate-600);
+  font-size: 0.86rem;
+}
+
+.or-confidence span::before {
+  width: 6px;
+  height: 6px;
+  box-shadow: none;
+}
+
+.or-timeline {
+  border-radius: 18px;
+}
+
+.or-time-box {
+  padding: 22px 24px;
+}
+
+.or-summary {
+  top: 92px;
+  margin-top: 0;
+  border-radius: 18px;
+  box-shadow: 0 12px 34px rgba(21, 59, 79, 0.08);
+}
+
+.or-summary-top {
+  padding: 22px 22px 20px;
+  color: var(--or-slate-900);
+  background: #fff;
+  border-bottom: 1px solid var(--or-line);
+}
+
+.or-summary-status {
+  margin-bottom: 18px;
+  color: var(--or-slate-600);
+}
+
+.or-summary-status strong {
+  color: var(--or-brand);
+}
+
+.or-summary-eyebrow {
+  color: var(--or-slate-600);
+}
+
+.or-summary-total {
+  color: var(--or-brand);
+  font-size: clamp(2.1rem, 3.2vw, 2.55rem);
+}
+
+.or-summary-days {
+  color: var(--or-slate-600);
+}
+
+.or-summary-body {
+  padding: 20px 22px 22px;
+}
+
+.or-due-card {
+  border-color: rgba(34, 211, 238, 0.26);
+  background: #f0f8fc;
+}
+
+.or-due-card span {
+  color: var(--or-brand-2);
+}
+
+.or-due-card strong {
+  color: var(--or-brand);
+}
+
+.or-product {
+  border-color: rgba(226, 232, 240, 0.95);
+  background: #fff;
+}
+
+.or-summary-checks span::before {
+  width: 6px;
+  height: 6px;
+  box-shadow: none;
+}
+
+.or-panel-pad {
+  padding: 24px;
+}
+
+.or-included {
+  border-radius: 14px;
+  background: #fbfdff;
+}
+
+@media (max-width: 1100px) {
+  .or-partner-inner,
+  .or-grid,
+  .or-vehicle {
+    grid-template-columns: 1fr;
+  }
+
+  .or-trip-card {
+    padding: 20px 0 0;
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+  }
+
+  .or-vehicle-media {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 760px) {
+  .or-partner-inner {
+    padding-block: 24px 32px;
+  }
+
+  .or-hero-title {
+    font-size: 2.15rem;
+    line-height: 1.16;
+  }
+
+  .or-hero-chips {
+    gap: 10px 14px;
+  }
+
+  .or-body {
+    padding-top: 24px;
+  }
+
+  .or-vehicle-body,
+  .or-panel-pad,
+  .or-summary-top,
+  .or-summary-body {
+    padding-inline: 18px;
+  }
+
+  .or-spec-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 0;
+  }
+
+  .or-spec:nth-child(2) {
+    padding-right: 0;
+    border-right: 0;
+  }
+
+  .or-spec:nth-child(3) {
+    padding-left: 0;
+  }
+
+  .or-car-title {
+    line-height: 1.18;
+  }
+}
+
+/* Same-to-preview offer layout correction */
+.or-partner-band {
+  display: none !important;
+}
+
+.or-page {
+  background: linear-gradient(180deg, rgba(240, 248, 252, 0.72) 0%, #fff 42%, #f8fafc 100%);
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.or-body {
+  padding: 34px 0 72px !important;
+}
+
+.or-body-inner {
+  gap: 22px;
+}
+
+.or-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 390px !important;
+  gap: 28px !important;
+  align-items: start !important;
+}
+
+.or-col-main {
+  display: grid !important;
+  gap: 22px !important;
+  min-width: 0;
+}
+
+.or-col-side {
+  min-width: 0;
+  max-width: none;
+  position: static;
+  align-self: stretch;
+}
+
+.or-post-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 22px !important;
+  grid-column: auto !important;
+  min-width: 0;
+}
+
+.or-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.or-panel,
+.or-vehicle,
+.or-summary {
+  border: 1px solid rgba(226, 232, 240, 0.88);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 10px 30px rgba(21, 59, 79, 0.06);
+}
+
+.or-vehicle {
+  grid-template-columns: minmax(280px, 42%) 1fr;
+}
+
+.or-vehicle-media {
+  min-height: 360px;
+  background: linear-gradient(145deg, #eef8fb, #fff 48%, #dceef6);
+}
+
+.or-vehicle-media::before {
+  content: "";
+  position: absolute;
+  inset: auto -12% -32% -12%;
+  height: 58%;
+  background: radial-gradient(ellipse at center, rgba(21, 59, 79, 0.18), transparent 64%);
+}
+
+.or-vehicle-media::after {
+  content: "";
+  position: absolute;
+  inset: 24px;
+  border: 1px solid rgba(21, 59, 79, 0.08);
+  border-radius: 22px;
+  pointer-events: none;
+}
+
+.or-vehicle-media img {
+  width: min(88%, 520px);
+  max-height: 282px;
+  filter: drop-shadow(0 20px 24px rgba(21, 59, 79, 0.2));
+}
+
+.or-vehicle-body {
+  padding: 28px;
+}
+
+.or-car-title {
+  font-size: clamp(1.75rem, 3vw, 2.48rem);
+  line-height: 1.08;
+}
+
+.or-spec-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+  border: 0;
+}
+
+.or-spec {
+  min-height: 78px;
+  padding: 13px;
+  border: 1px solid var(--or-line);
+  border-radius: 14px;
+  background: var(--or-slate-50);
+}
+
+.or-spec:first-child,
+.or-spec:nth-child(3) {
+  padding-left: 13px;
+}
+
+.or-spec:last-child,
+.or-spec:nth-child(2) {
+  padding-right: 13px;
+  border-right: 1px solid var(--or-line);
+}
+
+.or-confidence {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.or-confidence span {
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.or-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0;
+  padding: 22px 24px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+.or-section-head h3 {
+  margin: 4px 0 0;
+  color: var(--or-brand);
+  font-size: 1.24rem;
+  line-height: 1.25;
+}
+
+.or-section-head p {
+  margin-top: 8px;
+  max-width: 680px;
+}
+
+.or-choice-list {
+  display: grid;
+  gap: 12px;
+  padding: 18px 24px 24px;
+}
+
+.or-choice {
+  width: 100%;
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 15px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--or-line);
+  border-radius: 17px;
+  background: #fff;
+}
+
+.or-choice.is-selected {
+  border-color: rgba(34, 211, 238, 0.75);
+  background: linear-gradient(180deg, #f0fbff, #fff);
+  box-shadow: 0 14px 32px rgba(8, 145, 178, 0.1);
+}
+
+.or-choice-radio {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.or-choice.is-selected .or-choice-radio {
+  border: 7px solid var(--or-brand);
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.16);
+}
+
+.or-choice-copy h4 {
+  margin: 0;
+  color: var(--or-slate-900);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1.02rem;
+}
+
+.or-choice-copy p {
+  margin: 5px 0 0;
+  color: var(--or-slate-600);
+}
+
+.or-simple-list {
+  display: grid;
+  gap: 12px;
+  padding: 18px 24px 24px;
+}
+
+.or-simple-row {
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.78);
+}
+
+.or-simple-row:last-child {
+  border-bottom: 0;
+}
+
+.or-simple-row span {
+  color: var(--or-slate-600);
+}
+
+.or-simple-row small {
+  display: block;
+  margin-top: 2px;
+  color: var(--or-slate-500);
+  font-weight: 600;
+}
+
+.or-simple-row strong {
+  color: var(--or-brand);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  white-space: nowrap;
+}
+
+.or-summary {
+  position: sticky;
+  top: 96px;
+  overflow: hidden;
+  border-color: rgba(21, 59, 79, 0.13);
+  border-radius: 24px;
+  box-shadow: var(--or-shadow-lg);
+}
+
+.or-summary-top {
+  padding: 24px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--or-brand-dark), var(--or-brand));
+  border-bottom: 0;
+}
+
+.or-summary-status {
+  margin-bottom: 18px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.or-summary-status strong {
+  color: var(--or-accent);
+}
+
+.or-summary-eyebrow,
+.or-summary-days {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.or-summary-total {
+  color: #fff;
+  font-size: clamp(2.15rem, 4vw, 2.7rem);
+}
+
+.or-summary-body {
+  padding: 22px 24px 24px;
+}
+
+.or-due-card {
+  margin: 18px 0;
+  border-color: #bbf7d0;
+  background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
+}
+
+.or-due-card span {
+  color: #047857;
+}
+
+.or-due-card strong {
+  color: #065f46;
+}
+
+.or-btn-primary {
+  background: linear-gradient(135deg, var(--or-brand), var(--or-brand-2));
+}
+
+@media (max-width: 1060px) {
+  .or-grid,
+  .or-vehicle,
+  .or-two-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  .or-summary {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .or-body {
+    padding-top: 24px !important;
+  }
+
+  .or-spec-grid,
+  .or-confidence {
+    grid-template-columns: 1fr;
+  }
+
+  .or-section-head,
+  .or-vehicle-body,
+  .or-choice-list,
+  .or-simple-list,
+  .or-summary-top,
+  .or-summary-body {
+    padding-inline: 18px;
+  }
+
+  .or-vehicle-media {
+    min-height: 290px;
+  }
+
+  .or-car-title {
+    line-height: 1.16;
+  }
+}
+
+/* Professional detail-card polish */
+.or-spec-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.or-spec {
+  min-height: 96px !important;
+  display: grid !important;
+  grid-template-columns: 48px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 16px !important;
+  border: 1px solid rgba(176, 212, 230, 0.86) !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbfd 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px rgba(21, 59, 79, 0.045);
+}
+
+.or-spec:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(21, 59, 79, 0.26) !important;
+  background: #f0f8fc !important;
+  box-shadow: 0 14px 28px rgba(21, 59, 79, 0.08);
+}
+
+.or-spec-icon {
+  width: 48px !important;
+  height: 48px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 16px !important;
+  color: var(--or-brand) !important;
+  background: linear-gradient(135deg, #e7f5fa, #ffffff) !important;
+  box-shadow: 0 8px 18px rgba(21, 59, 79, 0.08);
+  font-size: initial !important;
+  font-weight: initial !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.or-spec-icon svg {
+  width: 22px !important;
+  height: 22px !important;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.or-icon-lug { color: #0e7490 !important; background: linear-gradient(135deg, #cffafe, #f8fafc) !important; }
+.or-icon-trans { color: #047857 !important; background: linear-gradient(135deg, #dcfce7, #f8fafc) !important; }
+.or-icon-mileage { color: #1c4d66 !important; background: linear-gradient(135deg, #dceef6, #f8fafc) !important; }
+
+.or-spec-text {
+  min-width: 0 !important;
+  color: inherit !important;
+  font-size: initial !important;
+  font-weight: initial !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.or-spec-text > span {
+  display: block !important;
+  color: var(--or-slate-500) !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  line-height: 1.2 !important;
+  text-transform: uppercase !important;
+}
+
+.or-spec-text > strong {
+  display: block !important;
+  margin-top: 6px !important;
+  color: var(--or-brand) !important;
+  font-family: "Plus Jakarta Sans", sans-serif !important;
+  font-size: 1.06rem !important;
+  font-weight: 800 !important;
+  line-height: 1.3 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  overflow-wrap: anywhere;
+  text-overflow: clip !important;
+}
+
+.or-confidence {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  margin-top: 22px !important;
+}
+
+.or-confidence span {
+  min-height: 46px !important;
+  flex: 1 1 180px;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(176, 212, 230, 0.7) !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  color: var(--or-slate-700) !important;
+  font-size: 0.86rem !important;
+  line-height: 1.35 !important;
+}
+
+.or-confidence span::before {
+  content: none !important;
+}
+
+.or-confidence svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: #059669;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.or-summary-status span {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.or-summary-eyebrow {
+  display: block !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+  line-height: 1.2 !important;
+  text-transform: uppercase !important;
+}
+
+.or-summary-row {
+  display: grid !important;
+  grid-template-columns: 36px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 14px 0 !important;
+}
+
+.or-summary-row-icon {
+  width: 36px;
+  height: 36px;
+  display: grid !important;
+  place-items: center;
+  border-radius: 12px;
+  background: #f0f8fc;
+  color: var(--or-brand);
+  flex: 0 0 auto;
+}
+
+.or-summary-row-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.or-summary-row-copy {
+  min-width: 0;
+  display: block !important;
+  color: inherit !important;
+  font-size: initial !important;
+  font-weight: initial !important;
+  flex-shrink: 1 !important;
+}
+
+.or-summary-row-label {
+  display: block !important;
+  color: var(--or-slate-700) !important;
+  font-size: 0.94rem !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  overflow-wrap: anywhere;
+}
+
+.or-summary-row-copy small {
+  display: block;
+  margin-top: 3px;
+  color: var(--or-slate-500);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.or-summary-row strong {
+  align-self: center;
+  color: var(--or-slate-900) !important;
+  font-size: 0.98rem;
+}
+
+.or-due-card {
+  padding: 18px !important;
+  border-radius: 20px !important;
+}
+
+@media (max-width: 1280px) {
+  .or-grid {
+    grid-template-columns: minmax(0, 1fr) 370px !important;
+  }
+
+  .or-spec {
+    min-height: 104px !important;
+  }
+}
+
+@media (max-width: 1060px) {
+  .or-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .or-summary-row {
+    grid-template-columns: 36px minmax(0, 1fr) auto !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .or-spec-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .or-spec {
+    min-height: 88px !important;
+  }
+
+  .or-confidence span {
+    flex-basis: 100%;
+    border-radius: 16px !important;
+  }
+
+  .or-summary-row {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+  }
+
+  .or-summary-row strong {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 4px;
+  }
+}
+
+/* Premium customer checkout pass */
+.or-vehicle {
+  border-radius: 26px !important;
+  box-shadow: 0 18px 48px rgba(21, 59, 79, 0.08) !important;
+}
+
+.or-vehicle-media {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(34, 211, 238, 0.16), transparent 36%),
+    linear-gradient(145deg, #f7fcfe 0%, #eef8fb 58%, #dceef6 100%) !important;
+}
+
+.or-vehicle-body {
+  padding: 30px 30px 28px !important;
+}
+
+.or-supplier-row {
+  margin-bottom: 16px !important;
+}
+
+.or-car-title {
+  max-width: 560px !important;
+  color: #0f172a !important;
+  font-size: clamp(2rem, 2.45vw, 2.28rem) !important;
+  line-height: 1.08 !important;
+  letter-spacing: 0 !important;
+}
+
+.or-car-subtitle {
+  max-width: 58ch !important;
+  margin: 12px 0 18px !important;
+  color: #475569 !important;
+  font-size: 0.98rem !important;
+  line-height: 1.58 !important;
+}
+
+.or-trip-snapshot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 10px;
+  border: 1px solid rgba(176, 212, 230, 0.72);
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #f0f8fc 100%);
+}
+
+.or-trip-snapshot-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 14px;
+  color: var(--or-brand);
+}
+
+.or-trip-snapshot-item:nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.or-trip-snapshot-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--or-brand);
+  background: #fff;
+  box-shadow: 0 6px 14px rgba(21, 59, 79, 0.08);
+}
+
+.or-trip-snapshot-icon svg {
+  width: 17px;
+  height: 17px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.or-trip-snapshot small {
+  display: block;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.or-trip-snapshot strong {
+  display: block;
+  margin-top: 4px;
+  color: #153b4f;
+  font-size: 0.83rem;
+  font-weight: 800;
+  line-height: 1.24;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.or-spec-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.or-spec {
+  min-height: 74px !important;
+  grid-template-columns: 36px minmax(0, 1fr) !important;
+  gap: 9px !important;
+  padding: 11px 12px !important;
+  border-radius: 16px !important;
+  border-color: rgba(226, 232, 240, 0.92) !important;
+  background: #fff !important;
+  box-shadow: 0 8px 18px rgba(21, 59, 79, 0.04) !important;
+}
+
+.or-spec-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 13px !important;
+  box-shadow: none !important;
+}
+
+.or-spec-icon svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.or-spec-text > span {
+  font-size: 0.64rem !important;
+  letter-spacing: 0.08em !important;
+}
+
+.or-spec-text > strong {
+  margin-top: 4px !important;
+  font-size: 0.95rem !important;
+  line-height: 1.22 !important;
+}
+
+.or-confidence {
+  display: flex !important;
+  gap: 16px 18px !important;
+  margin-top: 16px !important;
+}
+
+.or-confidence span {
+  min-height: 0 !important;
+  flex: 0 1 auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #475569 !important;
+  font-size: 0.84rem !important;
+  font-weight: 800 !important;
+}
+
+.or-confidence svg {
+  width: 16px;
+  height: 16px;
+}
+
+.or-summary {
+  border-radius: 26px !important;
+  box-shadow: 0 22px 54px rgba(21, 59, 79, 0.12) !important;
+}
+
+.or-summary-top {
+  padding: 22px 24px 24px !important;
+  background:
+    radial-gradient(80% 110% at 92% 0%, rgba(34, 211, 238, 0.34), transparent 55%),
+    linear-gradient(135deg, #0b2230 0%, #153b4f 58%, #0b1b26 100%) !important;
+}
+
+.or-summary-total {
+  font-size: clamp(2.18rem, 3.1vw, 2.6rem) !important;
+}
+
+.or-summary-body {
+  padding: 20px 24px 24px !important;
+}
+
+@media (max-width: 1280px) {
+  .or-spec-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1060px) {
+  .or-trip-snapshot {
+    grid-template-columns: 1fr;
+  }
+
+  .or-trip-snapshot strong {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 760px) {
+  .or-vehicle {
+    border-radius: 22px !important;
+  }
+
+  .or-vehicle-body {
+    padding: 24px 18px !important;
+  }
+
+  .or-car-title {
+    font-size: 2.15rem !important;
+  }
+
+  .or-spec-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .or-spec {
+    grid-template-columns: 1fr !important;
+    align-items: start !important;
+    min-height: 118px !important;
+  }
+
+  .or-confidence {
+    display: grid !important;
+    gap: 10px !important;
+  }
+
+  .or-confidence span {
+    align-items: flex-start !important;
+  }
+}
+
+@media (max-width: 460px) {
+  .or-spec-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .or-spec {
+    grid-template-columns: 40px minmax(0, 1fr) !important;
+    min-height: 82px !important;
+  }
+}
+
+/* Balance media and content width after customer-polish pass */
+.or-vehicle {
+  grid-template-columns: minmax(260px, 34%) minmax(0, 1fr) !important;
+}
+
+.or-vehicle-media {
+  min-height: 500px !important;
+}
+
+.or-vehicle-media img {
+  width: min(86%, 380px) !important;
+  max-height: 260px !important;
+}
+
+.or-trip-snapshot strong {
+  max-width: 100%;
+}
+
+.or-spec {
+  min-height: 74px !important;
+}
+
+@media (max-width: 1280px) {
+  .or-vehicle {
+    grid-template-columns: minmax(240px, 36%) minmax(0, 1fr) !important;
+  }
+
+  .or-spec-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .or-spec {
+    min-height: 74px !important;
+  }
+}
+
+@media (max-width: 1060px) {
+  .or-vehicle {
+    grid-template-columns: 1fr !important;
+  }
+
+  .or-vehicle-media {
+    min-height: 300px !important;
+  }
+}
+
+/* Customer-facing balance pass */
+.or-page {
+  background:
+    linear-gradient(180deg, rgba(240, 248, 252, 0.86) 0%, rgba(255, 255, 255, 0.98) 34%, #f8fafc 100%) !important;
+}
+
+.or-body {
+  padding-top: 28px !important;
+}
+
+.or-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px) !important;
+  gap: 26px !important;
+}
+
+.or-vehicle,
+.or-panel,
+.or-summary {
+  border-color: rgba(205, 222, 232, 0.86) !important;
+  box-shadow: 0 16px 44px rgba(21, 59, 79, 0.075) !important;
+}
+
+.or-vehicle {
+  grid-template-columns: minmax(260px, 32%) minmax(0, 1fr) !important;
+}
+
+.or-vehicle-media {
+  min-height: 430px !important;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(34, 211, 238, 0.12), transparent 34%),
+    linear-gradient(145deg, #f3fbfe 0%, #fff 58%, #e5f3f8 100%) !important;
+}
+
+.or-vehicle-media img {
+  width: min(88%, 285px) !important;
+  max-height: 285px !important;
+}
+
+.or-vehicle-body {
+  padding: 28px !important;
+}
+
+.or-car-title {
+  font-size: clamp(1.86rem, 2.1vw, 2.14rem) !important;
+  line-height: 1.12 !important;
+}
+
+.or-car-subtitle {
+  max-width: 54ch !important;
+  margin: 10px 0 16px !important;
+  font-size: 0.94rem !important;
+}
+
+.or-trip-snapshot {
+  border-radius: 18px !important;
+  background: #f8fcfe !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.or-spec-grid {
+  gap: 9px !important;
+}
+
+.or-spec {
+  min-height: 72px !important;
+  border-radius: 15px !important;
+}
+
+.or-spec-text > strong {
+  font-size: 0.92rem !important;
+}
+
+.or-confidence {
+  gap: 12px 16px !important;
+}
+
+.or-confidence span {
+  font-size: 0.82rem !important;
+}
+
+.or-summary-total {
+  font-size: clamp(2rem, 2.7vw, 2.42rem) !important;
+}
+
+.or-alert {
+  align-items: center !important;
+  border-radius: 18px !important;
+  background: linear-gradient(135deg, #fff7d6 0%, #fff1ad 100%) !important;
+}
+
+.or-alert-message {
+  max-width: 58ch;
+}
+
+@media (max-width: 1280px) {
+  .or-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(310px, 350px) !important;
+  }
+
+  .or-vehicle {
+    grid-template-columns: minmax(238px, 34%) minmax(0, 1fr) !important;
+  }
+
+  .or-vehicle-media {
+    min-height: 390px !important;
+  }
+}
+
+@media (max-width: 1060px) {
+  .or-grid,
+  .or-vehicle {
+    grid-template-columns: 1fr !important;
+  }
+
+  .or-vehicle-media {
+    min-height: 270px !important;
+  }
+
+  .or-vehicle-media img {
+    width: min(74%, 320px) !important;
+    max-height: 220px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .or-body {
+    padding-top: 16px !important;
+  }
+
+  .or-body-inner {
+    gap: 16px !important;
+  }
+
+  .or-alert {
+    display: grid !important;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 11px 12px !important;
+    align-items: center !important;
+    padding: 14px !important;
+    border-radius: 20px !important;
+  }
+
+  .or-alert-icon {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 14px !important;
+  }
+
+  .or-alert-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .or-alert-eyebrow {
+    margin-bottom: 3px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .or-alert-message {
+    font-size: 0.9rem !important;
+    line-height: 1.42 !important;
+  }
+
+  .or-alert-btn {
+    grid-column: 1 / -1;
+    min-height: 46px;
+    justify-content: center;
+    padding: 0 16px !important;
+    border-radius: 15px !important;
+    font-size: 0.94rem !important;
+  }
+
+  .or-vehicle {
+    border-radius: 21px !important;
+  }
+
+  .or-vehicle-media {
+    min-height: 228px !important;
+    padding: 14px !important;
+  }
+
+  .or-vehicle-media::after {
+    inset: 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .or-vehicle-media img {
+    width: min(70%, 250px) !important;
+    max-height: 190px !important;
+  }
+
+  .or-car-badge {
+    top: 12px !important;
+    left: 12px !important;
+    padding: 8px 14px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .or-vehicle-body {
+    padding: 20px 18px 22px !important;
+  }
+
+  .or-supplier-row {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .or-supplier {
+    font-size: 0.92rem !important;
+  }
+
+  .or-rating {
+    padding: 7px 10px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .or-car-title {
+    font-size: clamp(1.74rem, 8vw, 1.96rem) !important;
+    line-height: 1.14 !important;
+  }
+
+  .or-car-subtitle {
+    margin: 8px 0 14px !important;
+    font-size: 0.92rem !important;
+    line-height: 1.52 !important;
+  }
+
+  .or-trip-snapshot {
+    gap: 8px !important;
+    padding: 8px !important;
+    margin-bottom: 13px !important;
+  }
+
+  .or-trip-snapshot-item {
+    grid-template-columns: 32px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 9px !important;
+  }
+
+  .or-trip-snapshot-icon {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 11px !important;
+  }
+
+  .or-trip-snapshot strong {
+    font-size: 0.82rem !important;
+  }
+
+  .or-spec-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .or-spec {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    min-height: 68px !important;
+    padding: 10px 12px !important;
+  }
+
+  .or-spec-icon {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .or-spec-text > strong {
+    font-size: 0.9rem !important;
+  }
+
+  .or-confidence {
+    margin-top: 12px !important;
+  }
+
+  .or-confidence span {
+    font-size: 0.81rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .or-summary-total {
+    font-size: 2rem !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .or-alert {
+    grid-template-columns: 38px minmax(0, 1fr);
+    padding: 12px !important;
+  }
+
+  .or-alert-icon {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .or-car-title {
+    font-size: clamp(1.62rem, 7.4vw, 1.86rem) !important;
+  }
+
+  .or-vehicle-media {
+    min-height: 214px !important;
+  }
+
+  .or-vehicle-media img {
+    width: min(68%, 230px) !important;
+    max-height: 178px !important;
+  }
+}
+
+/* Clear information architecture pass */
+.or-trip-review,
+.or-includes-panel {
+  overflow: hidden;
+}
+
+.or-trip-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  padding: 0 24px 24px;
+}
+
+.or-trip-detail {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 13px;
+  padding: 20px 18px 20px 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.or-trip-detail:nth-child(odd) {
+  padding-right: 24px;
+  border-right: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.or-trip-detail:nth-child(even) {
+  padding-left: 24px;
+}
+
+.or-trip-detail-icon,
+.or-include-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--or-brand);
+  background: #f0f8fc;
+}
+
+.or-trip-detail-icon svg,
+.or-include-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.or-trip-detail-copy,
+.or-include-head div {
+  min-width: 0;
+}
+
+.or-trip-detail-copy small,
+.or-include-head small {
+  display: block;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.or-trip-detail-copy strong,
+.or-include-head strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--or-brand);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+
+.or-trip-detail-copy em {
+  display: block;
+  margin-top: 5px;
+  color: #475569;
+  font-style: normal;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
+.or-include-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.or-include-group {
+  min-width: 0;
+  padding: 22px 22px 24px;
+  border-right: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.or-include-group:last-child {
+  border-right: 0;
+}
+
+.or-include-head {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+}
+
+.or-include-list {
+  display: grid;
+  gap: 0;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.or-include-list li {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.78);
+}
+
+.or-include-list span {
+  color: #0f172a;
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.or-include-list em {
+  color: #475569;
+  font-size: 0.86rem;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1280px) {
+  .or-include-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .or-include-group {
+    border-right: 0;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  }
+
+  .or-include-group:last-child {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 1060px) {
+  .or-trip-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .or-trip-detail,
+  .or-trip-detail:nth-child(odd),
+  .or-trip-detail:nth-child(even) {
+    padding: 18px 0;
+    border-right: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .or-trip-detail-grid {
+    padding: 0 18px 18px;
+  }
+
+  .or-trip-detail {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 11px;
+  }
+
+  .or-trip-detail-icon,
+  .or-include-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 13px;
+  }
+
+  .or-trip-detail-icon svg,
+  .or-include-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .or-trip-detail-copy strong,
+  .or-include-head strong {
+    font-size: 0.94rem;
+  }
+
+  .or-trip-review .or-section-head h3,
+  .or-includes-panel .or-section-head h3 {
+    font-size: 1.42rem !important;
+    line-height: 1.22 !important;
+  }
+
+  .or-trip-review .or-section-head p,
+  .or-includes-panel .or-section-head p {
+    font-size: 0.94rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .or-trip-detail-copy em,
+  .or-include-list em {
+    font-size: 0.84rem;
+  }
+
+  .or-include-group {
+    padding: 18px;
+  }
+
+  .or-include-head {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 11px;
   }
 }
 </style>

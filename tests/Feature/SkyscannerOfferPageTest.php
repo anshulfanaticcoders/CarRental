@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\HandleSeoRedirects;
+use App\Services\LocationSearchService;
 use App\Services\Skyscanner\CarHirePublicResponseSerializer;
 use App\Services\Skyscanner\CarHireQuoteStoreService;
 use Carbon\CarbonImmutable;
@@ -527,5 +528,90 @@ class SkyscannerOfferPageTest extends TestCase
         $response->assertSee('Offer expired');
         $response->assertSee('Search again');
         $response->assertSee('quoteStatus');
+    }
+
+    public function test_expired_offer_search_again_url_recovers_unified_location_from_provider_location(): void
+    {
+        $store = app(CarHireQuoteStoreService::class);
+
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
+
+        $unifiedLocation = [
+            'unified_location_id' => 3385755165,
+            'name' => 'Dubai Airport (DXB)',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'latitude' => 25.251369,
+            'longitude' => 55.347204,
+        ];
+
+        $this->mock(LocationSearchService::class, function ($mock) use ($unifiedLocation): void {
+            $mock->shouldReceive('resolveSearchLocation')
+                ->twice()
+                ->withArgs(fn (array $payload): bool => ($payload['provider'] ?? null) === 'greenmotion'
+                    && ($payload['provider_pickup_id'] ?? null) === 'DXB-T1')
+                ->andReturn(null);
+            $mock->shouldReceive('searchLocations')
+                ->andReturn([]);
+            $mock->shouldReceive('nearbyLocations')
+                ->twice()
+                ->andReturn([$unifiedLocation]);
+        });
+
+        $store->put([
+            'quote_id' => 'quote-expired-location-recovery',
+            'case_id' => 'PSM-46100',
+            'created_at' => CarbonImmutable::now('UTC')->subMinutes(40)->toIso8601String(),
+            'expires_at' => CarbonImmutable::now('UTC')->subMinutes(10)->toIso8601String(),
+            'vehicle' => [
+                'provider_vehicle_id' => 'gm-326',
+                'source' => 'greenmotion',
+                'provider_code' => 'greenmotion',
+                'display_name' => 'Toyota Corolla or similar',
+            ],
+            'supplier' => [
+                'code' => 'greenmotion',
+                'name' => 'Vrooem',
+            ],
+            'pickup_location_details' => [
+                'provider_location_id' => 'DXB-T1',
+                'name' => 'Dubai Airport Terminal 1',
+                'city' => 'Dubai',
+                'country' => 'United Arab Emirates',
+                'latitude' => 25.25137,
+                'longitude' => 55.3472,
+            ],
+            'dropoff_location_details' => [
+                'provider_location_id' => 'DXB-T1',
+                'name' => 'Dubai Airport Terminal 1',
+                'city' => 'Dubai',
+                'country' => 'United Arab Emirates',
+                'latitude' => 25.25137,
+                'longitude' => 55.3472,
+            ],
+            'search' => [
+                'pickup_date' => '2026-08-20',
+                'pickup_time' => '10:00',
+                'dropoff_date' => '2026-08-23',
+                'dropoff_time' => '10:00',
+                'driver_age' => '35',
+                'currency' => 'EUR',
+            ],
+        ]);
+
+        $response = $this
+            ->withoutMiddleware(HandleSeoRedirects::class)
+            ->get('/en/offers/quote-expired-location-recovery');
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('OfferResults')
+            ->where('quoteStatus.expired', true)
+            ->where('quoteStatus.search_again_url', function (string $url): bool {
+                return str_contains($url, 'unified_location_id=3385755165')
+                    && str_contains($url, 'dropoff_unified_location_id=3385755165')
+                    && str_contains($url, 'provider_pickup_id=DXB-T1');
+            })
+        );
     }
 }

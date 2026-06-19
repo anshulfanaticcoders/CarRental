@@ -541,3 +541,28 @@ Concise durable memory for significant completed work.
 - Decision: Trabber external offers now carry gateway search/vehicle IDs from gateway search results through the stored offer payload, normalized quote, booking context, and shared OfferResults checkout props. Trabber offer pages now attach a `trabber_offer_*` price-verification session and `price_hash` before rendering checkout, matching the Skyscanner offer-page fix.
 - Verification: PHP syntax checks passed for touched Trabber controller/services/test; Pint passed for touched Trabber PHP files; `php artisan test tests\Feature\TrabberIntegrationTest.php` passed with 13 tests/143 assertions; the focused external provider offer-page test passed with 1 test/40 assertions after formatting.
 - Follow-ups: no Stripe payment or provider reservation was made during this fix.
+
+### 2026-06-18 - Shared offer page preview-aligned redesign
+- Scope: `CarRental` shared Skyscanner/Trabber offer results page.
+- Decision: removed the rejected dark header from the results step and aligned the page with the approved preview structure: main vehicle card, pickup/return office row, package/extras/policy panels, and right-side sticky checkout summary. Existing customize, extras, checkout, and Pay Now data flow stays unchanged.
+- Verification: `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings. Browser smoke verified desktop render, vehicle image load, no desktop/mobile horizontal overflow, no clipped mobile target text, no large lower-page gap, and `Continue to checkout` still opens the existing customize step.
+
+### 2026-06-18 - Shared offer page detail-card polish
+- Scope: `CarRental` shared Skyscanner/Trabber offer results page.
+- Decision: replaced cramped text-only vehicle facts with icon-led two-column spec cards, added icons to checkout confidence chips, and reworked checkout summary rows so long add-on descriptions do not crowd prices.
+- Verification: `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings. Browser smoke verified desktop/mobile spec cards have icons, no visible text overflow, no horizontal overflow, and the rejected dark header remains hidden.
+
+### 2026-06-18 - Shared offer page customer visual balance
+- Scope: `CarRental` shared Skyscanner/Trabber offer results page.
+- Decision: tightened the first-view customer hierarchy with smaller vehicle titles, compact mobile expired alert, stronger vehicle media balance, cleaner trip/spec cards, and steadier checkout summary sizing. Checkout behavior and offer data flow were not changed.
+- Verification: browser smoke verified desktop and mobile first views, mobile specs/details, no horizontal overflow, and no clipped alert/spec/summary text.
+
+### 2026-06-18 - Shared offer page information architecture cleanup
+- Scope: `CarRental` shared Skyscanner/Trabber offer results page.
+- Decision: removed duplicated pickup/return context from the vehicle card and regrouped customer-facing data by purpose: vehicle/specs in the first card, pickup/return/counter policies in one trip section, and package/protection/extras in one offer-details section. Checkout behavior, Stripe handoff, and provider payload data flow were not changed.
+- Verification: `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings. Browser smoke verified desktop/mobile render, pickup and return appear once each, no `Choose coverage` prompt remains on the offer page, and there is no horizontal overflow or clipped mobile section text.
+
+### 2026-06-18 - Expired partner offer search recovery
+- Scope: `CarRental` Skyscanner and Trabber expired offer recovery links.
+- Decision: expired offer pages now generate the `Search again` URL only when needed and recover missing `unified_location_id` values from stored unified IDs, provider location lookup, search text, or nearest-location fallback. This keeps stale provider-location cache data from sending customers to a malformed search URL.
+- Verification: PHP syntax checks passed for touched controllers/services/tests; `SkyscannerOfferPageTest` passed with 4 tests/159 assertions; `TrabberIntegrationTest` passed with 14 tests/157 assertions; `npm run build` passed with existing Vite warnings. Browser smoke confirmed the expired-offer button includes `unified_location_id=3385755165`, returns `200 OK`, and click-navigates to `/en/s` instead of home.

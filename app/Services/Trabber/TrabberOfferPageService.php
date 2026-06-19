@@ -2,6 +2,7 @@
 
 namespace App\Services\Trabber;
 
+use App\Services\LocationSearchService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Route;
@@ -10,7 +11,10 @@ class TrabberOfferPageService
 {
     private const PUBLIC_SUPPLIER_NAME = 'Vrooem';
 
-    public function __construct(private readonly TrabberFuelPolicyFormatter $fuelPolicyFormatter) {}
+    public function __construct(
+        private readonly TrabberFuelPolicyFormatter $fuelPolicyFormatter,
+        private readonly LocationSearchService $locationSearchService,
+    ) {}
 
     public function quoteFromPayload(array $payload): array
     {
@@ -81,6 +85,10 @@ class TrabberOfferPageService
         $pickup = is_array($quote['pickup_location_details'] ?? null) ? $quote['pickup_location_details'] : [];
         $dropoff = is_array($quote['dropoff_location_details'] ?? null) ? $quote['dropoff_location_details'] : [];
         $source = strtolower(trim((string) data_get($quote, 'vehicle.source', data_get($quote, 'supplier.code', 'mixed'))));
+        $provider = $source === '' ? 'mixed' : $source;
+        $pickupUnifiedLocationId = $this->resolveSearchAgainUnifiedLocationId($search, $pickup, 'pickup_location_id', $provider);
+        $dropoffUnifiedLocationId = $this->resolveSearchAgainUnifiedLocationId($search, $dropoff, 'dropoff_location_id', $provider)
+            ?? $pickupUnifiedLocationId;
 
         return route('search', array_filter([
             'locale' => $locale,
@@ -89,8 +97,8 @@ class TrabberOfferPageService
             'country' => $pickup['country'] ?? null,
             'latitude' => $pickup['latitude'] ?? null,
             'longitude' => $pickup['longitude'] ?? null,
-            'unified_location_id' => $search['pickup_location_id'] ?? null,
-            'provider' => $source === '' ? 'mixed' : $source,
+            'unified_location_id' => $pickupUnifiedLocationId,
+            'provider' => $provider,
             'provider_pickup_id' => $pickup['provider_location_id'] ?? null,
             'date_from' => $search['pickup_date'] ?? null,
             'date_to' => $search['dropoff_date'] ?? null,
@@ -99,11 +107,167 @@ class TrabberOfferPageService
             'age' => $search['driver_age'] ?? null,
             'currency' => $search['currency'] ?? null,
             'dropoff_where' => $dropoff['name'] ?? null,
-            'dropoff_unified_location_id' => $search['dropoff_location_id'] ?? null,
+            'dropoff_unified_location_id' => $dropoffUnifiedLocationId,
             'dropoff_location_id' => $dropoff['provider_location_id'] ?? null,
             'dropoff_latitude' => $dropoff['latitude'] ?? null,
             'dropoff_longitude' => $dropoff['longitude'] ?? null,
         ], static fn ($value) => $value !== null && $value !== ''));
+    }
+
+    private function resolveSearchAgainUnifiedLocationId(array $search, array $location, string $searchKey, string $provider): ?int
+    {
+        foreach ([
+            $search[$searchKey] ?? null,
+            $location['unified_location_id'] ?? null,
+            $location['id'] ?? null,
+        ] as $candidate) {
+            $normalized = $this->positiveIntegerOrNull($candidate);
+
+            if ($normalized !== null) {
+                return $normalized;
+            }
+        }
+
+        $providerPickupId = trim((string) ($location['provider_location_id'] ?? ''));
+
+        if ($providerPickupId === '' || $provider === 'internal' || $provider === 'mixed') {
+            return null;
+        }
+
+        $searchPayload = [
+            'provider' => $provider,
+            'provider_pickup_id' => $providerPickupId,
+            'where' => $location['name'] ?? null,
+            'city' => $location['city'] ?? null,
+            'country' => $location['country'] ?? null,
+            'latitude' => $location['latitude'] ?? null,
+            'longitude' => $location['longitude'] ?? null,
+        ];
+
+        $resolvedLocation = $this->locationSearchService->resolveSearchLocation($searchPayload);
+        $resolvedUnifiedLocationId = $this->positiveIntegerOrNull($resolvedLocation['unified_location_id'] ?? null);
+
+        if ($resolvedUnifiedLocationId !== null) {
+            return $resolvedUnifiedLocationId;
+        }
+
+        return $this->resolveFallbackSearchAgainUnifiedLocationId($searchPayload, $location);
+    }
+
+    private function resolveFallbackSearchAgainUnifiedLocationId(array $searchPayload, array $location): ?int
+    {
+        foreach ($this->searchAgainLocationTerms($location) as $term) {
+            foreach ($this->locationSearchService->searchLocations($term, 10) as $candidate) {
+                if (! is_array($candidate) || ! $this->searchAgainLocationMatches($candidate, $location)) {
+                    continue;
+                }
+
+                return $this->positiveIntegerOrNull($candidate['unified_location_id'] ?? null);
+            }
+        }
+
+        foreach ($this->locationSearchService->nearbyLocations($searchPayload, null, 1) as $candidate) {
+            if (! is_array($candidate) || ! $this->searchAgainLocationMatches($candidate, $location)) {
+                continue;
+            }
+
+            return $this->positiveIntegerOrNull($candidate['unified_location_id'] ?? null);
+        }
+
+        return null;
+    }
+
+    private function searchAgainLocationTerms(array $location): array
+    {
+        return collect([
+            $location['name'] ?? null,
+            trim((string) ($location['city'] ?? '').' '.(string) ($location['country'] ?? '')),
+            $location['city'] ?? null,
+        ])
+            ->filter(fn ($term): bool => is_string($term) && strlen(trim($term)) >= 2)
+            ->map(fn ($term): string => trim((string) $term))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function searchAgainLocationMatches(array $candidate, array $location): bool
+    {
+        if ($this->positiveIntegerOrNull($candidate['unified_location_id'] ?? null) === null) {
+            return false;
+        }
+
+        $requestedCountryCode = strtoupper(trim((string) ($location['country_code'] ?? '')));
+        $candidateCountryCode = strtoupper(trim((string) ($candidate['country_code'] ?? '')));
+
+        if ($requestedCountryCode !== '' && $candidateCountryCode !== '' && $requestedCountryCode !== $candidateCountryCode) {
+            return false;
+        }
+
+        $requestedCountry = strtolower(trim((string) ($location['country'] ?? '')));
+        $candidateCountry = strtolower(trim((string) ($candidate['country'] ?? '')));
+
+        if ($requestedCountryCode === '' && $candidateCountryCode === '' && $requestedCountry !== '' && $candidateCountry !== '' && $requestedCountry !== $candidateCountry) {
+            return false;
+        }
+
+        if ($this->hasUsableCoordinatePair($location['latitude'] ?? null, $location['longitude'] ?? null)
+            && $this->hasUsableCoordinatePair($candidate['latitude'] ?? null, $candidate['longitude'] ?? null)
+        ) {
+            $distanceKm = $this->distanceKm(
+                (float) $location['latitude'],
+                (float) $location['longitude'],
+                (float) $candidate['latitude'],
+                (float) $candidate['longitude'],
+            );
+
+            if ($distanceKm > 75.0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function positiveIntegerOrNull(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value > 0 ? $value : null;
+        }
+
+        if (is_string($value) && preg_match('/^[1-9]\d*$/', trim($value)) === 1) {
+            return (int) $value;
+        }
+
+        return null;
+    }
+
+    private function hasUsableCoordinatePair(mixed $latitude, mixed $longitude): bool
+    {
+        if (! is_numeric($latitude) || ! is_numeric($longitude)) {
+            return false;
+        }
+
+        $latitude = (float) $latitude;
+        $longitude = (float) $longitude;
+
+        if ($latitude < -90.0 || $latitude > 90.0 || $longitude < -180.0 || $longitude > 180.0) {
+            return false;
+        }
+
+        return ! (abs($latitude) < 0.000001 && abs($longitude) < 0.000001);
+    }
+
+    private function distanceKm(float $fromLatitude, float $fromLongitude, float $toLatitude, float $toLongitude): float
+    {
+        $earthRadiusKm = 6371;
+        $latDelta = deg2rad($toLatitude - $fromLatitude);
+        $lonDelta = deg2rad($toLongitude - $fromLongitude);
+
+        $a = sin($latDelta / 2) ** 2
+            + cos(deg2rad($fromLatitude)) * cos(deg2rad($toLatitude)) * sin($lonDelta / 2) ** 2;
+
+        return $earthRadiusKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
     private function vehicle(array $vehicle, array $offer): array

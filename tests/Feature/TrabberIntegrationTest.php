@@ -19,8 +19,10 @@ use App\Models\VendorProfile;
 use App\Services\LocationSearchService;
 use App\Services\OfferService;
 use App\Services\Trabber\TrabberAttributionService;
+use App\Services\Trabber\TrabberOfferStoreService;
 use App\Services\Trabber\TrabberReportService;
 use App\Services\VrooemGatewayService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -243,6 +245,103 @@ class TrabberIntegrationTest extends TestCase
             ->component('OfferResults')
             ->where('translations.offerresults.home', 'Inicio')
             ->where('translations.offerresults.continue_to_booking', 'Continuar con la reserva')
+        );
+    }
+
+    public function test_expired_trabber_offer_search_again_url_recovers_unified_location_from_provider_location(): void
+    {
+        $offerId = 'trabber-expired-location-recovery';
+        $unifiedLocation = [
+            'unified_location_id' => 3385755165,
+            'name' => 'Dubai Airport (DXB)',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'latitude' => 25.251369,
+            'longitude' => 55.347204,
+        ];
+
+        $this->mock(LocationSearchService::class, function ($mock) use ($unifiedLocation): void {
+            $mock->shouldReceive('resolveSearchLocation')
+                ->twice()
+                ->withArgs(fn (array $payload): bool => ($payload['provider'] ?? null) === 'greenmotion'
+                    && ($payload['provider_pickup_id'] ?? null) === 'DXB-T1')
+                ->andReturn(null);
+            $mock->shouldReceive('searchLocations')
+                ->andReturn([]);
+            $mock->shouldReceive('nearbyLocations')
+                ->twice()
+                ->andReturn([$unifiedLocation]);
+        });
+
+        app(TrabberOfferStoreService::class)->put($offerId, [
+            'offer' => [
+                'offer_id' => $offerId,
+                'vehicle_name' => 'Toyota Corolla or similar',
+                'price' => 369.45,
+            ],
+            'vehicle' => [
+                'id' => 'gm-vehicle-326',
+                'source' => 'greenmotion',
+                'provider_code' => 'greenmotion',
+                'display_name' => 'Toyota Corolla or similar',
+                'pricing' => [
+                    'total_price' => 369.45,
+                    'currency' => 'EUR',
+                ],
+                'specs' => [
+                    'transmission' => 'automatic',
+                    'seating_capacity' => 5,
+                    'luggage_large' => 2,
+                ],
+            ],
+            'search' => [
+                'pickup_date_time' => '2026-08-20 10:00:00',
+                'dropoff_date_time' => '2026-08-23 10:00:00',
+                'currency' => 'EUR',
+                'language' => 'en',
+                'driver_age' => 35,
+                'pickup_location' => [
+                    'id' => 'DXB-T1',
+                    'name' => 'Dubai Airport Terminal 1',
+                    'city' => 'Dubai',
+                    'country' => 'United Arab Emirates',
+                    'latitude' => 25.25137,
+                    'longitude' => 55.3472,
+                ],
+                'dropoff_location' => [
+                    'id' => 'DXB-T1',
+                    'name' => 'Dubai Airport Terminal 1',
+                    'city' => 'Dubai',
+                    'country' => 'United Arab Emirates',
+                    'latitude' => 25.25137,
+                    'longitude' => 55.3472,
+                ],
+            ],
+            'trabber_pricing' => [
+                'gross_total_price' => 369.45,
+                'gross_price_per_day' => 123.15,
+                'net_total_price' => 314.03,
+                'net_price_per_day' => 104.68,
+                'payment_percentage' => 15,
+            ],
+            'created_at' => CarbonImmutable::now('UTC')->subHours(2)->toIso8601String(),
+            'expires_at' => CarbonImmutable::now('UTC')->subMinutes(10)->toIso8601String(),
+        ]);
+
+        $response = $this->get(route('trabber.offer', [
+            'locale' => 'en',
+            'offerId' => $offerId,
+        ]));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('OfferResults')
+            ->where('quoteStatus.expired', true)
+            ->where('quoteStatus.search_again_url', function (string $url): bool {
+                return str_contains($url, 'unified_location_id=3385755165')
+                    && str_contains($url, 'dropoff_unified_location_id=3385755165')
+                    && str_contains($url, 'provider_pickup_id=DXB-T1');
+            })
         );
     }
 

@@ -68,7 +68,7 @@ class OfferController extends Controller
                 'message' => $isExpired
                     ? __('offerresults.offer_expired_message')
                     : null,
-                'search_again_url' => $this->offerPage->searchAgainUrl($locale, $quote),
+                'search_again_url' => $isExpired ? $this->offerPage->searchAgainUrl($locale, $quote) : null,
             ],
         ]);
     }
