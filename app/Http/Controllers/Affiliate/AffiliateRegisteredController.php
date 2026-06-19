@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Affiliate;
 
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate\AffiliateBusiness;
-use App\Services\Seo\SeoMetaResolver;
 use App\Models\User;
 use App\Notifications\Affiliate\BusinessRegistrationAdminNotification;
 use App\Notifications\Affiliate\BusinessRegistrationNotification;
+use App\Services\Seo\SeoMetaResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +43,7 @@ class AffiliateRegisteredController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'business_name' => 'required|string|max:255',
             'business_type' => 'required|string|max:100',
-            'contact_phone' => 'nullable|string|max:30',
+            'contact_phone' => 'nullable|string|max:30|unique:users,phone',
             'city' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
             'bank_name' => 'nullable|string|max:100',
@@ -60,7 +60,7 @@ class AffiliateRegisteredController extends Controller
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
                 'email' => $validated['email'],
-                'phone' => $validated['contact_phone'] ?? 'AF-' . Str::random(10),
+                'phone' => $validated['contact_phone'] ?? 'AF-'.Str::random(10),
                 'password' => Hash::make($validated['password']),
                 'role' => 'affiliate',
                 'status' => 'active',
@@ -97,7 +97,7 @@ class AffiliateRegisteredController extends Controller
                 $admin->notify(new BusinessRegistrationAdminNotification($business));
             }
         } catch (\Exception $e) {
-            Log::warning('Affiliate registration notifications failed: ' . $e->getMessage());
+            Log::warning('Affiliate registration notifications failed: '.$e->getMessage());
         }
 
         $locale = $request->route('locale', 'en');

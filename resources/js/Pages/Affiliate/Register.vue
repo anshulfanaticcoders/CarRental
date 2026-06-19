@@ -161,6 +161,7 @@
                                                     <span class="af-icon"><Phone class="w-4 h-4" /></span>
                                                     <input v-model="form.contact_phone" type="tel" class="af-input" placeholder="+34 612 345 678" />
                                                 </div>
+                                                <p v-if="form.errors.contact_phone" class="text-red-500 text-xs mt-1">{{ form.errors.contact_phone }}</p>
                                             </div>
                                         </div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -574,7 +575,7 @@ const submitForm = () => {
             const errorFields = Object.keys(errors);
             if (errorFields.some(f => ['first_name', 'last_name', 'email', 'password', 'password_confirmation'].includes(f))) {
                 currentStep.value = 1;
-            } else if (errorFields.some(f => ['business_name', 'business_type', 'city', 'country'].includes(f))) {
+            } else if (errorFields.some(f => ['business_name', 'business_type', 'contact_phone', 'city', 'country'].includes(f))) {
                 currentStep.value = 2;
             } else if (errorFields.some(f => ['bank_name', 'bank_iban', 'bank_bic', 'bank_account_name', 'currency'].includes(f))) {
                 currentStep.value = 3;

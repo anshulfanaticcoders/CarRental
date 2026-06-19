@@ -588,3 +588,8 @@ Concise durable memory for significant completed work.
 - Decision: fixed localized route parameter order for `AffiliateQrCodeController::track` and `qrLanding`, and encoded the short-code landing payload before handing it to `AffiliateQrCodeService`. Before the fix, `/en/affiliate/track/{trackingData}` passed `en` as the tracking payload, so browser QR scans redirected without creating scans.
 - Verification: headless Chrome created affiliate business `17`, opened the fixed tracking URL and created scan `5`; internal-only booking completion created booking `104` and commission `3` for Smoke Customer user `181` with provider source `internal`, booking type `platform`, and commission `EUR 16.65` on `EUR 555.00`. `AffiliateQrTrackingRouteTest` passed with 2 tests/6 assertions; `AffiliateRegistrationTest` passed with 4 tests/27 assertions; `StripeBookingServiceAccountingTest --filter=affiliate` passed with 1 test/15 assertions; Pint passed for touched PHP/test files.
 - Follow-ups: Mailtrap local test account is rate-limited (`550 Too many emails per second`), but registration catches notification failure and still creates the affiliate account.
+
+### 2026-06-19 - Affiliate registration duplicate phone handling
+- Scope: `CarRental` affiliate registration backend validation and register form error display.
+- Decision: `contact_phone` now validates against the unique `users.phone` index before creating the affiliate user, and duplicate-phone errors return users to the business details step with a visible phone-field validation error instead of a 500.
+- Verification: `AffiliateRegistrationTest` passed with 5 tests/33 assertions; Pint passed for touched PHP/test files; `npm run build` passed with existing Browserslist/Vite/lottie/chunk warnings.

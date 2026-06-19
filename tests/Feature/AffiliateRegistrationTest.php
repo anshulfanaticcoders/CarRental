@@ -129,4 +129,40 @@ class AffiliateRegistrationTest extends TestCase
         $this->assertDatabaseCount('affiliate_businesses', 0);
         Notification::assertNothingSent();
     }
+
+    public function test_affiliate_registration_rejects_duplicate_contact_phone_without_server_error(): void
+    {
+        Notification::fake();
+
+        User::factory()->create([
+            'phone' => '+971501234567',
+        ]);
+
+        $payload = [
+            'first_name' => 'Duplicate',
+            'last_name' => 'Phone',
+            'email' => 'duplicate-phone-affiliate@example.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'business_name' => 'Duplicate Phone Partner',
+            'business_type' => 'travel_agency',
+            'contact_phone' => '+971501234567',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+        ];
+
+        $response = $this
+            ->from(route('affiliate.register', ['locale' => 'en']))
+            ->post(route('affiliate.register.store', ['locale' => 'en']), $payload);
+
+        $response
+            ->assertRedirect(route('affiliate.register', ['locale' => 'en']))
+            ->assertSessionHasErrors(['contact_phone']);
+
+        $this->assertDatabaseMissing('affiliate_businesses', [
+            'contact_email' => $payload['email'],
+        ]);
+        Notification::assertNothingSent();
+    }
 }
