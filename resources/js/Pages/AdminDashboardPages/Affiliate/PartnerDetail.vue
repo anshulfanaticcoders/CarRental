@@ -32,6 +32,9 @@ const page = usePage();
 const isVerifying = ref(false);
 const isDeleting = ref(false);
 const isDeleteDialogOpen = ref(false);
+const deletingQrId = ref(null);
+const qrPendingDeletion = ref(null);
+const isQrDeleteDialogOpen = ref(false);
 
 const statusColor = (val) => {
     const map = { active: 'bg-emerald-100 text-emerald-700', pending: 'bg-amber-100 text-amber-700', suspended: 'bg-red-100 text-red-700' };
@@ -65,8 +68,9 @@ const notifyFromFlash = () => {
     }
 };
 
-const handlePartnerActionError = () => {
-    const firstError = Object.values(page.props.errors || {})[0];
+const handlePartnerActionError = (errors = {}) => {
+    const source = Object.keys(errors || {}).length ? errors : (page.props.errors || {});
+    const firstError = Object.values(source)[0];
     const message = Array.isArray(firstError) ? firstError[0] : firstError;
 
     toast.error(message || 'Partner action failed.');
@@ -117,6 +121,35 @@ const confirmDeletePartner = () => {
         onFinish: () => {
             isDeleting.value = false;
             isDeleteDialogOpen.value = false;
+        },
+    });
+};
+
+const openQrDeleteDialog = (qr) => {
+    qrPendingDeletion.value = qr;
+    isQrDeleteDialogOpen.value = true;
+};
+
+const confirmDeleteQrCode = () => {
+    if (!qrPendingDeletion.value) {
+        return;
+    }
+
+    const qrId = qrPendingDeletion.value.id;
+
+    router.delete(route('admin.affiliate.partners.qr-codes.destroy', { id: props.partner.id, qrCodeId: qrId }), {
+        preserveScroll: true,
+        onStart: () => {
+            deletingQrId.value = qrId;
+        },
+        onSuccess: () => {
+            notifyFromFlash();
+            isQrDeleteDialogOpen.value = false;
+            qrPendingDeletion.value = null;
+        },
+        onError: handlePartnerActionError,
+        onFinish: () => {
+            deletingQrId.value = null;
         },
     });
 };
@@ -395,6 +428,7 @@ const confirmDeletePartner = () => {
                                         <TableHead class="px-4 text-center">Scans</TableHead>
                                         <TableHead class="px-4">Status</TableHead>
                                         <TableHead class="px-4">Created</TableHead>
+                                        <TableHead class="px-4 text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -411,9 +445,21 @@ const confirmDeletePartner = () => {
                                         <TableCell class="px-4 text-gray-500 text-xs">
                                             {{ new Date(qr.created_at).toLocaleDateString() }}
                                         </TableCell>
+                                        <TableCell class="px-4 text-right">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                class="h-8 px-2.5 text-red-600 border-red-200 hover:bg-red-50"
+                                                :disabled="deletingQrId === qr.id"
+                                                @click="openQrDeleteDialog(qr)"
+                                            >
+                                                <Trash2 class="w-3.5 h-3.5" />
+                                                <span class="ml-1">{{ deletingQrId === qr.id ? 'Deleting...' : 'Delete' }}</span>
+                                            </Button>
+                                        </TableCell>
                                     </TableRow>
                                     <TableRow v-if="!qrCodes.length">
-                                        <TableCell colspan="6" class="px-4 text-center text-gray-400 py-8">No QR codes yet.</TableCell>
+                                        <TableCell colspan="7" class="px-4 text-center text-gray-400 py-8">No QR codes yet.</TableCell>
                                     </TableRow>
                                 </TableBody>
                             </Table>
@@ -440,6 +486,30 @@ const confirmDeletePartner = () => {
                         @click="confirmDeletePartner"
                     >
                         {{ isDeleting ? 'Deleting...' : 'Delete Affiliate' }}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog v-model:open="isQrDeleteDialogOpen">
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete QR code?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will remove the QR code from this affiliate. Existing scan and commission history stays available for audit.
+                        <span v-if="qrPendingDeletion" class="mt-2 block font-medium text-foreground">
+                            {{ qrPendingDeletion.label || qrPendingDeletion.short_code }}
+                        </span>
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel @click="qrPendingDeletion = null">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        class="bg-red-600 hover:bg-red-700"
+                        :disabled="!!deletingQrId"
+                        @click="confirmDeleteQrCode"
+                    >
+                        {{ deletingQrId ? 'Deleting...' : 'Delete QR Code' }}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

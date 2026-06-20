@@ -3,12 +3,11 @@
 namespace App\Services\Affiliate;
 
 use App\Models\Affiliate\AffiliateBusiness;
-use App\Models\Affiliate\AffiliateBusinessLocation;
 use App\Models\Affiliate\AffiliateQrCode;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use Illuminate\Http\Request;
 
 class AffiliateQrCodeService
 {
@@ -30,7 +29,7 @@ class AffiliateQrCodeService
         $qrCodeValue = uniqid('AFF-QR-', true);
         $qrHash = hash('sha256', $qrData);
         $shortCode = substr(strtoupper(str_replace(['+', '/', '='], '', base64_encode(random_bytes(8)))), 0, 12);
-        $qrUrl = url('/affiliate/qr/' . $shortCode);
+        $qrUrl = url('/'.app()->getLocale().'/affiliate/qr/'.$shortCode);
 
         // Get business model for discount configuration
         $businessModel = $business->getEffectiveBusinessModel();
@@ -68,7 +67,7 @@ class AffiliateQrCodeService
         ];
 
         // Create a short, scannable URL that contains the tracking data (without locale for backward compatibility)
-        $trackingUrl = url('/affiliate/track/' . $this->encodeTrackingData($trackingData));
+        $trackingUrl = url('/'.app()->getLocale().'/affiliate/track/'.$this->encodeTrackingData($trackingData));
 
         return $trackingUrl;
     }
@@ -109,7 +108,7 @@ class AffiliateQrCodeService
                     'png_error' => $e->getMessage(),
                     'svg_error' => $svgException->getMessage(),
                 ]);
-                throw new \Exception('Unable to generate QR code: ' . $svgException->getMessage());
+                throw new \Exception('Unable to generate QR code: '.$svgException->getMessage());
             }
         }
     }
@@ -121,7 +120,7 @@ class AffiliateQrCodeService
     {
         // Determine file extension based on content
         $extension = str_starts_with($qrImage, '<?xml') ? 'svg' : 'png';
-        $filename = 'affiliate/qr-codes/' . $businessId . '/' . uniqid('qr_') . '.' . $extension;
+        $filename = 'affiliate/qr-codes/'.$businessId.'/'.uniqid('qr_').'.'.$extension;
 
         // Store in UpCloud (assuming 'upcloud' is configured)
         Storage::disk('upcloud')->put($filename, $qrImage);
@@ -144,6 +143,7 @@ class AffiliateQrCodeService
     {
         // Create a compact representation of tracking data
         $encoded = base64_encode(json_encode($data));
+
         return rtrim(strtr($encoded, '+/', '-_'), '='); // URL-safe base64
     }
 
@@ -157,13 +157,14 @@ class AffiliateQrCodeService
             $padded = str_pad($encodedData, strlen($encodedData) % 4, '=', STR_PAD_RIGHT);
             $decoded = base64_decode(strtr($padded, '-_', '+/'));
 
-            if (!$decoded) {
+            if (! $decoded) {
                 return null;
             }
 
             return json_decode($decoded, true);
         } catch (\Exception $e) {
-            \Log::error('Failed to decode QR tracking data: ' . $e->getMessage());
+            \Log::error('Failed to decode QR tracking data: '.$e->getMessage());
+
             return null;
         }
     }
@@ -175,7 +176,7 @@ class AffiliateQrCodeService
     {
         $decodedData = $this->decodeTrackingData($trackingData);
 
-        if (!$decodedData) {
+        if (! $decodedData) {
             return null;
         }
 
@@ -184,7 +185,7 @@ class AffiliateQrCodeService
         $qrCode = AffiliateQrCode::where('qr_hash', $qrHash)->first();
 
         // If not found by hash, try to find by qr_id in tracking data
-        if (!$qrCode && isset($decodedData['qr_id'])) {
+        if (! $qrCode && isset($decodedData['qr_id'])) {
             // Check if this qr_id matches any existing QR code's qr_hash
             $qrCode = AffiliateQrCode::where('qr_hash', hash('sha256', json_encode([
                 'type' => 'affiliate_qr',
@@ -192,19 +193,19 @@ class AffiliateQrCodeService
                 'location_id' => $decodedData['location_id'] ?? null,
                 'qr_id' => $decodedData['qr_id'],
                 'timestamp' => $decodedData['timestamp'],
-                'version' => '1.0'
+                'version' => '1.0',
             ])))->first();
         }
 
         // If still not found, try to find by business and location combination
-        if (!$qrCode && isset($decodedData['business_id'], $decodedData['location_id'])) {
+        if (! $qrCode && isset($decodedData['business_id'], $decodedData['location_id'])) {
             $qrCode = AffiliateQrCode::where('business_id', $decodedData['business_id'])
-                                   ->where('location_id', $decodedData['location_id'])
-                                   ->where('status', 'active')
-                                   ->first();
+                ->where('location_id', $decodedData['location_id'])
+                ->where('status', 'active')
+                ->first();
         }
 
-        if (!$qrCode || !$qrCode->isValid()) {
+        if (! $qrCode || ! $qrCode->isValid()) {
             return null;
         }
 
@@ -219,6 +220,7 @@ class AffiliateQrCodeService
 
         if ($existingScan) {
             $businessModel = $qrCode->business->getEffectiveBusinessModel();
+
             return [
                 'qr_code' => $qrCode,
                 'customer_scan' => $existingScan,
@@ -236,7 +238,7 @@ class AffiliateQrCodeService
             'customer_id' => $currentCustomerId, // Save customer_id if logged in, null otherwise
             'session_id' => $sessionToken,
             'scan_token' => $this->generateScanToken(),
-            'tracking_url' => url('/affiliate/track/' . $trackingData),
+            'tracking_url' => url('/affiliate/track/'.$trackingData),
             'device_id' => $this->getDeviceId($request),
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
@@ -278,7 +280,7 @@ class AffiliateQrCodeService
             return session($sessionKey);
         }
 
-        $sessionToken = 'AFF-' . strtoupper(uniqid()) . '-' . bin2hex(random_bytes(8));
+        $sessionToken = 'AFF-'.strtoupper(uniqid()).'-'.bin2hex(random_bytes(8));
         session([$sessionKey => $sessionToken]);
 
         return $sessionToken;
@@ -303,7 +305,7 @@ class AffiliateQrCodeService
      */
     private function generateScanToken(): string
     {
-        return 'SCAN-' . strtoupper(uniqid()) . '-' . bin2hex(random_bytes(16));
+        return 'SCAN-'.strtoupper(uniqid()).'-'.bin2hex(random_bytes(16));
     }
 
     /**
@@ -322,7 +324,7 @@ class AffiliateQrCodeService
      */
     private function generateDeviceId(): string
     {
-        return 'DEVICE-' . uniqid() . '-' . bin2hex(random_bytes(8));
+        return 'DEVICE-'.uniqid().'-'.bin2hex(random_bytes(8));
     }
 
     /**
@@ -336,6 +338,7 @@ class AffiliateQrCodeService
             if (preg_match('/iPad/', $userAgent)) {
                 return 'tablet';
             }
+
             return 'mobile';
         }
 
@@ -433,7 +436,7 @@ class AffiliateQrCodeService
     {
         $affiliateData = $this->getAffiliateSessionData();
 
-        if (!$affiliateData) {
+        if (! $affiliateData) {
             return;
         }
 
@@ -447,7 +450,7 @@ class AffiliateQrCodeService
                 'affiliate_data' => array_merge($affiliateData, [
                     'customer_id' => $customerId,
                     'identified_at' => now()->toISOString(),
-                ])
+                ]),
             ]);
 
             \Log::info('Affiliate customer scan updated with customer_id', [
@@ -472,5 +475,4 @@ class AffiliateQrCodeService
         // Check if QR code is valid (includes status checks)
         return $qrCode->isValid();
     }
-
 }

@@ -23,7 +23,7 @@
                         <h1 class="text-xl md:text-[1.75rem] font-[800] text-white mb-0.5">QR Codes</h1>
                         <p class="text-[0.85rem] text-slate-400">Manage your location QR codes and view performance.</p>
                     </div>
-                    <button @click="isVerified && (showCreateForm = !showCreateForm)"
+                    <button @click="isVerified && toggleCreateForm()"
                         :disabled="!isVerified"
                         :class="[
                             'inline-flex items-center gap-1.5 px-4 py-2.5 text-[0.8rem] font-bold text-white rounded-[10px] bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-[0_4px_14px_rgba(6,182,212,0.25)] transition-all duration-250',
@@ -46,7 +46,7 @@
                     </div>
                     <h3 class="text-lg font-bold text-slate-700 mb-1">No QR codes yet</h3>
                     <p class="text-sm text-slate-400 mb-4">Create your first QR code to start tracking customer scans and earning commissions.</p>
-                    <button @click="isVerified && (showCreateForm = true)"
+                    <button @click="isVerified && openCreateForm()"
                         :disabled="!isVerified"
                         :class="[
                             'inline-flex items-center gap-2 px-5 py-3 text-sm font-bold text-white rounded-xl bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] shadow-[0_4px_14px_rgba(21,59,79,0.18)] transition-all',
@@ -163,6 +163,10 @@
                                     class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[0.8rem] font-bold text-[#153b4f] bg-transparent border-[1.5px] border-[rgba(15,23,42,0.12)] rounded-[10px] transition-all hover:border-[#153b4f] hover:bg-[rgba(21,59,79,0.03)]">
                                     <BarChart3 class="w-4 h-4" /> Details
                                 </button>
+                                <button @click="deleteQrCode(qr)" :disabled="deletingQrId === qr.id"
+                                    class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[0.8rem] font-bold text-red-600 bg-transparent border-[1.5px] border-red-200 rounded-[10px] transition-all hover:border-red-400 hover:bg-red-50 disabled:opacity-50">
+                                    <Trash2 class="w-4 h-4" /> {{ deletingQrId === qr.id ? 'Deleting...' : 'Delete' }}
+                                </button>
                             </div>
 
                             <!-- Expanded Details -->
@@ -206,32 +210,38 @@
                 </div>
 
                 <div class="max-w-[620px] bg-white border border-[rgba(15,23,42,0.07)] rounded-[20px] shadow-[0_1px_2px_rgba(21,59,79,0.03),0_8px_24px_rgba(21,59,79,0.06)] p-5">
+                    <div v-if="qrForm.errors.qr_code" class="mb-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+                        {{ qrForm.errors.qr_code }}
+                    </div>
+
                     <!-- Location Picker -->
                     <div class="mb-3.5">
                         <label class="block text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Select Location</label>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            <div v-for="loc in locations" :key="loc.id"
+                            <button v-for="loc in locations" :key="loc.id"
+                                type="button"
                                 @click="selectedLocation = loc.id"
                                 :class="[
-                                    'p-3.5 border-[1.5px] rounded-xl cursor-pointer transition-all duration-250 bg-white',
+                                    'text-left p-3.5 border-[1.5px] rounded-xl cursor-pointer transition-all duration-250 bg-white',
                                     selectedLocation === loc.id
                                         ? 'border-[#2ea7ad] bg-emerald-50/50 shadow-[0_2px_8px_rgba(46,167,173,0.1)]'
                                         : 'border-slate-200 hover:border-[rgba(46,167,173,0.4)]'
                                 ]">
                                 <h4 class="font-semibold text-[0.82rem] text-[#153b4f]">{{ loc.name }}</h4>
                                 <p class="text-[0.72rem] text-slate-500">{{ [loc.address_line_1, loc.city, loc.country].filter(Boolean).join(', ') || 'No address' }}</p>
-                            </div>
-                            <div @click="selectedLocation = 'new'"
+                            </button>
+                            <button type="button" @click="selectedLocation = 'new'"
                                 :class="[
-                                    'p-3.5 border-[1.5px] rounded-xl cursor-pointer transition-all duration-250 bg-white',
+                                    'text-left p-3.5 border-[1.5px] rounded-xl cursor-pointer transition-all duration-250 bg-white',
                                     selectedLocation === 'new'
                                         ? 'border-[#2ea7ad] bg-emerald-50/50 shadow-[0_2px_8px_rgba(46,167,173,0.1)]'
                                         : 'border-slate-200 hover:border-[rgba(46,167,173,0.4)]'
                                 ]">
                                 <h4 class="font-semibold text-[0.82rem] text-[#153b4f] inline-flex items-center gap-1"><Plus class="w-4 h-4" /> New Location</h4>
                                 <p class="text-[0.72rem] text-slate-500">Add a new location</p>
-                            </div>
+                            </button>
                         </div>
+                        <p v-if="qrForm.errors.location_id" class="text-red-500 text-xs mt-1">{{ qrForm.errors.location_id }}</p>
                     </div>
 
                     <!-- Existing Location Summary -->
@@ -258,8 +268,8 @@
                             <span class="text-[0.68rem] text-slate-400 mt-0.5 block">Powered by Google Places</span>
                         </div>
 
-                        <!-- Auto-filled Address Fields -->
-                        <div v-if="addressConfirmed" class="space-y-2.5">
+                        <!-- Address Fields -->
+                        <div class="space-y-2.5">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                 <div>
                                     <label class="block text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide mb-1">Address</label>
@@ -296,8 +306,22 @@
                             <!-- Leaflet Map -->
                             <div>
                                 <label class="block text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide mb-1">Pin Location</label>
-                                <div ref="mapContainerRef" class="w-full h-[200px] rounded-xl border border-slate-200 overflow-hidden z-0"></div>
-                                <span class="text-[0.68rem] text-slate-400 mt-1 block">Drag the marker to adjust the exact position.</span>
+                                <div v-if="addressConfirmed" ref="mapContainerRef" class="w-full h-[200px] rounded-xl border border-slate-200 overflow-hidden z-0"></div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
+                                    <div>
+                                        <label class="block text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide mb-1">Latitude</label>
+                                        <input v-model="qrForm.latitude" type="number" step="0.000001" placeholder="51.221340"
+                                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 outline-none transition-all hover:border-[#153b4f] focus:ring-2 focus:ring-[#2ea7ad] focus:border-transparent focus:bg-white" />
+                                        <p v-if="qrForm.errors.latitude" class="text-red-500 text-xs mt-1">{{ qrForm.errors.latitude }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide mb-1">Longitude</label>
+                                        <input v-model="qrForm.longitude" type="number" step="0.000001" placeholder="4.405150"
+                                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 outline-none transition-all hover:border-[#153b4f] focus:ring-2 focus:ring-[#2ea7ad] focus:border-transparent focus:bg-white" />
+                                        <p v-if="qrForm.errors.longitude" class="text-red-500 text-xs mt-1">{{ qrForm.errors.longitude }}</p>
+                                    </div>
+                                </div>
+                                <span class="text-[0.68rem] text-slate-400 mt-1 block">Search an address to fill these automatically, or enter coordinates manually.</span>
                             </div>
                         </div>
                     </div>
@@ -331,12 +355,12 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { useForm, usePage } from '@inertiajs/vue3';
+import { router, useForm, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
 import { Toaster } from '@/Components/ui/sonner';
 import AffiliateHeader from '@/Layouts/AffiliateHeader.vue';
 import { loadGoogleMaps } from '@/lib/googleMapsLoader';
-import { MapPin, Link, Share2, Download, BarChart3, Plus, Copy, AlertCircle, QrCode, Info, X, Mail } from 'lucide-vue-next';
+import { MapPin, Link, Share2, Download, BarChart3, Plus, Copy, AlertCircle, QrCode, Info, X, Mail, Trash2 } from 'lucide-vue-next';
 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -355,6 +379,7 @@ const showCreateForm = ref(false);
 const selectedLocation = ref(null);
 const expandedQr = ref(null);
 const shareMenuQr = ref(null);
+const deletingQrId = ref(null);
 
 function toggleQrStats(id) {
     expandedQr.value = expandedQr.value === id ? null : id;
@@ -387,6 +412,22 @@ const selectedExistingLocation = computed(() => {
     if (!selectedLocation.value || selectedLocation.value === 'new') return null;
     return props.locations?.find(l => l.id === selectedLocation.value) || null;
 });
+
+function openCreateForm() {
+    showCreateForm.value = true;
+    if (!selectedLocation.value) {
+        selectedLocation.value = props.locations?.[0]?.id || 'new';
+    }
+}
+
+function toggleCreateForm() {
+    if (showCreateForm.value) {
+        showCreateForm.value = false;
+        return;
+    }
+
+    openCreateForm();
+}
 
 watch(selectedLocation, (val) => {
     if (val === 'new') {
@@ -571,6 +612,31 @@ const submitQrForm = () => {
     });
 };
 
+function firstErrorMessage(errors, fallback) {
+    const firstError = Object.values(errors || {})[0];
+    return Array.isArray(firstError) ? firstError[0] : (firstError || fallback);
+}
+
+function deleteQrCode(qr) {
+    if (!window.confirm(`Delete QR code "${qr.label || qr.short_code}"?`)) return;
+
+    router.delete(route('affiliate.qr-codes.destroy', { locale: locale.value, qrCode: qr.id }), {
+        preserveScroll: true,
+        onStart: () => {
+            deletingQrId.value = qr.id;
+        },
+        onSuccess: () => {
+            toast.success('QR code deleted successfully.');
+        },
+        onError: (errors) => {
+            toast.error(firstErrorMessage(errors, 'Failed to delete QR code.'));
+        },
+        onFinish: () => {
+            deletingQrId.value = null;
+        },
+    });
+}
+
 function getQrPattern(id) {
     const base = [1,1,1,0,1,1,1,1,0,1,1,1,0,1,1,1,1,0,1,1,1,0,1,0,1,0,1,0,1,1,1,0,1,1,1,1,0,1,1,1,0,1,1,1,1,0,1,1,1];
     const seed = typeof id === 'number' ? id : 0;
@@ -597,7 +663,7 @@ function formatNumber(val) {
 }
 
 function getShareableLink(qr) {
-    return `${window.location.origin}/affiliate/qr/${qr.short_code}`;
+    return `${window.location.origin}/${locale.value}/affiliate/qr/${qr.short_code}`;
 }
 
 async function copyLink(qr) {

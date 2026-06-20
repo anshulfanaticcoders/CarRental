@@ -49,6 +49,35 @@ class AffiliateQrTrackingRouteTest extends TestCase
         ]);
     }
 
+    public function test_legacy_root_track_route_redirects_to_localized_route(): void
+    {
+        $qrCode = $this->createAffiliateQrCode('ROOTTRACK');
+        $trackingData = $this->encodedTrackingData($qrCode);
+
+        $response = $this->get(route('affiliate.qr.track.root', [
+            'trackingData' => $trackingData,
+        ]));
+
+        $response->assertRedirect(route('affiliate.qr.track', [
+            'locale' => 'en',
+            'trackingData' => $trackingData,
+        ]));
+    }
+
+    public function test_legacy_root_short_qr_route_redirects_to_localized_route(): void
+    {
+        $qrCode = $this->createAffiliateQrCode('ROOTSHORT');
+
+        $response = $this->get(route('affiliate.qr.landing.root', [
+            'shortCode' => $qrCode->short_code,
+        ]));
+
+        $response->assertRedirect(route('affiliate.qr.landing', [
+            'locale' => 'en',
+            'shortCode' => $qrCode->short_code,
+        ]));
+    }
+
     private function createAffiliateQrCode(string $shortCode): AffiliateQrCode
     {
         $owner = User::factory()->create([

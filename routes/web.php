@@ -328,6 +328,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/affiliate/partners', [AdminAffiliateController::class, 'partners'])->name('admin.affiliate.partners');
     Route::get('/admin/affiliate/partners/{id}', [AdminAffiliateController::class, 'partnerDetail'])->name('admin.affiliate.partners.show');
     Route::delete('/admin/affiliate/partners/{id}', [AdminAffiliateController::class, 'destroy'])->name('admin.affiliate.partners.destroy');
+    Route::delete('/admin/affiliate/partners/{id}/qr-codes/{qrCodeId}', [AdminAffiliateController::class, 'destroyQrCode'])->name('admin.affiliate.partners.qr-codes.destroy');
     Route::get('/admin/affiliate/commissions', [AdminAffiliateController::class, 'commissions'])->name('admin.affiliate.commissions');
     Route::patch('/admin/affiliate/commissions/{id}/status', [AdminAffiliateController::class, 'updateCommissionStatus'])->name('admin.affiliate.commissions.status.update');
 
@@ -368,6 +369,24 @@ Route::get('/newsletter/unsubscribe/{subscription}', [NewsletterTrackingControll
 Route::get('/blog/{slug}', [BlogController::class, 'redirectRootLegacyBlog'])
     ->where('slug', '[^/]+')
     ->name('blog.legacy-root');
+
+Route::get('/affiliate/track/{trackingData}', function (string $trackingData) {
+    $locale = app(LocalePreferenceResolver::class)->resolveRootLocale(request());
+
+    return redirect()->route('affiliate.qr.track', [
+        'locale' => $locale,
+        'trackingData' => $trackingData,
+    ]);
+})->name('affiliate.qr.track.root');
+
+Route::get('/affiliate/qr/{shortCode}', function (string $shortCode) {
+    $locale = app(LocalePreferenceResolver::class)->resolveRootLocale(request());
+
+    return redirect()->route('affiliate.qr.landing', [
+        'locale' => $locale,
+        'shortCode' => $shortCode,
+    ]);
+})->name('affiliate.qr.landing.root');
 
 // Locale-prefixed routes (for customer and vendor)
 Route::group([
@@ -481,6 +500,7 @@ Route::group([
         Route::get('/commissions', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'commissions'])->name('affiliate.commissions');
         Route::get('/qr-codes', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'qrCodes'])->name('affiliate.qr-codes');
         Route::post('/qr-codes', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'createQrCode'])->name('affiliate.qr-codes.store');
+        Route::delete('/qr-codes/{qrCode}', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'destroyQrCode'])->name('affiliate.qr-codes.destroy');
         Route::get('/settings', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'settings'])->name('affiliate.settings');
         Route::put('/settings', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'updateSettings'])->name('affiliate.settings.update');
         Route::put('/bank-details', [\App\Http\Controllers\Affiliate\AffiliateDashboardController::class, 'updateBankDetails'])->name('affiliate.bank-details.update');

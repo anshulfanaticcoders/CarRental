@@ -86,8 +86,9 @@ const notifyFromFlash = () => {
     }
 };
 
-const handlePartnerActionError = () => {
-    const firstError = Object.values(page.props.errors || {})[0];
+const handlePartnerActionError = (errors = {}) => {
+    const source = Object.keys(errors || {}).length ? errors : (page.props.errors || {});
+    const firstError = Object.values(source)[0];
     const message = Array.isArray(firstError) ? firstError[0] : firstError;
 
     toast.error(message || 'Partner action failed.');

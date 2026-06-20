@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Affiliate\AffiliateBusiness;
 use App\Models\Affiliate\AffiliateCommission;
 use App\Models\Affiliate\AffiliatePayout;
+use App\Models\Affiliate\AffiliateQrCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class AdminAffiliateController extends Controller
@@ -22,9 +25,9 @@ class AdminAffiliateController extends Controller
 
         // Revenue trend: last 30 days grouped by date
         $revenueTrend = AffiliateCommission::select(
-                DB::raw('DATE(created_at) as date'),
-                DB::raw('SUM(commission_amount) as revenue')
-            )
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('SUM(commission_amount) as revenue')
+        )
             ->where('created_at', '>=', now()->subDays(30))
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
@@ -95,9 +98,9 @@ class AdminAffiliateController extends Controller
     public function partnerDetail($id)
     {
         $partner = AffiliateBusiness::with([
-                'user:id,first_name,last_name,email',
-                'businessModel',
-            ])
+            'user:id,first_name,last_name,email',
+            'businessModel',
+        ])
             ->withCount('qrCodes')
             ->withSum('commissions', 'commission_amount')
             ->findOrFail($id);
@@ -163,6 +166,39 @@ class AdminAffiliateController extends Controller
             ->with('success', 'Affiliate deleted successfully.');
     }
 
+    public function destroyQrCode(Request $request, $id, $qrCodeId)
+    {
+        $business = AffiliateBusiness::findOrFail($id);
+        $qrCode = $business->qrCodes()->whereKey($qrCodeId)->first();
+
+        if (! $qrCode) {
+            return back()->withErrors(['qr_code' => 'QR code not found for this affiliate.']);
+        }
+
+        $this->deleteQrStorageFiles($qrCode);
+        $qrCode->delete();
+
+        return back()->with('success', 'QR code deleted successfully.');
+    }
+
+    private function deleteQrStorageFiles(AffiliateQrCode $qrCode): void
+    {
+        try {
+            if ($qrCode->qr_image_path) {
+                Storage::disk('upcloud')->delete($qrCode->qr_image_path);
+            }
+
+            if ($qrCode->qr_pdf_path) {
+                Storage::disk('upcloud')->delete($qrCode->qr_pdf_path);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Affiliate QR storage cleanup failed.', [
+                'qr_code_id' => $qrCode->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function commissions(Request $request)
     {
         $query = AffiliateCommission::with([
@@ -172,7 +208,7 @@ class AdminAffiliateController extends Controller
 
         if ($search = $request->input('search')) {
             $query->whereHas('business', fn ($q) => $q->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('booking', fn ($q) => $q->where('booking_number', 'like', "%{$search}%"));
+                ->orWhereHas('booking', fn ($q) => $q->where('booking_number', 'like', "%{$search}%"));
         }
 
         if ($status = $request->input('status')) {
@@ -184,7 +220,7 @@ class AdminAffiliateController extends Controller
         }
 
         if ($dateTo = $request->input('date_to')) {
-            $query->where('created_at', '<=', $dateTo . ' 23:59:59');
+            $query->where('created_at', '<=', $dateTo.' 23:59:59');
         }
 
         $commissions = $query->latest()->paginate(20)->withQueryString();
@@ -220,6 +256,6 @@ class AdminAffiliateController extends Controller
             $commission->reject(auth()->id(), $validated['reason'] ?? null);
         }
 
-        return back()->with('success', 'Commission ' . $validated['action'] . 'd successfully.');
+        return back()->with('success', 'Commission '.$validated['action'].'d successfully.');
     }
 }

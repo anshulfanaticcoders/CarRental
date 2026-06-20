@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Affiliate;
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate\AffiliateCommission;
 use App\Models\Affiliate\AffiliateGlobalSetting;
+use App\Models\Affiliate\AffiliateQrCode;
 use App\Services\Affiliate\AffiliateQrCodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -48,6 +51,7 @@ class AffiliateDashboardController extends Controller
                 $qr->bookings_count = $qr->customerScans()
                     ->where('booking_completed', true)
                     ->count();
+
                 return $qr;
             });
 
@@ -131,6 +135,7 @@ class AffiliateDashboardController extends Controller
                 $qr->revenue = AffiliateCommission::where('business_id', $qr->business_id)
                     ->whereHas('customerScan', fn ($q) => $q->where('qr_code_id', $qr->id))
                     ->sum('commission_amount');
+
                 return $qr;
             });
 
@@ -223,7 +228,7 @@ class AffiliateDashboardController extends Controller
 
         $user = $request->user();
 
-        if (!Hash::check($validated['current_password'], $user->password)) {
+        if (! Hash::check($validated['current_password'], $user->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
@@ -259,7 +264,7 @@ class AffiliateDashboardController extends Controller
         ];
 
         if ($validated['location_id'] === 'new') {
-            $locationCode = 'LOC-' . strtoupper(Str::random(8));
+            $locationCode = 'LOC-'.strtoupper(Str::random(8));
 
             $location = $business->locations()->create([
                 'uuid' => Str::uuid(),
@@ -281,9 +286,52 @@ class AffiliateDashboardController extends Controller
             $locationData['location_name'] = $location->name;
         }
 
-        $qrCodeService = app(AffiliateQrCodeService::class);
-        $qrCodeService->generateQrCode($business, $locationData);
+        try {
+            $qrCodeService = app(AffiliateQrCodeService::class);
+            $qrCodeService->generateQrCode($business, $locationData);
+        } catch (\Throwable $e) {
+            Log::error('Affiliate QR code creation failed.', [
+                'business_id' => $business->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors([
+                'qr_code' => 'We could not create this QR code right now. Please check the location details and try again.',
+            ]);
+        }
 
         return back()->with('success', 'QR code created successfully!');
+    }
+
+    public function destroyQrCode(Request $request, string $locale, AffiliateQrCode $qrCode)
+    {
+        $business = $request->user()->affiliateBusiness;
+
+        if ((int) $qrCode->business_id !== (int) $business->id) {
+            return back()->withErrors(['qr_code' => 'QR code not found for this partner account.']);
+        }
+
+        $this->deleteQrStorageFiles($qrCode);
+        $qrCode->delete();
+
+        return back()->with('success', 'QR code deleted successfully.');
+    }
+
+    private function deleteQrStorageFiles(AffiliateQrCode $qrCode): void
+    {
+        try {
+            if ($qrCode->qr_image_path) {
+                Storage::disk('upcloud')->delete($qrCode->qr_image_path);
+            }
+
+            if ($qrCode->qr_pdf_path) {
+                Storage::disk('upcloud')->delete($qrCode->qr_pdf_path);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Affiliate QR storage cleanup failed.', [
+                'qr_code_id' => $qrCode->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 }

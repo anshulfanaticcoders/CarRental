@@ -2,10 +2,13 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Affiliate\AffiliateBusiness;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class PasswordResetTest extends TestCase
@@ -27,6 +30,38 @@ class PasswordResetTest extends TestCase
 
         $this->post(route('password.email', ['locale' => 'en']), ['email' => $user->email]);
 
+        Notification::assertSentTo($user, ResetPassword::class);
+    }
+
+    public function test_reset_password_link_can_be_requested_for_legacy_affiliate_business_email(): void
+    {
+        Notification::fake();
+
+        $business = AffiliateBusiness::create([
+            'uuid' => (string) Str::uuid(),
+            'name' => 'Legacy Partner',
+            'business_type' => 'hotel',
+            'contact_email' => 'legacy.partner@example.test',
+            'contact_phone' => '+971501777777',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+            'verification_status' => 'verified',
+            'status' => 'active',
+        ]);
+
+        $response = $this->from(route('password.request', ['locale' => 'en']))
+            ->post(route('password.email', ['locale' => 'en']), [
+                'email' => $business->contact_email,
+            ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertSessionHas('status', trans(Password::RESET_LINK_SENT));
+
+        $user = User::where('email', $business->contact_email)->firstOrFail();
+
+        $this->assertSame('affiliate', $user->role);
+        $this->assertSame($user->id, $business->fresh()->user_id);
         Notification::assertSentTo($user, ResetPassword::class);
     }
 
