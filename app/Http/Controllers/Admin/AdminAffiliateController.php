@@ -7,6 +7,8 @@ use App\Models\Affiliate\AffiliateBusiness;
 use App\Models\Affiliate\AffiliateCommission;
 use App\Models\Affiliate\AffiliatePayout;
 use App\Models\Affiliate\AffiliateQrCode;
+use App\Services\Affiliate\AffiliateDeletionService;
+use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -135,35 +137,17 @@ class AdminAffiliateController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        $business = AffiliateBusiness::with([
-            'businessModel',
-            'locations',
-            'qrCodes',
-            'childBusinesses:id,parent_business_id',
-        ])->findOrFail($id);
+        $business = AffiliateBusiness::findOrFail($id);
 
-        if ($business->childBusinesses->isNotEmpty()) {
+        try {
+            app(AffiliateDeletionService::class)->deleteBusiness($business, true);
+        } catch (DomainException $e) {
             return back()->with('error', 'Delete child affiliates first before deleting this affiliate.');
         }
 
-        DB::transaction(function () use ($business) {
-            foreach ($business->qrCodes as $qrCode) {
-                $qrCode->delete();
-            }
-
-            foreach ($business->locations as $location) {
-                $location->delete();
-            }
-
-            if ($business->businessModel) {
-                $business->businessModel->delete();
-            }
-            $business->delete();
-        });
-
         return redirect()
             ->route('admin.affiliate.partners')
-            ->with('success', 'Affiliate deleted successfully.');
+            ->with('success', 'Affiliate and linked user deleted successfully.');
     }
 
     public function destroyQrCode(Request $request, $id, $qrCodeId)

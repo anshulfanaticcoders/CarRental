@@ -1,13 +1,15 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
+
 use App\Helpers\ActivityLogHelper;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Services\Affiliate\AffiliateDeletionService;
+use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class UsersController extends Controller
@@ -27,9 +29,9 @@ class UsersController extends Controller
         if ($search) {
             $query->where(function ($query) use ($search) {
                 $query->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 
@@ -117,8 +119,8 @@ class UsersController extends Controller
         $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'phone' => 'required|unique:users,phone,' . $user->id,
+            'email' => 'required|email|unique:users,email,'.$user->id,
+            'phone' => 'required|unique:users,phone,'.$user->id,
             'phone_code' => 'nullable|string|max:10',
             // 'role' => 'required|in:admin,vendor,customer',
             'status' => 'required|in:active,inactive,suspended',
@@ -169,7 +171,7 @@ class UsersController extends Controller
             $profileData['date_of_birth'] = $request->date_of_birth;
         }
 
-        if (!empty($profileData)) {
+        if (! empty($profileData)) {
             if ($user->profile) {
                 $user->profile->update($profileData);
             } else {
@@ -188,10 +190,24 @@ class UsersController extends Controller
      */
     public function destroy(User $user)
     {
+        $wasAffiliate = $user->role === 'affiliate';
+
         // Log the activity
         ActivityLogHelper::logActivity('delete', 'User Deleted', $user);
-        $user->delete();
-        return redirect()->route('users.index', ['locale' => app()->getLocale()])->with('success', 'User deleted successfully.');
+
+        try {
+            app(AffiliateDeletionService::class)->deleteAffiliateUser($user);
+        } catch (DomainException $e) {
+            return redirect()
+                ->route('users.index', ['locale' => app()->getLocale()])
+                ->with('error', $e->getMessage());
+        }
+
+        $message = $wasAffiliate
+            ? 'User and linked affiliate data deleted successfully.'
+            : 'User deleted successfully.';
+
+        return redirect()->route('users.index', ['locale' => app()->getLocale()])->with('success', $message);
     }
 
     public function bulkDestroy(Request $request)
@@ -205,7 +221,11 @@ class UsersController extends Controller
         $users = User::whereIn('id', $ids)->where('role', '!=', 'admin')->get();
 
         foreach ($users as $user) {
-            $user->delete();
+            try {
+                app(AffiliateDeletionService::class)->deleteAffiliateUser($user);
+            } catch (DomainException $e) {
+                return redirect()->back()->with('error', $e->getMessage());
+            }
         }
 
         $count = $users->count();

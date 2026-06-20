@@ -162,6 +162,31 @@ class AffiliateRegistrationTest extends TestCase
             ->assertJsonValidationErrors(['email']);
     }
 
+    public function test_validate_email_accepts_soft_deleted_affiliate_business_email(): void
+    {
+        $business = AffiliateBusiness::create([
+            'uuid' => (string) Str::uuid(),
+            'name' => 'Deleted Partner',
+            'business_type' => 'hotel',
+            'contact_email' => 'deleted-business@example.test',
+            'contact_phone' => '+971501777777',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+            'verification_status' => 'pending',
+            'status' => 'active',
+        ]);
+        $business->delete();
+
+        $response = $this->postJson(route('validate-email', ['locale' => 'en']), [
+            'email' => 'deleted-business@example.test',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJson(['message' => 'Email is valid']);
+    }
+
     public function test_validate_contact_rejects_existing_phone(): void
     {
         User::factory()->create([
@@ -201,6 +226,32 @@ class AffiliateRegistrationTest extends TestCase
         $response
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['phone']);
+    }
+
+    public function test_validate_contact_accepts_soft_deleted_affiliate_business_phone(): void
+    {
+        $business = AffiliateBusiness::create([
+            'uuid' => (string) Str::uuid(),
+            'name' => 'Deleted Phone Partner',
+            'business_type' => 'hotel',
+            'contact_email' => 'deleted-phone-business@example.test',
+            'contact_phone' => '+971501888888',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+            'verification_status' => 'pending',
+            'status' => 'active',
+        ]);
+        $business->delete();
+
+        $response = $this->postJson(route('validate-contact', ['locale' => 'en']), [
+            'email' => 'new-affiliate@example.test',
+            'phone' => '+971501888888',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJson(['message' => 'Contact information is valid']);
     }
 
     public function test_validate_contact_accepts_new_email_and_phone(): void
@@ -275,6 +326,56 @@ class AffiliateRegistrationTest extends TestCase
             'contact_email' => $payload['email'],
         ]);
         Notification::assertNothingSent();
+    }
+
+    public function test_affiliate_registration_can_reuse_soft_deleted_affiliate_contact_details(): void
+    {
+        Notification::fake();
+
+        $deletedBusiness = AffiliateBusiness::create([
+            'uuid' => (string) Str::uuid(),
+            'name' => 'Deleted Affiliate',
+            'business_type' => 'hotel',
+            'contact_email' => 'reuse-deleted-affiliate@example.test',
+            'contact_phone' => '+971501999999',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+            'verification_status' => 'pending',
+            'status' => 'active',
+        ]);
+        $deletedBusiness->delete();
+
+        $payload = [
+            'first_name' => 'Reuse',
+            'last_name' => 'Deleted',
+            'email' => 'reuse-deleted-affiliate@example.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'business_name' => 'Reuse Deleted Partner',
+            'business_type' => 'travel_agency',
+            'contact_phone' => '+971501999999',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+        ];
+
+        $response = $this->post(route('affiliate.register.store', ['locale' => 'en']), $payload);
+
+        $response->assertRedirect(route('affiliate.dashboard', ['locale' => 'en']));
+
+        $this->assertDatabaseHas('users', [
+            'email' => $payload['email'],
+            'role' => 'affiliate',
+        ]);
+        $this->assertDatabaseHas('affiliate_businesses', [
+            'contact_email' => $payload['email'],
+            'contact_phone' => $payload['contact_phone'],
+            'deleted_at' => null,
+        ]);
+        $this->assertSame(2, AffiliateBusiness::withTrashed()
+            ->where('contact_email', $payload['email'])
+            ->count());
     }
 
     public function test_affiliate_registration_rejects_duplicate_contact_phone_without_server_error(): void
