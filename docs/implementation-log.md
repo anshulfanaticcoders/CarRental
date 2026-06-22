@@ -629,3 +629,23 @@ Concise durable memory for significant completed work.
 - Scope: `CarRental` shared profile route and authenticated headers.
 - Decision: affiliate users are redirected from the customer `/profile` route to affiliate settings, and shared authenticated header profile links now resolve to affiliate settings for affiliate users instead of the customer profile page.
 - Verification: `ProfileTest` passed with 7 tests/35 assertions including affiliate redirect coverage; Pint passed for touched PHP/test files; `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings.
+
+### 2026-06-22 - Influencer affiliate share links and portrait vehicle images
+- Scope: `CarRental` affiliate registration/dashboard/QR pages, affiliate QR tracking, commission smoke coverage, and vehicle image upload/gallery presentation.
+- Decision: added `influencer` affiliate type using the existing business type field. Influencers keep one locationless share link/QR (`location_id = null`) with social-sharing copy, while existing hotel/organization QR/location/map behavior stays unchanged. QR landing tracking now processes resolved short codes directly. Portrait vehicle images are accepted, centered, and displayed with contain/letterbox framing in vendor previews, hero images, and lightbox.
+- Verification: `AffiliateRegistrationTest`, `AffiliateQrCodeManagementTest`, `AffiliateQrTrackingRouteTest`, and `AffiliateInfluencerCommissionTest` passed with 30 tests/130 assertions; `node --test tests\js\vehicleImageValidation.test.js` passed with 4 tests; Pint passed for touched PHP/test files; `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings. Browser smoke registered local influencer `browser.influencer.20260622@example.test`, verified creator-specific registration copy/terms, dashboard "Create share link" UI, and QR page "Share Link" empty state with no location picker/map.
+
+### 2026-06-22 - Vehicle upload backend dimension parity
+- Scope: `CarRental` vehicle image upload validation and vendor browser smoke.
+- Decision: backend vehicle image validation no longer rejects short landscape or portrait/narrow images after the frontend already accepted them. It still rejects unreadable images and relies on existing MIME/size validation before compression.
+- Verification: browser smoke with vendor `hichambelgas00@gmail.com` uploaded five files from `C:\Users\Anshul\Downloads\vehicle_images` (one 1376x686 landscape and four 1200x1600 portraits), submitted successfully to `/en/current-vendor-vehicles`, and confirmed vehicle `#329` with five saved images. `ImageCompressionHelperTest`, `vehicleImageValidation.test.js`, Pint, and `npm run build` passed.
+
+### 2026-06-22 - Vendor vehicle table and image display cleanup
+- Scope: `CarRental` vendor vehicle list, edit vehicle stepper, and booking extras image source.
+- Decision: vendor fleet overview now shows only compact operational columns, removes mileage/cancellation/created-date detail, uses larger contain-framed full-image previews, compact icon actions, and an image-led mobile card with readable title/price/spec/location/actions. Edit vehicle stepper stays sticky under the dashboard topbar without covering the form at rest. Booking extras hero/lightbox now prefers `image_url` over `thumbnail_url`.
+- Verification: `git diff --check` passed; `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings. Browser smoke verified desktop fleet table, polished mobile fleet card, and sticky edit vehicle stepper locally for vehicle `#329`; console had no warnings/errors.
+
+### 2026-06-22 - Vendor vehicle pagination responsiveness
+- Scope: `CarRental` vendor vehicle list pagination component and vehicle list responsive visibility.
+- Decision: replaced the duplicated blue pagination markup with a Vrooem-themed bounded paginator using fixed-size controls, first/previous/next/last navigation, active page state, and ellipsis windows. Mobile collapses large page ranges to `first ... current ... last` to avoid hidden overflow/layout shifts. The scoped mobile-card styles now stop overriding desktop `lg:hidden`.
+- Verification: `git diff --check` passed; `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings. Browser smoke verified 390px mobile, 768px tablet, and 1440px desktop with no horizontal overflow; stress DOM preview for `Page 25 of 50` stayed within bounds on mobile and desktop.

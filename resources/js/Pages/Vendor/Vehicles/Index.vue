@@ -130,14 +130,9 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages',
                                     'table_location_header') }}</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages',
-                                    'table_limited_km_header') }}</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages',
-                                    'table_cancellation_header') }}</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages',
                                     'table_price_header') }}</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">{{ _t('vendorprofilepages',
                                     'status_table_header') }}</TableHead>
-                                <TableHead class="whitespace-nowrap px-4 py-3 font-semibold">Created At</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 font-semibold text-right">{{
                                     _t('vendorprofilepages', 'actions_table_header') }}</TableHead>
                             </TableRow>
@@ -159,10 +154,10 @@
                                     <Badge variant="outline">#{{ vehicle.id }}</Badge>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="relative group car-image-container">
+                                    <div class="relative group car-image-container vehicle-table-image">
                                         <img :src="getPrimaryImage(vehicle)"
                                             :alt="_t('vendorprofilepages', 'alt_no_image')"
-                                            class="car-image-desktop h-12 w-20 object-cover rounded-md border shadow-sm cursor-pointer transition-all duration-200 hover:scale-105" />
+                                            class="car-image-desktop cursor-pointer transition-all duration-200 hover:scale-105" />
                                         <div
                                             class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-md transition-all duration-200 flex items-center justify-center pointer-events-none">
                                             <Eye
@@ -196,64 +191,27 @@
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <template
-                                        v-if="vehicle.benefits && (vehicle.benefits.limited_km_per_day_range || vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)">
-                                        <div class="text-xs space-y-1">
-                                            <span v-if="vehicle.benefits.limited_km_per_day_range > 0" class="block">
-                                                {{ vehicle.benefits.limited_km_per_day_range }} {{
-                                                    _t('vendorprofilepages', 'unit_km_day') }}
-                                            </span>
-                                            <span v-if="vehicle.benefits.limited_km_per_week_range > 0" class="block">
-                                                {{ vehicle.benefits.limited_km_per_week_range }} {{
-                                                    _t('vendorprofilepages', 'unit_km_week') }}
-                                            </span>
-                                            <span v-if="vehicle.benefits.limited_km_per_month_range > 0" class="block">
-                                                {{ vehicle.benefits.limited_km_per_month_range }} {{
-                                                    _t('vendorprofilepages', 'unit_km_month') }}
-                                            </span>
-                                        </div>
-                                    </template>
-                                    <span v-else class="text-xs text-muted-foreground">{{ _t('vendorprofilepages',
-                                        'unlimited_km_text') }}</span>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <template
-                                        v-if="vehicle.benefits && (vehicle.benefits.cancellation_available_per_day || vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)">
-                                        <div class="text-xs space-y-1">
-                                            <span v-if="vehicle.benefits.cancellation_available_per_day"
-                                                class="block">{{ _t('vendorprofilepages', 'cancellation_day') }}</span>
-                                            <span v-if="vehicle.benefits.cancellation_available_per_week"
-                                                class="block">{{ _t('vendorprofilepages', 'cancellation_week') }}</span>
-                                            <span v-if="vehicle.benefits.cancellation_available_per_month"
-                                                class="block">{{ _t('vendorprofilepages', 'cancellation_month')
-                                                }}</span>
-                                        </div>
-                                    </template>
-                                    <span v-else class="text-xs text-muted-foreground">{{ _t('vendorprofilepages',
-                                        'not_available_text') }}</span>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
                                     <span class="font-bold text-primary">{{ formatPricing(vehicle) }}</span>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
                                     <span class="vr-chip capitalize" :class="vrStatus(vehicle.status)">{{ vehicle.status }}</span>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3 text-sm">{{ formatDate(vehicle.created_at)
-                                    }}</TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 action-cell">
-                                    <div class="flex justify-end gap-2 min-w-[120px] action-buttons-fixed">
+                                    <div class="flex justify-end gap-2 action-buttons-fixed">
                                         <Link
                                             :href="route('current-vendor-vehicles.edit', { locale: usePage().props.locale, 'current_vendor_vehicle': vehicle.id })">
-                                            <Button size="sm" variant="outline"
-                                                class="flex items-center gap-1 whitespace-nowrap">
+                                            <Button size="icon" variant="outline"
+                                                class="h-9 w-9"
+                                                :title="_t('vendorprofilepages', 'edit_button')"
+                                                :aria-label="_t('vendorprofilepages', 'edit_button')">
                                                 <Edit class="w-3 h-3" />
-                                                {{ _t('vendorprofilepages', 'edit_button') }}
                                             </Button>
                                         </Link>
-                                        <Button size="sm" variant="destructive" @click="confirmDeletion(vehicle)"
-                                            class="flex items-center gap-1 whitespace-nowrap">
+                                        <Button size="icon" variant="destructive" @click="confirmDeletion(vehicle)"
+                                            class="h-9 w-9"
+                                            :title="_t('vendorprofilepages', 'delete_button_general')"
+                                            :aria-label="_t('vendorprofilepages', 'delete_button_general')">
                                             <Trash2 class="w-3 h-3" />
-                                            {{ _t('vendorprofilepages', 'delete_button_general') }}
                                         </Button>
                                     </div>
                                 </TableCell>
@@ -263,155 +221,72 @@
                 </div>
 
                 <!-- Mobile Card View -->
-                <div class="lg:hidden p-4 sm:p-6 space-y-4">
-
-                    <div v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id"
-                        class="border rounded-lg p-4 bg-card shadow-sm transition-all duration-200 hover:shadow-md"
-                        :class="{ 'bg-blue-50 border-blue-200': selectedVehicleIds.includes(vehicle.id) }">
-                        <!-- Card Header with Checkbox and Basic Info -->
-                        <div class="flex items-start gap-3 mb-4">
-                            <input type="checkbox" :value="vehicle.id" v-model="selectedVehicleIds"
-                                class="rounded border-gray-300 text-primary focus:ring-primary w-5 h-5 mt-1 flex-shrink-0" />
-                            <div class="flex-1 min-w-0">
-                                <div class="flex flex-wrap items-center gap-1.5 mb-2">
-                                    <Badge variant="outline" class="text-xs whitespace-nowrap flex-shrink-0">#{{
-                                        vehicle.id }}</Badge>
-                                    <span class="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                        {{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}
-                                    </span>
-                                    <span class="vr-chip capitalize whitespace-nowrap flex-shrink-0" :class="vrStatus(vehicle.status)">{{ vehicle.status }}</span>
-                                </div>
-                                <h3
-                                    class="font-semibold text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate">
-                                    {{ vehicle.brand }} {{ vehicle.model }}
-                                </h3>
+                <div class="lg:hidden p-3 sm:p-5 vehicle-mobile-list">
+                    <article v-for="(vehicle, index) in filteredVehicles" :key="vehicle.id"
+                        class="vehicle-mobile-card"
+                        :class="{ selected: selectedVehicleIds.includes(vehicle.id) }">
+                        <div class="vehicle-mobile-media">
+                            <img :src="getPrimaryImage(vehicle)" :alt="_t('vendorprofilepages', 'alt_no_image')" />
+                            <label class="vehicle-mobile-check" :aria-label="`Select vehicle #${vehicle.id}`">
+                                <input type="checkbox" :value="vehicle.id" v-model="selectedVehicleIds" />
+                            </label>
+                            <div class="vehicle-mobile-meta">
+                                <Badge variant="outline">#{{ vehicle.id }}</Badge>
+                                <span>{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</span>
                             </div>
-                            <div class="flex-shrink-0">
-                                <div class="relative group car-image-container">
-                                    <img :src="getPrimaryImage(vehicle)" :alt="_t('vendorprofilepages', 'alt_no_image')"
-                                        class="car-image-mobile h-16 w-24 sm:h-20 sm:w-28 object-cover rounded-md border shadow-sm cursor-pointer transition-all duration-200 hover:scale-105" />
-                                    <div
-                                        class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-md transition-all duration-200 flex items-center justify-center pointer-events-none">
-                                        <Eye
-                                            class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                                    </div>
-                                </div>
-                            </div>
+                            <span class="vehicle-mobile-status vr-chip capitalize" :class="vrStatus(vehicle.status)">
+                                {{ vehicle.status }}
+                            </span>
                         </div>
 
-                        <!-- Vehicle Details Grid -->
-                        <div class="grid grid-cols-2 gap-3 mb-4">
-                            <div class="space-y-1">
-                                <span class="text-xs font-medium text-muted-foreground block">Transmission</span>
-                                <div class="flex items-center">
-                                    <Badge variant="secondary" class="text-xs truncate max-w-full">{{
-                                        vehicle.transmission }}</Badge>
-                                </div>
-                            </div>
-                            <div class="space-y-1">
-                                <span class="text-xs font-medium text-muted-foreground block">Fuel</span>
-                                <div class="flex items-center">
-                                    <Badge variant="secondary" class="text-xs truncate max-w-full">{{ vehicle.fuel }}
-                                    </Badge>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Location -->
-                        <div class="mb-4">
-                            <span class="text-xs font-medium text-muted-foreground block mb-1">Location</span>
-                            <div class="flex items-start gap-1">
-                                <MapPin class="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <div class="vehicle-mobile-body">
+                            <div class="vehicle-mobile-title-row">
                                 <div class="min-w-0">
-                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
-                                        {{ getVehicleLocationName(vehicle) }}
-                                    </div>
-                                    <div
-                                        v-if="getVehicleLocationSecondary(vehicle)"
-                                        class="text-sm text-gray-700 dark:text-gray-300 line-clamp-2"
-                                    >
+                                    <h3 class="vehicle-mobile-title">{{ vehicle.brand }} {{ vehicle.model }}</h3>
+                                    <p class="vehicle-mobile-subtitle">{{ vehicle.category?.name || 'Vehicle' }}</p>
+                                </div>
+                                <div class="vehicle-mobile-price">
+                                    <span>Price</span>
+                                    <strong>{{ formatPricing(vehicle) }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="vehicle-mobile-specs">
+                                <span class="vehicle-mobile-spec">{{ vehicle.transmission }}</span>
+                                <span class="vehicle-mobile-spec">{{ vehicle.fuel }}</span>
+                            </div>
+
+                            <div class="vehicle-mobile-location">
+                                <MapPin class="w-4 h-4" />
+                                <div class="min-w-0">
+                                    <p>{{ getVehicleLocationName(vehicle) }}</p>
+                                    <span v-if="getVehicleLocationSecondary(vehicle)">
                                         {{ getVehicleLocationSecondary(vehicle) }}
-                                    </div>
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Benefits Section -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                            <div class="space-y-1">
-                                <span class="text-xs font-medium text-muted-foreground block">Kilometer Limits</span>
-                                <div v-if="vehicle.benefits && (vehicle.benefits.limited_km_per_day_range || vehicle.benefits.limited_km_per_week_range || vehicle.benefits.limited_km_per_month_range)"
-                                    class="text-xs space-y-1">
-                                    <span v-if="vehicle.benefits.limited_km_per_day_range > 0"
-                                        class="block text-green-600">
-                                        {{ vehicle.benefits.limited_km_per_day_range }}/day
-                                    </span>
-                                    <span v-if="vehicle.benefits.limited_km_per_week_range > 0"
-                                        class="block text-green-600">
-                                        {{ vehicle.benefits.limited_km_per_week_range }}/week
-                                    </span>
-                                    <span v-if="vehicle.benefits.limited_km_per_month_range > 0"
-                                        class="block text-green-600">
-                                        {{ vehicle.benefits.limited_km_per_month_range }}/month
-                                    </span>
-                                </div>
-                                <span v-else class="text-xs text-green-600">{{ _t('vendorprofilepages',
-                                    'unlimited_km_text') }}</span>
-                            </div>
-                            <div class="space-y-1">
-                                <span class="text-xs font-medium text-muted-foreground block">Cancellation</span>
-                                <div v-if="vehicle.benefits && (vehicle.benefits.cancellation_available_per_day || vehicle.benefits.cancellation_available_per_week || vehicle.benefits.cancellation_available_per_month)"
-                                    class="text-xs space-y-1">
-                                    <span v-if="vehicle.benefits.cancellation_available_per_day"
-                                        class="block text-blue-600">{{
-                                            _t('vendorprofilepages', 'cancellation_day') }}</span>
-                                    <span v-if="vehicle.benefits.cancellation_available_per_week"
-                                        class="block text-blue-600">{{
-                                            _t('vendorprofilepages', 'cancellation_week') }}</span>
-                                    <span v-if="vehicle.benefits.cancellation_available_per_month"
-                                        class="block text-blue-600">{{
-                                            _t('vendorprofilepages', 'cancellation_month') }}</span>
-                                </div>
-                                <span v-else class="text-xs text-muted-foreground">{{ _t('vendorprofilepages',
-                                    'not_available_text')
-                                    }}</span>
-                            </div>
-                        </div>
-
-                        <!-- Price and Actions -->
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t">
-                            <div class="space-y-1">
-                                <span class="text-xs font-medium text-muted-foreground">Price</span>
-                                <p class="font-bold text-primary text-sm sm:text-base">{{ formatPricing(vehicle) }}</p>
-                            </div>
-                            <div class="flex flex-row gap-2">
-                                <Link
-                                    :href="route('current-vendor-vehicles.edit', { locale: usePage().props.locale, 'current_vendor_vehicle': vehicle.id })"
-                                    class="flex-1">
-                                    <Button size="sm" variant="outline"
-                                        class="w-full flex items-center justify-center gap-1 text-xs">
-                                        <Edit class="w-3 h-3" />
-                                        {{ _t('vendorprofilepages', 'edit_button') }}
-                                    </Button>
-                                </Link>
-                                <Button size="sm" variant="destructive" @click="confirmDeletion(vehicle)"
-                                    class="flex-1 flex items-center justify-center gap-1 text-xs">
-                                    <Trash2 class="w-3 h-3" />
-                                    {{ _t('vendorprofilepages', 'delete_button_general') }}
+                        <div class="vehicle-mobile-footer">
+                            <Link
+                                :href="route('current-vendor-vehicles.edit', { locale: usePage().props.locale, 'current_vendor_vehicle': vehicle.id })"
+                                class="vehicle-mobile-action-link">
+                                <Button size="sm" variant="outline" class="vehicle-mobile-action">
+                                    <Edit class="w-4 h-4" />
+                                    {{ _t('vendorprofilepages', 'edit_button') }}
                                 </Button>
-                            </div>
+                            </Link>
+                            <Button size="sm" variant="destructive" @click="confirmDeletion(vehicle)"
+                                class="vehicle-mobile-action">
+                                <Trash2 class="w-4 h-4" />
+                                {{ _t('vendorprofilepages', 'delete_button_general') }}
+                            </Button>
                         </div>
-
-                        <!-- Created Date -->
-                        <div class="mt-3 pt-3 border-t">
-                            <span class="text-xs text-muted-foreground">Created: {{ formatDate(vehicle.created_at)
-                                }}</span>
-                        </div>
-                    </div>
+                    </article>
                 </div>
 
                 <!-- Pagination -->
-                <div class="flex justify-end pt-4 pr-2">
+                <div class="vehicle-pagination-shell">
                     <Pagination :current-page="pagination.current_page" :total-pages="pagination.last_page"
                         @page-change="handlePageChange" />
                 </div>
@@ -820,11 +695,6 @@ const formatPricing = (vehicle) => {
     return prices.length ? prices.join(' | ') : _t('vendorprofilepages', 'not_applicable_text');
 };
 
-const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-};
-
 // filteredVehicles definition was moved up
 
 </script>
@@ -889,15 +759,14 @@ const formatDate = (dateStr) => {
     position: relative;
     overflow: hidden;
     border-radius: 0.5rem;
-    width: 100%;
     max-width: 100%;
 }
 
 .car-image-container img {
     transition: transform 0.2s ease;
     width: 100%;
-    height: auto;
-    object-fit: cover;
+    height: 100%;
+    object-fit: contain;
 }
 
 .car-image-container:hover img {
@@ -907,10 +776,7 @@ const formatDate = (dateStr) => {
 /* Mobile specific car image fixes */
 @media (max-width: 640px) {
     .car-image-mobile {
-        width: 100%;
-        max-width: 150px;
-        height: auto;
-        object-fit: cover;
+        object-fit: contain;
     }
 
     .car-image-small {
@@ -939,10 +805,64 @@ const formatDate = (dateStr) => {
 /* Desktop car image fixes */
 @media (min-width: 1025px) {
     .car-image-desktop {
-        width: 80px;
-        height: 48px;
-        object-fit: cover;
+        object-fit: contain;
     }
+}
+
+.vehicle-table-image {
+    width: 96px;
+    height: 64px;
+    padding: 3px;
+    border: 1px solid #dbe5ee;
+    background: linear-gradient(135deg, #f8fafc, #eef7fb);
+    box-shadow: 0 4px 10px rgba(21, 59, 79, 0.08);
+}
+
+.vehicle-mobile-list { display: flex; flex-direction: column; gap: 1rem; }
+.vehicle-mobile-card { overflow: visible; border: 1px solid rgba(176, 212, 230, 0.75); border-radius: 18px; background: #fff; box-shadow: 0 10px 28px rgba(21, 59, 79, 0.1); transition: border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+.vehicle-mobile-card.selected { border-color: #22d3ee; box-shadow: 0 16px 34px rgba(8, 145, 178, 0.18); }
+.vehicle-mobile-media { grid-area: media; position: relative; display: flex; align-items: center; justify-content: center; height: 178px; overflow: hidden; border-radius: 18px 18px 0 0; background: linear-gradient(135deg, #f8fafc, #e9f7fb); border-bottom: 1px solid rgba(226, 232, 240, 0.9); }
+.vehicle-mobile-media::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 28%, rgba(255,255,255,0.85), transparent 50%); }
+.vehicle-mobile-media img { position: relative; z-index: 1; width: 100%; height: 100%; padding: 0.65rem; object-fit: contain; }
+.vehicle-mobile-check { position: absolute; z-index: 3; top: 0.75rem; left: 0.75rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; border-radius: 7px; background: transparent; box-shadow: none; }
+.vehicle-mobile-check input { width: 20px; height: 20px; min-width: 20px; min-height: 20px; border-radius: 6px; accent-color: #153b4f; filter: drop-shadow(0 2px 5px rgba(21, 59, 79, 0.18)); }
+.vehicle-mobile-meta { position: absolute; z-index: 3; top: 0.75rem; right: 0.75rem; display: flex; align-items: center; gap: 0.45rem; }
+.vehicle-mobile-meta span { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 0.45rem; border-radius: 999px; background: rgba(15, 41, 54, 0.88); color: #fff; font-size: 0.72rem; font-weight: 700; }
+.vehicle-mobile-status { position: absolute; z-index: 3; left: 0.75rem; bottom: 0.75rem; box-shadow: 0 6px 16px rgba(21, 59, 79, 0.12); }
+.vehicle-mobile-body { grid-area: body; padding: 1rem; }
+.vehicle-mobile-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.85rem; }
+.vehicle-mobile-title { overflow: hidden; color: #0f172a; font-size: 1rem; font-weight: 800; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.vehicle-mobile-subtitle { margin-top: 0.2rem; color: #64748b; font-size: 0.78rem; font-weight: 600; }
+.vehicle-mobile-price { flex-shrink: 0; max-width: 44%; text-align: right; }
+.vehicle-mobile-price span { display: block; color: #94a3b8; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.vehicle-mobile-price strong { display: block; margin-top: 0.1rem; color: #153b4f; font-size: 0.9rem; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.vehicle-mobile-specs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; }
+.vehicle-mobile-spec { display: inline-flex; align-items: center; min-height: 28px; padding: 0.35rem 0.7rem; border-radius: 999px; background: #f0f8fc; color: #153b4f; font-size: 0.78rem; font-weight: 700; text-transform: capitalize; }
+.vehicle-mobile-location { display: flex; gap: 0.6rem; margin-top: 0.9rem; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; color: #153b4f; }
+.vehicle-mobile-location svg { flex-shrink: 0; margin-top: 0.1rem; color: #0891b2; }
+.vehicle-mobile-location p { overflow: hidden; color: #0f172a; font-size: 0.86rem; font-weight: 700; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.vehicle-mobile-location span { display: -webkit-box; margin-top: 0.18rem; overflow: hidden; color: #64748b; font-size: 0.78rem; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.vehicle-mobile-footer { grid-area: footer; display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; padding: 0.85rem 1rem 1rem; border-radius: 0 0 18px 18px; border-top: 1px solid rgba(226, 232, 240, 0.9); background: linear-gradient(180deg, #fff, #f8fafc); }
+.vehicle-mobile-action-link { display: block; min-width: 0; }
+.vehicle-mobile-action { width: 100%; justify-content: center; gap: 0.4rem; border-radius: 12px; font-size: 0.8rem; font-weight: 800; }
+
+@media (max-width: 480px) {
+    .vehicle-mobile-title-row { flex-direction: column; gap: 0.65rem; }
+    .vehicle-mobile-title { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    .vehicle-mobile-price { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; width: 100%; max-width: none; padding: 0.65rem 0.75rem; border-radius: 12px; background: #f0f8fc; text-align: left; }
+    .vehicle-mobile-price strong { margin-top: 0; font-size: 0.95rem; }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+    .vehicle-mobile-card { display: grid; grid-template-columns: minmax(220px, 35%) minmax(0, 1fr); grid-template-areas: "media body" "media footer"; align-items: stretch; }
+    .vehicle-mobile-media { height: auto; min-height: 224px; border-right: 1px solid rgba(226, 232, 240, 0.9); border-bottom: 0; border-radius: 18px 0 0 18px; }
+    .vehicle-mobile-media img { padding: 0; object-fit: cover; }
+    .vehicle-mobile-body { padding: 1rem 1.05rem 0.85rem; }
+    .vehicle-mobile-footer { align-self: end; border-radius: 0 0 18px 0; }
+}
+
+@media (min-width: 1024px) {
+    .vehicle-mobile-list { display: none; }
 }
 
 /* Custom scrollbar for mobile tables */
@@ -971,7 +891,7 @@ const formatDate = (dateStr) => {
 
 /* Table layout fixes for selected rows */
 .vehicles-table {
-    table-layout: fixed;
+    table-layout: auto;
     width: 100%;
 }
 
@@ -983,11 +903,7 @@ const formatDate = (dateStr) => {
 }
 
 /* Action column specific fixes */
-.action-cell {
-    min-width: 140px;
-    max-width: 200px;
-    width: auto;
-}
+.action-cell { width: 96px; }
 
 .action-cell .btn-container {
     display: flex;
@@ -1015,7 +931,7 @@ const formatDate = (dateStr) => {
 
 /* Fix for table width issues */
 .vehicles-table {
-    min-width: 100%;
+    min-width: 980px;
     width: 100%;
     max-width: 100%;
 }
@@ -1032,13 +948,13 @@ const formatDate = (dateStr) => {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    min-width: 140px;
+    min-width: 88px;
 }
 
 /* Responsive table fixes */
 @media (max-width: 1024px) {
     .vehicles-table {
-        min-width: 1200px;
+        min-width: 980px;
         /* Force horizontal scroll on smaller screens */
     }
 }
@@ -1375,15 +1291,10 @@ const formatDate = (dateStr) => {
     transform: scale(1.05);
 }
 
-/* Pagination improvements */
-.pagination-container {
-    padding: 1rem;
-}
+.vehicle-pagination-shell { padding: 1rem; border-top: 1px solid rgba(226, 232, 240, 0.9); background: linear-gradient(180deg, rgba(248, 250, 252, 0.28), rgba(248, 250, 252, 0.72)); }
 
 @media (max-width: 640px) {
-    .pagination-container {
-        padding: 0.75rem;
-    }
+    .vehicle-pagination-shell { padding: 0.75rem; }
 }
 
 /* Empty state improvements */
