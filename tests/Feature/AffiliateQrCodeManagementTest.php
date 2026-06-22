@@ -134,6 +134,55 @@ class AffiliateQrCodeManagementTest extends TestCase
         $this->assertDatabaseCount('affiliate_qr_codes', 2);
     }
 
+    public function test_influencer_can_create_locationless_share_qr_code(): void
+    {
+        Storage::fake('upcloud');
+
+        [$user, $business] = $this->createInfluencerBusinessFixture();
+
+        $response = $this
+            ->actingAs($user)
+            ->from(route('affiliate.qr-codes', ['locale' => 'en']))
+            ->post(route('affiliate.qr-codes.store', ['locale' => 'en']), [
+                'label' => 'Influencer Share Link',
+            ]);
+
+        $response->assertRedirect(route('affiliate.qr-codes', ['locale' => 'en']));
+        $response->assertSessionHas('success', 'Share link created successfully!');
+
+        $this->assertDatabaseHas('affiliate_qr_codes', [
+            'business_id' => $business->id,
+            'location_id' => null,
+            'status' => 'active',
+        ]);
+        $this->assertDatabaseMissing('affiliate_business_locations', [
+            'business_id' => $business->id,
+        ]);
+    }
+
+    public function test_influencer_share_qr_code_creation_is_idempotent(): void
+    {
+        Storage::fake('upcloud');
+
+        [$user, $business] = $this->createInfluencerBusinessFixture();
+
+        foreach (range(1, 2) as $attempt) {
+            $response = $this
+                ->actingAs($user)
+                ->from(route('affiliate.qr-codes', ['locale' => 'en']))
+                ->post(route('affiliate.qr-codes.store', ['locale' => 'en']), [
+                    'label' => 'Influencer Share Link',
+                ]);
+
+            $response->assertRedirect(route('affiliate.qr-codes', ['locale' => 'en']));
+        }
+
+        $this->assertSame(1, AffiliateQrCode::where('business_id', $business->id)
+            ->whereNull('location_id')
+            ->where('status', 'active')
+            ->count());
+    }
+
     private function createAffiliateQrCodeFixture(
         string $email = 'affiliate@example.test',
         string $phone = '+971501234567',
@@ -188,5 +237,31 @@ class AffiliateQrCodeManagementTest extends TestCase
         ]);
 
         return [$user, $business, $qrCode];
+    }
+
+    private function createInfluencerBusinessFixture(): array
+    {
+        $user = User::factory()->create([
+            'email' => 'influencer@example.test',
+            'phone' => '+971509999001',
+            'role' => 'affiliate',
+            'status' => 'active',
+        ]);
+
+        $business = AffiliateBusiness::create([
+            'uuid' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'name' => 'Influencer Partner',
+            'business_type' => 'influencer',
+            'contact_email' => $user->email,
+            'contact_phone' => $user->phone,
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+            'verification_status' => 'verified',
+            'status' => 'active',
+        ]);
+
+        return [$user, $business];
     }
 }

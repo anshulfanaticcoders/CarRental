@@ -123,6 +123,37 @@ class AffiliateRegistrationTest extends TestCase
         ]);
     }
 
+    public function test_guest_can_create_influencer_affiliate_account(): void
+    {
+        Notification::fake();
+
+        $payload = [
+            'first_name' => 'Influencer',
+            'last_name' => 'Creator',
+            'email' => 'creator-affiliate@example.test',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'business_name' => 'Creator Road Trips',
+            'business_type' => 'influencer',
+            'contact_phone' => '+971501234568',
+            'city' => 'Dubai',
+            'country' => 'United Arab Emirates',
+            'currency' => 'EUR',
+        ];
+
+        $response = $this->post(route('affiliate.register.store', ['locale' => 'en']), $payload);
+
+        $response->assertRedirect(route('affiliate.dashboard', ['locale' => 'en']));
+
+        $this->assertDatabaseHas('affiliate_businesses', [
+            'contact_email' => $payload['email'],
+            'name' => $payload['business_name'],
+            'business_type' => 'influencer',
+            'verification_status' => 'pending',
+            'status' => 'active',
+        ]);
+    }
+
     public function test_validate_email_rejects_existing_email(): void
     {
         User::factory()->create([

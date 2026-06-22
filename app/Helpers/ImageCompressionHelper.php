@@ -17,12 +17,8 @@ class ImageCompressionHelper
 
         [$width, $height] = $dimensions;
 
-        if ($width < (int) config('vehicle_images.min_width', 1200) || $height < (int) config('vehicle_images.min_height', 900)) {
-            return 'Use images of at least 1200×900px.';
-        }
-
-        if ($width <= $height) {
-            return 'Use landscape photos where width is greater than height.';
+        if ($width < 1 || $height < 1) {
+            return 'We could not read a valid image size.';
         }
 
         return null;
@@ -38,7 +34,7 @@ class ImageCompressionHelper
             maxHeight: (int) config('vehicle_images.main.max_height', 900),
         );
 
-        if (!$main) {
+        if (! $main) {
             return false;
         }
 
@@ -50,7 +46,7 @@ class ImageCompressionHelper
             maxHeight: (int) config('vehicle_images.thumbnail.max_height', 360),
         );
 
-        if (!$thumbnail) {
+        if (! $thumbnail) {
             return false;
         }
 
@@ -63,11 +59,11 @@ class ImageCompressionHelper
     /**
      * Compress an image using GD Library and save it.
      *
-     * @param UploadedFile $imageFile The uploaded image file.
-     * @param string $destinationPath The path where the compressed image should be saved (e.g., 'avatars/compressed_image.jpg').
-     * @param int $quality The compression quality (0-100 for JPEG, 0-9 for PNG).
-     * @param int|null $maxWidth Optional: Maximum width for the image.
-     * @param int|null $maxHeight Optional: Maximum height for the image.
+     * @param  UploadedFile  $imageFile  The uploaded image file.
+     * @param  string  $destinationPath  The path where the compressed image should be saved (e.g., 'avatars/compressed_image.jpg').
+     * @param  int  $quality  The compression quality (0-100 for JPEG, 0-9 for PNG).
+     * @param  int|null  $maxWidth  Optional: Maximum width for the image.
+     * @param  int|null  $maxHeight  Optional: Maximum height for the image.
      * @return string|false The URL of the compressed image, or false on failure.
      */
     public static function compressImage(UploadedFile $imageFile, string $folderName, int $quality = 80, ?int $maxWidth = null, ?int $maxHeight = null)
@@ -112,7 +108,7 @@ class ImageCompressionHelper
                 return false; // Unsupported image type
         }
 
-        if (!$sourceImage) {
+        if (! $sourceImage) {
             return false;
         }
 
@@ -121,16 +117,16 @@ class ImageCompressionHelper
 
         // Use original filename and handle duplicates
         $originalFileName = pathinfo($imageFile->getClientOriginalName(), PATHINFO_FILENAME);
-        $fileName = $originalFileName . '.' . $imageExtension;
+        $fileName = $originalFileName.'.'.$imageExtension;
 
         // Check if file already exists and handle duplicates
         $counter = 1;
-        while (Storage::disk('upcloud')->exists($folderName . '/' . $fileName)) {
-            $fileName = $originalFileName . '_' . $counter . '.' . $imageExtension;
+        while (Storage::disk('upcloud')->exists($folderName.'/'.$fileName)) {
+            $fileName = $originalFileName.'_'.$counter.'.'.$imageExtension;
             $counter++;
         }
 
-        $tempPath = tempnam(sys_get_temp_dir(), 'compressed_image_') . '.' . $imageExtension;
+        $tempPath = tempnam(sys_get_temp_dir(), 'compressed_image_').'.'.$imageExtension;
 
         // Save the compressed image to a temporary file
         switch ($imageMime) {
@@ -154,7 +150,7 @@ class ImageCompressionHelper
 
         // Store the temporary file to the desired disk
         $path = Storage::disk('upcloud')->putFileAs($folderName, new UploadedFile($tempPath, $fileName, $imageMime, null, true), $fileName, 'public');
-        
+
         // Delete the temporary file
         unlink($tempPath);
 

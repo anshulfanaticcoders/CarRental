@@ -1,9 +1,7 @@
 export const VEHICLE_IMAGE_MAX_FILE_SIZE = 5 * 1024 * 1024;
-export const VEHICLE_IMAGE_MIN_WIDTH = 1200;
-export const VEHICLE_IMAGE_MIN_HEIGHT = 900;
 export const VEHICLE_IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
-export const VEHICLE_IMAGE_UPLOAD_HINT = 'JPG, PNG up to 5MB each. Use landscape photos at least 1200×900px.';
-export const VEHICLE_IMAGE_UPLOAD_DETAIL = 'Portrait or narrow images are rejected. Use width greater than height for cleaner vehicle cards.';
+export const VEHICLE_IMAGE_UPLOAD_HINT = 'JPG, PNG up to 5MB each. Landscape photos work best, portrait photos are supported.';
+export const VEHICLE_IMAGE_UPLOAD_DETAIL = 'Portrait images are centered safely in previews and galleries so the vehicle is not stretched.';
 
 const readImageDimensions = (file) => new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
@@ -43,12 +41,8 @@ export const validateVehicleImageFiles = async (files) => {
             return `We could not read the dimensions for "${file.name}". Please try another image.`;
         }
 
-        if (dimensions.width < VEHICLE_IMAGE_MIN_WIDTH || dimensions.height < VEHICLE_IMAGE_MIN_HEIGHT) {
-            return `"${file.name}" is too small. Use images of at least 1200×900px.`;
-        }
-
-        if (dimensions.width <= dimensions.height) {
-            return `"${file.name}" is portrait-oriented. Use landscape photos where width is greater than height.`;
+        if (dimensions.width < 1 || dimensions.height < 1) {
+            return `We could not read a valid image size for "${file.name}". Please try another image.`;
         }
     }
 

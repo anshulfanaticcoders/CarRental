@@ -621,18 +621,7 @@ class AffiliateQrCodeController extends Controller
             return redirect('/')->with('error', 'QR code not found or expired');
         }
 
-        // Create scan record
-        $trackingData = [
-            'type' => 'affiliate_qr',
-            'business_id' => $qrCode->business_id,
-            'location_id' => $qrCode->location_id,
-            'qr_id' => $shortCode,
-            'timestamp' => now()->timestamp,
-            'version' => '1.0',
-        ];
-        $trackingData = rtrim(strtr(base64_encode(json_encode($trackingData)), '+/', '-_'), '=');
-
-        $result = $this->qrCodeService->processQrScan($trackingData, $request);
+        $result = $this->qrCodeService->processQrCodeLanding($qrCode, $request);
 
         if (! $result) {
             return redirect('/')->with('error', 'Failed to process QR code scan');
@@ -650,7 +639,8 @@ class AffiliateQrCodeController extends Controller
                 'scanned_at' => $result['customer_scan']->created_at->toISOString(),
             ]]);
 
-            return redirect('/en/vehicles')->with('info', 'You have already activated your discount from '.$qrCode->business->name.'. Your exclusive offer is still active!');
+            return redirect()->route('vehicles.index', ['locale' => $locale])
+                ->with('info', 'You have already activated your discount from '.$qrCode->business->name.'. Your exclusive offer is still active!');
         }
 
         // Store affiliate data
@@ -667,7 +657,7 @@ class AffiliateQrCodeController extends Controller
         session(['affiliate_data' => $affiliateData]);
 
         // Redirect to vehicles page with affiliate indication
-        return redirect('/en/vehicles')->with('affiliate', true);
+        return redirect()->route('vehicles.index', ['locale' => $locale])->with('affiliate', true);
     }
 
     /**

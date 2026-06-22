@@ -197,18 +197,42 @@ class AffiliateQrCodeService
             ])))->first();
         }
 
-        // If still not found, try to find by business and location combination
-        if (! $qrCode && isset($decodedData['business_id'], $decodedData['location_id'])) {
-            $qrCode = AffiliateQrCode::where('business_id', $decodedData['business_id'])
-                ->where('location_id', $decodedData['location_id'])
-                ->where('status', 'active')
-                ->first();
+        // If still not found, try to find by business and location combination.
+        // Location can be null for influencer share links.
+        if (! $qrCode && isset($decodedData['business_id']) && array_key_exists('location_id', $decodedData)) {
+            $qrCodeQuery = AffiliateQrCode::where('business_id', $decodedData['business_id'])
+                ->where('status', 'active');
+
+            if ($decodedData['location_id'] === null) {
+                $qrCodeQuery->whereNull('location_id');
+            } else {
+                $qrCodeQuery->where('location_id', $decodedData['location_id']);
+            }
+
+            $qrCode = $qrCodeQuery->first();
         }
 
         if (! $qrCode || ! $qrCode->isValid()) {
             return null;
         }
 
+        return $this->processResolvedQrCode($qrCode, $request, url('/affiliate/track/'.$trackingData));
+    }
+
+    /**
+     * Process a short QR landing where the QR code has already been resolved.
+     */
+    public function processQrCodeLanding(AffiliateQrCode $qrCode, Request $request): ?array
+    {
+        if (! $qrCode->isValid()) {
+            return null;
+        }
+
+        return $this->processResolvedQrCode($qrCode, $request, $qrCode->qr_url ?: $request->fullUrl());
+    }
+
+    private function processResolvedQrCode(AffiliateQrCode $qrCode, Request $request, string $trackingUrl): array
+    {
         // Get or create customer session
         $sessionToken = $this->getOrCreateCustomerSession($request);
 
@@ -238,7 +262,7 @@ class AffiliateQrCodeService
             'customer_id' => $currentCustomerId, // Save customer_id if logged in, null otherwise
             'session_id' => $sessionToken,
             'scan_token' => $this->generateScanToken(),
-            'tracking_url' => url('/affiliate/track/'.$trackingData),
+            'tracking_url' => $trackingUrl,
             'device_id' => $this->getDeviceId($request),
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),

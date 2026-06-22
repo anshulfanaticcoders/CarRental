@@ -20,16 +20,16 @@
             <div class="relative z-10 max-w-[min(92%,1200px)] mx-auto py-4 md:py-6">
                 <div class="flex flex-col md:flex-row justify-between md:items-center gap-3">
                     <div>
-                        <h1 class="text-xl md:text-[1.75rem] font-[800] text-white mb-0.5">QR Codes</h1>
-                        <p class="text-[0.85rem] text-slate-400">Manage your location QR codes and view performance.</p>
+                        <h1 class="text-xl md:text-[1.75rem] font-[800] text-white mb-0.5">{{ pageTitle }}</h1>
+                        <p class="text-[0.85rem] text-slate-400">{{ pageSubtitle }}</p>
                     </div>
-                    <button @click="isVerified && toggleCreateForm()"
+                    <button @click="handlePrimaryAction"
                         :disabled="!isVerified"
                         :class="[
                             'inline-flex items-center gap-1.5 px-4 py-2.5 text-[0.8rem] font-bold text-white rounded-[10px] bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-[0_4px_14px_rgba(6,182,212,0.25)] transition-all duration-250',
                             isVerified ? 'hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(6,182,212,0.35)] cursor-pointer' : 'opacity-50 cursor-not-allowed'
                         ]">
-                        + New QR
+                        {{ primaryActionLabel }}
                     </button>
                 </div>
             </div>
@@ -44,17 +44,17 @@
                     <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
                         <QrCode class="w-8 h-8 text-slate-400" :stroke-width="1.5" />
                     </div>
-                    <h3 class="text-lg font-bold text-slate-700 mb-1">No QR codes yet</h3>
-                    <p class="text-sm text-slate-400 mb-4">Create your first QR code to start tracking customer scans and earning commissions.</p>
+                    <h3 class="text-lg font-bold text-slate-700 mb-1">{{ emptyTitle }}</h3>
+                    <p class="text-sm text-slate-400 mb-4">{{ emptyCopy }}</p>
                     <button @click="isVerified && openCreateForm()"
                         :disabled="!isVerified"
                         :class="[
                             'inline-flex items-center gap-2 px-5 py-3 text-sm font-bold text-white rounded-xl bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] shadow-[0_4px_14px_rgba(21,59,79,0.18)] transition-all',
                             isVerified ? 'hover:-translate-y-0.5 cursor-pointer' : 'opacity-50 cursor-not-allowed'
                         ]">
-                        Create QR Code
+                        {{ emptyButtonLabel }}
                     </button>
-                    <p v-if="!isVerified" class="text-xs text-amber-600 mt-2">Your account must be approved before you can create QR codes.</p>
+                    <p v-if="!isVerified" class="text-xs text-amber-600 mt-2">Your account must be approved before you can create {{ isInfluencerAffiliate ? 'share links' : 'QR codes' }}.</p>
                 </div>
 
                 <!-- QR Cards Grid -->
@@ -81,8 +81,8 @@
                         <div class="p-4">
                             <h3 class="font-bold text-[0.9rem] text-[#153b4f] mb-0.5">{{ qr.label || qr.short_code }}</h3>
                             <div class="text-[0.75rem] text-slate-500 mb-3.5 flex items-center gap-1">
-                                <MapPin class="w-3.5 h-3.5 shrink-0" />
-                                {{ qr.location ? [qr.location.name, qr.location.city].filter(Boolean).join(', ') : 'No location' }}
+                                <component :is="isInfluencerAffiliate ? Link : MapPin" class="w-3.5 h-3.5 shrink-0" />
+                                {{ qrLocationLabel(qr) }}
                             </div>
 
                             <!-- Mini Stats -->
@@ -197,16 +197,16 @@
         <section v-if="showCreateForm && isVerified" class="bg-white pb-4">
             <div class="max-w-[min(92%,1200px)] mx-auto">
                 <div class="mb-3">
-                    <span class="text-[0.76rem] font-bold tracking-[0.12em] uppercase text-cyan-500">New QR Code</span>
+                    <span class="text-[0.76rem] font-bold tracking-[0.12em] uppercase text-cyan-500">{{ createEyebrow }}</span>
                     <h2 class="text-lg font-[800] text-[#153b4f]">
-                        Create a QR code for <span class="bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] bg-clip-text text-transparent">a location.</span>
+                        {{ createHeadingPrefix }} <span class="bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] bg-clip-text text-transparent">{{ createHeadingAccent }}</span>
                     </h2>
                 </div>
 
                 <!-- Info Box -->
                 <div class="max-w-[620px] mb-3 flex items-start gap-2.5 px-3.5 py-2.5 bg-sky-50 border border-sky-200 rounded-xl text-[0.78rem] text-sky-700">
                     <Info class="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
-                    <span>Each QR code is linked to one location. Place it where customers can scan it (reception desk, menu, counter). When scanned, customers get a discount and you earn a commission on their booking.</span>
+                    <span>{{ createInfoCopy }}</span>
                 </div>
 
                 <div class="max-w-[620px] bg-white border border-[rgba(15,23,42,0.07)] rounded-[20px] shadow-[0_1px_2px_rgba(21,59,79,0.03),0_8px_24px_rgba(21,59,79,0.06)] p-5">
@@ -215,7 +215,7 @@
                     </div>
 
                     <!-- Location Picker -->
-                    <div class="mb-3.5">
+                    <div v-if="!isInfluencerAffiliate" class="mb-3.5">
                         <label class="block text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Select Location</label>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <button v-for="loc in locations" :key="loc.id"
@@ -245,7 +245,7 @@
                     </div>
 
                     <!-- Existing Location Summary -->
-                    <div v-if="selectedExistingLocation" class="mb-3.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div v-if="!isInfluencerAffiliate && selectedExistingLocation" class="mb-3.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
                         <div class="text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide mb-1">Location Details</div>
                         <div class="text-sm text-[#153b4f] font-medium">{{ selectedExistingLocation.name }}</div>
                         <div class="text-[0.78rem] text-slate-500 mt-0.5">{{ [selectedExistingLocation.address_line_1, selectedExistingLocation.city, selectedExistingLocation.state, selectedExistingLocation.country].filter(Boolean).join(', ') }}</div>
@@ -253,7 +253,7 @@
                     </div>
 
                     <!-- New Location: Google Places Search -->
-                    <div v-if="selectedLocation === 'new'" class="mb-3.5 space-y-3">
+                    <div v-if="!isInfluencerAffiliate && selectedLocation === 'new'" class="mb-3.5 space-y-3">
                         <div>
                             <label class="block text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide mb-1">Location Name</label>
                             <input v-model="qrForm.location_name" type="text" placeholder="e.g. Hotel Lobby"
@@ -328,8 +328,8 @@
 
                     <!-- QR Code Label -->
                     <div class="mb-3.5">
-                        <label class="block text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide mb-1">QR Code Label</label>
-                        <input v-model="qrForm.label" type="text" placeholder="e.g. Restaurant Terrace"
+                        <label class="block text-[0.7rem] font-semibold text-slate-500 uppercase tracking-wide mb-1">{{ labelFieldTitle }}</label>
+                        <input v-model="qrForm.label" type="text" :placeholder="labelPlaceholder"
                             class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 outline-none transition-all hover:border-[#153b4f] focus:ring-2 focus:ring-[#2ea7ad] focus:border-transparent focus:bg-white" />
                         <p v-if="qrForm.errors.label" class="text-red-500 text-xs mt-1">{{ qrForm.errors.label }}</p>
                     </div>
@@ -339,7 +339,7 @@
                         <button @click="submitQrForm" :disabled="qrForm.processing"
                             class="inline-flex items-center justify-center gap-2 px-5 py-3 text-[0.88rem] font-bold text-white rounded-xl bg-gradient-to-br from-[#153b4f] to-[#2ea7ad] shadow-[0_4px_14px_rgba(21,59,79,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(21,59,79,0.22)] disabled:opacity-50">
                             <span v-if="qrForm.processing">Creating...</span>
-                            <span v-else>Generate QR Code</span>
+                            <span v-else>{{ submitButtonLabel }}</span>
                         </button>
                         <button @click="showCreateForm = false"
                             class="inline-flex items-center justify-center gap-2 px-5 py-3 text-[0.88rem] font-bold text-[#153b4f] bg-transparent border-[1.5px] border-[rgba(15,23,42,0.12)] rounded-xl transition-all hover:border-[#153b4f] hover:bg-[rgba(21,59,79,0.03)]">
@@ -380,6 +380,30 @@ const selectedLocation = ref(null);
 const expandedQr = ref(null);
 const shareMenuQr = ref(null);
 const deletingQrId = ref(null);
+const isInfluencerAffiliate = computed(() => props.business?.business_type === 'influencer');
+const influencerShareQr = computed(() => (props.qrCodes || []).find(qr => !qr.location_id) || (props.qrCodes || [])[0] || null);
+const pageTitle = computed(() => isInfluencerAffiliate.value ? 'Share Link' : 'QR Codes');
+const pageSubtitle = computed(() => isInfluencerAffiliate.value
+    ? 'Manage your influencer share link, QR code, and performance.'
+    : 'Manage your location QR codes and view performance.');
+const primaryActionLabel = computed(() => {
+    if (!isInfluencerAffiliate.value) return '+ New QR';
+    return influencerShareQr.value ? 'Copy share link' : 'Create share link';
+});
+const emptyTitle = computed(() => isInfluencerAffiliate.value ? 'No share link yet' : 'No QR codes yet');
+const emptyCopy = computed(() => isInfluencerAffiliate.value
+    ? 'Create your influencer share link to start tracking clicks, bookings, and commissions from social media.'
+    : 'Create your first QR code to start tracking customer scans and earning commissions.');
+const emptyButtonLabel = computed(() => isInfluencerAffiliate.value ? 'Create Share Link' : 'Create QR Code');
+const createEyebrow = computed(() => isInfluencerAffiliate.value ? 'New Share Link' : 'New QR Code');
+const createHeadingPrefix = computed(() => isInfluencerAffiliate.value ? 'Create your' : 'Create a QR code for');
+const createHeadingAccent = computed(() => isInfluencerAffiliate.value ? 'social share link.' : 'a location.');
+const createInfoCopy = computed(() => isInfluencerAffiliate.value
+    ? 'Your influencer link is not tied to a physical location. Share it on Instagram, Facebook, TikTok, newsletters, or your bio. We track the visit and credit your commission when the user books.'
+    : 'Each QR code is linked to one location. Place it where customers can scan it (reception desk, menu, counter). When scanned, customers get a discount and you earn a commission on their booking.');
+const labelFieldTitle = computed(() => isInfluencerAffiliate.value ? 'Share Link Label' : 'QR Code Label');
+const labelPlaceholder = computed(() => isInfluencerAffiliate.value ? 'Influencer Share Link' : 'e.g. Restaurant Terrace');
+const submitButtonLabel = computed(() => isInfluencerAffiliate.value ? 'Create Share Link' : 'Generate QR Code');
 
 function toggleQrStats(id) {
     expandedQr.value = expandedQr.value === id ? null : id;
@@ -415,9 +439,30 @@ const selectedExistingLocation = computed(() => {
 
 function openCreateForm() {
     showCreateForm.value = true;
+    if (isInfluencerAffiliate.value) {
+        selectedLocation.value = null;
+        qrForm.location_id = null;
+        if (!qrForm.label) {
+            qrForm.label = 'Influencer Share Link';
+        }
+        destroyMap();
+        destroyAutocomplete();
+        return;
+    }
+
     if (!selectedLocation.value) {
         selectedLocation.value = props.locations?.[0]?.id || 'new';
     }
+}
+
+function handlePrimaryAction() {
+    if (!isVerified.value) return;
+    if (isInfluencerAffiliate.value && influencerShareQr.value) {
+        copyLink(influencerShareQr.value);
+        return;
+    }
+
+    toggleCreateForm();
 }
 
 function toggleCreateForm() {
@@ -430,6 +475,8 @@ function toggleCreateForm() {
 }
 
 watch(selectedLocation, (val) => {
+    if (isInfluencerAffiliate.value) return;
+
     if (val === 'new') {
         qrForm.location_id = 'new';
         qrForm.location_name = '';
@@ -580,6 +627,8 @@ function handleClickOutside(e) {
 
 onMounted(async () => {
     document.addEventListener('click', handleClickOutside);
+    if (isInfluencerAffiliate.value) return;
+
     try {
         await loadGoogleMaps();
         await google.maps.importLibrary('places');
@@ -595,6 +644,21 @@ onUnmounted(() => {
 });
 
 const submitQrForm = () => {
+    if (isInfluencerAffiliate.value) {
+        qrForm.location_id = null;
+        qrForm.location_name = '';
+        qrForm.address_line_1 = '';
+        qrForm.city = '';
+        qrForm.state = '';
+        qrForm.country = '';
+        qrForm.postal_code = '';
+        qrForm.latitude = null;
+        qrForm.longitude = null;
+        if (!qrForm.label.trim()) {
+            qrForm.label = 'Influencer Share Link';
+        }
+    }
+
     qrForm.post(route('affiliate.qr-codes.store', { locale: locale.value }), {
         preserveScroll: true,
         onSuccess: () => {
@@ -604,10 +668,10 @@ const submitQrForm = () => {
             addressConfirmed.value = false;
             destroyMap();
             destroyAutocomplete();
-            toast.success('QR code created successfully!');
+            toast.success(isInfluencerAffiliate.value ? 'Share link created successfully!' : 'QR code created successfully!');
         },
         onError: () => {
-            toast.error('Failed to create QR code. Please check the form.');
+            toast.error(isInfluencerAffiliate.value ? 'Failed to create share link. Please try again.' : 'Failed to create QR code. Please check the form.');
         },
     });
 };
@@ -660,6 +724,11 @@ function getStatusBadgeClass(status) {
 function formatNumber(val) {
     const num = parseInt(val || 0);
     return num >= 1000 ? (num / 1000).toFixed(1) + 'k' : num.toString();
+}
+
+function qrLocationLabel(qr) {
+    if (isInfluencerAffiliate.value) return 'Social share link';
+    return qr.location ? [qr.location.name, qr.location.city].filter(Boolean).join(', ') : 'No location';
 }
 
 function getShareableLink(qr) {

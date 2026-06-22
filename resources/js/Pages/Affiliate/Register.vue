@@ -13,12 +13,12 @@
                     Become a Vrooem <span class="text-cyan-300">Partner.</span>
                 </h1>
                 <p class="text-[0.9rem] text-slate-400 leading-relaxed mb-6 max-w-[520px]">
-                    Earn commissions on every car rental booking your guests make through your QR codes. Set up takes just 3 minutes.
+                    {{ heroCopy }}
                 </p>
 
                 <!-- Perk Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div v-for="perk in perks" :key="perk.title"
+                    <div v-for="perk in registrationPerks" :key="perk.title"
                         class="bg-[rgba(21,59,79,0.28)] backdrop-blur-[16px] border border-[rgba(6,182,212,0.08)] rounded-2xl p-4 text-center transition-all duration-400 hover:border-[rgba(6,182,212,0.18)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
                         <div class="w-[42px] h-[42px] rounded-xl flex items-center justify-center text-lg bg-[rgba(6,182,212,0.12)] border border-[rgba(6,182,212,0.1)] mx-auto mb-2.5">
                             <component :is="perkIconMap[perk.icon]" class="w-5 h-5 text-cyan-400" />
@@ -137,12 +137,12 @@
                                     <!-- Step 2: Business -->
                                     <div v-show="currentStep === 2">
                                         <div class="mb-4">
-                                            <label class="af-label">Business Name</label>
-                                            <div class="relative">
-                                                <span class="af-icon"><Building2 class="w-4 h-4" /></span>
-                                                <input v-model="form.business_name" type="text" class="af-input" placeholder="Hotel Playa del Sol" />
-                                            </div>
-                                            <p v-if="stepErrors.business_name || form.errors.business_name" class="text-red-500 text-xs mt-1">{{ stepErrors.business_name || form.errors.business_name }}</p>
+                                                <label class="af-label">{{ businessNameLabel }}</label>
+                                                <div class="relative">
+                                                    <span class="af-icon"><Building2 class="w-4 h-4" /></span>
+                                                    <input v-model="form.business_name" type="text" class="af-input" :placeholder="businessNamePlaceholder" />
+                                                </div>
+                                                <p v-if="stepErrors.business_name || form.errors.business_name" class="text-red-500 text-xs mt-1">{{ stepErrors.business_name || form.errors.business_name }}</p>
                                         </div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <div>
@@ -155,6 +155,7 @@
                                                     <option value="tour_operator">Tour Operator</option>
                                                     <option value="restaurant">Restaurant</option>
                                                     <option value="retail">Retail Shop</option>
+                                                    <option value="influencer">Influencer / Creator</option>
                                                     <option value="other">Other</option>
                                                 </select>
                                                 <p v-if="stepErrors.business_type || form.errors.business_type" class="text-red-500 text-xs mt-1">{{ stepErrors.business_type || form.errors.business_type }}</p>
@@ -265,7 +266,12 @@
                                             <strong>1. Commission Structure</strong><br />
                                             You will receive a 3% commission on the base price of each eligible booking made through your unique QR codes.<br /><br />
                                             <strong>2. QR Code Usage</strong><br />
-                                            QR codes must be displayed only at registered locations. Codes are geo-restricted to ensure fair usage.<br /><br />
+                                            <template v-if="isInfluencerAffiliate">
+                                                Share links and QR codes may be used on your social channels, stories, profiles, newsletters, and creator content. Each booking must come from your own approved share link or QR code.<br /><br />
+                                            </template>
+                                            <template v-else>
+                                                QR codes must be displayed only at registered locations. Codes are geo-restricted to ensure fair usage.<br /><br />
+                                            </template>
                                             <strong>3. Payouts</strong><br />
                                             Commissions are paid monthly via bank transfer, subject to a minimum payout of &euro;50.<br /><br />
                                             <strong>4. Termination</strong><br />
@@ -307,12 +313,9 @@
                             <div v-if="currentStep === 1" key="step1" class="af-info-panel">
                                 <span class="af-info-eyebrow">Partner Program</span>
                                 <h3 class="af-info-title">Why Partner With Vrooem?</h3>
-                                <p class="af-info-text">Turn your foot traffic into a revenue stream. Every guest who scans your QR code and books a car earns you a commission.</p>
+                                <p class="af-info-text">{{ stepOneIntro }}</p>
                                 <ul class="af-info-list">
-                                    <li>3% commission on every completed booking</li>
-                                    <li>No upfront costs or monthly fees</li>
-                                    <li>Real-time tracking of scans and earnings</li>
-                                    <li>Dedicated partner dashboard</li>
+                                    <li v-for="item in stepOneBenefits" :key="item">{{ item }}</li>
                                 </ul>
                                 <div class="af-info-stat">
                                     <div class="af-info-stat-value">500+</div>
@@ -323,28 +326,14 @@
                             <!-- Step 2: How It Works -->
                             <div v-else-if="currentStep === 2" key="step2" class="af-info-panel">
                                 <span class="af-info-eyebrow">How It Works</span>
-                                <h3 class="af-info-title">Simple. Smart. Scalable.</h3>
-                                <p class="af-info-text">Set up your business profile and start generating QR codes for your locations in minutes.</p>
+                                <h3 class="af-info-title">{{ stepTwoTitle }}</h3>
+                                <p class="af-info-text">{{ stepTwoIntro }}</p>
                                 <div class="af-info-steps">
-                                    <div class="af-info-step">
-                                        <div class="af-info-step-num">1</div>
+                                    <div v-for="(step, index) in stepTwoItems" :key="step.title" class="af-info-step">
+                                        <div class="af-info-step-num">{{ index + 1 }}</div>
                                         <div>
-                                            <strong>Register your business</strong>
-                                            <p>Add your business details and locations</p>
-                                        </div>
-                                    </div>
-                                    <div class="af-info-step">
-                                        <div class="af-info-step-num">2</div>
-                                        <div>
-                                            <strong>Generate QR codes</strong>
-                                            <p>Create geo-targeted codes for each location</p>
-                                        </div>
-                                    </div>
-                                    <div class="af-info-step">
-                                        <div class="af-info-step-num">3</div>
-                                        <div>
-                                            <strong>Earn commissions</strong>
-                                            <p>Get paid for every booking from your QR codes</p>
+                                            <strong>{{ step.title }}</strong>
+                                            <p>{{ step.description }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -398,7 +387,7 @@
                                         <div class="af-info-timeline-dot"></div>
                                         <div>
                                             <strong>Start earning</strong>
-                                            <p>Create QR codes and earn commissions</p>
+                                            <p>{{ finalTimelineCopy }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -442,10 +431,17 @@ const payoutCurrencyOptions = computed(() => getCurrencyOptions(usePage().props.
 const page = usePage();
 const locale = computed(() => page.props.locale || 'en');
 
-const perks = [
+const organizationPerks = [
     { icon: 'DollarSign', title: 'Earn Commissions', desc: 'Get paid for every booking from your location.' },
     { icon: 'Smartphone', title: 'Smart QR Codes', desc: 'Geo-targeted with real-time analytics.' },
     { icon: 'BarChart3', title: 'Live Dashboard', desc: 'Track scans, bookings & revenue.' },
+    { icon: 'Landmark', title: 'Bank Payouts', desc: 'Direct monthly bank transfers.' },
+];
+
+const influencerPerks = [
+    { icon: 'DollarSign', title: 'Earn Commissions', desc: 'Get paid for bookings from your audience.' },
+    { icon: 'Smartphone', title: 'Shareable Link', desc: 'One link and QR for every social channel.' },
+    { icon: 'BarChart3', title: 'Live Dashboard', desc: 'Track clicks, bookings & revenue.' },
     { icon: 'Landmark', title: 'Bank Payouts', desc: 'Direct monthly bank transfers.' },
 ];
 
@@ -480,6 +476,38 @@ const form = useForm({
     bank_account_name: '',
     currency: 'EUR',
 });
+
+const isInfluencerAffiliate = computed(() => form.business_type === 'influencer');
+const heroCopy = computed(() => isInfluencerAffiliate.value
+    ? 'Earn commissions on every car rental booking your audience makes through your share link or QR code. Set up takes just 3 minutes.'
+    : 'Earn commissions on every car rental booking your guests make through your QR codes. Set up takes just 3 minutes.');
+const registrationPerks = computed(() => isInfluencerAffiliate.value ? influencerPerks : organizationPerks);
+const businessNameLabel = computed(() => isInfluencerAffiliate.value ? 'Creator / Brand Name' : 'Business Name');
+const businessNamePlaceholder = computed(() => isInfluencerAffiliate.value ? 'e.g. Anshul Travel' : 'Hotel Playa del Sol');
+const stepOneIntro = computed(() => isInfluencerAffiliate.value
+    ? 'Turn your audience into a revenue stream. Every follower who books through your share link can earn you a commission.'
+    : 'Turn your foot traffic into a revenue stream. Every guest who scans your QR code and books a car earns you a commission.');
+const stepOneBenefits = computed(() => isInfluencerAffiliate.value
+    ? ['3% commission on every completed booking', 'No upfront costs or monthly fees', 'One share link for Instagram, Facebook, TikTok and more', 'Dedicated creator dashboard']
+    : ['3% commission on every completed booking', 'No upfront costs or monthly fees', 'Real-time tracking of scans and earnings', 'Dedicated partner dashboard']);
+const stepTwoTitle = computed(() => isInfluencerAffiliate.value ? 'Share. Track. Earn.' : 'Simple. Smart. Scalable.');
+const stepTwoIntro = computed(() => isInfluencerAffiliate.value
+    ? 'Set up your creator profile and use one permanent share link across your social channels.'
+    : 'Set up your business profile and start generating QR codes for your locations in minutes.');
+const stepTwoItems = computed(() => isInfluencerAffiliate.value
+    ? [
+        { title: 'Register your creator profile', description: 'Add your creator or brand details' },
+        { title: 'Get your share link', description: 'Use one link and QR code across social media' },
+        { title: 'Earn commissions', description: 'Get paid for every booking from your audience' },
+    ]
+    : [
+        { title: 'Register your business', description: 'Add your business details and locations' },
+        { title: 'Generate QR codes', description: 'Create geo-targeted codes for each location' },
+        { title: 'Earn commissions', description: 'Get paid for every booking from your QR codes' },
+    ]);
+const finalTimelineCopy = computed(() => isInfluencerAffiliate.value
+    ? 'Share your link and earn commissions'
+    : 'Create QR codes and earn commissions');
 
 const strengthColors = {
     1: 'bg-red-400',
@@ -528,7 +556,11 @@ const validateStep = (step) => {
     }
 
     if (step === 2) {
-        if (!form.business_name.trim()) errors.business_name = 'Business name is required.';
+        if (!form.business_name.trim()) {
+            errors.business_name = isInfluencerAffiliate.value
+                ? 'Creator / brand name is required.'
+                : 'Business name is required.';
+        }
         if (!form.business_type) errors.business_type = 'Select a business type.';
         if (!form.contact_phone.trim()) {
             errors.contact_phone = 'Phone number is required.';

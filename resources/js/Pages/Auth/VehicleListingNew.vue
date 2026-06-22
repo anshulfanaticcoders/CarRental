@@ -1555,10 +1555,11 @@ onUnmounted(() => { document.body.style.overflow = ''; });
 .vln-upload-browse { color: #0891b2; text-decoration: underline; cursor: pointer; }
 .vln-upload-hint { font-size: 0.78rem; color: #64748b; margin-top: 0.2rem; }
 .vln-preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
-.vln-preview { position: relative; aspect-ratio: 4/3; border-radius: 10px; overflow: hidden; border: 2px solid #e2e8f0; }
+.vln-preview { position: relative; aspect-ratio: 4/3; border-radius: 10px; overflow: hidden; border: 2px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc, #e0f7fa); }
+.vln-preview::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.75), transparent 48%); }
 .vln-preview.primary { border-color: #06b6d4; }
-.vln-preview img { width: 100%; height: 100%; object-fit: cover; }
-.vln-preview-actions { position: absolute; top: 4px; right: 4px; display: flex; gap: 3px; opacity: 0; transition: opacity 0.2s; }
+.vln-preview img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; padding: 0.35rem; }
+.vln-preview-actions { position: absolute; z-index: 2; top: 4px; right: 4px; display: flex; gap: 3px; opacity: 0; transition: opacity 0.2s; }
 .vln-preview:hover .vln-preview-actions { opacity: 1; }
 .vln-preview-btn { width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.5); border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .vln-preview-btn.active { background: #06b6d4; }

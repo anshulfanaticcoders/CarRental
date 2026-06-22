@@ -83,7 +83,7 @@
                     <form @submit.prevent="submitBusiness">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Business Name</label>
+                                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{{ businessNameLabel }}</label>
                                 <input v-model="businessForm.business_name" type="text"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 outline-none transition-all duration-200 hover:border-[#153b4f] focus:ring-2 focus:ring-[#2ea7ad] focus:border-transparent focus:bg-white" />
                                 <p v-if="businessForm.errors.business_name" class="text-red-500 text-xs mt-1">{{ businessForm.errors.business_name }}</p>
@@ -99,6 +99,7 @@
                                     <option value="tour_operator">Tour Operator</option>
                                     <option value="restaurant">Restaurant</option>
                                     <option value="retail">Retail Shop</option>
+                                    <option value="influencer">Influencer / Creator</option>
                                     <option value="other">Other</option>
                                 </select>
                             </div>
@@ -336,6 +337,9 @@ const businessForm = useForm({
     country: props.business.country || '',
     legal_address: props.business.legal_address || '',
 });
+
+const isInfluencerAffiliate = computed(() => businessForm.business_type === 'influencer');
+const businessNameLabel = computed(() => isInfluencerAffiliate.value ? 'Creator / Brand Name' : 'Business Name');
 
 const submitBusiness = () => {
     businessForm.put(route('affiliate.settings.update', { locale: locale.value }), { preserveScroll: true });

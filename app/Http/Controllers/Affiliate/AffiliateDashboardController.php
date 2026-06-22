@@ -241,14 +241,17 @@ class AffiliateDashboardController extends Controller
     {
         $user = $request->user();
         $business = $user->affiliateBusiness;
+        $isInfluencer = $business->business_type === 'influencer';
 
         if ($business->verification_status !== 'verified') {
-            return back()->with('error', 'Your account must be approved before creating QR codes.');
+            return back()->with('error', $isInfluencer
+                ? 'Your account must be approved before creating share links.'
+                : 'Your account must be approved before creating QR codes.');
         }
 
         $validated = $request->validate([
-            'label' => 'required|string|max:255',
-            'location_id' => 'required',
+            'label' => [$isInfluencer ? 'nullable' : 'required', 'string', 'max:255'],
+            'location_id' => $isInfluencer ? 'nullable' : 'required',
             'location_name' => 'required_if:location_id,new|nullable|string|max:255',
             'address_line_1' => 'required_if:location_id,new|nullable|string|max:255',
             'city' => 'required_if:location_id,new|nullable|string|max:100',
@@ -260,10 +263,19 @@ class AffiliateDashboardController extends Controller
         ]);
 
         $locationData = [
-            'label' => $validated['label'],
+            'label' => ($validated['label'] ?? null) ?: 'Influencer Share Link',
         ];
 
-        if ($validated['location_id'] === 'new') {
+        if ($isInfluencer) {
+            $existingQrCode = $business->qrCodes()
+                ->whereNull('location_id')
+                ->where('status', 'active')
+                ->first();
+
+            if ($existingQrCode) {
+                return back()->with('success', 'Your influencer share link is already active.');
+            }
+        } elseif ($validated['location_id'] === 'new') {
             $locationCode = 'LOC-'.strtoupper(Str::random(8));
 
             $location = $business->locations()->create([
@@ -300,7 +312,7 @@ class AffiliateDashboardController extends Controller
             ]);
         }
 
-        return back()->with('success', 'QR code created successfully!');
+        return back()->with('success', $isInfluencer ? 'Share link created successfully!' : 'QR code created successfully!');
     }
 
     public function destroyQrCode(Request $request, string $locale, AffiliateQrCode $qrCode)

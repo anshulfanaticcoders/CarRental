@@ -28,7 +28,7 @@
                         <NotificationBell />
                         <a :href="route('affiliate.qr-codes', { locale })"
                             class="inline-flex items-center gap-1.5 px-4 py-2.5 text-[0.8rem] font-bold text-white rounded-[10px] bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-[0_4px_14px_rgba(6,182,212,0.25)] transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(6,182,212,0.35)]">
-                            + Create QR
+                            {{ primaryActionLabel }}
                         </a>
                     </div>
                 </div>
@@ -98,7 +98,7 @@
                                 </div>
                             </div>
                             <div v-if="!recentCommissions.length" class="py-6 text-center text-slate-400 text-sm">
-                                No commissions yet. Share your QR codes to start earning!
+                                {{ emptyCommissionCopy }}
                             </div>
                         </div>
                     </div>
@@ -106,7 +106,7 @@
                     <!-- Active QR Codes -->
                     <div class="bg-white border border-[rgba(15,23,42,0.07)] rounded-[20px] shadow-[0_1px_2px_rgba(21,59,79,0.03),0_8px_24px_rgba(21,59,79,0.06)]">
                         <div class="flex justify-between items-center py-3.5 px-4 border-b border-[rgba(15,23,42,0.06)]">
-                            <h3 class="text-[0.9rem] font-bold text-[#153b4f]">Active QR Codes</h3>
+                            <h3 class="text-[0.9rem] font-bold text-[#153b4f]">{{ activeLinkTitle }}</h3>
                             <a :href="route('affiliate.qr-codes', { locale })"
                                 class="text-[0.78rem] font-semibold text-[#2ea7ad] hover:bg-[rgba(46,167,173,0.06)] px-3 py-1.5 rounded-lg transition-colors">
                                 Manage
@@ -127,7 +127,7 @@
                                 </span>
                             </div>
                             <div v-if="!qrCodes.length" class="py-6 text-center text-slate-400 text-sm">
-                                No QR codes yet. Create your first QR code to start tracking scans.
+                                {{ emptyQrCopy }}
                             </div>
                         </div>
                     </div>
@@ -165,6 +165,15 @@ const props = defineProps({
 });
 
 const iconMap = { Euro, Hourglass, Camera, Target };
+const isInfluencerAffiliate = computed(() => props.business?.business_type === 'influencer');
+const primaryActionLabel = computed(() => isInfluencerAffiliate.value ? 'Create share link' : '+ Create QR');
+const emptyCommissionCopy = computed(() => isInfluencerAffiliate.value
+    ? 'No commissions yet. Share your link to start earning!'
+    : 'No commissions yet. Share your QR codes to start earning!');
+const activeLinkTitle = computed(() => isInfluencerAffiliate.value ? 'Active Share Link' : 'Active QR Codes');
+const emptyQrCopy = computed(() => isInfluencerAffiliate.value
+    ? 'No share link yet. Create your influencer link to start tracking clicks.'
+    : 'No QR codes yet. Create your first QR code to start tracking scans.');
 
 const statCards = computed(() => [
     { icon: 'Euro', label: 'Total Revenue', value: '\u20AC' + formatCurrency(props.stats.total_commissions) },
