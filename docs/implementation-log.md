@@ -624,3 +624,8 @@ Concise durable memory for significant completed work.
 - Scope: `CarRental` admin affiliate partner delete and admin user-management delete.
 - Decision: added shared affiliate deletion service so deleting an affiliate partner also deletes the linked affiliate login user, and deleting an affiliate user from User Management also deletes the linked partner, QR codes, locations, and business model. Payout/commission history remains attached to the deleted partner for audit.
 - Verification: `AdminAffiliateDeleteTest` passed with 2 tests/16 assertions; `AffiliateRegistrationTest` passed with 15 tests/71 assertions; `PasswordResetTest` passed with 5 tests/13 assertions; `php artisan migrate --pretend` confirmed only the affiliate contact email index drop; Pint passed for touched PHP/test files.
+
+### 2026-06-21 - Affiliate profile route redirect
+- Scope: `CarRental` shared profile route and authenticated headers.
+- Decision: affiliate users are redirected from the customer `/profile` route to affiliate settings, and shared authenticated header profile links now resolve to affiliate settings for affiliate users instead of the customer profile page.
+- Verification: `ProfileTest` passed with 7 tests/35 assertions including affiliate redirect coverage; Pint passed for touched PHP/test files; `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings.

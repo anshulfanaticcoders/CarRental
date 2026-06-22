@@ -230,7 +230,13 @@ const loginHref = computed(() => loginHrefForPage(currentLocale.value, page.url)
 const isVendor = computed(() => page.props.auth?.user?.role === 'vendor');
 const isCustomer = computed(() => page.props.auth?.user?.role === 'customer');
 const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
+const isAffiliate = computed(() => page.props.auth?.user?.role === 'affiliate');
 const authUser = computed(() => page.props.auth?.user || null);
+const accountProfileHref = computed(() => (
+  isAffiliate.value
+    ? route('affiliate.settings', { locale: currentLocale.value })
+    : route('profile.edit', { locale: currentLocale.value })
+));
 
 // Language switcher
 const availableLocales = {
@@ -428,7 +434,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
           <div v-if="isAuthenticated" ref="desktopDropdownRef" class="hdr-user-wrap hidden lg:inline-flex">
             <button type="button" class="hdr-avatar" @click="showingDesktopDropdown = !showingDesktopDropdown">{{ userInitials }}</button>
             <div v-if="showingDesktopDropdown" class="hdr-user-menu">
-              <Link v-if="!isAdmin" :href="route('profile.edit', { locale: currentLocale })" class="hdr-user-item" @click="showingDesktopDropdown = false">
+              <Link v-if="!isAdmin" :href="accountProfileHref" class="hdr-user-item" @click="showingDesktopDropdown = false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 Profile
               </Link>
@@ -469,7 +475,7 @@ watch(() => showingNavigationDropdown.value, (isOpen) => {
               <svg class="oc-chevron" :class="{ 'is-open': showingAccountDropdown }" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15l6-6 6 6" /></svg>
             </button>
             <div v-if="showingAccountDropdown" class="oc-account-menu">
-              <Link v-if="!isAdmin" :href="route('profile.edit', { locale: currentLocale })" class="oc-menu-item">Profile</Link>
+              <Link v-if="!isAdmin" :href="accountProfileHref" class="oc-menu-item">Profile</Link>
               <Link :href="route('logout', { locale: currentLocale })" method="post" as="button" class="oc-menu-item">Log Out</Link>
             </div>
           </div>

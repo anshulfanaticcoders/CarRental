@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Affiliate\AffiliateBusiness;
 use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\User;
-use Inertia\Testing\AssertableInertia as Assert;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
@@ -22,6 +24,33 @@ class ProfileTest extends TestCase
             ->get(route('profile.edit', ['locale' => 'en']));
 
         $response->assertOk();
+    }
+
+    public function test_affiliate_user_is_redirected_from_customer_profile_to_affiliate_settings(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'affiliate',
+        ]);
+
+        AffiliateBusiness::create([
+            'uuid' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'name' => 'Affiliate Profile Partner',
+            'business_type' => 'travel_agency',
+            'contact_email' => $user->email,
+            'contact_phone' => $user->phone,
+            'city' => 'Antwerp',
+            'country' => 'Belgium',
+            'currency' => 'EUR',
+            'verification_status' => 'verified',
+            'status' => 'active',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('profile.edit', ['locale' => 'en']));
+
+        $response->assertRedirect(route('affiliate.settings', ['locale' => 'en']));
     }
 
     public function test_profile_information_can_be_updated(): void
@@ -125,7 +154,7 @@ class ProfileTest extends TestCase
         ]);
 
         $booking = Booking::create([
-            'booking_number' => 'BKTEST-' . uniqid(),
+            'booking_number' => 'BKTEST-'.uniqid(),
             'customer_id' => $customer->id,
             'vehicle_id' => null,
             'provider_source' => 'internal',

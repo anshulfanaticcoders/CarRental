@@ -3,33 +3,38 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ActivityLogHelper;
+use App\Helpers\ImageCompressionHelper;
 use App\Http\Requests\ProfileUpdateRequest;
-use App\Models\UserProfile;
 use App\Models\User;
 use App\Support\CurrencyRegistry;
-use Illuminate\Http\RedirectResponse;
-use App\Helpers\ImageCompressionHelper;
-use Illuminate\Http\Request; // Make sure to import this
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Http\RedirectResponse; // Make sure to import this
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 class ProfileController extends Controller
 {
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request): Response|RedirectResponse
     {
         // Get the authenticated user with profile relationship
         $user = Auth::user()->load('profile');
         // Or alternatively:
         // $user = $request->user()->load('profile');
+
+        if ($user->role === 'affiliate') {
+            $locale = $request->route('locale') ?? config('app.fallback_locale', 'en');
+
+            return Redirect::route('affiliate.settings', ['locale' => $locale]);
+        }
 
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
@@ -53,7 +58,7 @@ class ProfileController extends Controller
             $user = Auth::user();
 
             $validated = $request->validated();
-            if (!empty($validated['currency'])) {
+            if (! empty($validated['currency'])) {
                 $validated['currency'] = app(CurrencyRegistry::class)->normalize($validated['currency'], 'EUR');
             }
 
@@ -91,7 +96,7 @@ class ProfileController extends Controller
             $profileFields = array_diff(array_keys($validated), $userFields);
             $profileInput = array_intersect_key($validated, array_flip($profileFields));
 
-            if (!empty($profileInput)) {
+            if (! empty($profileInput)) {
                 $user->profile()->updateOrCreate(
                     ['user_id' => $user->id],
                     $profileInput
@@ -125,7 +130,7 @@ class ProfileController extends Controller
 
             // Social auth users (Google, etc.) don't have a known password â€” skip password check
             $hasSocialAccount = \App\Models\SocialAccount::where('user_id', $user->id)->exists();
-            if (!$hasSocialAccount) {
+            if (! $hasSocialAccount) {
                 $request->validate([
                     'password' => ['required', 'current_password'],
                 ]);
@@ -142,6 +147,7 @@ class ProfileController extends Controller
             DB::commit();
             // Log the activity
             ActivityLogHelper::logActivity('delete', 'User Deleted', $user, $request);
+
             return Redirect::to('/');
 
         } catch (ValidationException $e) {
@@ -177,7 +183,7 @@ class ProfileController extends Controller
     //     }
     // }
 
-    //this public function is for fetting current user and user profile data
+    // this public function is for fetting current user and user profile data
     public function show(Request $request)
     {
         try {
@@ -197,42 +203,40 @@ class ProfileController extends Controller
         }
     }
 
-// Add this method to fetch the current user data and render the Booking/Create page
-public function getUserForBooking()
-{
-    $user = Auth::user()->load('profile');
+    // Add this method to fetch the current user data and render the Booking/Create page
+    public function getUserForBooking()
+    {
+        $user = Auth::user()->load('profile');
 
-    return Inertia::render('Booking', [
-        'user' => $user,
-    ]);
-}
-
-
-public function getProfileCompletion($locale)
-{
-    $user = Auth::user()->load('profile');
-
-    $requiredFields = [
-        'first_name', 'last_name', 'email', 'phone',
-        'date_of_birth', 'address_line1', 'city', 'state',
-        'country', 'postal_code', 'tax_identification',
-        'about', 'title', 'gender', 'currency', 'avatar'
-    ];
-
-    $filledFields = 0;
-    foreach ($requiredFields as $field) {
-        if (!empty($user->{$field}) || !empty($user->profile->{$field})) {
-            $filledFields++;
-        }
+        return Inertia::render('Booking', [
+            'user' => $user,
+        ]);
     }
 
-    $totalFields = count($requiredFields);
-    $completionPercentage = round(($filledFields / $totalFields) * 100);
+    public function getProfileCompletion($locale)
+    {
+        $user = Auth::user()->load('profile');
 
-    return response()->json([
-        'status' => 'success',
-        'percentage' => $completionPercentage
-    ], 200);
-}
+        $requiredFields = [
+            'first_name', 'last_name', 'email', 'phone',
+            'date_of_birth', 'address_line1', 'city', 'state',
+            'country', 'postal_code', 'tax_identification',
+            'about', 'title', 'gender', 'currency', 'avatar',
+        ];
 
+        $filledFields = 0;
+        foreach ($requiredFields as $field) {
+            if (! empty($user->{$field}) || ! empty($user->profile->{$field})) {
+                $filledFields++;
+            }
+        }
+
+        $totalFields = count($requiredFields);
+        $completionPercentage = round(($filledFields / $totalFields) * 100);
+
+        return response()->json([
+            'status' => 'success',
+            'percentage' => $completionPercentage,
+        ], 200);
+    }
 }
