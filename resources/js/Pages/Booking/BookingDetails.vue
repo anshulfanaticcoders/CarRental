@@ -347,6 +347,55 @@ const pricingSummary = computed(() => {
 
 const customerSnapshot = computed(() => providerMetadata.value?.customer_snapshot || {});
 
+const supportPhone = '+32493000000';
+const supportEmail = 'info@vrooem.com';
+
+const providerDisplayName = computed(() => {
+  const source = props.booking?.provider_source || '';
+  if (!source) return 'Supplier';
+  return source.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+});
+
+const providerBookingReference = computed(() => (
+  props.booking?.provider_booking_ref
+  || providerMetadata.value?.supplier_booking_id
+  || providerMetadata.value?.gateway_supplier_booking_id
+  || ''
+));
+
+const bookingSupportTitle = computed(() => {
+  const label = _t('customerprofile', 'booking_support');
+  return label && label !== 'booking_support' ? label : 'Need help with this booking?';
+});
+
+const providerOfficeContact = computed(() => {
+  const pickup = pickupDetails.value || {};
+  const dropoff = dropoffDetails.value || {};
+  return {
+    name: pickup.name || dropoff.name || providerDisplayName.value,
+    phone: pickup.telephone || pickup.phone || dropoff.telephone || dropoff.phone || '',
+    email: pickup.email || dropoff.email || '',
+    whatsapp: pickup.whatsapp || dropoff.whatsapp || '',
+  };
+});
+
+const hasProviderOfficeContact = computed(() => (
+  !!providerOfficeContact.value.phone
+  || !!providerOfficeContact.value.email
+  || !!providerOfficeContact.value.whatsapp
+));
+
+const cleanPhoneForHref = (phone) => String(phone || '').replace(/[^\d+]/g, '');
+const cleanPhoneForWhatsApp = (phone) => String(phone || '').replace(/\D/g, '');
+
+const supportWhatsAppUrl = computed(() => {
+  const message = [
+    `Hi Vrooem, I need help with booking ${props.booking?.booking_number || ''}.`,
+    providerBookingReference.value ? `Supplier reference: ${providerBookingReference.value}.` : '',
+  ].filter(Boolean).join(' ');
+  return `https://wa.me/${cleanPhoneForWhatsApp(supportPhone)}?text=${encodeURIComponent(message)}`;
+});
+
 const vehicleImage = computed(() => {
   if (props.vehicle?.images?.length) {
     return props.vehicle.images.find(img => img.image_type === 'primary')?.image_url || props.vehicle.images[0]?.image_url;
@@ -932,6 +981,71 @@ const vendorInitials = computed(() => {
             </div>
           </div>
 
+          <!-- Booking Support -->
+          <div class="bd-card support-card">
+            <div class="bd-card-header">
+              <div class="bd-icon-box bg-[var(--primary-50,#f0f8fc)]">
+                <svg class="w-4 h-4 text-[var(--primary-600,#245f7d)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m-12.728 0a9 9 0 010-12.728m9.9 2.828a5 5 0 010 7.072m-7.072 0a5 5 0 010-7.072M12 13a1 1 0 100-2 1 1 0 000 2z"/></svg>
+              </div>
+              <h3>{{ bookingSupportTitle }}</h3>
+            </div>
+            <div class="bd-card-body space-y-4">
+              <p class="text-sm text-gray-600 leading-relaxed">
+                Use supplier support for pickup desk questions. If the supplier does not respond, contact Vrooem support with the booking and supplier reference.
+              </p>
+
+              <div class="support-ref-grid">
+                <div class="support-ref">
+                  <span>Vrooem booking</span>
+                  <strong>{{ booking?.booking_number }}</strong>
+                </div>
+                <div v-if="providerBookingReference" class="support-ref">
+                  <span>{{ providerDisplayName }} reference</span>
+                  <strong>{{ providerBookingReference }}</strong>
+                </div>
+              </div>
+
+              <div class="support-route">
+                <p class="support-route-title">Vrooem support</p>
+                <p class="support-route-copy">For payment, booking changes, supplier not responding, or urgent help.</p>
+                <div class="support-actions">
+                  <a :href="`tel:${cleanPhoneForHref(supportPhone)}`" class="support-action support-action--primary">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                    Call Vrooem
+                  </a>
+                  <a :href="supportWhatsAppUrl" target="_blank" rel="noopener noreferrer" class="support-action support-action--ghost">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5l-2 4V5a2 2 0 012-2h14a2 2 0 012 2v9a2 2 0 01-2 2H9z"/></svg>
+                    WhatsApp
+                  </a>
+                  <a :href="`mailto:${supportEmail}?subject=Booking ${booking?.booking_number}`" class="support-action support-action--ghost">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    Email
+                  </a>
+                </div>
+              </div>
+
+              <div class="support-provider-box">
+                <div class="support-provider-head">
+                  <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-[var(--primary-700,#1c4d66)]">Supplier support</p>
+                    <p class="mt-1 text-sm font-semibold text-gray-800">{{ providerOfficeContact.name }}</p>
+                  </div>
+                  <span v-if="providerBookingReference" class="support-provider-ref">Ref {{ providerBookingReference }}</span>
+                </div>
+                <template v-if="hasProviderOfficeContact">
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    <a v-if="providerOfficeContact.phone" :href="`tel:${cleanPhoneForHref(providerOfficeContact.phone)}`" class="support-mini-link">{{ providerOfficeContact.phone }}</a>
+                    <a v-if="providerOfficeContact.email" :href="`mailto:${providerOfficeContact.email}`" class="support-mini-link">{{ providerOfficeContact.email }}</a>
+                    <a v-if="providerOfficeContact.whatsapp" :href="`https://wa.me/${cleanPhoneForWhatsApp(providerOfficeContact.whatsapp)}`" target="_blank" rel="noopener noreferrer" class="support-mini-link">WhatsApp supplier</a>
+                  </div>
+                </template>
+                <p v-else class="mt-1 text-sm text-gray-600">
+                  Direct supplier phone/email was not provided in this booking. Use the pickup instructions and supplier reference at the desk. If the supplier does not respond, contact Vrooem support above.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- Booking References -->
           <div class="bd-card">
             <div class="bd-card-header">
@@ -948,6 +1062,10 @@ const vendorInitials = computed(() => {
               <div v-if="booking?.provider_source" class="bd-info-row">
                 <span class="bd-info-label">{{ _t('customerprofile', 'provider') || 'Provider' }}</span>
                 <span class="bd-info-value capitalize">{{ booking.provider_source.replace('_', ' ') }}</span>
+              </div>
+              <div v-if="providerBookingReference" class="bd-info-row">
+                <span class="bd-info-label">Supplier Reference</span>
+                <span class="bd-info-value font-mono text-xs text-[var(--primary-700,#1c4d66)]">{{ providerBookingReference }}</span>
               </div>
               <div v-if="payment?.payment_method" class="bd-info-row">
                 <span class="bd-info-label">{{ _t('customerprofile', 'payment_method') || 'Payment Method' }}</span>
@@ -1276,6 +1394,140 @@ const vendorInitials = computed(() => {
   letter-spacing: 0;
 }
 .bd-card-body { padding: 20px; }
+
+.support-card {
+  border-color: rgba(34, 211, 238, 0.22);
+  box-shadow: 0 14px 34px rgba(21, 59, 79, 0.08);
+}
+.support-ref-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.support-ref {
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.support-ref span {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.support-ref strong {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--jakarta-font-family);
+  font-size: 13px;
+  color: #153b4f;
+  overflow-wrap: anywhere;
+}
+.support-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 10px;
+}
+.support-route {
+  padding: 14px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+.support-route-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #153b4f;
+}
+.support-route-copy {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  color: #64748b;
+}
+.support-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  transition: background-color 0.25s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1), color 0.25s cubic-bezier(0.22, 1, 0.36, 1), transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.support-action:hover {
+  transform: translateY(-1px);
+}
+.support-action:focus-visible,
+.support-mini-link:focus-visible {
+  outline: 3px solid rgba(34, 211, 238, 0.45);
+  outline-offset: 2px;
+}
+.support-action--primary {
+  background: linear-gradient(135deg, #153b4f, #1c4d66);
+  color: white;
+  box-shadow: 0 10px 24px rgba(21, 59, 79, 0.16);
+}
+.support-action--primary:hover {
+  background: linear-gradient(135deg, #0f2936, #153b4f);
+  box-shadow: 0 14px 30px rgba(21, 59, 79, 0.2);
+}
+.support-action--ghost {
+  background: #f0f8fc;
+  color: #153b4f;
+  border: 1px solid #dceef6;
+}
+.support-action--ghost:hover {
+  background: #dceef6;
+  border-color: #b0d4e6;
+}
+.support-provider-box {
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f0f8fc 0%, #ffffff 100%);
+  border: 1px solid #dceef6;
+}
+.support-provider-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.support-provider-ref {
+  max-width: 150px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #dceef6;
+  color: #153b4f;
+  font-size: 11px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.support-mini-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: white;
+  border: 1px solid #dceef6;
+  color: #153b4f;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background-color 0.25s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1), color 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.support-mini-link:hover {
+  background: #153b4f;
+  border-color: #153b4f;
+  color: white;
+}
 
 .included-perk {
   display: flex;
