@@ -9,7 +9,7 @@ const _t = (key, fallback = '') => {
 };
 
 const redirectToPartnerPortal = () => {
-    window.open('https://vrooem.esimqr.link/', '_blank');
+    window.open('https://esimzu.com', '_blank');
 };
 
 useScrollAnimation('.esim-section', '.esim-left, .esim-right', {

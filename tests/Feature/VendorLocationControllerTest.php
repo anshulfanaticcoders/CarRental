@@ -76,6 +76,73 @@ class VendorLocationControllerTest extends TestCase
         ]);
     }
 
+    public function test_vendor_location_store_rejects_numeric_country_code(): void
+    {
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+
+        $response = $this
+            ->actingAs($vendor)
+            ->post(route('vendor.locations.store', ['locale' => 'en']), $this->rabatAirportPayload([
+                'country_code' => '10',
+            ]));
+
+        $response->assertSessionHasErrors('country_code');
+
+        $this->assertDatabaseMissing('vendor_locations', [
+            'vendor_id' => $vendor->id,
+            'name' => 'Rabat Airport',
+        ]);
+    }
+
+    public function test_vendor_location_store_rejects_country_code_that_does_not_match_country(): void
+    {
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+
+        $response = $this
+            ->actingAs($vendor)
+            ->post(route('vendor.locations.store', ['locale' => 'en']), $this->rabatAirportPayload([
+                'country_code' => 'AE',
+            ]));
+
+        $response->assertSessionHasErrors('country_code');
+
+        $this->assertDatabaseMissing('vendor_locations', [
+            'vendor_id' => $vendor->id,
+            'name' => 'Rabat Airport',
+        ]);
+    }
+
+    public function test_vendor_location_store_accepts_and_normalizes_valid_morocco_airport_codes(): void
+    {
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+
+        $response = $this
+            ->actingAs($vendor)
+            ->post(route('vendor.locations.store', ['locale' => 'en']), $this->rabatAirportPayload([
+                'country_code' => 'ma',
+                'iata_code' => 'rba',
+            ]));
+
+        $response->assertRedirect(route('vendor.locations.index', ['locale' => 'en']));
+
+        $this->assertDatabaseHas('vendor_locations', [
+            'vendor_id' => $vendor->id,
+            'name' => 'Rabat Airport',
+            'country' => 'Morocco',
+            'country_code' => 'MA',
+            'iata_code' => 'RBA',
+        ]);
+    }
+
     public function test_vendor_location_delete_redirects_back_to_index(): void
     {
         $vendor = User::factory()->create([
@@ -379,5 +446,26 @@ class VendorLocationControllerTest extends TestCase
 
         $response->assertSessionHasErrors('delete');
         $this->assertDatabaseHas('vendor_locations', ['id' => $location->id]);
+    }
+
+    private function rabatAirportPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'name' => 'Rabat Airport',
+            'code' => null,
+            'address_line_1' => 'Rabat airport rental desk',
+            'address_line_2' => null,
+            'city' => 'Rabat',
+            'state' => 'Rabat',
+            'country' => 'Morocco',
+            'country_code' => 'MA',
+            'latitude' => 34.050297,
+            'longitude' => -6.74951,
+            'location_type' => 'airport',
+            'iata_code' => 'RBA',
+            'phone' => null,
+            'pickup_instructions' => 'Meet the agent at the rental desk.',
+            'dropoff_instructions' => 'Return to the airport rental desk.',
+        ], $overrides);
     }
 }

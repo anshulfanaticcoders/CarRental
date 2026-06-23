@@ -55,8 +55,8 @@ import { ref } from 'vue'
 
 const isPaused = ref(false)
 
-// E-sim provider link - eSIMaccess partner
-const esimLink = 'https://app.esimaccess.com/signup' // eSIMaccess signup link
+// E-sim provider link - Esimzu partner
+const esimLink = 'https://esimzu.com'
 
 const pauseMarquee = () => {
   isPaused.value = true

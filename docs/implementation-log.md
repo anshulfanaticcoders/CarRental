@@ -649,3 +649,8 @@ Concise durable memory for significant completed work.
 - Scope: `CarRental` vendor vehicle list pagination component and vehicle list responsive visibility.
 - Decision: replaced the duplicated blue pagination markup with a Vrooem-themed bounded paginator using fixed-size controls, first/previous/next/last navigation, active page state, and ellipsis windows. Mobile collapses large page ranges to `first ... current ... last` to avoid hidden overflow/layout shifts. The scoped mobile-card styles now stop overriding desktop `lg:hidden`.
 - Verification: `git diff --check` passed; `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings. Browser smoke verified 390px mobile, 768px tablet, and 1440px desktop with no horizontal overflow; stress DOM preview for `Page 25 of 50` stayed within bounds on mobile and desktop.
+
+### 2026-06-23 - Vendor location country code validation
+- Scope: `CarRental` vendor location form and Laravel vendor location validation.
+- Decision: country codes and airport IATA codes now accept letters only, normalize to uppercase, and country code must match the selected country when the country can be resolved. The vendor location form also strips numeric input while typing and shows clearer examples such as `MA`/`RBA`.
+- Verification: Pint passed for touched PHP files; targeted `VendorLocationControllerTest` checks passed for numeric country code rejection, country/code mismatch rejection, and valid Morocco airport normalization; `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings.

@@ -214,7 +214,7 @@ onUnmounted(() => {
                         <Link :href="pageHref('about-us')" class="oc-item">About Us</Link>
                         <Link :href="blogHref()" class="oc-item">Blogs</Link>
                         <Link :href="faqHref()" class="oc-item">FAQ</Link>
-                        <a href="https://vrooem.esimqr.link/" target="_blank" rel="noopener noreferrer" class="oc-item">eSIM</a>
+                        <a href="https://esimzu.com" target="_blank" rel="noopener noreferrer" class="oc-item">eSIM</a>
                         <Link :href="pageHref('contact-us')" class="oc-item">Contact Us</Link>
                         <Link :href="affiliateRegisterHref()" class="oc-item">Business</Link>
                     </div>

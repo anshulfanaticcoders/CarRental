@@ -74,7 +74,19 @@
             </div>
             <div class="vln-field">
                 <label class="vln-label">IATA</label>
-                <input v-model="form.iata_code" class="vln-input" type="text" maxlength="3" placeholder="DXB" />
+                <input
+                    v-model="form.iata_code"
+                    class="vln-input"
+                    type="text"
+                    maxlength="3"
+                    pattern="[A-Za-z]{3}"
+                    inputmode="text"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                    placeholder="RBA"
+                    @input="normalizeIataCode"
+                />
+                <span class="vln-help">Airport code, for example RBA for Rabat Airport.</span>
                 <span v-if="errors.iata_code" class="vln-error">{{ errors.iata_code }}</span>
             </div>
             <div class="vln-field">
@@ -102,7 +114,19 @@
             </div>
             <div class="vln-field">
                 <label class="vln-label">Country Code <span class="req">*</span></label>
-                <input v-model="form.country_code" class="vln-input" type="text" maxlength="2" placeholder="AE" />
+                <input
+                    v-model="form.country_code"
+                    class="vln-input"
+                    type="text"
+                    maxlength="2"
+                    pattern="[A-Za-z]{2}"
+                    inputmode="text"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                    placeholder="MA"
+                    @input="normalizeCountryCode"
+                />
+                <span class="vln-help">Use two-letter ISO code, for example MA for Morocco. Numbers are blocked.</span>
                 <span v-if="errors.country_code" class="vln-error">{{ errors.country_code }}</span>
             </div>
             <div class="vln-field">
@@ -150,6 +174,16 @@ const hasCoordinates = computed(() => {
 const applyLocationSelection = (location) => {
     props.form.latitude = location.latitude ?? "";
     props.form.longitude = location.longitude ?? "";
+};
+
+const normalizeAlphaCode = (value, maxLength) => String(value ?? "").replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, maxLength);
+
+const normalizeCountryCode = () => {
+    props.form.country_code = normalizeAlphaCode(props.form.country_code, 2);
+};
+
+const normalizeIataCode = () => {
+    props.form.iata_code = normalizeAlphaCode(props.form.iata_code, 3);
 };
 </script>
 
@@ -256,6 +290,11 @@ const applyLocationSelection = (location) => {
 .vln-error {
     font-size: 0.8rem;
     color: #dc2626;
+}
+
+.vln-help {
+    font-size: 0.76rem;
+    color: #64748b;
 }
 
 @media (max-width: 767px) {

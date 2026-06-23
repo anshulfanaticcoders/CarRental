@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Models\VendorLocation;
+use App\Services\CountryCodeResolver;
 use App\Services\Vehicles\VehicleDeletionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,8 +16,7 @@ class VendorLocationController extends Controller
 {
     public function __construct(
         private readonly VehicleDeletionService $vehicleDeletionService,
-    ) {
-    }
+    ) {}
 
     public function index()
     {
@@ -111,7 +111,7 @@ class VendorLocationController extends Controller
 
     private function deleteStoragePath(?string $path): void
     {
-        if (!$path) {
+        if (! $path) {
             return;
         }
 
@@ -139,11 +139,11 @@ class VendorLocationController extends Controller
             'city' => ['required', 'string', 'max:100'],
             'state' => ['nullable', 'string', 'max:100'],
             'country' => ['required', 'string', 'max:100'],
-            'country_code' => ['required', 'string', 'size:2'],
+            'country_code' => ['required', 'string', 'size:2', 'regex:/^[A-Za-z]{2}$/'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'location_type' => ['required', Rule::in(['airport', 'downtown', 'terminal', 'bus stop', 'railway station', 'industrial'])],
-            'iata_code' => ['nullable', 'string', 'size:3'],
+            'iata_code' => ['nullable', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'],
             'phone' => ['nullable', 'string', 'max:50'],
             'pickup_instructions' => ['nullable', 'string', 'max:2000'],
             'dropoff_instructions' => ['nullable', 'string', 'max:2000'],
@@ -155,9 +155,16 @@ class VendorLocationController extends Controller
             ? strtoupper($validated['iata_code'])
             : null;
 
-        if ($validated['location_type'] === 'airport' && !$validated['iata_code']) {
+        if ($validated['location_type'] === 'airport' && ! $validated['iata_code']) {
             $request->validate([
-                'iata_code' => ['required', 'string', 'size:3'],
+                'iata_code' => ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'],
+            ]);
+        }
+
+        $resolvedCountryCode = CountryCodeResolver::resolve($validated['country']);
+        if ($resolvedCountryCode !== '' && $validated['country_code'] !== $resolvedCountryCode) {
+            throw ValidationException::withMessages([
+                'country_code' => "Country code must be {$resolvedCountryCode} for {$validated['country']}.",
             ]);
         }
 
