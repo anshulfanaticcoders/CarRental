@@ -654,3 +654,8 @@ Concise durable memory for significant completed work.
 - Scope: `CarRental` vendor location form and Laravel vendor location validation.
 - Decision: country codes and airport IATA codes now accept letters only, normalize to uppercase, and country code must match the selected country when the country can be resolved. The vendor location form also strips numeric input while typing and shows clearer examples such as `MA`/`RBA`.
 - Verification: Pint passed for touched PHP files; targeted `VendorLocationControllerTest` checks passed for numeric country code rejection, country/code mismatch rejection, and valid Morocco airport normalization; `npm run build` passed with existing Vite/Browserslist/lottie/chunk warnings.
+
+### 2026-06-23 - Sicily By Car reservation payload fix
+- Scope: `vrooem-gateway` Sicily By Car adapter booking payload and provider smoke.
+- Decision: Sicily reservations now send the supplier-accepted create shape: `vehicleId`, `pickupDateTime`/`dropoffDateTime`, `driver`, `voucher`, and `include` service codes. The adapter also reads nested `reservation.id` from create responses. The previous gateway shape used `vehicleCategoryId`/wrong datetime casing/customer/services, causing supplier create failures.
+- Verification: targeted Ruff check/format passed for Sicily adapter and tests; `tests/test_sicily_by_car_adapter.py tests/test_booking_service.py` passed with 14 tests. Container runtime smoke created and committed Sicily demo booking `SBC0K2CX8` for Rome FCO, Fiat Panda `BASIC-POA`, extra `AD1`, then cancelled it after 5 minutes with status cancelled.
