@@ -384,7 +384,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.name, 'has-value': form.name }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
-                                    <input v-model="form.name" type="text" class="form-input" placeholder="John Doe" />
+                                    <input v-model="form.name" type="text" class="form-input" placeholder="Full name" />
                                 </div>
                                 <Transition name="field-error">
                                     <p v-if="errors.name" class="form-error">

@@ -83,7 +83,7 @@
                                                 <label class="af-label">First Name</label>
                                                 <div class="relative">
                                                     <span class="af-icon"><User class="w-4 h-4" /></span>
-                                                    <input v-model="form.first_name" type="text" class="af-input" placeholder="John" />
+                                                    <input v-model="form.first_name" type="text" class="af-input" placeholder="Your first name" autocomplete="given-name" />
                                                 </div>
                                                 <p v-if="stepErrors.first_name || form.errors.first_name" class="text-red-500 text-xs mt-1">{{ stepErrors.first_name || form.errors.first_name }}</p>
                                             </div>
@@ -91,7 +91,7 @@
                                                 <label class="af-label">Last Name</label>
                                                 <div class="relative">
                                                     <span class="af-icon"><User class="w-4 h-4" /></span>
-                                                    <input v-model="form.last_name" type="text" class="af-input" placeholder="Smith" />
+                                                    <input v-model="form.last_name" type="text" class="af-input" placeholder="Your last name" autocomplete="family-name" />
                                                 </div>
                                                 <p v-if="stepErrors.last_name || form.errors.last_name" class="text-red-500 text-xs mt-1">{{ stepErrors.last_name || form.errors.last_name }}</p>
                                             </div>
@@ -100,7 +100,7 @@
                                             <label class="af-label">Email Address</label>
                                             <div class="relative">
                                                 <span class="af-icon"><Mail class="w-4 h-4" /></span>
-                                                <input v-model="form.email" type="email" class="af-input" placeholder="you@business.com" />
+                                                <input v-model="form.email" type="email" class="af-input" placeholder="name@company.com" autocomplete="email" />
                                             </div>
                                             <p v-if="stepErrors.email || form.errors.email" class="text-red-500 text-xs mt-1">{{ stepErrors.email || form.errors.email }}</p>
                                         </div>
@@ -108,7 +108,7 @@
                                             <label class="af-label">Password</label>
                                             <div class="relative">
                                                 <span class="af-icon"><Lock class="w-4 h-4" /></span>
-                                                <input v-model="form.password" type="password" class="af-input" placeholder="Minimum 8 characters" />
+                                                <input v-model="form.password" type="password" class="af-input" placeholder="Minimum 8 characters" autocomplete="new-password" />
                                             </div>
                                             <!-- Password Strength Meter -->
                                             <div class="flex gap-[3px] mt-2">
@@ -121,7 +121,7 @@
                                             <label class="af-label">Confirm Password</label>
                                             <div class="relative">
                                                 <span class="af-icon"><Lock class="w-4 h-4" /></span>
-                                                <input v-model="form.password_confirmation" type="password" class="af-input" placeholder="Repeat your password" />
+                                                <input v-model="form.password_confirmation" type="password" class="af-input" placeholder="Repeat your password" autocomplete="new-password" />
                                             </div>
                                             <p v-if="stepErrors.password_confirmation" class="text-red-500 text-xs mt-1">{{ stepErrors.password_confirmation }}</p>
                                         </div>
@@ -140,7 +140,7 @@
                                                 <label class="af-label">{{ businessNameLabel }}</label>
                                                 <div class="relative">
                                                     <span class="af-icon"><Building2 class="w-4 h-4" /></span>
-                                                    <input v-model="form.business_name" type="text" class="af-input" :placeholder="businessNamePlaceholder" />
+                                                    <input v-model="form.business_name" type="text" class="af-input" :placeholder="businessNamePlaceholder" autocomplete="organization" />
                                                 </div>
                                                 <p v-if="stepErrors.business_name || form.errors.business_name" class="text-red-500 text-xs mt-1">{{ stepErrors.business_name || form.errors.business_name }}</p>
                                         </div>
@@ -164,7 +164,7 @@
                                                 <label class="af-label">Phone Number</label>
                                                 <div class="relative">
                                                     <span class="af-icon"><Phone class="w-4 h-4" /></span>
-                                                    <input v-model="form.contact_phone" type="tel" class="af-input" placeholder="+34 612 345 678" />
+                                                    <input v-model="form.contact_phone" type="tel" class="af-input" placeholder="+1 555 123 4567" autocomplete="tel" />
                                                 </div>
                                                 <p v-if="stepErrors.contact_phone || form.errors.contact_phone" class="text-red-500 text-xs mt-1">{{ stepErrors.contact_phone || form.errors.contact_phone }}</p>
                                             </div>
@@ -174,13 +174,13 @@
                                                 <label class="af-label">City</label>
                                                 <div class="relative">
                                                     <span class="af-icon"><MapPin class="w-4 h-4" /></span>
-                                                    <input v-model="form.city" type="text" class="af-input" placeholder="Malaga" />
+                                                    <input v-model="form.city" type="text" class="af-input" placeholder="City" autocomplete="address-level2" />
                                                 </div>
                                                 <p v-if="stepErrors.city || form.errors.city" class="text-red-500 text-xs mt-1">{{ stepErrors.city || form.errors.city }}</p>
                                             </div>
                                             <div>
                                                 <label class="af-label">Country</label>
-                                                <input v-model="form.country" type="text" class="af-input" placeholder="Spain" />
+                                                <input v-model="form.country" type="text" class="af-input" placeholder="Country" autocomplete="country-name" />
                                                 <p v-if="stepErrors.country || form.errors.country" class="text-red-500 text-xs mt-1">{{ stepErrors.country || form.errors.country }}</p>
                                             </div>
                                         </div>
@@ -203,7 +203,7 @@
                                             <label class="af-label">Bank Name</label>
                                             <div class="relative">
                                                 <span class="af-icon"><Landmark class="w-4 h-4" /></span>
-                                                <input v-model="form.bank_name" type="text" class="af-input" placeholder="Banco Santander" />
+                                                <input v-model="form.bank_name" type="text" class="af-input" placeholder="Bank name" />
                                             </div>
                                             <p v-if="form.errors.bank_name" class="text-red-500 text-xs mt-1">{{ form.errors.bank_name }}</p>
                                         </div>
@@ -228,7 +228,7 @@
                                                 <label class="af-label">Account Holder Name</label>
                                                 <div class="relative">
                                                     <span class="af-icon"><User class="w-4 h-4" /></span>
-                                                    <input v-model="form.bank_account_name" type="text" class="af-input" placeholder="Hotel Playa del Sol S.L." />
+                                                    <input v-model="form.bank_account_name" type="text" class="af-input" placeholder="Registered account holder name" />
                                                 </div>
                                                 <p v-if="form.errors.bank_account_name" class="text-red-500 text-xs mt-1">{{ form.errors.bank_account_name }}</p>
                                             </div>
@@ -483,7 +483,7 @@ const heroCopy = computed(() => isInfluencerAffiliate.value
     : 'Earn commissions on every car rental booking your guests make through your QR codes. Set up takes just 3 minutes.');
 const registrationPerks = computed(() => isInfluencerAffiliate.value ? influencerPerks : organizationPerks);
 const businessNameLabel = computed(() => isInfluencerAffiliate.value ? 'Creator / Brand Name' : 'Business Name');
-const businessNamePlaceholder = computed(() => isInfluencerAffiliate.value ? 'e.g. Anshul Travel' : 'Hotel Playa del Sol');
+const businessNamePlaceholder = computed(() => isInfluencerAffiliate.value ? 'Creator or brand name' : 'Company or business name');
 const stepOneIntro = computed(() => isInfluencerAffiliate.value
     ? 'Turn your audience into a revenue stream. Every follower who books through your share link can earn you a commission.'
     : 'Turn your foot traffic into a revenue stream. Every guest who scans your QR code and books a car earns you a commission.');

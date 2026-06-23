@@ -55,8 +55,8 @@ return [
     'creating' => 'Creating...',
 
     // Placeholders
-    'first_name_placeholder' => 'John',
-    'last_name_placeholder' => 'Doe',
+    'first_name_placeholder' => 'Your first name',
+    'last_name_placeholder' => 'Your last name',
     'date_of_birth_placeholder' => 'Select your date of birth',
     'phone_placeholder' => '612 345 678',
     'email_placeholder' => 'name@example.com',

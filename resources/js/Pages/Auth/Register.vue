@@ -366,12 +366,12 @@ watch(dateOfBirth, (newValue) => {
                         <div class="field-row">
                             <div class="field">
                                 <InputLabel for="first_name" :value="_t('registerUser', 'first_name_label')" class="field-label" />
-                                <TextInput id="first_name" class="field-input" v-model="form.first_name" required autofocus :placeholder="_t('registerUser', 'first_name_placeholder') || 'John'" />
+                                <TextInput id="first_name" class="field-input" v-model="form.first_name" required autofocus :placeholder="_t('registerUser', 'first_name_placeholder') || 'Your first name'" />
                                 <InputError class="field-error" :message="form.errors.first_name" />
                             </div>
                             <div class="field">
                                 <InputLabel for="last_name" :value="_t('registerUser', 'last_name_label')" class="field-label" />
-                                <TextInput id="last_name" class="field-input" v-model="form.last_name" required :placeholder="_t('registerUser', 'last_name_placeholder') || 'Doe'" />
+                                <TextInput id="last_name" class="field-input" v-model="form.last_name" required :placeholder="_t('registerUser', 'last_name_placeholder') || 'Your last name'" />
                                 <InputError class="field-error" :message="form.errors.last_name" />
                             </div>
                         </div>
