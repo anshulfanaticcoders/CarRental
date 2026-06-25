@@ -36,6 +36,16 @@ const {
     affiliateRegisterHref,
 } = useLocalizedRoutes();
 
+const autohurenBuitenlandLabels = {
+    en: 'Car rental abroad',
+    fr: 'Location de voiture à l’étranger',
+    nl: 'Autohuren buitenland',
+    es: 'Alquiler de coches en el extranjero',
+    ar: 'تأجير سيارات في الخارج',
+};
+
+const autohurenBuitenlandLabel = computed(() => autohurenBuitenlandLabels[currentLocale.value] || autohurenBuitenlandLabels.en);
+
 // Fetch footer places and categories data
 const footerPlaces = ref([]);
 const footerContactInfo = ref({
@@ -169,6 +179,7 @@ if (typeof window !== 'undefined') {
                             <li><Link :href="pageHref('privacy-policy')" class="footer-link">Privacy Policy</Link></li>
                             <li><Link :href="pageHref('terms-and-conditions')" class="footer-link">Terms & Conditions</Link></li>
                             <li><Link :href="affiliateRegisterHref()" class="footer-link">Business</Link></li>
+                            <li><a href="/autohurenbuitenland/" class="footer-link">{{ autohurenBuitenlandLabel }}</a></li>
                         </ul>
                     </div>
                     <div class="footer-col">

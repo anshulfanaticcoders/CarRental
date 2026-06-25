@@ -165,6 +165,10 @@ type BookingContext = {
   optional_extras?: Array<Record<string, unknown>>
   search_session_id?: string | null
   gateway_search_id?: string | null
+  provider_pickup_id?: string | number | null
+  unified_location_id?: string | number | null
+  dropoff_unified_location_id?: string | number | null
+  driver_age?: string | number | null
   location_name?: string | null
   pickup_location?: string | null
   dropoff_location?: string | null
@@ -177,6 +181,7 @@ type BookingContext = {
   number_of_days?: number | null
   location_instructions?: string | null
   location_details?: Record<string, unknown> | null
+  dropoff_location_details?: Record<string, unknown> | null
   driver_requirements?: Record<string, unknown> | null
   terms?: Array<Record<string, unknown>> | null
   payment_percentage?: number | null
@@ -1123,6 +1128,10 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
       :terms="currentBookingContext.terms || null"
       :search-session-id="checkoutSearchSessionId"
       :gateway-search-id="checkoutGatewaySearchId"
+      :provider-pickup-id="currentBookingContext.provider_pickup_id ?? selectedVehicle.provider_pickup_id ?? null"
+      :unified-location-id="currentBookingContext.unified_location_id ?? selectedVehicle.unified_location_id ?? currentBookingContext.location_details?.unified_location_id ?? null"
+      :dropoff-unified-location-id="currentBookingContext.dropoff_unified_location_id ?? selectedVehicle.dropoff_unified_location_id ?? currentBookingContext.dropoff_location_details?.unified_location_id ?? null"
+      :driver-age="currentBookingContext.driver_age ?? selectedVehicle.driver_age ?? search.driver_age ?? null"
       :selected-deposit-type="selectedCheckoutData.selected_deposit_type || null"
       @back="handleBackToExtras"
     />

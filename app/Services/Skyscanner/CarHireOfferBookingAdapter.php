@@ -187,6 +187,8 @@ class CarHireOfferBookingAdapter
                 'iata_code' => $pickupLocation['iata'] ?? null,
                 'latitude' => $pickupLocation['latitude'] ?? null,
                 'longitude' => $pickupLocation['longitude'] ?? null,
+                'unified_location_id' => $pickupLocation['unified_location_id'] ?? null,
+                'dropoff_unified_location_id' => $dropoffLocation['unified_location_id'] ?? ($pickupLocation['unified_location_id'] ?? null),
                 'provider_pickup_id' => $this->stringOrNull($pickupLocation['provider_location_id'] ?? null),
                 'provider_return_id' => $this->stringOrNull($dropoffLocation['provider_location_id'] ?? ($pickupLocation['provider_location_id'] ?? null)),
                 'quoteid' => $this->stringOrNull($quote['quote_id'] ?? null),
@@ -205,6 +207,10 @@ class CarHireOfferBookingAdapter
             'initial_protection_code' => null,
             'optional_extras' => $optionalExtras,
             'gateway_search_id' => $gatewaySearchId,
+            'provider_pickup_id' => $this->stringOrNull($pickupLocation['provider_location_id'] ?? null),
+            'unified_location_id' => $pickupLocation['unified_location_id'] ?? null,
+            'dropoff_unified_location_id' => $dropoffLocation['unified_location_id'] ?? ($pickupLocation['unified_location_id'] ?? null),
+            'driver_age' => $search['driver_age'] ?? null,
             'location_name' => $pickupLocation['name'] ?? null,
             'pickup_location' => $pickupLocation['name'] ?? null,
             'dropoff_location' => $dropoffLocation['name'] ?? ($pickupLocation['name'] ?? null),
@@ -231,6 +237,7 @@ class CarHireOfferBookingAdapter
     private function normalizeLocationDetails(array $details): array
     {
         return [
+            'unified_location_id' => $this->stringOrNull($details['unified_location_id'] ?? ($details['id'] ?? null)),
             'provider_location_id' => $this->stringOrNull($details['provider_location_id'] ?? null),
             'name' => $this->stringOrNull($details['name'] ?? null),
             'address_1' => $this->stringOrNull($details['address'] ?? null),

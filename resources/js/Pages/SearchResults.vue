@@ -2631,6 +2631,10 @@ watch(
             :driver-requirements="driverRequirements" :terms="termsData"
             :search-session-id="props.search_session_id"
             :gateway-search-id="props.gateway_search_id"
+            :provider-pickup-id="form.provider_pickup_id || selectedVehicle.provider_pickup_id || null"
+            :unified-location-id="form.unified_location_id"
+            :dropoff-unified-location-id="form.dropoff_unified_location_id"
+            :driver-age="form.age"
             :selected-deposit-type="selectedCheckoutData?.selected_deposit_type || null"
             @back="handleBackToExtras" />
     </div>

@@ -816,6 +816,10 @@ class StripeBookingService
         $tracking = array_filter([
             'search_session_id' => $metadata->search_session_id ?? null,
             'gateway_search_id' => $metadata->gateway_search_id ?? null,
+            'return_search_url' => $metadata->return_search_url ?? null,
+            'unified_location_id' => $metadata->unified_location_id ?? null,
+            'dropoff_unified_location_id' => $metadata->dropoff_unified_location_id ?? null,
+            'provider_pickup_id' => $metadata->provider_pickup_id ?? null,
             'selected_deposit_type' => $metadata->selected_deposit_type ?? null,
             'partner_source' => $metadata->partner_source ?? null,
             'trabber_clickid' => $metadata->trabber_clickid ?? null,

@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class PriceVerificationService
 {
+    private const PRICE_CONTEXT_TTL_MINUTES = 15;
+
     /**
      * Store original provider prices when search results are generated
      *
@@ -19,11 +22,8 @@ class PriceVerificationService
         $priceMap = [];
 
         foreach ($vehicles as $vehicle) {
-            $vehicleId = $vehicle['id']
-                ?? $vehicle['gateway_vehicle_id']
-                ?? $vehicle['provider_vehicle_id']
-                ?? $vehicle['unified_location_id']
-                ?? null;
+            $priceData = $this->buildOriginalPriceData($searchSessionId, $vehicle);
+            $vehicleId = $priceData['vehicle_id'] ?? null;
             if (! $vehicleId) {
                 continue;
             }
@@ -31,28 +31,8 @@ class PriceVerificationService
             // Store original prices - store by a composite key to avoid collisions
             $priceKey = $this->getPriceCacheKey($searchSessionId, $vehicleId);
 
-            $offerFingerprint = app(OfferService::class)->getOfferFingerprint('search');
-
-            $priceData = [
-                'vehicle_id' => $vehicleId,
-                'provider' => $vehicle['source'] ?? 'unknown',
-                // Gateway vehicles use total_price/price_per_day while legacy uses total/daily_rate.
-                'original_total' => $vehicle['total'] ?? ($vehicle['total_price'] ?? ($vehicle['pricing']['total_price'] ?? null)),
-                'original_daily_rate' => $vehicle['daily_rate'] ?? ($vehicle['price_per_day'] ?? ($vehicle['pricing']['price_per_day'] ?? null)),
-                'products' => $vehicle['products'] ?? [],
-                'extras' => $vehicle['extras'] ?? ($vehicle['options'] ?? ($vehicle['extras_preview'] ?? [])),
-                'price_per_day' => $vehicle['price_per_day'] ?? ($vehicle['pricing']['price_per_day'] ?? null),
-                'currency' => $vehicle['currency'] ?? ($vehicle['pricing']['currency'] ?? 'EUR'),
-                'stored_at' => now()->toIso8601String(),
-                'search_session' => $searchSessionId,
-                'offer_fingerprint' => $offerFingerprint,
-                'vehicle_context' => $this->extractBookingContext($vehicle),
-                'gateway_vehicle_context' => $this->extractGatewayVehicleContext($vehicle),
-            ];
-
-            // Cache for 2 hours (typical user session duration)
             try {
-                Cache::put($priceKey, $priceData, now()->addHours(2));
+                Cache::put($priceKey, $priceData, now()->addMinutes($this->priceContextTtlMinutes()));
             } catch (\Exception $e) {
                 Log::warning('Failed to cache price data', [
                     'key' => $priceKey,
@@ -68,6 +48,33 @@ class PriceVerificationService
         }
 
         return $priceMap;
+    }
+
+    public function buildOriginalPriceData(string $searchSessionId, array $vehicle): ?array
+    {
+        $vehicleId = $this->resolveVehicleId($vehicle);
+        if (! $vehicleId) {
+            return null;
+        }
+
+        $pricing = is_array($vehicle['pricing'] ?? null) ? $vehicle['pricing'] : [];
+
+        return [
+            'vehicle_id' => $vehicleId,
+            'provider' => $vehicle['source'] ?? 'unknown',
+            // Gateway vehicles use total_price/price_per_day while legacy uses total/daily_rate.
+            'original_total' => $vehicle['total'] ?? ($vehicle['total_price'] ?? ($pricing['total_price'] ?? null)),
+            'original_daily_rate' => $vehicle['daily_rate'] ?? ($vehicle['price_per_day'] ?? ($pricing['price_per_day'] ?? null)),
+            'products' => $vehicle['products'] ?? [],
+            'extras' => $vehicle['extras'] ?? ($vehicle['options'] ?? ($vehicle['extras_preview'] ?? [])),
+            'price_per_day' => $vehicle['price_per_day'] ?? ($pricing['price_per_day'] ?? null),
+            'currency' => $vehicle['currency'] ?? ($pricing['currency'] ?? 'EUR'),
+            'stored_at' => now()->toIso8601String(),
+            'search_session' => $searchSessionId,
+            'offer_fingerprint' => app(OfferService::class)->getOfferFingerprint('search'),
+            'vehicle_context' => $this->extractBookingContext($vehicle),
+            'gateway_vehicle_context' => $this->extractGatewayVehicleContext($vehicle),
+        ];
     }
 
     /**
@@ -105,6 +112,19 @@ class PriceVerificationService
             return [
                 'valid' => false,
                 'error' => 'Price verification failed: Original pricing data not found or expired. Please refresh search results.',
+            ];
+        }
+
+        if ($this->priceContextExpired($storedData)) {
+            Log::warning('Price verification failed: Original pricing data expired', [
+                'vehicle_id' => $vehicleId,
+                'search_session' => $searchSessionId,
+                'stored_at' => $storedData['stored_at'] ?? null,
+            ]);
+
+            return [
+                'valid' => false,
+                'error' => 'Price verification failed: Original pricing data expired. Please refresh search results.',
             ];
         }
 
@@ -238,6 +258,42 @@ class PriceVerificationService
         return 'price_verify_'.sha1($searchSessionId.'_'.$vehicleId);
     }
 
+    private function priceContextTtlMinutes(): int
+    {
+        return max(1, (int) config('services.checkout.price_context_ttl_minutes', self::PRICE_CONTEXT_TTL_MINUTES));
+    }
+
+    private function priceContextExpired(array $storedData): bool
+    {
+        $storedAt = $storedData['stored_at'] ?? null;
+        if (! is_string($storedAt) || trim($storedAt) === '') {
+            return true;
+        }
+
+        try {
+            return Carbon::parse($storedAt)->lessThan(now()->subMinutes($this->priceContextTtlMinutes()));
+        } catch (\Throwable) {
+            return true;
+        }
+    }
+
+    private function resolveVehicleId(array $vehicle): ?string
+    {
+        foreach ([
+            $vehicle['id'] ?? null,
+            $vehicle['gateway_vehicle_id'] ?? null,
+            $vehicle['provider_vehicle_id'] ?? null,
+            $vehicle['unified_location_id'] ?? null,
+        ] as $candidate) {
+            $normalized = trim((string) $candidate);
+            if ($normalized !== '') {
+                return $normalized;
+            }
+        }
+
+        return null;
+    }
+
     private function extractBookingContext(array $vehicle): array
     {
         $supplierData = is_array($vehicle['supplier_data'] ?? null) ? $vehicle['supplier_data'] : [];
@@ -253,6 +309,8 @@ class PriceVerificationService
             'provider_pickup_id' => $vehicle['provider_pickup_id'] ?? ($supplierData['pickup_code'] ?? null),
             'provider_return_id' => $vehicle['provider_return_id'] ?? ($vehicle['provider_dropoff_id'] ?? ($supplierData['dropoff_code'] ?? ($supplierData['pickup_code'] ?? null))),
             'provider_dropoff_id' => $vehicle['provider_dropoff_id'] ?? ($vehicle['provider_return_id'] ?? ($supplierData['dropoff_code'] ?? ($supplierData['pickup_code'] ?? null))),
+            'unified_location_id' => $vehicle['unified_location_id'] ?? null,
+            'dropoff_unified_location_id' => $vehicle['dropoff_unified_location_id'] ?? null,
             'source' => $source,
             'sipp_code' => $vehicle['sipp_code'] ?? ($supplierData['sipp_code'] ?? null),
             'supplier_data' => $supplierData,
@@ -350,7 +408,7 @@ class PriceVerificationService
             'raw_payload' => $vehicle['raw_payload'] ?? $this->extractLegacyProviderPayload($vehicle),
             'min_driver_age' => $this->nullableInt($vehicle['min_driver_age'] ?? null),
             'max_driver_age' => $this->nullableInt($vehicle['max_driver_age'] ?? null),
-            'context_valid_until' => now()->addHours(2)->toIso8601String(),
+            'context_valid_until' => now()->addMinutes($this->priceContextTtlMinutes())->toIso8601String(),
         ];
 
         return $this->removeEmptyContextValues($context);

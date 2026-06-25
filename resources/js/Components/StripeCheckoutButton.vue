@@ -19,12 +19,32 @@ const error = ref(null);
 const loginUrl = ref(null);
 const errorCode = ref(null);
 
-const bookingStatusUrl = (state) => {
+const resolveReturnSearchUrl = () => {
+    const value = typeof props.bookingData?.return_search_url === 'string'
+        ? props.bookingData.return_search_url.trim()
+        : '';
+
+    if (!value || typeof window === 'undefined') return null;
+
     try {
-        return route('booking.status', { state });
+        const url = new URL(value, window.location.origin);
+        return `${url.pathname}${url.search}`;
+    } catch {
+        return null;
+    }
+};
+
+const bookingStatusUrl = (state) => {
+    const returnSearchUrl = resolveReturnSearchUrl();
+
+    try {
+        return route('booking.status', returnSearchUrl ? { state, return_search_url: returnSearchUrl } : { state });
     } catch {
         const pathLocale = window.location.pathname.split('/').filter(Boolean)[0] || 'en';
-        return `/${pathLocale}/booking/status?state=${encodeURIComponent(state)}`;
+        const params = new URLSearchParams({ state });
+        if (returnSearchUrl) params.set('return_search_url', returnSearchUrl);
+
+        return `/${pathLocale}/booking/status?${params.toString()}`;
     }
 };
 
@@ -86,7 +106,7 @@ const handleCheckout = async () => {
 
         error.value = responseData.error_code === 'checkout_login_required'
             ? (responseData.error || 'Please log in to continue.')
-            : 'We could not start secure payment. Please try again.';
+            : (responseData.error || 'We could not start secure payment. Please try again.');
         loginUrl.value = responseData.login_url || null;
         errorCode.value = responseData.error_code || null;
     } finally {

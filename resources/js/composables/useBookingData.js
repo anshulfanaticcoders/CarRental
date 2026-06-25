@@ -49,6 +49,55 @@ export function useBookingData(booking, vehicle, payment) {
   const isWheelsys = computed(() => ['wheelsys', 'wheelsys'].includes(providerSource.value));
   const isSurprice = computed(() => providerSource.value === 'surprice');
 
+  const firstPresent = (...values) => values.find(value => value !== null && value !== undefined && value !== '') ?? null;
+
+  const nullableNumber = (value) => {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const buildDepositAndExcess = (meta, currency, fallbackCurrency = null) => {
+    const providerPricing = meta?.provider_pricing || {};
+    const benefits = meta?.benefits || {};
+    const depositCurrency = firstPresent(
+      providerPricing?.deposit_currency,
+      meta?.deposit_currency,
+      benefits?.deposit_currency,
+      fallbackCurrency,
+      meta?.currency,
+      currency,
+    );
+    const depositAmount = nullableNumber(firstPresent(
+      providerPricing?.deposit_amount,
+      meta?.deposit_amount,
+      benefits?.deposit_amount,
+      meta?.deposit,
+      meta?.Deposit,
+    ));
+    const excessAmount = nullableNumber(firstPresent(
+      providerPricing?.excess_amount,
+      meta?.excess_amount,
+      benefits?.excess_amount,
+      meta?.excess,
+      meta?.Excess,
+    ));
+    const excessTheftAmount = nullableNumber(firstPresent(
+      providerPricing?.excess_theft_amount,
+      meta?.excess_theft_amount,
+      benefits?.excess_theft_amount,
+    ));
+
+    return {
+      deposit: depositAmount !== null ? { amount: depositAmount, currency: depositCurrency } : null,
+      excess: excessAmount !== null ? { amount: excessAmount, currency: depositCurrency } : null,
+      excessTheft: excessTheftAmount !== null ? { amount: excessTheftAmount, currency: depositCurrency } : null,
+    };
+  };
+
   // Location details - normalized
   const pickupLocation = computed(() => {
     const meta = providerMetadata.value;
@@ -152,12 +201,7 @@ export function useBookingData(booking, vehicle, payment) {
       const vendorExtrasTotal = parseFloat(amounts.vendor_extra_amount || meta?.provider_pricing?.extras_total || meta?.provider_extras_total || 0);
       const vendorGrandTotal = parseFloat(amounts.vendor_total_amount || meta?.provider_pricing?.grand_total || meta?.provider_grand_total || 0);
 
-      // Get deposit/excess from metadata (check benefits, top-level, and provider_pricing)
-      const ben = meta?.benefits || {};
-      const deposit = ben?.deposit_amount || meta?.deposit_amount || meta?.provider_pricing?.deposit_amount || meta?.deposit || meta?.Deposit || null;
-      const excess = ben?.excess_amount || meta?.excess_amount || meta?.provider_pricing?.excess_amount || meta?.excess || meta?.Excess || null;
-      const excessTheft = ben?.excess_theft_amount || meta?.excess_theft_amount || meta?.provider_pricing?.excess_theft_amount || null;
-      const depositCurrency = ben?.deposit_currency || meta?.deposit_currency || meta?.provider_pricing?.deposit_currency || amounts.vendor_currency || meta?.currency || currency;
+      const depositAndExcess = buildDepositAndExcess(meta, currency, amounts.vendor_currency);
 
       return {
         currency,
@@ -185,9 +229,9 @@ export function useBookingData(booking, vehicle, payment) {
           isPOA: paymentPercentage < 100 && paymentPercentage > 0,
         },
         // Deposit & Excess (in vendor's currency)
-        deposit: deposit ? { amount: parseFloat(deposit), currency: depositCurrency } : null,
-        excess: excess ? { amount: parseFloat(excess), currency: depositCurrency } : null,
-        excessTheft: excessTheft ? { amount: parseFloat(excessTheft), currency: depositCurrency } : null,
+        deposit: depositAndExcess.deposit,
+        excess: depositAndExcess.excess,
+        excessTheft: depositAndExcess.excessTheft,
         // Exchange rate info if multi-currency
         exchangeRate: amounts.booking_to_vendor_rate || meta?.exchange_rates?.provider_to_booking || null,
       };
@@ -232,12 +276,7 @@ export function useBookingData(booking, vehicle, payment) {
     const bookingDiscountTotal = parseFloat(booking?.discount_amount || 0);
     const bookingGrandTotal = parseFloat(customerPricing?.grand_total || booking?.total_amount || 0);
 
-    // Get deposit/excess from provider metadata (check benefits, top-level, and provider_pricing)
-    const ben = meta?.benefits || {};
-    const deposit = ben?.deposit_amount || meta?.deposit_amount || meta?.provider_pricing?.deposit_amount || meta?.deposit || meta?.Deposit || null;
-    const excess = ben?.excess_amount || meta?.excess_amount || meta?.provider_pricing?.excess_amount || meta?.excess || meta?.Excess || null;
-    const excessTheft = ben?.excess_theft_amount || meta?.excess_theft_amount || meta?.provider_pricing?.excess_theft_amount || null;
-    const depositCurrency = ben?.deposit_currency || meta?.deposit_currency || meta?.provider_pricing?.deposit_currency || meta?.currency || currency;
+    const depositAndExcess = buildDepositAndExcess(meta, currency);
 
     // Get payment info
     const amountPaid = parseFloat(booking?.amount_paid || 0);
@@ -270,9 +309,9 @@ export function useBookingData(booking, vehicle, payment) {
         isPOA: paymentPercentage < 100 && paymentPercentage > 0,
       },
       // Deposit & Excess (in vendor's currency)
-      deposit: deposit ? { amount: parseFloat(deposit), currency: depositCurrency } : null,
-      excess: excess ? { amount: parseFloat(excess), currency: depositCurrency } : null,
-      excessTheft: excessTheft ? { amount: parseFloat(excessTheft), currency: depositCurrency } : null,
+      deposit: depositAndExcess.deposit,
+      excess: depositAndExcess.excess,
+      excessTheft: depositAndExcess.excessTheft,
       // Exchange rate info if multi-currency
       exchangeRate: meta?.exchange_rates?.provider_to_booking || null,
     };

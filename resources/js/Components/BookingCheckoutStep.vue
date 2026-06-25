@@ -54,6 +54,10 @@ const props = defineProps({
     vehicleTotalCurrency: String,
     searchSessionId: String, // For price verification
     gatewaySearchId: { type: String, default: null },
+    providerPickupId: { type: [String, Number], default: null },
+    unifiedLocationId: { type: [String, Number], default: null },
+    dropoffUnifiedLocationId: { type: [String, Number], default: null },
+    driverAge: { type: [String, Number], default: null },
     selectedDepositType: { type: String, default: null },
 });
 
@@ -299,6 +303,25 @@ const checkoutDropoffLocationDetails = computed(() => {
     return null;
 });
 
+const resolveReturnSearchUrl = () => {
+    if (typeof window === 'undefined') return null;
+
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    if (/\/s(?:\?|$)/.test(window.location.pathname)) {
+        return currentUrl;
+    }
+
+    const storedUrl = sessionStorage.getItem('searchurl');
+    if (!storedUrl) return currentUrl || null;
+
+    try {
+        const url = new URL(storedUrl, window.location.origin);
+        return `${url.pathname}${url.search}`;
+    } catch {
+        return currentUrl || null;
+    }
+};
+
 const bookingData = computed(() => {
     const pickupTime = isOkMobility.value
         ? (props.vehicle?.ok_mobility_pickup_time || props.pickupTime)
@@ -337,6 +360,11 @@ const bookingData = computed(() => {
         payment_method: selectedPaymentMethod.value,
         search_session_id: props.searchSessionId,
         gateway_search_id: props.gatewaySearchId || null,
+        provider_pickup_id: props.providerPickupId || props.vehicle?.provider_pickup_id || null,
+        unified_location_id: props.unifiedLocationId || props.vehicle?.unified_location_id || props.locationDetails?.unified_location_id || null,
+        dropoff_unified_location_id: props.dropoffUnifiedLocationId || props.vehicle?.dropoff_unified_location_id || props.dropoffLocationDetails?.unified_location_id || null,
+        return_search_url: resolveReturnSearchUrl(),
+        age: props.driverAge || form.value.driver_age || null,
         selected_deposit_type: props.selectedDepositType || null,
         perk_offers: checkoutPerkOffers.value,
         free_esim_included: Boolean(freeEsimOffer.value),

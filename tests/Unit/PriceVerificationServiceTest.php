@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Services\OfferService;
 use App\Services\PriceVerificationService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
@@ -284,6 +285,51 @@ class PriceVerificationServiceTest extends TestCase
         $this->assertSame('EUR', data_get($context, 'pricing.currency'));
         $this->assertSame(100.0, data_get($context, 'pricing.total_price'));
         $this->assertNotEmpty($context['context_valid_until'] ?? null);
+        $this->assertTrue(Carbon::parse($context['context_valid_until'])->lessThanOrEqualTo(now()->addMinutes(16)));
+    }
+
+    public function test_price_verification_rejects_expired_quote_context(): void
+    {
+        Cache::flush();
+        $now = Carbon::parse('2026-06-25 10:00:00');
+        Carbon::setTestNow($now);
+
+        try {
+            $offerService = $this->createMock(OfferService::class);
+            $offerService->method('getOfferFingerprint')->willReturn('no-active-offers');
+            $this->app->instance(OfferService::class, $offerService);
+
+            $service = app(PriceVerificationService::class);
+            $priceMap = $service->storeOriginalPrices('search_expiring_context', [[
+                'id' => 'gw_expiring_vehicle_1',
+                'gateway_vehicle_id' => 'gw_expiring_vehicle_1',
+                'source' => 'surprice',
+                'provider_vehicle_id' => 'ECMR',
+                'pricing' => [
+                    'currency' => 'EUR',
+                    'price_per_day' => 20.0,
+                    'total_price' => 60.0,
+                ],
+            ]]);
+            $cacheKey = 'price_verify_'.sha1('search_expiring_context_gw_expiring_vehicle_1');
+            $cachedPriceContext = Cache::get($cacheKey);
+
+            Carbon::setTestNow($now->copy()->addMinutes(16));
+            Cache::put($cacheKey, $cachedPriceContext, now()->addHour());
+
+            $verified = $service->verifyPrices('search_expiring_context', [
+                'id' => 'gw_expiring_vehicle_1',
+                'price_hash' => $priceMap['gw_expiring_vehicle_1']['price_hash'],
+                'pricing' => [
+                    'total_price' => 60.0,
+                ],
+            ]);
+
+            $this->assertFalse($verified['valid']);
+            $this->assertSame('Price verification failed: Original pricing data expired. Please refresh search results.', $verified['error']);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_price_hash_changes_when_offer_fingerprint_changes(): void

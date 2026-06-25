@@ -15,6 +15,7 @@ use App\Services\CheckoutIdentityGuardService;
 use App\Services\CurrencyConversionService;
 use App\Services\OfferService;
 use App\Services\PriceVerificationService;
+use App\Services\ProviderQuoteRevalidationService;
 use App\Services\StripeBookingService;
 use App\Services\Trabber\TrabberAttributionService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
@@ -577,6 +578,11 @@ class StripeCheckoutController extends Controller
                 'driver_requirements' => 'nullable|array',
                 'terms' => 'nullable|array',
                 'gateway_search_id' => 'nullable|string',
+                'provider_pickup_id' => 'nullable|string',
+                'unified_location_id' => 'nullable|integer',
+                'dropoff_unified_location_id' => 'nullable|integer',
+                'return_search_url' => 'nullable|string|max:2048',
+                'age' => 'nullable|integer|min:18|max:99',
             ]);
 
             $start = \Carbon\Carbon::parse("{$validated['pickup_date']} {$validated['pickup_time']}");
@@ -788,6 +794,38 @@ class StripeCheckoutController extends Controller
                 $validated['optional_extras'] = [];
 
                 $validated['vehicle'] = $vehicle;
+
+                if ($this->isExternalProviderSource($providerSource)) {
+                    $freshQuote = app(ProviderQuoteRevalidationService::class)->revalidate(
+                        $validated,
+                        $verifiedPrices,
+                        $searchSessionId
+                    );
+
+                    if (! ($freshQuote['valid'] ?? false)) {
+                        Log::warning('Fresh provider quote validation failed during checkout', [
+                            'provider_source' => $providerSource,
+                            'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
+                            'search_session' => $searchSessionId,
+                            'code' => $freshQuote['code'] ?? null,
+                            'ip' => $request->ip(),
+                        ]);
+
+                        return response()->json([
+                            'error' => $freshQuote['error'] ?? 'Supplier availability changed. Please refresh search results before checkout.',
+                            'code' => $freshQuote['code'] ?? 'FRESH_PROVIDER_QUOTE_INVALID',
+                        ], 422);
+                    }
+
+                    $validated['vehicle'] = $freshQuote['vehicle'] ?? $validated['vehicle'];
+                    $validated['gateway_search_id'] = $freshQuote['gateway_search_id'] ?? ($validated['gateway_search_id'] ?? null);
+                    $validated['detailed_extras'] = $freshQuote['extras'] ?? $validated['detailed_extras'];
+                    $verifiedPrices = $freshQuote['verified_prices'] ?? $verifiedPrices;
+                    $verifiedGatewayVehicleContext = is_array($freshQuote['gateway_vehicle_context'] ?? null)
+                        ? $freshQuote['gateway_vehicle_context']
+                        : $verifiedGatewayVehicleContext;
+                    $vehicle = $validated['vehicle'];
+                }
             } else {
                 Log::warning('Checkout attempted without search_session_id', [
                     'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
@@ -951,6 +989,7 @@ class StripeCheckoutController extends Controller
             $trabberAttribution = $this->shouldApplyTrabberAttribution($searchSessionId ?? null, $validated)
                 ? app(TrabberAttributionService::class)->fromRequest($request)
                 : [];
+            $returnSearchUrl = $this->normalizeReturnSearchUrl($validated['return_search_url'] ?? null);
 
             // Build the FULL metadata (no Stripe key limit here â€” stored in our DB)
             $fullMetadata = [
@@ -960,6 +999,10 @@ class StripeCheckoutController extends Controller
                 'booking_hold_id' => $bookingHold?->id,
                 'gateway_vehicle_id' => $selectedVehicleContext['gateway_vehicle_id'] ?? ($validated['vehicle']['gateway_vehicle_id'] ?? null),
                 'gateway_search_id' => $validated['gateway_search_id'] ?? null,
+                'return_search_url' => $returnSearchUrl,
+                'unified_location_id' => $validated['unified_location_id'] ?? null,
+                'dropoff_unified_location_id' => $validated['dropoff_unified_location_id'] ?? null,
+                'provider_pickup_id' => $validated['provider_pickup_id'] ?? null,
                 'vehicle_source' => $vehicleSource,
                 'vehicle_brand' => $validated['vehicle']['brand'] ?? '',
                 'vehicle_model' => $validated['vehicle']['model'] ?? '',
@@ -1528,7 +1571,7 @@ class StripeCheckoutController extends Controller
         $context['supplier_data'] = $supplierData;
 
         if (empty($context['context_valid_until'])) {
-            $context['context_valid_until'] = now()->addHours(2)->toIso8601String();
+            $context['context_valid_until'] = now()->addMinutes((int) config('services.checkout.price_context_ttl_minutes', 15))->toIso8601String();
         }
 
         return $this->removeEmptyContextValues($context);
@@ -2370,9 +2413,14 @@ class StripeCheckoutController extends Controller
             $state = $this->resolveBookingOutcomeState($booking, $state);
         }
 
+        $searchUrl = $booking
+            ? $this->resolveBookingReturnSearchUrl($booking)
+            : $this->normalizeReturnSearchUrl((string) $request->query('return_search_url', ''));
+
         return inertia('Booking/Status', [
             'state' => $state,
             'session_id' => $sessionId !== '' ? $sessionId : null,
+            'search_url' => $searchUrl,
             'booking' => $booking ? [
                 'booking_number' => $booking->booking_number,
                 'booking_status' => $booking->booking_status,
@@ -2384,6 +2432,124 @@ class StripeCheckoutController extends Controller
                 'booking_currency' => $booking->booking_currency,
             ] : null,
         ]);
+    }
+
+    private function normalizeReturnSearchUrl(?string $url): ?string
+    {
+        $value = trim((string) $url);
+        if ($value === '' || str_starts_with($value, '//')) {
+            return null;
+        }
+
+        $parts = parse_url($value);
+        if (! is_array($parts)) {
+            return null;
+        }
+
+        $host = $parts['host'] ?? null;
+        if ($host) {
+            $allowedHosts = array_filter([
+                request()->getHost(),
+                parse_url((string) config('app.url'), PHP_URL_HOST),
+            ]);
+
+            if (! in_array($host, $allowedHosts, true)) {
+                return null;
+            }
+        }
+
+        $path = $parts['path'] ?? '';
+        $query = isset($parts['query']) && $parts['query'] !== '' ? '?'.$parts['query'] : '';
+        $locale = app()->getLocale() ?: 'en';
+
+        if (preg_match('#^/(en|fr|nl|es|ar)/s/?$#', $path)) {
+            return rtrim($path, '/').$query;
+        }
+
+        if ($path === '/s' || $path === '/s/') {
+            return "/{$locale}/s{$query}";
+        }
+
+        return null;
+    }
+
+    private function resolveBookingReturnSearchUrl(Booking $booking): ?string
+    {
+        $metadata = is_array($booking->provider_metadata) ? $booking->provider_metadata : [];
+        $storedUrl = $this->normalizeReturnSearchUrl(data_get($metadata, 'return_search_url'));
+        if ($storedUrl) {
+            return $storedUrl;
+        }
+
+        $pickupDate = $this->formatSearchDate($booking->pickup_date);
+        $dropoffDate = $this->formatSearchDate($booking->return_date);
+        $pickupLocation = $booking->pickup_location
+            ?: data_get($metadata, 'pickup_location_details.name')
+            ?: data_get($metadata, 'location.name');
+
+        if (! $pickupDate || ! $dropoffDate || ! $pickupLocation) {
+            return null;
+        }
+
+        $dropoffLocation = $booking->return_location
+            ?: data_get($metadata, 'dropoff_location_details.name')
+            ?: $pickupLocation;
+
+        $params = array_filter([
+            'where' => $pickupLocation,
+            'date_from' => $pickupDate,
+            'date_to' => $dropoffDate,
+            'start_time' => $this->formatSearchTime($booking->pickup_time) ?: '09:00',
+            'end_time' => $this->formatSearchTime($booking->return_time) ?: '09:00',
+            'age' => data_get($metadata, 'customer_snapshot.driver_age') ?: 35,
+            'provider' => $booking->provider_source ?: data_get($metadata, 'provider') ?: 'mixed',
+            'provider_pickup_id' => data_get($metadata, 'provider_pickup_id')
+                ?: data_get($metadata, 'pickup_location_id'),
+            'unified_location_id' => data_get($metadata, 'unified_location_id')
+                ?: data_get($metadata, 'pickup_location_details.unified_location_id')
+                ?: data_get($metadata, 'location.unified_location_id'),
+            'dropoff_where' => $dropoffLocation,
+            'dropoff_unified_location_id' => data_get($metadata, 'dropoff_unified_location_id')
+                ?: data_get($metadata, 'dropoff_location_details.unified_location_id'),
+        ], static fn ($value) => $value !== null && $value !== '');
+
+        return '/'.(app()->getLocale() ?: 'en').'/s?'.http_build_query($params);
+    }
+
+    private function formatSearchDate(mixed $value): ?string
+    {
+        if ($value instanceof \Carbon\CarbonInterface) {
+            return $value->toDateString();
+        }
+
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function formatSearchTime(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^([01]\d|2[0-3]):[0-5]\d/', $value)) {
+            return substr($value, 0, 5);
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('H:i');
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function resolveBookingOutcomeState(Booking $booking, string $fallback): string

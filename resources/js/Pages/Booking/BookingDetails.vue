@@ -878,15 +878,15 @@ const vendorInitials = computed(() => {
               <h3>{{ _t('customerprofile', 'deposit_insurance') || 'Deposit & Insurance' }}</h3>
             </div>
             <div class="bd-card-body space-y-3">
-              <!-- Internal vehicle security deposit -->
-              <div v-if="pricingSummary.securityDeposit" class="flex justify-between items-center">
-                <span class="text-sm text-gray-500">{{ _t('customerprofile', 'security_deposit') || 'Security Deposit' }}</span>
-                <span class="text-sm font-bold text-gray-800">{{ bookingData.formatCurrency(pricingSummary.securityDeposit, pricingSummary.deposit?.currency) }}</span>
-              </div>
               <!-- External provider deposit -->
-              <div v-else-if="pricingSummary.deposit" class="flex justify-between items-center">
+              <div v-if="pricingSummary.deposit" class="flex justify-between items-center">
                 <span class="text-sm text-gray-500">{{ _t('customerprofile', 'security_deposit') || 'Security Deposit' }}</span>
                 <span class="text-sm font-bold text-gray-800">{{ bookingData.formatCurrency(pricingSummary.deposit.amount, pricingSummary.deposit.currency) }}</span>
+              </div>
+              <!-- Internal vehicle security deposit -->
+              <div v-else-if="pricingSummary.securityDeposit" class="flex justify-between items-center">
+                <span class="text-sm text-gray-500">{{ _t('customerprofile', 'security_deposit') || 'Security Deposit' }}</span>
+                <span class="text-sm font-bold text-gray-800">{{ bookingData.formatCurrency(pricingSummary.securityDeposit, pricingSummary.deposit?.currency) }}</span>
               </div>
               <!-- Customer's chosen deposit type -->
               <div v-if="pricingSummary.selectedDepositType" class="flex justify-between items-center">

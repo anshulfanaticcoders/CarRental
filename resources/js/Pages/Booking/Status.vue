@@ -26,6 +26,10 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    search_url: {
+        type: String,
+        default: null,
+    },
 });
 
 const page = usePage();
@@ -45,9 +49,39 @@ const localizedPath = (path = '/') => {
     return normalizedPath === '/' ? `/${currentLocale.value}` : `/${currentLocale.value}${normalizedPath}`;
 };
 
+const normalizeSearchUrl = (url) => {
+    const value = typeof url === 'string' ? url.trim() : '';
+    if (!value || typeof window === 'undefined') return null;
+
+    try {
+        const parsed = new URL(value, window.location.origin);
+        const path = parsed.pathname;
+        const query = parsed.search || '';
+
+        if (/^\/(en|fr|nl|es|ar)\/s\/?$/.test(path)) {
+            return `${path.replace(/\/$/, '')}${query}`;
+        }
+
+        if (path === '/s' || path === '/s/') {
+            return localizedPath(`/s${query}`);
+        }
+    } catch {
+        if (value.startsWith('/s?') || value === '/s') {
+            return localizedPath(value);
+        }
+    }
+
+    return null;
+};
+
 const searchUrl = computed(() => {
     if (typeof window === 'undefined') return localizedPath('/');
-    return sessionStorage.getItem('searchurl') || localizedPath('/');
+
+    const serverSearchUrl = normalizeSearchUrl(props.search_url);
+    if (serverSearchUrl) return serverSearchUrl;
+
+    const storedSearchUrl = normalizeSearchUrl(sessionStorage.getItem('searchurl'));
+    return storedSearchUrl || localizedPath('/');
 });
 
 const outcomes = {
