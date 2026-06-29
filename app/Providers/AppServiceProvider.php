@@ -35,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
         Page::observe(PageObserver::class);
         PageTranslation::observe(PageTranslationObserver::class);
         \App\Models\Vehicle::observe(\App\Observers\VehicleObserver::class);
+        \App\Models\VendorLocation::observe(\App\Observers\VendorLocationObserver::class);
 
         // Generic activity logging — captures created/updated/deleted/restored
         // for these models with field-diff in the `properties` JSON column.

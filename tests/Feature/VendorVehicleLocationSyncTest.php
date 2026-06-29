@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\TriggerGatewayLocationSync;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleBenefit;
@@ -12,6 +13,7 @@ use App\Models\VendorLocation;
 use App\Models\VendorProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -285,6 +287,119 @@ class VendorVehicleLocationSyncTest extends TestCase
         $this->assertSame('+212611111111', $vendorLocation->phone);
     }
 
+    public function test_vehicle_created_with_vendor_location_triggers_gateway_location_sync(): void
+    {
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+        $this->createApprovedVendorProfile($vendor);
+
+        $category = VehicleCategory::create([
+            'name' => 'Economy',
+            'slug' => 'economy',
+            'description' => 'Economy vehicles',
+            'status' => true,
+        ]);
+        $vendorLocation = $this->createVendorLocation($vendor);
+
+        Bus::fake([TriggerGatewayLocationSync::class]);
+
+        $this->createVehicleForSync($vendor, $category, $vendorLocation, [
+            'full_vehicle_address' => '',
+        ]);
+
+        Bus::assertDispatchedTimes(TriggerGatewayLocationSync::class, 1);
+    }
+
+    public function test_vehicle_location_reassignment_triggers_gateway_location_sync(): void
+    {
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+        $this->createApprovedVendorProfile($vendor);
+
+        $category = VehicleCategory::create([
+            'name' => 'Economy',
+            'slug' => 'economy',
+            'description' => 'Economy vehicles',
+            'status' => true,
+        ]);
+
+        $firstLocation = $this->createVendorLocation($vendor);
+        $secondLocation = $this->createVendorLocation($vendor, [
+            'name' => 'Casablanca Downtown',
+            'address_line_1' => 'Casablanca city centre',
+            'city' => 'Casablanca',
+            'country' => 'Morocco',
+            'country_code' => 'MA',
+            'latitude' => 33.57311,
+            'longitude' => -7.589843,
+            'location_type' => 'downtown',
+            'iata_code' => null,
+        ]);
+        $vehicle = $this->createVehicleForSync($vendor, $category, $firstLocation);
+
+        Bus::fake([TriggerGatewayLocationSync::class]);
+
+        $vehicle->update(['vendor_location_id' => $secondLocation->id]);
+
+        Bus::assertDispatchedTimes(TriggerGatewayLocationSync::class, 1);
+    }
+
+    public function test_vehicle_status_change_triggers_gateway_location_sync(): void
+    {
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+        $this->createApprovedVendorProfile($vendor);
+
+        $category = VehicleCategory::create([
+            'name' => 'Economy',
+            'slug' => 'economy',
+            'description' => 'Economy vehicles',
+            'status' => true,
+        ]);
+        $vendorLocation = $this->createVendorLocation($vendor);
+        $vehicle = $this->createVehicleForSync($vendor, $category, $vendorLocation, [
+            'status' => 'maintenance',
+        ]);
+
+        Bus::fake([TriggerGatewayLocationSync::class]);
+
+        $vehicle->update(['status' => 'available']);
+
+        Bus::assertDispatchedTimes(TriggerGatewayLocationSync::class, 1);
+    }
+
+    public function test_vendor_location_lifecycle_triggers_gateway_location_sync(): void
+    {
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+
+        Bus::fake([TriggerGatewayLocationSync::class]);
+
+        $location = $this->createVendorLocation($vendor);
+
+        Bus::assertDispatchedTimes(TriggerGatewayLocationSync::class, 1);
+
+        Bus::fake([TriggerGatewayLocationSync::class]);
+
+        $location->update(['latitude' => 31.6071]);
+
+        Bus::assertDispatchedTimes(TriggerGatewayLocationSync::class, 1);
+
+        Bus::fake([TriggerGatewayLocationSync::class]);
+
+        $location->delete();
+
+        Bus::assertDispatchedTimes(TriggerGatewayLocationSync::class, 1);
+    }
+
     private function storePayload(int $categoryId, int $vendorLocationId): array
     {
         return [
@@ -462,9 +577,9 @@ class VendorVehicleLocationSyncTest extends TestCase
             ->all();
     }
 
-    private function createVendorLocation(User $vendor): VendorLocation
+    private function createVendorLocation(User $vendor, array $overrides = []): VendorLocation
     {
-        return VendorLocation::create([
+        return VendorLocation::create(array_merge([
             'vendor_id' => $vendor->id,
             'name' => 'Marrakech Airport (RAK)',
             'address_line_1' => 'Menara Airport, Marrakech, Morocco',
@@ -479,18 +594,67 @@ class VendorVehicleLocationSyncTest extends TestCase
             'pickup_instructions' => 'Meet at desk 3 in terminal 2.',
             'dropoff_instructions' => 'Return at parking lane B.',
             'is_active' => true,
-        ]);
+        ], $overrides));
+    }
+
+    private function createVehicleForSync(
+        User $vendor,
+        VehicleCategory $category,
+        VendorLocation $location,
+        array $overrides = []
+    ): Vehicle {
+        return Vehicle::create(array_merge([
+            'vendor_id' => $vendor->id,
+            'vendor_location_id' => $location->id,
+            'category_id' => $category->id,
+            'brand' => 'Toyota',
+            'model' => 'Yaris',
+            'color' => 'white',
+            'mileage' => 20,
+            'transmission' => 'automatic',
+            'fuel' => 'petrol',
+            'body_style' => 'sedan',
+            'air_conditioning' => true,
+            'sipp_code' => 'ECMN',
+            'seating_capacity' => 5,
+            'number_of_doors' => 4,
+            'luggage_capacity' => 2,
+            'horsepower' => 110,
+            'co2' => '120',
+            'location' => $location->name,
+            'location_type' => $location->location_type,
+            'latitude' => $location->latitude,
+            'longitude' => $location->longitude,
+            'city' => $location->city,
+            'state' => $location->state,
+            'country' => $location->country,
+            'full_vehicle_address' => $location->address_line_1,
+            'status' => 'available',
+            'features' => json_encode(['Air Conditioning']),
+            'featured' => false,
+            'security_deposit' => 200,
+            'payment_method' => json_encode(['credit_card']),
+            'guidelines' => 'Bring passport and license.',
+            'terms_policy' => 'Return with same fuel level.',
+            'fuel_policy' => 'full_to_full',
+            'price_per_day' => 55,
+            'price_per_week' => 300,
+            'price_per_month' => 1000,
+            'preferred_price_type' => 'day',
+            'pickup_times' => ['09:00'],
+            'return_times' => ['09:00'],
+        ], $overrides));
     }
 
     private function createApprovedVendorProfile(User $user): VendorProfile
     {
         return VendorProfile::create([
             'user_id' => $user->id,
-            'company_name' => 'Vendor ' . $user->id,
+            'company_name' => 'Vendor '.$user->id,
             'company_phone_number' => '1234567890',
-            'company_email' => 'vendor-' . $user->id . '@example.com',
+            'company_email' => 'vendor-'.$user->id.'@example.com',
             'company_address' => '123 Market St',
-            'company_gst_number' => 'GST-' . Str::upper(Str::random(8)),
+            'company_gst_number' => 'GST-'.Str::upper(Str::random(8)),
             'status' => 'approved',
         ]);
     }

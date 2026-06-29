@@ -685,3 +685,13 @@ Concise durable memory for significant completed work.
 - Scope: `CarRental` vehicle create wizard, vehicle store validation, vendor vehicle list price display, and browser smoke.
 - Decision: create-listing numeric inputs now expose min/max/step/inputmode constraints and matching frontend messages for integer/decimal fields. Laravel store validation now rejects out-of-table/range values before storage, including decimal scale for prices/plans/add-ons. CO2 no longer silently caps normal values like 120 to 100. Vendor fleet price display now falls back to page/user currency when a vendor profile currency is missing instead of showing `N/A` for saved daily prices.
 - Verification: browser smoke confirmed invalid Details values stay on-step with field messages, then created local vehicle `#329` through the page submit path with 5 browser-generated images; database saved `price_per_day=75.00`, and All Vehicles shows `EUR75.00/day`. `php -l` passed for touched PHP files; `php artisan test --filter=VendorVehicleLocationSyncTest` passed with 4 tests/47 assertions; `npm run build` passed with existing Browserslist/Vite/lottie/chunk warnings.
+
+### 2026-06-29 - Gateway internal location refresh preservation
+- Scope: `vrooem-gateway` internal adapter and unified location JSON refresh.
+- Decision: internal Laravel location fetch failures now raise real adapter failures instead of returning an empty success response. When the internal provider fails during a scheduled refresh, the gateway preserves the previous internal provider locations so cron cannot wipe vendor-only locations from search.
+- Verification: focused gateway tests passed for `tests/test_internal_adapter.py` and `tests/test_location_json_refresh_service.py` with 22 tests; file-scoped Ruff passed for the changed gateway files. Local sync returned `internal_locations_received=4`, `internal_locations_preserved=0`, and `internal_provider_failed=false`.
+
+### 2026-06-29 - Internal vehicle location sync trigger hardening
+- Scope: `CarRental` vehicle/vendor-location observers and gateway location sync trigger.
+- Decision: Laravel now triggers gateway location sync when an internal vehicle is created with a canonical vendor location, moved to another vendor location, made searchable/unsearchable by status, or deleted. Vendor location create/update/delete also triggers sync, so DB-owned internal locations do not wait for the two-hour cron cycle to become searchable.
+- Verification: `php -l` passed for touched PHP files; Pint passed for touched PHP files; `php artisan test tests\Feature\VendorVehicleLocationSyncTest.php` passed with 8 tests/53 assertions.

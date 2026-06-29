@@ -2,9 +2,8 @@
 
 namespace App\Observers;
 
+use App\Jobs\TriggerGatewayLocationSync;
 use App\Models\Vehicle;
-use App\Services\VrooemGatewayService;
-use Illuminate\Support\Facades\Log;
 
 class VehicleObserver
 {
@@ -12,13 +11,13 @@ class VehicleObserver
      * Location fields that trigger a gateway sync when changed.
      */
     private const LOCATION_FIELDS = [
-        'full_vehicle_address', 'latitude', 'longitude',
-        'location', 'city', 'country', 'location_type',
+        'vendor_location_id', 'full_vehicle_address', 'latitude', 'longitude',
+        'location', 'city', 'country', 'location_type', 'status',
     ];
 
     public function created(Vehicle $vehicle): void
     {
-        if ($vehicle->full_vehicle_address && $vehicle->latitude) {
+        if ($this->hasSyncableLocation($vehicle)) {
             $this->triggerSync();
         }
     }
@@ -32,20 +31,19 @@ class VehicleObserver
 
     public function deleted(Vehicle $vehicle): void
     {
-        if ($vehicle->full_vehicle_address) {
+        if ($this->hasSyncableLocation($vehicle)) {
             $this->triggerSync();
         }
     }
 
+    private function hasSyncableLocation(Vehicle $vehicle): bool
+    {
+        return $vehicle->vendor_location_id !== null
+            || (filled($vehicle->full_vehicle_address) && $vehicle->latitude !== null);
+    }
+
     private function triggerSync(): void
     {
-        // Dispatch async so we don't block the vendor's request
-        dispatch(function () {
-            try {
-                app(VrooemGatewayService::class)->triggerLocationSync();
-            } catch (\Exception $e) {
-                Log::warning('VehicleObserver: Failed to trigger location sync', ['error' => $e->getMessage()]);
-            }
-        })->afterResponse();
+        TriggerGatewayLocationSync::dispatch('vehicle')->afterResponse();
     }
 }
