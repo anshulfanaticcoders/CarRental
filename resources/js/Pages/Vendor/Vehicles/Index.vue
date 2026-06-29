@@ -387,10 +387,12 @@ import {
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
+const page = usePage();
 const tt = (group, key, fallback) => {
     const v = _t(group, key);
     return (!v || v === key) ? fallback : v;
 };
+const currentCurrency = computed(() => page.props.auth?.user?.profile?.currency || page.props.currency || '');
 
 const props = defineProps({
     vehicles: {
@@ -682,14 +684,14 @@ const deleteSelectedVehicles = () => {
 };
 
 const formatPricing = (vehicle) => {
-    if (!vehicle || !vehicle.vendor_profile || !vehicle.vendor_profile.currency) {
-        return _t('vendorprofilepages', 'not_applicable_text'); // Fallback if data is missing
-    }
+    if (!vehicle) return _t('vendorprofilepages', 'not_applicable_text');
 
-    const currencySymbol = vehicle.vendor_profile.currency;
+    const currencySymbol = vehicle.vendor_profile?.currency || currentCurrency.value;
     const prices = [];
 
-    if (vehicle.price_per_day) prices.push(`${currencySymbol}${vehicle.price_per_day}${_t('vendorprofilepages', 'price_per_day_suffix')}`);
+    if (vehicle.price_per_day !== null && vehicle.price_per_day !== undefined && vehicle.price_per_day !== '') {
+        prices.push(`${currencySymbol}${vehicle.price_per_day}${_t('vendorprofilepages', 'price_per_day_suffix')}`);
+    }
     // Weekly / monthly price display removed — daily only.
 
     return prices.length ? prices.join(' | ') : _t('vendorprofilepages', 'not_applicable_text');

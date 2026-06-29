@@ -38,20 +38,21 @@ class VendorVehicleLocationSyncTest extends TestCase
             'description' => 'Economy vehicles',
             'status' => true,
         ]);
+        $vendorLocation = $this->createVendorLocation($vendor);
 
         $response = $this
             ->actingAs($vendor)
-            ->post(route('vehicles.store', ['locale' => 'en']), $this->storePayload($category->id));
+            ->post(route('vehicles.store', ['locale' => 'en']), $this->storePayload($category->id, $vendorLocation->id));
 
         $response->assertRedirect(route('current-vendor-vehicles.index', ['locale' => 'en']));
         $response->assertSessionHasNoErrors();
 
         $vehicle = Vehicle::query()->with('vendorLocation')->firstOrFail();
 
-        $this->assertSame('ECMR', $vehicle->sipp_code);
+        $this->assertSame('EDAR', $vehicle->sipp_code);
         $this->assertNotNull($vehicle->vendor_location_id);
         $this->assertSame('Marrakech Airport (RAK)', $vehicle->location);
-        $this->assertSame('airport', $vehicle->location_type);
+        $this->assertSame('Airport', $vehicle->location_type);
         $this->assertSame('Marrakech', $vehicle->city);
         $this->assertSame('Morocco', $vehicle->country);
         $this->assertSame('Menara Airport, Marrakech, Morocco', $vehicle->full_vehicle_address);
@@ -62,6 +63,102 @@ class VendorVehicleLocationSyncTest extends TestCase
         $this->assertSame('MA', $vehicle->vendorLocation->country_code);
         $this->assertSame('Meet at desk 3 in terminal 2.', $vehicle->vendorLocation->pickup_instructions);
         $this->assertSame('+212600000000', $vehicle->vendorLocation->phone);
+    }
+
+    public function test_vendor_store_accepts_formatted_international_vehicle_contact_number(): void
+    {
+        Storage::fake('upcloud');
+        Notification::fake();
+
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+        $this->createApprovedVendorProfile($vendor);
+
+        $category = VehicleCategory::create([
+            'name' => 'Economy',
+            'slug' => 'economy',
+            'description' => 'Economy vehicles',
+            'status' => true,
+        ]);
+        $vendorLocation = $this->createVendorLocation($vendor);
+
+        $payload = $this->storePayload($category->id, $vendorLocation->id);
+        $payload['phone_number'] = '+212 661 584 986';
+
+        $response = $this
+            ->actingAs($vendor)
+            ->post(route('vehicles.store', ['locale' => 'en']), $payload);
+
+        $response->assertRedirect(route('current-vendor-vehicles.index', ['locale' => 'en']));
+        $response->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('vehicle_specifications', [
+            'phone_number' => '+212 661 584 986',
+        ]);
+    }
+
+    public function test_vendor_store_rejects_values_outside_vehicle_field_constraints(): void
+    {
+        Storage::fake('upcloud');
+        Notification::fake();
+
+        $vendor = User::factory()->create([
+            'role' => 'vendor',
+            'status' => 'active',
+        ]);
+        $this->createApprovedVendorProfile($vendor);
+
+        $category = VehicleCategory::create([
+            'name' => 'Economy',
+            'slug' => 'economy',
+            'description' => 'Economy vehicles',
+            'status' => true,
+        ]);
+        $vendorLocation = $this->createVendorLocation($vendor);
+
+        $payload = $this->storePayload($category->id, $vendorLocation->id);
+        $payload['mileage'] = 121;
+        $payload['horsepower'] = '110.5';
+        $payload['co2'] = 'not-a-number';
+        $payload['security_deposit'] = '-1.00';
+        $payload['price_per_day'] = '0.00';
+        $payload['gross_vehicle_mass'] = '1500.5';
+        $payload['vehicle_height'] = '5.01';
+        $payload['dealer_cost'] = '100000000.00';
+        $payload['minimum_driver_age'] = 17;
+        $payload['selected_plans'] = [[
+            'plan_type' => 'Premium',
+            'plan_value' => '55.555',
+            'features' => [],
+        ]];
+        $payload['custom_addons'] = [[
+            'extra_name' => 'GPS',
+            'extra_type' => 'equipment',
+            'description' => 'Portable navigation unit.',
+            'price' => '1.234',
+            'quantity' => 0,
+        ]];
+
+        $response = $this
+            ->actingAs($vendor)
+            ->post(route('vehicles.store', ['locale' => 'en']), $payload);
+
+        $response->assertSessionHasErrors([
+            'mileage',
+            'horsepower',
+            'co2',
+            'security_deposit',
+            'price_per_day',
+            'gross_vehicle_mass',
+            'vehicle_height',
+            'dealer_cost',
+            'minimum_driver_age',
+            'selected_plans.0.plan_value',
+            'custom_addons.0.price',
+            'custom_addons.0.quantity',
+        ]);
     }
 
     public function test_vendor_update_keeps_vendor_location_and_legacy_fields_in_sync(): void
@@ -81,8 +178,8 @@ class VendorVehicleLocationSyncTest extends TestCase
 
         $vendorLocation = VendorLocation::create([
             'vendor_id' => $vendor->id,
-            'name' => 'Old Airport',
-            'address_line_1' => 'Old Terminal',
+            'name' => 'Marrakech Airport (RAK)',
+            'address_line_1' => 'Menara Airport, Marrakech, Morocco',
             'city' => 'Marrakech',
             'country' => 'Morocco',
             'country_code' => 'MA',
@@ -90,6 +187,9 @@ class VendorVehicleLocationSyncTest extends TestCase
             'longitude' => -8.0363,
             'location_type' => 'airport',
             'iata_code' => 'RAK',
+            'phone' => '+212611111111',
+            'pickup_instructions' => 'Meet at desk 3 in terminal 2.',
+            'dropoff_instructions' => 'Return at parking lane B.',
             'is_active' => true,
         ]);
 
@@ -103,6 +203,8 @@ class VendorVehicleLocationSyncTest extends TestCase
             'mileage' => 20,
             'transmission' => 'automatic',
             'fuel' => 'petrol',
+            'body_style' => 'sedan',
+            'air_conditioning' => true,
             'sipp_code' => 'ECMN',
             'seating_capacity' => 5,
             'number_of_doors' => 4,
@@ -163,15 +265,15 @@ class VendorVehicleLocationSyncTest extends TestCase
             ->putJson(route('current-vendor-vehicles.update', ['locale' => 'en', 'current_vendor_vehicle' => $vehicle->id]), $payload);
 
         $response->assertOk();
-        $response->assertJsonPath('vehicle.sipp_code', 'ECMR');
+        $response->assertJsonPath('vehicle.sipp_code', 'EDAR');
 
         $vehicle->refresh();
         $vendorLocation->refresh();
 
         $this->assertSame($vendorLocation->id, $vehicle->vendor_location_id);
-        $this->assertSame('ECMR', $vehicle->sipp_code);
+        $this->assertSame('EDAR', $vehicle->sipp_code);
         $this->assertSame('Marrakech Airport (RAK)', $vehicle->location);
-        $this->assertSame('airport', $vehicle->location_type);
+        $this->assertSame('Airport', $vehicle->location_type);
         $this->assertSame('Marrakech', $vehicle->city);
         $this->assertSame('Morocco', $vehicle->country);
         $this->assertSame('Menara Airport, Marrakech, Morocco', $vehicle->full_vehicle_address);
@@ -183,9 +285,10 @@ class VendorVehicleLocationSyncTest extends TestCase
         $this->assertSame('+212611111111', $vendorLocation->phone);
     }
 
-    private function storePayload(int $categoryId): array
+    private function storePayload(int $categoryId, int $vendorLocationId): array
     {
         return [
+            'vendor_location_id' => $vendorLocationId,
             'category_id' => $categoryId,
             'brand' => 'Toyota',
             'model' => 'Yaris',
@@ -193,6 +296,8 @@ class VendorVehicleLocationSyncTest extends TestCase
             'mileage' => 20,
             'transmission' => 'automatic',
             'fuel' => 'petrol',
+            'body_style' => 'sedan',
+            'air_conditioning' => true,
             'sipp_code' => 'ecmr',
             'seating_capacity' => 5,
             'number_of_doors' => 4,
@@ -273,6 +378,8 @@ class VendorVehicleLocationSyncTest extends TestCase
             'mileage' => 25,
             'transmission' => 'automatic',
             'fuel' => 'petrol',
+            'body_style' => 'sedan',
+            'air_conditioning' => true,
             'sipp_code' => 'ECMR',
             'seating_capacity' => 5,
             'number_of_doors' => 4,
@@ -353,6 +460,26 @@ class VendorVehicleLocationSyncTest extends TestCase
                 'close_time' => '20:00',
             ])
             ->all();
+    }
+
+    private function createVendorLocation(User $vendor): VendorLocation
+    {
+        return VendorLocation::create([
+            'vendor_id' => $vendor->id,
+            'name' => 'Marrakech Airport (RAK)',
+            'address_line_1' => 'Menara Airport, Marrakech, Morocco',
+            'city' => 'Marrakech',
+            'country' => 'Morocco',
+            'country_code' => 'MA',
+            'latitude' => 31.6069,
+            'longitude' => -8.0363,
+            'location_type' => 'airport',
+            'iata_code' => 'RAK',
+            'phone' => '+212600000000',
+            'pickup_instructions' => 'Meet at desk 3 in terminal 2.',
+            'dropoff_instructions' => 'Return at parking lane B.',
+            'is_active' => true,
+        ]);
     }
 
     private function createApprovedVendorProfile(User $user): VendorProfile

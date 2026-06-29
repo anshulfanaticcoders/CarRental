@@ -334,7 +334,7 @@
                             </div>
                             <div class="vln-field">
                                 <label class="vln-label">Phone Number <span class="req">*</span></label>
-                                <input class="vln-input" type="tel" v-model="form.phone_number" placeholder="+31 6 1234 5678" />
+                                <input class="vln-input" type="tel" v-model="form.phone_number" placeholder="+31 6 1234 5678" maxlength="30" />
                                 <span v-if="errors.phone_number" class="vln-error"><AlertCircle :size="13" /> {{ errors.phone_number }}</span>
                             </div>
                         </div>
@@ -848,6 +848,7 @@ const toast = useToast();
 const customAddons = ref([]);
 const stepNames = ['Details', 'Registration', 'Location', 'Pricing', 'Protection', 'Add-ons', 'Photos'];
 const formCol = ref(null);
+const PHONE_NUMBER_MAX_LENGTH = 30;
 
 const paymentOptions = [
     { value: 'credit_card', label: 'Credit Card', icon: CreditCard },
@@ -1339,6 +1340,7 @@ const nextStep = () => {
             if (!form.registration_country) { ok = false; errors.registration_country = 'Please select country'; }
             if (!form.registration_date) { ok = false; errors.registration_date = 'Please enter registration date'; }
             if (!form.phone_number) { ok = false; errors.phone_number = 'Please enter phone number'; }
+            else if (form.phone_number.length > PHONE_NUMBER_MAX_LENGTH) { ok = false; errors.phone_number = `Phone number must be ${PHONE_NUMBER_MAX_LENGTH} characters or fewer`; }
             break;
         case 2:
             if (!form.vendor_location_id) { ok = false; errors.location = 'Please select a saved vendor location'; }

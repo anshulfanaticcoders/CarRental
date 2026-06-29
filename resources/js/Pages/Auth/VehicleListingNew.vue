@@ -219,7 +219,7 @@
                         <div class="vln-field">
                             <label class="vln-label">Mileage</label>
                             <div class="vln-input-suffix">
-                                <input class="vln-input" type="number" v-model="form.mileage" placeholder="0" id="mileage" />
+                                <input class="vln-input" type="number" v-model="form.mileage" placeholder="0" id="mileage" min="0" max="120" step="1" inputmode="numeric" @keydown="blockInvalidNumberKey" />
                                 <span class="vln-suffix">km/l</span>
                             </div>
                             <span v-if="errors.mileage" class="vln-error"><AlertCircle :size="13" /> {{ errors.mileage }}</span>
@@ -236,7 +236,7 @@
                         <div class="vln-field">
                             <label class="vln-label">Horsepower</label>
                             <div class="vln-input-suffix">
-                                <input class="vln-input" type="number" v-model="form.horsepower" placeholder="0" id="horsepower" />
+                                <input class="vln-input" type="number" v-model="form.horsepower" placeholder="0" id="horsepower" min="0" step="1" inputmode="numeric" @keydown="blockInvalidNumberKey" />
                                 <span class="vln-suffix">hp</span>
                             </div>
                             <span v-if="errors.horsepower" class="vln-error"><AlertCircle :size="13" /> {{ errors.horsepower }}</span>
@@ -244,7 +244,7 @@
                         <div class="vln-field">
                             <label class="vln-label">CO2 Emissions</label>
                             <div class="vln-input-suffix">
-                                <input class="vln-input" type="text" v-model="form.co2" placeholder="0" id="co2" />
+                                <input class="vln-input" type="number" v-model="form.co2" placeholder="0" id="co2" min="0" max="9999" step="1" inputmode="numeric" @keydown="blockInvalidNumberKey" />
                                 <span class="vln-suffix">g/km</span>
                             </div>
                             <span v-if="errors.co2" class="vln-error"><AlertCircle :size="13" /> {{ errors.co2 }}</span>
@@ -362,19 +362,22 @@
                     <div class="vln-grid">
                         <div class="vln-field">
                             <label class="vln-label">Gross Vehicle Mass</label>
-                            <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.gross_vehicle_mass" placeholder="0" /><span class="vln-suffix">kg</span></div>
+                            <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.gross_vehicle_mass" placeholder="0" min="0" max="20000" step="1" inputmode="numeric" @keydown="blockInvalidNumberKey" /><span class="vln-suffix">kg</span></div>
+                            <span v-if="errors.gross_vehicle_mass" class="vln-error"><AlertCircle :size="13" /> {{ errors.gross_vehicle_mass }}</span>
                         </div>
                         <div class="vln-field">
                             <label class="vln-label">Vehicle Height</label>
-                            <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.vehicle_height" placeholder="0" /><span class="vln-suffix">m</span></div>
+                            <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.vehicle_height" placeholder="0" min="0" max="5" step="0.01" inputmode="decimal" @keydown="blockInvalidNumberKey" /><span class="vln-suffix">m</span></div>
+                            <span v-if="errors.vehicle_height" class="vln-error"><AlertCircle :size="13" /> {{ errors.vehicle_height }}</span>
                         </div>
                         <div class="vln-field">
                             <label class="vln-label">Dealer Cost <span class="req">*</span></label>
-                            <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.dealer_cost" placeholder="0" id="dealer_cost" /><span class="vln-suffix">{{ currencyCode }}</span></div>
+                            <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.dealer_cost" placeholder="0" id="dealer_cost" min="0" max="99999999.99" step="0.01" inputmode="decimal" @keydown="blockInvalidNumberKey" /><span class="vln-suffix">{{ currencyCode }}</span></div>
+                            <span v-if="errors.dealer_cost" class="vln-error"><AlertCircle :size="13" /> {{ errors.dealer_cost }}</span>
                         </div>
                         <div class="vln-field">
                             <label class="vln-label">Phone Number <span class="req">*</span></label>
-                            <input class="vln-input" type="tel" v-model="form.phone_number" placeholder="+31 6 1234 5678" id="phone_number" />
+                            <input class="vln-input" type="tel" v-model="form.phone_number" placeholder="+31 6 1234 5678" id="phone_number" maxlength="30" />
                             <span v-if="errors.phone_number" class="vln-error"><AlertCircle :size="13" /> {{ errors.phone_number }}</span>
                         </div>
                     </div>
@@ -479,7 +482,7 @@
                             <div class="vln-grid" style="margin-top:0.4rem">
                                 <div class="vln-field">
                                     <label class="vln-label">Price per day <span class="req">*</span></label>
-                                    <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_day" placeholder="0.00" id="price_per_day" /><span class="vln-suffix">{{ currencyCode }}</span></div>
+                                    <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_day" placeholder="0.00" id="price_per_day" min="0.01" max="99999999.99" step="0.01" inputmode="decimal" @keydown="blockInvalidNumberKey" /><span class="vln-suffix">{{ currencyCode }}</span></div>
                                     <span v-if="errors.price_per_day" class="vln-error"><AlertCircle :size="13" /> {{ errors.price_per_day }}</span>
                                 </div>
                             </div>
@@ -496,12 +499,12 @@
                     <div class="vln-grid">
                         <div class="vln-field">
                             <label class="vln-label">Security Deposit <span class="req">*</span></label>
-                            <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.security_deposit" placeholder="0.00" id="security_deposit" /><span class="vln-suffix">{{ currencyCode }}</span></div>
+                            <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.security_deposit" placeholder="0.00" id="security_deposit" min="0" max="99999999.99" step="0.01" inputmode="decimal" @keydown="blockInvalidNumberKey" /><span class="vln-suffix">{{ currencyCode }}</span></div>
                             <span v-if="errors.security_deposit" class="vln-error"><AlertCircle :size="13" /> {{ errors.security_deposit }}</span>
                         </div>
                         <div class="vln-field">
                             <label class="vln-label">Minimum Driver Age <span class="req">*</span></label>
-                            <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.minimum_driver_age" placeholder="21" id="minimum_driver_age" /><span class="vln-suffix">yrs</span></div>
+                            <div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.minimum_driver_age" placeholder="21" id="minimum_driver_age" min="18" max="99" step="1" inputmode="numeric" @keydown="blockInvalidNumberKey" /><span class="vln-suffix">yrs</span></div>
                             <span v-if="errors.minimum_driver_age" class="vln-error"><AlertCircle :size="13" /> {{ errors.minimum_driver_age }}</span>
                         </div>
                         <div class="vln-field full">
@@ -590,8 +593,8 @@
                         <div class="vln-sub-card">
                             <label class="vln-check-label"><input type="checkbox" v-model="form.limited_km_per_day" class="vln-checkbox" /> Limited KM per day</label>
                             <div v-if="form.limited_km_per_day" class="vln-grid mt-3">
-                                <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.limited_km_per_day_range" /></div>
-                                <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_km_per_day" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
+                                <div class="vln-field"><label class="vln-label">KM Limit</label><input class="vln-input" type="number" v-model="form.limited_km_per_day_range" min="0" max="99999999.99" step="0.01" inputmode="decimal" @keydown="blockInvalidNumberKey" /></div>
+                                <div class="vln-field"><label class="vln-label">Price per extra KM</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model="form.price_per_km_per_day" min="0" max="99999999.99" step="0.01" inputmode="decimal" @keydown="blockInvalidNumberKey" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
                             </div>
                         </div>
                     </div>
@@ -623,7 +626,7 @@
                                     <div class="vln-field">
                                         <label class="vln-label">Cancel free if before</label>
                                         <div class="vln-input-suffix">
-                                            <input class="vln-input" type="number" v-model="form.cancellation_available_per_day_date" min="0" placeholder="e.g. 2" />
+                                            <input class="vln-input" type="number" v-model="form.cancellation_available_per_day_date" min="0" step="1" inputmode="numeric" placeholder="e.g. 2" @keydown="blockInvalidNumberKey" />
                                             <span class="vln-suffix">days before pickup</span>
                                         </div>
                                         <span class="vln-hint">Customer gets full refund if they cancel before this deadline</span>
@@ -641,7 +644,7 @@
                                     <div class="vln-field">
                                         <label class="vln-label">Cancellation fee</label>
                                         <div class="vln-input-suffix">
-                                            <input class="vln-input" type="number" v-model="form.cancellation_fee_per_day" min="0" step="0.01" placeholder="e.g. 50.00" />
+                                            <input class="vln-input" type="number" v-model="form.cancellation_fee_per_day" min="0" max="99999999.99" step="0.01" inputmode="decimal" placeholder="e.g. 50.00" @keydown="blockInvalidNumberKey" />
                                             <span class="vln-suffix">{{ currencyCode }}</span>
                                         </div>
                                         <span class="vln-hint">Charged if customer cancels after the free window or doesn't show up</span>
@@ -682,7 +685,7 @@
                         <div class="vln-field mt-3">
                             <label class="vln-label">Price per day</label>
                             <div class="vln-input-suffix">
-                                <input class="vln-input" type="number" step="0.01" v-model.number="plan.price"
+                                <input class="vln-input" type="number" min="0" max="99999999.99" step="0.01" inputmode="decimal" v-model.number="plan.price" @keydown="blockInvalidNumberKey"
                                     :disabled="!plan.selected" :class="{ 'bg-gray-50': !plan.selected }" />
                                 <span class="vln-suffix">{{ currencyCode }}</span>
                             </div>
@@ -718,8 +721,8 @@
                     <div v-for="(addon, index) in customAddons" :key="addon.id" class="vln-addon-row">
                         <div class="vln-field"><label class="vln-label">Name</label><input class="vln-input" v-model="addon.extra_name" placeholder="e.g. Baby Seat" /></div>
                         <div class="vln-field"><label class="vln-label">Type</label><input class="vln-input" v-model="addon.extra_type" placeholder="e.g. equipment" /></div>
-                        <div class="vln-field"><label class="vln-label">Price/day</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model.number="addon.price" min="0" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
-                        <div class="vln-field"><label class="vln-label">Qty</label><input class="vln-input" type="number" v-model.number="addon.quantity" min="1" /></div>
+                        <div class="vln-field"><label class="vln-label">Price/day</label><div class="vln-input-suffix"><input class="vln-input" type="number" v-model.number="addon.price" min="0" max="99999999.99" step="0.01" inputmode="decimal" @keydown="blockInvalidNumberKey" /><span class="vln-suffix">{{ currencyCode }}</span></div></div>
+                        <div class="vln-field"><label class="vln-label">Qty</label><input class="vln-input" type="number" v-model.number="addon.quantity" min="1" max="999" step="1" inputmode="numeric" @keydown="blockInvalidNumberKey" /></div>
                         <button type="button" class="vln-addon-remove" @click="removeCustomAddon(addon.id)"><X :size="14" /></button>
                     </div>
                     <button type="button" class="vln-addon-add" @click="addCustomAddon"><Plus :size="16" /> Add an extra</button>
@@ -817,7 +820,7 @@
 
 <script setup>
 import { Head, Link, useForm } from "@inertiajs/vue3";
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import VendorLocationFormFields from "@/Components/VendorLocationFormFields.vue";
 import axios from "axios";
@@ -852,6 +855,14 @@ const toast = useToast();
 const customAddons = ref([]);
 const stepNames = ['Welcome', 'Details', 'Registration', 'Location', 'Pricing', 'Protection', 'Add-ons', 'Photos'];
 const formCol = ref(null);
+const PHONE_NUMBER_MAX_LENGTH = 30;
+const DECIMAL_MAX_VALUE = 99999999.99;
+const MILEAGE_MAX_VALUE = 120;
+const CO2_MAX_VALUE = 9999;
+const VEHICLE_HEIGHT_MAX_VALUE = 5;
+const GROSS_VEHICLE_MASS_MAX_VALUE = 20000;
+const MINIMUM_DRIVER_AGE = 18;
+const MAXIMUM_DRIVER_AGE = 99;
 
 const paymentOptions = [
     { value: 'credit_card', label: 'Credit Card', icon: CreditCard },
@@ -1127,17 +1138,105 @@ const planErrors = reactive({ essential: '', premium: '', premium_plus: '' });
 const errors = reactive({
     category_id: '', brand: '', model: '', color: '', mileage: '', horsepower: '', co2: '', features: '',
     body_style: '', air_conditioning: '', vendor_location_id: '',
-    registration_number: '', registration_country: '', registration_date: '', phone_number: '',
+    registration_number: '', registration_country: '', registration_date: '', gross_vehicle_mass: '',
+    vehicle_height: '', dealer_cost: '', phone_number: '',
     location: '', location_type: '', latitude: '', longitude: '',
     security_deposit: '', payment_method: '', terms_policy: '', minimum_driver_age: '',
-    price_per_day: '', custom_addons: '', images: '',
+    price_per_day: '', selected_plans: '', custom_addons: '', images: '',
     operating_hours: '',
 });
 
 // ═══ Helpers ═══
+const serverErrorStepMap = {
+    category_id: 1, brand: 1, model: 1, color: 1, mileage: 1, transmission: 1, fuel: 1,
+    body_style: 1, air_conditioning: 1, seating_capacity: 1, number_of_doors: 1,
+    luggage_capacity: 1, horsepower: 1, co2: 1, features: 1,
+    registration_number: 2, registration_country: 2, registration_date: 2,
+    gross_vehicle_mass: 2, vehicle_height: 2, dealer_cost: 2, phone_number: 2,
+    vendor_location_id: 3, location: 3, location_type: 3, latitude: 3, longitude: 3,
+    city: 3, state: 3, country: 3, full_vehicle_address: 3,
+    security_deposit: 4, payment_method: 4, minimum_driver_age: 4, price_per_day: 4,
+    operating_hours: 4,
+    selected_plans: 5,
+    custom_addons: 6,
+    images: 7, primary_image_index: 7,
+};
+
+const normalizeErrorKey = (key) => {
+    if (key === 'vendor_location_id') return 'location';
+    if (key?.startsWith('images.')) return 'images';
+    if (key?.startsWith('selected_plans.')) return 'selected_plans';
+    if (key?.startsWith('custom_addons.')) return 'custom_addons';
+    if (key?.startsWith('operating_hours.')) return 'operating_hours';
+    if (key?.startsWith('payment_method.')) return 'payment_method';
+    return key;
+};
+
+const messageFromError = (value) => Array.isArray(value) ? value[0] : value;
+
+const scrollToFirstVisibleError = async () => {
+    await nextTick();
+    const el = document.querySelector('.vln-error');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+const applyServerErrors = async (serverErrors) => {
+    Object.keys(errors).forEach(k => errors[k] = '');
+
+    let firstMessage = '';
+    let firstStep = null;
+
+    Object.entries(serverErrors || {}).forEach(([key, value]) => {
+        const normalizedKey = normalizeErrorKey(key);
+        const message = messageFromError(value);
+
+        if (!firstMessage) {
+            firstMessage = message;
+            firstStep = serverErrorStepMap[key] ?? serverErrorStepMap[normalizedKey] ?? currentStep.value;
+        }
+
+        if (normalizedKey in errors) {
+            errors[normalizedKey] = message;
+        }
+    });
+
+    if (firstStep !== null) {
+        currentStep.value = firstStep;
+        highestStepReached.value = Math.max(highestStepReached.value, firstStep);
+    }
+
+    await scrollToFirstVisibleError();
+    toast.error(firstMessage || 'Please review the highlighted fields.');
+};
+
 const toPrice = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.round(n * 100) / 100 : null; };
 const normalizeFeatures = (f) => f.map(x => x.trim()).filter(Boolean).slice(0, 5);
 const isPlanActive = (p) => p.selected;
+const isBlank = (value) => value === null || value === undefined || value === '';
+const blockInvalidNumberKey = (event) => {
+    if (['e', 'E', '+', '-'].includes(event.key)) event.preventDefault();
+};
+const validateNumericValue = (value, label, { required = false, integer = false, min = null, max = null, decimals = 2 } = {}) => {
+    if (isBlank(value)) return required ? `Please enter ${label.toLowerCase()}` : '';
+
+    const raw = String(value).trim();
+    const pattern = integer ? /^\d+$/ : new RegExp(`^\\d+(\\.\\d{1,${decimals}})?$`);
+    if (!pattern.test(raw)) {
+        return integer ? `${label} must be a whole number.` : `${label} must be a number with up to ${decimals} decimal places.`;
+    }
+
+    const numericValue = Number(raw);
+    if (!Number.isFinite(numericValue)) return `${label} must be a valid number.`;
+    if (min !== null && numericValue < min) return `${label} must be at least ${min}.`;
+    if (max !== null && numericValue > max) return `${label} must be ${max} or less.`;
+
+    return '';
+};
+const validateNumericField = (field, label, options) => {
+    const message = validateNumericValue(form[field], label, options);
+    errors[field] = message;
+    return !message;
+};
 
 const toggleFeature = (name) => {
     const idx = form.features.indexOf(name);
@@ -1165,8 +1264,9 @@ const validateProtectionPlans = () => {
     const min = pricePerDay.value; let ok = true;
     protectionPlans.forEach(p => {
         if (!isPlanActive(p)) return;
+        const valueError = validateNumericValue(p.price, `${p.plan_type} price`, { required: true, min: 0.01, max: DECIMAL_MAX_VALUE });
+        if (valueError) { planErrors[p.key] = valueError; ok = false; return; }
         const v = Number(p.price);
-        if (!Number.isFinite(v) || v <= 0) { planErrors[p.key] = 'Price is required.'; ok = false; return; }
         if (v < min) { planErrors[p.key] = `Price must be at least ${min} ${currencyCode.value}.`; ok = false; }
     });
     return ok;
@@ -1190,6 +1290,31 @@ const buildSelectedPlans = () => {
 const addCustomAddon = () => { customAddons.value.push({ id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, extra_name: '', extra_type: '', description: '', price: null, quantity: 1 }); };
 const removeCustomAddon = (id) => { customAddons.value = customAddons.value.filter(a => a.id !== id); };
 const normalizeCustomAddons = () => customAddons.value.map(a => ({ extra_name: (a.extra_name || '').trim(), extra_type: (a.extra_type || '').trim(), description: (a.description || '').trim(), price: a.price, quantity: a.quantity })).filter(a => a.extra_name || a.price !== null);
+const validateCustomAddons = () => {
+    const addons = normalizeCustomAddons();
+    errors.custom_addons = '';
+
+    for (const addon of addons) {
+        if (!addon.extra_name) {
+            errors.custom_addons = 'Please enter an add-on name.';
+            return { ok: false, addons };
+        }
+
+        const priceError = validateNumericValue(addon.price, `${addon.extra_name} price`, { required: true, min: 0, max: DECIMAL_MAX_VALUE });
+        if (priceError) {
+            errors.custom_addons = priceError;
+            return { ok: false, addons };
+        }
+
+        const quantityError = validateNumericValue(addon.quantity, `${addon.extra_name} quantity`, { required: true, integer: true, min: 1, max: 999 });
+        if (quantityError) {
+            errors.custom_addons = quantityError;
+            return { ok: false, addons };
+        }
+    }
+
+    return { ok: true, addons };
+};
 
 // ═══ Fetch ═══
 const fetchCategories = async () => { try { categories.value = (await axios.get("/api/vehicle-categories")).data; } catch (e) { console.error(e); } };
@@ -1255,33 +1380,36 @@ const nextStep = () => {
             if (!form.color) { ok = false; errors.color = 'Please select a color'; }
             if (!form.body_style) { ok = false; errors.body_style = 'Please select a body style'; }
             if (form.air_conditioning === '') { ok = false; errors.air_conditioning = 'Please select whether AC is available'; }
-            if (!form.mileage) { ok = false; errors.mileage = 'Please enter mileage'; }
-            if (!form.horsepower) { ok = false; errors.horsepower = 'Please enter horsepower'; }
-            if (!form.co2) { ok = false; errors.co2 = 'Please enter CO2 emissions'; }
+            if (!validateNumericField('mileage', 'Mileage', { required: true, integer: true, min: 0, max: MILEAGE_MAX_VALUE })) ok = false;
+            if (!validateNumericField('horsepower', 'Horsepower', { required: true, integer: true, min: 0 })) ok = false;
+            if (!validateNumericField('co2', 'CO2 emissions', { required: true, integer: true, min: 0, max: CO2_MAX_VALUE })) ok = false;
             if (!form.features.length) { ok = false; errors.features = 'Please select at least one feature'; }
             break;
         case 2:
             if (!form.registration_number) { ok = false; errors.registration_number = 'Please enter registration number'; }
             if (!form.registration_country) { ok = false; errors.registration_country = 'Please select country'; }
             if (!form.registration_date) { ok = false; errors.registration_date = 'Please enter registration date'; }
+            if (!validateNumericField('gross_vehicle_mass', 'Gross vehicle mass', { integer: true, min: 0, max: GROSS_VEHICLE_MASS_MAX_VALUE })) ok = false;
+            if (!validateNumericField('vehicle_height', 'Vehicle height', { min: 0, max: VEHICLE_HEIGHT_MAX_VALUE })) ok = false;
+            if (!validateNumericField('dealer_cost', 'Dealer cost', { min: 0, max: DECIMAL_MAX_VALUE })) ok = false;
             if (!form.phone_number) { ok = false; errors.phone_number = 'Please enter phone number'; }
+            else if (form.phone_number.length > PHONE_NUMBER_MAX_LENGTH) { ok = false; errors.phone_number = `Phone number must be ${PHONE_NUMBER_MAX_LENGTH} characters or fewer`; }
             break;
         case 3:
             if (!form.vendor_location_id) { ok = false; errors.location = 'Please select a saved vendor location'; }
             break;
         case 4:
-            if (!form.security_deposit) { ok = false; errors.security_deposit = 'Please enter security deposit'; }
+            if (!validateNumericField('security_deposit', 'Security deposit', { required: true, min: 0, max: DECIMAL_MAX_VALUE })) ok = false;
             if (!form.payment_method.length) { ok = false; errors.payment_method = 'Please select at least one payment method'; }
-            if (!form.minimum_driver_age) { ok = false; errors.minimum_driver_age = 'Please enter minimum driver age'; }
-            if (!form.price_per_day) { ok = false; errors.price_per_day = 'Please enter daily price'; }
+            if (!validateNumericField('minimum_driver_age', 'Minimum driver age', { required: true, integer: true, min: MINIMUM_DRIVER_AGE, max: MAXIMUM_DRIVER_AGE })) ok = false;
+            if (!validateNumericField('price_per_day', 'Daily price', { required: true, min: 0.01, max: DECIMAL_MAX_VALUE })) ok = false;
             if (operatingHoursError.value) { ok = false; errors.operating_hours = operatingHoursError.value; }
             break;
         case 5:
             if (!validateProtectionPlans()) ok = false;
             break;
         case 6: {
-            const norm = normalizeCustomAddons();
-            if (norm.find(a => !a.extra_name || a.price === null || a.price === '' || !a.quantity)) { ok = false; errors.custom_addons = 'Please complete all addon fields.'; }
+            if (!validateCustomAddons().ok) ok = false;
             break;
         }
         case 7:
@@ -1303,32 +1431,22 @@ const submit = () => {
         applyVendorLocation(selectedVendorLocation.value);
     }
     form.selected_plans = buildSelectedPlans();
-    const norm = normalizeCustomAddons();
-    if (norm.find(a => !a.extra_name || a.price === null || !a.quantity)) { toast.error('Please complete all addon fields.'); isLoading.value = false; return; }
-    form.custom_addons = norm;
+    const addonValidation = validateCustomAddons();
+    if (!addonValidation.ok) { toast.error(errors.custom_addons || 'Please complete all addon fields.'); isLoading.value = false; return; }
+    form.custom_addons = addonValidation.addons;
     form.post(route("vehicles.store", { locale: page.props.locale }), {
         onSuccess: () => toast.success('Vehicle Added Successfully'),
-        onError: (errs) => {
-            Object.entries(errs || {}).forEach(([k, v]) => {
-                const message = Array.isArray(v) ? v[0] : v;
-                if (k === 'vendor_location_id') {
-                    errors.location = message;
-                    return;
-                }
-                if (k in errors) errors[k] = message;
-            });
-            toast.error('Something went wrong. Please check your inputs.');
-        },
+        onError: (errs) => { applyServerErrors(errs); },
         onFinish: () => { isLoading.value = false; },
     });
 };
 
 // ═══ Watchers ═══
 // Weekly / monthly watchers removed — only daily pricing is supported.
-watch(() => form.mileage, (v) => { if (v > 120) form.mileage = 120; });
-watch(() => form.vehicle_height, (v) => { if (v > 5) form.vehicle_height = 5; });
-watch(() => form.co2, (v) => { if (v > 100) form.co2 = 100; });
-watch(() => form.gross_vehicle_mass, (v) => { if (v > 20000) form.gross_vehicle_mass = 20000; });
+watch(() => form.mileage, (v) => { if (v > MILEAGE_MAX_VALUE) form.mileage = MILEAGE_MAX_VALUE; });
+watch(() => form.vehicle_height, (v) => { if (v > VEHICLE_HEIGHT_MAX_VALUE) form.vehicle_height = VEHICLE_HEIGHT_MAX_VALUE; });
+watch(() => form.co2, (v) => { if (v > CO2_MAX_VALUE) form.co2 = CO2_MAX_VALUE; });
+watch(() => form.gross_vehicle_mass, (v) => { if (v > GROSS_VEHICLE_MASS_MAX_VALUE) form.gross_vehicle_mass = GROSS_VEHICLE_MASS_MAX_VALUE; });
 // form.price_per_day watcher no longer cascades to weekly/monthly.
 watch(() => form.registration_number, (v) => { if (v.length > 10) form.registration_number = v.slice(0, 10); });
 watch(() => form.vendor_location_id, (value) => {

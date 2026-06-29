@@ -163,7 +163,7 @@ class VendorVehicleController extends Controller
             'gross_vehicle_mass' => 'nullable|integer|min:0',
             'vehicle_height' => 'nullable|numeric|min:0',
             'dealer_cost' => 'nullable|numeric|min:0',
-            'phone_number' => 'required|string|max:15',
+            'phone_number' => 'required|string|max:30',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:' . (int) config('vehicle_images.upload_max_kb', 5120),
             'primary_image_index' => 'nullable|integer|min:0',
             'existing_primary_image_id' => 'nullable|integer|exists:vehicle_images,id',
