@@ -150,12 +150,12 @@ const validate = () => {
         isValid = false;
     }
 
-    if ((isOkMobility.value || isGreenMotion.value) && !form.value.driver_license_number.trim()) {
+    if ((isOkMobility.value || isGreenMotion.value || isYesaway.value) && !form.value.driver_license_number.trim()) {
         errors.value.driver_license_number = 'Driver License Number is required for this provider';
         isValid = false;
     }
 
-    if (isGreenMotion.value) {
+    if (isGreenMotion.value || isYesaway.value) {
         if (!form.value.address.trim()) {
             errors.value.address = 'Address is required for this provider';
             isValid = false;
@@ -188,6 +188,10 @@ const isOkMobility = computed(() => {
 const isGreenMotion = computed(() => {
     const source = props.vehicle?.source;
     return source === 'greenmotion' || source === 'usave';
+});
+
+const isYesaway = computed(() => {
+    return props.vehicle?.source === 'yesaway';
 });
 
 const effectivePaymentPercentage = computed(() => {
@@ -477,7 +481,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                             </div>
 
                             <!-- Driver License Number -->
-                            <div v-if="isOkMobility || isGreenMotion" class="form-field-group">
+                            <div v-if="isOkMobility || isGreenMotion || isYesaway" class="form-field-group">
                                 <label class="form-label">
                                     <svg class="form-label-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
                                     Driver License Number <span class="text-red-400">*</span>
@@ -509,7 +513,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                             </div>
                             <div>
                                 <h3 class="text-lg font-bold text-[#1e3a5f]">Address & Travel Details</h3>
-                                <p class="text-xs text-gray-400 mt-0.5">{{ isGreenMotion ? 'Required for this provider' : 'Optional but recommended' }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">{{ (isGreenMotion || isYesaway) ? 'Required for this provider' : 'Optional but recommended' }}</p>
                             </div>
                         </div>
                     </div>
@@ -520,7 +524,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                             <div class="md:col-span-2 form-field-group">
                                 <label class="form-label">
                                     <svg class="form-label-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
-                                    Street Address <span v-if="isGreenMotion" class="text-red-400">*</span>
+                                    Street Address <span v-if="isGreenMotion || isYesaway" class="text-red-400">*</span>
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.address, 'has-value': form.address }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
@@ -538,7 +542,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                             <div class="form-field-group">
                                 <label class="form-label">
                                     <svg class="form-label-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
-                                    City <span v-if="isGreenMotion" class="text-red-400">*</span>
+                                    City <span v-if="isGreenMotion || isYesaway" class="text-red-400">*</span>
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.city, 'has-value': form.city }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
@@ -556,7 +560,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                             <div class="form-field-group">
                                 <label class="form-label">
                                     <svg class="form-label-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 9v.906a2.25 2.25 0 01-1.183 1.981l-6.478 3.488M2.25 9v.906a2.25 2.25 0 001.183 1.981l6.478 3.488m8.839 2.51l-4.66-2.51m0 0l-1.023-.55a2.25 2.25 0 00-2.134 0l-1.022.55m0 0l-4.661 2.51m16.5 1.615a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V8.844a2.25 2.25 0 011.183-1.981l7.5-4.039a2.25 2.25 0 012.134 0l7.5 4.039a2.25 2.25 0 011.183 1.98V19.5z" /></svg>
-                                    Postal Code <span v-if="isGreenMotion" class="text-red-400">*</span>
+                                    Postal Code <span v-if="isGreenMotion || isYesaway" class="text-red-400">*</span>
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.postal_code, 'has-value': form.postal_code }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 9v.906a2.25 2.25 0 01-1.183 1.981l-6.478 3.488M2.25 9v.906a2.25 2.25 0 001.183 1.981l6.478 3.488m8.839 2.51l-4.66-2.51m0 0l-1.023-.55a2.25 2.25 0 00-2.134 0l-1.022.55m0 0l-4.661 2.51m16.5 1.615a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V8.844a2.25 2.25 0 011.183-1.981l7.5-4.039a2.25 2.25 0 012.134 0l7.5 4.039a2.25 2.25 0 011.183 1.98V19.5z" /></svg>
@@ -574,7 +578,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                             <div class="md:col-span-2 form-field-group">
                                 <label class="form-label">
                                     <svg class="form-label-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 003 12c0-1.605.42-3.113 1.157-4.418" /></svg>
-                                    Country <span v-if="isGreenMotion" class="text-red-400">*</span>
+                                    Country <span v-if="isGreenMotion || isYesaway" class="text-red-400">*</span>
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.country, 'has-value': form.country }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 003 12c0-1.605.42-3.113 1.157-4.418" /></svg>
@@ -1186,7 +1190,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
 
 /* Check pop animation */
 .check-pop-enter-active {
-    animation: checkPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: checkPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .check-pop-leave-active {

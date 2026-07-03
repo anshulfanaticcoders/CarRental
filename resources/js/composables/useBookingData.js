@@ -500,6 +500,7 @@ export function useBookingData(booking, vehicle, payment) {
       xdrive: 'XDrive',
       wheelsys: 'Wheelsys',
       surprice: 'Surprice',
+      yesaway: 'Yesaway',
       internal: 'Vrooem',
     };
     return names[source] || source.charAt(0).toUpperCase() + source.slice(1);
@@ -518,6 +519,7 @@ export function useBookingData(booking, vehicle, payment) {
       adobe: 'https://www.adobecar.com',
       wheelsys: 'https://www.wheelsys.com',
       surprice: 'https://www.surpricecars.com',
+      yesaway: 'https://www.yesaway.com',
     };
     return sites[source] || null;
   }

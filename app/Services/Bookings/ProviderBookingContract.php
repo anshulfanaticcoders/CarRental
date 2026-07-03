@@ -35,6 +35,7 @@ class ProviderBookingContract
             'recordgo' => $this->missingRecordGoFields($validated),
             'sicily_by_car' => $this->missingSicilyByCarFields($validated),
             'surprice' => $this->missingSurpriceFields($validated),
+            'yesaway' => $this->missingYesawayFields($validated),
             'renteon' => $this->missingRenteonFields($validated),
             'ok_mobility' => $this->missingOkMobilityFields($validated),
             default => [],
@@ -143,6 +144,33 @@ class ProviderBookingContract
         ]);
     }
 
+    private function missingYesawayFields(array $validated): array
+    {
+        $vehicle = $validated['vehicle'] ?? [];
+        $supplierData = is_array($vehicle['supplier_data'] ?? null) ? $vehicle['supplier_data'] : [];
+        $product = $this->selectedSupplierDataProduct($supplierData, $validated['package'] ?? null)
+            ?? $this->selectedProduct($vehicle, $validated['package'] ?? null);
+        $context = is_array($product) ? array_merge($supplierData, $product) : $supplierData;
+
+        return $this->missing([
+            'customer.driver_license_number' => $validated['customer']['driver_license_number'] ?? null,
+            'customer.address' => $validated['customer']['address'] ?? null,
+            'customer.city' => $validated['customer']['city'] ?? null,
+            'customer.postal_code' => $validated['customer']['postal_code'] ?? null,
+            'customer.country' => $validated['customer']['country'] ?? null,
+            'yesaway.rate_code' => $context['rate_code'] ?? null,
+            'yesaway.package_code' => $context['package_code'] ?? null,
+            'yesaway.unique_id' => $context['unique_id'] ?? null,
+            'yesaway.vehicle_group_id' => $context['vehicle_group_id'] ?? null,
+            'yesaway.pickup_code' => $context['pickup_code'] ?? ($vehicle['provider_pickup_id'] ?? null),
+            'yesaway.dropoff_code' => $context['dropoff_code']
+                ?? $vehicle['provider_return_id']
+                ?? $vehicle['provider_dropoff_id']
+                ?? ($context['pickup_code'] ?? null),
+            'yesaway.sipp_code' => $context['sipp_code'] ?? ($vehicle['sipp_code'] ?? null),
+        ]);
+    }
+
     private function missingRenteonFields(array $validated): array
     {
         $context = $this->selectedProductContext($validated['vehicle'] ?? [], $validated['package'] ?? null);
@@ -201,6 +229,37 @@ class ProviderBookingContract
         }
 
         foreach ($vehicle['products'] as $product) {
+            if (is_array($product)) {
+                return $product;
+            }
+        }
+
+        return null;
+    }
+
+    private function selectedSupplierDataProduct(array $supplierData, ?string $package): ?array
+    {
+        $products = $supplierData['products'] ?? null;
+        if (! is_array($products) || $products === []) {
+            return is_array($supplierData['product_data'] ?? null) ? $supplierData['product_data'] : null;
+        }
+
+        $package = strtoupper(trim((string) $package));
+        foreach ($products as $product) {
+            if (! is_array($product)) {
+                continue;
+            }
+
+            if ($package !== '' && strtoupper(trim((string) ($product['type'] ?? ''))) === $package) {
+                return $product;
+            }
+
+            if ($package !== '' && strtoupper(trim((string) ($product['rate_code'] ?? ''))) === $package) {
+                return $product;
+            }
+        }
+
+        foreach ($products as $product) {
             if (is_array($product)) {
                 return $product;
             }

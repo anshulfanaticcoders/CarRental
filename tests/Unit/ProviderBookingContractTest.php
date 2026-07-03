@@ -108,4 +108,88 @@ class ProviderBookingContractTest extends TestCase
         $this->assertContains('vehicle.ok_mobility_group_id', $result['missing_fields']);
         $this->assertContains('vehicle.ok_mobility_rate_code', $result['missing_fields']);
     }
+
+    public function test_it_blocks_yesaway_without_selected_supplier_rate_context(): void
+    {
+        $result = (new ProviderBookingContract)->validateCheckout([
+            'gateway_search_id' => 'search_yesaway_1',
+            'package' => 'FULL',
+            'customer' => [
+                'name' => 'Test Customer',
+                'email' => 'test@example.com',
+                'phone' => '+10000000000',
+                'driver_age' => 35,
+                'driver_license_number' => 'LIC-123',
+                'address' => 'Street 1',
+                'city' => 'Amsterdam',
+                'postal_code' => '1012JS',
+                'country' => 'NL',
+            ],
+            'vehicle' => [
+                'source' => 'yesaway',
+                'gateway_vehicle_id' => 'gw_yesaway_1',
+                'provider_pickup_id' => 'BKK01',
+                'provider_return_id' => 'BKK01',
+                'sipp_code' => 'FFAR',
+                'supplier_data' => [
+                    'products' => [
+                        [
+                            'type' => 'FULL',
+                            'rate_code' => 'W_TH_ORDER_COM_ARRIVAL',
+                            'package_code' => 'W_TH_ORDER_COM_ARRIVAL',
+                            'vehicle_group_id' => '63',
+                            'pickup_code' => 'BKK01',
+                            'dropoff_code' => 'BKK01',
+                            'sipp_code' => 'FFAR',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->assertFalse($result['valid']);
+        $this->assertContains('yesaway.unique_id', $result['missing_fields']);
+    }
+
+    public function test_it_accepts_yesaway_with_selected_supplier_rate_context(): void
+    {
+        $result = (new ProviderBookingContract)->validateCheckout([
+            'gateway_search_id' => 'search_yesaway_1',
+            'package' => 'FULL',
+            'customer' => [
+                'name' => 'Test Customer',
+                'email' => 'test@example.com',
+                'phone' => '+10000000000',
+                'driver_age' => 35,
+                'driver_license_number' => 'LIC-123',
+                'address' => 'Street 1',
+                'city' => 'Amsterdam',
+                'postal_code' => '1012JS',
+                'country' => 'NL',
+            ],
+            'vehicle' => [
+                'source' => 'yesaway',
+                'gateway_vehicle_id' => 'gw_yesaway_1',
+                'provider_pickup_id' => 'BKK01',
+                'provider_return_id' => 'BKK01',
+                'sipp_code' => 'FFAR',
+                'supplier_data' => [
+                    'products' => [
+                        [
+                            'type' => 'FULL',
+                            'rate_code' => 'W_TH_ORDER_COM_ARRIVAL',
+                            'package_code' => 'W_TH_ORDER_COM_ARRIVAL',
+                            'unique_id' => 'W_TH_ORDER_COM_ARRIVAL_63',
+                            'vehicle_group_id' => '63',
+                            'pickup_code' => 'BKK01',
+                            'dropoff_code' => 'BKK01',
+                            'sipp_code' => 'FFAR',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->assertTrue($result['valid']);
+    }
 }

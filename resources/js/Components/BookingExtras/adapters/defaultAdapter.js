@@ -17,6 +17,7 @@ const normalizeGenericProduct = (product, index, vehicle, numberOfDays) => {
         || null;
 
     return {
+        ...product,
         type: product?.type || `PKG_${index + 1}`,
         name: product?.name || `Package ${index + 1}`,
         subtitle: product?.subtitle || 'Rental option',
@@ -176,17 +177,17 @@ export function createDefaultAdapter(props) {
     });
     const allExtras = computed(() => [...protectionPlans.value, ...optionalExtras.value]);
     const packages = computed(() => {
-        if (standardPackages.value.length > 0) return standardPackages.value;
-
         const products = Array.isArray(props.vehicle?.products) ? props.vehicle.products : [];
-        if (!products.length) return [];
+        if (products.length > 0) {
+            return products.map((product, index) => normalizeGenericProduct(
+                product,
+                index,
+                props.vehicle,
+                props.numberOfDays,
+            ));
+        }
 
-        return products.map((product, index) => normalizeGenericProduct(
-            product,
-            index,
-            props.vehicle,
-            props.numberOfDays,
-        ));
+        return standardPackages.value;
     });
     const locationData = computed(() => {
         const hasLocationDetails = props.vehicle?.location_details || props.vehicle?.pickup_address || props.vehicle?.office_address

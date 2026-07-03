@@ -23,6 +23,7 @@ class SearchOrchestratorService
         'renteon',
         'surprice',
         'sicily_by_car',
+        'yesaway',
     ];
 
     public function __construct(private LocationSearchService $locationSearchService) {}

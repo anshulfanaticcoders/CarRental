@@ -31,6 +31,7 @@ class VehicleSearchController extends Controller
         'recordgo',
         'renteon',
         'surprice',
+        'yesaway',
         'sicily_by_car',
     ];
 

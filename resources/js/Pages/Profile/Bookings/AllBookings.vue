@@ -263,7 +263,7 @@ const retryPayment = async (bookingId) => {
 };
 
 // Providers that support customer-initiated API cancellation
-const CANCELLABLE_PROVIDERS = ['greenmotion', 'usave', 'favrica', 'xdrive', 'surprice', 'renteon', 'sicilybycar'];
+const CANCELLABLE_PROVIDERS = ['greenmotion', 'usave', 'favrica', 'xdrive', 'surprice', 'yesaway', 'renteon', 'sicilybycar'];
 
 // Providers where cancellation is manual (contact support)
 const MANUAL_CANCEL_PROVIDERS = ['adobe', 'okmobility', 'locauto_rent', 'wheelsys', 'recordgo'];
