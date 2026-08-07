@@ -205,35 +205,57 @@ class MerchantFeedRefreshService
 
     private function upsertItem(array $item, CarbonImmutable $now, bool $inStock): void
     {
-        $item['last_seen_at'] = $now;
-        $item['expires_at'] = $inStock
+        $expiresAt = $inStock
             ? $now->addHours($this->expiresAfterHours($item['feed_name']))
             : $now->addHours($this->staleAfterHours($item['feed_name']));
 
-        MerchantFeedItem::query()->updateOrCreate(
-            [
-                'feed_name' => $item['feed_name'],
-                'feed_key' => $item['feed_key'],
-            ],
-            $item
-        );
+        $existing = MerchantFeedItem::query()
+            ->where('feed_name', $item['feed_name'])
+            ->where('feed_key', $item['feed_key'])
+            ->first();
+
+        if ($existing === null) {
+            $item['last_seen_at'] = $now;
+            $item['expires_at'] = $expiresAt;
+            MerchantFeedItem::query()->create($item);
+
+            return;
+        }
+
+        $existing->fill($item);
+
+        // Skip the UPDATE (and its binlog cost) when the offer is unchanged and
+        // its expiry is not close; refreshing timestamps alone made every row
+        // dirty on every hourly run.
+        if (! $existing->isDirty() && $existing->expires_at !== null && $existing->expires_at->gt($now->addHours(2))) {
+            return;
+        }
+
+        $existing->last_seen_at = $now;
+        $existing->expires_at = $expiresAt;
+        $existing->save();
     }
 
     private function markMissingItemsOutOfStock(string $feedName, string $source, array $seenKeys, CarbonImmutable $now): void
     {
-        $query = MerchantFeedItem::query()
-            ->where('feed_name', $feedName)
-            ->where('source', $source);
-
-        if (! empty($seenKeys)) {
-            $query->whereNotIn('feed_key', $seenKeys);
+        // A refresh that saw nothing almost certainly failed upstream; sweeping
+        // here would blank the entire source partition.
+        if (empty($seenKeys)) {
+            return;
         }
 
-        $query->update([
-            'availability' => 'out_of_stock',
-            'expires_at' => $now->addHours($this->staleAfterHours($feedName)),
-            'updated_at' => $now,
-        ]);
+        // Only rows still marked in stock: re-updating already-out-of-stock rows
+        // kept re-arming their expires_at so purgeExpired() never collected them.
+        MerchantFeedItem::query()
+            ->where('feed_name', $feedName)
+            ->where('source', $source)
+            ->where('availability', '!=', 'out_of_stock')
+            ->whereNotIn('feed_key', $seenKeys)
+            ->update([
+                'availability' => 'out_of_stock',
+                'expires_at' => $now->addHours($this->staleAfterHours($feedName)),
+                'updated_at' => $now,
+            ]);
     }
 
     private function purgeExpired(string $feedName, CarbonImmutable $now): void

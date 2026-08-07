@@ -17,6 +17,12 @@ class VrooemGatewayService
 
     protected ?array $lastError = null;
 
+    /** @var array<string, array> Request-scoped memo for repeated location lookups. */
+    protected array $locationSearchMemo = [];
+
+    /** @var array<int, array> Request-scoped memo for repeated location fetches. */
+    protected array $locationMemo = [];
+
     public function __construct()
     {
         $this->baseUrl = rtrim((string) config('vrooem.url', ''), '/');
@@ -53,14 +59,22 @@ class VrooemGatewayService
      */
     public function searchLocations(string $query, int $limit = 20): array
     {
+        $memoKey = $query.'|'.$limit;
+        if (array_key_exists($memoKey, $this->locationSearchMemo)) {
+            return $this->locationSearchMemo[$memoKey];
+        }
+
         $response = $this->request('GET', '/api/v1/locations/search', [
             'query' => $query,
             'limit' => $limit,
         ]);
 
         if (! $response) {
+            // Not memoized: transient gateway failures should be retried on the next call.
             return ['query' => $query, 'results' => [], 'total' => 0];
         }
+
+        $this->locationSearchMemo[$memoKey] = $response;
 
         return $response;
     }
@@ -93,7 +107,20 @@ class VrooemGatewayService
      */
     public function getLocation(int $unifiedLocationId): ?array
     {
-        return $this->request('GET', "/api/v1/locations/{$unifiedLocationId}");
+        if (array_key_exists($unifiedLocationId, $this->locationMemo)) {
+            return $this->locationMemo[$unifiedLocationId];
+        }
+
+        $response = $this->request('GET', "/api/v1/locations/{$unifiedLocationId}");
+
+        if ($response === null) {
+            // Not memoized: transient gateway failures should be retried on the next call.
+            return null;
+        }
+
+        $this->locationMemo[$unifiedLocationId] = $response;
+
+        return $response;
     }
 
     /**
@@ -181,10 +208,10 @@ class VrooemGatewayService
             if ($method === 'get' || $method === 'delete') {
                 $queryString = ! empty($params) ? '?'.http_build_query($params) : '';
                 $fullUrl = $url.$queryString;
-                Log::info('VrooemGateway: Sending request', ['method' => $method, 'url' => $fullUrl]);
+                Log::debug('VrooemGateway: Sending request', ['method' => $method, 'url' => $fullUrl]);
                 $response = $http->$method($fullUrl);
             } else {
-                Log::info('VrooemGateway: Sending request', [
+                Log::debug('VrooemGateway: Sending request', [
                     'method' => $method,
                     'url' => $url,
                     'body' => $this->redactForLog($params),
@@ -192,7 +219,7 @@ class VrooemGatewayService
                 $response = $http->$method($url, $params);
             }
 
-            Log::info('VrooemGateway: Response received', [
+            Log::debug('VrooemGateway: Response received', [
                 'status' => $response->status(),
                 'body_length' => strlen($response->body()),
                 'body_preview' => substr($response->body(), 0, 500),

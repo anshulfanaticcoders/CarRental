@@ -126,7 +126,9 @@ class ImageCompressionHelper
             $counter++;
         }
 
-        $tempPath = tempnam(sys_get_temp_dir(), 'compressed_image_').'.'.$imageExtension;
+        $tempBase = tempnam(sys_get_temp_dir(), 'compressed_image_');
+        $tempPath = $tempBase.'.'.$imageExtension;
+        rename($tempBase, $tempPath);
 
         // Save the compressed image to a temporary file
         switch ($imageMime) {

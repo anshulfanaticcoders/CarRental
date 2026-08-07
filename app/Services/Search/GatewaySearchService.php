@@ -54,11 +54,11 @@ class GatewaySearchService
         }
 
         if (empty($gatewayResult) || empty($gatewayResult['vehicles'])) {
-            Log::info('VrooemGateway: No vehicles returned or gateway error');
+            Log::debug('VrooemGateway: No vehicles returned or gateway error');
             $providerVehicles = collect();
             $providerStatus = $this->mapGatewayProviderStatus($gatewayResult ?? [], $normalizeSupplierId);
         } else {
-            Log::info('VrooemGateway: Raw vehicle count from gateway', ['count' => count($gatewayResult['vehicles'])]);
+            Log::debug('VrooemGateway: Raw vehicle count from gateway', ['count' => count($gatewayResult['vehicles'])]);
 
             $transformErrors = [];
             $transformedVehicles = collect($gatewayResult['vehicles'])->map(function ($gatewayVehicle) use ($rentalDays, $transformVehicle, &$transformErrors) {
@@ -103,26 +103,26 @@ class GatewaySearchService
             })->values();
 
             if ($fallbackAppliedCount > 0) {
-                Log::info('VrooemGateway: Applied coordinate fallback', [
+                Log::debug('VrooemGateway: Applied coordinate fallback', [
                     'count' => $fallbackAppliedCount,
                     'fallback_latitude' => (float) $fallbackLatitude,
                     'fallback_longitude' => (float) $fallbackLongitude,
                 ]);
             }
 
-            Log::info('VrooemGateway: After transform', ['count' => $transformedVehicles->count(), 'sources' => $transformedVehicles->pluck('source')->countBy()->all()]);
+            Log::debug('VrooemGateway: After transform', ['count' => $transformedVehicles->count(), 'sources' => $transformedVehicles->pluck('source')->countBy()->all()]);
 
             $transformedVehicles = $this->presentationService
                 ->collapseEquivalentSicilyByCarVehicles($transformedVehicles);
-            Log::info('VrooemGateway: After SBC collapse', ['count' => $transformedVehicles->count()]);
+            Log::debug('VrooemGateway: After SBC collapse', ['count' => $transformedVehicles->count()]);
 
             $transformedVehicles = $this->presentationService
                 ->collapseEquivalentRenteonVehicles($transformedVehicles);
-            Log::info('VrooemGateway: After Renteon collapse', ['count' => $transformedVehicles->count()]);
+            Log::debug('VrooemGateway: After Renteon collapse', ['count' => $transformedVehicles->count()]);
 
             $providerVehicles = $this->searchOrchestratorService
                 ->filterGatewayVehiclesForRequestedProvider($transformedVehicles, $validated);
-            Log::info('VrooemGateway: After requested-provider filter', [
+            Log::debug('VrooemGateway: After requested-provider filter', [
                 'count' => $providerVehicles->count(),
                 'provider' => $validated['provider'] ?? 'mixed',
             ]);
@@ -156,7 +156,7 @@ class GatewaySearchService
         $providerVehicles = $this->filterDisplayableVehicles($providerVehicles);
         $filteredProviderVehicles = $this->filterDisplayableVehicles($filteredProviderVehicles);
 
-        Log::info('VrooemGateway: After filtering', [
+        Log::debug('VrooemGateway: After filtering', [
             'before' => $providerVehicles->count(),
             'after' => $filteredProviderVehicles->count(),
             'filters_applied' => array_filter([
@@ -193,7 +193,7 @@ class GatewaySearchService
             $internalForMerge->merge($filteredProviderVehicles)
         );
         $combinedVehicles = $this->prioritizeFeedRequestedVehicle($combinedVehicles, $request);
-        Log::info('VrooemGateway: Combined vehicles', [
+        Log::debug('VrooemGateway: Combined vehicles', [
             'resolved_unified_location_id' => $resolvedPickupUnifiedId,
             'resolved_dropoff_unified_location_id' => $resolvedDropoffUnifiedId ?: null,
             'matched_provider_count' => count($matchedLocation['providers'] ?? []),
@@ -268,7 +268,7 @@ class GatewaySearchService
         );
 
         $vehicleSources = $vehicles->getCollection()->map(fn ($vehicle) => is_array($vehicle) ? ($vehicle['source'] ?? 'unknown') : ($vehicle->source ?? 'unknown'));
-        Log::info('VrooemGateway: FINAL Inertia render', [
+        Log::debug('VrooemGateway: FINAL Inertia render', [
             'total_vehicles_in_paginator' => $vehicles->total(),
             'paginator_page_items' => $vehicles->getCollection()->count(),
             'sources_breakdown' => $vehicleSources->countBy()->all(),

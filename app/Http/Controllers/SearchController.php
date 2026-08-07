@@ -113,7 +113,7 @@ class SearchController extends Controller
         $dtStart = \Carbon\Carbon::parse(($validated['date_from'] ?? now()->addDays(1)->format('Y-m-d')).' '.($validated['start_time'] ?? '09:00'));
         $dtEnd = \Carbon\Carbon::parse(($validated['date_to'] ?? now()->addDays(2)->format('Y-m-d')).' '.($validated['end_time'] ?? '09:00'));
         $rentalDays = max(1, (int) ceil($dtStart->diffInMinutes($dtEnd) / 1440));
-        Log::info("Global rental duration: {$rentalDays} days.");
+        Log::debug("Global rental duration: {$rentalDays} days.");
 
         // Check if any location parameter is provided - if not, return empty results
         $hasLocation = ! empty($validated['where']) ||
@@ -172,7 +172,7 @@ class SearchController extends Controller
         };
 
         if (! $hasLocation) {
-            Log::info('No location provided - returning empty vehicle results');
+            Log::debug('No location provided - returning empty vehicle results');
 
             return $emptyResultsResponse();
         }
@@ -239,7 +239,7 @@ class SearchController extends Controller
             }
 
             $internalProviderPickupId = $this->internalProviderPickupId($resolvedSearchLocation);
-            Log::info('Search location resolved', [
+            Log::debug('Search location resolved', [
                 'requested_unified_location_id' => $originalUnifiedLocationId,
                 'resolved_unified_location_id' => $resolvedUnifiedLocationId,
                 'provider' => $requestedProvider ?: 'mixed',
