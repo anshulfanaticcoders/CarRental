@@ -181,8 +181,10 @@ return [
     ],
 
     'pricing' => [
-        // Platform markup applied to gateway + internal vehicles. 0.15 = 15%.
-        'provider_markup_percent' => (float) env('PROVIDER_MARKUP_PERCENT', 0.15),
+        // Platform markup applied to gateway + internal vehicles, expressed as a
+        // percent (15 = 15%). Consumers divide by 100, so the default must be 15,
+        // not 0.15 — a fractional value here silently yields a 0.15% markup.
+        'provider_markup_percent' => (float) env('PROVIDER_MARKUP_PERCENT', 15),
     ],
 
     'sitemap' => [
