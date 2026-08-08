@@ -3,12 +3,14 @@
 namespace App\Http\Middleware;
 
 use App\Helpers\HreflangHelper;
+use App\Models\Page;
 use App\Models\UserDocument;
 use App\Models\VendorProfile;
 use App\Services\OfferService;
 use App\Support\CurrencyRegistry;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -233,6 +235,19 @@ class HandleInertiaRequests extends Middleware
                 'info' => $request->session()->get('info'),
                 'status' => $request->session()->get('status'),
             ];
+        };
+
+        // Slim published-pages index (slugs only) so localized page links in the
+        // shared header/footer resolve on every page. Controllers that pass their
+        // own richer 'pages' prop override this. Cache cleared by Page observers.
+        $sharedData['pages'] = function () {
+            return Cache::remember('shared:pages-nav', now()->addHours(12), function () {
+                return Page::query()
+                    ->where('status', 'published')
+                    ->with('translations:id,page_id,locale,slug')
+                    ->get(['id', 'slug', 'custom_slug'])
+                    ->keyBy('slug');
+            });
         };
 
         $sharedData['ziggy'] = function () use ($request) {

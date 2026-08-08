@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Page;
 use App\Models\SeoRedirect;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 
 class PageObserver
 {
@@ -29,11 +30,13 @@ class PageObserver
 
     public function saved(Page $page): void
     {
+        Cache::forget('shared:pages-nav');
         $this->regenerateSitemap();
     }
 
     public function deleted(Page $page): void
     {
+        Cache::forget('shared:pages-nav');
         $this->regenerateSitemap();
     }
 

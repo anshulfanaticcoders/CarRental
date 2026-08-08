@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\PageTranslation;
 use App\Models\SeoRedirect;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 
 class PageTranslationObserver
 {
@@ -30,11 +31,14 @@ class PageTranslationObserver
 
     public function saved(PageTranslation $translation): void
     {
+        Cache::forget('shared:pages-nav');
         $this->regenerateSitemap();
     }
 
     public function deleted(PageTranslation $translation): void
     {
+        Cache::forget('shared:pages-nav');
+
         if (! empty($translation->slug)) {
             SeoRedirect::addGone(
                 "/{$translation->locale}/page/{$translation->slug}",
