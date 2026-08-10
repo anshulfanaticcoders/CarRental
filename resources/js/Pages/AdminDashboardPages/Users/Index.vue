@@ -187,17 +187,17 @@
                                     <div class="font-medium">{{ user.first_name }} {{ user.last_name }}</div>
                                     <div class="text-sm text-muted-foreground">ID: {{ user.id }}</div>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                <TableCell class="px-4 py-3 max-w-[260px]">
                                     <div class="flex items-center gap-2">
                                         <div
-                                            class="w-2 h-2 rounded-full"
+                                            class="w-2 h-2 rounded-full flex-shrink-0"
                                             :class="{
                                                 'bg-green-500': user.status === 'active',
                                                 'bg-yellow-500': user.status === 'inactive',
                                                 'bg-red-500': user.status === 'suspended'
                                             }"
                                         ></div>
-                                        {{ user.email }}
+                                        <span class="break-all">{{ user.email }}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
@@ -255,23 +255,21 @@
                                         <div class="rounded-lg border bg-background/40 p-4">
                                             <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profile</p>
                                             <dl class="mt-3 space-y-2 text-sm">
-                                                <div>
-                                                    <dt class="text-muted-foreground">Address</dt>
-                                                    <dd class="font-medium">{{ user.profile?.address_line1 || 'N/A' }}</dd>
+                                                <div class="flex items-start justify-between gap-3">
+                                                    <dt class="text-muted-foreground flex-shrink-0">Address</dt>
+                                                    <dd class="font-medium text-right break-words">{{ user.profile?.address_line1 || 'N/A' }}</dd>
                                                 </div>
-                                                <div class="grid grid-cols-2 gap-3">
-                                                    <div>
-                                                        <dt class="text-muted-foreground">City</dt>
-                                                        <dd class="font-medium">{{ user.profile?.city || 'N/A' }}</dd>
-                                                    </div>
-                                                    <div>
-                                                        <dt class="text-muted-foreground">Postal code</dt>
-                                                        <dd class="font-medium">{{ user.profile?.postal_code || 'N/A' }}</dd>
-                                                    </div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">City</dt>
+                                                    <dd class="font-medium text-right">{{ user.profile?.city || 'N/A' }}</dd>
                                                 </div>
-                                                <div>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <dt class="text-muted-foreground">Postal code</dt>
+                                                    <dd class="font-medium text-right">{{ user.profile?.postal_code || 'N/A' }}</dd>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-3">
                                                     <dt class="text-muted-foreground">Date of birth</dt>
-                                                    <dd class="font-medium">{{ user.profile?.date_of_birth || 'N/A' }}</dd>
+                                                    <dd class="font-medium text-right">{{ user.profile?.date_of_birth || 'N/A' }}</dd>
                                                 </div>
                                             </dl>
                                         </div>

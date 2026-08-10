@@ -471,10 +471,10 @@ onMounted(() => {
                       <SidebarMenuSubButton
                         as-child
                         :is-active="isSubmenuActive(subItem.url)"
-                        class="admin-sidebar-submenu-link !h-7 !text-[13px] !rounded-md !py-1.5 transition-[color,background-color,padding,transform] duration-150 focus-visible:!ring-2 focus-visible:!ring-[#22d3ee]/45"
+                        class="admin-sidebar-submenu-link !h-7 !text-[13px] !rounded-md !py-1.5 transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform focus-visible:!ring-2 focus-visible:!ring-[#22d3ee]/45"
                         :class="isSubmenuActive(subItem.url)
                           ? '!bg-[rgba(34,211,238,0.08)] !font-semibold !text-[#67e8f9]'
-                          : '!font-normal !text-[#8da3b4] hover:!bg-[rgba(21,59,79,0.36)] hover:!pl-4 hover:!text-white'"
+                          : '!font-normal !text-[#8da3b4] hover:!bg-[rgba(21,59,79,0.36)] hover:!translate-x-1 hover:!text-white'"
                       >
                         <a
                           :href="subItem.url"
