@@ -93,9 +93,9 @@ class DocumentController extends Controller
     {
         $ext = strtolower($file->getClientOriginalExtension());
 
-        // Stored privately as an object key; served only via the signed route.
         if ($ext === 'pdf') {
-            return Storage::disk('upcloud')->putFile('documents', $file, 'private');
+            $path = $file->store('documents', 'upcloud');
+            return Storage::disk('upcloud')->url($path);
         }
 
         $quality = $ext === 'png' ? 60 : 85;
@@ -104,8 +104,7 @@ class DocumentController extends Controller
             'documents',
             $quality,
             1200,
-            900,
-            'private'
+            900
         );
 
         if (! $compressedPath) {
@@ -114,18 +113,22 @@ class DocumentController extends Controller
             ]);
         }
 
-        return $compressedPath;
+        return Storage::disk('upcloud')->url($compressedPath);
     }
 
-    private function deleteFile(?string $value): void
+    private function deleteFile(?string $url): void
     {
-        $key = UserDocument::storageKey($value);
-        if (! $key) {
+        if (! $url) {
             return;
         }
+        $path = parse_url($url, PHP_URL_PATH);
+        if (! $path) {
+            return;
+        }
+        $relative = ltrim($path, '/');
         $disk = Storage::disk('upcloud');
-        if ($disk->exists($key)) {
-            $disk->delete($key);
+        if ($disk->exists($relative)) {
+            $disk->delete($relative);
         }
     }
 
@@ -135,9 +138,14 @@ class DocumentController extends Controller
             return null;
         }
 
-        return array_merge(
-            $document->toSignedArray(),
-            ['verified_at' => $document->verified_at?->toIso8601String()],
-        );
+        return [
+            'id' => $document->id,
+            'driving_license_front' => $document->driving_license_front,
+            'driving_license_back' => $document->driving_license_back,
+            'passport_front' => $document->passport_front,
+            'passport_back' => $document->passport_back,
+            'verification_status' => $document->verification_status,
+            'verified_at' => $document->verified_at?->toIso8601String(),
+        ];
     }
 }

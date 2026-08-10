@@ -51,7 +51,6 @@ use App\Http\Controllers\PopularPlacesController as PublicPopularPlacesControlle
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SearchController;
-use App\Http\Controllers\SecureDocumentController;
 use App\Http\Controllers\Trabber\OfferController as TrabberOfferController;
 use App\Http\Controllers\Trabber\RedirectController as TrabberRedirectController;
 use App\Http\Controllers\UserDocumentController;
@@ -897,13 +896,6 @@ Route::get('/sitemaps/{filename}', function ($filename) {
 
     return response()->file($sitemapPath, ['Content-Type' => 'application/xml']);
 })->where('filename', '.*\.xml$')->name('sitemaps.file');
-
-// Stream private ID documents (licenses/passports). The signed URL is minted
-// server-side only for authorized viewers (owner, admin, or vendor with a
-// booking) and expires after a short window.
-Route::get('/secure-documents/{userDocument}/{field}', [SecureDocumentController::class, 'show'])
-    ->middleware('signed')
-    ->name('secure-documents.show');
 
 // 410/301 redirects are handled by HandleSeoRedirects middleware + seo_redirects DB table.
 // Run: php artisan seo:seed-legacy-redirects (one time after migration)
