@@ -197,21 +197,13 @@ class VendorBookingController extends Controller
             abort(403);
         }
 
-        // Retrieve the single document for the user associated with the customer
-        $document = UserDocument::where('user_id', $customer->user_id)->first([
-            'id',
-            'user_id',
-            'driving_license_front',
-            'driving_license_back',
-            'passport_front',
-            'passport_back',
-            'verification_status',
-            'created_at',
-        ]);
+        // Retrieve the single document for the user associated with the customer.
+        // Return short-lived signed URLs (never raw object URLs) — the vendor is
+        // authorized above by having a booking with this customer.
+        $document = UserDocument::where('user_id', $customer->user_id)->first();
 
-        // Return the document as JSON
         return response()->json([
-            'document' => $document,
+            'document' => $document?->toSignedArray(),
         ]);
     }
 }

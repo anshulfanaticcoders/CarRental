@@ -66,7 +66,7 @@ class ImageCompressionHelper
      * @param  int|null  $maxHeight  Optional: Maximum height for the image.
      * @return string|false The URL of the compressed image, or false on failure.
      */
-    public static function compressImage(UploadedFile $imageFile, string $folderName, int $quality = 80, ?int $maxWidth = null, ?int $maxHeight = null)
+    public static function compressImage(UploadedFile $imageFile, string $folderName, int $quality = 80, ?int $maxWidth = null, ?int $maxHeight = null, string $visibility = 'public')
     {
         $imagePath = $imageFile->getPathname();
         $imageMime = $imageFile->getMimeType();
@@ -151,7 +151,7 @@ class ImageCompressionHelper
         imagedestroy($newImage);
 
         // Store the temporary file to the desired disk
-        $path = Storage::disk('upcloud')->putFileAs($folderName, new UploadedFile($tempPath, $fileName, $imageMime, null, true), $fileName, 'public');
+        $path = Storage::disk('upcloud')->putFileAs($folderName, new UploadedFile($tempPath, $fileName, $imageMime, null, true), $fileName, $visibility);
 
         // Delete the temporary file
         unlink($tempPath);

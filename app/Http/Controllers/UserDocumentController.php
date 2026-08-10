@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use App\Models\UserDocument;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\UploadedFile;
 
 class UserDocumentController extends Controller
 {
@@ -18,7 +18,7 @@ class UserDocumentController extends Controller
         $document = UserDocument::where('user_id', Auth::id())->first();
 
         return Inertia::render('Profile/Documents/Index', [
-            'document' => $document,
+            'document' => $document?->toSignedArray(),
         ]);
     }
 
@@ -78,7 +78,8 @@ class UserDocumentController extends Controller
                 'type' => 'success',
             ]);
         } catch (\Exception $e) {
-            \Log::error('Document Upload Error: ' . $e->getMessage());
+            \Log::error('Document Upload Error: '.$e->getMessage());
+
             return back()->with([
                 'message' => 'Something went wrong during upload. Please try again.',
                 'type' => 'error',
@@ -92,7 +93,7 @@ class UserDocumentController extends Controller
         $this->authorize('update', $document);
 
         return Inertia::render('Profile/Documents/Edit', [
-            'document' => $document,
+            'document' => $document->toSignedArray(),
         ]);
     }
 
@@ -131,7 +132,7 @@ class UserDocumentController extends Controller
                 // If field not in request or not an empty string/null, $newFileUrl remains $currentFileUrl (no change)
                 $dataToUpdate[$field] = $newFileUrl;
             }
-            
+
             $dataToUpdate['verification_status'] = 'pending'; // Always reset to pending on update
 
             // Update the document record
@@ -142,7 +143,8 @@ class UserDocumentController extends Controller
                 'type' => 'success',
             ]);
         } catch (\Exception $e) {
-            \Log::error('Document Update Error: ' . $e->getMessage());
+            \Log::error('Document Update Error: '.$e->getMessage());
+
             return back()->with([
                 'message' => 'Something went wrong during update. Please try again.',
                 'type' => 'error',
@@ -177,7 +179,8 @@ class UserDocumentController extends Controller
                 'type' => 'success',
             ]);
         } catch (\Exception $e) {
-            \Log::error('Document Deletion Error: ' . $e->getMessage());
+            \Log::error('Document Deletion Error: '.$e->getMessage());
+
             return back()->with([
                 'message' => 'Something went wrong during deletion. Please try again.',
                 'type' => 'error',
@@ -188,19 +191,18 @@ class UserDocumentController extends Controller
     /**
      * Handle document upload with image compression
      *
-     * @param UploadedFile $file
-     * @param string $folderName
-     * @return string
      * @throws \Exception
      */
     private function handleDocumentUpload(UploadedFile $file, string $folderName): string
     {
         $fileExtension = strtolower($file->getClientOriginalExtension());
 
+        // ID documents are stored PRIVATELY and referenced by object key (not a
+        // public URL); they are served only through the signed secure-documents route.
+
         // Handle PDF files without compression
         if ($fileExtension === 'pdf') {
-            $path = $file->store($folderName, 'upcloud');
-            return Storage::disk('upcloud')->url($path);
+            return Storage::disk('upcloud')->putFile($folderName, $file, 'private');
         }
 
         // Handle image files with compression
@@ -212,31 +214,31 @@ class UserDocumentController extends Controller
             $folderName,
             quality: $imageQuality,        // Lower quality for PNG, moderate for JPEG
             maxWidth: 1200,     // Smaller dimensions for file size
-            maxHeight: 900
+            maxHeight: 900,
+            visibility: 'private'
         );
 
-        if (!$compressedPath) {
-            throw new \Exception('Image compression failed for: ' . $file->getClientOriginalName());
+        if (! $compressedPath) {
+            throw new \Exception('Image compression failed for: '.$file->getClientOriginalName());
         }
 
-        return Storage::disk('upcloud')->url($compressedPath);
+        return $compressedPath;
     }
 
     /**
      * Delete old document file from storage
      *
-     * @param string $fileUrl
-     * @return void
+     * @param  string  $fileUrl
      */
-    private function deleteOldDocument(string $fileUrl): void
+    private function deleteOldDocument(string $fileValue): void
     {
         try {
-            $filePath = parse_url($fileUrl, PHP_URL_PATH);
-            if ($filePath && Storage::disk('upcloud')->exists($filePath)) {
-                Storage::disk('upcloud')->delete($filePath);
+            $key = UserDocument::storageKey($fileValue);
+            if ($key && Storage::disk('upcloud')->exists($key)) {
+                Storage::disk('upcloud')->delete($key);
             }
         } catch (\Exception $e) {
-            \Log::warning('Failed to delete old document: ' . $fileUrl . ' - ' . $e->getMessage());
+            \Log::warning('Failed to delete old document: '.$fileValue.' - '.$e->getMessage());
         }
     }
 }

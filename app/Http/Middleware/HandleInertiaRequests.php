@@ -88,24 +88,11 @@ class HandleInertiaRequests extends Middleware
 
         if ($request->user()) {
             $user = $request->user()->load('profile');
-            // Fetch the user document (single record)
-            $document = UserDocument::where('user_id', $user->id)
-                ->first([
-                    'driving_license_front',
-                    'driving_license_back',
-                    'passport_front',
-                    'passport_back',
-                    'verification_status',
-                ]);
+            // Fetch the user document (single record). Documents are private; the
+            // shared payload carries short-lived signed URLs, never raw object URLs.
+            $document = UserDocument::where('user_id', $user->id)->first();
 
-            // Prepare document data
-            $documentData = $document ? [
-                'driving_license_front' => $document->driving_license_front,
-                'driving_license_back' => $document->driving_license_back,
-                'passport_front' => $document->passport_front,
-                'passport_back' => $document->passport_back,
-                'verification_status' => $document->verification_status,
-            ] : null;
+            $documentData = $document?->toSignedArray();
 
             // Merge user and document into shared data
             $sharedData = array_merge($sharedData, [

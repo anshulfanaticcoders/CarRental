@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\UserDocument;
 use App\Models\User;
+use App\Models\UserDocument;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
-use Carbon\Carbon;
 
 class AdminUserDocumentController extends Controller
 {
@@ -26,8 +25,8 @@ class AdminUserDocumentController extends Controller
             $search = $request->search;
             $query->whereHas('user', function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
             // Removed: ->orWhere('document_type', 'like', "%{$search}%");
         }
@@ -41,6 +40,17 @@ class AdminUserDocumentController extends Controller
         $documents = $query->orderBy('created_at', 'desc')
             ->paginate(3)
             ->withQueryString();
+
+        // Replace raw document values with short-lived signed URLs (admins are
+        // authorized by the admin route group); keep pagination meta intact.
+        $documents->getCollection()->transform(fn (UserDocument $doc) => array_merge(
+            $doc->toSignedArray(),
+            [
+                'user' => $doc->user,
+                'created_at' => $doc->created_at,
+                'expires_at' => $doc->expires_at ?? null,
+            ]
+        ));
 
         return Inertia::render('AdminDashboardPages/UserDocument/Index', [
             'documents' => $documents,
@@ -84,9 +94,16 @@ class AdminUserDocumentController extends Controller
     public function show(UserDocument $userDocument): Response
     {
         $userDocument->load('user:id,first_name,last_name,email');
-        
+
         return Inertia::render('AdminDashboardPages/UserDocument/Show', [
-            'document' => $userDocument,
+            'document' => array_merge(
+                $userDocument->toSignedArray(),
+                [
+                    'user' => $userDocument->user,
+                    'created_at' => $userDocument->created_at,
+                    'expires_at' => $userDocument->expires_at ?? null,
+                ]
+            ),
         ]);
     }
 
@@ -117,7 +134,11 @@ class AdminUserDocumentController extends Controller
         $recentDocuments = UserDocument::with(['user:id,first_name,last_name,email'])
             ->orderBy('created_at', 'desc')
             ->take(5)
-            ->get();
+            ->get()
+            ->map(fn (UserDocument $doc) => array_merge(
+                $doc->toSignedArray(),
+                ['user' => $doc->user, 'created_at' => $doc->created_at]
+            ));
 
         return response()->json($recentDocuments);
     }
