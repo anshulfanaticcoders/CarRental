@@ -50,7 +50,9 @@ class DiagnoseGreenmotionReservation extends Command
         ]);
 
         $vehicles = $search['vehicles'] ?? [];
-        $gm = collect($vehicles)->filter(fn ($v) => ($v['supplier_id'] ?? null) === 'green_motion')->values();
+        $breakdown = collect($vehicles)->groupBy(fn ($v) => $v['supplier_id'] ?? 'unknown')->map->count();
+        $this->line('providers in results: '.json_encode($breakdown));
+        $gm = collect($vehicles)->filter(fn ($v) => in_array(($v['supplier_id'] ?? null), ['green_motion', 'greenmotion'], true))->values();
         $this->info('SEARCH search_id='.($search['search_id'] ?? 'null').' total='.count($vehicles).' gm='.$gm->count());
         $this->line('provider_status: '.json_encode($search['provider_status'] ?? null));
 
