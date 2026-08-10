@@ -20,11 +20,15 @@ class PruneOldData extends Command
 
     private const CHAT_DAYS_AFTER_COMPLETION = 30;
 
-    private const ACTIVITY_LOG_DAYS = 30;
+    /** Keep the newest N rows per owner as a floor, then trim overflow by age. */
+    private const KEEP_LATEST = 100;
 
-    private const NOTIFICATIONS_KEEP_LATEST = 50;
+    /** Overflow beyond the keep-floor is deleted once older than this. */
+    private const OVERFLOW_DAYS = 7;
 
-    private const NOTIFICATIONS_READ_DAYS = 90;
+    private const CONTACT_RESPONDED_DAYS = 30;
+
+    private const CHECKOUT_PAYLOAD_DAYS = 7;
 
     public function handle(): int
     {
@@ -37,12 +41,12 @@ class PruneOldData extends Command
             'activity' => fn () => $this->pruneActivityLogs($force),
             'notifications' => fn () => $this->pruneNotifications($force),
             'trabber_clicks' => fn () => $this->deleteWhere('trabber_clicks', fn ($q) => $q->where('expires_at', '<', now()->subDays(30)), $force),
-            'checkout_payloads' => fn () => $this->deleteWhere('stripe_checkout_payloads', fn ($q) => $q->where('created_at', '<', now()->subDays(30)), $force),
+            'checkout_payloads' => fn () => $this->deleteWhere('stripe_checkout_payloads', fn ($q) => $q->where('created_at', '<', now()->subDays(self::CHECKOUT_PAYLOAD_DAYS)), $force),
             'newsletter_logs' => fn () => $this->deleteWhere('newsletter_campaign_logs', fn ($q) => $q->where('created_at', '<', now()->subDays(180)), $force),
             'booking_holds' => fn () => $this->deleteWhere('booking_holds', fn ($q) => $q->whereIn('status', ['expired', 'released', 'converted'])->where('updated_at', '<', now()->subDays(30)), $force),
             'affiliate_sessions' => fn () => $this->deleteWhere('affiliate_dashboard_sessions', fn ($q) => $q->where('expires_at', '<', now()->subDays(30)), $force),
             'affiliate_scans' => fn () => $this->deleteWhere('affiliate_customer_scans', fn ($q) => $q->whereNull('booking_id')->where('booking_completed', false)->where('created_at', '<', now()->subDays(180)), $force),
-            'contact' => fn () => $this->deleteWhere('contact_submissions', fn ($q) => $q->where('status', 'responded')->where('updated_at', '<', now()->subYear()), $force),
+            'contact' => fn () => $this->pruneContactSubmissions($force),
             'files' => fn () => $this->pruneStorageFiles($force),
         ];
 
@@ -131,46 +135,93 @@ class PruneOldData extends Command
         }, $force);
     }
 
+    /**
+     * Keep the latest 100 activity rows per user (and per system/NULL group),
+     * deleting only overflow older than the retention window.
+     */
     private function pruneActivityLogs(bool $force): int
     {
-        return $this->deleteWhere('activity_logs', fn ($q) => $q->where('created_at', '<', now()->subDays(self::ACTIVITY_LOG_DAYS)), $force);
+        return $this->pruneWithFloor('activity_logs', ['user_id'], $force);
     }
 
     /**
-     * Delete read notifications older than 90 days, then trim each user to
-     * the latest 50 (the mobile API reads at most 50).
+     * Keep the latest 100 notifications per owner (the bell/mobile list),
+     * deleting only overflow older than the retention window.
      */
     private function pruneNotifications(bool $force): int
     {
-        $total = $this->deleteWhere('notifications', fn ($q) => $q->whereNotNull('read_at')->where('created_at', '<', now()->subDays(self::NOTIFICATIONS_READ_DAYS)), $force);
+        return $this->pruneWithFloor('notifications', ['notifiable_type', 'notifiable_id'], $force);
+    }
 
-        $overLimit = DB::table('notifications')
-            ->select('notifiable_type', 'notifiable_id', DB::raw('COUNT(*) as total'))
-            ->groupBy('notifiable_type', 'notifiable_id')
-            ->having('total', '>', self::NOTIFICATIONS_KEEP_LATEST)
+    /**
+     * Keep the latest 100 contact submissions as a floor, then delete only
+     * already-responded ones older than the retention window. Open/unanswered
+     * submissions are never deleted.
+     */
+    private function pruneContactSubmissions(bool $force): int
+    {
+        $keepIds = DB::table('contact_submissions')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(self::KEEP_LATEST)
+            ->pluck('id');
+
+        return $this->deleteWhere('contact_submissions', fn ($q) => $q
+            ->where('status', 'responded')
+            ->where('updated_at', '<', now()->subDays(self::CONTACT_RESPONDED_DAYS))
+            ->whereNotIn('id', $keepIds), $force);
+    }
+
+    /**
+     * Retain the newest KEEP_LATEST rows per owner group as a floor, then delete
+     * rows beyond that floor once they are older than OVERFLOW_DAYS. The floor
+     * guarantees a low-activity owner never loses recent history while a
+     * high-volume owner's growth stays bounded. NULL owner values are treated as
+     * their own group.
+     *
+     * @param  array<int, string>  $ownerColumns
+     */
+    private function pruneWithFloor(string $table, array $ownerColumns, bool $force): int
+    {
+        $cutoff = now()->subDays(self::OVERFLOW_DAYS);
+
+        $groups = DB::table($table)
+            ->select($ownerColumns)
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy($ownerColumns)
+            ->having('total', '>', self::KEEP_LATEST)
             ->get();
 
-        foreach ($overLimit as $owner) {
-            $ownerNotifications = fn () => DB::table('notifications')
-                ->where('notifiable_type', $owner->notifiable_type)
-                ->where('notifiable_id', $owner->notifiable_id);
+        $total = 0;
+        foreach ($groups as $group) {
+            $scope = function () use ($table, $ownerColumns, $group) {
+                $query = DB::table($table);
+                foreach ($ownerColumns as $column) {
+                    $value = $group->{$column};
+                    $value === null ? $query->whereNull($column) : $query->where($column, $value);
+                }
 
-            $keepIds = $ownerNotifications()
+                return $query;
+            };
+
+            $keepIds = $scope()
                 ->orderByDesc('created_at')
                 ->orderByDesc('id')
-                ->limit(self::NOTIFICATIONS_KEEP_LATEST)
+                ->limit(self::KEEP_LATEST)
                 ->pluck('id');
 
-            $excess = fn () => $ownerNotifications()->whereNotIn('id', $keepIds);
+            $overflow = fn () => $scope()
+                ->whereNotIn('id', $keepIds)
+                ->where('created_at', '<', $cutoff);
 
             if (! $force) {
-                $total += $excess()->count();
+                $total += $overflow()->count();
 
                 continue;
             }
 
             do {
-                $deleted = $excess()->limit(self::CHUNK)->delete();
+                $deleted = $overflow()->limit(self::CHUNK)->delete();
                 $total += $deleted;
             } while ($deleted === self::CHUNK);
         }
