@@ -21,7 +21,10 @@ class DiagnoseGreenmotionReservation extends Command
         {--pickup-time=11:00}
         {--dropoff-time=18:00}
         {--currency=ZAR}
-        {--age=35}';
+        {--age=35}
+        {--lat=-26.164276 : Pickup latitude}
+        {--long=28.230573 : Pickup longitude}
+        {--country=ZA : Country code}';
 
     protected $description = 'Diagnose GreenMotion reservation (search + book valid/junk licence + auto-cancel). No DB writes.';
 
@@ -29,6 +32,11 @@ class DiagnoseGreenmotionReservation extends Command
     {
         $search = $gateway->searchVehicles([
             'unified_location_id' => (int) $this->option('unified'),
+            'pickup_latitude' => (float) $this->option('lat'),
+            'pickup_longitude' => (float) $this->option('long'),
+            'dropoff_latitude' => (float) $this->option('lat'),
+            'dropoff_longitude' => (float) $this->option('long'),
+            'country_code' => $this->option('country'),
             'pickup_date' => $this->option('pickup'),
             'pickup_time' => $this->option('pickup-time'),
             'dropoff_date' => $this->option('dropoff'),
