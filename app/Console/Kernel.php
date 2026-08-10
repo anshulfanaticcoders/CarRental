@@ -41,6 +41,7 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
         $schedule->command(SendScheduledNewsletterCampaigns::class)->everyMinute()->withoutOverlapping();
         $schedule->command(UpdateGeoIpDatabase::class)->weekly()->withoutOverlapping();
+        $schedule->command('data:prune --force')->dailyAt('03:30')->withoutOverlapping();
     }
 
     private function shouldSendTrabberReports(): bool
