@@ -26,6 +26,9 @@ class PruneOldData extends Command
     /** Overflow beyond the keep-floor is deleted once older than this. */
     private const OVERFLOW_DAYS = 7;
 
+    /** Hard age cap: rows older than this are deleted even if within the keep-floor. */
+    private const HARD_AGE_DAYS = 90;
+
     private const CONTACT_RESPONDED_DAYS = 30;
 
     private const CHECKOUT_PAYLOAD_DAYS = 7;
@@ -183,6 +186,14 @@ class PruneOldData extends Command
      */
     private function pruneWithFloor(string $table, array $ownerColumns, bool $force): int
     {
+        // Hard age cap first: anything older than HARD_AGE_DAYS goes regardless of
+        // the keep-floor, so genuinely old rows do not linger for low-activity owners.
+        $total = $this->deleteWhere(
+            $table,
+            fn ($q) => $q->where('created_at', '<', now()->subDays(self::HARD_AGE_DAYS)),
+            $force
+        );
+
         $cutoff = now()->subDays(self::OVERFLOW_DAYS);
 
         $groups = DB::table($table)
@@ -192,7 +203,6 @@ class PruneOldData extends Command
             ->having('total', '>', self::KEEP_LATEST)
             ->get();
 
-        $total = 0;
         foreach ($groups as $group) {
             $scope = function () use ($table, $ownerColumns, $group) {
                 $query = DB::table($table);

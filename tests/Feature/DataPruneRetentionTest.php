@@ -38,10 +38,23 @@ class DataPruneRetentionTest extends TestCase
     }
 
     #[Test]
-    public function low_activity_user_under_floor_is_untouched(): void
+    public function hard_age_cap_deletes_old_rows_even_under_floor(): void
     {
         $user = User::factory()->create();
+        // 50 rows (under the 100 floor) but a year old → hard age cap removes them.
         $this->seedActivity($user->id, 50, now()->subDays(365));
+
+        $this->artisan('data:prune', ['--only' => 'activity', '--force' => true])->assertSuccessful();
+
+        $this->assertSame(0, DB::table('activity_logs')->where('user_id', $user->id)->count());
+    }
+
+    #[Test]
+    public function recent_rows_under_floor_are_kept(): void
+    {
+        $user = User::factory()->create();
+        // 50 recent rows (under floor, within the hard cap) → all kept.
+        $this->seedActivity($user->id, 50, now()->subDays(3));
 
         $this->artisan('data:prune', ['--only' => 'activity', '--force' => true])->assertSuccessful();
 
