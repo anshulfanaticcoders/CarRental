@@ -66,7 +66,8 @@ class DiagnoseGreenmotionReservation extends Command
         $vid = $veh['gateway_vehicle_id'] ?? $veh['id'] ?? null;
         $this->info('vehicle='.$vid.' name='.($veh['display_name'] ?? $veh['name'] ?? '').' price='.(($veh['pricing']['total_price'] ?? '?')).' '.($veh['pricing']['currency'] ?? ''));
 
-        foreach (['8801015800083' => 'VALID-LICENCE', '13;' => 'JUNK-LICENCE'] as $licence => $label) {
+        foreach ([['8801015800083', 'VALID-LICENCE'], ['13;', 'JUNK-LICENCE']] as [$licence, $label]) {
+            $licence = (string) $licence;
             $this->line('');
             $this->info("--- Attempt: {$label} (licence={$licence}) ---");
             $result = $gateway->createBooking([
