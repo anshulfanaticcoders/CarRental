@@ -206,6 +206,18 @@ class StripeCheckoutController extends Controller
         return $normalized !== '' && $normalized !== 'internal';
     }
 
+    /**
+     * Basic sanity check for a driving licence number, to reject junk input
+     * (e.g. "13;") before it is sent to an external supplier and causes the
+     * provider reservation to fail after payment.
+     */
+    private function isValidDriverLicenceNumber(string $value): bool
+    {
+        $value = trim($value);
+
+        return mb_strlen($value) >= 5 && preg_match('/^[A-Za-z0-9][A-Za-z0-9 \-\/]{3,}[A-Za-z0-9]$/', $value) === 1;
+    }
+
     private function resolveProviderMarkupPercent(): float
     {
         $raw = config('services.pricing.provider_markup_percent');
@@ -684,8 +696,14 @@ class StripeCheckoutController extends Controller
                 $missing = [];
                 $customer = $validated['customer'] ?? [];
 
-                if (empty($customer['driver_license_number'])) {
+                $licence = trim((string) ($customer['driver_license_number'] ?? ''));
+                if ($licence === '') {
                     $missing[] = 'driver_license_number';
+                } elseif (! $this->isValidDriverLicenceNumber($licence)) {
+                    return response()->json([
+                        'error' => 'Please enter a valid driving licence number.',
+                        'invalid_fields' => ['driver_license_number'],
+                    ], 422);
                 }
                 if (empty($customer['address'])) {
                     $missing[] = 'address';

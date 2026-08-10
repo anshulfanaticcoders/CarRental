@@ -150,9 +150,15 @@ const validate = () => {
         isValid = false;
     }
 
-    if ((isOkMobility.value || isGreenMotion.value || isYesaway.value) && !form.value.driver_license_number.trim()) {
-        errors.value.driver_license_number = 'Driver License Number is required for this provider';
-        isValid = false;
+    if (isOkMobility.value || isGreenMotion.value || isYesaway.value) {
+        const licence = form.value.driver_license_number.trim();
+        if (!licence) {
+            errors.value.driver_license_number = 'Driver License Number is required for this provider';
+            isValid = false;
+        } else if (!/^[A-Za-z0-9][A-Za-z0-9 \-\/]{3,}[A-Za-z0-9]$/.test(licence)) {
+            errors.value.driver_license_number = 'Please enter a valid driving licence number';
+            isValid = false;
+        }
     }
 
     if (isGreenMotion.value || isYesaway.value) {
