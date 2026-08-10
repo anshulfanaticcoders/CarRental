@@ -34,6 +34,15 @@ const hoursTab = ref('pickup');
 
 const providerMetadata = computed(() => props.booking?.provider_metadata || {});
 
+// External booking whose supplier reservation is not yet confirmed (no supplier
+// reference yet, or flagged for manual check). Mirrors Success.vue so the details
+// page never shows "Confirmed" before the supplier actually confirms.
+const isSupplierPending = computed(() => (
+  !!props.booking?.provider_source
+  && props.booking.provider_source !== 'internal'
+  && !props.booking.provider_booking_ref
+));
+
 // Parse plan features (may arrive as JSON string from backend)
 const planFeatures = computed(() => {
   const features = props.plan?.features;
@@ -95,7 +104,11 @@ const hasDropoffHours = computed(() => hasHours(dropoffDetails.value));
 
 const statusTimeline = computed(() => {
   const statuses = ['pending', 'confirmed', 'completed'];
-  const currentIndex = statuses.indexOf(props.booking?.booking_status);
+  // While the supplier is still confirming, cap progress at "pending" so the
+  // timeline does not claim the booking is confirmed before the supplier is.
+  const currentIndex = isSupplierPending.value
+    ? statuses.indexOf('pending')
+    : statuses.indexOf(props.booking?.booking_status);
   return statuses.map((status, index) => ({
     key: status,
     label: _t('customerprofile', status),
@@ -261,6 +274,24 @@ const getStatusBadge = (status) => {
   };
   return config[status] || config.pending;
 };
+
+// Status shown in the hero badge. When the supplier has not confirmed yet we
+// override the raw booking_status (which may be "confirmed" from payment) with an
+// honest "supplier confirmation pending" state instead of a green Confirmed badge.
+const statusDisplay = computed(() => {
+  if (isSupplierPending.value) {
+    return {
+      label: _t('customerprofile', 'supplier_confirmation_pending') || 'Supplier confirmation pending',
+      capitalize: false,
+      ...getStatusBadge('pending'),
+    };
+  }
+  return {
+    label: props.booking?.booking_status || '',
+    capitalize: true,
+    ...getStatusBadge(props.booking?.booking_status),
+  };
+});
 
 const downloadPDF = async () => {
   isDownloading.value = true;
@@ -458,10 +489,10 @@ const vendorInitials = computed(() => {
               </div>
               <span
                 class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border status-pulse"
-                :class="[getStatusBadge(booking?.booking_status).bg, getStatusBadge(booking?.booking_status).text, getStatusBadge(booking?.booking_status).border]"
+                :class="[statusDisplay.bg, statusDisplay.text, statusDisplay.border]"
               >
-                <span class="w-2 h-2 rounded-full" :class="getStatusBadge(booking?.booking_status).dot"></span>
-                <span class="capitalize">{{ booking?.booking_status }}</span>
+                <span class="w-2 h-2 rounded-full" :class="statusDisplay.dot"></span>
+                <span :class="{ capitalize: statusDisplay.capitalize }">{{ statusDisplay.label }}</span>
               </span>
             </div>
             <div class="flex items-center gap-2.5 flex-wrap">
@@ -510,6 +541,19 @@ const vendorInitials = computed(() => {
               <span class="pill-sub" style="color: #5cd3d9;">{{ pricingSummary.currency }}</span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supplier confirmation pending banner -->
+    <div v-if="isSupplierPending" class="full-w-container mt-4">
+      <div class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+        <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="min-w-0">
+          <p class="text-sm font-bold text-amber-800">{{ _t('customerprofile', 'supplier_confirmation_pending') || 'Supplier confirmation pending' }}</p>
+          <p class="text-xs text-amber-700 mt-0.5">
+            {{ _t('customerprofile', 'supplier_confirmation_pending_note') || 'Your payment is safe. We are confirming this reservation with the supplier and will update your booking once the supplier reference is issued. If you have any questions, use the support options below.' }}
+          </p>
         </div>
       </div>
     </div>
