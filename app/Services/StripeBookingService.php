@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\ReservationOutcomeUnknownException;
 use App\Jobs\SendAwinConversion;
 use App\Models\Booking;
 use App\Models\BookingExtra;
@@ -18,6 +19,7 @@ use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
 use App\Notifications\Booking\GuestBookingCreatedNotification;
+use App\Notifications\Payment\AdminReservationManualCheckNotification;
 use App\Services\Bookings\InternalBookingSnapshotService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use App\Support\CurrencyRegistry;
@@ -1458,7 +1460,31 @@ class StripeBookingService
                 'booking_id' => $booking->id,
                 'result' => $result,
             ]);
-            $failureContext = $this->gatewayReservationFailureContext($result, $gateway->getLastError());
+            $lastError = $gateway->getLastError();
+            $failureContext = $this->gatewayReservationFailureContext($result, $lastError);
+
+            // Unknown outcome (supplier timed out): the reservation may already
+            // exist upstream, so DO NOT let the queue retry — a blind retry would
+            // double-book. Route to manual review and alert an admin instead.
+            if ($this->isUnknownReservationOutcome($result, $lastError)) {
+                $reason = $this->extractGatewayReservationError($result, $lastError, null);
+                $booking->update([
+                    'provider_metadata' => array_merge(
+                        $booking->provider_metadata ?? [],
+                        $failureContext,
+                        [
+                            'reservation_manual_check' => true,
+                            'reservation_unknown_at' => now()->toIso8601String(),
+                        ]
+                    ),
+                ]);
+                $this->notifyAdminReservationManualCheck($booking, $reason);
+
+                throw new ReservationOutcomeUnknownException(
+                    'Supplier reservation outcome unknown for booking '.$booking->id.'; routed to manual review.'
+                );
+            }
+
             $booking->update([
                 'provider_metadata' => array_merge(
                     $booking->provider_metadata ?? [],
@@ -1469,6 +1495,9 @@ class StripeBookingService
             throw new \RuntimeException(
                 'Gateway did not return a confirmed supplier reservation for booking '.$booking->id
             );
+        } catch (ReservationOutcomeUnknownException $e) {
+            // Deliberate non-retryable signal — already recorded and notified above.
+            throw $e;
         } catch (\Exception $e) {
             Log::error('VrooemGateway: Reservation error', [
                 'booking_id' => $booking->id,
@@ -1481,6 +1510,49 @@ class StripeBookingService
                 ),
             ]);
             throw $e;
+        }
+    }
+
+    private function isUnknownReservationOutcome(?array $result, ?array $lastError): bool
+    {
+        // Gateway reached the supplier but the supplier did not reply in time.
+        if (is_array($result)) {
+            $providerStatus = strtolower(trim((string) ($result['provider_status'] ?? '')));
+            if ($providerStatus === 'timeout_unknown') {
+                return true;
+            }
+            if (! empty($result['supplier_data']['outcome_unknown'])) {
+                return true;
+            }
+        }
+
+        // Laravel could not reach the gateway in time. A timeout may mean the
+        // gateway still processed the reservation upstream, so treat it as
+        // unknown; a refused/unresolved connection never landed → retryable.
+        if (is_array($lastError) && ($lastError['type'] ?? '') === 'connection') {
+            $message = strtolower((string) ($lastError['message'] ?? ''));
+            foreach (['timed out', 'timeout', 'operation too slow', 'curl error 28'] as $needle) {
+                if (str_contains($message, $needle)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function notifyAdminReservationManualCheck($booking, string $reason): void
+    {
+        try {
+            $admin = User::where('email', config('admin.email'))->first();
+            if ($admin) {
+                $admin->notify(new AdminReservationManualCheckNotification($booking, $reason));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send admin reservation-manual-check notification', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

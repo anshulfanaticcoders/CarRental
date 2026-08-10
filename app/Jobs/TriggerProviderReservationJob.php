@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\ReservationOutcomeUnknownException;
 use App\Models\Booking;
 use App\Services\StripeBookingService;
 use Illuminate\Bus\Queueable;
@@ -50,20 +51,47 @@ class TriggerProviderReservationJob implements ShouldQueue
             return;
         }
 
-        $service->triggerGatewayReservation($booking, (object) $this->metadata);
+        try {
+            $service->triggerGatewayReservation($booking, (object) $this->metadata);
+        } catch (ReservationOutcomeUnknownException $e) {
+            // Supplier timed out; a reservation may already exist upstream.
+            // Retrying would double-book, so fail now (no retries) and let
+            // failed() leave the booking for manual reconciliation.
+            Log::warning('TriggerProviderReservationJob: unknown reservation outcome, skipping retries', [
+                'booking_id' => $booking->id,
+            ]);
+            $this->fail($e);
+        }
     }
 
     public function failed(Throwable $e): void
     {
+        $booking = Booking::find($this->bookingId);
+        if (! $booking) {
+            Log::error('TriggerProviderReservationJob failed - booking not found', [
+                'booking_id' => $this->bookingId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return;
+        }
+
+        // Unknown outcome already routed to manual review and notified. Do NOT
+        // cancel — the supplier may hold a reservation. Leave the booking in the
+        // provider_pending bucket for a human to reconcile.
+        if ($e instanceof ReservationOutcomeUnknownException
+            || ! empty($booking->provider_metadata['reservation_manual_check'])) {
+            Log::warning('TriggerProviderReservationJob: booking left for manual reconciliation (unknown outcome)', [
+                'booking_id' => $booking->id,
+            ]);
+
+            return;
+        }
+
         Log::error('TriggerProviderReservationJob exhausted retries - manual refund review required', [
             'booking_id' => $this->bookingId,
             'error' => $e->getMessage(),
         ]);
-
-        $booking = Booking::find($this->bookingId);
-        if (! $booking) {
-            return;
-        }
 
         // Mark booking as cancelled. No supplier reference means no valid reservation.
         $booking->update([
