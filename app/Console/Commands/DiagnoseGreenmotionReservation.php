@@ -50,9 +50,9 @@ class DiagnoseGreenmotionReservation extends Command
         ]);
 
         $vehicles = $search['vehicles'] ?? [];
-        $breakdown = collect($vehicles)->groupBy(fn ($v) => $v['supplier_id'] ?? 'unknown')->map->count();
+        $breakdown = collect($vehicles)->groupBy(fn ($v) => $v['source'] ?? $v['supplier_id'] ?? 'unknown')->map->count();
         $this->line('providers in results: '.json_encode($breakdown));
-        $gm = collect($vehicles)->filter(fn ($v) => in_array(($v['supplier_id'] ?? null), ['green_motion', 'greenmotion'], true))->values();
+        $gm = collect($vehicles)->filter(fn ($v) => in_array(($v['source'] ?? $v['supplier_id'] ?? null), ['green_motion', 'greenmotion'], true))->values();
         $this->info('SEARCH search_id='.($search['search_id'] ?? 'null').' total='.count($vehicles).' gm='.$gm->count());
         $this->line('provider_status: '.json_encode($search['provider_status'] ?? null));
 
@@ -62,9 +62,9 @@ class DiagnoseGreenmotionReservation extends Command
             return self::FAILURE;
         }
 
-        $veh = $gm->first(fn ($v) => str_contains(strtolower($v['name'] ?? ''), 'polo vivo')) ?? $gm->first();
-        $vid = $veh['id'] ?? null;
-        $this->info('vehicle='.$vid.' name='.($veh['name'] ?? '').' price='.(($veh['pricing']['total_price'] ?? '?')).' '.($veh['pricing']['currency'] ?? ''));
+        $veh = $gm->first(fn ($v) => str_contains(strtolower($v['display_name'] ?? $v['name'] ?? ''), 'polo vivo')) ?? $gm->first();
+        $vid = $veh['gateway_vehicle_id'] ?? $veh['id'] ?? null;
+        $this->info('vehicle='.$vid.' name='.($veh['display_name'] ?? $veh['name'] ?? '').' price='.(($veh['pricing']['total_price'] ?? '?')).' '.($veh['pricing']['currency'] ?? ''));
 
         foreach (['8801015800083' => 'VALID-LICENCE', '13;' => 'JUNK-LICENCE'] as $licence => $label) {
             $this->line('');
