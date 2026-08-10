@@ -30,6 +30,10 @@ class DiagnoseGreenmotionReservation extends Command
 
     public function handle(VrooemGatewayService $gateway): int
     {
+        $loc = $gateway->getLocation((int) $this->option('unified'));
+        $mapped = collect($loc['providers'] ?? [])->map(fn ($p) => ($p['provider'] ?? '?').':'.($p['pickup_id'] ?? '?'))->all();
+        $this->info('LOCATION '.$this->option('unified').' name='.($loc['name'] ?? 'null').' mapped_providers='.json_encode($mapped));
+
         $search = $gateway->searchVehicles([
             'unified_location_id' => (int) $this->option('unified'),
             'pickup_latitude' => (float) $this->option('lat'),
