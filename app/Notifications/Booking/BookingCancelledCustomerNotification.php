@@ -21,12 +21,15 @@ class BookingCancelledCustomerNotification extends Notification
 
     protected $cancellationReason;
 
-    public function __construct($booking, $customer, $vehicle, string $cancellationReason)
+    protected string $cancelledBy;
+
+    public function __construct($booking, $customer, $vehicle, string $cancellationReason, string $cancelledBy = 'admin')
     {
         $this->booking = $booking;
         $this->customer = $customer;
         $this->vehicle = $vehicle;
         $this->cancellationReason = $cancellationReason;
+        $this->cancelledBy = $cancelledBy;
     }
 
     public function via(object $notifiable): array
@@ -35,12 +38,14 @@ class BookingCancelledCustomerNotification extends Notification
         if (! empty($notifiable->expo_push_token)) {
             $channels[] = \App\Notifications\Channels\ExpoPushChannel::class;
         }
+
         return $channels;
     }
 
     public function toExpoPush(object $notifiable): array
     {
         $bookingNumber = $this->booking->booking_number ?? '';
+
         return [
             'title' => 'Booking cancelled',
             'body' => "Booking #{$bookingNumber} was cancelled. ".$this->cancellationReason,
@@ -64,7 +69,9 @@ class BookingCancelledCustomerNotification extends Notification
         return (new MailMessage)
             ->subject('Booking Cancelled - #'.$this->booking->booking_number)
             ->greeting('Hello '.$this->customer->first_name.',')
-            ->line('Your booking has been cancelled by the platform administration.')
+            ->line($this->cancelledBy === 'customer'
+                ? 'Your booking has been cancelled as you requested.'
+                : 'Your booking has been cancelled by the platform administration.')
             ->line('**Booking Details:**')
             ->line('**Booking Number:** '.$this->booking->booking_number)
             ->line('**Vehicle:** '.$vehicleName)
@@ -91,7 +98,9 @@ class BookingCancelledCustomerNotification extends Notification
             'cancellation_reason' => $this->cancellationReason,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'role' => 'customer',
-            'message' => 'Your booking #'.$this->booking->booking_number.' has been cancelled by the platform.',
+            'message' => $this->cancelledBy === 'customer'
+                ? 'Your booking #'.$this->booking->booking_number.' has been cancelled as you requested.'
+                : 'Your booking #'.$this->booking->booking_number.' has been cancelled by the platform.',
         ];
     }
 

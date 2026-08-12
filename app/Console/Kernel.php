@@ -13,6 +13,7 @@ use App\Console\Commands\SendChatMessageReminders;
 use App\Console\Commands\SendPendingBookingReminders;
 use App\Console\Commands\SendScheduledNewsletterCampaigns;
 use App\Console\Commands\UpdateGeoIpDatabase;
+use App\Console\Commands\VerifyPopularPlaceCoverage;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -42,6 +43,7 @@ class Kernel extends ConsoleKernel
         $schedule->command(SendScheduledNewsletterCampaigns::class)->everyMinute()->withoutOverlapping();
         $schedule->command(UpdateGeoIpDatabase::class)->weekly()->withoutOverlapping();
         $schedule->command('data:prune --force')->weeklyOn(0, '03:30')->withoutOverlapping();
+        $schedule->command(VerifyPopularPlaceCoverage::class)->weeklyOn(0, '04:00')->withoutOverlapping();
     }
 
     private function shouldSendTrabberReports(): bool

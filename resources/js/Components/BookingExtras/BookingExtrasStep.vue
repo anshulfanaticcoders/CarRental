@@ -533,6 +533,16 @@ const getProviderExtraLabel = adapter.getProviderExtraLabel ?? ((extra) => {
     return code ? toTitleCase(code) : (extra?.name || '');
 });
 
+// When the package changes, extras that no longer exist must leave the
+// selection map too — otherwise their ids are silently posted to checkout.
+watch(() => adapter.allExtras?.value, (extras) => {
+    if (!Array.isArray(extras) || !extras.length) return;
+    for (const id of Object.keys(selectedExtras.value)) {
+        const stillExists = extras.some(e => e.id === id) || props.optionalExtras?.some(e => e.id === id);
+        if (!stillExists) delete selectedExtras.value[id];
+    }
+});
+
 const getSelectedExtrasDetails = computed(() => {
     const details = [];
     const coverCodes = new Set(Array.isArray(OK_MOBILITY_COVER_CODES) ? OK_MOBILITY_COVER_CODES : OK_MOBILITY_COVER_CODES.value ?? ['OPC', 'OPCO']);

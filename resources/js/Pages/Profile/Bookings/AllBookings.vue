@@ -3,6 +3,7 @@ import { ref, computed, getCurrentInstance } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import MyProfileLayout from '@/Layouts/MyProfileLayout.vue';
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import BookingCancelDialog from '@/Components/Booking/BookingCancelDialog.vue';
 import bookingstatusIcon from '../../../../assets/bookingstatusIcon.svg';
 import { CalendarCheck } from 'lucide-vue-next';
 import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
@@ -23,6 +24,7 @@ const t = (key, fallback) => {
 
 const props = defineProps({
   bookings: Object,
+  status_counts: Object,
 });
 
 const activeTab = ref('all');
@@ -30,16 +32,41 @@ const isLoading = ref(false);
 const bookingRows = computed(() => props.bookings?.data || []);
 const totalBookings = computed(() => props.bookings?.total || bookingRows.value.length);
 
-// Status tabs configuration
-const statusTabs = [
-  { key: 'all', label: t('all_bookings', 'All Bookings') },
-  { key: 'pending', label: t('pending', 'Pending') },
-  { key: 'confirmed', label: t('confirmed', 'Confirmed') },
-  { key: 'completed', label: t('completed', 'Completed') },
-  { key: 'cancelled', label: t('cancelled', 'Cancelled') },
-];
+// Dead bookings that still need the customer to hear from support.
+const ATTENTION_STATUSES = ['cancelled', 'reservation_failed', 'rejected'];
+// Statuses where the booking is over — nothing left to cancel or count down to.
+const CLOSED_STATUSES = [...ATTENTION_STATUSES, 'completed', 'expired'];
 
-// Filter bookings by status (client-side)
+// Which raw statuses each tab shows — every status maps somewhere, so no
+// booking can hide from every tab.
+const TAB_STATUSES = {
+  pending: ['pending'],
+  confirmed: ['confirmed', 'active'],
+  completed: ['completed'],
+  cancelled: ['cancelled', 'expired'],
+  attention: ['reservation_failed', 'rejected'],
+};
+
+const statusCounts = computed(() => props.status_counts || {});
+const countFor = (tabKey) => (TAB_STATUSES[tabKey] || [])
+  .reduce((sum, status) => sum + parseInt(statusCounts.value[status] || 0, 10), 0);
+
+// Status tabs configuration ("Needs attention" only appears when relevant)
+const statusTabs = computed(() => {
+  const tabs = [
+    { key: 'all', label: t('all_bookings', 'All Bookings') },
+    { key: 'pending', label: t('pending', 'Pending') },
+    { key: 'confirmed', label: t('confirmed', 'Confirmed') },
+    { key: 'completed', label: t('completed', 'Completed') },
+    { key: 'cancelled', label: t('cancelled', 'Cancelled') },
+  ];
+  if (countFor('attention') > 0) {
+    tabs.splice(1, 0, { key: 'attention', label: t('needs_attention', 'Needs attention') });
+  }
+  return tabs;
+});
+
+// Filter bookings by status (client-side, current page)
 const filteredBookings = computed(() => {
   if (!bookingRows.value.length) return [];
 
@@ -47,15 +74,15 @@ const filteredBookings = computed(() => {
     return bookingRows.value;
   }
 
-  return bookingRows.value.filter(booking =>
-    booking.booking_status === activeTab.value
-  );
+  const statuses = TAB_STATUSES[activeTab.value] || [activeTab.value];
+  return bookingRows.value.filter(booking => statuses.includes(booking.booking_status));
 });
 
+// Tab badges use GLOBAL counts (server-provided), not the current page slice.
 const getTabCount = (tabKey) => {
   if (tabKey === 'all') return totalBookings.value;
 
-  return bookingRows.value.filter((booking) => booking.booking_status === tabKey).length;
+  return countFor(tabKey);
 };
 
 // Get status badge styling
@@ -80,6 +107,18 @@ const getStatusBadge = (status) => {
     },
     cancelled: {
       label: t('cancelled', 'Cancelled'),
+      tone: 'cancelled',
+    },
+    reservation_failed: {
+      label: t('under_review', 'Under review'),
+      tone: 'pending',
+    },
+    rejected: {
+      label: t('under_review', 'Under review'),
+      tone: 'pending',
+    },
+    expired: {
+      label: t('expired', 'Expired'),
       tone: 'cancelled',
     }
   };
@@ -144,7 +183,7 @@ const getBookingCurrency = (booking) => {
 const getBookingAmount = (booking, field) => {
   const bookingFieldMap = {
     total_amount: 'booking_total_amount',
-    amount_paid: 'booking_amount_paid',
+    amount_paid: 'booking_paid_amount',
     pending_amount: 'booking_pending_amount',
   };
 
@@ -200,7 +239,13 @@ const getVehicleMeta = (booking) => {
 };
 
 const getCategoryLabel = (booking) => {
-  return booking.vehicle?.category?.name || formatProviderName(booking.provider_source);
+  // Prefer real vehicle category (internal relation or provider metadata);
+  // the provider's NAME is not a category — last resort only.
+  const meta = booking.provider_metadata || {};
+  return booking.vehicle?.category?.name
+    || meta.category
+    || meta.CarCategory
+    || formatProviderName(booking.provider_source);
 };
 
 const hasFreeEsim = (booking) => {
@@ -216,19 +261,48 @@ const getPaymentStateLabel = (booking) => {
   }
 
   if (getBookingAmount(booking, 'amount_paid') > 0) {
+    // A dead booking with money on it must not read as a plain "Paid online".
+    if (ATTENTION_STATUSES.includes(booking.booking_status)) {
+      return t('paid_support_reviewing', 'Paid — support will contact you');
+    }
+
     return t('paid_online', 'Paid online');
   }
 
   return t('pay_at_pickup', 'Pay at pickup');
 };
 
+// One-line explanation for bookings that need it — shown under the chips.
+const getFailureNote = (booking) => {
+  const paid = getBookingAmount(booking, 'amount_paid') > 0;
+  if (booking.booking_status === 'reservation_failed') {
+    return t('reservation_failed_note', 'The supplier could not confirm this booking. Our team is reviewing it and will contact you — your payment is safe.');
+  }
+  if (booking.booking_status === 'rejected' && paid) {
+    return t('rejected_paid_note', 'The vehicle was no longer available. Our team is reviewing this booking and will contact you about a refund or an alternative.');
+  }
+  if (booking.booking_status === 'cancelled' && paid) {
+    return t('cancelled_paid_note', 'This booking was cancelled after payment. Refunds are handled personally by our team — contact support if you have not heard from us.');
+  }
+  return null;
+};
+
 const getLocationLabel = (location, fallback) => {
   return location || fallback;
 };
 
-const isPaymentRetryVisible = (booking) => (
+// A pending unpaid booking has no completable payment session — the honest
+// action is a fresh search (the old "retry payment" button called a route
+// that never existed).
+const isAwaitingPayment = (booking) => (
   booking.payment_status === 'pending' && booking.booking_status === 'pending'
 );
+
+const searchAgainUrl = computed(() => {
+  if (typeof window === 'undefined') return `/${page.props.locale || 'en'}`;
+  const stored = sessionStorage.getItem('searchurl');
+  return stored && stored.startsWith('/') ? stored : `/${page.props.locale || 'en'}`;
+});
 
 const handleTabChange = (tab) => {
   activeTab.value = tab;
@@ -241,25 +315,6 @@ const handlePageChange = (pageNumber) => {
     preserveScroll: true,
     onFinish: () => { isLoading.value = false; }
   });
-};
-
-const retryPayment = async (bookingId) => {
-  isLoading.value = true;
-  try {
-    const axios = (await import('axios')).default;
-    const response = await axios.post(route('payment.retry', { locale: page.props.locale }), { booking_id: bookingId });
-
-    if (response.data.sessionId) {
-      const { loadStripe } = await import('@stripe/stripe-js');
-      const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
-      await stripe.redirectToCheckout({ sessionId: response.data.sessionId });
-    }
-  } catch (error) {
-    console.error('Error retrying payment:', error);
-    alert('Failed to retry payment. Please try again later.');
-  } finally {
-    isLoading.value = false;
-  }
 };
 
 // Providers that support customer-initiated API cancellation
@@ -279,17 +334,23 @@ const isManualCancelProvider = (booking) => {
 };
 
 const canCancelProviderBooking = (booking) => {
-  if (['cancelled', 'completed'].includes(booking.booking_status)) return false;
-  // Internal vehicles can be cancelled by customer
+  // The server computes this against the real cancelBooking() preconditions
+  // (gateway metadata etc.) — trust it when present.
+  if (typeof booking.can_cancel === 'boolean') return booking.can_cancel;
+
+  // Fallback for payloads without the flag.
+  if (CLOSED_STATUSES.includes(booking.booking_status)) return false;
   if (!booking.provider_source) return true;
-  // External providers with cancel API
   if (!hasProviderCancelApi(booking)) return false;
   if (!booking.provider_booking_ref) return false;
   return true;
 };
 
 const canShowContactSupport = (booking) => {
-  if (['cancelled', 'completed'].includes(booking.booking_status)) return false;
+  if (booking.booking_status === 'completed') return false;
+  // A cancelled or failed booking is exactly when the customer needs support —
+  // especially with money on it.
+  if (ATTENTION_STATUSES.includes(booking.booking_status)) return true;
   return isManualCancelProvider(booking);
 };
 
@@ -306,43 +367,12 @@ const getCancellationDeadlineInfo = (booking) => {
   };
 };
 
-const cancelProviderBooking = async (booking) => {
-  // Check cancellation deadline
-  const deadlineInfo = getCancellationDeadlineInfo(booking);
-  if (deadlineInfo?.isExpired) {
-    alert(`Free cancellation period expired on ${deadlineInfo.deadline}. Please contact support for assistance.`);
-    return;
-  }
+// Cancel dialog — shared modal component (translatable, not blockable by the
+// browser) instead of native confirm()/prompt().
+const cancelDialog = ref({ open: false, booking: null });
 
-  let confirmMsg = t('modal_confirm_cancellation_message', 'Are you sure you want to cancel this booking?');
-  if (deadlineInfo) {
-    confirmMsg += `\n\nFree cancellation available until: ${deadlineInfo.deadline}`;
-  }
-  if (!confirm(confirmMsg)) return;
-
-  const reasonPrompt = 'Please enter a cancellation reason:';
-  const reason = prompt(reasonPrompt) || '';
-  const trimmedReason = reason.trim();
-
-  if (trimmedReason.length < 3) {
-    alert('Cancellation reason is required.');
-    return;
-  }
-
-  isLoading.value = true;
-  try {
-    const axios = (await import('axios')).default;
-    await axios.post(route('booking.cancel', { locale: page.props.locale }), {
-      booking_id: booking.id,
-      cancellation_reason: trimmedReason
-    });
-    router.reload({ preserveScroll: true });
-  } catch (error) {
-    const message = error?.response?.data?.message || 'Failed to cancel booking. Please try again.';
-    alert(message);
-  } finally {
-    isLoading.value = false;
-  }
+const openCancelDialog = (booking) => {
+  cancelDialog.value = { open: true, booking };
 };
 
 // Stagger animation delays
@@ -506,6 +536,10 @@ const getCardDelay = (index) => {
                 {{ getPaymentStateLabel(booking) }}
               </span>
             </div>
+
+            <p v-if="getFailureNote(booking)" class="customer-booking-failure-note">
+              {{ getFailureNote(booking) }}
+            </p>
           </div>
 
           <div class="customer-booking-trip">
@@ -545,22 +579,33 @@ const getCardDelay = (index) => {
             </div>
 
             <div class="customer-booking-actions">
-              <button
-                v-if="isPaymentRetryVisible(booking)"
-                @click="retryPayment(booking.id)"
-                :disabled="isLoading"
-                type="button"
+              <a
+                v-if="isAwaitingPayment(booking)"
+                :href="searchAgainUrl"
                 class="customer-booking-btn customer-booking-btn--primary"
               >
-                {{ t('complete_payment', 'Complete payment') }}
-              </button>
+                {{ t('search_again', 'Search again') }}
+              </a>
               <Link
                 :href="route('booking.show', { locale: page.props.locale, id: booking.id })"
                 class="customer-booking-btn"
-                :class="isPaymentRetryVisible(booking) ? 'customer-booking-btn--secondary' : 'customer-booking-btn--primary'"
+                :class="isAwaitingPayment(booking) ? 'customer-booking-btn--secondary' : 'customer-booking-btn--primary'"
               >
                 {{ t('view_details', 'View details') }}
               </Link>
+              <Link
+                v-if="booking.booking_status === 'completed' && booking.vehicle_id && !booking.review"
+                :href="`${route('profile.review', { locale: page.props.locale })}?booking_id=${booking.id}`"
+                class="customer-booking-btn customer-booking-btn--secondary"
+              >
+                {{ t('leave_review', 'Leave a review') }}
+              </Link>
+              <span
+                v-else-if="booking.booking_status === 'completed' && booking.review"
+                class="customer-booking-btn customer-booking-btn--secondary opacity-60 cursor-default"
+              >
+                {{ t('reviewed', 'Reviewed') }} ✓
+              </span>
               <Link
                 v-if="booking.vehicle?.vendor_id"
                 :href="route('messages.index', { locale: page.props.locale, vendor_id: booking.vehicle.vendor_id })"
@@ -570,7 +615,7 @@ const getCardDelay = (index) => {
               </Link>
               <button
                 v-if="canCancelProviderBooking(booking)"
-                @click="cancelProviderBooking(booking)"
+                @click="openCancelDialog(booking)"
                 :disabled="isLoading"
                 type="button"
                 class="customer-booking-btn customer-booking-btn--danger"
@@ -579,14 +624,14 @@ const getCardDelay = (index) => {
               </button>
               <a
                 v-if="canShowContactSupport(booking)"
-                :href="`mailto:${page.props.adminEmail || 'support@vrooem.com'}?subject=Cancel Booking ${booking.booking_number}`"
+                :href="`mailto:${page.props.support?.email || 'info@vrooem.com'}?subject=Booking ${booking.booking_number}`"
                 class="customer-booking-btn customer-booking-btn--secondary"
               >
                 {{ t('contact_support_to_cancel', 'Contact support') }}
               </a>
             </div>
 
-            <p v-if="getCancellationDeadlineInfo(booking) && !['cancelled', 'completed'].includes(booking.booking_status)" class="customer-booking-deadline">
+            <p v-if="getCancellationDeadlineInfo(booking) && !CLOSED_STATUSES.includes(booking.booking_status)" class="customer-booking-deadline">
               <template v-if="!getCancellationDeadlineInfo(booking).isExpired">
                 {{ t('free_cancellation_until', 'Free cancellation until') }} {{ getCancellationDeadlineInfo(booking).deadline }}
               </template>
@@ -606,6 +651,13 @@ const getCardDelay = (index) => {
         />
       </div>
     </div>
+
+    <!-- Cancel booking dialog -->
+    <BookingCancelDialog
+      :booking="cancelDialog.booking"
+      :open="cancelDialog.open"
+      @close="cancelDialog.open = false"
+    />
   </MyProfileLayout>
 </template>
 
@@ -964,6 +1016,18 @@ const getCardDelay = (index) => {
   font-size: 0.75rem;
   font-weight: 800;
   text-transform: capitalize;
+}
+
+.customer-booking-failure-note {
+  margin-top: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #fecdd3;
+  border-radius: 12px;
+  background: #fff1f2;
+  color: #9f1239;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .customer-booking-chip svg {

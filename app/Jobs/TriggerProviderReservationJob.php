@@ -4,6 +4,10 @@ namespace App\Jobs;
 
 use App\Exceptions\ReservationOutcomeUnknownException;
 use App\Models\Booking;
+use App\Models\User;
+use App\Notifications\Booking\ReservationFailedCustomerNotification;
+use App\Notifications\Concerns\DeliversToCustomer;
+use App\Notifications\Payment\AdminReservationFailedNotification;
 use App\Services\StripeBookingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,6 +19,7 @@ use Throwable;
 
 class TriggerProviderReservationJob implements ShouldQueue
 {
+    use DeliversToCustomer;
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
@@ -76,41 +81,85 @@ class TriggerProviderReservationJob implements ShouldQueue
             return;
         }
 
-        // Unknown outcome already routed to manual review and notified. Do NOT
-        // cancel — the supplier may hold a reservation. Leave the booking in the
-        // provider_pending bucket for a human to reconcile.
+        // Unknown outcome already routed to manual review; admin was notified by
+        // the service. Do NOT cancel — the supplier may hold a reservation. Tell
+        // the customer their booking is under review so they are never in the dark.
         if ($e instanceof ReservationOutcomeUnknownException
             || ! empty($booking->provider_metadata['reservation_manual_check'])) {
             Log::warning('TriggerProviderReservationJob: booking left for manual reconciliation (unknown outcome)', [
                 'booking_id' => $booking->id,
             ]);
+            $this->notifyCustomerReservationFailed($booking);
 
             return;
         }
 
-        Log::error('TriggerProviderReservationJob exhausted retries - manual refund review required', [
+        Log::error('TriggerProviderReservationJob exhausted retries - held for manual review', [
             'booking_id' => $this->bookingId,
             'error' => $e->getMessage(),
         ]);
 
-        // Mark booking as cancelled. No supplier reference means no valid reservation.
+        $finalError = substr($e->getMessage(), 0, 500);
+
+        // The customer PAID. Never auto-cancel: hold the booking in
+        // reservation_failed so an admin can rebook with the supplier or refund
+        // manually. payment_status stays truthful (money captured, not refunded).
         $booking->update([
-            'booking_status' => 'cancelled',
-            'payment_status' => 'payment_cancelled',
-            'cancellation_reason' => 'Payment cancelled: supplier did not confirm the reservation or return a provider reference.',
+            'booking_status' => 'reservation_failed',
+            'cancellation_reason' => 'Supplier could not confirm the reservation. Booking held for manual review.',
             'provider_metadata' => array_merge(
                 $booking->provider_metadata ?? [],
                 [
                     'manual_refund_required' => true,
-                    'reservation_final_error' => substr($e->getMessage(), 0, 500),
+                    'reservation_final_error' => $finalError,
                     'reservation_failed_at' => now()->toIso8601String(),
                 ]
             ),
         ]);
 
+        $this->notifyCustomerReservationFailed($booking);
+        $this->notifyAdminReservationFailed($booking, $finalError);
+
         app(StripeBookingService::class)->recordManualRefundForFailedReservation(
             $booking->stripe_payment_intent_id,
             'External provider could not confirm reservation after retries'
         );
+    }
+
+    private function notifyCustomerReservationFailed(Booking $booking): void
+    {
+        try {
+            $customer = $booking->customer;
+            if (! $customer) {
+                Log::warning('TriggerProviderReservationJob: no customer to notify', ['booking_id' => $booking->id]);
+
+                return;
+            }
+
+            $this->deliverToCustomer(
+                $customer,
+                new ReservationFailedCustomerNotification($booking, $customer, $booking->vehicle)
+            );
+        } catch (Throwable $e) {
+            Log::warning('TriggerProviderReservationJob: failed to notify customer of reservation failure', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function notifyAdminReservationFailed(Booking $booking, string $reason): void
+    {
+        try {
+            $admin = User::where('email', config('admin.email'))->first();
+            if ($admin) {
+                $admin->notify(new AdminReservationFailedNotification($booking, $reason));
+            }
+        } catch (Throwable $e) {
+            Log::warning('TriggerProviderReservationJob: failed to notify admin of reservation failure', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

@@ -15,6 +15,15 @@ export function useCurrency() {
     });
 
     const changeCurrency = (newCurrency) => {
+        // Changing currency reloads the page — mid-booking that throws away the
+        // selected vehicle and extras. Ask first.
+        if (typeof window !== 'undefined' && window.__vrooemBookingFlowActive) {
+            const proceed = window.confirm(
+                'Changing currency will restart your booking selection (your typed details are saved). Continue?'
+            );
+            if (!proceed) return;
+        }
+
         loading.value = true;
         router.post(route('currency.update'), { currency: newCurrency }, {
             preserveState: true,

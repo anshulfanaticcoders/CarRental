@@ -14,11 +14,13 @@ use App\Models\Vehicle;
 use App\Models\VehicleOperatingHour;
 use App\Models\VendorProfile;
 use App\Models\VendorVehiclePlan;
+use App\Notifications\Booking\BookingCancelledCustomerNotification;
 use App\Notifications\Booking\BookingCancelledNotification;
 use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
+use App\Notifications\Concerns\DeliversToCustomer;
 use App\Services\BookingAmountService;
 use App\Services\Bookings\InternalBookingSnapshotService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
@@ -35,6 +37,8 @@ use Stripe\Stripe;
 
 class BookingController extends Controller
 {
+    use DeliversToCustomer;
+
     public function allowAccess(Request $request, $locale)
     {
         Session::put('can_access_booking_page', true);
@@ -605,8 +609,10 @@ class BookingController extends Controller
 
             $vehicleData = [
                 'id' => null, // No internal ID
-                'brand' => explode(' ', $booking->vehicle_name)[0] ?? 'Vehicle',
-                'model' => $booking->vehicle_name, // Full name as model fallback
+                // Full name lives in `model`; empty brand prevents the frontend
+                // rendering "Fiat Fiat 500" style duplicates.
+                'brand' => '',
+                'model' => $booking->vehicle_name,
                 'vehicle_name' => $booking->vehicle_name,
                 'transmission' => null,
                 'fuel' => null,
@@ -614,9 +620,7 @@ class BookingController extends Controller
                 'images' => $booking->vehicle_image ? [
                     ['image_url' => $booking->vehicle_image, 'image_type' => 'primary'],
                 ] : [],
-                'category' => [
-                    'name' => 'Standard',
-                ],
+                'category' => null,
                 'latitude' => is_array($pickupDetails) ? ($pickupDetails['latitude'] ?? null) : null,
                 'longitude' => is_array($pickupDetails) ? ($pickupDetails['longitude'] ?? null) : null,
                 'full_vehicle_address' => ! empty($addressParts)
@@ -660,6 +664,8 @@ class BookingController extends Controller
                 }
             }
         }
+
+        $booking->setAttribute('can_cancel', $this->canCustomerCancelBooking($booking));
 
         return Inertia::render('Booking/BookingDetails', [
             'booking' => $booking,
@@ -948,21 +954,50 @@ class BookingController extends Controller
         // Update booking status and save cancellation reason
         $booking->booking_status = 'cancelled';
         $booking->cancellation_reason = $validatedData['cancellation_reason'];
+        $booking->save();
 
         $vehicle = $booking->vehicle_id ? Vehicle::find($booking->vehicle_id) : null;
+        $customer = $booking->customer;
 
         // Send notifications
         $adminEmail = config('admin.email');
         $admin = User::where('email', $adminEmail)->first();
         if ($admin) {
-            $admin->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'admin'));
+            try {
+                $admin->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'admin'));
+            } catch (\Throwable $e) {
+                Log::warning('BookingController: failed to send admin cancellation notification', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Confirm the cancellation to the customer too — they must always get a
+        // written record of it.
+        try {
+            $this->deliverToCustomer($customer, new BookingCancelledCustomerNotification(
+                $booking, $customer, $vehicle, $validatedData['cancellation_reason'], 'customer'
+            ));
+        } catch (\Throwable $e) {
+            Log::warning('BookingController: failed to send customer cancellation notification', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         // Notify Vendor
         if ($vehicle) {
             $vendor = User::find($vehicle->vendor_id);
             if ($vendor) {
-                $vendor->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'vendor'));
+                try {
+                    $vendor->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'vendor'));
+                } catch (\Throwable $e) {
+                    Log::warning('BookingController: failed to send vendor cancellation notification', [
+                        'booking_id' => $booking->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
 
             // Notify Company
@@ -970,12 +1005,17 @@ class BookingController extends Controller
             if ($vendorProfile && $vendorProfile->company_email) {
                 $companyUser = User::where('email', $vendorProfile->company_email)->first();
                 if ($companyUser) {
-                    $companyUser->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'company'));
+                    try {
+                        $companyUser->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'company'));
+                    } catch (\Throwable $e) {
+                        Log::warning('BookingController: failed to send company cancellation notification', [
+                            'booking_id' => $booking->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
             }
         }
-
-        $booking->save();
 
         if ($request->wantsJson()) {
             return response()->json(['message' => 'Booking cancelled successfully']);
@@ -1084,15 +1124,63 @@ class BookingController extends Controller
     {
         $customerIds = $this->resolveCustomerIdsForAuthenticatedUser();
 
-        $bookings = ! empty($customerIds) ?
-            Booking::whereIn('customer_id', $customerIds)
-                ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'extras', 'amounts', 'offers')
+        $bookings = collect();
+        $statusCounts = collect();
+
+        if (! empty($customerIds)) {
+            $bookings = Booking::whereIn('customer_id', $customerIds)
+                ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'extras', 'amounts', 'offers', 'review')
                 ->orderBy('created_at', 'desc')
-                ->paginate(10) :
-            collect();
+                ->paginate(10);
+
+            // The server knows whether a cancellation can actually succeed (the
+            // gateway path needs metadata) — never let the UI guess and 422.
+            $bookings->getCollection()->transform(function (Booking $booking) {
+                $booking->setAttribute('can_cancel', $this->canCustomerCancelBooking($booking));
+
+                return $booking;
+            });
+
+            // Global per-status counts — tab badges must not depend on which
+            // paginated page happens to be loaded.
+            $statusCounts = Booking::whereIn('customer_id', $customerIds)
+                ->selectRaw('booking_status, COUNT(*) as total')
+                ->groupBy('booking_status')
+                ->pluck('total', 'booking_status');
+        }
 
         return Inertia::render('Profile/Bookings/AllBookings', [
             'bookings' => $bookings,
+            'status_counts' => $statusCounts,
         ]);
+    }
+
+    /**
+     * Mirror of the cancelBooking() preconditions so the list only offers
+     * cancellation when the backend can actually perform it.
+     */
+    private function canCustomerCancelBooking(Booking $booking): bool
+    {
+        if (in_array($booking->booking_status, ['cancelled', 'completed', 'reservation_failed', 'rejected', 'expired'], true)) {
+            return false;
+        }
+
+        $metadata = $booking->provider_metadata ?? [];
+
+        // Free-cancellation window closed → cancelBooking() rejects it, so don't
+        // offer the action.
+        $deadline = $metadata['cancellation_deadline'] ?? null;
+        if ($deadline && now()->isAfter(\Carbon\Carbon::parse($deadline))) {
+            return false;
+        }
+
+        // Internal vehicles cancel locally — always possible.
+        if (empty($booking->provider_source) || $booking->provider_source === 'internal') {
+            return true;
+        }
+
+        // External: needs a confirmed supplier reservation plus the gateway
+        // metadata cancelBooking() requires.
+        return ! empty($booking->provider_booking_ref) && ! empty($metadata['gateway_booking_id']);
     }
 }

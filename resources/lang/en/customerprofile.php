@@ -101,6 +101,9 @@ return [
         'pay_to_vendor' => 'Pay to vendor on arrival',
         'payment_progress' => 'Payment Progress',
         'paid' => 'paid',
+        'booking_cancelled_title' => 'This booking has been cancelled',
+        'cancelled_refund_note' => 'A payment was made on this booking. Our team handles refunds personally and will contact you. If you have not heard from us, use the support options below.',
+        'payment_held_note' => 'Held while this booking is resolved. See the notice above.',
 
         // Booking Details Page - Cards
         'vehicle_and_trip' => 'Vehicle & Trip',

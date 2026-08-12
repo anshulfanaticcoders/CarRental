@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\ImageCompressionHelper;
 use App\Http\Controllers\Controller;
 use App\Models\FooterSetting;
 use App\Models\PopularPlace;
 use App\Services\LocationSearchService;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
-use App\Helpers\ImageCompressionHelper;
+use Inertia\Inertia;
 
 class PopularPlacesController extends Controller
 {
@@ -36,10 +36,9 @@ class PopularPlacesController extends Controller
         return Inertia::render('AdminDashboardPages/PopularPlaces/Index', [
             'places' => $places,
             'filters' => $request->only(['search']),
-            'status' => session('status') ?? null
+            'status' => session('status') ?? null,
         ]);
     }
-    
 
     public function create()
     {
@@ -50,17 +49,24 @@ class PopularPlacesController extends Controller
     {
         $request->validate([
             'unified_location_id' => 'required|integer|min:1',
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $location = $this->locationSearchService->getLocationByUnifiedId((int) $request->unified_location_id);
-        if (!$location) {
+        if (! $location) {
             return back()->withErrors([
                 'unified_location_id' => 'Selected location was not found in system locations.',
             ])->withInput();
         }
 
-        $place = new PopularPlace();
+        $providerCount = PopularPlace::countBookableProviders($location);
+        if ($providerCount < 1) {
+            return back()->withErrors([
+                'unified_location_id' => 'This location currently has no bookable car providers, so it would show no cars. Please pick a location with coverage.',
+            ])->withInput();
+        }
+
+        $place = new PopularPlace;
         $place->place_name = $location['name'] ?? $request->place_name ?? '';
         $place->city = $location['city'] ?? $request->city ?? '';
         $place->state = $location['state'] ?? $request->state ?? '';
@@ -68,6 +74,9 @@ class PopularPlacesController extends Controller
         $place->latitude = $location['latitude'] ?? $request->latitude ?? null;
         $place->longitude = $location['longitude'] ?? $request->longitude ?? null;
         $place->unified_location_id = $request->unified_location_id;
+        $place->provider_count = $providerCount;
+        $place->last_verified_at = now();
+        $place->is_active = true;
 
         if ($request->hasFile('image')) {
             $folderName = 'popularPlaces';
@@ -86,7 +95,6 @@ class PopularPlacesController extends Controller
                 return back()->withErrors(['image' => 'Failed to compress image.']);
             }
         }
-    
 
         $place->save();
 
@@ -97,7 +105,7 @@ class PopularPlacesController extends Controller
     public function edit(PopularPlace $popularPlace)
     {
         return Inertia::render('AdminDashboardPages/PopularPlaces/Edit', [
-            'place' => $popularPlace
+            'place' => $popularPlace,
         ]);
     }
 
@@ -105,13 +113,20 @@ class PopularPlacesController extends Controller
     {
         $request->validate([
             'unified_location_id' => 'required|integer|min:1',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $location = $this->locationSearchService->getLocationByUnifiedId((int) $request->unified_location_id);
-        if (!$location) {
+        if (! $location) {
             return back()->withErrors([
                 'unified_location_id' => 'Selected location was not found in system locations.',
+            ])->withInput();
+        }
+
+        $providerCount = PopularPlace::countBookableProviders($location);
+        if ($providerCount < 1) {
+            return back()->withErrors([
+                'unified_location_id' => 'This location currently has no bookable car providers, so it would show no cars. Please pick a location with coverage.',
             ])->withInput();
         }
 
@@ -122,6 +137,9 @@ class PopularPlacesController extends Controller
         $popularPlace->latitude = $location['latitude'] ?? $request->latitude ?? $popularPlace->latitude;
         $popularPlace->longitude = $location['longitude'] ?? $request->longitude ?? $popularPlace->longitude;
         $popularPlace->unified_location_id = $request->unified_location_id;
+        $popularPlace->provider_count = $providerCount;
+        $popularPlace->last_verified_at = now();
+        $popularPlace->is_active = true;
 
         if ($request->hasFile('image')) {
             // Delete old image from UpCloud
@@ -131,7 +149,7 @@ class PopularPlacesController extends Controller
                     Storage::disk('upcloud')->delete($oldImagePath);
                 }
             }
-    
+
             $folderName = 'popularPlaces';
             $compressedImageUrl = ImageCompressionHelper::compressImage(
                 $request->file('image'),
@@ -201,15 +219,14 @@ class PopularPlacesController extends Controller
             ->with('status', "{$count} place(s) deleted successfully");
     }
 
-
     public function footerSettings()
     {
         $places = PopularPlace::all();
-        
+
         // Get selected places from the footer_settings table
         $footerSettings = FooterSetting::where('type', 'popular_places')->first();
         $selectedPlaces = [];
-        
+
         if ($footerSettings) {
             // Decode the JSON stored in the settings value
             $selectedPlaces = json_decode($footerSettings->value, true) ?? [];
@@ -224,7 +241,7 @@ class PopularPlacesController extends Controller
     public function updateFooterSettings(Request $request)
     {
         $selectedPlaces = $request->input('selected_places', []);
-        
+
         // Save to footer_settings table - using upsert to create or update
         FooterSetting::updateOrCreate(
             ['type' => 'popular_places'],
@@ -234,20 +251,21 @@ class PopularPlacesController extends Controller
         return redirect()->route('admin.settings.footer')->with('status', 'Footer settings updated successfully');
     }
 
-     // method to get footer places for the front-end
-     public function getFooterPlaces()
-     {
-         // Get selected place IDs from footer settings
-         $footerSettings = FooterSetting::where('type', 'popular_places')->first();
-         $selectedPlaceIds = [];
-         
-         if ($footerSettings) {
-             $selectedPlaceIds = json_decode($footerSettings->value, true) ?? [];
-         }
-         
-         // Get the actual place data for the selected IDs
-         $places = PopularPlace::whereIn('id', $selectedPlaceIds)->get();
-         
-         return response()->json($places);
-     }
+    // method to get footer places for the front-end
+    public function getFooterPlaces()
+    {
+        // Get selected place IDs from footer settings
+        $footerSettings = FooterSetting::where('type', 'popular_places')->first();
+        $selectedPlaceIds = [];
+
+        if ($footerSettings) {
+            $selectedPlaceIds = json_decode($footerSettings->value, true) ?? [];
+        }
+
+        // Get the actual place data for the selected IDs (active only — a
+        // footer link to a dead destination would show no cars).
+        $places = PopularPlace::whereIn('id', $selectedPlaceIds)->where('is_active', true)->get();
+
+        return response()->json($places);
+    }
 }

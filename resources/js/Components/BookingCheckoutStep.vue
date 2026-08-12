@@ -1,11 +1,14 @@
 ﻿<script setup>
-import { ref, computed, onMounted, unref, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, unref, watch } from 'vue';
 import StripeCheckoutButton from './StripeCheckoutButton.vue';
 import { usePage } from '@inertiajs/vue3';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faSimCard } from '@fortawesome/free-solid-svg-icons';
 import { useCurrencyConversion } from '@/composables/useCurrencyConversion';
 import { normalizeCurrencyCode as registryNormalizeCurrencyCode } from '@/utils/currencyRegistry';
+import { normalizeProviderSource } from '@/utils/providerSource';
+import { COUNTRIES } from '@/data/countries';
+import { useCheckoutDraft } from '@/composables/useCheckoutDraft';
 import {
     getSearchVehicleLegacyPayload,
     resolveSearchVehicleDisplayName,
@@ -59,6 +62,9 @@ const props = defineProps({
     dropoffUnifiedLocationId: { type: [String, Number], default: null },
     driverAge: { type: [String, Number], default: null },
     selectedDepositType: { type: String, default: null },
+    // Epoch ms of when the current search results were loaded — drives the
+    // quote-validity countdown (server price cache lives ~15 minutes).
+    searchLoadedAt: { type: Number, default: null },
 });
 
 const emit = defineEmits(['back']);
@@ -78,6 +84,7 @@ const form = ref({
     phone: user.phone || '',
     driver_age: '',
     driver_license_number: '',
+    driving_license_country: '',
     address: profile.address_line1 || '',
     city: profile.city || '',
     postal_code: profile.postal_code || '',
@@ -87,7 +94,51 @@ const form = ref({
     notes: '',
 });
 
+// Restore a saved form draft (refresh/tab-restore survival) — a saved value
+// only fills fields the profile prefill left empty.
+const { readForm, saveForm } = useCheckoutDraft();
+const savedFormDraft = readForm();
+if (savedFormDraft) {
+    for (const [key, value] of Object.entries(savedFormDraft)) {
+        if (key in form.value && !form.value[key] && value) {
+            form.value[key] = value;
+        }
+    }
+}
+
+// Persist while typing (debounced) so nothing typed is ever lost.
+let formSaveTimer = null;
+watch(form, () => {
+    clearTimeout(formSaveTimer);
+    formSaveTimer = setTimeout(() => saveForm(form.value), 600);
+}, { deep: true });
+
 const selectedPaymentMethod = ref('card');
+
+// Quote-validity countdown: prices are server-verified against a ~15-minute
+// cache. Show the clock instead of letting the customer fill the whole form
+// and only then discover the quote died.
+const QUOTE_TTL_MS = 15 * 60 * 1000;
+const nowTick = ref(Date.now());
+let quoteTimer = null;
+onMounted(() => { quoteTimer = setInterval(() => { nowTick.value = Date.now(); }, 1000); });
+onUnmounted(() => { if (quoteTimer) clearInterval(quoteTimer); });
+
+const quoteRemainingMs = computed(() => {
+    if (!props.searchLoadedAt) return null;
+    return Math.max(0, props.searchLoadedAt + QUOTE_TTL_MS - nowTick.value);
+});
+const quoteExpired = computed(() => quoteRemainingMs.value !== null && quoteRemainingMs.value <= 0);
+const quoteRemainingLabel = computed(() => {
+    if (quoteRemainingMs.value === null) return '';
+    const totalSeconds = Math.ceil(quoteRemainingMs.value / 1000);
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+});
+const quoteAlmostExpired = computed(() => quoteRemainingMs.value !== null && quoteRemainingMs.value > 0 && quoteRemainingMs.value < 3 * 60 * 1000);
+
+const refreshPrices = () => { window.location.reload(); };
 
 const availablePaymentMethods = computed(() => {
     const currency = checkoutCurrency.value;
@@ -109,96 +160,116 @@ const availablePaymentMethods = computed(() => {
 
 const errors = ref({});
 
-// Clear individual field errors instantly when user types
-watch(() => form.value.name, () => { if (errors.value.name) delete errors.value.name; });
-watch(() => form.value.email, () => { if (errors.value.email) delete errors.value.email; });
-watch(() => form.value.phone, () => { if (errors.value.phone) delete errors.value.phone; });
-watch(() => form.value.driver_age, () => { if (errors.value.driver_age) delete errors.value.driver_age; });
-watch(() => form.value.driver_license_number, () => { if (errors.value.driver_license_number) delete errors.value.driver_license_number; });
-watch(() => form.value.address, () => { if (errors.value.address) delete errors.value.address; });
-watch(() => form.value.city, () => { if (errors.value.city) delete errors.value.city; });
-watch(() => form.value.postal_code, () => { if (errors.value.postal_code) delete errors.value.postal_code; });
-watch(() => form.value.country, () => { if (errors.value.country) delete errors.value.country; });
+const normalizedSource = computed(() => normalizeProviderSource(props.vehicle?.source));
 
-const validate = () => {
-    errors.value = {};
-    let isValid = true;
+const isLocautoRent = computed(() => normalizedSource.value === 'locauto_rent');
+const isOkMobility = computed(() => normalizedSource.value === 'okmobility');
+const isGreenMotion = computed(() => ['greenmotion', 'usave'].includes(normalizedSource.value));
+const isYesaway = computed(() => normalizedSource.value === 'yesaway');
 
-    if (!form.value.name.trim()) {
-        errors.value.name = 'Full Name is required';
-        isValid = false;
-    }
+const needsLicence = computed(() => isOkMobility.value || isGreenMotion.value || isYesaway.value);
+const needsAddress = computed(() => isGreenMotion.value || isYesaway.value);
 
-    if (!form.value.email.trim()) {
-        errors.value.email = 'Email is required';
-        isValid = false;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
-        errors.value.email = 'Invalid email format';
-        isValid = false;
-    }
+const LICENCE_REGEX = /^[A-Za-z0-9][A-Za-z0-9 \-\/]{3,}[A-Za-z0-9]$/;
+// Same rule as the backend: optional +, then 7-15 digits after stripping separators.
+const PHONE_REGEX = /^\+?[0-9]{7,15}$/;
 
-    if (!form.value.phone.trim()) {
-        errors.value.phone = 'Phone Number is required';
-        isValid = false;
-    }
-
-    if (!form.value.driver_age) {
-        errors.value.driver_age = 'Driver Age is required';
-        isValid = false;
-    } else if (parseInt(form.value.driver_age) < 18) {
-        errors.value.driver_age = 'Driver must be at least 18 years old';
-        isValid = false;
-    }
-
-    if (isOkMobility.value || isGreenMotion.value || isYesaway.value) {
-        const licence = form.value.driver_license_number.trim();
-        if (!licence) {
-            errors.value.driver_license_number = 'Driver License Number is required for this provider';
-            isValid = false;
-        } else if (!/^[A-Za-z0-9][A-Za-z0-9 \-\/]{3,}[A-Za-z0-9]$/.test(licence)) {
-            errors.value.driver_license_number = 'Please enter a valid driving licence number';
-            isValid = false;
-        }
-    }
-
-    if (isGreenMotion.value || isYesaway.value) {
-        if (!form.value.address.trim()) {
-            errors.value.address = 'Address is required for this provider';
-            isValid = false;
-        }
-        if (!form.value.city.trim()) {
-            errors.value.city = 'City is required for this provider';
-            isValid = false;
-        }
-        if (!form.value.postal_code.trim()) {
-            errors.value.postal_code = 'Postal code is required for this provider';
-            isValid = false;
-        }
-        if (!form.value.country.trim()) {
-            errors.value.country = 'Country is required for this provider';
-            isValid = false;
-        }
-    }
-
-    return isValid;
+// Single source of truth for every field rule. Each validator receives the
+// trimmed value and returns an error message or null. Used by the reactive
+// form gate, per-field re-validation on input, and the pre-submit check —
+// so validation can never silently go dead again.
+const fieldValidators = {
+    name: (v) => {
+        if (!v) return 'Full Name is required';
+        const parts = v.split(/\s+/).filter((p) => /[A-Za-z0-9]/.test(p));
+        if (parts.length < 2) return 'Please enter your first and last name';
+        return null;
+    },
+    email: (v) => {
+        if (!v) return 'Email is required';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Invalid email format';
+        return null;
+    },
+    phone: (v) => {
+        if (!v) return 'Phone Number is required';
+        const digits = v.replace(/[\s\-().]/g, '');
+        if (!PHONE_REGEX.test(digits)) return 'Please enter a valid phone number (7-15 digits, e.g. +32493123456)';
+        return null;
+    },
+    driver_age: (v) => {
+        if (!v) return 'Driver Age is required';
+        const age = parseInt(v, 10);
+        if (Number.isNaN(age) || age < 18) return 'Driver must be at least 18 years old';
+        if (age > 99) return 'Please enter a valid driver age';
+        return null;
+    },
+    driver_license_number: (v) => {
+        if (!needsLicence.value) return null;
+        if (!v) return 'Driver License Number is required for this provider';
+        if (!LICENCE_REGEX.test(v)) return 'Please enter a valid driving licence number';
+        return null;
+    },
+    driving_license_country: (v) => {
+        if (!needsLicence.value) return null;
+        if (!v) return 'Licence issuing country is required for this provider';
+        return null;
+    },
+    address: (v) => (needsAddress.value && (!v || v.length < 2) ? 'Address is required for this provider' : null),
+    city: (v) => (needsAddress.value && (!v || v.length < 2) ? 'City is required for this provider' : null),
+    postal_code: (v) => (needsAddress.value && !v ? 'Postal code is required for this provider' : null),
+    country: (v) => (needsAddress.value && (!v || v.length < 2) ? 'Country is required for this provider' : null),
+    notes: (v) => (v && v.length > 400 ? 'Notes must be 400 characters or fewer' : null),
 };
 
-const isLocautoRent = computed(() => {
-    return props.vehicle?.source === 'locauto_rent';
-});
+const fieldError = (field) => {
+    const validator = fieldValidators[field];
+    if (!validator) return null;
+    return validator(String(form.value[field] ?? '').trim());
+};
 
-const isOkMobility = computed(() => {
-    return props.vehicle?.source === 'okmobility';
-});
+// Pure reactive validity — this is what gates the Pay button. It never writes
+// to `errors`, so it cannot be bypassed by clearing messages.
+const isFormValid = computed(() => Object.keys(fieldValidators).every((field) => fieldError(field) === null));
 
-const isGreenMotion = computed(() => {
-    const source = props.vehicle?.source;
-    return source === 'greenmotion' || source === 'usave';
-});
+const validate = () => {
+    const next = {};
+    for (const field of Object.keys(fieldValidators)) {
+        const message = fieldError(field);
+        if (message) next[field] = message;
+    }
+    errors.value = next;
+    return Object.keys(next).length === 0;
+};
 
-const isYesaway = computed(() => {
-    return props.vehicle?.source === 'yesaway';
-});
+// Re-validate (not just clear) a field while the user types, so a shown error
+// only disappears once the value is actually valid.
+for (const field of Object.keys(fieldValidators)) {
+    watch(() => form.value[field], () => {
+        if (!(field in errors.value)) return;
+        const message = fieldError(field);
+        if (message) {
+            errors.value[field] = message;
+        } else {
+            delete errors.value[field];
+        }
+    });
+}
+
+// Map backend 422 field errors (missing_fields / invalid_fields / Laravel
+// errors bag) onto the form and bring the first broken field into view.
+const applyBackendFieldErrors = (fields) => {
+    const mapped = {};
+    for (const [rawKey, message] of Object.entries(fields)) {
+        const key = rawKey.replace(/^customer\./, '');
+        if (key in form.value) mapped[key] = message;
+    }
+    if (!Object.keys(mapped).length) return false;
+    errors.value = { ...errors.value, ...mapped };
+    const firstField = document.getElementById(`checkout-field-${Object.keys(mapped)[0]}`);
+    firstField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    firstField?.focus?.();
+    return true;
+};
 
 const effectivePaymentPercentage = computed(() => {
     const percent = props.paymentPercentage && props.paymentPercentage > 0 ? props.paymentPercentage : 15;
@@ -332,6 +403,16 @@ const resolveReturnSearchUrl = () => {
     }
 };
 
+// Every string trimmed before it leaves the browser — whitespace-only values
+// must never reach the backend as "filled".
+const trimmedCustomer = computed(() => {
+    const out = {};
+    for (const [key, value] of Object.entries(form.value)) {
+        out[key] = typeof value === 'string' ? value.trim() : value;
+    }
+    return out;
+});
+
 const bookingData = computed(() => {
     const pickupTime = isOkMobility.value
         ? (props.vehicle?.ok_mobility_pickup_time || props.pickupTime)
@@ -353,7 +434,7 @@ const bookingData = computed(() => {
         location_instructions: props.locationInstructions || null,
         driver_requirements: props.driverRequirements || null,
         terms: props.terms || null,
-        customer: form.value,
+        customer: trimmedCustomer.value,
         pickup_date: props.pickupDate,
         pickup_time: pickupTime,
         dropoff_date: props.dropoffDate,
@@ -374,7 +455,9 @@ const bookingData = computed(() => {
         unified_location_id: props.unifiedLocationId || props.vehicle?.unified_location_id || props.locationDetails?.unified_location_id || null,
         dropoff_unified_location_id: props.dropoffUnifiedLocationId || props.vehicle?.dropoff_unified_location_id || props.dropoffLocationDetails?.unified_location_id || null,
         return_search_url: resolveReturnSearchUrl(),
-        age: props.driverAge || form.value.driver_age || null,
+        // The typed driver age is authoritative — the search-form default (35)
+        // must never override what the customer declared at checkout.
+        age: form.value.driver_age || props.driverAge || null,
         selected_deposit_type: props.selectedDepositType || null,
         perk_offers: checkoutPerkOffers.value,
         free_esim_included: Boolean(freeEsimOffer.value),
@@ -422,7 +505,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.name, 'has-value': form.name }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
-                                    <input v-model="form.name" type="text" class="form-input" placeholder="Full name" />
+                                    <input id="checkout-field-name" v-model="form.name" type="text" class="form-input" placeholder="Full name" />
                                 </div>
                                 <Transition name="field-error">
                                     <p v-if="errors.name" class="form-error">
@@ -440,7 +523,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.email, 'has-value': form.email }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
-                                    <input v-model="form.email" type="email" class="form-input" placeholder="john@example.com" />
+                                    <input id="checkout-field-email" v-model="form.email" type="email" class="form-input" placeholder="john@example.com" />
                                 </div>
                                 <Transition name="field-error">
                                     <p v-if="errors.email" class="form-error">
@@ -458,7 +541,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.phone, 'has-value': form.phone }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
-                                    <input v-model="form.phone" type="tel" class="form-input" placeholder="+34 612 345 678" />
+                                    <input id="checkout-field-phone" v-model="form.phone" type="tel" class="form-input" placeholder="+34 612 345 678" />
                                 </div>
                                 <Transition name="field-error">
                                     <p v-if="errors.phone" class="form-error">
@@ -476,7 +559,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.driver_age, 'has-value': form.driver_age }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
-                                    <input v-model="form.driver_age" type="number" min="18" max="99" class="form-input" placeholder="30" />
+                                    <input id="checkout-field-driver_age" v-model="form.driver_age" type="number" min="18" max="99" class="form-input" placeholder="30" />
                                 </div>
                                 <Transition name="field-error">
                                     <p v-if="errors.driver_age" class="form-error">
@@ -487,19 +570,39 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                             </div>
 
                             <!-- Driver License Number -->
-                            <div v-if="isOkMobility || isGreenMotion || isYesaway" class="form-field-group">
+                            <div v-if="needsLicence" class="form-field-group">
                                 <label class="form-label">
                                     <svg class="form-label-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
                                     Driver License Number <span class="text-red-400">*</span>
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.driver_license_number, 'has-value': form.driver_license_number }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
-                                    <input v-model="form.driver_license_number" type="text" class="form-input" placeholder="License Number" />
+                                    <input id="checkout-field-driver_license_number" v-model="form.driver_license_number" type="text" class="form-input" placeholder="License Number" />
                                 </div>
                                 <Transition name="field-error">
                                     <p v-if="errors.driver_license_number" class="form-error">
                                         <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                                         {{ errors.driver_license_number }}
+                                    </p>
+                                </Transition>
+                            </div>
+
+                            <!-- Licence Issuing Country -->
+                            <div v-if="needsLicence" class="form-field-group">
+                                <label class="form-label">
+                                    <svg class="form-label-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918" /></svg>
+                                    Licence Issuing Country <span class="text-red-400">*</span>
+                                </label>
+                                <div class="form-input-wrap" :class="{ 'has-error': errors.driving_license_country, 'has-value': form.driving_license_country }">
+                                    <select id="checkout-field-driving_license_country" v-model="form.driving_license_country" class="form-input form-select">
+                                        <option value="" disabled>Select country</option>
+                                        <option v-for="c in COUNTRIES" :key="c.code" :value="c.code">{{ c.name }}</option>
+                                    </select>
+                                </div>
+                                <Transition name="field-error">
+                                    <p v-if="errors.driving_license_country" class="form-error">
+                                        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                        {{ errors.driving_license_country }}
                                     </p>
                                 </Transition>
                             </div>
@@ -534,7 +637,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.address, 'has-value': form.address }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
-                                    <input v-model="form.address" type="text" class="form-input" placeholder="123 Main Street" />
+                                    <input id="checkout-field-address" v-model="form.address" type="text" class="form-input" placeholder="123 Main Street" />
                                 </div>
                                 <Transition name="field-error">
                                     <p v-if="errors.address" class="form-error">
@@ -552,7 +655,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.city, 'has-value': form.city }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
-                                    <input v-model="form.city" type="text" class="form-input" placeholder="Madrid" />
+                                    <input id="checkout-field-city" v-model="form.city" type="text" class="form-input" placeholder="Madrid" />
                                 </div>
                                 <Transition name="field-error">
                                     <p v-if="errors.city" class="form-error">
@@ -570,7 +673,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.postal_code, 'has-value': form.postal_code }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 9v.906a2.25 2.25 0 01-1.183 1.981l-6.478 3.488M2.25 9v.906a2.25 2.25 0 001.183 1.981l6.478 3.488m8.839 2.51l-4.66-2.51m0 0l-1.023-.55a2.25 2.25 0 00-2.134 0l-1.022.55m0 0l-4.661 2.51m16.5 1.615a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V8.844a2.25 2.25 0 011.183-1.981l7.5-4.039a2.25 2.25 0 012.134 0l7.5 4.039a2.25 2.25 0 011.183 1.98V19.5z" /></svg>
-                                    <input v-model="form.postal_code" type="text" class="form-input" placeholder="28001" />
+                                    <input id="checkout-field-postal_code" v-model="form.postal_code" type="text" class="form-input" placeholder="28001" />
                                 </div>
                                 <Transition name="field-error">
                                     <p v-if="errors.postal_code" class="form-error">
@@ -588,7 +691,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.country, 'has-value': form.country }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 003 12c0-1.605.42-3.113 1.157-4.418" /></svg>
-                                    <input v-model="form.country" type="text" class="form-input" placeholder="Spain" />
+                                    <input id="checkout-field-country" v-model="form.country" type="text" class="form-input" placeholder="Spain" />
                                 </div>
                                 <Transition name="field-error">
                                     <p v-if="errors.country" class="form-error">
@@ -640,7 +743,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap form-textarea-wrap" :class="{ 'has-value': form.notes }">
                                     <svg class="form-input-icon !top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                                    <textarea v-model="form.notes" rows="3" class="form-input resize-none" placeholder="Any special requests or additional information..."></textarea>
+                                    <textarea id="checkout-field-notes" v-model="form.notes" rows="3" maxlength="400" class="form-input resize-none" placeholder="Any special requests or additional information..."></textarea>
                                 </div>
                             </div>
                         </div>
@@ -908,19 +1011,33 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                         </div>
                     </Teleport>
 
-                    <!-- Stripe Button -->
+                    <!-- Quote validity countdown -->
+                    <div v-if="quoteRemainingMs !== null && !quoteExpired" class="flex items-center justify-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-2"
+                        :class="quoteAlmostExpired ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-50 text-gray-500 border border-gray-100'">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Price locked for {{ quoteRemainingLabel }}
+                    </div>
+
+                    <!-- Stripe Button — gated on LIVE validation, not truthiness -->
                     <div class="space-y-3">
-                        <div v-if="form.name && form.email && form.phone && form.driver_age && (!hasRentalConditions || acceptedRentalConditions)">
-                            <StripeCheckoutButton v-if="!Object.keys(errors).length" :booking-data="bookingData"
-                                :label="`Pay ${formatTotalPrice(totals.payableAmount)}`" />
-                            <button v-else @click="validate()"
-                                class="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold cursor-pointer border border-red-200 hover:bg-red-100 transition-colors">
-                                Please Fix Errors Above
+                        <div v-if="quoteExpired" class="space-y-2">
+                            <p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
+                                This price quote has expired. Refresh to get current prices — your details are saved.
+                            </p>
+                            <button @click="refreshPrices"
+                                class="w-full bg-customPrimaryColor text-white py-4 rounded-xl font-bold hover:bg-opacity-90 transition-all">
+                                Refresh Prices
                             </button>
                         </div>
+                        <StripeCheckoutButton
+                            v-else-if="isFormValid && (!hasRentalConditions || acceptedRentalConditions)"
+                            :booking-data="bookingData"
+                            :label="`Pay ${formatTotalPrice(totals.payableAmount)}`"
+                            @field-errors="applyBackendFieldErrors"
+                        />
                         <button v-else @click="validate()"
                             class="w-full bg-gray-100 text-gray-500 py-4 rounded-xl font-bold cursor-pointer border border-gray-200 hover:bg-gray-200 transition-colors">
-                            Complete All Required Fields
+                            {{ Object.keys(errors).length ? 'Please Fix the Errors Above' : 'Complete All Required Fields' }}
                         </button>
 
                         <!-- Trust indicators -->

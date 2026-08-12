@@ -101,6 +101,9 @@ return [
         'pay_to_vendor' => 'Pagar al proveedor a la llegada',
         'payment_progress' => 'Progreso del pago',
         'paid' => 'pagado',
+        'booking_cancelled_title' => 'Esta reserva ha sido cancelada',
+        'cancelled_refund_note' => 'Se realizó un pago para esta reserva. Nuestro equipo gestiona los reembolsos personalmente y se pondrá en contacto con usted. Utilice las opciones de asistencia a continuación si no ha recibido noticias nuestras.',
+        'payment_held_note' => 'Pago retenido mientras se resuelve esta reserva. Consulte el aviso anterior.',
 
         // Booking Details Page - Cards
         'vehicle_and_trip' => 'Vehículo y Viaje',

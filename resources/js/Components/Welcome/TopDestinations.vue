@@ -55,21 +55,13 @@ const getDestinationMeta = (place) => {
     return _p('destination_card_fallback_meta', 'Destination');
 };
 
-// Static fallback destinations
-const staticPlaces = [
-    { id: 1, place_name: 'Barcelona', city: 'Barcelona', country: 'Spain', image: 'https://images.unsplash.com/photo-1523531294919-4bcd7c65e216?w=600&q=80' },
-    { id: 2, place_name: 'Dubai', city: 'Dubai', country: 'UAE', image: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=600&q=80' },
-    { id: 3, place_name: 'Paris', city: 'Paris', country: 'France', image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&q=80' },
-    { id: 4, place_name: 'Rome', city: 'Rome', country: 'Italy', image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=600&q=80' },
-    { id: 5, place_name: 'London', city: 'London', country: 'UK', image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&q=80' },
-    { id: 6, place_name: 'Marrakesh', city: 'Marrakesh', country: 'Morocco', image: 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=600&q=80' },
-    { id: 7, place_name: 'Amsterdam', city: 'Amsterdam', country: 'Netherlands', image: 'https://images.unsplash.com/photo-1512470876302-972faa2aa9a4?w=600&q=80' },
-    { id: 8, place_name: 'Lisbon', city: 'Lisbon', country: 'Portugal', image: 'https://images.unsplash.com/photo-1558370781-d6196949e317?w=600&q=80' },
-    { id: 9, place_name: 'Abu Dhabi', city: 'Abu Dhabi', country: 'UAE', image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=600&q=80' },
-    { id: 10, place_name: 'Milan', city: 'Milan', country: 'Italy', image: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=600&q=80' },
-];
-
-const places = computed(() => props.popularPlaces?.length ? props.popularPlaces.slice(0, 10) : staticPlaces.slice(0, 10));
+// Only render destinations that carry a real, searchable location (a valid
+// search_url). A card that can't search is worse than no card — never show one.
+const places = computed(() =>
+    (props.popularPlaces || [])
+        .filter((p) => typeof p?.search_url === 'string' && p.search_url.length > 0)
+        .slice(0, 10)
+);
 const showCarouselControls = computed(() => places.value.length > 5);
 
 const updateCarouselState = (api = emblaApi.value) => {
@@ -102,7 +94,7 @@ useScrollAnimation('.dest-section', '.dest-header, .dest-carousel, .dest-dots', 
 </script>
 
 <template>
-    <section class="dest-section">
+    <section v-if="places.length" class="dest-section">
         <div class="full-w-container">
             <div class="dest-header sr-reveal">
                 <div class="dest-header-text">

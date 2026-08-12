@@ -27,15 +27,12 @@ const _p = (key, fallback = '') => {
     return t[key] || fallback || key;
 };
 
-const staticPlaces = [
-    { id: 1, place_name: 'Barcelona', city: 'Barcelona', country: 'Spain', image: 'https://images.unsplash.com/photo-1523531294919-4bcd7c65e216?w=900&q=80' },
-    { id: 2, place_name: 'Dubai', city: 'Dubai', country: 'UAE', image: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=900&q=80' },
-    { id: 3, place_name: 'Paris', city: 'Paris', country: 'France', image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=900&q=80' },
-    { id: 4, place_name: 'Rome', city: 'Rome', country: 'Italy', image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=900&q=80' },
-    { id: 5, place_name: 'London', city: 'London', country: 'UK', image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=900&q=80' },
-];
-
-const places = computed(() => props.popularPlaces?.data?.length ? props.popularPlaces.data : staticPlaces);
+// Only render destinations that carry a real, searchable location — a card that
+// can't run a search is worse than no card.
+const places = computed(() =>
+    (props.popularPlaces?.data || [])
+        .filter((p) => typeof p?.search_url === 'string' && p.search_url.length > 0)
+);
 const paginationLinks = computed(() => {
     if ((props.popularPlaces?.last_page ?? 1) <= 1) return [];
     return Array.isArray(props.popularPlaces?.links) ? props.popularPlaces.links : [];
@@ -104,7 +101,7 @@ useScrollAnimation('.destinations-grid-section', '.destination-card, .destinatio
 
         <section class="destinations-grid-section">
             <div class="full-w-container">
-                <div class="destinations-grid">
+                <div v-if="places.length" class="destinations-grid">
                     <a
                         v-for="place in places"
                         :key="place.id"
@@ -119,6 +116,9 @@ useScrollAnimation('.destinations-grid-section', '.destination-card, .destinatio
                         </div>
                     </a>
                 </div>
+                <p v-else class="destinations-empty">
+                    {{ _p('destinations_coming_soon', 'New destinations are coming soon — use the search above to find a car anywhere.') }}
+                </p>
 
                 <nav v-if="paginationLinks.length > 1" class="destinations-pagination sr-reveal" aria-label="Destinations pagination">
                     <button

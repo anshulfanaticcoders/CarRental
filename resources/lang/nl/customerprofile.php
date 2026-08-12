@@ -101,6 +101,9 @@ return [
         'pay_to_vendor' => 'Betaal bij aankomst aan verhuurder',
         'payment_progress' => 'Betalingsvoortgang',
         'paid' => 'betaald',
+        'booking_cancelled_title' => 'Deze boeking is geannuleerd',
+        'cancelled_refund_note' => 'Er is een betaling gedaan voor deze boeking. Ons team behandelt terugbetalingen persoonlijk en neemt contact met u op. Gebruik onderstaande contactmogelijkheden als u nog niets van ons hebt gehoord.',
+        'payment_held_note' => 'Vastgehouden terwijl deze boeking wordt afgehandeld. Zie de melding hierboven.',
 
         // Booking Details Page - Cards
         'vehicle_and_trip' => 'Voertuig & Reis',

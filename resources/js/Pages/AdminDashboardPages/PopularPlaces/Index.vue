@@ -63,6 +63,7 @@
                                 <TableHead class="whitespace-nowrap px-4 py-3">Country</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3">Coordinates</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3">Unified ID</TableHead>
+                                <TableHead class="whitespace-nowrap px-4 py-3">Coverage</TableHead>
                                 <TableHead class="whitespace-nowrap px-4 py-3 text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -95,6 +96,18 @@
                                     <span v-else>—</span>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">{{ place.unified_location_id || '—' }}</TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3 text-sm">
+                                    <span
+                                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+                                        :class="place.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full" :class="place.is_active ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                                        {{ place.is_active ? `${place.provider_count ?? 0} providers` : 'No cars (hidden)' }}
+                                    </span>
+                                    <p v-if="place.last_verified_at" class="text-[10px] text-muted-foreground mt-0.5">
+                                        checked {{ new Date(place.last_verified_at).toLocaleDateString() }}
+                                    </p>
+                                </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 text-right">
                                     <div class="flex justify-end gap-2">
                                         <Button size="sm" variant="outline" @click="openEditDialog(place.id)" class="flex items-center gap-1">

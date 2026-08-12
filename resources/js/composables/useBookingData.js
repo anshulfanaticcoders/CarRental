@@ -264,7 +264,8 @@ export function useBookingData(booking, vehicle, payment) {
       meta?.provider_grand_total ||
       meta?.grand_total ||
       booking?.provider_grand_total ||
-      booking?.base_price + booking?.extra_charges ||
+      // Numeric-cast first: decimal columns serialize as strings and "+" would concatenate.
+      (parseFloat(booking?.base_price || 0) + parseFloat(booking?.extra_charges || 0)) ||
       0
     );
 
@@ -433,13 +434,16 @@ export function useBookingData(booking, vehicle, payment) {
       model: vehicle?.model || meta?.model || booking?.vehicle_name || '',
       category: vehicle?.category?.name || meta?.category || meta?.CarCategory || 'Standard',
       sippCode: vehicle?.sipp_code || meta?.sipp_code || meta?.sipp || meta?.acriss_code || '',
-      transmission: vehicle?.transmission || meta?.transmission || 'Manual',
-      fuel: vehicle?.fuel || meta?.fuel || 'Petrol',
-      seats: vehicle?.seating_capacity || meta?.seats || meta?.PassengerCapacity || 5,
-      doors: vehicle?.doors || meta?.doors || meta?.NumberOfDoors || 4,
+      // Never invent specs: when neither the vehicle nor provider metadata
+      // says, show nothing — a fabricated "Manual/Petrol/5 seats" is worse
+      // than an absent row.
+      transmission: vehicle?.transmission || meta?.transmission || null,
+      fuel: vehicle?.fuel || meta?.fuel || null,
+      seats: vehicle?.seating_capacity || meta?.seats || meta?.PassengerCapacity || null,
+      doors: vehicle?.doors || meta?.doors || meta?.NumberOfDoors || null,
       luggage: {
-        small: vehicle?.luggageSmall || vehicle?.bags || meta?.SmallBagsCapacity || 1,
-        large: vehicle?.luggageLarge || vehicle?.suitcases || meta?.BigBagsCapacity || 1,
+        small: vehicle?.luggageSmall || vehicle?.bags || meta?.SmallBagsCapacity || null,
+        large: vehicle?.luggageLarge || vehicle?.suitcases || meta?.BigBagsCapacity || null,
       },
       airConditioning: vehicle?.airConditioning !== false,
       image: vehicle?.images?.find(img => img.image_type === 'primary')?.image_url ||

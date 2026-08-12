@@ -7,7 +7,6 @@ use App\Helpers\SchemaBuilder;
 use App\Models\Page;
 use App\Models\PopularPlace;
 use App\Services\Seo\SeoMetaResolver;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
 
@@ -16,12 +15,14 @@ class PopularPlacesController extends Controller
     public function index()
     {
         $places = PopularPlace::all(); // Fetch all popular places
+
         return response()->json($places);
     }
 
     public function destinations()
     {
         $places = PopularPlace::query()
+            ->where('is_active', true)
             ->orderBy('place_name')
             ->paginate(12)
             ->withQueryString();

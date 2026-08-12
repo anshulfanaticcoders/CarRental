@@ -140,6 +140,19 @@ const searchCountryLabel = computed(() => form.country || props.filters?.country
 
 // SPA Booking State
 const bookingStep = ref('results'); // 'results' | 'extras' | 'checkout'
+
+// Quote-validity clock: reset whenever fresh results (new search session)
+// arrive — checkout's countdown runs against this.
+const searchLoadedAt = ref(Date.now());
+watch(() => props.search_session_id, () => { searchLoadedAt.value = Date.now(); });
+
+// Let the currency switcher warn before nuking an in-progress booking flow
+// (changing currency reloads the page and resets to results).
+watch(bookingStep, (step) => {
+    if (typeof window !== 'undefined') {
+        window.__vrooemBookingFlowActive = step !== 'results';
+    }
+});
 const selectedVehicle = ref(null);
 const selectedPackage = ref(null);
 const selectedProtectionCode = ref(null);
@@ -264,8 +277,17 @@ const handlePackageSelection = (event) => {
     // Attach price_hash from price_map to vehicle for verification
     const vehicleWithPriceHash = { ...event.vehicle };
     if (props.price_map && event.vehicle) {
-        const vehicleId = event.vehicle.id || event.vehicle.vehicle_id || event.vehicle.api_vehicle_id;
-        if (vehicleId && props.price_map[vehicleId]) {
+        // Try every id key the backend may have used for the price-map entry —
+        // a missed match means checkout can never pass price verification.
+        const candidateIds = [
+            event.vehicle.id,
+            event.vehicle.gateway_vehicle_id,
+            event.vehicle.vehicle_id,
+            event.vehicle.api_vehicle_id,
+            event.vehicle.provider_vehicle_id,
+        ].filter(Boolean);
+        const vehicleId = candidateIds.find((id) => props.price_map[id]);
+        if (vehicleId) {
             vehicleWithPriceHash.price_hash = props.price_map[vehicleId].price_hash;
         }
     }
@@ -1214,6 +1236,43 @@ const resetFilters = () => {
     // The other fields like where, lat, lng, dates, source, etc., are NOT touched.
     // They will retain their current values.
     submitFilters();
+};
+
+// Re-run the SAME location search with the pickup window shifted forward — the
+// most common reason a valid location shows no cars is a date with no supplier
+// availability (near-term dates especially). Keeps the rental length.
+const searchWithShiftedDates = (daysToAdd) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const toYmd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const basePickup = form.date_from ? new Date(`${form.date_from}T00:00:00`) : new Date();
+    const baseDropoff = form.date_to ? new Date(`${form.date_to}T00:00:00`) : new Date(basePickup.getTime() + 3 * 86400000);
+    const rentalMs = Math.max(86400000, baseDropoff - basePickup);
+
+    const newPickup = new Date(basePickup.getTime() + daysToAdd * 86400000);
+    const newDropoff = new Date(newPickup.getTime() + rentalMs);
+
+    const params = {
+        date_from: toYmd(newPickup),
+        date_to: toYmd(newDropoff),
+        where: form.where || props.filters?.where || '',
+        city: form.city || '',
+        country: form.country || '',
+        latitude: form.latitude || null,
+        longitude: form.longitude || null,
+        provider: 'mixed',
+        unified_location_id: form.unified_location_id || props.filters?.unified_location_id || null,
+        dropoff_unified_location_id: props.filters?.dropoff_unified_location_id || form.unified_location_id || props.filters?.unified_location_id || null,
+        start_time: form.start_time || '10:00',
+        end_time: form.end_time || '10:00',
+        age: form.age || 35,
+    };
+
+    router.get(
+        `/${page.props.locale}/s`,
+        Object.fromEntries(Object.entries(params).filter(([, value]) => value !== null && value !== undefined && value !== '')),
+        { preserveState: false, preserveScroll: false }
+    );
 };
 
 const searchNearbyLocation = (location) => {
@@ -2556,9 +2615,20 @@ watch(
                     No fallback cars are being shown. Try nearby pickup locations, reset vehicle filters, or change your date and time.
                 </p>
 
+                <!-- Most empty results at a valid location are just a date with no
+                     supplier availability — offer one-tap forward date windows. -->
+                <div v-if="!hasSearchError" class="no-results-dates">
+                    <span class="no-results-dates-label">Try different dates:</span>
+                    <div class="no-results-dates-chips">
+                        <button type="button" class="no-results-date-chip" @click="searchWithShiftedDates(7)">+1 week</button>
+                        <button type="button" class="no-results-date-chip" @click="searchWithShiftedDates(14)">+2 weeks</button>
+                        <button type="button" class="no-results-date-chip" @click="searchWithShiftedDates(30)">+1 month</button>
+                    </div>
+                </div>
+
                 <div class="no-results-actions">
                     <button type="button" class="no-results-primary" @click="scrollToTop">
-                        Search another location
+                        Change dates or location
                     </button>
                     <button type="button" class="no-results-secondary" @click="resetFilters">
                         Reset filters
@@ -2612,6 +2682,7 @@ watch(
             @back="handleBackToResults" @proceed-to-checkout="handleProceedToCheckout" />
 
         <BookingCheckoutStep v-else-if="bookingStep === 'checkout' && selectedVehicle" class="w-full"
+            :search-loaded-at="searchLoadedAt"
             :vehicle="selectedVehicle" :package="selectedCheckoutData.package"
             :protection-code="selectedCheckoutData.protection_code"
             :protection-amount="selectedCheckoutData.protection_amount" :extras="selectedCheckoutData.extras"
@@ -4094,6 +4165,44 @@ h6 {
     color: #475569;
     font-size: 15px;
     line-height: 1.6;
+}
+
+.no-results-dates {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.no-results-dates-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.no-results-dates-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.no-results-date-chip {
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 999px;
+    border: 1px solid #d5f2f4;
+    background: #edf9fa;
+    color: #0f7b82;
+    font-size: 13px;
+    font-weight: 700;
+    transition: background 0.3s cubic-bezier(0.22, 1, 0.36, 1), transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.no-results-date-chip:hover {
+    background: #d5f2f4;
+    transform: translateY(-1px);
 }
 
 .no-results-actions {

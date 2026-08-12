@@ -693,7 +693,9 @@ class BlogController extends Controller
         }
 
         // Fetch popular places (still used for homepage content)
-        $popularPlaces = PopularPlace::all();
+        // Only surface destinations with live bookable-provider coverage so a
+        // click never lands on an empty results page.
+        $popularPlaces = PopularPlace::where('is_active', true)->get();
 
         // Fetch FAQs (e.g., all of them, or a limited number for the homepage)
         $faqs = Faq::with('translations')->get(); // Fetches all FAQs with their translations

@@ -706,3 +706,8 @@ Concise durable memory for significant completed work.
 - Scope: `vrooem-gateway` Surprice reservation payload.
 - Decision: Surprice reservations now include optional `brokerOrderId` from Laravel's booking number so Surprice stations can search by Vrooem `BK...` reference. No pricing, vehicle, extras, customer, or location logic changed.
 - Verification: focused Surprice gateway test passed with 11 tests. File-scoped Ruff remains blocked by pre-existing E501 line-length debt in `surprice.py`/`test_surprice_adapter.py`; the new lines are clean and `git diff --check` passed.
+
+### 2026-08-12 - Green Motion test booking cancellation durability
+- Scope: `CarRental` external booking cancellation workflow and booking-details translations.
+- Decision: persist the local cancellation state before non-critical notification delivery, and catch notification transport failures so a working supplier cancellation cannot leave the customer booking marked confirmed. Added the missing cancellation copy for all supported locales.
+- Verification: visible local browser smoke searched Dubai Airport for 19-22 August, booked Green Motion Mitsubishi Attrage `BAS` through Stripe test mode, received supplier reference `VEM-6985364-6965916`, and cancelled it successfully at the supplier with zero cancellation fee. Local booking `BK2026089633` was reconciled to `cancelled`. Pint and `BookingCancellationGatewayTest` passed (3 tests, 11 assertions); PHP lint passed for all touched translation files.

@@ -18,7 +18,11 @@ use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
+use App\Notifications\Booking\BookingPaymentReceivedCustomerNotification;
+use App\Notifications\Booking\BookingSupplierConfirmedCustomerNotification;
 use App\Notifications\Booking\GuestBookingCreatedNotification;
+use App\Notifications\Concerns\DeliversToCustomer;
+use App\Notifications\Payment\AdminManualRefundRequiredNotification;
 use App\Notifications\Payment\AdminReservationManualCheckNotification;
 use App\Services\Bookings\InternalBookingSnapshotService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
@@ -32,6 +36,8 @@ use Illuminate\Support\Str;
 
 class StripeBookingService
 {
+    use DeliversToCustomer;
+
     public function resolveCustomerFromCheckoutPayload(array $payload, ?int $userId = null): array
     {
         $customer = $payload['customer'] ?? [];
@@ -90,8 +96,13 @@ class StripeBookingService
         if (! $existingBooking && ! empty($metadata->booking_id)) {
             $existingBooking = Booking::find($metadata->booking_id);
         }
-        if ($existingBooking && in_array($existingBooking->booking_status, ['confirmed', 'completed'], true)) {
-            Log::info('StripeBookingService: Booking already confirmed', ['booking_id' => $existingBooking->id]);
+        // Terminal states short-circuit too: a success-URL revisit must never
+        // resurrect a cancelled/failed/rejected booking back to confirmed.
+        if ($existingBooking && in_array($existingBooking->booking_status, ['confirmed', 'completed', 'cancelled', 'reservation_failed', 'rejected'], true)) {
+            Log::info('StripeBookingService: Booking already in terminal state', [
+                'booking_id' => $existingBooking->id,
+                'booking_status' => $existingBooking->booking_status,
+            ]);
 
             return $existingBooking;
         }
@@ -510,10 +521,12 @@ class StripeBookingService
 
     /**
      * Public proxy callable from the reservation-failed job's failed() handler.
+     * The job already sends its own admin alert with full booking context, so
+     * skip this path's generic admin notification to avoid duplicate mails.
      */
     public function recordManualRefundForFailedReservation(?string $paymentIntentId, string $reason): bool
     {
-        return $this->recordManualRefundRequired($paymentIntentId, $reason);
+        return $this->recordManualRefundRequired($paymentIntentId, $reason, [], notifyAdmin: false);
     }
 
     /**
@@ -521,13 +534,16 @@ class StripeBookingService
      * provider payouts and customer refunds manually, so app code must not call
      * Stripe Refund APIs automatically.
      */
-    private function recordManualRefundRequired(?string $paymentIntentId, string $reason, array $context = []): bool
+    private function recordManualRefundRequired(?string $paymentIntentId, string $reason, array $context = [], bool $notifyAdmin = true): bool
     {
         if (! $paymentIntentId) {
             Log::error('StripeBookingService: Manual refund required but no payment_intent ID was available', [
                 'reason' => $reason,
                 ...$context,
             ]);
+            if ($notifyAdmin) {
+                $this->notifyAdminManualRefundRequired(null, $reason, $context);
+            }
 
             return false;
         }
@@ -537,8 +553,30 @@ class StripeBookingService
             'reason' => $reason,
             ...$context,
         ]);
+        if ($notifyAdmin) {
+            $this->notifyAdminManualRefundRequired($paymentIntentId, $reason, $context);
+        }
 
         return true;
+    }
+
+    /**
+     * An owed refund must never live only in a log line — surface it to admin
+     * (database bell + mail). Failures here never break the payment flow.
+     */
+    private function notifyAdminManualRefundRequired(?string $paymentIntentId, string $reason, array $context): void
+    {
+        try {
+            $admin = User::where('email', config('admin.email'))->first();
+            if ($admin) {
+                $admin->notify(new AdminManualRefundRequiredNotification($paymentIntentId, $reason, $context));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('StripeBookingService: failed to notify admin of manual refund', [
+                'payment_intent_id' => $paymentIntentId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     protected function findOrCreateCustomer($metadata): array
@@ -554,6 +592,13 @@ class StripeBookingService
 
         $tempPassword = null;
         $user = null;
+        // A post-payment identity clash (an account with the same email/phone
+        // appeared while the guest was on Stripe). We must NOT lose the paid
+        // booking — but we also must NOT adopt or mutate the existing account
+        // from unauthenticated checkout input (that would be a booking IDOR /
+        // data-integrity risk). So: book as an unlinked guest and flag for
+        // manual admin review.
+        $identityConflictReview = false;
 
         if (! $userId) {
             $identityGuard = app(CheckoutIdentityGuardService::class);
@@ -566,22 +611,34 @@ class StripeBookingService
             );
 
             if ($conflict) {
-                throw new \RuntimeException($conflict['message']);
+                $identityConflictReview = true;
+                Log::error('StripeBookingService: post-payment identity conflict — booking kept under a fresh guest account, manual review required', [
+                    'email' => $email,
+                    'conflict_code' => $conflict['code'] ?? null,
+                ]);
             }
 
-            $safePhone = $phone ?: 'guest_'.now()->timestamp.'_'.Str::random(6);
-            $tempPassword = Str::random(10);
-            $user = User::create([
-                'first_name' => $firstName,
-                'last_name' => $lastName,
-                'email' => $email ?? 'guest_'.now()->timestamp.'_'.Str::random(6).'@temp.com',
-                'phone' => $safePhone,
-                'password' => Hash::make($tempPassword),
-                'role' => 'customer',
-                'status' => 'active',
-            ]);
+            if (! $userId) {
+                // On a conflict, force placeholder credentials so we NEVER reuse
+                // or collide with the existing account's email/phone — the paid
+                // booking gets its own guest account, unlinked from the account
+                // the payer did not prove they control.
+                $randomSuffix = now()->timestamp.'_'.Str::random(6);
+                $userEmail = ($identityConflictReview || ! $email) ? 'guest_'.$randomSuffix.'@temp.com' : $email;
+                $safePhone = ($identityConflictReview || ! $phone) ? 'guest_'.$randomSuffix : $phone;
+                $tempPassword = Str::random(10);
+                $user = User::create([
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'email' => $userEmail,
+                    'phone' => $safePhone,
+                    'password' => Hash::make($tempPassword),
+                    'role' => 'customer',
+                    'status' => 'active',
+                ]);
 
-            $userId = $user->id;
+                $userId = $user->id;
+            }
         }
 
         $resolvedUser = $user ?? User::find($userId);
@@ -592,6 +649,18 @@ class StripeBookingService
         if ($email) {
             $customer = Customer::where('email', $email)->first();
             if ($customer) {
+                // Unresolved identity conflict: return the existing customer
+                // untouched (email is unique so the booking must reference it),
+                // but never overwrite the real owner's profile or relink it from
+                // guest input.
+                if ($identityConflictReview) {
+                    return [
+                        'customer' => $customer,
+                        'temp_password' => null,
+                        'identity_conflict_review' => true,
+                    ];
+                }
+
                 $customerUpdates = [
                     'first_name' => $firstName,
                     'last_name' => $lastName,
@@ -1193,10 +1262,25 @@ class StripeBookingService
         }
 
         if (! $isInternalBooking) {
-            Log::info('StripeBookingService: Skipping customer/vendor booking-created notifications for external provider booking', [
-                'booking_id' => $booking->id,
-                'provider_source' => $booking->provider_source,
-            ]);
+            // No vendor/company exists for external-provider bookings, but the
+            // customer must still hear from us. Normally: "payment received,
+            // confirming with supplier" — the outcome email follows from
+            // triggerGatewayReservation (confirmed) or the reservation job (failed).
+            // When the supplier reference already exists (no reservation job will
+            // run), send the confirmation directly; keep the payment-received
+            // email when guest credentials must be delivered.
+            $hasProviderRef = ! empty($booking->provider_booking_ref);
+
+            if (! $hasProviderRef || $tempPassword) {
+                $this->safeNotify($booking, 'customer', fn () => $this->deliverToCustomer(
+                    $customer,
+                    new BookingPaymentReceivedCustomerNotification($booking, $customer, $vehicle, $tempPassword)
+                ));
+            }
+
+            if ($hasProviderRef) {
+                $this->notifyCustomerSupplierConfirmed($booking);
+            }
 
             return;
         }
@@ -1384,6 +1468,7 @@ class StripeBookingService
                     'phone' => $metadata->customer_phone ?? '',
                     'age' => (int) ($metadata->customer_driver_age ?? 30),
                     'driving_license_number' => $metadata->driver_license_number ?? null,
+                    'driving_license_country' => $metadata->driving_license_country ?? null,
                     'address' => $metadata->customer_address ?? null,
                     'city' => $metadata->customer_city ?? null,
                     'postal_code' => $metadata->customer_postal_code ?? null,
@@ -1452,6 +1537,8 @@ class StripeBookingService
                     'notes' => ($booking->notes ? $booking->notes."\n" : '')
                         .'Gateway Conf: '.$providerBookingRef,
                 ]);
+
+                $this->notifyCustomerSupplierConfirmed($booking);
 
                 return;
             }
@@ -1539,6 +1626,19 @@ class StripeBookingService
         }
 
         return false;
+    }
+
+    private function notifyCustomerSupplierConfirmed(Booking $booking): void
+    {
+        $customer = $booking->customer;
+        if (! $customer) {
+            return;
+        }
+
+        $this->safeNotify($booking, 'customer', fn () => $this->deliverToCustomer(
+            $customer,
+            new BookingSupplierConfirmedCustomerNotification($booking, $customer, $booking->vehicle)
+        ));
     }
 
     private function notifyAdminReservationManualCheck($booking, string $reason): void

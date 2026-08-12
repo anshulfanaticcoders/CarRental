@@ -171,6 +171,14 @@ return [
         'secret_key' => env('TURNSTILE_SECRET_KEY'),
     ],
 
+    // Customer-facing support contact — single source for every page that
+    // shows a support email/phone (defaults match the values previously
+    // hardcoded across the booking pages).
+    'support' => [
+        'email' => env('SUPPORT_EMAIL', 'info@vrooem.com'),
+        'phone' => env('SUPPORT_PHONE', '+32493000000'),
+    ],
+
     'stadia_maps' => [
         'api_key' => env('VITE_STADIA_MAPS_API_KEY'),
     ],

@@ -14,6 +14,8 @@ const props = defineProps({
     }
 });
 
+const emit = defineEmits(['field-errors']);
+
 const isLoading = ref(false);
 const error = ref(null);
 const loginUrl = ref(null);
@@ -54,6 +56,7 @@ const checkoutFailureState = (responseData) => {
 
     if (
         ['MISSING_SEARCH_SESSION', 'VEHICLE_UNAVAILABLE', 'HOLD_UNAVAILABLE'].includes(code)
+        || String(code).startsWith('FRESH_PROVIDER_QUOTE')
         || message.includes('expired')
         || message.includes('price verification')
     ) {
@@ -67,6 +70,24 @@ const checkoutFailureState = (responseData) => {
     return null;
 };
 
+// Turn backend 422 shapes (missing_fields / invalid_fields / Laravel errors
+// bag) into a {field: message} map the form can render at the inputs.
+const extractFieldErrors = (responseData) => {
+    const out = {};
+    for (const key of responseData.missing_fields || []) {
+        out[key] = 'This field is required';
+    }
+    for (const key of responseData.invalid_fields || []) {
+        out[key] = responseData.error || 'Please enter a valid value';
+    }
+    if (responseData.errors && typeof responseData.errors === 'object') {
+        for (const [key, messages] of Object.entries(responseData.errors)) {
+            out[key] = Array.isArray(messages) ? messages[0] : String(messages);
+        }
+    }
+    return out;
+};
+
 const handleCheckout = async () => {
     isLoading.value = true;
     error.value = null;
@@ -78,8 +99,9 @@ const handleCheckout = async () => {
         const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
         if (!stripe) throw new Error('Stripe failed to initialize.');
 
-        // 2. Create Checkout Session
-        const response = await axios.post(route('api.stripe.checkout'), props.bookingData);
+        // 2. Create Checkout Session (30s timeout so a stalled request never
+        // leaves the customer on an infinite spinner)
+        const response = await axios.post(route('api.stripe.checkout'), props.bookingData, { timeout: 30000 });
         
         const sessionId = response.data?.session_id || response.data?.sessionId;
         if ((response.data?.success || sessionId) && sessionId) {
@@ -97,6 +119,12 @@ const handleCheckout = async () => {
 
     } catch (err) {
         console.error('Checkout error:', err);
+
+        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+            error.value = 'The connection timed out. Your card was NOT charged — please check your internet connection and try again.';
+            return;
+        }
+
         const responseData = err.response?.data || {};
         const redirectState = checkoutFailureState(responseData);
         if (redirectState) {
@@ -104,9 +132,18 @@ const handleCheckout = async () => {
             return;
         }
 
+        // Field-level problems go back to the form (highlighted at the input);
+        // keep a short summary here too so the Pay area explains the halt.
+        const fieldErrors = extractFieldErrors(responseData);
+        if (Object.keys(fieldErrors).length) {
+            emit('field-errors', fieldErrors);
+            error.value = responseData.error || responseData.message || 'Please correct the highlighted fields above.';
+            return;
+        }
+
         error.value = responseData.error_code === 'checkout_login_required'
             ? (responseData.error || 'Please log in to continue.')
-            : (responseData.error || 'We could not start secure payment. Please try again.');
+            : (responseData.error || responseData.message || 'We could not start secure payment. Please try again.');
         loginUrl.value = responseData.login_url || null;
         errorCode.value = responseData.error_code || null;
     } finally {

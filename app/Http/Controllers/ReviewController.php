@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Customer;
 use App\Models\Review;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -16,6 +17,27 @@ use Inertia\Inertia;
 
 class ReviewController extends Controller
 {
+    /**
+     * Review page for a completed booking — loads the vehicle context the page
+     * needs (the old static Inertia route rendered it with no props, so it
+     * spun on a loader forever).
+     */
+    public function create(Request $request)
+    {
+        $customerIds = Customer::where('user_id', auth()->id())->pluck('id');
+        $booking = Booking::with(['vehicle.images', 'vehicle.category', 'vehicle.vendorProfileData'])
+            ->whereIn('customer_id', $customerIds)
+            ->findOrFail($request->query('booking_id'));
+
+        abort_unless($booking->vehicle, 404, 'This booking has no reviewable vehicle.');
+
+        return Inertia::render('Profile/Review', [
+            'vehicle' => $booking->vehicle,
+            'booking_id' => $booking->id,
+            'vendor_profile_id' => $booking->vehicle->vendorProfileData?->id,
+        ]);
+    }
+
     public function store(Request $request)
     {
 
@@ -88,7 +110,7 @@ class ReviewController extends Controller
             \Log::error('Failed to send review notifications: '.$e->getMessage());
         }
 
-        return redirect()->route('profile.bookings.completed')->with('success', 'Review submitted successfully!');
+        return redirect()->route('profile.bookings.all', ['locale' => app()->getLocale()])->with('success', 'Review submitted successfully!');
 
     }
 

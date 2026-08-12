@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\VendorProfile;
+use App\Notifications\Booking\BookingCancelledCustomerNotification;
 use App\Notifications\Booking\BookingCancelledNotification;
+use App\Notifications\Concerns\DeliversToCustomer;
 use App\Services\StripeBookingService;
 use App\Services\VrooemGatewayService;
 use Carbon\Carbon;
@@ -18,6 +20,8 @@ use Stripe\Stripe;
 
 class BookingController extends Controller
 {
+    use DeliversToCustomer;
+
     public function bySession(Request $request, StripeBookingService $bookingService): JsonResponse
     {
         $data = $request->validate([
@@ -291,6 +295,19 @@ class BookingController extends Controller
         $admin = User::where('email', $adminEmail)->first();
         if ($admin && $customer) {
             $admin->notify(new BookingCancelledNotification($booking, $customer, $vehicle, 'admin'));
+        }
+
+        // Confirm the cancellation to the customer too — they must always get a
+        // written record of it.
+        try {
+            $this->deliverToCustomer($customer, new BookingCancelledCustomerNotification(
+                $booking, $customer, $vehicle, $validated['cancellation_reason'], 'customer'
+            ));
+        } catch (\Throwable $e) {
+            Log::warning('Mobile cancel: failed to send customer cancellation notification', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         if ($vehicle) {

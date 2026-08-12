@@ -758,11 +758,12 @@ Route::group([
         Route::post('/user/documents/{document}', [UserDocumentController::class, 'update'])->name('user.documents.update.post');
         Route::delete('/user/documents/{document}', [UserDocumentController::class, 'destroy'])->name('user.documents.destroy');
 
-        Route::inertia('completed-bookings', 'Profile/CompletedBookings');
-        Route::inertia('confirmed-bookings', 'Profile/ConfirmedBookings');
-        Route::inertia('pending-bookings', 'Profile/PendingBookings');
+        // Legacy booking-list URLs (pages no longer exist) → unified list.
+        Route::get('completed-bookings', fn (string $locale) => redirect()->route('profile.bookings.all', ['locale' => $locale]));
+        Route::get('confirmed-bookings', fn (string $locale) => redirect()->route('profile.bookings.all', ['locale' => $locale]));
+        Route::get('pending-bookings', fn (string $locale) => redirect()->route('profile.bookings.all', ['locale' => $locale]));
         Route::get('/profile/payments', [BookingController::class, 'getCustomerPaymentHistory'])->name('profile.payments');
-        Route::inertia('review', 'Profile/Review');
+        Route::get('review', [ReviewController::class, 'create'])->name('profile.review');
         Route::get('/favourites', [FavoriteController::class, 'getFavorites'])->name('profile.favourites');
         Route::inertia('inbox', 'Profile/Inbox');
 
@@ -780,7 +781,8 @@ Route::group([
         Route::post('/booking/cancel', [BookingController::class, 'cancelBooking'])->name('booking.cancel');
         Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
         Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
-        Route::get('/customer/bookings', [BookingController::class, 'getCustomerBookingData'])->name('customer.bookings');
+        // Legacy URL — controller method never existed; the unified list is canonical.
+        Route::get('/customer/bookings', fn (string $locale) => redirect()->route('profile.bookings.all', ['locale' => $locale]))->name('customer.bookings');
 
         // Unified booking route (replaces fragmented status routes)
         Route::get('/profile/bookings', [BookingController::class, 'getAllCustomerBookings'])->name('profile.bookings.all');

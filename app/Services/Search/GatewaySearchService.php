@@ -234,7 +234,10 @@ class GatewaySearchService
             ->values()->all();
         $categories = collect(array_merge($pageMeta['categories'] ?? [], $providerCategories))->unique('id')->values()->all();
 
-        $searchSessionId = 'search_'.session()->getId().'_'.now()->timestamp;
+        // uniqid() entropy: two searches from the same PHP session in the same
+        // second must not share a price-verification namespace (two tabs would
+        // silently poison each other's cached prices).
+        $searchSessionId = 'search_'.session()->getId().'_'.now()->timestamp.'_'.uniqid();
         $allVehicles = [];
 
         foreach ($vehicles->getCollection() as $vehicle) {

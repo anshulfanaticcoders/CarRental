@@ -250,6 +250,11 @@ class HandleInertiaRequests extends Middleware
             });
         };
 
+        $sharedData['support'] = [
+            'email' => config('services.support.email'),
+            'phone' => config('services.support.phone'),
+        ];
+
         $sharedData['ziggy'] = function () use ($request) {
             return array_merge((new Ziggy)->toArray(), [
                 'location' => $request->fullUrl(),

@@ -1,26 +1,43 @@
 <script setup>
-import { Link, usePage } from "@inertiajs/vue3";
-import { computed, onMounted } from "vue";
+import { Link, usePage, router } from "@inertiajs/vue3";
+import { computed, onMounted, onUnmounted } from "vue";
 import { Vue3Lottie } from 'vue3-lottie';
 import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
 import BookingLocationBlock from "@/Components/Booking/BookingLocationBlock.vue";
 import paymentSuccessAnimation from '../../../assets/payment-successful.json';
 
-const props = usePage().props;
+const page = usePage();
+const props = page.props;
+const isAuthenticated = computed(() => Boolean(props.auth?.user));
 const booking = props.booking || {};
+// Reactive view of the booking — partial reloads (supplier-pending polling)
+// replace page props, and the status branches must follow.
+const liveBooking = computed(() => page.props.booking || booking);
 const vehicle = props.vehicle || {};
 const locale = props.locale || 'en';
 const awinTestMode = ['1', 1, true, 'true'].includes(props.awin_test_mode) ? '1' : '0';
 
 const pickupDetails = computed(() => booking?.provider_metadata?.pickup_location_details || null);
 const dropoffDetails = computed(() => booking?.provider_metadata?.dropoff_location_details || null);
+const isFailedState = computed(() => ['cancelled', 'reservation_failed', 'rejected'].includes(liveBooking.value?.booking_status));
 const isSupplierPending = computed(() => {
-  return booking?.provider_source
-    && booking.provider_source !== 'internal'
-    && !booking.provider_booking_ref;
+  return !isFailedState.value
+    && liveBooking.value?.provider_source
+    && liveBooking.value.provider_source !== 'internal'
+    && !liveBooking.value.provider_booking_ref;
 });
 const outcomeCopy = computed(() => {
+  if (isFailedState.value) {
+    return {
+      title: 'Booking Under Review',
+      subtitle: 'This booking could not be completed. Our team will contact you about next steps.',
+      status: 'Under review',
+      badgeClass: 'bg-rose-100 text-rose-700',
+      dotClass: 'bg-rose-500',
+    };
+  }
+
   if (isSupplierPending.value) {
     return {
       title: 'Payment Received',
@@ -83,8 +100,27 @@ const appliedOffers = Array.isArray(booking.offers) ? booking.offers : [];
 const perkOffers = appliedOffers.filter((offer) => offer.effect_type !== 'price_discount_percentage');
 const hasFreeEsim = perkOffers.some((offer) => offer.effect_type === 'free_esim');
 
+// While the supplier reference is pending, refresh quietly so the page flips
+// to Confirmed on its own (max 10 minutes; email covers the rest).
+let supplierPollTimer = null;
+const startSupplierPolling = () => {
+  if (!isSupplierPending.value || supplierPollTimer) return;
+  const startedAt = Date.now();
+  supplierPollTimer = setInterval(() => {
+    if (!isSupplierPending.value || Date.now() - startedAt > 10 * 60 * 1000) {
+      clearInterval(supplierPollTimer);
+      supplierPollTimer = null;
+      return;
+    }
+    router.reload({ only: ['booking'] });
+  }, 20000);
+};
+onUnmounted(() => { if (supplierPollTimer) clearInterval(supplierPollTimer); });
+
 onMounted(() => {
-  if (booking && booking.booking_number) {
+  startSupplierPolling();
+  // Never report a purchase conversion for a booking that could not be completed.
+  if (booking && booking.booking_number && !isFailedState.value) {
     const amount = parseFloat(booking.total_amount || 0).toFixed(2);
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
@@ -234,7 +270,7 @@ onMounted(() => {
 
           <!-- Awin fallback tracking pixel -->
           <img
-            v-if="booking && booking.booking_number"
+            v-if="booking && booking.booking_number && !isFailedState"
             :src="`https://www.awin1.com/sread.img?tt=ns&tv=2&merchant=126167&amount=${parseFloat(booking.total_amount || 0).toFixed(2)}&ch=aw&parts=DEFAULT:${parseFloat(booking.total_amount || 0).toFixed(2)}&ref=${encodeURIComponent(booking.booking_number)}&cr=${booking.booking_currency || 'EUR'}&vc=${encodeURIComponent(booking.discount_code || '')}&testmode=${awinTestMode}`"
             width="0"
             height="0"
@@ -242,8 +278,9 @@ onMounted(() => {
             alt=""
           />
 
-          <!-- Action Buttons -->
-          <div class="flex gap-3 pt-1">
+          <!-- Action Buttons (details/list need a logged-in session — guests get
+               a hint instead of a link that bounces them to a login wall) -->
+          <div v-if="isAuthenticated" class="flex gap-3 pt-1">
             <Link
               :href="route('booking.show', { id: booking.id, locale })"
               class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-[#153B4F] hover:bg-[#0f2a38] transition-all shadow-md hover:shadow-lg"
@@ -258,6 +295,14 @@ onMounted(() => {
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
               My Bookings
             </Link>
+          </div>
+          <div v-else class="pt-1">
+            <div class="p-3 rounded-xl bg-[#153B4F]/5 border border-[#153B4F]/10 text-center">
+              <p class="text-xs text-gray-600">
+                An account was created for you — check <strong>{{ booking?.customer?.email || 'your email' }}</strong> for your login details to view and manage this booking.
+              </p>
+              <Link :href="route('login', { locale })" class="inline-block mt-2 text-sm font-bold text-[#153B4F] underline">Log in</Link>
+            </div>
           </div>
 
         </div>

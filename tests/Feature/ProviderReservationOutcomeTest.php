@@ -7,6 +7,9 @@ use App\Jobs\TriggerProviderReservationJob;
 use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\User;
+use App\Notifications\Booking\BookingSupplierConfirmedCustomerNotification;
+use App\Notifications\Booking\ReservationFailedCustomerNotification;
+use App\Notifications\Payment\AdminReservationFailedNotification;
 use App\Notifications\Payment\AdminReservationManualCheckNotification;
 use App\Services\StripeBookingService;
 use App\Services\VrooemGatewayService;
@@ -100,8 +103,9 @@ class ProviderReservationOutcomeTest extends TestCase
     }
 
     #[Test]
-    public function job_failed_leaves_unknown_outcome_booking_uncancelled(): void
+    public function job_failed_leaves_unknown_outcome_booking_uncancelled_and_tells_customer(): void
     {
+        Notification::fake();
         $booking = $this->createExternalBooking();
 
         (new TriggerProviderReservationJob($booking->id, []))
@@ -110,20 +114,72 @@ class ProviderReservationOutcomeTest extends TestCase
         $booking->refresh();
         $this->assertNotSame('cancelled', $booking->booking_status);
         $this->assertNotSame('payment_cancelled', $booking->payment_status);
+
+        // Customer must be told the booking is under review — never silence.
+        Notification::assertSentTo($booking->customer->user, ReservationFailedCustomerNotification::class);
     }
 
     #[Test]
-    public function job_failed_cancels_a_genuinely_failed_booking(): void
+    public function job_failed_holds_a_paid_booking_for_manual_review_instead_of_cancelling(): void
     {
-        $booking = $this->createExternalBooking();
+        Notification::fake();
+        $admin = $this->createAdminUser();
+        $booking = $this->createExternalBooking(['amount_paid' => 100]);
 
         (new TriggerProviderReservationJob($booking->id, []))
-            ->failed(new \RuntimeException('gateway unreachable after retries'));
+            ->failed(new \RuntimeException('supplier rejected after retries'));
 
         $booking->refresh();
-        $this->assertSame('cancelled', $booking->booking_status);
-        $this->assertSame('payment_cancelled', $booking->payment_status);
+        // Never auto-cancel a paid booking: held for admin to rebook or refund.
+        $this->assertSame('reservation_failed', $booking->booking_status);
+        $this->assertSame('partial', $booking->payment_status);
         $this->assertTrue((bool) ($booking->provider_metadata['manual_refund_required'] ?? false));
+        $this->assertNotEmpty($booking->provider_metadata['reservation_final_error'] ?? null);
+
+        Notification::assertSentTo($booking->customer->user, ReservationFailedCustomerNotification::class);
+        Notification::assertSentTo($admin, AdminReservationFailedNotification::class);
+    }
+
+    #[Test]
+    public function terminal_booking_is_not_resurrected_by_success_page_revisit(): void
+    {
+        $booking = $this->createExternalBooking([
+            'booking_status' => 'reservation_failed',
+            'stripe_session_id' => 'cs_test_resurrect',
+        ]);
+
+        $session = (object) [
+            'id' => 'cs_test_resurrect',
+            'metadata' => (object) ['extras_payload_id' => null, 'booking_id' => $booking->id],
+        ];
+
+        $result = (new StripeBookingService)->createBookingFromSession($session);
+
+        $this->assertSame($booking->id, $result->id);
+        $booking->refresh();
+        // Idempotency guard must short-circuit — status untouched, no reset to confirmed.
+        $this->assertSame('reservation_failed', $booking->booking_status);
+    }
+
+    #[Test]
+    public function supplier_confirmation_notifies_the_customer(): void
+    {
+        Notification::fake();
+        $this->createAdminUser();
+        $booking = $this->createExternalBooking();
+
+        $this->mockGateway([
+            'status' => 'confirmed',
+            'supplier_booking_id' => 'GM-12345',
+            'gateway_booking_id' => 'gw-1',
+            'supplier_id' => 'green_motion',
+        ]);
+
+        (new StripeBookingService)->triggerGatewayReservation($booking, $this->metadata());
+
+        $booking->refresh();
+        $this->assertSame('GM-12345', $booking->provider_booking_ref);
+        Notification::assertSentTo($booking->customer->user, BookingSupplierConfirmedCustomerNotification::class);
     }
 
     private function mockGateway(?array $createResult, ?array $lastError = null): void

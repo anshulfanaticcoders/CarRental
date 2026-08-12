@@ -218,6 +218,61 @@ class StripeCheckoutController extends Controller
         return mb_strlen($value) >= 5 && preg_match('/^[A-Za-z0-9][A-Za-z0-9 \-\/]{3,}[A-Za-z0-9]$/', $value) === 1;
     }
 
+    /**
+     * Provider-specific driver requirements enforced server-side. Returns a 422
+     * JsonResponse when something is missing/invalid, or null when the customer
+     * data is acceptable for the given (TRUSTED) provider source. Called both
+     * early (client source, UX) and authoritatively after price verification
+     * restores the real source, so a spoofed source cannot skip these gates.
+     */
+    private function validateProviderDriverFields(string $providerSource, array $customer): ?\Illuminate\Http\JsonResponse
+    {
+        // Providers whose reservation is rejected without a licence and full
+        // address — yesaway included (same class of failure as the GreenMotion
+        // junk-licence incident). okmobility requires the licence only.
+        $licenceProviders = ['greenmotion', 'usave', 'yesaway', 'okmobility'];
+        $addressProviders = ['greenmotion', 'usave', 'yesaway'];
+
+        if (! in_array($providerSource, $licenceProviders, true)) {
+            return null;
+        }
+
+        $missing = [];
+
+        $licence = trim((string) ($customer['driver_license_number'] ?? ''));
+        if ($licence === '') {
+            $missing[] = 'driver_license_number';
+        } elseif (! $this->isValidDriverLicenceNumber($licence)) {
+            return response()->json([
+                'error' => 'Please enter a valid driving licence number.',
+                'invalid_fields' => ['driver_license_number'],
+            ], 422);
+        }
+
+        // Licence-issuing country is a first-class gateway field — required
+        // server-side, not just in the UI.
+        if (trim((string) ($customer['driving_license_country'] ?? '')) === '') {
+            $missing[] = 'driving_license_country';
+        }
+
+        if (in_array($providerSource, $addressProviders, true)) {
+            foreach (['address', 'city', 'postal_code', 'country'] as $field) {
+                if (trim((string) ($customer[$field] ?? '')) === '') {
+                    $missing[] = $field;
+                }
+            }
+        }
+
+        if (! empty($missing)) {
+            return response()->json([
+                'error' => 'Please complete the required driver details before checkout.',
+                'missing_fields' => $missing,
+            ], 422);
+        }
+
+        return null;
+    }
+
     private function resolveProviderMarkupPercent(): float
     {
         $raw = config('services.pricing.provider_markup_percent');
@@ -566,6 +621,19 @@ class StripeCheckoutController extends Controller
                 'package' => 'required|string',
                 'extras' => 'nullable|array',
                 'customer' => 'required|array',
+                'customer.name' => 'required|string|max:150',
+                'customer.email' => 'required|email|max:190',
+                'customer.phone' => 'required|string|max:30',
+                'customer.driver_age' => 'required|integer|min:18|max:99',
+                'customer.driver_license_number' => 'nullable|string|max:40',
+                'customer.driving_license_country' => 'nullable|string|max:60',
+                'customer.address' => 'nullable|string|max:190',
+                'customer.city' => 'nullable|string|max:120',
+                'customer.postal_code' => 'nullable|string|max:20',
+                'customer.country' => 'nullable|string|max:120',
+                'customer.flight_number' => 'nullable|string|max:20',
+                'customer.preferred_day' => 'nullable|string|max:30',
+                'customer.notes' => 'nullable|string|max:400',
                 'pickup_date' => 'required|date_format:Y-m-d',
                 'pickup_time' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
                 'dropoff_date' => 'required|date_format:Y-m-d|after_or_equal:pickup_date',
@@ -617,6 +685,29 @@ class StripeCheckoutController extends Controller
 
             $vehicle = $validated['vehicle'] ?? [];
             $providerSource = strtolower((string) ($vehicle['source'] ?? ''));
+
+            // Field-shape checks the rule engine can't express. Suppliers reject
+            // reservations with an empty surname or junk phone AFTER payment —
+            // block those here, before any money moves.
+            $customerInput = $validated['customer'];
+            $nameWords = array_filter(
+                preg_split('/\s+/', trim((string) ($customerInput['name'] ?? ''))),
+                static fn ($part) => preg_match('/[A-Za-z0-9]/', $part) === 1
+            );
+            if (count($nameWords) < 2) {
+                return response()->json([
+                    'error' => 'Please enter your first and last name.',
+                    'invalid_fields' => ['name'],
+                ], 422);
+            }
+
+            $phoneDigits = preg_replace('/[\s\-().]/', '', (string) ($customerInput['phone'] ?? ''));
+            if (! preg_match('/^\+?[0-9]{7,15}$/', $phoneDigits)) {
+                return response()->json([
+                    'error' => 'Please enter a valid phone number (7-15 digits).',
+                    'invalid_fields' => ['phone'],
+                ], 422);
+            }
 
             $identityConflict = $this->resolveCheckoutIdentityConflict(
                 $request,
@@ -692,38 +783,12 @@ class StripeCheckoutController extends Controller
             $vehicle = $validated['vehicle'] ?? [];
             [$pickupLocationDetails, $dropoffLocationDetails] = $this->resolveCheckoutLocationDetails($validated);
 
-            if (in_array($providerSource, ['greenmotion', 'usave'], true)) {
-                $missing = [];
-                $customer = $validated['customer'] ?? [];
-
-                $licence = trim((string) ($customer['driver_license_number'] ?? ''));
-                if ($licence === '') {
-                    $missing[] = 'driver_license_number';
-                } elseif (! $this->isValidDriverLicenceNumber($licence)) {
-                    return response()->json([
-                        'error' => 'Please enter a valid driving licence number.',
-                        'invalid_fields' => ['driver_license_number'],
-                    ], 422);
-                }
-                if (empty($customer['address'])) {
-                    $missing[] = 'address';
-                }
-                if (empty($customer['city'])) {
-                    $missing[] = 'city';
-                }
-                if (empty($customer['postal_code'])) {
-                    $missing[] = 'postal_code';
-                }
-                if (empty($customer['country'])) {
-                    $missing[] = 'country';
-                }
-
-                if (! empty($missing)) {
-                    return response()->json([
-                        'error' => 'Please complete the required driver details before checkout.',
-                        'missing_fields' => $missing,
-                    ], 422);
-                }
+            // Early, best-effort driver-field check on the CLIENT-supplied source
+            // for fast UX feedback. NOT authoritative — the client can spoof
+            // vehicle.source; the trusted-source re-check runs after price
+            // verification restores the real source (see below).
+            if ($response = $this->validateProviderDriverFields($providerSource, $validated['customer'] ?? [])) {
+                return $response;
             }
 
             // Get payment percentage from settings
@@ -812,6 +877,16 @@ class StripeCheckoutController extends Controller
                 $validated['optional_extras'] = [];
 
                 $validated['vehicle'] = $vehicle;
+
+                // Price verification restored the vehicle's TRUE source from the
+                // cached search data. Re-derive it now so provider gating cannot
+                // be bypassed by spoofing vehicle.source (e.g. sending
+                // source=internal to skip the licence-format gate) — and so the
+                // fresh-quote revalidation below runs for the real provider.
+                $providerSource = strtolower((string) ($vehicle['source'] ?? ''));
+                if ($response = $this->validateProviderDriverFields($providerSource, $validated['customer'] ?? [])) {
+                    return $response;
+                }
 
                 if ($this->isExternalProviderSource($providerSource)) {
                     $freshQuote = app(ProviderQuoteRevalidationService::class)->revalidate(
@@ -1076,6 +1151,8 @@ class StripeCheckoutController extends Controller
                 'extras_total' => $computedTotals['booking_options_total'],
                 'payment_method' => $validated['payment_method'] ?? 'card',
                 'driver_license_number' => $validated['customer']['driver_license_number'] ?? null,
+                'driving_license_country' => $validated['customer']['driving_license_country'] ?? null,
+                'preferred_day' => $validated['customer']['preferred_day'] ?? null,
                 'notes' => $validated['customer']['notes'] ?? null,
                 // Provider-specific
                 'renteon_connector_id' => $selectedVehicleContext['connector_id'] ?? null,
@@ -1359,9 +1436,11 @@ class StripeCheckoutController extends Controller
             $successUrl = $isMobileClient
                 ? 'vrooem://booking-confirmed?session_id={CHECKOUT_SESSION_ID}'
                 : route('booking.success', ['locale' => $currentLocale]).'?session_id={CHECKOUT_SESSION_ID}';
+            // session_id lets the status page resolve the REAL outcome server-side
+            // instead of hardcoding "payment cancelled".
             $cancelUrl = $isMobileClient
                 ? 'vrooem://booking-cancel'
-                : route('booking.status', ['locale' => $currentLocale, 'state' => 'payment_cancelled']);
+                : route('booking.status', ['locale' => $currentLocale, 'state' => 'payment_cancelled']).'&session_id={CHECKOUT_SESSION_ID}';
 
             $idempotencyKey = 'co_'.$checkoutAttemptHash;
 
@@ -1376,6 +1455,9 @@ class StripeCheckoutController extends Controller
                 'payment_intent_data' => [
                     'metadata' => $metadata,
                 ],
+                // Quotes and holds live ~15 minutes; a session payable for 24h
+                // invites paying on a dead quote. 30 minutes is Stripe's minimum.
+                'expires_at' => now()->addMinutes(30)->timestamp,
             ], [
                 'idempotency_key' => $idempotencyKey,
             ]);
@@ -1409,6 +1491,13 @@ class StripeCheckoutController extends Controller
                 'url' => $session->url,
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Field-rule failures are a customer problem, not a server error —
+            // return the errors bag so the form can highlight the exact fields.
+            return response()->json([
+                'error' => $e->validator->errors()->first(),
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Stripe\Exception\ApiErrorException $e) {
             Log::error('Stripe API Error', [
                 'message' => $e->getMessage(),
@@ -2317,6 +2406,16 @@ class StripeCheckoutController extends Controller
             $session = null;
 
             if ($booking) {
+                // Terminal failure states: never render the celebration page (and
+                // never re-run booking creation) — send the customer to the
+                // truthful status page instead.
+                if ($this->isTerminalFailureStatus($booking)) {
+                    return $this->bookingStatusRedirect(
+                        $this->resolveBookingOutcomeState($booking, 'support_review'),
+                        $sessionId
+                    );
+                }
+
                 $needsUpdate = ! in_array($booking->booking_status, ['confirmed', 'completed'], true)
                     || ! in_array($booking->payment_status, ['partial', 'paid'], true);
 
@@ -2359,6 +2458,15 @@ class StripeCheckoutController extends Controller
 
             // Re-fetch with relations to be sure
             $booking = Booking::where('id', $booking->id)->with(['customer', 'payments', 'extras', 'offers'])->first();
+
+            // The service may have returned an existing terminal booking (idempotent
+            // short-circuit) — same rule: truthful status page, no celebration.
+            if ($this->isTerminalFailureStatus($booking)) {
+                return $this->bookingStatusRedirect(
+                    $this->resolveBookingOutcomeState($booking, 'support_review'),
+                    $sessionId
+                );
+            }
 
             // Authz: only block when an authenticated user tries to view a booking
             // that belongs to a different registered user. Anonymous visitors hitting
@@ -2448,6 +2556,7 @@ class StripeCheckoutController extends Controller
                 'total_amount' => $booking->total_amount,
                 'amount_paid' => $booking->amount_paid,
                 'booking_currency' => $booking->booking_currency,
+                'cancellation_reason' => $booking->cancellation_reason,
             ] : null,
         ]);
     }
@@ -2570,10 +2679,23 @@ class StripeCheckoutController extends Controller
         }
     }
 
+    /**
+     * A booking that ended badly: never show it the success page, whatever the
+     * payment state — the status page tells the customer the truth instead.
+     */
+    private function isTerminalFailureStatus(Booking $booking): bool
+    {
+        return in_array($booking->booking_status, ['cancelled', 'reservation_failed', 'rejected'], true);
+    }
+
     private function resolveBookingOutcomeState(Booking $booking, string $fallback): string
     {
-        if ($booking->booking_status === 'cancelled' && $booking->payment_status === 'payment_cancelled') {
-            return 'payment_cancelled';
+        if ($booking->booking_status === 'cancelled') {
+            // Only claim "payment cancelled" when nothing was captured. A charged
+            // customer must see the truthful under-review/refund copy instead —
+            // regardless of which path cancelled the booking (legacy auto-cancel,
+            // admin cancel, or the customer's own cancellation).
+            return ((float) $booking->amount_paid) > 0 ? 'refund_pending' : 'payment_cancelled';
         }
 
         if ($booking->booking_status === 'reservation_failed') {
@@ -2647,7 +2769,23 @@ class StripeCheckoutController extends Controller
         ];
 
         if (! empty($conflict['show_login'])) {
-            $payload['login_url'] = route('login', ['locale' => app()->getLocale()]);
+            // Send the customer back to their search after login (the login
+            // page honours ?redirect= via AuthReturnUrl) — their checkout
+            // draft restores the rest of the flow. Only accept a same-origin
+            // relative path: reject protocol-relative ("//host", "/\host") and
+            // anything carrying a host, to prevent an open redirect.
+            $returnSearchUrl = trim((string) $request->input('return_search_url', ''));
+            $loginParams = ['locale' => app()->getLocale()];
+            if (
+                $returnSearchUrl !== ''
+                && str_starts_with($returnSearchUrl, '/')
+                && ! str_starts_with($returnSearchUrl, '//')
+                && ! str_starts_with($returnSearchUrl, '/\\')
+                && empty(parse_url($returnSearchUrl, PHP_URL_HOST))
+            ) {
+                $loginParams['redirect'] = $returnSearchUrl;
+            }
+            $payload['login_url'] = route('login', $loginParams);
         }
 
         return $payload;

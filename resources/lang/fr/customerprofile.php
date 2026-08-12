@@ -101,6 +101,9 @@ return [
         'pay_to_vendor' => 'À payer au loueur à l\'arrivée',
         'payment_progress' => 'Progression du paiement',
         'paid' => 'payé',
+        'booking_cancelled_title' => 'Cette réservation a été annulée',
+        'cancelled_refund_note' => 'Un paiement a été effectué pour cette réservation. Notre équipe traite les remboursements personnellement et vous contactera. Utilisez les options d’assistance ci-dessous si vous n’avez pas reçu de nouvelles de notre part.',
+        'payment_held_note' => 'Paiement retenu pendant le traitement de cette réservation. Consultez l’avis ci-dessus.',
 
         // Booking Details Page - Cards
         'vehicle_and_trip' => 'Véhicule & Trajet',

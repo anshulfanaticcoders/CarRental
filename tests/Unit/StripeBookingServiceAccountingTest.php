@@ -19,6 +19,7 @@ use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
+use App\Notifications\Booking\BookingPaymentReceivedCustomerNotification;
 use App\Notifications\Booking\GuestBookingCreatedNotification;
 use App\Services\CurrencyConversionService;
 use App\Services\StripeBookingService;
@@ -338,7 +339,7 @@ class StripeBookingServiceAccountingTest extends TestCase
     }
 
     #[Test]
-    public function it_only_notifies_admin_for_external_provider_bookings_in_the_unified_flow(): void
+    public function it_notifies_admin_and_customer_but_no_vendor_for_external_provider_bookings(): void
     {
         Notification::fake();
 
@@ -393,12 +394,73 @@ class StripeBookingServiceAccountingTest extends TestCase
         $customerUser = $customer->user()->firstOrFail();
 
         Notification::assertSentTo($admin, BookingCreatedAdminNotification::class);
-        Notification::assertNothingSentTo($customerUser);
+        // This session carries a pre-existing provider_booking_ref, so no
+        // reservation job will run — the customer gets the supplier-confirmed
+        // email directly. A guest account was created here, so the
+        // payment-received email also goes out to deliver the credentials.
+        Notification::assertSentTo($customerUser, \App\Notifications\Booking\BookingSupplierConfirmedCustomerNotification::class);
+        Notification::assertSentTo($customerUser, BookingPaymentReceivedCustomerNotification::class);
         Notification::assertSentTimes(BookingCreatedCustomerNotification::class, 0);
         Notification::assertSentTimes(GuestBookingCreatedNotification::class, 0);
         Notification::assertSentTimes(BookingCreatedVendorNotification::class, 0);
         Notification::assertSentOnDemandTimes(BookingCreatedCompanyNotification::class, 0);
-        Notification::assertCount(1);
+        Notification::assertCount(3);
+    }
+
+    #[Test]
+    public function it_sends_payment_received_email_when_external_booking_awaits_supplier_confirmation(): void
+    {
+        Notification::fake();
+        \Illuminate\Support\Facades\Queue::fake();
+
+        config([
+            'currency.base_currency' => 'EUR',
+            'currency.default' => 'EUR',
+            'vrooem.enabled' => false,
+        ]);
+
+        $service = $this->makeServiceWithIdentityConversions();
+        $this->createAdminUser();
+
+        $session = (object) [
+            'id' => 'cs_test_external_pending_notifications',
+            'payment_intent' => 'pi_test_external_pending_notifications',
+            'metadata' => (object) [
+                'vehicle_source' => 'greenmotion',
+                'vehicle_id' => 'greenmotion_456',
+                'vehicle_brand' => 'Example',
+                'vehicle_model' => 'Hatch',
+                'pickup_date' => '2026-04-15',
+                'pickup_time' => '09:00',
+                'dropoff_date' => '2026-04-18',
+                'dropoff_time' => '09:00',
+                'pickup_location' => 'Dubai Airport',
+                'dropoff_location' => 'Dubai Airport',
+                'package' => 'BAS',
+                'number_of_days' => 3,
+                'currency' => 'EUR',
+                'provider_currency' => 'EUR',
+                'total_amount' => 172.50,
+                'total_amount_net' => 150.00,
+                'payable_amount' => 22.50,
+                'pending_amount' => 150.00,
+                'vehicle_total' => 115.00,
+                'extras_total' => 57.50,
+                'provider_grand_total' => 150.00,
+                'customer_name' => 'Pending Customer',
+                'customer_email' => 'pending-customer@example.com',
+                'customer_phone' => '+10000000005',
+                'customer_driver_age' => 35,
+                'payment_method' => 'card',
+            ],
+        ];
+
+        $booking = $service->createBookingFromSession($session);
+        $customerUser = $booking->customer()->firstOrFail()->user()->firstOrFail();
+
+        // No provider ref yet → truthful "payment received, confirming with supplier".
+        Notification::assertSentTo($customerUser, BookingPaymentReceivedCustomerNotification::class);
+        Notification::assertSentTimes(\App\Notifications\Booking\BookingSupplierConfirmedCustomerNotification::class, 0);
     }
 
     #[Test]
