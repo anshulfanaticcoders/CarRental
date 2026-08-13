@@ -1296,7 +1296,38 @@ onUnmounted(() => {
   box-shadow: none !important;
 }
 
-@media screen and (min-width: 769px) and (max-width: 1399px) {
+/* Tablet / small-laptop: the 6/4/2 grid is too tight here and used to cram the
+   date block (hidden labels, shrunk chips). Instead lay it out on two rows —
+   locations full width, then rental dates + search button — so everything keeps
+   full size and stays aligned. */
+@media screen and (min-width: 769px) and (max-width: 1199px) {
+  .search_bar .search-form {
+    gap: 1.25rem 1rem;
+    padding: 1.5rem;
+  }
+
+  .search_bar .search-locations {
+    grid-column: span 12 / span 12;
+  }
+
+  .search_bar .search-dates {
+    grid-column: span 8 / span 8;
+  }
+
+  .search_bar .search-submit {
+    grid-column: span 4 / span 4;
+    margin-top: 0;
+    align-items: flex-end;
+  }
+
+  .search_bar .search-submit button {
+    min-height: 54px;
+  }
+}
+
+/* Small-desktop: keep the single-row 6/4/2 grid but give the date trigger and
+   button a touch more breathing room. */
+@media screen and (min-width: 1200px) and (max-width: 1399px) {
   .search_bar .search-form {
     gap: 1rem;
     padding: 1.25rem 1.35rem;
@@ -1311,43 +1342,6 @@ onUnmounted(() => {
     min-height: 54px;
     gap: 0.45rem;
     padding: 0.55rem 0.6rem;
-  }
-
-  .search_bar .luxury-date-trigger > div:first-child {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 0.625rem;
-  }
-
-  .search_bar .luxury-date-trigger > svg {
-    width: 0.875rem;
-    height: 0.875rem;
-  }
-
-  .search_bar .date-chip-list {
-    flex-wrap: nowrap;
-    overflow: hidden;
-    gap: 0.35rem;
-  }
-
-  .search_bar .date-chip {
-    min-width: 0;
-    flex: 1 1 0;
-    justify-content: center;
-    gap: 0;
-    padding: 0.45rem 0.5rem;
-    font-size: 0.72rem;
-  }
-
-  .search_bar .date-chip > span:first-child {
-    display: none;
-  }
-
-  .search_bar .duration-chip {
-    flex: 0 0 auto;
-    padding: 0.45rem 0.5rem;
-    font-size: 0.72rem;
-    white-space: nowrap;
   }
 }
 

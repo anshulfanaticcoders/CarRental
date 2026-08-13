@@ -196,6 +196,9 @@ const emit = defineEmits(['show-details-modal', 'proceed-to-checkout', 'back']);
 @media (max-width: 1024px) {
     .sticky-summary {
         position: relative;
+        /* Reset the sticky offset — on a relative element `top` shifts it down
+           without reserving space, pushing the card's buttons under the footer. */
+        top: 0;
     }
 }
 
