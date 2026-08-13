@@ -23,7 +23,10 @@ const phoneHref = computed(() => {
 });
 
 const whatsappLink = computed(() => {
-    const phone = '+32493000000';
+    // Use the admin-managed contact number (same source as the call button),
+    // falling back to the shared support prop — never a hardcoded number.
+    const phone = phoneNumber.value || page.props.support?.phone || '';
+    if (!phone) return '';
     const message = "Hello, I would like to inquire about renting a car. Could you please assist me?";
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;

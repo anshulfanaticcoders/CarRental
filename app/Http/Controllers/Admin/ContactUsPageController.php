@@ -127,6 +127,9 @@ class ContactUsPageController extends Controller
             $contactPage->update($nonTranslatableData);
         }
 
+        // Support phone/email shown across booking pages read from this record.
+        Cache::forget('shared:support-contact');
+
         $allTranslationsData = $request->input('translations', []);
         foreach ($allTranslationsData as $locale => $translatableDataForLocale) {
             $allowedTranslatableFields = [

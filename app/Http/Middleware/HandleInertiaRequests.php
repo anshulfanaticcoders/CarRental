@@ -250,10 +250,20 @@ class HandleInertiaRequests extends Middleware
             });
         };
 
-        $sharedData['support'] = [
-            'email' => config('services.support.email'),
-            'phone' => config('services.support.phone'),
-        ];
+        // Customer-facing support contact — single source of truth is the
+        // admin-managed Contact Us page (contact_us_page row). Falls back to
+        // config defaults if it is empty. Cached 12h; cleared when the admin
+        // saves the Contact Us page.
+        $sharedData['support'] = function () {
+            return Cache::remember('shared:support-contact', now()->addHours(12), function () {
+                $contact = \App\Models\NewContactUsPage::query()->first();
+
+                return [
+                    'email' => ($contact?->email) ?: config('services.support.email'),
+                    'phone' => ($contact?->phone_number) ?: config('services.support.phone'),
+                ];
+            });
+        };
 
         $sharedData['ziggy'] = function () use ($request) {
             return array_merge((new Ziggy)->toArray(), [
