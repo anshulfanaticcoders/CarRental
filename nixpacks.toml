@@ -94,6 +94,25 @@ stdout_logfile_backups=2
 redirect_stderr=true
 '''
 
+# Laravel scheduler daemon — runs schedule:run every minute in the foreground.
+# Without this, NOTHING in Kernel::schedule() executes on prod: hold expiry,
+# currency refresh, booking auto-complete, and the stuck-reservation rescue
+# sweep all silently never run. (The filename must match worker-*.conf so the
+# setup step copies it into supervisor's conf.d.)
+"worker-scheduler.conf" = '''
+[program:worker-scheduler]
+process_name=%(program_name)s_%(process_num)02d
+command=bash -c 'exec php /app/artisan schedule:work'
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+stdout_logfile=/var/log/worker-scheduler.log
+stdout_logfile_maxbytes=20MB
+stdout_logfile_backups=2
+redirect_stderr=true
+'''
+
 "worker-inertia-ssr.conf" = '''
 [program:inertia-ssr]
 process_name=%(program_name)s_%(process_num)02d
