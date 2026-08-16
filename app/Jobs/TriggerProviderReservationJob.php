@@ -81,6 +81,19 @@ class TriggerProviderReservationJob implements ShouldQueue
             return;
         }
 
+        // The supplier DID confirm — the throw came from something after the
+        // reservation landed. Marking this reservation_failed would tell a customer
+        // with a real car booked that it failed, and tell admin to refund it.
+        if (! empty($booking->provider_booking_ref)) {
+            Log::warning('TriggerProviderReservationJob: job failed AFTER a confirmed reservation, leaving booking intact', [
+                'booking_id' => $booking->id,
+                'provider_booking_ref' => $booking->provider_booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+
+            return;
+        }
+
         // Unknown outcome already routed to manual review; admin was notified by
         // the service. Do NOT cancel — the supplier may hold a reservation. Tell
         // the customer their booking is under review so they are never in the dark.

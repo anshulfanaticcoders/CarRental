@@ -101,6 +101,76 @@ class StripeBookingService
         return [$bookingData, $defaulted];
     }
 
+    /**
+     * Record on the booking, and tell an admin, that it was created with guessed
+     * values or with steps that did not complete. A booking that needed either is
+     * still a real paid booking — it just must not look pristine.
+     *
+     * @param  array<int, string>  $defaultedFields
+     * @param  array<int, string>  $degraded
+     */
+    private function flagBookingForCorrection(Booking $booking, array $defaultedFields, array $degraded): void
+    {
+        if (! $defaultedFields && ! $degraded) {
+            return;
+        }
+
+        $parts = [];
+        if ($defaultedFields) {
+            $parts[] = 'Missing from the paid Stripe session, stored with placeholder values: '
+                .implode(', ', $defaultedFields).'.';
+        }
+        if ($degraded) {
+            $parts[] = 'The booking was preserved but these steps failed and need checking: '
+                .implode(', ', $degraded).'.';
+        }
+        $reason = implode(' ', $parts);
+
+        // ponytail: the customer's confirmation email still carries any defaulted
+        // values. Hold that mail behind admin correction if this ever fires on
+        // more than a stray session.
+        try {
+            $booking->update([
+                'notes' => ($booking->notes ? $booking->notes."\n" : '').'NEEDS CORRECTION: '.$reason,
+            ]);
+            $admin = User::where('email', config('admin.email'))->first();
+            $admin?->notify(new AdminBookingNeedsCorrectionNotification($booking, $reason));
+        } catch (\Throwable $e) {
+            Log::warning('StripeBookingService: failed to flag booking for correction', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Run a step that happens AFTER the booking row exists, in a way that can
+     * never destroy it.
+     *
+     * Everything from offers to extras to currency conversion used to run inside
+     * the same transaction as the booking insert, so one throw rolled the booking
+     * back and left the captured charge with nothing attached — the same visible
+     * failure as the 2026-08-16 pickup_time incident, reachable from a dozen more
+     * places. The money is already taken by this point: a missing extras row is a
+     * data-quality problem to flag, never a reason to discard a paid booking.
+     * (MySQL does not abort a transaction on a failed statement, so catching here
+     * leaves the booking and payment rows intact and committable.)
+     *
+     * @param  array<int, string>  $degraded  collects the names of failed steps
+     */
+    private function guardedStep(string $step, array &$degraded, callable $fn): void
+    {
+        try {
+            $fn();
+        } catch (\Throwable $e) {
+            $degraded[] = $step;
+            Log::error('StripeBookingService: post-payment step failed, booking preserved', [
+                'step' => $step,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function resolveCustomerFromCheckoutPayload(array $payload, ?int $userId = null): array
     {
         $customer = $payload['customer'] ?? [];
@@ -358,20 +428,30 @@ class StripeBookingService
                 $booking = Booking::create($bookingData);
             }
 
+            // From here on the booking row exists and the customer has paid. Every
+            // remaining step is guarded so it can enrich the booking but never
+            // roll it back. $degraded records whatever did not land.
+            $degraded = [];
+
             // Update discount_amount for existing bookings too (idempotent re-processing)
-            $offerDiscount = (float) ($metadata->offer_discount_amount ?? $metadata->promo_discount_amount ?? 0);
-            if ($offerDiscount > 0 && (float) ($booking->discount_amount ?? 0) === 0.0) {
-                $booking->update(['discount_amount' => $offerDiscount]);
-            }
+            $this->guardedStep('discount_amount', $degraded, function () use ($booking, $metadata) {
+                $offerDiscount = (float) ($metadata->offer_discount_amount ?? $metadata->promo_discount_amount ?? 0);
+                if ($offerDiscount > 0 && (float) ($booking->discount_amount ?? 0) === 0.0) {
+                    $booking->update(['discount_amount' => $offerDiscount]);
+                }
+            });
 
-            if (empty($booking->provider_metadata)) {
-                $providerMetadata = $this->buildProviderMetadataFromSession($metadata, $booking, $internalVehicle);
-                $booking->update([
-                    'provider_metadata' => $providerMetadata,
-                ]);
-            }
+            $this->guardedStep('provider_metadata', $degraded, function () use ($booking, $metadata, $internalVehicle) {
+                if (empty($booking->provider_metadata)) {
+                    $booking->update([
+                        'provider_metadata' => $this->buildProviderMetadataFromSession($metadata, $booking, $internalVehicle),
+                    ]);
+                }
+            });
 
-            app(OfferService::class)->syncBookingOffers($booking, $this->resolveAppliedOffersFromMetadata($metadata));
+            $this->guardedStep('offers', $degraded, function () use ($booking, $metadata) {
+                app(OfferService::class)->syncBookingOffers($booking, $this->resolveAppliedOffersFromMetadata($metadata));
+            });
 
             $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
             $extrasTotal = (float) ($metadata->extras_total ?? 0);
@@ -421,124 +501,125 @@ class StripeBookingService
                 'extra_amount' => $adminRevenueAmount,
             ];
 
-            app(BookingAmountService::class)->createForBooking($booking, [
-                'total_amount' => $booking->total_amount,
-                'amount_paid' => $booking->amount_paid,
-                'pending_amount' => $booking->pending_amount,
-                'extra_amount' => $extraAmount,
-            ], $bookingCurrency, $vendorCurrency, $providerAmounts, $adminAmounts);
+            $this->guardedStep('booking_amounts', $degraded, function () use ($booking, $extraAmount, $bookingCurrency, $vendorCurrency, $providerAmounts, $adminAmounts) {
+                app(BookingAmountService::class)->createForBooking($booking, [
+                    'total_amount' => $booking->total_amount,
+                    'amount_paid' => $booking->amount_paid,
+                    'pending_amount' => $booking->pending_amount,
+                    'extra_amount' => $extraAmount,
+                ], $bookingCurrency, $vendorCurrency, $providerAmounts, $adminAmounts);
+            });
 
             Log::info('StripeBookingService: Booking record created', ['booking_id' => $booking->id]);
 
-            $existingPayment = BookingPayment::where('booking_id', $booking->id)
-                ->where('transaction_id', $session->payment_intent)
-                ->first();
+            $this->guardedStep('payment_record', $degraded, function () use ($booking, $session, $metadata, $bookingCurrency) {
+                $existingPayment = BookingPayment::where('booking_id', $booking->id)
+                    ->where('transaction_id', $session->payment_intent)
+                    ->first();
 
-            if (! $existingPayment) {
-                BookingPayment::create([
-                    'booking_id' => $booking->id,
-                    'payment_method' => $metadata->payment_method ?? 'stripe',
-                    'transaction_id' => $session->payment_intent,
-                    'amount' => (float) ($metadata->payable_amount ?? 0),
-                    'currency' => $bookingCurrency,
-                    'payment_status' => 'succeeded',
-                    'payment_date' => now(),
-                ]);
-            }
+                if (! $existingPayment) {
+                    BookingPayment::create([
+                        'booking_id' => $booking->id,
+                        'payment_method' => $metadata->payment_method ?? 'stripe',
+                        'transaction_id' => $session->payment_intent,
+                        'amount' => (float) ($metadata->payable_amount ?? 0),
+                        'currency' => $bookingCurrency,
+                        'payment_status' => 'succeeded',
+                        'payment_date' => now(),
+                    ]);
+                }
+            });
 
-            if (! $booking->extras()->exists()) {
-                $extrasData = $extrasPayload['detailed_extras'] ?? [];
+            // Note: this block calls CurrencyConversionService, an outbound HTTP
+            // request, while the transaction is open. Guarded so a slow or failing
+            // exchange-rate API costs the extras rows, not the booking.
+            $this->guardedStep('extras', $degraded, function () use ($booking, $extrasPayload, $metadata) {
+                if (! $booking->extras()->exists()) {
+                    $extrasData = $extrasPayload['detailed_extras'] ?? [];
 
-                if (! empty($extrasData)) {
-                    $providerCurrency = $metadata->provider_currency ?? $metadata->currency ?? null;
-                    $bookingCurrency = $metadata->currency ?? null;
-                    foreach ($extrasData as $extraItem) {
-                        $price = (float) ($extraItem['total_for_booking'] ?? $extraItem['total_price'] ?? $extraItem['total'] ?? 0);
-                        if ($price > 0 && $providerCurrency && $bookingCurrency && $providerCurrency !== $bookingCurrency) {
-                            $conversion = app(CurrencyConversionService::class)->convert($price, $providerCurrency, $bookingCurrency);
-                            if ($conversion['success'] ?? false) {
-                                $price = (float) ($conversion['converted_amount'] ?? $price);
+                    if (! empty($extrasData)) {
+                        $providerCurrency = $metadata->provider_currency ?? $metadata->currency ?? null;
+                        $bookingCurrency = $metadata->currency ?? null;
+                        foreach ($extrasData as $extraItem) {
+                            $price = (float) ($extraItem['total_for_booking'] ?? $extraItem['total_price'] ?? $extraItem['total'] ?? 0);
+                            if ($price > 0 && $providerCurrency && $bookingCurrency && $providerCurrency !== $bookingCurrency) {
+                                $conversion = app(CurrencyConversionService::class)->convert($price, $providerCurrency, $bookingCurrency);
+                                if ($conversion['success'] ?? false) {
+                                    $price = (float) ($conversion['converted_amount'] ?? $price);
+                                }
                             }
+
+                            BookingExtra::create([
+                                'booking_id' => $booking->id,
+                                'extra_type' => 'optional',
+                                'extra_name' => $extraItem['name'] ?? 'Unknown Extra',
+                                'provider_extra_id' => $extraItem['id'] ?? null,
+                                'quantity' => (int) ($extraItem['qty'] ?? 1),
+                                'price' => $price,
+                            ]);
                         }
+                    } else {
+                        $extras = $extrasPayload['extras'] ?? [];
+                        if (! empty($extras)) {
+                            $addonIds = array_keys($extras);
+                            $addons = \App\Models\BookingAddon::whereIn('id', $addonIds)->get()->keyBy('id');
 
-                        BookingExtra::create([
-                            'booking_id' => $booking->id,
-                            'extra_type' => 'optional',
-                            'extra_name' => $extraItem['name'] ?? 'Unknown Extra',
-                            'provider_extra_id' => $extraItem['id'] ?? null,
-                            'quantity' => (int) ($extraItem['qty'] ?? 1),
-                            'price' => $price,
-                        ]);
-                    }
-                } else {
-                    $extras = $extrasPayload['extras'] ?? [];
-                    if (! empty($extras)) {
-                        $addonIds = array_keys($extras);
-                        $addons = \App\Models\BookingAddon::whereIn('id', $addonIds)->get()->keyBy('id');
+                            foreach ($extras as $extraId => $quantity) {
+                                if ($quantity > 0) {
+                                    $addon = $addons->find($extraId);
+                                    $name = $addon ? $addon->extra_name : "Extra #$extraId";
+                                    $price = $addon ? $addon->price : 0;
 
-                        foreach ($extras as $extraId => $quantity) {
-                            if ($quantity > 0) {
-                                $addon = $addons->find($extraId);
-                                $name = $addon ? $addon->extra_name : "Extra #$extraId";
-                                $price = $addon ? $addon->price : 0;
-
-                                BookingExtra::create([
-                                    'booking_id' => $booking->id,
-                                    'extra_type' => 'optional',
-                                    'extra_name' => $name,
-                                    'quantity' => (int) $quantity,
-                                    'price' => (float) $price,
-                                ]);
+                                    BookingExtra::create([
+                                        'booking_id' => $booking->id,
+                                        'extra_type' => 'optional',
+                                        'extra_name' => $name,
+                                        'quantity' => (int) $quantity,
+                                        'price' => (float) $price,
+                                    ]);
+                                }
                             }
                         }
                     }
                 }
-            }
+            });
 
             DB::commit();
             Log::info('StripeBookingService: Transaction committed successfully', ['booking_id' => $booking->id]);
 
-            if ($defaultedFields) {
-                // ponytail: the customer's confirmation email still carries the
-                // defaulted values. Hold the customer mail behind admin correction
-                // if this ever fires on more than a stray session.
-                $reason = 'Missing from the paid Stripe session, stored with placeholder values: '
-                    .implode(', ', $defaultedFields).'.';
-                try {
-                    $booking->update([
-                        'notes' => ($booking->notes ? $booking->notes."\n" : '').'NEEDS CORRECTION: '.$reason,
-                    ]);
-                    $admin = User::where('email', config('admin.email'))->first();
-                    $admin?->notify(new AdminBookingNeedsCorrectionNotification($booking, $reason));
-                } catch (\Throwable $e) {
-                    Log::warning('StripeBookingService: failed to flag booking for correction', [
-                        'booking_id' => $booking->id,
-                        'error' => $e->getMessage(),
+            // Past the commit the booking is safe from rollback, but an uncaught
+            // throw here still propagates to the webhook, which reports a booking
+            // that DOES exist as failed and hands Stripe a retry. Marketing
+            // attribution and commission tracking must not do that.
+            $this->guardedStep('booking_hold', $degraded, function () use ($metadata, $session) {
+                if (! empty($metadata->booking_hold_id)) {
+                    BookingHold::whereKey($metadata->booking_hold_id)->update([
+                        'status' => 'converted',
+                        'stripe_session_id' => $session->id,
                     ]);
                 }
-            }
+            });
 
-            if (! empty($metadata->booking_hold_id)) {
-                BookingHold::whereKey($metadata->booking_hold_id)->update([
-                    'status' => 'converted',
-                    'stripe_session_id' => $session->id,
-                ]);
-            }
+            $this->guardedStep('awin_conversion', $degraded, function () use ($booking, $metadata) {
+                $awcValue = $metadata->awc ?? null;
+                if (config('awin.enabled')) {
+                    Log::channel('awin')->info('StripeBookingService: Dispatching Awin conversion', [
+                        'booking_id' => $booking->id,
+                        'booking_number' => $booking->booking_number,
+                        'has_awc' => ! empty($awcValue),
+                    ]);
 
-            $awcValue = $metadata->awc ?? null;
-            if (config('awin.enabled')) {
-                Log::channel('awin')->info('StripeBookingService: Dispatching Awin conversion', [
-                    'booking_id' => $booking->id,
-                    'booking_number' => $booking->booking_number,
-                    'has_awc' => ! empty($awcValue),
-                ]);
-
-                SendAwinConversion::dispatch($booking->id, $awcValue);
-            }
+                    SendAwinConversion::dispatch($booking->id, $awcValue);
+                }
+            });
 
             // Create affiliate commission if QR scan tracking data exists
-            $affiliateBusinessId = $metadata->affiliate_business_id ?? null;
-            if ($affiliateBusinessId) {
+            $this->guardedStep('affiliate_commission', $degraded, function () use ($booking, $customer, $metadata) {
+                $affiliateBusinessId = $metadata->affiliate_business_id ?? null;
+                if (! $affiliateBusinessId) {
+                    return;
+                }
+
                 $affiliateData = [
                     'business_id' => $affiliateBusinessId,
                     'customer_scan_id' => $metadata->affiliate_scan_id ?? null,
@@ -558,9 +639,11 @@ class StripeBookingService
                     $affiliateData,
                     $booking->booking_currency ?? 'EUR'
                 );
-            }
+            });
 
-            $this->notifyBookingCreated($booking, $customer, $customerData['temp_password']);
+            $this->guardedStep('booking_notifications', $degraded, function () use ($booking, $customer, $customerData) {
+                $this->notifyBookingCreated($booking, $customer, $customerData['temp_password']);
+            });
 
             $shouldTriggerProvider = empty($booking->provider_booking_ref);
 
@@ -568,10 +651,16 @@ class StripeBookingService
             // queued via a retrying job so a transient provider failure doesn't kill the
             // booking after the customer's payment has already cleared.
             if ($booking->provider_source !== 'internal' && $shouldTriggerProvider) {
-                \App\Jobs\TriggerProviderReservationJob::dispatch(
-                    $booking->id,
-                    (array) $metadata,
-                );
+                // Guarded because QUEUE_CONNECTION=sync runs this inline: the job's
+                // own retry/manual-review handling would be bypassed and a supplier
+                // failure would surface as "booking could not be created" for a
+                // booking that exists, plus a pointless Stripe retry.
+                $this->guardedStep('provider_reservation_dispatch', $degraded, function () use ($booking, $metadata) {
+                    \App\Jobs\TriggerProviderReservationJob::dispatch(
+                        $booking->id,
+                        (array) $metadata,
+                    );
+                });
             } elseif ($booking->provider_source === 'internal') {
                 // Internal vehicles don't require external API reservation
                 Log::info('StripeBookingService: Internal vehicle booking confirmed', [
@@ -581,6 +670,10 @@ class StripeBookingService
                     'total_amount' => $booking->total_amount,
                 ]);
             }
+
+            // Flagged last, so it covers every guarded step above — including the
+            // post-commit ones. Flagging earlier silently dropped their failures.
+            $this->flagBookingForCorrection($booking, $defaultedFields, $degraded);
 
             return $booking;
 
@@ -1629,19 +1722,42 @@ class StripeBookingService
                     'supplier_booking_id' => $providerBookingRef,
                 ]);
 
-                $booking->update([
-                    'provider_booking_ref' => $providerBookingRef,
-                    'provider_metadata' => array_merge(
-                        $booking->provider_metadata ?? [],
-                        [
-                            'gateway_booking_id' => $result['id'] ?? $result['gateway_booking_id'] ?? null,
-                            'gateway_status' => $result['status'] ?? 'confirmed',
-                            'gateway_supplier_id' => $result['supplier_id'] ?? null,
-                        ]
-                    ),
-                    'notes' => ($booking->notes ? $booking->notes."\n" : '')
-                        .'Gateway Conf: '.$providerBookingRef,
-                ]);
+                // The supplier now HOLDS this reservation. If we cannot store its
+                // reference, the queue must not retry — a retry would reserve a
+                // SECOND car for the same customer. Convert a persist failure into
+                // the unknown-outcome path, which stops retries and routes to a
+                // human, with the reference in the log so nothing is lost.
+                try {
+                    $booking->update([
+                        'provider_booking_ref' => $providerBookingRef,
+                        'provider_metadata' => array_merge(
+                            $booking->provider_metadata ?? [],
+                            [
+                                'gateway_booking_id' => $result['id'] ?? $result['gateway_booking_id'] ?? null,
+                                'gateway_status' => $result['status'] ?? 'confirmed',
+                                'gateway_supplier_id' => $result['supplier_id'] ?? null,
+                            ]
+                        ),
+                        'notes' => ($booking->notes ? $booking->notes."\n" : '')
+                            .'Gateway Conf: '.$providerBookingRef,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::critical('VrooemGateway: supplier confirmed but reference could not be persisted', [
+                        'booking_id' => $booking->id,
+                        'supplier_booking_id' => $providerBookingRef,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    $this->notifyAdminReservationManualCheck(
+                        $booking,
+                        'The supplier CONFIRMED reservation '.$providerBookingRef.' but the reference could not be'
+                        .' saved. Record it on the booking manually. Do NOT retry — the supplier already holds it.'
+                    );
+
+                    throw new ReservationOutcomeUnknownException(
+                        'Supplier confirmed booking '.$booking->id.' but the reference could not be persisted.'
+                    );
+                }
 
                 $this->notifyCustomerSupplierConfirmed($booking);
 
