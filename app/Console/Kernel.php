@@ -9,6 +9,7 @@ use App\Console\Commands\ExportTrabberMonthlyReport;
 use App\Console\Commands\GeneratePublicSitemaps;
 use App\Console\Commands\RefreshCurrencyRates;
 use App\Console\Commands\RefreshMerchantFeed;
+use App\Console\Commands\RetryPendingProviderReservations;
 use App\Console\Commands\SendChatMessageReminders;
 use App\Console\Commands\SendPendingBookingReminders;
 use App\Console\Commands\SendScheduledNewsletterCampaigns;
@@ -27,6 +28,7 @@ class Kernel extends ConsoleKernel
         // $schedule->command('inspire')->hourly();
         $schedule->command(AutoCompleteInternalBookings::class)->everyMinute()->withoutOverlapping();
         $schedule->command(ExpireBookingHolds::class)->everyFiveMinutes()->withoutOverlapping();
+        $schedule->command(RetryPendingProviderReservations::class)->everyFifteenMinutes()->withoutOverlapping();
         $schedule->command(SendChatMessageReminders::class)->everyFiveMinutes();
         $schedule->command(SendPendingBookingReminders::class)->twiceDaily();
         $schedule->command(RefreshCurrencyRates::class)->everyTwoHours();
