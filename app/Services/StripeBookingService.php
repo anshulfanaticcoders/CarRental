@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Vehicle;
 use App\Models\VendorProfile;
+use App\Notifications\Booking\AdminBookingNeedsCorrectionNotification;
 use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingCreatedCompanyNotification;
 use App\Notifications\Booking\BookingCreatedCustomerNotification;
@@ -37,6 +38,68 @@ use Illuminate\Support\Str;
 class StripeBookingService
 {
     use DeliversToCustomer;
+
+    private const NEEDS_CORRECTION = 'Unknown — needs correction';
+
+    /**
+     * Every bookings column that is (or has ever been) NOT NULL with no DB
+     * default AND is fed from Stripe session metadata, with the value to store
+     * when metadata loses it.
+     *
+     * A session reaching booking creation is already PAID. A missing key must
+     * never abort the insert and orphan the charge, so each of these is filled
+     * and reported instead. Deliberately a superset: the dev and migration
+     * schemas disagree on which of these are nullable, so all are guarded and
+     * PaidSessionDegradedMetadataTest fails if the schema adds another.
+     *
+     * Excluded on purpose: booking_number (generated) and customer_id (resolved
+     * by findOrCreateCustomer, which throws rather than returning null).
+     *
+     * @return array<string, mixed>
+     */
+    private function requiredBookingDefaults(): array
+    {
+        return [
+            // A guessed date is bad, but losing a captured payment is worse.
+            // Both land flagged, and admin corrects before pickup.
+            'pickup_date' => now()->addDay()->startOfHour(),
+            'return_date' => now()->addDays(2)->startOfHour(),
+            'pickup_time' => '09:00',
+            'return_time' => '09:00',
+            'pickup_location' => self::NEEDS_CORRECTION,
+            'return_location' => self::NEEDS_CORRECTION,
+            'plan' => 'BAS',
+            'total_days' => 1,
+            'base_price' => 0,
+            'tax_amount' => 0,
+            'total_amount' => 0,
+        ];
+    }
+
+    /**
+     * Fill any required column the metadata failed to supply, and report which
+     * ones were guessed so the booking can be flagged for admin correction.
+     *
+     * @param  array<string, mixed>  $bookingData
+     * @return array{0: array<string, mixed>, 1: array<int, string>}
+     */
+    private function guardRequiredBookingFields(array $bookingData): array
+    {
+        $defaulted = [];
+
+        foreach ($this->requiredBookingDefaults() as $column => $default) {
+            if (! array_key_exists($column, $bookingData)) {
+                continue;
+            }
+            $value = $bookingData[$column];
+            if ($value === null || (is_string($value) && trim($value) === '')) {
+                $bookingData[$column] = $default;
+                $defaulted[] = $column;
+            }
+        }
+
+        return [$bookingData, $defaulted];
+    }
 
     public function resolveCustomerFromCheckoutPayload(array $payload, ?int $userId = null): array
     {
@@ -195,6 +258,8 @@ class StripeBookingService
                 }
             }
 
+            $defaultedFields = [];
+
             $bookingCurrency = $this->normalizeCurrencyCode($metadata->currency ?? 'EUR');
             $bookingBasePrice = isset($metadata->vehicle_total)
                 ? (float) $metadata->vehicle_total
@@ -246,7 +311,7 @@ class StripeBookingService
                     'provider_booking_ref' => $booking->provider_booking_ref ?? ($metadata->provider_booking_ref ?? null),
                 ]);
             } else {
-                $booking = Booking::create([
+                $bookingData = [
                     'booking_number' => Booking::generateBookingNumber(),
                     'customer_id' => $customer->id,
                     'vehicle_id' => $vehicleId,
@@ -255,12 +320,12 @@ class StripeBookingService
                     'provider_grand_total' => (float) ($metadata->provider_grand_total ?? $metadata->total_amount_net ?? 0),
                     'vehicle_name' => ($metadata->vehicle_brand ?? '').' '.($metadata->vehicle_model ?? ''),
                     'vehicle_image' => $metadata->vehicle_image ?? null,
-                    'pickup_date' => $metadata->pickup_date,
-                    'pickup_time' => $metadata->pickup_time,
-                    'return_date' => $metadata->dropoff_date,
-                    'return_time' => $metadata->dropoff_time,
-                    'pickup_location' => $metadata->pickup_location,
-                    'return_location' => $metadata->dropoff_location ?? $metadata->pickup_location,
+                    'pickup_date' => $metadata->pickup_date ?? null,
+                    'pickup_time' => $metadata->pickup_time ?? null,
+                    'return_date' => $metadata->dropoff_date ?? null,
+                    'return_time' => $metadata->dropoff_time ?? null,
+                    'pickup_location' => $metadata->pickup_location ?? null,
+                    'return_location' => $metadata->dropoff_location ?? $metadata->pickup_location ?? null,
                     'plan' => $metadata->package ?? 'BAS',
                     'total_days' => (int) ($metadata->number_of_days ?? 1),
                     'base_price' => $bookingBasePrice,
@@ -276,7 +341,21 @@ class StripeBookingService
                     'stripe_payment_intent_id' => $session->payment_intent,
                     'provider_booking_ref' => $metadata->provider_booking_ref ?? null,
                     'discount_amount' => (float) ($metadata->offer_discount_amount ?? $metadata->promo_discount_amount ?? 0),
-                ]);
+                ];
+
+                // The charge is already captured: no NOT NULL column may reject
+                // this insert. Fill what metadata lost, then flag it after commit.
+                [$bookingData, $defaultedFields] = $this->guardRequiredBookingFields($bookingData);
+                if ($defaultedFields) {
+                    Log::error('StripeBookingService: Paid session missing required booking fields', [
+                        'session_id' => $session->id,
+                        'defaulted_fields' => $defaultedFields,
+                        // (array) on a StripeObject yields internal properties, not keys
+                        'metadata_keys' => array_keys($metadata instanceof \Stripe\StripeObject ? $metadata->toArray() : (array) $metadata),
+                    ]);
+                }
+
+                $booking = Booking::create($bookingData);
             }
 
             // Update discount_amount for existing bookings too (idempotent re-processing)
@@ -418,6 +497,26 @@ class StripeBookingService
 
             DB::commit();
             Log::info('StripeBookingService: Transaction committed successfully', ['booking_id' => $booking->id]);
+
+            if ($defaultedFields) {
+                // ponytail: the customer's confirmation email still carries the
+                // defaulted values. Hold the customer mail behind admin correction
+                // if this ever fires on more than a stray session.
+                $reason = 'Missing from the paid Stripe session, stored with placeholder values: '
+                    .implode(', ', $defaultedFields).'.';
+                try {
+                    $booking->update([
+                        'notes' => ($booking->notes ? $booking->notes."\n" : '').'NEEDS CORRECTION: '.$reason,
+                    ]);
+                    $admin = User::where('email', config('admin.email'))->first();
+                    $admin?->notify(new AdminBookingNeedsCorrectionNotification($booking, $reason));
+                } catch (\Throwable $e) {
+                    Log::warning('StripeBookingService: failed to flag booking for correction', [
+                        'booking_id' => $booking->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             if (! empty($metadata->booking_hold_id)) {
                 BookingHold::whereKey($metadata->booking_hold_id)->update([
@@ -569,7 +668,13 @@ class StripeBookingService
         try {
             $admin = User::where('email', config('admin.email'))->first();
             if ($admin) {
-                $admin->notify(new AdminManualRefundRequiredNotification($paymentIntentId, $reason, $context));
+                // sendOnce, not notify: this path is reached on every Stripe webhook
+                // retry of the same failed session, and an unguarded notify() here
+                // is what spammed admin with five identical alerts on 2026-08-16.
+                AdminManualRefundRequiredNotification::sendOnce(
+                    $admin,
+                    new AdminManualRefundRequiredNotification($paymentIntentId, $reason, $context)
+                );
             }
         } catch (\Throwable $e) {
             Log::warning('StripeBookingService: failed to notify admin of manual refund', [

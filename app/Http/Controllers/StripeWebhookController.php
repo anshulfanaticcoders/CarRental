@@ -11,7 +11,6 @@ use App\Notifications\Payment\AdminPaymentFailedNotification;
 use App\Notifications\Payment\CustomerPaymentFailedNotification;
 use App\Services\StripeBookingService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Stripe\Checkout\Session as StripeSession;
@@ -112,7 +111,7 @@ class StripeWebhookController extends Controller
             // A paid session with no booking = orphaned money. Alert admin once
             // per session (Stripe retries this webhook for days) so it is seen
             // in minutes, not found in logs later.
-            $this->notifyAdminOrphanedPaymentOnce($session->id ?? null, $e->getMessage());
+            $this->notifyAdminOrphanedPaymentOnce($session->id ?? null, $e->getMessage(), $session->payment_intent ?? null);
             // Rethrow so the top-level handler responds non-2xx and Stripe retries.
             throw $e;
         }
@@ -120,20 +119,16 @@ class StripeWebhookController extends Controller
 
     /**
      * Alert admin that a PAID checkout session failed to produce a booking.
-     * Cache-deduped per session so webhook retries don't spam the inbox.
+     * Deduped per session by AdminManualRefundRequiredNotification::sendOnce()
+     * so the days of webhook retries Stripe performs don't spam the inbox.
      */
-    private function notifyAdminOrphanedPaymentOnce(?string $sessionId, string $error): void
+    private function notifyAdminOrphanedPaymentOnce(?string $sessionId, string $error, ?string $paymentIntentId = null): void
     {
         try {
-            $cacheKey = 'orphaned-payment-alert:'.($sessionId ?: 'unknown');
-            if (! Cache::add($cacheKey, true, now()->addDay())) {
-                return;
-            }
-
             $admin = User::where('email', config('admin.email'))->first();
             if ($admin) {
-                $admin->notify(new AdminManualRefundRequiredNotification(
-                    null,
+                AdminManualRefundRequiredNotification::sendOnce($admin, new AdminManualRefundRequiredNotification(
+                    $paymentIntentId,
                     'Paid Stripe session failed to create a booking (webhook error)',
                     ['session_id' => $sessionId, 'error' => substr($error, 0, 300)]
                 ));
@@ -174,7 +169,7 @@ class StripeWebhookController extends Controller
                 'error' => $e->getMessage(),
             ]);
             // Same orphaned-money risk as the sync path — alert admin (deduped).
-            $this->notifyAdminOrphanedPaymentOnce($session->id ?? null, $e->getMessage());
+            $this->notifyAdminOrphanedPaymentOnce($session->id ?? null, $e->getMessage(), $session->payment_intent ?? null);
             throw $e;
         }
     }
