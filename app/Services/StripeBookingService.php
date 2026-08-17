@@ -760,6 +760,15 @@ class StripeBookingService
             });
 
             // Create affiliate commission if QR scan tracking data exists
+            // Link the server-side Trabber click record to its booking so the
+            // click table can finally be reconciled against revenue.
+            $this->guardedStep('trabber_click_link', $degraded, function () use ($booking, $metadata) {
+                $clickid = (string) ($metadata->trabber_clickid ?? '');
+                if ($clickid !== '') {
+                    \App\Models\TrabberClick::where('clickid', $clickid)->update(['booking_id' => $booking->id]);
+                }
+            });
+
             // Report the booking back to Skyscanner's conversion tracking —
             // the correlation service existed but had NO caller: 100% of
             // Skyscanner-sourced bookings were invisible to the partner.

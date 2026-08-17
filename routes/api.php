@@ -121,7 +121,7 @@ Route::post('/newsletter/subscriptions', [NewsletterSubscriptionController::clas
 // gateway.token authenticates the TRANSPORT (the gateway itself);
 // api.consumer authenticates the PARTNER via X-Api-Key and derives their
 // identity from the key instead of trusting a client-supplied id.
-Route::prefix('internal/provider')->middleware(['gateway.token', 'api.consumer'])->group(function () {
+Route::prefix('internal/provider')->middleware(['gateway.token', 'api.consumer', 'throttle:partner-api'])->group(function () {
     Route::post('/vehicles/search', [\App\Http\Controllers\Api\InternalProviderController::class, 'searchVehicles']);
     Route::get('/vehicles/{vehicleId}/extras', [\App\Http\Controllers\Api\InternalProviderController::class, 'getVehicleExtras']);
     Route::post('/bookings', [\App\Http\Controllers\Api\InternalProviderController::class, 'createBooking']);

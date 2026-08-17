@@ -18,8 +18,9 @@ class TrabberAttributionService
         $days = (int) config('trabber.attribution_days', 90);
         $expiresAt = now()->addDays($days);
 
-        TrabberClick::create([
-            'clickid' => $clickid,
+        // updateOrCreate: refreshes/replays of the same clickid must not
+        // duplicate the server-side click record (unique index backs this).
+        TrabberClick::updateOrCreate(['clickid' => $clickid], [
             'offer_id' => $offer['offer_id'] ?? null,
             'source' => 'trabber',
             'clicked_url' => $request->fullUrl(),

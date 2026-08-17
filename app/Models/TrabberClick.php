@@ -11,6 +11,7 @@ class TrabberClick extends Model
 
     protected $fillable = [
         'clickid',
+        'booking_id',
         'offer_id',
         'source',
         'clicked_url',

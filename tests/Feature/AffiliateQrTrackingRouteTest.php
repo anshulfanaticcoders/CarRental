@@ -18,6 +18,9 @@ class AffiliateQrTrackingRouteTest extends TestCase
     {
         $qrCode = $this->createAffiliateQrCode('TRACKSMOKE');
         $trackingData = $this->encodedTrackingData($qrCode);
+        // Real codes embed the issued token in the stored QR url — resolution
+        // now requires the exact token (the forgeable business_id fallback is gone).
+        $qrCode->update(['qr_code_value' => url('/en/affiliate/track/'.$trackingData)]);
 
         $response = $this->get(route('affiliate.qr.track', [
             'locale' => 'en',
@@ -74,6 +77,7 @@ class AffiliateQrTrackingRouteTest extends TestCase
     {
         $qrCode = $this->createAffiliateQrCode('INFLUTRACK', 'influencer', false);
         $trackingData = $this->encodedTrackingData($qrCode);
+        $qrCode->update(['qr_code_value' => url('/en/affiliate/track/'.$trackingData)]);
 
         $response = $this->get(route('affiliate.qr.track', [
             'locale' => 'en',
@@ -115,6 +119,26 @@ class AffiliateQrTrackingRouteTest extends TestCase
             'locale' => 'en',
             'shortCode' => $qrCode->short_code,
         ]));
+    }
+
+    public function test_a_forged_business_id_token_creates_no_scan(): void
+    {
+        // A hand-crafted {"business_id":N} token used to resolve to that
+        // partner's first active QR and mint commission on unreferred traffic.
+        $qrCode = $this->createAffiliateQrCode('FORGESMOKE');
+        $forged = rtrim(strtr(base64_encode(json_encode([
+            'type' => 'affiliate_qr',
+            'business_id' => $qrCode->business_id,
+            'location_id' => $qrCode->location_id,
+            'qr_id' => 'made-up',
+            'timestamp' => now()->timestamp,
+            'version' => '1.0',
+        ])), '+/', '-_'), '=');
+
+        $this->get(route('affiliate.qr.track', ['locale' => 'en', 'trackingData' => $forged]))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('affiliate_customer_scans', ['qr_code_id' => $qrCode->id]);
     }
 
     private function createAffiliateQrCode(

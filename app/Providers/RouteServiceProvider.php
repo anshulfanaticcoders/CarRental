@@ -31,6 +31,21 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Skyscanner polls from a handful of egress IPs — the generic 60/min
+        // per-IP bucket 429'd their search bursts AND shared a bucket with
+        // real customers clicking deep links. Keyed by API key, with headroom.
+        RateLimiter::for('skyscanner', function (Request $request) {
+            return Limit::perMinute((int) config('skyscanner.rate_limit_per_minute', 300))
+                ->by('sky:'.($request->header('X-Api-Key') ?: $request->ip()));
+        });
+
+        // Partner API arrives from ONE gateway IP for every partner — the
+        // per-IP bucket made all partners share 60/min. The gateway enforces
+        // the real per-consumer limit; this is the generous backstop.
+        RateLimiter::for('partner-api', function (Request $request) {
+            return Limit::perMinute(600)->by('partner:'.($request->header('X-Api-Key') ?: 'gateway'));
+        });
+
         RateLimiter::for('newsletter', function (Request $request) {
             $email = NewsletterSubscription::normalizeEmail((string) $request->input('email', 'missing'));
             $email = $email === '' ? 'missing' : $email;

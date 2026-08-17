@@ -141,13 +141,6 @@
         gtag('config', 'AW-16944650756');
     </script>
 
-    <script src="https://script.tapfiliate.com/tapfiliate.js" type="text/javascript" async></script>
-<script type="text/javascript">
-  (function(t,a,p){t.TapfiliateObject=a;t[a]=t[a]||function(){ (t[a].q=t[a].q||[]).push(arguments)}})(window,'tap');
-
-  tap('create', '60750-874db3', { integration: "javascript" });
-  tap('detect');
-</script>
 
     {{-- Microsoft Clarity Analytics - Production Only --}}
   @if(env('CLARITY_ENABLED', false) && app()->environment('production') && !empty(env('CLARITY_PROJECT_ID')))

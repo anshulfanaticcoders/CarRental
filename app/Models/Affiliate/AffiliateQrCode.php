@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 
 class AffiliateQrCode extends Model
 {
@@ -46,7 +45,7 @@ class AffiliateQrCode extends Model
         'is_revoked',
         'image_url',
         'download_url',
-        'conversion_rate'
+        'conversion_rate',
     ];
 
     protected $casts = [
@@ -105,7 +104,19 @@ class AffiliateQrCode extends Model
      */
     public function isValid(): bool
     {
-        return $this->status === 'active';
+        // Same rule the query scopes use — status alone let printed table-tent
+        // codes earn commission forever past their configured expiry.
+        if ($this->status !== 'active') {
+            return false;
+        }
+        if ($this->valid_until && $this->valid_until->isPast()) {
+            return false;
+        }
+        if ($this->expires_at && $this->expires_at->isPast()) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -157,8 +168,9 @@ class AffiliateQrCode extends Model
             }
 
             // Generate QR code URL on-demand if no image exists
-            if (!$this->business || !$this->business->dashboard_access_token) {
+            if (! $this->business || ! $this->business->dashboard_access_token) {
                 \Log::error('QR code image generation failed: No business or dashboard access token');
+
                 return null;
             }
 
@@ -167,7 +179,8 @@ class AffiliateQrCode extends Model
                 'qrCodeId' => $this->id,
             ]);
         } catch (\Exception $e) {
-            \Log::error('QR code image URL generation failed: ' . $e->getMessage());
+            \Log::error('QR code image URL generation failed: '.$e->getMessage());
+
             return null;
         }
     }
@@ -185,7 +198,7 @@ class AffiliateQrCode extends Model
      */
     public function getPdfUrlAttribute(): ?string
     {
-        if (!$this->qr_pdf_path) {
+        if (! $this->qr_pdf_path) {
             return null;
         }
 
@@ -206,14 +219,14 @@ class AffiliateQrCode extends Model
     public function scopeValid($query)
     {
         return $query->where('status', 'active')
-                    ->where(function ($q) {
-                        $q->whereNull('valid_until')
-                          ->orWhere('valid_until', '>', now());
-                    })
-                    ->where(function ($q) {
-                        $q->whereNull('expires_at')
-                          ->orWhere('expires_at', '>', now());
-                    });
+            ->where(function ($q) {
+                $q->whereNull('valid_until')
+                    ->orWhere('valid_until', '>', now());
+            })
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            });
     }
 
     /**
@@ -223,7 +236,7 @@ class AffiliateQrCode extends Model
     {
         return $query->where(function ($q) {
             $q->where('valid_until', '<', now())
-              ->orWhere('expires_at', '<', now());
+                ->orWhere('expires_at', '<', now());
         });
     }
 
@@ -264,14 +277,14 @@ class AffiliateQrCode extends Model
      */
     public function getLocationAddressAttribute(): ?string
     {
-        if (!$this->location) {
+        if (! $this->location) {
             return 'Online';
         }
 
         return implode(', ', array_filter([
             $this->location->address_line_1,
             $this->location->city,
-            $this->location->country
+            $this->location->country,
         ]));
     }
 

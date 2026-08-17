@@ -197,19 +197,15 @@ class AffiliateQrCodeService
             ])))->first();
         }
 
-        // If still not found, try to find by business and location combination.
-        // Location can be null for influencer share links.
-        if (! $qrCode && isset($decodedData['business_id']) && array_key_exists('location_id', $decodedData)) {
-            $qrCodeQuery = AffiliateQrCode::where('business_id', $decodedData['business_id'])
-                ->where('status', 'active');
-
-            if ($decodedData['location_id'] === null) {
-                $qrCodeQuery->whereNull('location_id');
-            } else {
-                $qrCodeQuery->where('location_id', $decodedData['location_id']);
-            }
-
-            $qrCode = $qrCodeQuery->first();
+        // Match the EXACT issued token against the stored QR URL. This is the
+        // path real printed codes resolve through (qr_hash stores the hash of
+        // the full URL, so the hash lookups above miss for them). Unforgeable
+        // in practice: the token embeds a uniqid an attacker cannot guess.
+        // The old fallback here matched by decoded business_id alone — a
+        // hand-crafted {"business_id":N} token minted commission on traffic
+        // the partner never referred.
+        if (! $qrCode) {
+            $qrCode = AffiliateQrCode::where('qr_code_value', 'like', '%/affiliate/track/'.$trackingData)->first();
         }
 
         if (! $qrCode || ! $qrCode->isValid()) {

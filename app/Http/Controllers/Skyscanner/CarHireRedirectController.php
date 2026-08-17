@@ -27,7 +27,6 @@ class CarHireRedirectController extends Controller
     public function __invoke(Request $request): JsonResponse|RedirectResponse
     {
         $quoteId = (string) $request->query('quote_id', '');
-        $signature = (string) $request->query('signature', '');
 
         if ($quoteId === '') {
             return $this->noStoreJson([
@@ -35,7 +34,17 @@ class CarHireRedirectController extends Controller
             ], 400);
         }
 
-        if ($signature !== '' && ! $this->securityService->hasValidSignature($request->query())) {
+        // The signature CANNOT be required: it covers quote_id + redirect_id,
+        // and Skyscanner appends skyscanner_redirectid at click time — we
+        // can't pre-sign a value the partner adds later. Validate when one is
+        // sent AND a real secret exists (an HMAC over an empty key would be
+        // deterministic and forgeable). Forged redirect ids are harmless
+        // anyway: correlations only surface when a real booking carries the
+        // id through its own checkout session.
+        $signature = (string) $request->query('signature', '');
+        if ($signature !== ''
+            && (string) config('skyscanner.signing_secret') !== ''
+            && ! $this->securityService->hasValidSignature($request->query())) {
             return $this->noStoreJson([
                 'error' => 'invalid_signature',
             ], 403);
