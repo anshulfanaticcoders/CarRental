@@ -130,15 +130,21 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        StripeCheckoutPayload::updateOrCreate(
+        $payload = StripeCheckoutPayload::firstOrCreate(
             ['stripe_session_id' => $sessionId],
-            [
-                'payment_status' => 'paid',
-                'fulfilment_status' => 'pending',
-                'stripe_payment_intent_id' => $session->payment_intent ?? null,
-                'paid_at' => now(),
-            ]
+            ['fulfilment_status' => 'pending']
         );
+        $payload->fill([
+            'payment_status' => 'paid',
+            'stripe_payment_intent_id' => $session->payment_intent ?? null,
+            'paid_at' => $payload->paid_at ?? now(),
+        ]);
+        // Stripe replays this webhook for days; a replay must never downgrade
+        // a terminal payload back to pending (that resurrects deleted bookings).
+        if (! in_array($payload->fulfilment_status, StripeCheckoutPayload::TERMINAL_STATUSES, true)) {
+            $payload->fulfilment_status = 'pending';
+        }
+        $payload->save();
 
         // The hold and the session share a 30-min lifetime; queued fulfilment
         // adds delay AFTER payment, so re-arm the hold now or a payment near

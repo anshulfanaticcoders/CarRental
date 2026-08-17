@@ -9,6 +9,13 @@ class StripeCheckoutPayload extends Model
 {
     use HasFactory;
 
+    /**
+     * Statuses that must never be reset to pending — a webhook replay or
+     * queued retry that downgrades one of these can resurrect a booking
+     * that was deliberately deleted, or re-fulfil an already-handled session.
+     */
+    public const TERMINAL_STATUSES = ['fulfilled', 'manual_review', 'expired'];
+
     protected $fillable = [
         'stripe_session_id',
         'payload',

@@ -66,6 +66,47 @@ class StripeWebhookQueuedFulfilmentTest extends TestCase
     }
 
     #[Test]
+    public function a_webhook_replay_never_downgrades_a_terminal_payload(): void
+    {
+        Queue::fake();
+        \App\Models\StripeCheckoutPayload::create([
+            'stripe_session_id' => 'cs_queued_5',
+            'payload' => null,
+            'fulfilment_status' => 'fulfilled',
+            'booking_id' => 42,
+        ]);
+
+        $this->invokeComplete((object) [
+            'id' => 'cs_queued_5',
+            'payment_status' => 'paid',
+        ]);
+
+        $this->assertSame('fulfilled', \App\Models\StripeCheckoutPayload::where('stripe_session_id', 'cs_queued_5')
+            ->value('fulfilment_status'));
+    }
+
+    #[Test]
+    public function a_fulfilled_payload_whose_booking_was_deleted_is_not_resurrected(): void
+    {
+        $payload = \App\Models\StripeCheckoutPayload::create([
+            'stripe_session_id' => 'cs_queued_4',
+            'payload' => null,
+            'fulfilment_status' => 'fulfilled',
+            'booking_id' => 999999, // deleted booking
+        ]);
+
+        // Service must never be asked to create a booking.
+        $service = Mockery::mock(StripeBookingService::class);
+        $service->shouldNotReceive('createBookingFromSession');
+
+        (new ProcessPaidCheckoutSessionJob('cs_queued_4'))->handle($service);
+
+        $payload->refresh();
+        $this->assertSame('manual_review', $payload->fulfilment_status);
+        $this->assertStringContainsString('deleted after fulfilment', $payload->last_error);
+    }
+
+    #[Test]
     public function exhausted_fulfilment_retries_raise_the_orphaned_payment_alert(): void
     {
         Notification::fake();

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Booking;
 use App\Models\StripeCheckoutPayload;
 use App\Models\User;
 use App\Notifications\Payment\AdminManualRefundRequiredNotification;
@@ -55,6 +56,27 @@ class ProcessPaidCheckoutSessionJob implements ShouldBeUnique, ShouldQueue
             ['stripe_session_id' => $this->sessionId],
             ['payload' => null]
         );
+
+        // Terminal payloads are never re-fulfilled. Without this, a fulfilled
+        // payload whose booking was deliberately deleted (e.g. test-data
+        // cleanup) gets resurrected by queued retries or the reconcile sweep.
+        if (in_array($payload->fulfilment_status, StripeCheckoutPayload::TERMINAL_STATUSES, true)) {
+            if ($payload->fulfilment_status === 'fulfilled'
+                && $payload->booking_id
+                && ! Booking::whereKey($payload->booking_id)->exists()) {
+                $payload->update([
+                    'fulfilment_status' => 'manual_review',
+                    'last_error' => 'Booking deleted after fulfilment — not recreating.',
+                ]);
+                Log::info('ProcessPaidCheckoutSessionJob: booking deleted after fulfilment, flagged for manual review', [
+                    'session_id' => $this->sessionId,
+                    'booking_id' => $payload->booking_id,
+                ]);
+            }
+
+            return;
+        }
+
         $payload->update([
             'fulfilment_status' => 'processing',
             'fulfilment_attempts' => $payload->fulfilment_attempts + 1,
