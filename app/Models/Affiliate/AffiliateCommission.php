@@ -22,6 +22,7 @@ class AffiliateCommission extends Model
         'commissionable_amount',
         'commission_rate',
         'commission_amount',
+        'currency',
         'discount_amount',
         'tax_amount',
         'net_commission',
@@ -259,9 +260,13 @@ class AffiliateCommission extends Model
      */
     public function getFormattedCommissionAttribute(): string
     {
-        return $this->business->currency === 'EUR'
+        // The commission's OWN currency (the booking currency it was computed
+        // in), not the business's preferred payout currency — the two differ.
+        $currency = $this->currency ?: ($this->business?->currency ?? 'EUR');
+
+        return $currency === 'EUR'
             ? "€{$this->commission_amount}"
-            : "{$this->commission_amount} {$this->business->currency}";
+            : "{$this->commission_amount} {$currency}";
     }
 
     /**

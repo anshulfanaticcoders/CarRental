@@ -2,7 +2,6 @@
 
 namespace App\Services\Affiliate;
 
-use App\Models\Affiliate\AffiliateBusiness;
 use App\Models\Affiliate\AffiliateCommission;
 use App\Models\Affiliate\AffiliateCustomerScan;
 use App\Models\Affiliate\AffiliateGlobalSetting;
@@ -18,12 +17,12 @@ class ScoutCommissionService
      * Always uses global_commission_rate (default 3%) on BASE PRICE (vendor price before markup).
      * Wrapped in try/catch so it never breaks the booking flow.
      *
-     * @param int    $bookingId    The booking ID
-     * @param int|null $customerId The customer user ID
-     * @param float  $basePrice    Vendor/provider base price (before platform markup)
-     * @param string $bookingType  e.g. 'stripe', 'greenmotion', 'okmobility'
-     * @param array  $affiliateData Session affiliate_data array
-     * @param string $bookingCurrency The currency of the booking
+     * @param  int  $bookingId  The booking ID
+     * @param  int|null  $customerId  The customer user ID
+     * @param  float  $basePrice  Vendor/provider base price (before platform markup)
+     * @param  string  $bookingType  e.g. 'stripe', 'greenmotion', 'okmobility'
+     * @param  array  $affiliateData  Session affiliate_data array
+     * @param  string  $bookingCurrency  The currency of the booking
      */
     public function createCommission(
         int $bookingId,
@@ -39,29 +38,47 @@ class ScoutCommissionService
             }
 
             $customerScan = AffiliateCustomerScan::find($affiliateData['customer_scan_id']);
-            if (!$customerScan) {
+            if (! $customerScan) {
                 Log::warning('ScoutCommissionService: Customer scan not found', [
                     'customer_scan_id' => $affiliateData['customer_scan_id'],
                 ]);
+
                 return;
             }
 
             $qrCode = AffiliateQrCode::find($customerScan->qr_code_id);
-            if (!$qrCode || !$qrCode->business) {
+            if (! $qrCode || ! $qrCode->business) {
                 Log::warning('ScoutCommissionService: QR code or business not found', [
                     'qr_code_id' => $customerScan->qr_code_id ?? null,
                 ]);
+
                 return;
             }
 
             $business = $qrCode->business;
 
-            // Get global commission rate (default 3%)
-            $globalSettings = AffiliateGlobalSetting::first();
-            $commissionRate = $globalSettings->global_commission_rate ?? 3.0;
+            // One commission per booking — a webhook replay must not double-pay.
+            // (Belt to the unique index on booking_id.)
+            if (AffiliateCommission::where('booking_id', $bookingId)->exists()) {
+                Log::info('ScoutCommissionService: commission already exists for booking', [
+                    'booking_id' => $bookingId,
+                ]);
 
-            // Commission = rate% of base price (vendor price, before any markup)
-            $commissionAmount = round(($basePrice * $commissionRate) / 100, 2);
+                return;
+            }
+
+            // Per-business negotiated rate wins; the global rate is the fallback.
+            // (The business-model rate was configurable in admin but never read —
+            // partners on custom terms were silently paid the global rate.)
+            $businessModel = $business->businessModel;
+            $commissionRate = $businessModel?->getEffectiveCommissionRate()
+                ?? (AffiliateGlobalSetting::first()->global_commission_rate ?? 3.0);
+            $commissionType = $businessModel->commission_type ?? 'percentage';
+
+            $commissionAmount = app(AffiliateBusinessModelService::class)->calculateCommission(
+                ['commission_rate' => $commissionRate, 'commission_type' => $commissionType],
+                $basePrice
+            );
 
             // Update customer scan
             $customerScan->update([
@@ -91,9 +108,10 @@ class ScoutCommissionService
                 'booking_amount' => $basePrice,
                 'commissionable_amount' => $basePrice,
                 'commission_amount' => $commissionAmount,
+                'currency' => strtoupper($bookingCurrency ?: 'EUR'),
                 'discount_amount' => 0,
                 'commission_rate' => $commissionRate,
-                'commission_type' => 'percentage',
+                'commission_type' => $commissionType,
                 'status' => 'pending',
                 'booking_type' => $bookingType,
                 'net_commission' => $commissionAmount,

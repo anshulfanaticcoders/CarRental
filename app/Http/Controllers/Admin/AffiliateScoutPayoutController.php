@@ -19,11 +19,12 @@ class AffiliateScoutPayoutController extends Controller
             ->latest()
             ->paginate(20);
 
-        // Summary of pending commissions per business
+        // Summary of pending commissions per business AND currency — amounts in
+        // different currencies must never be added together.
         $pendingSummary = AffiliateCommission::where('status', 'approved')
             ->whereNull('payout_id')
-            ->select('business_id', DB::raw('SUM(commission_amount) as total'), DB::raw('COUNT(*) as count'))
-            ->groupBy('business_id')
+            ->select('business_id', 'currency', DB::raw('SUM(commission_amount) as total'), DB::raw('COUNT(*) as count'))
+            ->groupBy('business_id', 'currency')
             ->with('business:id,name,currency,bank_name,bank_iban')
             ->get();
 
@@ -55,30 +56,44 @@ class AffiliateScoutPayoutController extends Controller
             return back()->with('error', 'No approved commissions found for this period.');
         }
 
-        $totalAmount = $commissions->sum('commission_amount');
+        // Commissions are stored in their booking's currency. Summing USD, GBP
+        // and EUR rows into one number pays the wrong amount — create one
+        // payout per currency instead.
+        $summaries = [];
+        DB::transaction(function () use ($business, $validated, $commissions, &$summaries) {
+            foreach ($commissions->groupBy(fn ($c) => strtoupper($c->currency ?: 'EUR')) as $currency => $group) {
+                $totalAmount = round($group->sum('commission_amount'), 2);
 
-        DB::transaction(function () use ($business, $validated, $commissions, $totalAmount) {
-            $payout = AffiliatePayout::create([
-                'uuid' => (string) Str::uuid(),
-                'business_id' => $business->id,
-                'total_amount' => $totalAmount,
-                'currency' => $business->currency ?? 'EUR',
-                'status' => 'pending',
-                'period_start' => $validated['period_start'],
-                'period_end' => $validated['period_end'],
-                'admin_notes' => $validated['admin_notes'] ?? null,
-            ]);
+                $payout = AffiliatePayout::create([
+                    'uuid' => (string) Str::uuid(),
+                    'business_id' => $business->id,
+                    'total_amount' => $totalAmount,
+                    'currency' => $currency,
+                    'status' => 'pending',
+                    'period_start' => $validated['period_start'],
+                    'period_end' => $validated['period_end'],
+                    'admin_notes' => $validated['admin_notes'] ?? null,
+                ]);
 
-            // Link commissions to this payout
-            AffiliateCommission::whereIn('id', $commissions->pluck('id'))
-                ->update(['payout_id' => $payout->id]);
+                AffiliateCommission::whereIn('id', $group->pluck('id'))
+                    ->update(['payout_id' => $payout->id]);
+
+                $summaries[] = "{$totalAmount} {$currency}";
+            }
         });
 
-        return back()->with('success', "Payout of {$totalAmount} {$business->currency} created for {$business->name}.");
+        return back()->with('success', 'Payout created for '.$business->name.': '.implode(', ', $summaries).'.');
     }
 
     public function markAsPaid(Request $request, AffiliatePayout $payout)
     {
+        // State guard: money leaves the bank on this action. A double-submit or
+        // second admin repeating it must not overwrite the original transfer
+        // reference and payment date — the DB is the only payment record.
+        if ($payout->status === 'paid') {
+            return back()->with('error', 'This payout is already marked paid (ref: '.$payout->bank_transfer_reference.'). Nothing was changed.');
+        }
+
         $validated = $request->validate([
             'bank_transfer_reference' => 'required|string|max:255',
             'admin_notes' => 'nullable|string|max:1000',
