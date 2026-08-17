@@ -89,10 +89,23 @@ class InternalProviderController extends Controller
             'currency' => ['nullable', 'string', 'size:3'],
         ]);
 
-        $pickupDate = Carbon::parse($validated['pickup_date']);
-        $dropoffDate = Carbon::parse($validated['dropoff_date']);
-        $totalDays = max(1, $pickupDate->diffInDays($dropoffDate));
-        $currency = $validated['currency'] ?? 'EUR';
+        // Rental days from the FULL datetimes — same billing rule as booking.
+        $pickupAt = Carbon::parse($validated['pickup_date'].' '.$validated['pickup_time']);
+        $dropoffAt = Carbon::parse($validated['dropoff_date'].' '.$validated['dropoff_time']);
+        $totalDays = max(1, (int) ceil($pickupAt->diffInMinutes($dropoffAt) / 1440));
+        // Prices are stored and booked in EUR and this endpoint performs no
+        // conversion — labeling raw amounts with a requested currency was a
+        // lie the partner resold. Reject anything else honestly.
+        $currency = strtoupper((string) ($validated['currency'] ?? 'EUR'));
+        if ($currency !== 'EUR') {
+            return response()->json([
+                'error' => [
+                    'code' => 'UNSUPPORTED_CURRENCY',
+                    'message' => 'Prices are quoted and booked in EUR only.',
+                    'status' => 422,
+                ],
+            ], 422);
+        }
 
         $pickupLocation = VendorLocation::query()
             ->whereKey($validated['pickup_location_id'])
@@ -381,20 +394,37 @@ class InternalProviderController extends Controller
             'driver.last_name' => ['required', 'string', 'max:255'],
             'driver.email' => ['required', 'email', 'max:255'],
             'driver.phone' => ['required', 'string', 'max:50'],
-            'driver.age' => ['required', 'integer', 'min:18'],
-            'driver.driving_license_number' => ['required', 'string', 'max:100'],
-            'driver.driving_license_country' => ['required', 'string', 'max:10'],
+            // Limits mirror the schema (varchar(50) / char(2) / tinyint) — the
+            // old looser rules let valid-looking input through to a MySQL
+            // truncation error surfaced as an opaque 500.
+            'driver.age' => ['required', 'integer', 'min:18', 'max:99'],
+            'driver.driving_license_number' => ['required', 'string', 'max:50'],
+            'driver.driving_license_country' => ['required', 'string', 'size:2'],
             'extras' => ['nullable', 'array'],
             'extras.*.extra_id' => ['required_with:extras', 'integer'],
             'extras.*.quantity' => ['required_with:extras', 'integer', 'min:1'],
             'insurance_id' => ['nullable', 'integer'],
             'flight_number' => ['nullable', 'string', 'max:20'],
             'special_requests' => ['nullable', 'string', 'max:1000'],
-            'pickup_date' => ['required', 'date'],
+            'pickup_date' => ['required', 'date', 'after_or_equal:today'],
             'pickup_time' => ['required', 'date_format:H:i'],
             'dropoff_date' => ['required', 'date', 'after_or_equal:pickup_date'],
             'dropoff_time' => ['required', 'date_format:H:i'],
         ]);
+
+        // The rule engine can't compare across date+time pairs: a same-day
+        // 17:00 → 09:00 request used to pass and get priced as one day.
+        $pickupAt = Carbon::parse($validated['pickup_date'].' '.$validated['pickup_time']);
+        $dropoffAt = Carbon::parse($validated['dropoff_date'].' '.$validated['dropoff_time']);
+        if ($dropoffAt->lessThanOrEqualTo($pickupAt)) {
+            return response()->json([
+                'error' => [
+                    'code' => 'INVALID_RENTAL_WINDOW',
+                    'message' => 'dropoff_date/dropoff_time must be after pickup_date/pickup_time.',
+                    'status' => 422,
+                ],
+            ], 422);
+        }
 
         $vehicle = Vehicle::with(['vendor', 'vendor.vendorProfile', 'images', 'vendorLocation', 'vendorProfileData'])->find($validated['vehicle_id']);
 
@@ -451,10 +481,10 @@ class InternalProviderController extends Controller
             ], 409);
         }
 
-        $pickupDate = Carbon::parse($validated['pickup_date']);
-        $dropoffDate = Carbon::parse($validated['dropoff_date']);
         $dailyRate = (float) $vehicle->price_per_day;
-        $totalDays = max(1, $pickupDate->diffInDays($dropoffDate));
+        // Rental days from the FULL datetimes — date-only diffing billed
+        // Mon 09:00 → Wed 18:00 as 2 days while the vendor supplied 3.
+        $totalDays = max(1, (int) ceil($pickupAt->diffInMinutes($dropoffAt) / 1440));
         $basePrice = round($dailyRate * $totalDays, 2);
 
         $extrasTotal = 0;
@@ -466,22 +496,47 @@ class InternalProviderController extends Controller
                     ->where('vendor_id', $vehicle->vendor_id)
                     ->first();
 
-                if ($addon) {
-                    $unitPrice = (float) $addon->price;
-                    $quantity = (int) $extraInput['quantity'];
-                    $extraTotal = round($unitPrice * $quantity * $totalDays, 2);
-                    $extrasTotal += $extraTotal;
-
-                    $extrasData[] = [
-                        'extra_id' => $addon->id,
-                        'extra_name' => $addon->extra_name ?: ($addon->addon?->name ?? 'Extra'),
-                        'quantity' => $quantity,
-                        'unit_price' => $unitPrice,
-                        'total_price' => $extraTotal,
-                        'currency' => 'EUR',
-                    ];
+                // Reject unknown ids loudly. Silently dropping them created
+                // bookings WITHOUT extras the partner's customer already paid
+                // for — and an id clash with another table could book the
+                // wrong extra entirely.
+                if (! $addon) {
+                    return response()->json([
+                        'error' => [
+                            'code' => 'UNKNOWN_EXTRA',
+                            'message' => 'Extra '.$extraInput['extra_id'].' does not exist for this vehicle. Re-fetch /vehicles/{id}/extras and use the returned ids.',
+                            'status' => 422,
+                        ],
+                    ], 422);
                 }
+
+                $unitPrice = (float) $addon->price;
+                $quantity = (int) $extraInput['quantity'];
+                $extraTotal = round($unitPrice * $quantity * $totalDays, 2);
+                $extrasTotal += $extraTotal;
+
+                $extrasData[] = [
+                    'extra_id' => $addon->id,
+                    'extra_name' => $addon->extra_name ?: ($addon->addon?->name ?? 'Extra'),
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'total_price' => $extraTotal,
+                    'currency' => 'EUR',
+                ];
             }
+        }
+
+        // insurance_id used to be stored unvalidated and unpriced — every
+        // partner insurance upsell was revenue we never collected. Until
+        // insurance pricing is wired, refuse ids we can't verify and price.
+        if (! empty($validated['insurance_id'])) {
+            return response()->json([
+                'error' => [
+                    'code' => 'INSURANCE_NOT_SUPPORTED',
+                    'message' => 'Insurance selection is not supported on this endpoint yet. Book without insurance_id.',
+                    'status' => 422,
+                ],
+            ], 422);
         }
 
         $totalAmount = round($basePrice + $extrasTotal, 2);
@@ -751,7 +806,21 @@ class InternalProviderController extends Controller
             ], 404);
         }
 
-        if (in_array($booking->status, ['cancelled', 'completed'])) {
+        // Idempotent: a partner whose first cancel timed out at the network
+        // layer WILL retry. A 4xx on the retry reads as "cancel failed" while
+        // it actually succeeded — echo the cancelled state instead.
+        if ($booking->status === 'cancelled') {
+            return response()->json([
+                'data' => [
+                    'booking_number' => $booking->booking_number,
+                    'status' => 'cancelled',
+                    'cancelled_at' => optional($booking->cancelled_at)->toIso8601String(),
+                    'message' => 'Booking was already cancelled.',
+                ],
+            ]);
+        }
+
+        if ($booking->status === 'completed') {
             return response()->json([
                 'error' => [
                     'code' => 'BOOKING_NOT_CANCELLABLE',

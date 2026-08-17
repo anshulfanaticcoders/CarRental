@@ -18,7 +18,7 @@ class VendorExternalBookingController extends Controller
         $statusFilter = $request->input('status', '');
 
         $base = ApiBooking::query()
-            ->whereHas('vehicle', fn($q) => $q->where('vendor_id', $vendorId))
+            ->whereHas('vehicle', fn ($q) => $q->where('vendor_id', $vendorId))
             ->where('is_test', false);
 
         $statusCounts = (clone $base)
@@ -51,14 +51,14 @@ class VendorExternalBookingController extends Controller
             ->with(['consumer', 'vehicle'])
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('booking_number', 'like', '%' . $search . '%')
-                      ->orWhere('driver_first_name', 'like', '%' . $search . '%')
-                      ->orWhere('driver_last_name', 'like', '%' . $search . '%')
-                      ->orWhere('driver_email', 'like', '%' . $search . '%')
-                      ->orWhere('status', 'like', '%' . $search . '%');
+                    $q->where('booking_number', 'like', '%'.$search.'%')
+                        ->orWhere('driver_first_name', 'like', '%'.$search.'%')
+                        ->orWhere('driver_last_name', 'like', '%'.$search.'%')
+                        ->orWhere('driver_email', 'like', '%'.$search.'%')
+                        ->orWhere('status', 'like', '%'.$search.'%');
                 });
             })
-            ->when($statusFilter, fn($query, $status) => $query->where('status', $status))
+            ->when($statusFilter, fn ($query, $status) => $query->where('status', $status))
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
@@ -90,13 +90,17 @@ class VendorExternalBookingController extends Controller
 
     public function updateStatus(Request $request, $locale, ApiBooking $apiBooking)
     {
-        if ($apiBooking->vehicle->vendor_id !== auth()->id()) {
+        if (! $apiBooking->vehicle || $apiBooking->vehicle->vendor_id !== auth()->id()) {
             abort(403);
         }
 
         $validated = $request->validate([
             'status' => 'required|in:confirmed,completed',
         ]);
+
+        if (! $apiBooking->canTransitionTo($validated['status'])) {
+            return back()->with('error', "Cannot mark a {$apiBooking->status} booking as {$validated['status']}.");
+        }
 
         $apiBooking->update(['status' => $validated['status']]);
 

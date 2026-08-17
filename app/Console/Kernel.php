@@ -29,6 +29,7 @@ class Kernel extends ConsoleKernel
         $schedule->command(AutoCompleteInternalBookings::class)->everyMinute()->withoutOverlapping();
         $schedule->command(ExpireBookingHolds::class)->everyFiveMinutes()->withoutOverlapping();
         $schedule->command(RetryPendingProviderReservations::class)->everyFifteenMinutes()->withoutOverlapping();
+        $schedule->command(\App\Console\Commands\ExpireStalePartnerBookings::class)->hourly()->withoutOverlapping();
         $schedule->command(SendChatMessageReminders::class)->everyFiveMinutes();
         $schedule->command(SendPendingBookingReminders::class)->twiceDaily();
         $schedule->command(RefreshCurrencyRates::class)->everyTwoHours();

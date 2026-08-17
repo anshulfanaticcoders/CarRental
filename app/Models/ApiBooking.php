@@ -82,14 +82,29 @@ class ApiBooking extends Model
             for ($i = 0; $i < 6; $i++) {
                 $code .= $chars[random_int(0, strlen($chars) - 1)];
             }
-            $number = 'VRO-' . $code;
+            $number = 'VRO-'.$code;
         } while (static::where('booking_number', $number)->exists());
 
         return $number;
     }
 
+    /**
+     * The only legal forward transitions. Without this, a vendor's stale tab
+     * could flip a CANCELLED booking back to confirmed — re-blocking the car,
+     * emailing the driver a confirmation for a dead booking, and putting the
+     * amount back into revenue.
+     */
+    public function canTransitionTo(string $to): bool
+    {
+        return match ($this->status) {
+            'pending' => $to === 'confirmed',
+            'confirmed' => $to === 'completed',
+            default => false,
+        };
+    }
+
     public function getDriverFullNameAttribute(): string
     {
-        return $this->driver_first_name . ' ' . $this->driver_last_name;
+        return $this->driver_first_name.' '.$this->driver_last_name;
     }
 }

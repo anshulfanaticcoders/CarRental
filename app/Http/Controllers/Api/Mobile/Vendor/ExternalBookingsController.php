@@ -119,6 +119,12 @@ class ExternalBookingsController extends Controller
             return response()->json(['message' => 'Booking not found.'], 404);
         }
 
+        if (! $booking->canTransitionTo($validated['status'])) {
+            return response()->json([
+                'message' => "Cannot mark a {$booking->status} booking as {$validated['status']}.",
+            ], 422);
+        }
+
         $booking->update(['status' => $validated['status']]);
 
         if ($validated['status'] === 'confirmed' && $booking->driver_email) {
