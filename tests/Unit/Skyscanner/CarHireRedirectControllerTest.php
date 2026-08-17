@@ -20,12 +20,12 @@ class CarHireRedirectControllerTest extends TestCase
         parent::setUp();
 
         Cache::flush();
-        CarbonImmutable::setTestNow(null);
+        \Illuminate\Support\Carbon::setTestNow(null);
     }
 
     protected function tearDown(): void
     {
-        CarbonImmutable::setTestNow(null);
+        \Illuminate\Support\Carbon::setTestNow(null);
 
         parent::tearDown();
     }
@@ -34,7 +34,7 @@ class CarHireRedirectControllerTest extends TestCase
     {
         $store = app(CarHireQuoteStoreService::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-123',
@@ -58,7 +58,7 @@ class CarHireRedirectControllerTest extends TestCase
 
     public function test_it_hides_internal_quote_fields_from_redirect_json_response(): void
     {
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-123',
@@ -159,8 +159,11 @@ class CarHireRedirectControllerTest extends TestCase
             ],
         ];
 
+        // Write the quote while the clock is still before its expiry, THEN
+        // advance past it — putting with a past expiry just drops the keys.
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
         $store->put($quote);
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 31, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 31, 0, 'UTC'));
 
         $response = $this->getJson('/api/skyscanner/redirect?quote_id=quote-123');
 
@@ -188,8 +191,11 @@ class CarHireRedirectControllerTest extends TestCase
             ],
         ];
 
+        // Write the quote while the clock is still before its expiry, THEN
+        // advance past it — putting with a past expiry just drops the keys.
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
         $store->put($quote);
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 31, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 31, 0, 'UTC'));
 
         $response = $controller(Request::create('/api/skyscanner/redirect', 'GET', [
             'quote_id' => 'quote-expired',
@@ -217,7 +223,7 @@ class CarHireRedirectControllerTest extends TestCase
         $auditLog = app(CarHireAuditLogService::class);
         $security = app(CarHireSecurityService::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
         config([
             'skyscanner.signing_secret' => 'top-secret',
         ]);
@@ -264,7 +270,7 @@ class CarHireRedirectControllerTest extends TestCase
             'skyscanner.signing_secret' => 'top-secret',
         ]);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-123',
@@ -294,7 +300,7 @@ class CarHireRedirectControllerTest extends TestCase
         $tracking = app(CarHireTrackingService::class);
         $controller = app(CarHireRedirectController::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-123',

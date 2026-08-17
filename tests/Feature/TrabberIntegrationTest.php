@@ -78,7 +78,7 @@ class TrabberIntegrationTest extends TestCase
         $response->assertJsonPath('offers.0.vehicle_name', 'Toyota Yaris');
         $response->assertJsonPath('offers.0.sipp', 'ECAR');
         $response->assertJsonPath('offers.0.currency', 'EUR');
-        $response->assertJsonPath('offers.0.price', 149.49);
+        $response->assertJsonPath('offers.0.price', 129.99); // internal fleet sells at NET — must match what checkout charges
         $response->assertJsonPath('offers.0.fuel_policy', 'Full to Full');
         $response->assertJsonPath('offers.0.free_esim_included', true);
         $response->assertJsonPath('offers.0.inclusions.0', 'Free eSIM included');
@@ -214,8 +214,8 @@ class TrabberIntegrationTest extends TestCase
         $response->assertSee('bookingContexts');
         $response->assertInertia(fn (Assert $page) => $page
             ->component('OfferResults')
-            ->where('quote.pricing.total_price', 149.49)
-            ->where("bookingContexts.{$offerId}.vehicle.total_price", 149.49)
+            ->where('quote.pricing.total_price', 129.99)
+            ->where("bookingContexts.{$offerId}.vehicle.total_price", 129.99)
         );
     }
 

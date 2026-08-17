@@ -99,7 +99,7 @@ class CarHireSearchServiceTest extends TestCase
         $service = app(CarHireSearchService::class);
         $store = app(CarHireQuoteStoreService::class);
         $auditLog = app(CarHireAuditLogService::class);
-        $now = CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC');
+        $now = CarbonImmutable::now('UTC')->startOfHour();
 
         $results = $service->buildQuotes(
             [
@@ -161,7 +161,7 @@ class CarHireSearchServiceTest extends TestCase
         $this->assertSame('Toyota Yaris', $results['quotes'][0]['vehicle']['display_name']);
         $this->assertSame('ECMR', $results['quotes'][0]['vehicle']['sipp_code']);
         $this->assertArrayHasKey('deeplink', $results['quotes'][0]);
-        $this->assertSame('2026-04-11T10:30:00+00:00', $results['quotes'][0]['expires_at']);
+        $this->assertSame($now->addMinutes(30)->toIso8601String(), $results['quotes'][0]['expires_at']);
         $this->assertSame([
             '328',
         ], $results['excluded_vehicle_ids']);
@@ -192,7 +192,7 @@ class CarHireSearchServiceTest extends TestCase
 
         $service = app(CarHireSearchService::class);
         $store = app(CarHireQuoteStoreService::class);
-        $now = CarbonImmutable::create(2026, 4, 11, 10, 0, 0, 'UTC');
+        $now = CarbonImmutable::now('UTC')->startOfHour();
 
         $results = $service->buildQuotes(
             [

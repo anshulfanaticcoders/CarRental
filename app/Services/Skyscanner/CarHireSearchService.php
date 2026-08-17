@@ -2,7 +2,6 @@
 
 namespace App\Services\Skyscanner;
 
-use App\Services\Pricing\PayablePercentageService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
@@ -15,7 +14,6 @@ class CarHireSearchService
         private readonly CarHireQuoteLifecycleService $quoteLifecycleService,
         private readonly CarHireQuoteStoreService $quoteStoreService,
         private readonly CarHireAuditLogService $auditLogService,
-        private readonly PayablePercentageService $payablePercentageService,
     ) {}
 
     public function search(array $criteria): array
@@ -104,10 +102,6 @@ class CarHireSearchService
 
     private function applyCustomerPricing(array $vehicle, array $search): array
     {
-        if (! $this->isProviderVehicle($vehicle)) {
-            return $vehicle;
-        }
-
         $pricing = is_array($vehicle['pricing'] ?? null) ? $vehicle['pricing'] : [];
         $total = $this->floatOrNull($pricing['total_price'] ?? $vehicle['total_price'] ?? null);
 
@@ -116,8 +110,31 @@ class CarHireSearchService
         }
 
         $days = $this->rentalDays($search);
-        $rate = $this->payablePercentageService->rate();
-        $grossTotal = round($total * (1 + max(0, $rate)), 2);
+
+        // FX first: quotes go out in the currency Skyscanner asked for via a
+        // REAL conversion — the requested code used to be stamped onto raw
+        // EUR amounts (a ~8% price-accuracy lie in USD markets). If no rate
+        // is available the quote keeps its true source currency instead.
+        $sourceCurrency = strtoupper(trim((string) ($pricing['currency'] ?? $vehicle['currency'] ?? 'EUR'))) ?: 'EUR';
+        $requestedCurrency = strtoupper(trim((string) ($search['currency'] ?? '')));
+        $fxRate = 1.0;
+        $quoteCurrency = $sourceCurrency;
+        if ($requestedCurrency !== '' && $requestedCurrency !== $sourceCurrency) {
+            $conversion = app(\App\Services\CurrencyConversionService::class)->convert(1.0, $sourceCurrency, $requestedCurrency);
+            if ($conversion['success'] ?? false) {
+                $fxRate = (float) ($conversion['converted_amount'] ?? 1.0);
+                $quoteCurrency = $requestedCurrency;
+            }
+        }
+        $customerTotal = round($total * $fxRate, 2);
+
+        // The CHECKOUT markup rule, not the deposit percentage: external
+        // inventory carries the platform markup, internal fleet sells at net —
+        // the quote must match what the landing page will actually charge.
+        $rate = $this->isProviderVehicle($vehicle)
+            ? app(\App\Services\Pricing\CustomerMarkupService::class)->rate()
+            : 0.0;
+        $grossTotal = round($customerTotal * (1 + max(0, $rate)), 2);
         $grossPricePerDay = round($grossTotal / $days, 2);
 
         $vehicle['net_pricing'] = $pricing;
@@ -125,7 +142,10 @@ class CarHireSearchService
         $vehicle['pricing'] = array_merge($pricing, [
             'total_price' => $grossTotal,
             'price_per_day' => $grossPricePerDay,
+            'currency' => $quoteCurrency,
             'customer_price_markup_rate' => $rate,
+            'source_currency' => $sourceCurrency,
+            'fx_rate' => $fxRate,
         ]);
 
         return $vehicle;

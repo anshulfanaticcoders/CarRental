@@ -132,20 +132,23 @@ class MerchantFeedTest extends TestCase
         $this->artisan('merchant-feed:refresh', ['feed' => 'awin'])->assertExitCode(0);
 
         $this->assertSame('in_stock', MerchantFeedItem::where('feed_key', 'internal-'.$availableVehicle->id)->value('availability'));
-        $this->assertSame('63.25', MerchantFeedItem::where('feed_key', 'internal-'.$availableVehicle->id)->value('price'));
+        $this->assertSame('55.00', MerchantFeedItem::where('feed_key', 'internal-'.$availableVehicle->id)->value('price'));
         $this->assertSame('out_of_stock', MerchantFeedItem::where('feed_key', 'internal-'.$bookedVehicle->id)->value('availability'));
         $this->assertSame('out_of_stock', MerchantFeedItem::where('feed_key', 'internal-'.$heldVehicle->id)->value('availability'));
         $this->assertFileExists($this->feedPath());
         $xml = file_get_contents($this->feedPath());
         $this->assertStringContainsString('<g:id>internal-'.$availableVehicle->id.'</g:id>', $xml);
-        $this->assertStringContainsString('<g:price>63.25 EUR</g:price>', $xml);
-        $this->assertStringContainsString('From 63.25 EUR per day.', $xml);
+        $this->assertStringContainsString('<g:price>55.00 EUR</g:price>', $xml);
+        $this->assertStringContainsString('From 55.00 EUR per day.', $xml);
         $this->assertStringNotContainsString('<g:id>internal-'.$bookedVehicle->id.'</g:id>', $xml);
         $this->assertStringNotContainsString('<g:id>internal-'.$heldVehicle->id.'</g:id>', $xml);
     }
 
-    public function test_refresh_command_uses_admin_payable_percentage_for_feed_prices(): void
+    public function test_feed_prices_match_checkout_and_ignore_the_deposit_percentage(): void
     {
+        // The deposit percentage used to double as the feed markup: changing
+        // the deposit silently repriced the entire public feed, and internal
+        // vehicles were published ABOVE the price the landing page charges.
         PayableSetting::query()->update(['payment_percentage' => 20]);
         [$vehicle] = $this->createVehicleContext([
             'brand' => 'Hyundai',
@@ -155,14 +158,13 @@ class MerchantFeedTest extends TestCase
         $this->artisan('merchant-feed:refresh', ['feed' => 'awin'])->assertExitCode(0);
 
         $item = MerchantFeedItem::where('feed_key', 'internal-'.$vehicle->id)->firstOrFail();
-        $this->assertSame('120.00', $item->price);
+        // Internal fleet is sold at net at checkout — the feed must say so too.
+        $this->assertSame('100.00', $item->price);
         $this->assertEqualsWithDelta(100.0, $item->raw_attributes['net_price'], 0.001);
-        $this->assertEqualsWithDelta(20.0, $item->raw_attributes['payment_percentage'], 0.001);
-        $this->assertEqualsWithDelta(0.2, $item->raw_attributes['price_markup_rate'], 0.001);
 
         $xml = file_get_contents($this->feedPath());
-        $this->assertStringContainsString('<g:price>120.00 EUR</g:price>', $xml);
-        $this->assertStringContainsString('From 120.00 EUR per day.', $xml);
+        $this->assertStringContainsString('<g:price>100.00 EUR</g:price>', $xml);
+        $this->assertStringContainsString('From 100.00 EUR per day.', $xml);
     }
 
     public function test_refresh_command_imports_external_gateway_items(): void

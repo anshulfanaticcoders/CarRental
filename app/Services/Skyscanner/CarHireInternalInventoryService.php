@@ -73,7 +73,9 @@ class CarHireInternalInventoryService
                         'close_time' => $hours->close_time,
                     ];
                 })->values()->all();
-                $data['currency'] = $criteria['currency'] ?? ($data['currency'] ?? 'EUR');
+                // The vehicle's TRUE currency — never relabel raw amounts with
+                // the requested currency; conversion happens in the pricing step.
+                $data['currency'] = $data['currency'] ?? 'EUR';
 
                 return $this->internalSearchVehicleFactory->make($data, $rentalDays, [
                     'pickup_location_id' => (string) $criteria['pickup_location_id'],

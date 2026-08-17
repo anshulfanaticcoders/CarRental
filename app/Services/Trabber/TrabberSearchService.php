@@ -6,7 +6,6 @@ use App\Models\Vehicle;
 use App\Models\VendorLocation;
 use App\Services\CurrencyConversionService;
 use App\Services\OfferService;
-use App\Services\Pricing\PayablePercentageService;
 use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Carbon\Carbon;
@@ -24,7 +23,6 @@ class TrabberSearchService
         private readonly InternalSearchVehicleFactory $vehicleFactory,
         private readonly TrabberGatewayInventoryService $gatewayInventoryService,
         private readonly TrabberOfferStoreService $offerStore,
-        private readonly PayablePercentageService $payablePercentageService,
         private readonly TrabberFuelPolicyFormatter $fuelPolicyFormatter,
         private readonly OfferService $offerService,
         private readonly CurrencyConversionService $currencyConversionService
@@ -169,7 +167,11 @@ class TrabberSearchService
             ?? $vehicle['total']
             ?? 0
         ), 2);
-        $markupRate = $this->payablePercentageService->rate();
+        // The CHECKOUT markup rule: external inventory carries the platform
+        // markup, internal fleet is sold at net. The old deposit-percentage
+        // knob overpriced every internal vehicle vs what checkout charges.
+        $markupRate = app(\App\Services\Pricing\CustomerMarkupService::class)
+            ->rateForSource($vehicle['source'] ?? ($vehicle['provider_source'] ?? null));
         $rentalDays = $this->rentalDays($searchPayload);
         $sourceCurrency = $this->sourceCurrency($vehicle, $currency);
         $currencyContext = $this->customerCurrencyContext($sourceCurrency, $currency);

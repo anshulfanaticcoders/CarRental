@@ -118,8 +118,11 @@ class CarHireSearchControllerTest extends TestCase
         });
 
         $controller = app(CarHireSearchController::class);
+        // Colons must be encoded: Request::create() runs parse_url(), which
+        // returns false for a relative path with raw ':' (real traffic uses
+        // createFromGlobals() and never hits this).
         $request = Request::create(
-            '/api/quotes/EUR/62/62/2026-06-15T09:00/2026-06-18T09:00/35',
+            '/api/quotes/EUR/62/62/2026-06-15T09%3A00/2026-06-18T09%3A00/35',
             'GET',
             [],
             [],

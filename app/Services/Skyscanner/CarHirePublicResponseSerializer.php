@@ -34,7 +34,7 @@ class CarHirePublicResponseSerializer
             'vehicle' => $this->vehicle($quote['vehicle'] ?? []),
             'supplier' => $this->supplier($quote['supplier'] ?? []),
             'specs' => $this->specs($quote['specs'] ?? []),
-            'pricing' => $this->assoc($quote['pricing'] ?? null),
+            'pricing' => $this->publicPricing($quote['pricing'] ?? null),
             'policies' => $this->assoc($quote['policies'] ?? null),
             'insurance_options' => $this->insuranceOptions($quote['insurance_options'] ?? null),
             'coverages' => $this->coverages($quote['coverages'] ?? null),
@@ -42,6 +42,23 @@ class CarHirePublicResponseSerializer
             'dropoff_location_details' => $this->location($quote['dropoff_location_details'] ?? []),
             'deeplink' => $this->deeplink($quote['deeplink'] ?? []),
         ], static fn ($value) => $value !== null);
+    }
+
+    /**
+     * Pricing minus internal-only keys: our markup rate is commercially
+     * sensitive and must never ship to the partner. (The internally stored
+     * quote keeps it — the offer-booking adapter reads it to rebuild net.)
+     */
+    private function publicPricing(mixed $pricing): ?array
+    {
+        $pricing = $this->assoc($pricing);
+        if ($pricing === null) {
+            return null;
+        }
+
+        unset($pricing['customer_price_markup_rate'], $pricing['source_currency'], $pricing['fx_rate']);
+
+        return $pricing;
     }
 
     private function supplier(mixed $supplier): ?array

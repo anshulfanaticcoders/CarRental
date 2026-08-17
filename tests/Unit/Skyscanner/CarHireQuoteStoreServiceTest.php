@@ -14,12 +14,12 @@ class CarHireQuoteStoreServiceTest extends TestCase
         parent::setUp();
 
         Cache::flush();
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 4, 8, 10, 0, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 4, 8, 10, 0, 0, 'UTC'));
     }
 
     protected function tearDown(): void
     {
-        CarbonImmutable::setTestNow(null);
+        \Illuminate\Support\Carbon::setTestNow(null);
 
         parent::tearDown();
     }

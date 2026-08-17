@@ -18,12 +18,12 @@ class SkyscannerOfferPageTest extends TestCase
         parent::setUp();
 
         Cache::flush();
-        CarbonImmutable::setTestNow(null);
+        \Illuminate\Support\Carbon::setTestNow(null);
     }
 
     protected function tearDown(): void
     {
-        CarbonImmutable::setTestNow(null);
+        \Illuminate\Support\Carbon::setTestNow(null);
 
         parent::tearDown();
     }
@@ -32,7 +32,7 @@ class SkyscannerOfferPageTest extends TestCase
     {
         $store = app(CarHireQuoteStoreService::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $selectedQuote = [
             'quote_id' => 'quote-123',
@@ -204,7 +204,7 @@ class SkyscannerOfferPageTest extends TestCase
         $store = app(CarHireQuoteStoreService::class);
         $serializer = app(CarHirePublicResponseSerializer::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $quote = [
             'quote_id' => 'quote-parity',
@@ -507,7 +507,7 @@ class SkyscannerOfferPageTest extends TestCase
     {
         $store = app(CarHireQuoteStoreService::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $store->put([
             'quote_id' => 'quote-expired',
@@ -534,7 +534,7 @@ class SkyscannerOfferPageTest extends TestCase
     {
         $store = app(CarHireQuoteStoreService::class);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
+        \Illuminate\Support\Carbon::setTestNow(CarbonImmutable::create(2026, 7, 11, 10, 0, 0, 'UTC'));
 
         $unifiedLocation = [
             'unified_location_id' => 3385755165,

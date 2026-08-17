@@ -3,7 +3,6 @@
 namespace App\Services\MerchantFeeds;
 
 use App\Models\Vehicle;
-use App\Services\Pricing\PayablePercentageService;
 use App\Services\Search\InternalSearchVehicleFactory;
 use App\Services\Vehicles\GatewayVehicleTransformer;
 
@@ -14,7 +13,6 @@ class MerchantFeedItemBuilder
     public function __construct(
         private readonly InternalSearchVehicleFactory $internalVehicleFactory,
         private readonly GatewayVehicleTransformer $gatewayVehicleTransformer,
-        private readonly PayablePercentageService $payablePercentageService,
     ) {}
 
     public function fromInternalVehicle(Vehicle $vehicle, bool $available, array $window, string $feedName = 'awin'): ?array
@@ -36,7 +34,7 @@ class MerchantFeedItemBuilder
 
         $feedKey = 'internal-'.$vehicle->id;
         $currency = $this->currency(data_get($normalized, 'pricing.currency'));
-        $grossPrice = $this->grossPrice($price);
+        $grossPrice = $this->grossPrice($price, 'internal');
         $locationName = $this->cleanText($vehicle->vendorLocation?->name ?: $vehicle->location ?: $vehicle->city ?: $vehicle->country, 191);
         $title = $this->title([
             $normalized['display_name'] ?? trim($vehicle->brand.' '.$vehicle->model),
@@ -100,7 +98,7 @@ class MerchantFeedItemBuilder
         $providerVehicleId = $this->providerVehicleId($vehicle, $gatewayVehicle);
         $feedKey = $this->externalFeedKey($provider, $providerVehicleId, $vehicle, $location);
         $currency = $this->currency(data_get($vehicle, 'currency') ?? data_get($vehicle, 'pricing.currency') ?? $window['currency'] ?? null);
-        $grossPrice = $this->grossPrice($price);
+        $grossPrice = $this->grossPrice($price, $provider);
         $locationName = $this->cleanText($location['place_name'] ?? $location['name'] ?? 'Selected location', 191);
         $displayName = $this->cleanText(
             data_get($vehicle, 'display_name')
@@ -320,19 +318,28 @@ class MerchantFeedItemBuilder
         return $price > 0 ? $price : null;
     }
 
-    private function grossPrice(float $netPrice): float
+    // The CHECKOUT markup rule (external inventory only, internal at net) —
+    // the feed must advertise the price the landing page actually charges.
+    // The old deposit-percentage knob overpriced every internal vehicle and
+    // repriced the whole public feed when the admin changed the deposit.
+    private function grossPrice(float $netPrice, ?string $source): float
     {
-        return round($netPrice * (1 + $this->priceMarkupRate()), 2);
+        return $this->markupService()->grossUp($netPrice, $source);
     }
 
     private function priceMarkupRate(): float
     {
-        return $this->priceMarkupRate ??= $this->payablePercentageService->rate();
+        return $this->priceMarkupRate ??= $this->markupService()->rate();
     }
 
     private function paymentPercentage(): float
     {
         return round($this->priceMarkupRate() * 100, 2);
+    }
+
+    private function markupService(): \App\Services\Pricing\CustomerMarkupService
+    {
+        return app(\App\Services\Pricing\CustomerMarkupService::class);
     }
 
     private function validUrl(mixed $value): ?string
