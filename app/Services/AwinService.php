@@ -19,7 +19,7 @@ class AwinService
         }
 
         $voucher = $booking->promo_code ?? null;
-        if (!$voucher) {
+        if (! $voucher) {
             $providerMeta = $booking->provider_metadata;
             if (is_array($providerMeta)) {
                 $voucher = $providerMeta['promo_code'] ?? null;
@@ -35,7 +35,7 @@ class AwinService
             'merchant' => $advertiserId,
             'amount' => $amount,
             'ch' => 'aw',
-            'parts' => 'DEFAULT:' . $amount,
+            'parts' => 'DEFAULT:'.$amount,
             'vc' => $voucher ?? '',
             'cr' => $currency,
             'ref' => $booking->booking_number,
@@ -47,7 +47,16 @@ class AwinService
             $query['cks'] = $awc;
         }
 
-        $url = 'https://www.awin1.com/sread.php?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+        if (($query['testmode'] ?? '0') === '1') {
+            // Defaults to test mode when AWIN_TEST_MODE is missing from .env —
+            // shout about it, or a whole deployment's conversions silently
+            // never validate and publishers go unpaid for months.
+            Log::channel('awin')->warning('Awin S2S: TEST MODE is on — this conversion will NOT validate with Awin', [
+                'booking_id' => $booking->id,
+            ]);
+        }
+
+        $url = 'https://www.awin1.com/sread.php?'.http_build_query($query, '', '&', PHP_QUERY_RFC3986);
 
         Log::channel('awin')->info('Awin S2S: Sending conversion', [
             'booking_id' => $booking->id,
@@ -58,7 +67,7 @@ class AwinService
 
         try {
             $response = Http::withHeaders([
-                'Referer' => rtrim((string) config('app.url', ''), '/') . '/',
+                'Referer' => rtrim((string) config('app.url', ''), '/').'/',
             ])->timeout(15)->get($url);
 
             $status = $response->status();
@@ -79,6 +88,7 @@ class AwinService
                     'booking_id' => $booking->id,
                     'body' => $body,
                 ]);
+
                 return ['success' => true, 'partial' => true, 'status' => $status, 'body' => $body];
             }
 
@@ -87,6 +97,7 @@ class AwinService
                 'status' => $status,
                 'body' => $body,
             ]);
+
             return ['success' => false, 'status' => $status, 'body' => $body];
 
         } catch (\Exception $e) {

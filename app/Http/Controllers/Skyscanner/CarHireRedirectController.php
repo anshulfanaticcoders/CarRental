@@ -44,6 +44,13 @@ class CarHireRedirectController extends Controller
         $quote = $this->quoteStoreService->get($quoteId);
 
         if ($quote === null) {
+            // A real browser must never see raw JSON: deep links older than
+            // the 24h archive are normal Skyscanner traffic (cached SERPs,
+            // link-health crawlers). Send the customer to a fresh search.
+            if (! $this->shouldReturnJson($request)) {
+                return redirect('/'.(app()->getLocale() ?: 'en'));
+            }
+
             return $this->noStoreJson([
                 'error' => 'quote_not_found',
             ], 404);

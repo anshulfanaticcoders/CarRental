@@ -2,28 +2,27 @@
 
 namespace App\Http\Controllers\Vendor;
 
-use App\Http\Controllers\Controller;
-use App\Models\VendorLocation;
-use App\Models\Vehicle;
-use App\Models\VehicleFeature;
-use App\Models\VehicleImage;
-use App\Models\VehicleSpecification;
-use App\Models\VehicleCategory;
-use App\Models\BookingAddon;
-use App\Models\VendorVehicleAddon;
-use App\Models\VehicleOperatingHour;
-use App\Models\VendorVehiclePlan;
 use App\Helpers\ImageCompressionHelper;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log; // Add this line
-use Inertia\Inertia;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
+use App\Http\Controllers\Controller;
+use App\Models\BookingAddon;
+use App\Models\Vehicle;
+use App\Models\VehicleCategory;
+use App\Models\VehicleImage;
+use App\Models\VehicleOperatingHour;
+use App\Models\VehicleSpecification;
+use App\Models\VendorLocation;
+use App\Models\VendorVehicleAddon;
+use App\Models\VendorVehiclePlan;
 use App\Services\Vehicles\SippCodeSuggestionService;
 use App\Services\Vehicles\VehicleDeletionService;
 use App\Services\Vehicles\VendorLocationSyncService;
+use Illuminate\Http\Request; // Add this line
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class VendorVehicleController extends Controller
 {
@@ -31,8 +30,7 @@ class VendorVehicleController extends Controller
         private readonly VendorLocationSyncService $vendorLocationSyncService,
         private readonly SippCodeSuggestionService $sippCodeSuggestionService,
         private readonly VehicleDeletionService $vehicleDeletionService,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -45,12 +43,12 @@ class VendorVehicleController extends Controller
             ->when($vendorLocationId, fn ($query) => $query->where('vendor_location_id', $vendorLocationId))
             ->when($searchQuery, function ($query, $searchQuery) {
                 $query->where(function ($q) use ($searchQuery) {
-                    $q->where('brand', 'like', '%' . $searchQuery . '%')
-                        ->orWhere('model', 'like', '%' . $searchQuery . '%')
-                        ->orWhere('transmission', 'like', '%' . $searchQuery . '%')
-                        ->orWhere('fuel', 'like', '%' . $searchQuery . '%')
-                        ->orWhere('full_vehicle_address', 'like', '%' . $searchQuery . '%')
-                        ->orWhere('status', 'like', '%' . $searchQuery . '%');
+                    $q->where('brand', 'like', '%'.$searchQuery.'%')
+                        ->orWhere('model', 'like', '%'.$searchQuery.'%')
+                        ->orWhere('transmission', 'like', '%'.$searchQuery.'%')
+                        ->orWhere('fuel', 'like', '%'.$searchQuery.'%')
+                        ->orWhere('full_vehicle_address', 'like', '%'.$searchQuery.'%')
+                        ->orWhere('status', 'like', '%'.$searchQuery.'%');
                 });
             })
             ->latest()
@@ -64,7 +62,7 @@ class VendorVehicleController extends Controller
             ->map(function ($vehicles, $categoryName) {
                 return [
                     'name' => $categoryName ?: 'Uncategorized',
-                    'count' => $vehicles->count()
+                    'count' => $vehicles->count(),
                 ];
             })
             ->sortByDesc('count')
@@ -85,7 +83,6 @@ class VendorVehicleController extends Controller
             'filters' => $request->all(), // Add the filters to the response
         ]);
     }
-
 
     public function edit($locale, $id)
     {
@@ -164,7 +161,7 @@ class VendorVehicleController extends Controller
             'vehicle_height' => 'nullable|numeric|min:0',
             'dealer_cost' => 'nullable|numeric|min:0',
             'phone_number' => 'required|string|max:30',
-            'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:' . (int) config('vehicle_images.upload_max_kb', 5120),
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg|max:'.(int) config('vehicle_images.upload_max_kb', 5120),
             'primary_image_index' => 'nullable|integer|min:0',
             'existing_primary_image_id' => 'nullable|integer|exists:vehicle_images,id',
 
@@ -235,7 +232,7 @@ class VendorVehicleController extends Controller
         $features = $request->features ?? [];
 
         $selectedPlans = $request->input('selected_plans', []);
-        if (!empty($selectedPlans)) {
+        if (! empty($selectedPlans)) {
             $pricePerDay = $request->price_per_day ?? 0;
             foreach ($selectedPlans as $selectedPlan) {
                 $planType = $selectedPlan['plan_type'] ?? '';
@@ -244,9 +241,9 @@ class VendorVehicleController extends Controller
                 }
 
                 $planValue = $selectedPlan['plan_value'] ?? null;
-                if (!is_numeric($planValue) || $planValue < $pricePerDay) {
+                if (! is_numeric($planValue) || $planValue < $pricePerDay) {
                     throw ValidationException::withMessages([
-                        'selected_plans' => ['Protection plan price must be at least the daily price.']
+                        'selected_plans' => ['Protection plan price must be at least the daily price.'],
                     ]);
                 }
             }
@@ -256,18 +253,18 @@ class VendorVehicleController extends Controller
         $addonPrices = $request->input('addon_prices', []);
         $addonQuantities = $request->input('addon_quantities', []);
         $customAddons = $request->input('custom_addons', []);
-        if (!empty($selectedAddons)) {
+        if (! empty($selectedAddons)) {
             foreach ($selectedAddons as $addonId) {
                 $price = $addonPrices[$addonId] ?? null;
                 $quantity = $addonQuantities[$addonId] ?? null;
-                if (!is_numeric($price) || $price < 0) {
+                if (! is_numeric($price) || $price < 0) {
                     throw ValidationException::withMessages([
-                        'addon_prices' => ['Please provide a valid price for each selected addon.']
+                        'addon_prices' => ['Please provide a valid price for each selected addon.'],
                     ]);
                 }
-                if (!is_numeric($quantity) || $quantity < 1) {
+                if (! is_numeric($quantity) || $quantity < 1) {
                     throw ValidationException::withMessages([
-                        'addon_quantities' => ['Please provide a valid quantity for each selected addon.']
+                        'addon_quantities' => ['Please provide a valid quantity for each selected addon.'],
                     ]);
                 }
             }
@@ -301,7 +298,7 @@ class VendorVehicleController extends Controller
                     (int) $request->input('vendor_location_id')
                 );
 
-                if (!$vendorLocation) {
+                if (! $vendorLocation) {
                     throw ValidationException::withMessages([
                         'vendor_location_id' => ['Please select a valid vendor location.'],
                     ]);
@@ -369,15 +366,13 @@ class VendorVehicleController extends Controller
                     'return_times' => $request->return_times,
                 ]);
 
-
-
                 if ($vehicle->benefits) {
                     $vehicle->benefits()->update($benefitsData);
                 } else {
                     $vehicle->benefits()->create($benefitsData);
                 }
 
-        // Update or create specifications
+                // Update or create specifications
                 if ($vehicle->specifications) {
                     $vehicle->specifications()->update([
                         'registration_number' => $request->registration_number,
@@ -417,7 +412,7 @@ class VendorVehicleController extends Controller
                 }
 
                 VendorVehiclePlan::where('vehicle_id', $vehicle->id)->delete();
-                if (!empty($selectedPlans)) {
+                if (! empty($selectedPlans)) {
                     $planId = 1;
                     foreach ($selectedPlans as $selectedPlan) {
                         $planType = $selectedPlan['plan_type'] ?? 'Basic';
@@ -426,7 +421,7 @@ class VendorVehicleController extends Controller
                         }
 
                         $features = isset($selectedPlan['features']) && is_array($selectedPlan['features'])
-                            ? array_values(array_filter($selectedPlan['features'], fn($feature) => trim($feature) !== ''))
+                            ? array_values(array_filter($selectedPlan['features'], fn ($feature) => trim($feature) !== ''))
                             : null;
 
                         VendorVehiclePlan::create([
@@ -444,10 +439,10 @@ class VendorVehicleController extends Controller
                 }
 
                 VendorVehicleAddon::where('vehicle_id', $vehicle->id)->delete();
-                if (!empty($selectedAddons)) {
+                if (! empty($selectedAddons)) {
                     foreach ($selectedAddons as $addonId) {
                         $addon = BookingAddon::find($addonId);
-                        if (!$addon) {
+                        if (! $addon) {
                             continue;
                         }
 
@@ -464,7 +459,7 @@ class VendorVehicleController extends Controller
                     }
                 }
 
-                if (!empty($customAddons)) {
+                if (! empty($customAddons)) {
                     foreach ($customAddons as $customAddon) {
                         $extraName = trim($customAddon['extra_name'] ?? '');
                         if ($extraName === '') {
@@ -512,20 +507,21 @@ class VendorVehicleController extends Controller
             }
             if ($request->wantsJson()) {
                 return response()->json([
-                    'message' => 'We could not update this vehicle. Please review the form and try again.'
+                    'message' => 'We could not update this vehicle. Please review the form and try again.',
                 ], 500);
             }
+
             return back()->with('error', 'We could not update this vehicle. Please review the form and try again.')
                 ->withInput();
         }
 
         // Handle vehicle images if included in the request
         // Handle primary image update for existing images
-        if ($request->filled('existing_primary_image_id') && !$request->hasFile('images')) {
+        if ($request->filled('existing_primary_image_id') && ! $request->hasFile('images')) {
             VehicleImage::where('vehicle_id', $vehicle->id)->update(['image_type' => 'gallery']); // Reset all to gallery
             VehicleImage::where('id', $request->existing_primary_image_id)
-                        ->where('vehicle_id', $vehicle->id)
-                        ->update(['image_type' => 'primary']);
+                ->where('vehicle_id', $vehicle->id)
+                ->update(['image_type' => 'primary']);
         }
 
         // Handle vehicle images if included in the request
@@ -537,36 +533,35 @@ class VendorVehicleController extends Controller
                 return redirect()->back()->with('error', 'Maximum of 20 images allowed');
             }
 
-            $primaryImageIndex = $request->filled('primary_image_index') ? (int)$request->primary_image_index : -1; // -1 if not making a new image primary
+            $primaryImageIndex = $request->filled('primary_image_index') ? (int) $request->primary_image_index : -1; // -1 if not making a new image primary
 
             // If a new primary is set, or if existing_primary_image_id was set, ensure all existing are gallery first
             if ($primaryImageIndex !== -1 || $request->filled('existing_primary_image_id')) {
-                 VehicleImage::where('vehicle_id', $vehicle->id)->update(['image_type' => 'gallery']);
+                VehicleImage::where('vehicle_id', $vehicle->id)->update(['image_type' => 'gallery']);
             }
-            
+
             // If existing_primary_image_id is set and it's different from any new primary, prioritize existing.
             if ($request->filled('existing_primary_image_id')) {
                 VehicleImage::where('id', $request->existing_primary_image_id)
-                            ->where('vehicle_id', $vehicle->id)
-                            ->update(['image_type' => 'primary']);
+                    ->where('vehicle_id', $vehicle->id)
+                    ->update(['image_type' => 'primary']);
                 // If an existing image is set to primary, new images cannot also be primary from this batch.
-                $primaryImageIndex = -1; 
+                $primaryImageIndex = -1;
             }
-
 
             foreach ($request->file('images') as $index => $image) {
                 $folderName = 'vehicle_images';
                 $imageValidationError = ImageCompressionHelper::validateVehicleImageUpload($image);
                 if ($imageValidationError !== null) {
                     return redirect()->back()->withErrors([
-                        'images' => $image->getClientOriginalName() . ': ' . $imageValidationError,
+                        'images' => $image->getClientOriginalName().': '.$imageValidationError,
                     ])->withInput();
                 }
 
                 $compressedImageSet = ImageCompressionHelper::compressVehicleImageSet($image, $folderName);
 
-                if (!$compressedImageSet) {
-                    return redirect()->back()->with('error', 'Failed to compress image: ' . $image->getClientOriginalName());
+                if (! $compressedImageSet) {
+                    return redirect()->back()->with('error', 'Failed to compress image: '.$image->getClientOriginalName());
                 }
 
                 $imageType = 'gallery';
@@ -575,7 +570,7 @@ class VendorVehicleController extends Controller
                     // Ensure all other images (existing and newly added in this loop before this one) are gallery
                     VehicleImage::where('vehicle_id', $vehicle->id)->update(['image_type' => 'gallery']);
                     $imageType = 'primary';
-                } elseif ($vehicle->images()->where('image_type', 'primary')->doesntExist() && $index === 0 && $primaryImageIndex === -1 && !$request->filled('existing_primary_image_id')) {
+                } elseif ($vehicle->images()->where('image_type', 'primary')->doesntExist() && $index === 0 && $primaryImageIndex === -1 && ! $request->filled('existing_primary_image_id')) {
                     // If no primary is set yet (neither existing nor new), make the first uploaded image primary
                     $imageType = 'primary';
                 }
@@ -594,7 +589,6 @@ class VendorVehicleController extends Controller
                 ]);
             }
         }
-
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -628,7 +622,7 @@ class VendorVehicleController extends Controller
             'full_vehicle_address' => 'nullable|string|max:255',
         ]);
 
-        if (!isset($validated['full_vehicle_address']) || $validated['full_vehicle_address'] === '') {
+        if (! isset($validated['full_vehicle_address']) || $validated['full_vehicle_address'] === '') {
             $addressParts = array_filter([
                 $validated['location'] ?? null,
                 $validated['city'] ?? null,
@@ -718,7 +712,15 @@ class VendorVehicleController extends Controller
     {
         $vendorId = auth()->id();
         $vehicle = Vehicle::where('vendor_id', $vendorId)->findOrFail($id);
-        $this->vehicleDeletionService->delete($vehicle);
+
+        try {
+            $this->vehicleDeletionService->delete($vehicle);
+        } catch (\RuntimeException $e) {
+            // Active customer/partner bookings block the delete — tell the
+            // vendor why instead of a 500.
+            return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
+                ->with('error', $e->getMessage());
+        }
 
         return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
             ->with('success', 'Vehicle deleted successfully');
@@ -728,8 +730,9 @@ class VendorVehicleController extends Controller
     {
         $image = VehicleImage::where('vehicle_id', $vehicleId)->where('id', $imageId)->first();
 
-        if (!$image) {
+        if (! $image) {
             Log::warning("Image not found for deletion. Vehicle ID: {$vehicleId}, Image ID: {$imageId}"); // Log if image not found
+
             return response()->json(['message' => 'Image not found'], 404);
         }
 
@@ -741,7 +744,6 @@ class VendorVehicleController extends Controller
                 }
             }
         }
-
 
         // Delete from database
         $image->delete();
@@ -761,23 +763,23 @@ class VendorVehicleController extends Controller
 
         // Fetch only vehicles that belong to the authenticated vendor
         $vehicles = Vehicle::where('vendor_id', $vendorId)
-                            ->whereIn('id', $vehicleIdsToDelete)
-                            ->with('images') // Eager load images
-                            ->get();
+            ->whereIn('id', $vehicleIdsToDelete)
+            ->with('images') // Eager load images
+            ->get();
 
         if ($vehicles->isEmpty()) {
             return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
-                             ->with('error', 'No vehicles found or you do not have permission to delete them.');
+                ->with('error', 'No vehicles found or you do not have permission to delete them.');
         }
 
         $deletedCount = $this->vehicleDeletionService->deleteMany($vehicles);
 
         if ($deletedCount > 0) {
             return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
-                             ->with('success', $deletedCount . ' vehicle(s) deleted successfully.');
+                ->with('success', $deletedCount.' vehicle(s) deleted successfully.');
         }
 
         return redirect()->route('current-vendor-vehicles.index', ['locale' => app()->getLocale()])
-                         ->with('error', 'Could not delete the selected vehicles.');
+            ->with('error', 'Could not delete the selected vehicles.');
     }
 }

@@ -17,6 +17,19 @@ const liveBooking = computed(() => page.props.booking || booking);
 const vehicle = props.vehicle || {};
 const locale = props.locale || 'en';
 const awinTestMode = ['1', 1, true, 'true'].includes(props.awin_test_mode) ? '1' : '0';
+const awinEnabled = Boolean(props.awin_enabled);
+const awinMerchantId = props.awin_advertiser_id || '';
+// One conversion signal per booking, ever: the supplier-pending poll reloads
+// this page every 20s and a refresh re-runs onMounted — without this guard
+// each of those re-pushed a 'purchase' to the Awin tag.
+const awinAlreadySignalled = (bookingNumber) => {
+  const key = `awin_signalled_${bookingNumber}`;
+  try {
+    if (window.sessionStorage.getItem(key)) return true;
+    window.sessionStorage.setItem(key, '1');
+  } catch { /* storage unavailable — fall through and signal once */ }
+  return false;
+};
 
 const pickupDetails = computed(() => booking?.provider_metadata?.pickup_location_details || null);
 const dropoffDetails = computed(() => booking?.provider_metadata?.dropoff_location_details || null);
@@ -120,7 +133,7 @@ onUnmounted(() => { if (supplierPollTimer) clearInterval(supplierPollTimer); });
 onMounted(() => {
   startSupplierPolling();
   // Never report a purchase conversion for a booking that could not be completed.
-  if (booking && booking.booking_number && !isFailedState.value) {
+  if (awinEnabled && booking && booking.booking_number && !isFailedState.value && !awinAlreadySignalled(booking.booking_number)) {
     const amount = parseFloat(booking.total_amount || 0).toFixed(2);
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
@@ -270,8 +283,8 @@ onMounted(() => {
 
           <!-- Awin fallback tracking pixel -->
           <img
-            v-if="booking && booking.booking_number && !isFailedState"
-            :src="`https://www.awin1.com/sread.img?tt=ns&tv=2&merchant=126167&amount=${parseFloat(booking.total_amount || 0).toFixed(2)}&ch=aw&parts=DEFAULT:${parseFloat(booking.total_amount || 0).toFixed(2)}&ref=${encodeURIComponent(booking.booking_number)}&cr=${booking.booking_currency || 'EUR'}&vc=${encodeURIComponent(booking.discount_code || '')}&testmode=${awinTestMode}`"
+            v-if="awinEnabled && awinMerchantId && booking && booking.booking_number && !isFailedState"
+            :src="`https://www.awin1.com/sread.img?tt=ns&tv=2&merchant=${encodeURIComponent(awinMerchantId)}&amount=${parseFloat(booking.total_amount || 0).toFixed(2)}&ch=aw&parts=DEFAULT:${parseFloat(booking.total_amount || 0).toFixed(2)}&ref=${encodeURIComponent(booking.booking_number)}&cr=${booking.booking_currency || 'EUR'}&vc=${encodeURIComponent(booking.discount_code || '')}&testmode=${awinTestMode}`"
             width="0"
             height="0"
             style="display: none;"

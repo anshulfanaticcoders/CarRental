@@ -38,6 +38,29 @@ class AdminVehicleDeletionTest extends TestCase
         Storage::disk('upcloud')->assertMissing('damage_protections/after/after-proof.jpg');
     }
 
+    public function test_a_vehicle_with_an_active_partner_booking_cannot_be_deleted(): void
+    {
+        // Deleting a vehicle used to hard-delete its partner bookings with it:
+        // the partner's customer kept a valid-looking VRO- reference for a
+        // booking that no longer existed and found out at the counter.
+        Storage::fake('upcloud');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $vehicle = $this->createVehicle();
+        $this->attachVehicleArtifacts($vehicle);
+        \App\Models\ApiBooking::query()
+            ->where('vehicle_id', $vehicle->id)
+            ->update(['status' => 'confirmed', 'return_date' => now()->addDays(5)]);
+
+        $response = $this->actingAs($admin)
+            ->from(route('admin.vehicles.index'))
+            ->delete(route('admin.vehicles.destroy', ['vendor_vehicle' => $vehicle->id]));
+
+        $response->assertSessionHas('error');
+        $this->assertDatabaseHas('vehicles', ['id' => $vehicle->id]);
+        $this->assertDatabaseHas('api_bookings', ['vehicle_id' => $vehicle->id, 'status' => 'confirmed']);
+    }
+
     public function test_admin_bulk_delete_removes_all_selected_vehicles_and_related_storage_artifacts(): void
     {
         Storage::fake('upcloud');
@@ -72,7 +95,7 @@ class AdminVehicleDeletionTest extends TestCase
         $category = VehicleCategory::query()->create([
             'name' => "{$brand} Category",
             'description' => 'Test category',
-            'slug' => strtolower($brand) . '-category-' . fake()->unique()->numerify('###'),
+            'slug' => strtolower($brand).'-category-'.fake()->unique()->numerify('###'),
         ]);
 
         return Vehicle::query()->create([
@@ -131,7 +154,7 @@ class AdminVehicleDeletionTest extends TestCase
         ]);
 
         $booking = Booking::query()->create([
-            'booking_number' => 'BK' . fake()->unique()->numerify('######'),
+            'booking_number' => 'BK'.fake()->unique()->numerify('######'),
             'customer_id' => $customer->id,
             'vehicle_id' => $vehicle->id,
             'vehicle_name' => "{$vehicle->brand} {$vehicle->model}",
@@ -146,7 +169,7 @@ class AdminVehicleDeletionTest extends TestCase
             'discount_amount' => 0,
             'total_amount' => 200,
             'payment_status' => 'succeeded',
-            'booking_status' => 'confirmed',
+            'booking_status' => 'completed', // historical — active bookings now BLOCK deletion
         ]);
 
         DamageProtection::query()->create([
@@ -188,7 +211,7 @@ class AdminVehicleDeletionTest extends TestCase
             'extras_total' => 0,
             'total_amount' => 200,
             'currency' => 'EUR',
-            'status' => 'confirmed',
+            'status' => 'completed', // historical — active partner bookings now BLOCK deletion
         ]);
     }
 }

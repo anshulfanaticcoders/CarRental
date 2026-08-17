@@ -369,7 +369,8 @@ class StripeBookingService
         $lockedVehicleId = null;
         if (($metadata->vehicle_source ?? '') === 'internal' && ! empty($metadata->vehicle_id)) {
             $lockedVehicleId = (int) $metadata->vehicle_id;
-            $availabilityLock = Cache::lock("booking-vehicle-{$lockedVehicleId}", 30);
+            // Shared "vehicle-lock-{id}" namespace with checkout + partner API.
+            $availabilityLock = Cache::lock("vehicle-lock-{$lockedVehicleId}", 30);
             if (! $availabilityLock->block(10)) {
                 Log::error('StripeBookingService: Could not acquire availability lock', [
                     'session_id' => $session->id,

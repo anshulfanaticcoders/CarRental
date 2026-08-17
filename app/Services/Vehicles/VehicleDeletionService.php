@@ -11,6 +11,12 @@ class VehicleDeletionService
 {
     public function delete(Vehicle $vehicle): void
     {
+        // A deleted vehicle used to hard-delete its partner bookings with it —
+        // no status guard, no notification. The partner's customer kept a
+        // valid-looking VRO- reference for a booking that no longer existed
+        // and found out at the counter. Active obligations block the delete.
+        $this->assertNoActiveObligations($vehicle);
+
         $vehicle->loadMissing(['images', 'bookings.damageProtection']);
 
         foreach ($vehicle->images as $image) {
@@ -21,16 +27,16 @@ class VehicleDeletionService
         foreach ($vehicle->bookings as $booking) {
             $damageProtection = $booking->damageProtection;
 
-            if (!$damageProtection) {
+            if (! $damageProtection) {
                 continue;
             }
 
             foreach ($damageProtection->before_images ?? [] as $imageKey) {
-                $this->deleteStoragePath('damage_protections/before/' . $imageKey);
+                $this->deleteStoragePath('damage_protections/before/'.$imageKey);
             }
 
             foreach ($damageProtection->after_images ?? [] as $imageKey) {
-                $this->deleteStoragePath('damage_protections/after/' . $imageKey);
+                $this->deleteStoragePath('damage_protections/after/'.$imageKey);
             }
         }
 
@@ -40,14 +46,51 @@ class VehicleDeletionService
         });
     }
 
+    public function hasActiveObligations(Vehicle $vehicle): bool
+    {
+        $activePartnerBooking = ApiBooking::query()
+            ->where('vehicle_id', $vehicle->id)
+            ->where('is_test', false)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->where('return_date', '>=', now()->startOfDay())
+            ->exists();
+
+        $activeCustomerBooking = $vehicle->bookings()
+            ->whereNotIn('booking_status', ['cancelled', 'completed', 'rejected', 'expired'])
+            ->where('return_date', '>=', now()->startOfDay())
+            ->exists();
+
+        return $activePartnerBooking || $activeCustomerBooking;
+    }
+
+    private function assertNoActiveObligations(Vehicle $vehicle): void
+    {
+        if ($this->hasActiveObligations($vehicle)) {
+            throw new \RuntimeException(
+                'Vehicle #'.$vehicle->id.' has active bookings (customer or partner API). '
+                .'Cancel or complete them before deleting the vehicle.'
+            );
+        }
+    }
+
     /**
-     * @param \Illuminate\Support\Collection<int, Vehicle>|\Illuminate\Database\Eloquent\Collection<int, Vehicle>|array<int, Vehicle> $vehicles
+     * @param  \Illuminate\Support\Collection<int, Vehicle>|\Illuminate\Database\Eloquent\Collection<int, Vehicle>|array<int, Vehicle>  $vehicles
      */
     public function deleteMany(iterable $vehicles): int
     {
         $deletedCount = 0;
 
         foreach ($vehicles as $vehicle) {
+            // One blocked vehicle must not poison the whole batch — skip it,
+            // log it, keep deleting the rest.
+            if ($this->hasActiveObligations($vehicle)) {
+                \Illuminate\Support\Facades\Log::warning('VehicleDeletionService: skipped vehicle with active bookings', [
+                    'vehicle_id' => $vehicle->id,
+                ]);
+
+                continue;
+            }
+
             $this->delete($vehicle);
             $deletedCount++;
         }
@@ -57,7 +100,7 @@ class VehicleDeletionService
 
     private function deleteStoragePath(?string $path): void
     {
-        if (!$path) {
+        if (! $path) {
             return;
         }
 

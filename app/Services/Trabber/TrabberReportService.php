@@ -64,8 +64,14 @@ class TrabberReportService
 
     public function commissionForBooking(Booking $booking): float
     {
+        // No commission on dead bookings — we used to invoice Trabber full
+        // commission on rows the same report marked 'cancelled'.
+        if ($this->mapStatus((string) $booking->booking_status, (string) $booking->payment_status) === 'cancelled') {
+            return 0.0;
+        }
+
         $metadata = $booking->provider_metadata ?? [];
-        $rate = isset($metadata['trabber_commission_rate'])
+        $rate = isset($metadata['trabber_commission_rate']) && is_numeric($metadata['trabber_commission_rate'])
             ? (float) $metadata['trabber_commission_rate']
             : (float) config('trabber.commission_rate', 0.05);
 

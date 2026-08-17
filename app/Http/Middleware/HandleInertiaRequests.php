@@ -159,6 +159,11 @@ class HandleInertiaRequests extends Middleware
         $sharedData['provider_markup_percent'] = $markupPercent;
         $sharedData['provider_markup_rate'] = $markupPercent / 100;
         $sharedData['awin_test_mode'] = config('awin.test_mode', true) ? '1' : '0';
+        // The client-side pixel/dataLayer must obey the same killswitch and
+        // advertiser id as the S2S job — the merchant id was hardcoded in Vue
+        // and the pixel kept firing with AWIN_ENABLED=false.
+        $sharedData['awin_enabled'] = (bool) config('awin.enabled', false);
+        $sharedData['awin_advertiser_id'] = (string) config('awin.advertiser_id', '');
 
         $sharedData['active_offers'] = function () {
             $offerService = app(OfferService::class);

@@ -408,7 +408,9 @@ class InternalProviderController extends Controller
             ], 409);
         }
 
-        $availabilityLock = Cache::lock("api-booking-vehicle-{$vehicle->id}", 30);
+        // Shared namespace with the customer checkout paths — see
+        // StripeCheckoutController::reserveInternalVehicleForCheckout.
+        $availabilityLock = Cache::lock("vehicle-lock-{$vehicle->id}", 30);
         $lockAcquired = false;
         try {
             $availabilityLock->block(10);

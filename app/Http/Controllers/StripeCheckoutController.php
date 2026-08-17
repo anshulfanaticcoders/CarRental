@@ -142,7 +142,10 @@ class StripeCheckoutController extends Controller
             return ['success' => true, 'hold' => $existingHold];
         }
 
-        $lock = Cache::lock("booking-hold-vehicle-{$vehicleId}", 10);
+        // Shared "vehicle-lock-{id}" namespace across checkout holds, webhook
+        // fulfilment and the partner API — three disjoint lock names on the
+        // same physical car excluded nobody and allowed double-booking.
+        $lock = Cache::lock("vehicle-lock-{$vehicleId}", 10);
         $lockAcquired = false;
 
         try {

@@ -12,8 +12,7 @@ class VehicleDashboardController extends Controller
 {
     public function __construct(
         private readonly VehicleDeletionService $vehicleDeletionService,
-    ) {
-    }
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -30,24 +29,24 @@ class VehicleDashboardController extends Controller
         if ($search) {
             $vehiclesQuery->where(function ($query) use ($search) {
                 $query->where('brand', 'like', "%{$search}%")
-                      ->orWhere('model', 'like', "%{$search}%")
-                      ->orWhere('status', 'like', "%{$search}%")
-                      ->orWhere('color', 'like', "%{$search}%")
-                      ->orWhere('price_per_day', 'like', "%{$search}%")
-                      ->orWhere('full_vehicle_address', 'like', "%{$search}%")
-                      ->orWhereHas('vendorLocation', function ($locationQuery) use ($search) {
-                          $locationQuery->where('name', 'like', "%{$search}%")
-                              ->orWhere('city', 'like', "%{$search}%")
-                              ->orWhere('country', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('vendorProfileData', function ($vendorProfileQuery) use ($search) {
-                          $vendorProfileQuery->where('company_name', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('User', function ($userQuery) use ($search) {
-                          $userQuery->where('first_name', 'like', "%{$search}%")
-                               ->orWhere('last_name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                      });
+                    ->orWhere('model', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhere('color', 'like', "%{$search}%")
+                    ->orWhere('price_per_day', 'like', "%{$search}%")
+                    ->orWhere('full_vehicle_address', 'like', "%{$search}%")
+                    ->orWhereHas('vendorLocation', function ($locationQuery) use ($search) {
+                        $locationQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('city', 'like', "%{$search}%")
+                            ->orWhere('country', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('vendorProfileData', function ($vendorProfileQuery) use ($search) {
+                        $vendorProfileQuery->where('company_name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('User', function ($userQuery) use ($search) {
+                        $userQuery->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -108,16 +107,16 @@ class VehicleDashboardController extends Controller
 
         // Construct full_vehicle_address
         $fullAddressParts = [];
-        if (!empty($validatedData['location'])) {
+        if (! empty($validatedData['location'])) {
             $fullAddressParts[] = $validatedData['location'];
         }
-        if (!empty($validatedData['city'])) {
+        if (! empty($validatedData['city'])) {
             $fullAddressParts[] = $validatedData['city'];
         }
-        if (!empty($validatedData['state'])) {
+        if (! empty($validatedData['state'])) {
             $fullAddressParts[] = $validatedData['state'];
         }
-        if (!empty($validatedData['country'])) {
+        if (! empty($validatedData['country'])) {
             $fullAddressParts[] = $validatedData['country'];
         }
         $validatedData['full_vehicle_address'] = implode(', ', array_filter($fullAddressParts));
@@ -134,13 +133,23 @@ class VehicleDashboardController extends Controller
     {
         $vehicleId = $vendor_vehicle->id;
 
+        // Inline pre-check so the admin sees WHY, instead of the queued
+        // deletion silently skipping the vehicle later.
+        if (app(VehicleDeletionService::class)->hasActiveObligations($vendor_vehicle)) {
+            $message = 'This vehicle has active bookings (customer or partner API). Cancel or complete them first.';
+
+            return request()->expectsJson()
+                ? response()->json(['message' => $message], 422)
+                : redirect()->route('admin.vehicles.index')->with('error', $message);
+        }
+
         dispatch(function () use ($vehicleId) {
             $vehicle = Vehicle::query()
                 ->whereKey($vehicleId)
                 ->with(['images', 'bookings.damageProtection'])
                 ->first();
 
-            if (!$vehicle) {
+            if (! $vehicle) {
                 return;
             }
 
