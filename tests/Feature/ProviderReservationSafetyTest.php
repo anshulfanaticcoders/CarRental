@@ -111,6 +111,24 @@ class ProviderReservationSafetyTest extends TestCase
     }
 
     #[Test]
+    public function a_booking_cancelled_mid_retry_is_not_reserved_at_the_supplier(): void
+    {
+        // Retries back off up to an hour; admin can cancel in that window. The
+        // queued attempt must not reserve a real car for a dead booking.
+        $booking = $this->paidBooking([
+            'booking_number' => 'BK-PROVIDER-SAFETY-5',
+            'booking_status' => 'cancelled',
+        ]);
+
+        $service = \Mockery::mock(\App\Services\StripeBookingService::class);
+        $service->shouldNotReceive('triggerGatewayReservation');
+
+        (new TriggerProviderReservationJob($booking->id, []))->handle($service);
+
+        $this->assertSame('cancelled', $booking->refresh()->booking_status);
+    }
+
+    #[Test]
     public function an_unknown_outcome_is_not_retried_into_a_double_booking(): void
     {
         // ReservationOutcomeUnknownException means the supplier MIGHT hold a

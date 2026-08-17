@@ -56,6 +56,18 @@ class TriggerProviderReservationJob implements ShouldQueue
             return;
         }
 
+        // Retries back off up to an hour — the booking can be cancelled (admin or
+        // customer) while an attempt is still queued. Reserving a real car at the
+        // supplier for a dead booking costs money nobody collects.
+        if (in_array($booking->booking_status, ['cancelled', 'rejected', 'expired', 'completed', 'reservation_failed'], true)) {
+            Log::info('TriggerProviderReservationJob: booking no longer eligible for reservation, skipping', [
+                'booking_id' => $booking->id,
+                'booking_status' => $booking->booking_status,
+            ]);
+
+            return;
+        }
+
         try {
             $service->triggerGatewayReservation($booking, (object) $this->metadata);
         } catch (ReservationOutcomeUnknownException $e) {
