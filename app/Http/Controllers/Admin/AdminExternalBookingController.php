@@ -22,15 +22,18 @@ class AdminExternalBookingController extends Controller
         $bookings = ApiBooking::with(['consumer', 'vehicle.vendor.vendorProfile'])
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('booking_number', 'like', '%' . $search . '%')
-                      ->orWhere('driver_first_name', 'like', '%' . $search . '%')
-                      ->orWhere('driver_last_name', 'like', '%' . $search . '%')
-                      ->orWhere('driver_email', 'like', '%' . $search . '%')
-                      ->orWhere('vehicle_name', 'like', '%' . $search . '%');
+                    $q->where('booking_number', 'like', '%'.$search.'%')
+                        ->orWhere('driver_first_name', 'like', '%'.$search.'%')
+                        ->orWhere('driver_last_name', 'like', '%'.$search.'%')
+                        ->orWhere('driver_email', 'like', '%'.$search.'%')
+                        ->orWhere('vehicle_name', 'like', '%'.$search.'%');
                 });
             })
-            ->when($statusFilter, fn($query, $status) => $query->where('status', $status))
-            ->when($consumerFilter, fn($query, $consumerId) => $query->where('api_consumer_id', $consumerId))
+            ->when($statusFilter, fn ($query, $status) => $query->where('status', $status))
+            ->when($consumerFilter, fn ($query, $consumerId) => $query->where('api_consumer_id', $consumerId))
+            // Sandbox rows interleaved with real ones let admin 'confirm' a
+            // test booking and email its fake driver. Default: real only.
+            ->when($request->input('include_test', '0') !== '1', fn ($query) => $query->where('is_test', false))
             ->orderBy('created_at', 'desc')
             ->paginate(20)
             ->withQueryString();
@@ -43,6 +46,7 @@ class AdminExternalBookingController extends Controller
             'filters' => [
                 'search' => $search,
                 'status' => $statusFilter,
+                'include_test' => $request->input('include_test', '0'),
                 'api_consumer_id' => $consumerFilter,
             ],
         ]);

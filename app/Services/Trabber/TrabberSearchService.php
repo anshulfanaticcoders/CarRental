@@ -112,6 +112,13 @@ class TrabberSearchService
             ->values()
             ->all();
 
+        // One shared write for the whole search; each offer stores a pointer.
+        $sharedKey = (string) Str::uuid();
+        $this->offerStore->putSharedOfferResults($sharedKey, [
+            'search' => $searchPayload,
+            'offers' => $offers,
+        ]);
+
         foreach ($offers as $offer) {
             $offerId = (string) ($offer['offer_id'] ?? '');
 
@@ -119,11 +126,7 @@ class TrabberSearchService
                 continue;
             }
 
-            $this->offerStore->putOfferResults($offerId, [
-                'selected_offer_id' => $offerId,
-                'search' => $searchPayload,
-                'offers' => $offers,
-            ]);
+            $this->offerStore->attachSharedOfferResults($offerId, $sharedKey);
         }
 
         return [

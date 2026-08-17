@@ -64,8 +64,18 @@ class CarHireSearchService
             'quotes' => $quotes,
         ];
 
+        // One shared write for the whole search; each quote stores a pointer.
+        $sharedKey = null;
+        if ($quotes !== []) {
+            $sharedKey = (string) \Illuminate\Support\Str::uuid();
+            $latestExpiry = \Carbon\CarbonImmutable::parse(
+                (string) (collect($quotes)->max('expires_at') ?? now('UTC')->toIso8601String())
+            );
+            $this->quoteStoreService->putSharedOfferResults($sharedKey, $offerResults, $latestExpiry);
+        }
+
         foreach ($quotes as $quote) {
-            $this->quoteStoreService->put($quote, $offerResults);
+            $this->quoteStoreService->put($quote, null, $sharedKey);
             $this->auditLogService->append('quote', (string) $quote['quote_id'], 'quote_created', [
                 'provider_vehicle_id' => $quote['vehicle']['provider_vehicle_id'] ?? null,
                 'currency' => $quote['pricing']['currency'] ?? null,

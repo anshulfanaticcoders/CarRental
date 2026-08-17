@@ -15,7 +15,9 @@ class AffiliateScoutPayoutController extends Controller
 {
     public function index(Request $request)
     {
-        $payouts = AffiliatePayout::with('business:id,name,currency', 'paidBy:id,first_name,last_name')
+        // withTrashed: a soft-deleted partner used to render as a null business
+        // on the payout screen, hiding money still owed.
+        $payouts = AffiliatePayout::with(['business' => fn ($q) => $q->withTrashed()->select('id', 'name', 'currency'), 'paidBy:id,first_name,last_name'])
             ->latest()
             ->paginate(20);
 
@@ -25,7 +27,7 @@ class AffiliateScoutPayoutController extends Controller
             ->whereNull('payout_id')
             ->select('business_id', 'currency', DB::raw('SUM(commission_amount) as total'), DB::raw('COUNT(*) as count'))
             ->groupBy('business_id', 'currency')
-            ->with('business:id,name,currency,bank_name,bank_iban')
+            ->with(['business' => fn ($q) => $q->withTrashed()->select('id', 'name', 'currency', 'bank_name', 'bank_iban')])
             ->get();
 
         return Inertia::render('AdminDashboardPages/Affiliate/Payouts', [

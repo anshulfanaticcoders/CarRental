@@ -9,14 +9,22 @@ class TrabberReportService
 {
     public function rowsSince(CarbonInterface $since): array
     {
-        return Booking::query()
+        // Filter in SQL and chunk: loading a year of ALL bookings into memory
+        // to reject non-Trabber rows in PHP was a scheduled-command OOM
+        // waiting for real volume.
+        $rows = [];
+
+        Booking::query()
             ->where('created_at', '>=', $since)
-            ->orderBy('created_at')
-            ->get()
-            ->filter(fn (Booking $booking) => ($booking->provider_metadata['partner_source'] ?? null) === 'trabber')
-            ->map(fn (Booking $booking) => $this->rowForBooking($booking))
-            ->values()
-            ->all();
+            ->where('provider_metadata->partner_source', 'trabber')
+            ->orderBy('id')
+            ->chunkById(500, function ($bookings) use (&$rows) {
+                foreach ($bookings as $booking) {
+                    $rows[] = $this->rowForBooking($booking);
+                }
+            });
+
+        return $rows;
     }
 
     public function csvSince(CarbonInterface $since): string

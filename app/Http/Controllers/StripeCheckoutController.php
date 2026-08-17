@@ -2386,7 +2386,13 @@ class StripeCheckoutController extends Controller
         $scanId = session('affiliate_data.customer_scan_id');
         if ($scanId) {
             $scanAt = \App\Models\Affiliate\AffiliateCustomerScan::whereKey($scanId)->value('created_at');
-            $candidates['affiliate'] = $scanAt?->toIso8601String();
+            // The attribution window admins configure (session_tracking_hours)
+            // is finally enforced — a scan used to earn commission on every
+            // booking the customer ever made, forever.
+            $windowHours = (int) (\App\Models\Affiliate\AffiliateGlobalSetting::query()->value('session_tracking_hours') ?: 24);
+            if ($scanAt && $scanAt->greaterThanOrEqualTo(now()->subHours(max(1, $windowHours)))) {
+                $candidates['affiliate'] = $scanAt->toIso8601String();
+            }
         }
 
         if ($candidates === []) {

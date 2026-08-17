@@ -19,7 +19,7 @@ class AffiliateBusinessModelService
         // Get global settings
         $globalSettings = AffiliateGlobalSetting::first();
 
-        if (!$globalSettings) {
+        if (! $globalSettings) {
             // Create default global settings if none exist
             $globalSettings = $this->createDefaultGlobalSettings();
         }
@@ -85,7 +85,7 @@ class AffiliateBusinessModelService
             'uuid' => \Str::uuid(),
             'global_discount_type' => 'percentage',
             'global_discount_value' => 0.00,
-            'global_commission_rate' => 0.00,
+            'global_commission_rate' => 3.00, // must match the 3% the dashboards advertise — 0.00 paid every partner nothing
             'global_commission_type' => 'percentage',
             'global_payout_threshold' => 100.00,
             'max_qr_codes_per_business' => 100,
@@ -105,7 +105,7 @@ class AffiliateBusinessModelService
     {
         $globalSettings = AffiliateGlobalSetting::first();
 
-        if (!$globalSettings) {
+        if (! $globalSettings) {
             $globalSettings = $this->createDefaultGlobalSettings();
         }
 
@@ -134,7 +134,7 @@ class AffiliateBusinessModelService
      */
     public function updateBusinessModel(AffiliateBusiness $business, array $data): AffiliateBusinessModel
     {
-        $businessModel = $business->businessModel ?? new AffiliateBusinessModel();
+        $businessModel = $business->businessModel ?? new AffiliateBusinessModel;
 
         $businessModel->business_id = $business->id;
         $businessModel->discount_type = $data['discount_type'] ?? null;

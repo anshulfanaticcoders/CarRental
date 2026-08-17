@@ -58,7 +58,12 @@ class GoogleMerchantXmlWriter
         $deleted = @unlink($tempPath);
 
         if (! $copied || ! $deleted) {
-            throw new RuntimeException("Failed to publish merchant feed {$path}");
+            // A leftover .tmp is regenerated next run — publishing is what failed.
+            if (! $copied) {
+                @unlink($tempPath);
+
+                throw new RuntimeException("Failed to publish merchant feed {$path}");
+            }
         }
     }
 

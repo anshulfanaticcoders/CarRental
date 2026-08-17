@@ -23,6 +23,18 @@ class AffiliateDeletionService
             throw new DomainException('Delete child affiliates first before deleting this affiliate.');
         }
 
+        // Money owed survives the partner: deleting a business with unpaid
+        // commissions used to orphan them on the payout screen (null business,
+        // no way to pay) and silently stop future earning mid-session.
+        $unpaid = \App\Models\Affiliate\AffiliateCommission::where('business_id', $business->id)
+            ->whereIn('status', ['pending', 'approved'])
+            ->count();
+        if ($unpaid > 0) {
+            throw new DomainException(
+                "This affiliate has {$unpaid} unpaid commission(s). Pay or reject them before deleting the business."
+            );
+        }
+
         DB::transaction(function () use ($business, $deleteLinkedUser) {
             $linkedUser = $deleteLinkedUser ? $business->user : null;
 

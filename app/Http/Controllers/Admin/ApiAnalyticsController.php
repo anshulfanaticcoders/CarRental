@@ -117,8 +117,8 @@ class ApiAnalyticsController extends Controller
         $totalBookings = $curBookings->count();
         $prevTotalBookings = $prevBookings->count();
 
-        $totalRevenue = round((float) ApiBooking::where('is_test', false)->whereBetween('created_at', [$from, $to])->sum('total_amount'), 2);
-        $prevTotalRevenue = round((float) ApiBooking::where('is_test', false)->whereBetween('created_at', [$prevFrom, $prevTo])->sum('total_amount'), 2);
+        $totalRevenue = round((float) ApiBooking::where('is_test', false)->whereIn('status', ['confirmed', 'completed'])->whereBetween('created_at', [$from, $to])->sum('total_amount'), 2);
+        $prevTotalRevenue = round((float) ApiBooking::where('is_test', false)->whereIn('status', ['confirmed', 'completed'])->whereBetween('created_at', [$prevFrom, $prevTo])->sum('total_amount'), 2);
 
         return [
             'total_requests' => ['value' => $totalRequests, 'delta' => $this->delta($totalRequests, $prevTotalRequests)],
@@ -190,6 +190,7 @@ class ApiAnalyticsController extends Controller
 
         $rows = ApiBooking::selectRaw("{$expr} as bucket, SUM(total_amount) as total")
             ->where('is_test', false)
+            ->whereIn('status', ['confirmed', 'completed'])
             ->whereBetween('created_at', [$from, $to])
             ->groupBy('bucket')
             ->orderBy('bucket')
@@ -211,7 +212,7 @@ class ApiAnalyticsController extends Controller
 
     private function errorBreakdown(Carbon $from, Carbon $to): array
     {
-        return ApiLog::selectRaw("endpoint, COUNT(*) as total_errors, SUM(CASE WHEN response_status BETWEEN 400 AND 499 THEN 1 ELSE 0 END) as client_errors, SUM(CASE WHEN response_status >= 500 THEN 1 ELSE 0 END) as server_errors")
+        return ApiLog::selectRaw('endpoint, COUNT(*) as total_errors, SUM(CASE WHEN response_status BETWEEN 400 AND 499 THEN 1 ELSE 0 END) as client_errors, SUM(CASE WHEN response_status >= 500 THEN 1 ELSE 0 END) as server_errors')
             ->whereBetween('created_at', [$from, $to])
             ->where('response_status', '>=', 400)
             ->groupBy('endpoint')
@@ -280,6 +281,7 @@ class ApiAnalyticsController extends Controller
 
         $bookingStats = ApiBooking::selectRaw('api_consumer_id, COUNT(*) as bookings, SUM(total_amount) as revenue')
             ->where('is_test', false)
+            ->whereIn('status', ['confirmed', 'completed'])
             ->whereBetween('created_at', [$from, $to])
             ->groupBy('api_consumer_id')
             ->get()
@@ -291,7 +293,7 @@ class ApiAnalyticsController extends Controller
         $result = [];
         foreach ($consumerIds as $id) {
             $consumer = $consumers->get($id);
-            if (!$consumer) {
+            if (! $consumer) {
                 continue;
             }
 

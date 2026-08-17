@@ -22,7 +22,9 @@ class ExportTrabberMonthlyReport extends Command
             (string) config('trabber.monthly_report_filename')
         ));
 
-        $csv = $reports->csvSince(now()->subYear());
+        // Previous calendar month — this was byte-identical to the daily
+        // report (both rolling-year), making one of the two pointless.
+        $csv = $reports->csvSince(now()->subMonthNoOverflow()->startOfMonth());
 
         File::ensureDirectoryExists(dirname($path));
         File::put($path, $csv);

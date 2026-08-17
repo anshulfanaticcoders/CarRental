@@ -18,6 +18,9 @@ class RefreshMerchantFeed extends Command
         try {
             $stats = $refreshService->refresh($feedName);
         } catch (\Throwable $exception) {
+            // report(): the silent catch meant the public feed froze at its
+            // last-good prices and nobody found out until Awin complained.
+            report($exception);
             $this->error("Merchant feed refresh failed for [{$feedName}].");
             $this->line($exception->getMessage());
 

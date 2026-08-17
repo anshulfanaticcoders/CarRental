@@ -22,7 +22,8 @@ class AdminAffiliateController extends Controller
         $totalPartners = AffiliateBusiness::count();
         $activePartners = AffiliateBusiness::where('status', 'active')->count();
         $pendingVerification = AffiliateBusiness::where('verification_status', 'pending')->count();
-        $totalRevenue = AffiliateCommission::sum('commission_amount');
+        // Cost, not revenue — and only for commissions that can actually be owed.
+        $totalRevenue = AffiliateCommission::whereIn('status', ['pending', 'approved', 'paid'])->sum('commission_amount');
         $pendingPayouts = AffiliatePayout::where('status', 'pending')->sum('total_amount');
 
         // Revenue trend: last 30 days grouped by date
@@ -108,7 +109,7 @@ class AdminAffiliateController extends Controller
             ->findOrFail($id);
 
         $commissionStats = [
-            'total' => AffiliateCommission::forBusiness($id)->sum('commission_amount'),
+            'total' => AffiliateCommission::forBusiness($id)->whereIn('status', ['pending', 'approved', 'paid'])->sum('commission_amount'),
             'pending' => AffiliateCommission::forBusiness($id)->pending()->sum('commission_amount'),
             'approved' => AffiliateCommission::forBusiness($id)->approved()->sum('commission_amount'),
             'paid' => AffiliateCommission::forBusiness($id)->paid()->sum('commission_amount'),
@@ -142,7 +143,7 @@ class AdminAffiliateController extends Controller
         try {
             app(AffiliateDeletionService::class)->deleteBusiness($business, true);
         } catch (DomainException $e) {
-            return back()->with('error', 'Delete child affiliates first before deleting this affiliate.');
+            return back()->with('error', $e->getMessage());
         }
 
         return redirect()
@@ -214,7 +215,7 @@ class AdminAffiliateController extends Controller
             'filters' => $request->only(['search', 'status', 'date_from', 'date_to']),
             'stats' => [
                 'total' => AffiliateCommission::count(),
-                'totalAmount' => round((float) AffiliateCommission::sum('commission_amount'), 2),
+                'totalAmount' => round((float) AffiliateCommission::whereIn('status', ['pending', 'approved', 'paid'])->sum('commission_amount'), 2),
                 'pending' => AffiliateCommission::pending()->count(),
                 'pendingAmount' => round((float) AffiliateCommission::pending()->sum('commission_amount'), 2),
                 'approved' => AffiliateCommission::approved()->count(),
@@ -233,6 +234,24 @@ class AdminAffiliateController extends Controller
             'action' => 'required|in:approve,reject',
             'reason' => 'required_if:action,reject|nullable|string|max:1000',
         ]);
+
+        // State guards: rejecting an already-PAID commission left a rejected
+        // row with money sent and a payout total that no longer added up;
+        // approving one whose booking died would queue it for payment again.
+        if ($commission->status === 'paid') {
+            return back()->with('error', 'This commission is already paid — use a clawback/dispute instead of changing its status.');
+        }
+        if (! in_array($commission->status, ['pending', 'approved', 'disputed'], true)) {
+            return back()->with('error', "A {$commission->status} commission cannot be {$validated['action']}d.");
+        }
+        if ($validated['action'] === 'approve') {
+            $bookingDead = $commission->booking
+                && (in_array($commission->booking->booking_status, ['cancelled', 'rejected', 'expired', 'reservation_failed'], true)
+                    || $commission->booking->payment_status === 'refunded');
+            if ($bookingDead) {
+                return back()->with('error', 'The booking behind this commission was cancelled or refunded — it cannot be approved.');
+            }
+        }
 
         if ($validated['action'] === 'approve') {
             $commission->approve(auth()->id());

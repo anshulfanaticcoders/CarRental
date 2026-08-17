@@ -21,7 +21,7 @@ class AffiliateDashboardController extends Controller
         $user = $request->user();
         $business = $user->affiliateBusiness;
 
-        $totalCommissions = AffiliateCommission::where('business_id', $business->id)->sum('commission_amount');
+        $totalCommissions = AffiliateCommission::where('business_id', $business->id)->whereIn('status', ['pending', 'approved', 'paid'])->sum('commission_amount');
         $pendingCommissions = AffiliateCommission::where('business_id', $business->id)->pending()->sum('commission_amount');
         $paidCommissions = AffiliateCommission::where('business_id', $business->id)->paid()->sum('commission_amount');
         $totalBookings = AffiliateCommission::where('business_id', $business->id)->count();
@@ -97,10 +97,13 @@ class AffiliateDashboardController extends Controller
         // Summary stats
         $baseQuery = AffiliateCommission::where('business_id', $business->id);
         $summaryStats = [
-            'total_earned' => round($baseQuery->clone()->sum('commission_amount'), 2),
+            // Rejected/cancelled commissions are not 'earned' — showing them
+            // to the partner guaranteed support disputes.
+            'total_earned' => round($baseQuery->clone()->whereIn('status', ['pending', 'approved', 'paid'])->sum('commission_amount'), 2),
             'pending' => round($baseQuery->clone()->pending()->sum('commission_amount'), 2),
             'paid_out' => round($baseQuery->clone()->paid()->sum('commission_amount'), 2),
             'this_month' => round($baseQuery->clone()
+                ->whereIn('status', ['pending', 'approved', 'paid'])
                 ->whereMonth('created_at', now()->month)
                 ->whereYear('created_at', now()->year)
                 ->sum('commission_amount'), 2),
