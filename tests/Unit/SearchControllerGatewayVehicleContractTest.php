@@ -219,10 +219,12 @@ class SearchControllerGatewayVehicleContractTest extends TestCase
             'insurance_options' => [],
         ], 3);
 
-        $this->assertSame(89.61, $vehicle['total_price']);
-        $this->assertSame(29.87, $vehicle['price_per_day']);
-        $this->assertSame(89.61, $vehicle['products'][0]['total']);
-        $this->assertSame(29.87, $vehicle['products'][0]['price_per_day']);
+        // Adobe's supplier_data.tdr is the DAILY rate, not the booking total
+        // (see GatewayVehicleTransformer): gateway pricing is used as-is.
+        $this->assertSame(268.83, $vehicle['total_price']);
+        $this->assertSame(89.61, $vehicle['price_per_day']);
+        $this->assertSame(268.83, $vehicle['products'][0]['total']);
+        $this->assertSame(89.61, $vehicle['products'][0]['price_per_day']);
         $this->assertSame(89.61, $vehicle['tdr']);
     }
 

@@ -309,7 +309,7 @@ class InternalVehicleAvailabilityServiceTest extends TestCase
         VendorProfile::create([
             'user_id' => $vendor->id,
             'company_name' => 'Airport Fleet Co',
-            'company_email' => 'fleet@example.com',
+            'company_email' => 'fleet-'.$vendor->id.'@example.com', // unique per vendor — the fixture is called more than once per test
             'company_phone_number' => '+971500000000',
             'company_address' => 'Terminal 1',
             'company_gst_number' => 'GST-DXB-' . $vendor->id,
