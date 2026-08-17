@@ -69,7 +69,7 @@ class SendAwinConversion implements ShouldQueue
             $booking->update([
                 'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
                     'awin_conversion_sent_at' => now()->toIso8601String(),
-                    'awin_conversion_amount' => (float) $booking->total_amount,
+                    'awin_conversion_amount' => AwinService::commissionAmountFor($booking),
                     'awin_test_mode' => (bool) config('awin.test_mode', true),
                 ]),
             ]);

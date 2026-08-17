@@ -19,6 +19,15 @@ const locale = props.locale || 'en';
 const awinTestMode = ['1', 1, true, 'true'].includes(props.awin_test_mode) ? '1' : '0';
 const awinEnabled = Boolean(props.awin_enabled);
 const awinMerchantId = props.awin_advertiser_id || '';
+// Must match the S2S job's commission base or Awin receives two different
+// amounts for one ref.
+const awinAmount = (b) => {
+  const base = props.awin_commission_base || 'collected';
+  const value = base === 'gross' ? b.total_amount
+    : base === 'net' ? (b.provider_grand_total || b.total_amount)
+    : b.amount_paid;
+  return parseFloat(value || 0).toFixed(2);
+};
 // One conversion signal per booking, ever: the supplier-pending poll reloads
 // this page every 20s and a refresh re-runs onMounted — without this guard
 // each of those re-pushed a 'purchase' to the Awin tag.
@@ -134,7 +143,7 @@ onMounted(() => {
   startSupplierPolling();
   // Never report a purchase conversion for a booking that could not be completed.
   if (awinEnabled && booking && booking.booking_number && !isFailedState.value && !awinAlreadySignalled(booking.booking_number)) {
-    const amount = parseFloat(booking.total_amount || 0).toFixed(2);
+    const amount = awinAmount(booking);
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       event: 'purchase',
@@ -284,7 +293,7 @@ onMounted(() => {
           <!-- Awin fallback tracking pixel -->
           <img
             v-if="awinEnabled && awinMerchantId && booking && booking.booking_number && !isFailedState"
-            :src="`https://www.awin1.com/sread.img?tt=ns&tv=2&merchant=${encodeURIComponent(awinMerchantId)}&amount=${parseFloat(booking.total_amount || 0).toFixed(2)}&ch=aw&parts=DEFAULT:${parseFloat(booking.total_amount || 0).toFixed(2)}&ref=${encodeURIComponent(booking.booking_number)}&cr=${booking.booking_currency || 'EUR'}&vc=${encodeURIComponent(booking.discount_code || '')}&testmode=${awinTestMode}`"
+            :src="`https://www.awin1.com/sread.img?tt=ns&tv=2&merchant=${encodeURIComponent(awinMerchantId)}&amount=${awinAmount(booking)}&ch=aw&parts=DEFAULT:${awinAmount(booking)}&ref=${encodeURIComponent(booking.booking_number)}&cr=${booking.booking_currency || 'EUR'}&vc=${encodeURIComponent(booking.discount_code || '')}&testmode=${awinTestMode}`"
             width="0"
             height="0"
             style="display: none;"

@@ -216,6 +216,131 @@ class PartnerApiBookingTest extends TestCase
     }
 
     #[Test]
+    public function a_valid_api_key_overrides_the_client_asserted_consumer_id(): void
+    {
+        // Identity used to be whatever api_consumer_id the caller typed —
+        // anyone with the shared gateway token could book as any partner.
+        $realConsumer = $this->consumer();
+        $victimConsumer = $this->consumer();
+        $plaintext = 'vrm_live_'.bin2hex(random_bytes(20));
+        \App\Models\ApiKey::create([
+            'api_consumer_id' => $realConsumer->id,
+            'key_hash' => hash('sha256', $plaintext),
+            'key_prefix' => substr($plaintext, 0, 12),
+            'name' => 'Test', 'status' => 'active',
+            'scopes' => ['vehicles:search', 'bookings:create', 'bookings:read', 'bookings:cancel'],
+        ]);
+
+        $this->postJson('/api/internal/provider/bookings',
+            $this->bookingPayload($this->vehicle(), $victimConsumer), // lies about identity
+            $this->gatewayHeaders() + ['X-Api-Key' => $plaintext])
+            ->assertCreated();
+
+        $this->assertSame($realConsumer->id, ApiBooking::first()->api_consumer_id,
+            'The booking must belong to the KEY owner, not the claimed id.');
+    }
+
+    #[Test]
+    public function a_revoked_key_is_rejected_and_a_suspended_consumer_cannot_book(): void
+    {
+        $consumer = $this->consumer();
+        $plaintext = 'vrm_live_'.bin2hex(random_bytes(20));
+        $key = \App\Models\ApiKey::create([
+            'api_consumer_id' => $consumer->id,
+            'key_hash' => hash('sha256', $plaintext),
+            'key_prefix' => substr($plaintext, 0, 12),
+            'name' => 'Test', 'status' => 'revoked',
+            'scopes' => ['bookings:create'],
+        ]);
+
+        $this->postJson('/api/internal/provider/bookings',
+            $this->bookingPayload($this->vehicle(), $consumer),
+            $this->gatewayHeaders() + ['X-Api-Key' => $plaintext])
+            ->assertStatus(401)
+            ->assertJsonPath('error.code', 'INVALID_API_KEY');
+
+        // Suspension must block even the legacy keyless path.
+        $consumer->update(['status' => 'suspended']);
+        $this->postJson('/api/internal/provider/bookings',
+            $this->bookingPayload($this->vehicle(), $consumer),
+            $this->gatewayHeaders())
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'CONSUMER_SUSPENDED');
+    }
+
+    #[Test]
+    public function a_configured_partner_markup_is_recorded_as_settlement(): void
+    {
+        config(['vrooem.partner_markup_percent' => 10]);
+
+        $this->postJson('/api/internal/provider/bookings',
+            $this->bookingPayload($this->vehicle(), $this->consumer()),
+            $this->gatewayHeaders())
+            ->assertCreated();
+
+        $booking = ApiBooking::first();
+        $this->assertSame('150.00', (string) $booking->vendor_net);       // 3 days × 50
+        $this->assertSame('15.00', (string) $booking->platform_commission);
+        $this->assertSame('165.00', (string) $booking->total_amount);
+    }
+
+    #[Test]
+    public function a_late_cancellation_records_the_advertised_fee(): void
+    {
+        $consumer = $this->consumer();
+        $vehicle = $this->vehicle();
+        \App\Models\VehicleBenefit::create([
+            'vehicle_id' => $vehicle->id,
+            'cancellation_available_per_day' => true,
+            'cancellation_available_per_day_date' => 3, // free until 3 days before pickup
+            'cancellation_fee_per_day' => 40,
+        ]);
+
+        $this->postJson('/api/internal/provider/bookings',
+            $this->bookingPayload($vehicle, $consumer, [
+                'pickup_date' => now()->addDay()->toDateString(), // inside the fee window
+                'dropoff_date' => now()->addDays(3)->toDateString(),
+            ]),
+            $this->gatewayHeaders())->assertCreated();
+        $bookingNumber = ApiBooking::first()->booking_number;
+
+        $this->postJson("/api/internal/provider/bookings/{$bookingNumber}/cancel?api_consumer_id={$consumer->id}",
+            ['reason' => 'late cancel'], $this->gatewayHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.cancellation_fee', 40);
+
+        $this->assertSame('40.00', (string) ApiBooking::first()->cancellation_fee);
+    }
+
+    #[Test]
+    public function a_status_change_notifies_the_partner_webhook(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $consumer = $this->consumer();
+        $consumer->update(['webhook_url' => 'https://partner.example.com/webhooks/vrooem', 'webhook_secret' => 's3cret']);
+
+        $booking = ApiBooking::create([
+            'booking_number' => ApiBooking::generateBookingNumber(),
+            'api_consumer_id' => $consumer->id, 'vehicle_id' => $this->vehicle()->id,
+            'vehicle_name' => 'Toyota Yaris',
+            'driver_first_name' => 'T', 'driver_last_name' => 'D',
+            'driver_email' => 'd@example.com', 'driver_phone' => '+1', 'driver_age' => 30,
+            'driver_license_number' => 'DL1', 'driver_license_country' => 'PT',
+            'pickup_date' => now()->addDays(3), 'pickup_time' => '09:00',
+            'return_date' => now()->addDays(5), 'return_time' => '09:00',
+            'pickup_location' => 'Faro', 'return_location' => 'Faro',
+            'total_days' => 2, 'daily_rate' => 50, 'base_price' => 100,
+            'extras_total' => 0, 'total_amount' => 100, 'currency' => 'EUR',
+            'status' => 'pending',
+        ]);
+
+        $booking->update(['status' => 'cancelled', 'cancellation_reason' => 'car broke down']);
+
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendPartnerBookingWebhook::class,
+            fn ($job) => $job->apiBookingId === $booking->id && $job->event === 'booking.cancelled');
+    }
+
+    #[Test]
     public function a_cancelled_booking_cannot_be_resurrected(): void
     {
         $booking = new ApiBooking(['status' => 'cancelled']);

@@ -21,6 +21,7 @@ class VehicleBenefit extends Model
         'cancellation_available_per_week',
         'cancellation_available_per_month',
         'cancellation_available_per_day_date',
+        'cancellation_fee_per_day',
         'cancellation_available_per_week_date',
         'cancellation_available_per_month_date',
         'price_per_km_per_day',

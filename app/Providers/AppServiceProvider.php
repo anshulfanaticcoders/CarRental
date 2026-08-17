@@ -39,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         PageTranslation::observe(PageTranslationObserver::class);
         \App\Models\Vehicle::observe(\App\Observers\VehicleObserver::class);
         \App\Models\Booking::observe(\App\Observers\BookingObserver::class);
+        \App\Models\ApiBooking::observe(\App\Observers\ApiBookingObserver::class);
         \App\Models\VendorLocation::observe(\App\Observers\VendorLocationObserver::class);
 
         // Generic activity logging — captures created/updated/deleted/restored

@@ -76,6 +76,7 @@ class Kernel extends HttpKernel
         'redirect.country' => \App\Http\Middleware\RedirectCountry::class,
         'share.country' => \App\Http\Middleware\ShareCountryFromUrl::class,
         'gateway.token' => \App\Http\Middleware\VerifyGatewayToken::class,
+        'api.consumer' => \App\Http\Middleware\ResolveApiConsumer::class,
         'local.debug' => \App\Http\Middleware\LocalDebugOnly::class,
     ];
 

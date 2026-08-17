@@ -167,7 +167,10 @@ class InternalProviderController extends Controller
         $results = $available->map(function ($vehicle) use (
             $totalDays, $currency, $pickupLocationName, $dropoffLocationName, $globalPlans, $globalAddons
         ) {
-            $dailyRate = (float) $vehicle->price_per_day;
+            // Quoted price must equal the booked price: the same partner
+            // markup rate applies here as in createBooking.
+            $partnerRate = max(0.0, (float) config('vrooem.partner_markup_percent', 0)) / 100;
+            $dailyRate = round((float) $vehicle->price_per_day * (1 + $partnerRate), 2);
             $totalPrice = round($dailyRate * $totalDays, 2);
 
             $primaryImage = $vehicle->images->sortBy('sort_order')->first();
@@ -412,6 +415,30 @@ class InternalProviderController extends Controller
             'dropoff_time' => ['required', 'date_format:H:i'],
         ]);
 
+        // Consumer identity: the api.consumer middleware resolves it from the
+        // API key; the body value is only trusted on legacy keyless calls.
+        // Either way a suspended consumer cannot book real cars.
+        $consumer = $request->attributes->get('api_consumer')
+            ?: ApiConsumer::find($validated['api_consumer_id']);
+        if (! $consumer) {
+            return response()->json([
+                'error' => [
+                    'code' => 'UNKNOWN_CONSUMER',
+                    'message' => 'The api_consumer_id does not match a registered consumer.',
+                    'status' => 422,
+                ],
+            ], 422);
+        }
+        if (! $consumer->isActive()) {
+            return response()->json([
+                'error' => [
+                    'code' => 'CONSUMER_SUSPENDED',
+                    'message' => 'This API consumer is suspended.',
+                    'status' => 403,
+                ],
+            ], 403);
+        }
+
         // The rule engine can't compare across date+time pairs: a same-day
         // 17:00 → 09:00 request used to pass and get priced as one day.
         $pickupAt = Carbon::parse($validated['pickup_date'].' '.$validated['pickup_time']);
@@ -539,7 +566,14 @@ class InternalProviderController extends Controller
             ], 422);
         }
 
-        $totalAmount = round($basePrice + $extrasTotal, 2);
+        // Settlement: vendor_net is what the vendor is owed; the platform
+        // commission (PARTNER_API_MARKUP_PERCENT, default 0) sits on top.
+        // Partner bookings used to pass through at 100% vendor price with no
+        // settlement record at all.
+        $vendorNet = round($basePrice + $extrasTotal, 2);
+        $partnerRate = max(0.0, (float) config('vrooem.partner_markup_percent', 0)) / 100;
+        $platformCommission = round($vendorNet * $partnerRate, 2);
+        $totalAmount = round($vendorNet + $platformCommission, 2);
 
         $primaryImage = $vehicle->images->first();
         $vehicleImage = $primaryImage ? ($primaryImage->image_url ?: $primaryImage->image_path) : null;
@@ -552,13 +586,11 @@ class InternalProviderController extends Controller
         DB::beginTransaction();
 
         try {
-            // Check if consumer is in sandbox mode
-            $consumer = ApiConsumer::find($validated['api_consumer_id']);
-            $isSandbox = $consumer && $consumer->isSandbox();
+            $isSandbox = $consumer->isSandbox();
 
             $booking = ApiBooking::create([
                 'booking_number' => ApiBooking::generateBookingNumber(),
-                'api_consumer_id' => $validated['api_consumer_id'],
+                'api_consumer_id' => $consumer->id,
                 'vehicle_id' => $vehicle->id,
                 'pickup_vendor_location_id' => $vehicle->vendor_location_id,
                 'dropoff_vendor_location_id' => $vehicle->vendor_location_id,
@@ -582,6 +614,8 @@ class InternalProviderController extends Controller
                 'base_price' => $basePrice,
                 'extras_total' => $extrasTotal,
                 'total_amount' => $totalAmount,
+                'platform_commission' => $platformCommission,
+                'vendor_net' => $vendorNet,
                 'currency' => 'EUR',
                 'status' => 'pending',
                 'is_test' => $isSandbox,
@@ -830,9 +864,17 @@ class InternalProviderController extends Controller
             ], 422);
         }
 
+        // Enforce the cancellation policy search advertises — it published a
+        // free-cancellation window and a fee, then cancelBooking applied
+        // neither: peak-season cancels 2 hours before pickup were free and
+        // the vendor got nothing. The fee is a recorded settlement line
+        // (this API has no payment rails to charge it with).
+        $cancellationFee = $this->cancellationFeeFor($booking);
+
         $booking->update([
             'status' => 'cancelled',
             'cancellation_reason' => $request->input('reason'),
+            'cancellation_fee' => $cancellationFee,
             'cancelled_at' => now(),
         ]);
         $this->dispatchBookingCancelledNotificationsAfterResponse($booking);
@@ -842,8 +884,38 @@ class InternalProviderController extends Controller
                 'booking_number' => $booking->booking_number,
                 'status' => 'cancelled',
                 'cancelled_at' => $booking->cancelled_at->toIso8601String(),
-                'message' => 'Booking has been successfully cancelled.',
+                'cancellation_fee' => $cancellationFee,
+                'currency' => $booking->currency,
+                'message' => $cancellationFee > 0
+                    ? 'Booking cancelled. A cancellation fee applies per the advertised policy.'
+                    : 'Booking has been successfully cancelled.',
             ],
         ]);
+    }
+
+    /**
+     * The same policy search advertises (vehicle benefits): free when
+     * cancelled at least cancel_before_days before pickup, otherwise the
+     * configured fee, capped at the booking total.
+     */
+    private function cancellationFeeFor(ApiBooking $booking): float
+    {
+        $benefits = $booking->vehicle?->benefits;
+        if (! $benefits) {
+            return 0.0;
+        }
+
+        $freeCancellation = (bool) $benefits->cancellation_available_per_day;
+        $freeBeforeDays = (int) $benefits->cancellation_available_per_day_date;
+        $fee = (float) ($benefits->cancellation_fee_per_day ?? 0);
+
+        $pickupAt = Carbon::parse($booking->pickup_date);
+        $withinFreeWindow = $freeCancellation && now()->lessThanOrEqualTo($pickupAt->copy()->subDays($freeBeforeDays));
+
+        if ($withinFreeWindow || $fee <= 0) {
+            return 0.0;
+        }
+
+        return round(min($fee, (float) $booking->total_amount), 2);
     }
 }

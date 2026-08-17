@@ -56,6 +56,8 @@ class ApiConsumerController extends Controller
             'mode' => 'required|in:sandbox,live',
             'rate_limit' => 'required|integer|min:1',
             'notes' => 'nullable',
+            'webhook_url' => 'nullable|url|max:500',
+            'webhook_secret' => 'nullable|string|max:100',
         ]);
 
         $consumer = ApiConsumer::create($validated);
@@ -109,13 +111,15 @@ class ApiConsumerController extends Controller
         $validated = $request->validate([
             'name' => 'required|max:255',
             'contact_name' => 'required|max:255',
-            'contact_email' => 'required|email|unique:api_consumers,contact_email,' . $apiConsumer->id,
+            'contact_email' => 'required|email|unique:api_consumers,contact_email,'.$apiConsumer->id,
             'contact_phone' => 'nullable|max:50',
             'company_url' => 'nullable|url|max:255',
             'plan' => 'required|in:basic,premium,enterprise',
             'mode' => 'required|in:sandbox,live',
             'rate_limit' => 'required|integer|min:1',
             'notes' => 'nullable',
+            'webhook_url' => 'nullable|url|max:500',
+            'webhook_secret' => 'nullable|string|max:100',
         ]);
 
         $apiConsumer->update($validated);
@@ -173,14 +177,14 @@ class ApiConsumerController extends Controller
         ]);
 
         return redirect()->back()
-            ->with('success', 'Consumer status updated to ' . $apiConsumer->status . '.');
+            ->with('success', 'Consumer status updated to '.$apiConsumer->status.'.');
     }
 
     private function createApiKey(ApiConsumer $consumer, string $name = 'Default', ?array $scopes = null): array
     {
         $prefix = 'vrm_live_';
         $randomPart = bin2hex(random_bytes(20));
-        $plaintextKey = $prefix . $randomPart;
+        $plaintextKey = $prefix.$randomPart;
         $hash = hash('sha256', $plaintextKey);
 
         $apiKey = ApiKey::create([

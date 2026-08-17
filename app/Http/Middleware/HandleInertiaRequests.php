@@ -164,6 +164,7 @@ class HandleInertiaRequests extends Middleware
         // and the pixel kept firing with AWIN_ENABLED=false.
         $sharedData['awin_enabled'] = (bool) config('awin.enabled', false);
         $sharedData['awin_advertiser_id'] = (string) config('awin.advertiser_id', '');
+        $sharedData['awin_commission_base'] = (string) config('awin.commission_base', 'collected');
 
         $sharedData['active_offers'] = function () {
             $offerService = app(OfferService::class);

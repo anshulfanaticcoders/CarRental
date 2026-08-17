@@ -8,10 +8,24 @@ use Illuminate\Support\Facades\Log;
 
 class AwinService
 {
+    /**
+     * The order value commission is computed on, per awin.commission_base.
+     * Default 'collected': commission can never exceed money we received —
+     * gross included the markup, extras and the pay-at-desk balance.
+     */
+    public static function commissionAmountFor(Booking $booking): float
+    {
+        return match (config('awin.commission_base', 'collected')) {
+            'gross' => (float) $booking->total_amount,
+            'net' => (float) ($booking->provider_grand_total ?: $booking->total_amount),
+            default => (float) $booking->amount_paid,
+        };
+    }
+
     public function sendConversion(Booking $booking, ?string $awc = null): array
     {
         $advertiserId = config('awin.advertiser_id');
-        $amount = number_format((float) $booking->total_amount, 2, '.', '');
+        $amount = number_format(self::commissionAmountFor($booking), 2, '.', '');
         $currency = $booking->booking_currency ?: 'EUR';
 
         if ($awc) {

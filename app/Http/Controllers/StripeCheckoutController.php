@@ -1103,6 +1103,18 @@ class StripeCheckoutController extends Controller
             $skyscannerAttribution = is_array(session('skyscanner.attribution'))
                 ? session('skyscanner.attribution')
                 : [];
+
+            // LAST CLICK WINS. A booking could carry Trabber + Skyscanner +
+            // Awin + QR-affiliate claims simultaneously and ALL FOUR were paid.
+            // One winner by most recent click; losers are recorded for audit
+            // and their keys stripped so no downstream step pays them.
+            $attribution = $this->resolveAttributionWinner($request, $trabberAttribution, $skyscannerAttribution);
+            $attributionWinner = $attribution['winner'];
+            $trabberAttribution = $attributionWinner === 'trabber' ? $trabberAttribution : [];
+            $skyscannerAttribution = $attributionWinner === 'skyscanner' ? $skyscannerAttribution : [];
+            $awcForBooking = $attributionWinner === 'awin' ? $request->cookie('awc') : null;
+            $affiliateBusinessIdForBooking = $attributionWinner === 'affiliate' ? session('affiliate_data.business_id') : null;
+            $affiliateScanIdForBooking = $attributionWinner === 'affiliate' ? session('affiliate_data.customer_scan_id') : null;
             $returnSearchUrl = $this->normalizeReturnSearchUrl($validated['return_search_url'] ?? null);
 
             // Build the FULL metadata (no Stripe key limit here â€” stored in our DB)
@@ -1253,8 +1265,10 @@ class StripeCheckoutController extends Controller
                 'promo_discount_amount' => $offerDiscountAmount > 0 ? (string) $offerDiscountAmount : null,
                 'booking_total_display' => $bookingTotalDisplay != $totalAmount ? (string) $bookingTotalDisplay : null,
                 // Affiliate tracking
-                'affiliate_business_id' => session('affiliate_data.business_id'),
-                'affiliate_scan_id' => session('affiliate_data.customer_scan_id'),
+                'affiliate_business_id' => $affiliateBusinessIdForBooking,
+                'affiliate_scan_id' => $affiliateScanIdForBooking,
+                'attribution_winner' => $attributionWinner,
+                'attribution_candidates' => $attribution['candidates'] !== [] ? json_encode($attribution['candidates']) : null,
                 // Trabber attribution
                 'partner_source' => $trabberAttribution['partner_source']
                     ?? $skyscannerAttribution['partner_source']
@@ -1419,10 +1433,12 @@ class StripeCheckoutController extends Controller
                 'promo_rate' => $offerRate > 0 ? (string) $offerRate : null,
                 'promo_discount_amount' => $offerDiscountAmount > 0 ? (string) $offerDiscountAmount : null,
                 'booking_total_display' => $bookingTotalDisplay != $totalAmount ? (string) $bookingTotalDisplay : null,
-                'affiliate_business_id' => session('affiliate_data.business_id'),
-                'affiliate_scan_id' => session('affiliate_data.customer_scan_id'),
-                'awc' => $request->cookie('awc'),
-                'partner_source' => $trabberAttribution['partner_source'] ?? null,
+                'affiliate_business_id' => $affiliateBusinessIdForBooking,
+                'affiliate_scan_id' => $affiliateScanIdForBooking,
+                'awc' => $awcForBooking,
+                'partner_source' => $trabberAttribution['partner_source']
+                    ?? $skyscannerAttribution['partner_source']
+                    ?? null,
                 'trabber_clickid' => $trabberAttribution['trabber_clickid'] ?? null,
                 'trabber_offer_id' => $trabberAttribution['trabber_offer_id'] ?? null,
             ];
@@ -2343,6 +2359,51 @@ class StripeCheckoutController extends Controller
     private function normalizeCurrencyCode($currency): string
     {
         return app(CurrencyRegistry::class)->normalize((string) ($currency ?? ''), 'EUR');
+    }
+
+    /**
+     * Last-click attribution arbiter. Returns the winning channel and the
+     * full candidate map (channel => clicked_at) for the audit trail.
+     * Channels with an unknown click time lose to ones with a known time.
+     *
+     * @return array{winner: ?string, candidates: array<string, ?string>}
+     */
+    private function resolveAttributionWinner(Request $request, array $trabber, array $skyscanner): array
+    {
+        $candidates = [];
+
+        if (! empty($trabber['trabber_clickid'])) {
+            $candidates['trabber'] = $trabber['trabber_clicked_at'] ?? null;
+        }
+        if (! empty($skyscanner['skyscanner_redirectid'])) {
+            $candidates['skyscanner'] = $skyscanner['skyscanner_clicked_at'] ?? null;
+        }
+        $awc = $request->cookie('awc');
+        if (is_string($awc) && $awc !== '') {
+            $awcAt = $request->cookie('awc_at');
+            $candidates['awin'] = is_string($awcAt) && $awcAt !== '' ? $awcAt : null;
+        }
+        $scanId = session('affiliate_data.customer_scan_id');
+        if ($scanId) {
+            $scanAt = \App\Models\Affiliate\AffiliateCustomerScan::whereKey($scanId)->value('created_at');
+            $candidates['affiliate'] = $scanAt?->toIso8601String();
+        }
+
+        if ($candidates === []) {
+            return ['winner' => null, 'candidates' => []];
+        }
+
+        $winner = null;
+        $winnerAt = -1;
+        foreach ($candidates as $channel => $at) {
+            $ts = $at ? (int) strtotime($at) : 0;
+            if ($ts > $winnerAt) {
+                $winner = $channel;
+                $winnerAt = $ts;
+            }
+        }
+
+        return ['winner' => $winner, 'candidates' => $candidates];
     }
 
     /**

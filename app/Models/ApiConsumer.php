@@ -16,6 +16,8 @@ class ApiConsumer extends Model
         'contact_email',
         'contact_phone',
         'company_url',
+        'webhook_url',
+        'webhook_secret',
         'status',
         'mode',
         'plan',
