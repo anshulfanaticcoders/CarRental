@@ -135,6 +135,10 @@ class StripeCheckoutController extends Controller
             ->first();
 
         if ($existingHold) {
+            // Re-arm the clock: a retried checkout mints a fresh 30-min Stripe
+            // session, so the hold must cover the new session's full lifetime.
+            $existingHold->update(['expires_at' => now()->addMinutes(30)]);
+
             return ['success' => true, 'hold' => $existingHold];
         }
 
@@ -172,7 +176,10 @@ class StripeCheckoutController extends Controller
                 'pickup_time' => $window['pickup_time'],
                 'dropoff_date' => $window['dropoff_date'],
                 'dropoff_time' => $window['dropoff_time'],
-                'expires_at' => now()->addMinutes(15),
+                // Must outlive the Stripe session (30 min, see expires_at on the
+                // session below). A 15-min hold left minutes 15-30 as a window
+                // where a second customer could book while the first could still pay.
+                'expires_at' => now()->addMinutes(30),
                 'status' => 'active',
             ]);
 
@@ -642,6 +649,7 @@ class StripeCheckoutController extends Controller
                 'dropoff_location' => 'nullable|string',
                 'total_amount' => 'required|numeric',
                 'currency' => 'required|string',
+                'display_currency' => 'nullable|string|max:10',
                 'number_of_days' => 'required|integer|min:1',
                 'detailed_extras' => 'nullable|array',
                 'optional_extras' => 'nullable|array',
@@ -963,9 +971,10 @@ class StripeCheckoutController extends Controller
             // Normalize currency (symbols to ISO codes)
             // display_currency = user's preferred currency (what they see on screen)
             // currency = original source currency (what the vehicle price was stored in)
-            $displayCurrency = $request->input('display_currency');
-            $currency = $displayCurrency ?? ($validated['currency'] ?? 'EUR');
-            $currencyCode = $this->normalizeCurrencyCode($currency);
+            $currencyCode = $this->resolveBookingCurrency(
+                $request->input('display_currency'),
+                $validated['currency'] ?? 'EUR'
+            );
             $providerCurrency = $this->resolveProviderCurrency($validated, $currencyCode);
 
             $computedTotals = $this->computeServerTotals($validated, $currencyCode, $providerCurrency, $paymentPercentage);
@@ -1412,13 +1421,13 @@ class StripeCheckoutController extends Controller
             $availableMethods = ['card'];
 
             // Bancontact only supports EUR
-            if (strtoupper($currency) === 'EUR') {
+            if ($currencyCode === 'EUR') {
                 $availableMethods[] = 'bancontact';
             }
 
             // Klarna supports multiple currencies
             $klarnaCurrencies = ['EUR', 'USD', 'GBP', 'DKK', 'NOK', 'SEK', 'CHF'];
-            if (in_array(strtoupper($currency), $klarnaCurrencies)) {
+            if (in_array($currencyCode, $klarnaCurrencies)) {
                 $availableMethods[] = 'klarna';
             }
 
@@ -1906,15 +1915,21 @@ class StripeCheckoutController extends Controller
         if ($providerCurrency && $providerCurrency !== $bookingCurrency) {
             $conversion = app(CurrencyConversionService::class)->convert($baseTotal, $providerCurrency, $bookingCurrency);
             if (! ($conversion['success'] ?? false)) {
-                Log::warning('StripeCheckout: base total conversion failed', [
+                // Fail CLOSED: falling through 1:1 would charge the raw provider
+                // number in the customer's currency (EUR 300 → 300 HUF ≈ €0.75).
+                Log::error('StripeCheckout: base total conversion failed, blocking checkout', [
                     'provider_currency' => $providerCurrency,
                     'booking_currency' => $bookingCurrency,
                     'base_total' => $baseTotal,
                     'error' => $conversion['error'] ?? null,
                 ]);
-            } else {
-                $baseTotalConverted = (float) ($conversion['converted_amount'] ?? $baseTotal);
+
+                return [
+                    'success' => false,
+                    'error' => 'Unable to convert the vehicle price to your currency. Please try again later.',
+                ];
             }
+            $baseTotalConverted = (float) ($conversion['converted_amount'] ?? $baseTotal);
         }
 
         $extrasTotalRaw = $this->resolveExtrasTotal($validated['detailed_extras'] ?? [], $days);
@@ -1937,15 +1952,20 @@ class StripeCheckoutController extends Controller
         if ($providerCurrency && $providerCurrency !== $bookingCurrency && $extrasTotalConverted > 0) {
             $conversion = app(CurrencyConversionService::class)->convert($extrasTotalConverted, $providerCurrency, $bookingCurrency);
             if (! ($conversion['success'] ?? false)) {
-                Log::warning('StripeCheckout: extras total conversion failed', [
+                // Fail CLOSED — same reasoning as the base total above.
+                Log::error('StripeCheckout: extras total conversion failed, blocking checkout', [
                     'provider_currency' => $providerCurrency,
                     'booking_currency' => $bookingCurrency,
                     'extras_total' => $extrasTotalConverted,
                     'error' => $conversion['error'] ?? null,
                 ]);
-            } else {
-                $extrasTotalConverted = (float) ($conversion['converted_amount'] ?? $extrasTotalConverted);
+
+                return [
+                    'success' => false,
+                    'error' => 'Unable to convert extras pricing to your currency. Please try again later.',
+                ];
             }
+            $extrasTotalConverted = (float) ($conversion['converted_amount'] ?? $extrasTotalConverted);
         }
 
         $protectionTotalConverted = 0.0;
@@ -2344,6 +2364,34 @@ class StripeCheckoutController extends Controller
     private function normalizeCurrencyCode($currency): string
     {
         return app(CurrencyRegistry::class)->normalize((string) ($currency ?? ''), 'EUR');
+    }
+
+    /**
+     * The currency the customer is actually charged in. A display currency is
+     * honoured only when the registry can convert into it (checkout-enabled
+     * with a live rate); anything else falls back to the quote's own currency
+     * so the charged amount always stays correct.
+     */
+    private function resolveBookingCurrency($displayCurrency, $sourceCurrency): string
+    {
+        $registry = app(CurrencyRegistry::class);
+        $source = $registry->normalize((string) ($sourceCurrency ?? ''), 'EUR');
+
+        if ($displayCurrency === null || $displayCurrency === '') {
+            return $source;
+        }
+
+        $candidate = $registry->normalize((string) $displayCurrency, $source);
+        if ($candidate === $source || in_array($candidate, $registry->selectableCodes(), true)) {
+            return $candidate;
+        }
+
+        Log::warning('StripeCheckout: display currency not chargeable, using source currency', [
+            'display_currency' => $displayCurrency,
+            'source_currency' => $source,
+        ]);
+
+        return $source;
     }
 
     /**

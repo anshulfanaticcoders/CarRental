@@ -171,6 +171,91 @@ class StripeBookingService
         }
     }
 
+    /**
+     * The freak case generateBookingNumber cannot rule out: two concurrent
+     * inserts drew the same number. A duplicate key on booking_number is
+     * retryable with a fresh number; any other violation (including a
+     * duplicate stripe_session_id) belongs to the caller's 23000 handling.
+     */
+    private function createBookingRow(array $bookingData): Booking
+    {
+        for ($attempt = 0; ; $attempt++) {
+            try {
+                return Booking::create($bookingData);
+            } catch (\Illuminate\Database\QueryException $e) {
+                if ($attempt < 2 && $e->getCode() === '23000' && str_contains($e->getMessage(), 'booking_number')) {
+                    Log::warning('StripeBookingService: booking_number collision, retrying with a fresh number', [
+                        'collided_number' => $bookingData['booking_number'] ?? null,
+                    ]);
+                    $bookingData['booking_number'] = Booking::generateBookingNumber();
+
+                    continue;
+                }
+
+                throw $e;
+            }
+        }
+    }
+
+    /**
+     * Compares what Stripe captured against what the metadata claims was
+     * payable. Throwing routes the mismatch through guardedStep → the booking
+     * survives and gets the NEEDS CORRECTION flag + admin alert.
+     */
+    private function reconcileChargedAmount(Booking $booking, $session, object $metadata): void
+    {
+        $chargedMinor = $session->amount_total ?? null;
+        $chargedCurrency = strtoupper((string) ($session->currency ?? ''));
+        if ($chargedMinor === null || $chargedCurrency === '') {
+            return; // session shape without charge data (some replays/fixtures)
+        }
+
+        $expected = (float) ($metadata->payable_amount ?? 0);
+        $expectedCurrency = strtoupper((string) ($metadata->currency ?? $booking->booking_currency ?? ''));
+
+        $currencyMatches = $expectedCurrency === '' || $expectedCurrency === $chargedCurrency;
+        // ±1 minor unit tolerance for rounding at conversion boundaries.
+        $amountMatches = abs((int) $chargedMinor - $this->toMinorUnits($expected, $chargedCurrency)) <= 1;
+
+        if ($currencyMatches && $amountMatches) {
+            return;
+        }
+
+        $booking->update([
+            'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                'amount_mismatch' => [
+                    'charged_minor' => (int) $chargedMinor,
+                    'charged_currency' => $chargedCurrency,
+                    'expected_amount' => $expected,
+                    'expected_currency' => $expectedCurrency,
+                ],
+            ]),
+        ]);
+
+        throw new \RuntimeException(sprintf(
+            'Stripe captured %d (minor units) %s but checkout metadata expected %.2f %s',
+            (int) $chargedMinor,
+            $chargedCurrency,
+            $expected,
+            $expectedCurrency
+        ));
+    }
+
+    private function toMinorUnits(float $amount, string $currencyCode): int
+    {
+        $minorUnit = app(\App\Support\CurrencyRegistry::class)->minorUnit($currencyCode);
+
+        if ($minorUnit === 0) {
+            return (int) round($amount);
+        }
+
+        if ($minorUnit === 3) {
+            return (int) (round($amount * 100) * 10);
+        }
+
+        return (int) round($amount * 100);
+    }
+
     public function resolveCustomerFromCheckoutPayload(array $payload, ?int $userId = null): array
     {
         $customer = $payload['customer'] ?? [];
@@ -198,6 +283,15 @@ class StripeBookingService
         Log::info('StripeBookingService: Starting creation', ['session_id' => $session->id]);
 
         $metadata = $session->metadata;
+        // Normalize ONCE: (array)/property casts on a Stripe\StripeObject yield
+        // internal "\0*\0_values" garbage instead of keys. Every consumer below —
+        // including the (array) cast when dispatching the reservation job —
+        // assumes a plain object, so make that true here rather than at each site.
+        if (is_object($metadata) && method_exists($metadata, 'toArray')) {
+            $metadata = (object) $metadata->toArray();
+        } else {
+            $metadata = (object) ($metadata ?? []);
+        }
 
         // Merge full metadata from extras_payload (bypasses Stripe 50-key limit)
         $extrasPayloadId = $metadata->extras_payload_id ?? null;
@@ -206,8 +300,7 @@ class StripeBookingService
                 $payloadRecord = StripeCheckoutPayload::find($extrasPayloadId);
                 if ($payloadRecord && ! empty($payloadRecord->payload['full_metadata'])) {
                     $fullMeta = $payloadRecord->payload['full_metadata'];
-                    // Use toArray() — (array) cast on Stripe\StripeObject gives internal properties, not key-values
-                    $stripeKeys = array_filter($metadata->toArray(), fn ($v) => $v !== null && $v !== '');
+                    $stripeKeys = array_filter((array) $metadata, fn ($v) => $v !== null && $v !== '');
                     // Stripe keys take precedence, full_metadata fills in the rest
                     $merged = array_merge($fullMeta, $stripeKeys);
                     $metadata = (object) $merged;
@@ -420,18 +513,25 @@ class StripeBookingService
                     Log::error('StripeBookingService: Paid session missing required booking fields', [
                         'session_id' => $session->id,
                         'defaulted_fields' => $defaultedFields,
-                        // (array) on a StripeObject yields internal properties, not keys
-                        'metadata_keys' => array_keys($metadata instanceof \Stripe\StripeObject ? $metadata->toArray() : (array) $metadata),
+                        'metadata_keys' => array_keys((array) $metadata),
                     ]);
                 }
 
-                $booking = Booking::create($bookingData);
+                $booking = $this->createBookingRow($bookingData);
             }
 
             // From here on the booking row exists and the customer has paid. Every
             // remaining step is guarded so it can enrich the booking but never
             // roll it back. $degraded records whatever did not land.
             $degraded = [];
+
+            // The metadata's payable_amount is what the booking records, but the
+            // session's amount_total is what Stripe actually captured. Any drift
+            // (failed conversion, replayed session, Stripe-side adjustment) must
+            // surface as a correction flag, not be recorded as truth.
+            $this->guardedStep('amount_reconciliation', $degraded, function () use ($booking, $session, $metadata) {
+                $this->reconcileChargedAmount($booking, $session, $metadata);
+            });
 
             // Update discount_amount for existing bookings too (idempotent re-processing)
             $this->guardedStep('discount_amount', $degraded, function () use ($booking, $metadata) {

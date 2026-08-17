@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Booking extends Model
 {
@@ -71,20 +71,26 @@ class Booking extends Model
     {
         return $this->belongsTo(Vehicle::class);
     }
+
     // New relationship to get vendorProfile through vehicle
     public function vendorProfile()
     {
         return $this->hasOneThrough(UserProfile::class, Vehicle::class, 'id', 'user_id', 'vehicle_id', 'vendor_id');
     }
-    // Generate unique booking number
+
+    // Generate unique booking number. The old 4-digit random (9,999 values per
+    // month, no uniqueness check) started colliding under real volume; each
+    // collision 500'd the payment webhook. 6 digits + an exists() check leaves
+    // only the concurrent-insert race, which the caller retries.
     public static function generateBookingNumber(): string
     {
-        $prefix = 'BK';
-        $year = date('Y');
-        $month = date('m');
-        $random = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        $prefix = 'BK'.date('Y').date('m');
 
-        return $prefix . $year . $month . $random;
+        do {
+            $number = $prefix.str_pad((string) mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+        } while (static::where('booking_number', $number)->exists());
+
+        return $number;
     }
 
     public function payments()
@@ -126,5 +132,4 @@ class Booking extends Model
     {
         return $this->hasOne(VehicleBenefit::class);
     }
-
 }
