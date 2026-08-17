@@ -92,6 +92,18 @@ class CarHireRedirectController extends Controller
         }
 
         if (! $this->shouldReturnJson($request)) {
+            // Attribution for the booking that follows: without this, nothing
+            // ever carried the redirect id to checkout and 100% of
+            // Skyscanner-sourced bookings were unreportable to the partner.
+            if ($redirectId !== '') {
+                session(['skyscanner.attribution' => [
+                    'partner_source' => 'skyscanner',
+                    'skyscanner_redirectid' => $redirectId,
+                    'skyscanner_quote_id' => $quoteId,
+                    'skyscanner_clicked_at' => now()->toIso8601String(),
+                ]]);
+            }
+
             $landingPageUrl = $this->buildLandingPageUrl($quote, $redirectId, $quoteId);
 
             if ($landingPageUrl !== null) {

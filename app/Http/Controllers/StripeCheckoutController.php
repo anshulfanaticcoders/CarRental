@@ -1099,6 +1099,10 @@ class StripeCheckoutController extends Controller
             $trabberAttribution = $this->shouldApplyTrabberAttribution($searchSessionId ?? null, $validated)
                 ? app(TrabberAttributionService::class)->fromRequest($request)
                 : [];
+            // Skyscanner attribution set by the partner redirect (same-session).
+            $skyscannerAttribution = is_array(session('skyscanner.attribution'))
+                ? session('skyscanner.attribution')
+                : [];
             $returnSearchUrl = $this->normalizeReturnSearchUrl($validated['return_search_url'] ?? null);
 
             // Build the FULL metadata (no Stripe key limit here â€” stored in our DB)
@@ -1252,11 +1256,18 @@ class StripeCheckoutController extends Controller
                 'affiliate_business_id' => session('affiliate_data.business_id'),
                 'affiliate_scan_id' => session('affiliate_data.customer_scan_id'),
                 // Trabber attribution
-                'partner_source' => $trabberAttribution['partner_source'] ?? null,
+                'partner_source' => $trabberAttribution['partner_source']
+                    ?? $skyscannerAttribution['partner_source']
+                    ?? null,
                 'trabber_clickid' => $trabberAttribution['trabber_clickid'] ?? null,
                 'trabber_offer_id' => $trabberAttribution['trabber_offer_id'] ?? null,
                 'trabber_commission_rate' => $trabberAttribution['trabber_commission_rate'] ?? null,
                 'trabber_clicked_at' => $trabberAttribution['trabber_clicked_at'] ?? null,
+                // Skyscanner attribution — the redirect id is the only key the
+                // partner's conversion reporting can correlate a booking by.
+                'skyscanner_redirectid' => $skyscannerAttribution['skyscanner_redirectid'] ?? null,
+                'skyscanner_quote_id' => $skyscannerAttribution['skyscanner_quote_id'] ?? null,
+                'skyscanner_clicked_at' => $skyscannerAttribution['skyscanner_clicked_at'] ?? null,
             ];
 
             $extrasPayload = [

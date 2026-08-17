@@ -760,6 +760,26 @@ class StripeBookingService
             });
 
             // Create affiliate commission if QR scan tracking data exists
+            // Report the booking back to Skyscanner's conversion tracking —
+            // the correlation service existed but had NO caller: 100% of
+            // Skyscanner-sourced bookings were invisible to the partner.
+            $this->guardedStep('skyscanner_correlation', $degraded, function () use ($booking, $metadata) {
+                $redirectId = (string) ($metadata->skyscanner_redirectid ?? '');
+                if ($redirectId === '') {
+                    return;
+                }
+
+                app(\App\Services\Skyscanner\CarHireBookingCorrelationService::class)->correlateBooking($redirectId, [
+                    'booking_reference' => $booking->booking_number,
+                    'provider_booking_ref' => (string) ($booking->provider_booking_ref ?? ''),
+                    'booking_currency' => (string) ($booking->booking_currency ?? ''),
+                    'total_amount' => (float) $booking->total_amount,
+                    'booking_status' => (string) $booking->booking_status,
+                    'pickup_date' => optional($booking->pickup_date)->toDateString() ?? '',
+                    'return_date' => optional($booking->return_date)->toDateString() ?? '',
+                ]);
+            });
+
             $this->guardedStep('affiliate_commission', $degraded, function () use ($booking, $customer, $metadata) {
                 $affiliateBusinessId = $metadata->affiliate_business_id ?? null;
                 if (! $affiliateBusinessId) {
@@ -1244,6 +1264,9 @@ class StripeBookingService
             'trabber_offer_id' => $metadata->trabber_offer_id ?? null,
             'trabber_commission_rate' => $metadata->trabber_commission_rate ?? null,
             'trabber_clicked_at' => $metadata->trabber_clicked_at ?? null,
+            'skyscanner_redirectid' => $metadata->skyscanner_redirectid ?? null,
+            'skyscanner_quote_id' => $metadata->skyscanner_quote_id ?? null,
+            'skyscanner_clicked_at' => $metadata->skyscanner_clicked_at ?? null,
         ], static fn ($v) => $v !== null && $v !== '');
 
         if (($booking->provider_source ?? $metadata->vehicle_source ?? null) === 'internal' && $vehicle) {
