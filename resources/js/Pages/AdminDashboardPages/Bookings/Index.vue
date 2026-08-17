@@ -667,8 +667,21 @@ const canRetryReservation = (booking) => {
 };
 
 const retryReservation = (booking) => {
+    // Unknown outcome = the supplier may ALREADY hold this reservation. The
+    // backend refuses a blind retry; the admin must confirm they checked the
+    // supplier portal first.
+    const outcomeUnknown = !!(booking.provider_metadata?.reservation_manual_check
+        || booking.provider_metadata?.reservation_unknown_at);
+    if (outcomeUnknown && !window.confirm(
+        'The supplier may ALREADY hold this reservation — its outcome was unknown when the confirmation timed out. '
+        + 'Retrying without checking would book a SECOND car.\n\n'
+        + 'Only continue if you verified in the supplier portal that no reservation exists. Retry now?'
+    )) {
+        return;
+    }
+
     retryingId.value = booking.id;
-    router.post(`/customer-bookings/${booking.id}/retry-reservation`, {}, {
+    router.post(`/customer-bookings/${booking.id}/retry-reservation`, { supplier_checked: outcomeUnknown }, {
         preserveScroll: true,
         onFinish: () => { retryingId.value = null; },
     });

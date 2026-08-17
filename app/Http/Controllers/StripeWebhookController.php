@@ -127,6 +127,21 @@ class StripeWebhookController extends Controller
             return;
         }
 
+        // The hold and the session share a 30-min lifetime; queued fulfilment
+        // adds delay AFTER payment, so re-arm the hold now or a payment near
+        // session expiry can lose its vehicle to another customer before the
+        // job runs — turning a PAID booking into a manual refund.
+        try {
+            BookingHold::where('stripe_session_id', $sessionId)
+                ->where('status', 'active')
+                ->update(['expires_at' => now()->addMinutes(30)]);
+        } catch (\Throwable $e) {
+            Log::warning('Stripe Webhook: failed to extend hold for paid session', [
+                'session_id' => $sessionId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         try {
             \App\Jobs\ProcessPaidCheckoutSessionJob::dispatch($sessionId);
         } catch (\Exception $e) {

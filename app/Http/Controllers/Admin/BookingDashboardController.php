@@ -100,6 +100,19 @@ class BookingDashboardController extends Controller
         if (in_array($booking->booking_status, ['cancelled', 'rejected', 'expired', 'completed'], true)) {
             return back()->with('error', 'Booking #'.$booking->booking_number.' is '.$booking->booking_status.' — not eligible for a reservation retry.');
         }
+        if (in_array($booking->payment_status, ['refunded', 'refund_pending'], true)) {
+            return back()->with('error', 'Booking #'.$booking->booking_number.' is refunded — reserving a car for it would cost money nobody collects.');
+        }
+
+        // An unknown outcome means the supplier MAY already hold this
+        // reservation (the confirmation timed out before the reference was
+        // stored). Blind redispatch would book a second car — the admin must
+        // confirm they checked the supplier portal first.
+        $outcomeUnknown = ! empty($booking->provider_metadata['reservation_manual_check'])
+            || ! empty($booking->provider_metadata['reservation_unknown_at']);
+        if ($outcomeUnknown && ! $request->boolean('supplier_checked')) {
+            return back()->with('error', 'The supplier may already hold this reservation (the outcome was unknown). Check the supplier portal for booking #'.$booking->booking_number.' first, then confirm the retry.');
+        }
 
         $metadata = app(\App\Services\StripeBookingService::class)->recoverReservationMetadata($booking);
         if ($metadata === null) {
@@ -145,14 +158,19 @@ class BookingDashboardController extends Controller
         $gatewayBookingId = (string) ($providerMetadata['gateway_booking_id'] ?? '');
         $gatewaySupplierId = (string) ($providerMetadata['gateway_supplier_id'] ?? $this->mapProviderSourceToGatewaySupplierId($providerSource));
 
-        // No supplier reservation was ever confirmed (reservation_failed and
-        // provider-pending rows) — there is nothing to cancel upstream, and
+        // No supplier reservation reference — nothing to cancel upstream, and
         // blocking here made exactly the broken bookings permanently
         // uncancellable. Safe against an in-flight retry: the reservation job
-        // skips bookings whose status is no longer eligible.
+        // skips bookings whose status is no longer eligible. Caveat: after an
+        // UNKNOWN outcome the supplier may hold a reservation we never got the
+        // reference for — the note directs the admin to verify at the portal.
         if (empty($bookingRef)) {
+            $outcomeUnknown = ! empty($providerMetadata['reservation_manual_check'])
+                || ! empty($providerMetadata['reservation_unknown_at']);
             $booking->notes = trim(($booking->notes ? $booking->notes."\n" : '')
-                .'Admin close-out: cancelled without a supplier call (no provider reservation existed).');
+                .($outcomeUnknown
+                    ? 'Admin close-out: cancelled without a supplier call. WARNING: the reservation outcome was unknown — verify at the supplier portal that no reservation exists, and cancel it there if it does.'
+                    : 'Admin close-out: cancelled without a supplier call (no provider reservation existed).'));
 
             return null;
         }

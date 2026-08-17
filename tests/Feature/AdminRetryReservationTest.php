@@ -68,7 +68,9 @@ class AdminRetryReservationTest extends TestCase
 
         $response = $this->actingAs($this->admin())
             ->from(route('customer-bookings.index'))
-            ->post(route('customer-bookings.retry-reservation', ['id' => $booking->id]));
+            ->post(route('customer-bookings.retry-reservation', ['id' => $booking->id]), [
+                'supplier_checked' => true,
+            ]);
 
         $response->assertRedirect();
         $response->assertSessionHas('success');
@@ -80,6 +82,38 @@ class AdminRetryReservationTest extends TestCase
         $this->assertFalse((bool) $booking->provider_metadata['reservation_manual_check'],
             'A manual retry must lift the manual-check flag so the sweep can resume.');
         $this->assertNotNull($booking->provider_metadata['manual_retry_at']);
+    }
+
+    #[Test]
+    public function an_unknown_outcome_retry_requires_supplier_confirmation(): void
+    {
+        // Unknown outcome = the supplier may already hold the reservation.
+        // A blind redispatch would book a SECOND car for the same customer.
+        Queue::fake();
+        $booking = $this->stuckBooking([
+            'provider_metadata' => ['reservation_manual_check' => true],
+        ]);
+        $this->payloadFor($booking);
+
+        $this->actingAs($this->admin())
+            ->post(route('customer-bookings.retry-reservation', ['id' => $booking->id]))
+            ->assertSessionHas('error');
+
+        Queue::assertNothingPushed();
+    }
+
+    #[Test]
+    public function a_refunded_booking_cannot_be_retried(): void
+    {
+        Queue::fake();
+        $booking = $this->stuckBooking(['payment_status' => 'refunded']);
+        $this->payloadFor($booking);
+
+        $this->actingAs($this->admin())
+            ->post(route('customer-bookings.retry-reservation', ['id' => $booking->id]))
+            ->assertSessionHas('error');
+
+        Queue::assertNothingPushed();
     }
 
     #[Test]
