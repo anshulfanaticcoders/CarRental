@@ -56,6 +56,55 @@ class PriceVerificationServiceTest extends TestCase
         $this->assertSame('Price verification failed: Extra price mismatch detected.', $result['error']);
     }
 
+    public function test_it_rejects_negative_extra_prices(): void
+    {
+        $service = app(PriceVerificationService::class);
+
+        $result = $service->verifyAndResolveExtras([
+            ['id' => 'child-seat', 'qty' => 1, 'total_for_booking' => -10.00],
+        ], [
+            'extras' => [
+                ['id' => 'child-seat', 'total_for_booking' => 10.00],
+            ],
+        ]);
+
+        $this->assertFalse($result['valid']);
+        $this->assertSame('Price verification failed: Invalid extra price.', $result['error']);
+    }
+
+    public function test_it_does_not_trust_unknown_provider_prefixed_extras(): void
+    {
+        $service = app(PriceVerificationService::class);
+
+        $result = $service->verifyAndResolveExtras([
+            ['id' => 'adobe_protection_FAKE', 'qty' => 1, 'total_for_booking' => 0.01],
+        ], ['extras' => []], null, 4);
+
+        $this->assertFalse($result['valid']);
+        $this->assertSame('Price verification failed: Selected extra is no longer available.', $result['error']);
+    }
+
+    public function test_it_resolves_adobe_protection_from_server_pricing(): void
+    {
+        $service = app(PriceVerificationService::class);
+        $stored = $service->buildOriginalPriceData('adobe-search', [
+            'id' => 'adobe-1',
+            'source' => 'adobe',
+            'total_price' => 100,
+            'currency' => 'USD',
+            'pli' => 15,
+            'ldw' => 12,
+        ]);
+
+        $result = $service->verifyAndResolveExtras([
+            ['id' => 'adobe_protection_LDW', 'qty' => 1, 'total_for_booking' => 48],
+        ], $stored, null, 4);
+
+        $this->assertTrue($result['valid']);
+        $this->assertSame(12.0, $result['extras'][0]['daily_rate']);
+        $this->assertSame(15.0, $stored['mandatory_protection_amount']);
+    }
+
     public function test_it_returns_server_trusted_extra_payload_for_valid_selected_extras(): void
     {
         $service = app(PriceVerificationService::class);

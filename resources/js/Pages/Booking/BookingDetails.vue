@@ -11,7 +11,8 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faSimCard } from '@fortawesome/free-solid-svg-icons';
 import { getCurrentInstance } from 'vue';
 import { useBookingData } from '@/composables/useBookingData';
-import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
+import { getCurrencyMinorUnit, getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
+import { getCapturedPaymentReview } from '@/utils/bookingPaymentPresentation';
 
 const { appContext } = getCurrentInstance();
 const _t = appContext.config.globalProperties._t;
@@ -35,13 +36,18 @@ const showPoliciesModal = ref(false);
 const hoursTab = ref('pickup');
 
 const providerMetadata = computed(() => props.booking?.provider_metadata || {});
+const paymentReview = computed(() => getCapturedPaymentReview(props.booking, getCurrencyMinorUnit));
+const capturedPaymentLabel = computed(() => paymentReview.value
+  ? `${paymentReview.value.currency} ${paymentReview.value.amount.toFixed(paymentReview.value.minorUnit)}`
+  : '');
 
 // Terminal failure states: the booking will not proceed without human action.
 const isReservationFailed = computed(() => props.booking?.booking_status === 'reservation_failed');
 const isCancelled = computed(() => props.booking?.booking_status === 'cancelled');
 const isRejected = computed(() => props.booking?.booking_status === 'rejected');
-const isFailedState = computed(() => isCancelled.value || isReservationFailed.value || isRejected.value);
-const paidSomething = computed(() => parseFloat(props.booking?.amount_paid || 0) > 0);
+const isExpired = computed(() => props.booking?.booking_status === 'expired');
+const isFailedState = computed(() => isCancelled.value || isReservationFailed.value || isRejected.value || isExpired.value);
+const paidSomething = computed(() => (paymentReview.value?.amount ?? parseFloat(props.booking?.amount_paid || 0)) > 0);
 
 // External booking whose supplier reservation is not yet confirmed (no supplier
 // reference yet, or flagged for manual check). Mirrors Success.vue so the details
@@ -117,7 +123,7 @@ const formatLocationLines = (details) => {
     addressCity,
     details.address_county,
     addressPostcode,
-  ].filter(Boolean);
+  ].map(friendlyLocation).filter(Boolean);
 };
 
 const pickupLines = computed(() => formatLocationLines(pickupDetails.value));
@@ -340,6 +346,7 @@ const getStatusBadge = (status) => {
     cancelled: { bg: 'bg-rose-400/20', text: 'text-rose-200', border: 'border-rose-400/30', dot: 'bg-rose-400' },
     reservation_failed: { bg: 'bg-rose-400/20', text: 'text-rose-200', border: 'border-rose-400/30', dot: 'bg-rose-400' },
     rejected: { bg: 'bg-rose-400/20', text: 'text-rose-200', border: 'border-rose-400/30', dot: 'bg-rose-400' },
+    expired: { bg: 'bg-slate-400/20', text: 'text-slate-200', border: 'border-slate-400/30', dot: 'bg-slate-400' },
     active: { bg: 'bg-emerald-400/20', text: 'text-emerald-200', border: 'border-emerald-400/30', dot: 'bg-emerald-400' }
   };
   return config[status] || config.pending;
@@ -349,6 +356,13 @@ const getStatusBadge = (status) => {
 // override the raw booking_status (which may be "confirmed" from payment) with an
 // honest "supplier confirmation pending" state instead of a green Confirmed badge.
 const statusDisplay = computed(() => {
+  if (paymentReview.value) {
+    return {
+      label: _t('customerprofile', 'payment_under_review') || 'Payment under review',
+      capitalize: false,
+      ...getStatusBadge('pending'),
+    };
+  }
   if (isSupplierPending.value) {
     return {
       label: _t('customerprofile', 'supplier_confirmation_pending') || 'Supplier confirmation pending',
@@ -718,8 +732,19 @@ const vendorInitials = computed(() => {
     <!-- Payment Alert Bar -->
     <div class="full-w-container mt-4">
       <div class="flex flex-col sm:flex-row gap-3">
+        <!-- Stripe amount differs from checkout metadata: show only the actual capture. -->
+        <div v-if="paymentReview" class="flex-1 flex items-center gap-4 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+          <div class="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L4.062 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-amber-700 uppercase tracking-wide">Captured — Under Review</p>
+            <p class="amount-xl text-amber-800 mt-0.5">{{ capturedPaymentLabel }}</p>
+            <p class="text-xs text-amber-700 mt-1">This is the amount Stripe actually captured. Our team is checking it against the booking.</p>
+          </div>
+        </div>
         <!-- Paid (celebratory only when the booking is alive) -->
-        <div v-if="pricingSummary.paidNow > 0 && !isFailedState" class="flex-1 flex items-center gap-4 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4">
+        <div v-if="!paymentReview && pricingSummary.paidNow > 0 && !isFailedState" class="flex-1 flex items-center gap-4 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4">
           <div class="w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
             <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           </div>
@@ -733,7 +758,7 @@ const vendorInitials = computed(() => {
           <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
         </div>
         <!-- Payment held (terminal states — no celebration, factual only) -->
-        <div v-if="pricingSummary.paidNow > 0 && isFailedState" class="flex-1 flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4">
+        <div v-if="!paymentReview && pricingSummary.paidNow > 0 && isFailedState" class="flex-1 flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4">
           <div class="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
             <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
@@ -744,7 +769,7 @@ const vendorInitials = computed(() => {
           </div>
         </div>
         <!-- Due at pickup (never instruct a dead booking's customer to pay) -->
-        <div v-if="pricingSummary.dueOnArrival > 0 && !isFailedState" class="flex-1 flex items-center gap-4 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+        <div v-if="!paymentReview && pricingSummary.dueOnArrival > 0 && !isFailedState" class="flex-1 flex items-center gap-4 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
           <div class="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
             <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
@@ -756,7 +781,7 @@ const vendorInitials = computed(() => {
         </div>
       </div>
       <!-- Progress bar -->
-      <div v-if="pricingSummary.isPOA && !isFailedState" class="mt-3 px-1">
+      <div v-if="!paymentReview && pricingSummary.isPOA && !isFailedState" class="mt-3 px-1">
         <div class="flex justify-between text-[11px] text-gray-400 font-medium mb-1.5">
           <span>{{ _t('customerprofile', 'payment_progress') || 'Payment Progress' }}</span>
           <span>{{ pricingSummary.paidPercentage }}% {{ _t('customerprofile', 'paid') || 'paid' }}</span>
@@ -908,25 +933,25 @@ const vendorInitials = computed(() => {
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div v-if="pickupDetails?.name" class="rounded-xl border border-gray-100 p-4">
                   <p class="text-xs font-bold text-emerald-600 uppercase mb-2">Pickup</p>
-                  <p class="font-semibold text-[var(--gray-800,#153b4f)] text-sm">{{ pickupDetails.name }}</p>
+                  <p class="font-semibold text-[var(--gray-800,#153b4f)] text-sm">{{ friendlyLocation(pickupDetails.name) }}</p>
                   <div v-if="pickupLines.length" class="text-xs text-gray-500 mt-1.5 space-y-0.5">
                     <p v-for="(line, i) in pickupLines" :key="i">{{ line }}</p>
                   </div>
                   <div class="text-xs text-gray-500 mt-2 space-y-0.5">
-                    <p v-if="pickupDetails.telephone || pickupDetails.phone">Tel: {{ pickupDetails.telephone || pickupDetails.phone }}</p>
-                    <p v-if="pickupDetails.email">{{ pickupDetails.email }}</p>
+                    <p v-if="pickupDetails.telephone || pickupDetails.phone">Tel: {{ friendlyLocation(pickupDetails.telephone || pickupDetails.phone) }}</p>
+                    <p v-if="pickupDetails.email">{{ friendlyLocation(pickupDetails.email) }}</p>
                   </div>
                   <p v-if="pickupInstructions" class="text-xs text-gray-600 mt-2 p-2 bg-amber-50 border border-amber-100 rounded-lg">{{ pickupInstructions }}</p>
                 </div>
                 <div v-if="dropoffDetails?.name" class="rounded-xl border border-gray-100 p-4">
                   <p class="text-xs font-bold text-red-500 uppercase mb-2">Return</p>
-                  <p class="font-semibold text-[var(--gray-800,#153b4f)] text-sm">{{ dropoffDetails.name }}</p>
+                  <p class="font-semibold text-[var(--gray-800,#153b4f)] text-sm">{{ friendlyLocation(dropoffDetails.name) }}</p>
                   <div v-if="dropoffLines.length" class="text-xs text-gray-500 mt-1.5 space-y-0.5">
                     <p v-for="(line, i) in dropoffLines" :key="i">{{ line }}</p>
                   </div>
                   <div class="text-xs text-gray-500 mt-2 space-y-0.5">
-                    <p v-if="dropoffDetails.telephone || dropoffDetails.phone">Tel: {{ dropoffDetails.telephone || dropoffDetails.phone }}</p>
-                    <p v-if="dropoffDetails.email">{{ dropoffDetails.email }}</p>
+                    <p v-if="dropoffDetails.telephone || dropoffDetails.phone">Tel: {{ friendlyLocation(dropoffDetails.telephone || dropoffDetails.phone) }}</p>
+                    <p v-if="dropoffDetails.email">{{ friendlyLocation(dropoffDetails.email) }}</p>
                   </div>
                   <p v-if="dropoffInstructions" class="text-xs text-gray-600 mt-2 p-2 bg-amber-50 border border-amber-100 rounded-lg">{{ dropoffInstructions }}</p>
                 </div>
@@ -1514,7 +1539,10 @@ const vendorInitials = computed(() => {
             </div>
             <div>
               <h4 class="font-semibold text-[var(--gray-800,#153b4f)]">Payment</h4>
-              <p class="text-gray-600">
+              <p v-if="paymentReview" class="text-amber-700">
+                <span class="font-semibold">{{ capturedPaymentLabel }}</span> captured by Stripe — under review
+              </p>
+              <p v-else class="text-gray-600">
                 <span class="font-semibold text-emerald-600">{{ bookingData.formatCurrency(pricingSummary.paidNow) }}</span> paid now
                 <span v-if="pricingSummary.dueOnArrival > 0">, <span class="font-semibold text-amber-600">{{ bookingData.formatCurrency(pricingSummary.dueOnArrival) }}</span> due at pickup</span>
               </p>

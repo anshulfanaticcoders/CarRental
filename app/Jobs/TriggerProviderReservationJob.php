@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -39,45 +40,59 @@ class TriggerProviderReservationJob implements ShouldQueue
 
     public function handle(StripeBookingService $service): void
     {
-        $booking = Booking::find($this->bookingId);
-        if (! $booking) {
-            Log::warning('TriggerProviderReservationJob: booking not found', [
-                'booking_id' => $this->bookingId,
-            ]);
-
-            return;
-        }
-        if (! empty($booking->provider_booking_ref)) {
-            Log::info('TriggerProviderReservationJob: reservation already complete', [
-                'booking_id' => $booking->id,
-                'provider_booking_ref' => $booking->provider_booking_ref,
-            ]);
-
-            return;
-        }
-
-        // Retries back off up to an hour — the booking can be cancelled (admin or
-        // customer) while an attempt is still queued. Reserving a real car at the
-        // supplier for a dead booking costs money nobody collects.
-        if (in_array($booking->booking_status, ['cancelled', 'rejected', 'expired', 'completed', 'reservation_failed'], true)) {
-            Log::info('TriggerProviderReservationJob: booking no longer eligible for reservation, skipping', [
-                'booking_id' => $booking->id,
-                'booking_status' => $booking->booking_status,
-            ]);
-
-            return;
+        $lock = Cache::lock("provider-booking-operation:{$this->bookingId}", 180);
+        if (! $lock->block(15)) {
+            throw new \RuntimeException('Could not acquire supplier booking operation lock.');
         }
 
         try {
-            $service->triggerGatewayReservation($booking, (object) $this->metadata);
-        } catch (ReservationOutcomeUnknownException $e) {
-            // Supplier timed out; a reservation may already exist upstream.
-            // Retrying would double-book, so fail now (no retries) and let
-            // failed() leave the booking for manual reconciliation.
-            Log::warning('TriggerProviderReservationJob: unknown reservation outcome, skipping retries', [
-                'booking_id' => $booking->id,
-            ]);
-            $this->fail($e);
+            // Re-read eligibility only after acquiring the same mutex used by
+            // cancellation. A job queued before cancellation/refund must not
+            // reserve after the booking has become ineligible.
+            $booking = Booking::find($this->bookingId);
+            if (! $booking) {
+                Log::warning('TriggerProviderReservationJob: booking not found', [
+                    'booking_id' => $this->bookingId,
+                ]);
+
+                return;
+            }
+            if (! empty($booking->provider_booking_ref)) {
+                Log::info('TriggerProviderReservationJob: reservation already complete', [
+                    'booking_id' => $booking->id,
+                    'provider_booking_ref' => $booking->provider_booking_ref,
+                ]);
+
+                return;
+            }
+
+            $eligiblePayment = in_array($booking->payment_status, ['partial', 'paid'], true);
+            $terminalBooking = in_array($booking->booking_status, ['cancelled', 'rejected', 'expired', 'completed', 'reservation_failed'], true);
+            $refundOrManualClose = in_array($booking->payment_status, ['refunded', 'refund_pending'], true)
+                || ! empty($booking->provider_metadata['manual_refund_required']);
+            if (! $eligiblePayment || $terminalBooking || $refundOrManualClose) {
+                Log::info('TriggerProviderReservationJob: booking no longer eligible for reservation, skipping', [
+                    'booking_id' => $booking->id,
+                    'booking_status' => $booking->booking_status,
+                    'payment_status' => $booking->payment_status,
+                ]);
+
+                return;
+            }
+
+            try {
+                $service->triggerGatewayReservation($booking, (object) $this->metadata);
+            } catch (ReservationOutcomeUnknownException $e) {
+                // Supplier timed out; a reservation may already exist upstream.
+                // Retrying would double-book, so fail now (no retries) and let
+                // failed() leave the booking for manual reconciliation.
+                Log::warning('TriggerProviderReservationJob: unknown reservation outcome, skipping retries', [
+                    'booking_id' => $booking->id,
+                ]);
+                $this->fail($e);
+            }
+        } finally {
+            $lock->release();
         }
     }
 
@@ -178,7 +193,10 @@ class TriggerProviderReservationJob implements ShouldQueue
         try {
             $admin = User::where('email', config('admin.email'))->first();
             if ($admin) {
-                $admin->notify(new AdminReservationFailedNotification($booking, $reason));
+                AdminReservationFailedNotification::sendOnce(
+                    $admin,
+                    new AdminReservationFailedNotification($booking, $reason)
+                );
             }
         } catch (Throwable $e) {
             Log::warning('TriggerProviderReservationJob: failed to notify admin of reservation failure', [

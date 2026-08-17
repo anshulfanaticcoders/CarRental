@@ -17,11 +17,19 @@ const props = defineProps({
 const pickupLines = computed(() => formatAddress(props.pickupDetails));
 const dropoffLines = computed(() => formatAddress(props.dropoffDetails));
 
+function safeCustomerValue(value, fallback = '') {
+    const normalized = String(value || '');
+
+    return normalized.toLowerCase().includes('needs correction')
+        ? 'Being confirmed — our team will contact you'
+        : (value || fallback);
+}
+
 const pickupName = computed(
-    () => props.pickupDetails?.name || props.pickupDetails?.location_name || props.pickupString || '—',
+    () => safeCustomerValue(props.pickupDetails?.name || props.pickupDetails?.location_name || props.pickupString, '—'),
 );
 const dropoffName = computed(
-    () => props.dropoffDetails?.name || props.dropoffDetails?.location_name || props.returnString || pickupName.value,
+    () => safeCustomerValue(props.dropoffDetails?.name || props.dropoffDetails?.location_name || props.returnString, pickupName.value),
 );
 
 const isOneWay = computed(() => {
@@ -50,7 +58,7 @@ function formatAddress(details) {
         details.address_county,
         details.address_country,
     ]
-        .map((line) => (line || '').trim())
+        .map((line) => String(safeCustomerValue(line) || '').trim())
         .filter((line) => line.length > 0);
     return lines;
 }
@@ -73,12 +81,12 @@ function formatAddress(details) {
                 <p v-for="(line, i) in pickupLines" :key="`pu-${i}`">{{ line }}</p>
             </div>
             <div v-if="pickupDetails?.telephone || pickupDetails?.email" class="text-xs text-gray-600 mt-2 space-y-0.5">
-                <p v-if="pickupDetails?.telephone">Tel: {{ pickupDetails.telephone }}</p>
-                <p v-if="pickupDetails?.email">{{ pickupDetails.email }}</p>
+                <p v-if="pickupDetails?.telephone">Tel: {{ safeCustomerValue(pickupDetails.telephone) }}</p>
+                <p v-if="pickupDetails?.email">{{ safeCustomerValue(pickupDetails.email) }}</p>
             </div>
             <p v-if="pickupInstructions || pickupDetails?.pickup_instructions"
                class="text-xs text-gray-600 mt-2 p-2 bg-amber-50 border border-amber-100 rounded-lg">
-                {{ pickupInstructions || pickupDetails?.pickup_instructions }}
+                {{ safeCustomerValue(pickupInstructions || pickupDetails?.pickup_instructions) }}
             </p>
         </div>
 
@@ -92,12 +100,12 @@ function formatAddress(details) {
                 <p v-for="(line, i) in dropoffLines" :key="`do-${i}`">{{ line }}</p>
             </div>
             <div v-if="dropoffDetails?.telephone || dropoffDetails?.email" class="text-xs text-gray-600 mt-2 space-y-0.5">
-                <p v-if="dropoffDetails?.telephone">Tel: {{ dropoffDetails.telephone }}</p>
-                <p v-if="dropoffDetails?.email">{{ dropoffDetails.email }}</p>
+                <p v-if="dropoffDetails?.telephone">Tel: {{ safeCustomerValue(dropoffDetails.telephone) }}</p>
+                <p v-if="dropoffDetails?.email">{{ safeCustomerValue(dropoffDetails.email) }}</p>
             </div>
             <p v-if="dropoffInstructions || dropoffDetails?.dropoff_instructions"
                class="text-xs text-gray-600 mt-2 p-2 bg-amber-50 border border-amber-100 rounded-lg">
-                {{ dropoffInstructions || dropoffDetails?.dropoff_instructions }}
+                {{ safeCustomerValue(dropoffInstructions || dropoffDetails?.dropoff_instructions) }}
             </p>
         </div>
     </div>

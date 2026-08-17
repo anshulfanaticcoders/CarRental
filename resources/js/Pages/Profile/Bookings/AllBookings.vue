@@ -25,9 +25,10 @@ const t = (key, fallback) => {
 const props = defineProps({
   bookings: Object,
   status_counts: Object,
+  current_status: { type: String, default: 'all' },
 });
 
-const activeTab = ref('all');
+const activeTab = ref(props.current_status || 'all');
 const isLoading = ref(false);
 const bookingRows = computed(() => props.bookings?.data || []);
 const totalBookings = computed(() => props.bookings?.total || bookingRows.value.length);
@@ -66,17 +67,7 @@ const statusTabs = computed(() => {
   return tabs;
 });
 
-// Filter bookings by status (client-side, current page)
-const filteredBookings = computed(() => {
-  if (!bookingRows.value.length) return [];
-
-  if (activeTab.value === 'all') {
-    return bookingRows.value;
-  }
-
-  const statuses = TAB_STATUSES[activeTab.value] || [activeTab.value];
-  return bookingRows.value.filter(booking => statuses.includes(booking.booking_status));
-});
+const filteredBookings = computed(() => bookingRows.value);
 
 // Tab badges use GLOBAL counts (server-provided), not the current page slice.
 const getTabCount = (tabKey) => {
@@ -86,8 +77,16 @@ const getTabCount = (tabKey) => {
 };
 
 // Get status badge styling
-const getStatusBadge = (status) => {
+const getStatusBadge = (status, booking = null) => {
   const normalizedStatus = (status || 'pending').toLowerCase();
+  const supplierPending = booking
+    && !CLOSED_STATUSES.includes(normalizedStatus)
+    && booking.provider_source
+    && booking.provider_source !== 'internal'
+    && !booking.provider_booking_ref;
+  if (supplierPending) {
+    return { label: t('supplier_confirmation_pending', 'Supplier confirmation pending'), tone: 'pending' };
+  }
   const statusConfig = {
     pending: {
       label: t('pending', 'Pending'),
@@ -311,11 +310,17 @@ const searchAgainUrl = computed(() => {
 
 const handleTabChange = (tab) => {
   activeTab.value = tab;
+  isLoading.value = true;
+  router.get(route('profile.bookings.all', { locale: page.props.locale }), { status: tab }, {
+    preserveState: true,
+    preserveScroll: true,
+    onFinish: () => { isLoading.value = false; }
+  });
 };
 
 const handlePageChange = (pageNumber) => {
   isLoading.value = true;
-  router.get(route('profile.bookings.all', { locale: page.props.locale }), { page: pageNumber }, {
+  router.get(route('profile.bookings.all', { locale: page.props.locale }), { page: pageNumber, status: activeTab.value }, {
     preserveState: true,
     preserveScroll: true,
     onFinish: () => { isLoading.value = false; }
@@ -489,21 +494,21 @@ const getCardDelay = (index) => {
                 </svg>
               </div>
             </div>
-            <span class="customer-booking-status" :class="`customer-booking-status--${getStatusBadge(booking.booking_status).tone}`">
-              <svg v-if="getStatusBadge(booking.booking_status).tone === 'confirmed'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span class="customer-booking-status" :class="`customer-booking-status--${getStatusBadge(booking.booking_status, booking).tone}`">
+              <svg v-if="getStatusBadge(booking.booking_status, booking).tone === 'confirmed'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M20 6 9 17l-5-5" />
               </svg>
-              <svg v-else-if="getStatusBadge(booking.booking_status).tone === 'completed'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-else-if="getStatusBadge(booking.booking_status, booking).tone === 'completed'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M20 6 9 17l-5-5" />
               </svg>
-              <svg v-else-if="getStatusBadge(booking.booking_status).tone === 'cancelled'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-else-if="getStatusBadge(booking.booking_status, booking).tone === 'cancelled'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M18 6 6 18M6 6l12 12" />
               </svg>
               <svg v-else fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9" stroke-width="2.4" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M12 7v5l3 2" />
               </svg>
-              {{ getStatusBadge(booking.booking_status).label }}
+              {{ getStatusBadge(booking.booking_status, booking).label }}
             </span>
           </div>
 

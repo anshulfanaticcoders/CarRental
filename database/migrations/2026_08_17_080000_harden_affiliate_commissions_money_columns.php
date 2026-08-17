@@ -18,6 +18,22 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $duplicateBookingCount = DB::query()
+            ->fromSub(
+                DB::table('affiliate_commissions')
+                    ->select('booking_id')
+                    ->groupBy('booking_id')
+                    ->havingRaw('COUNT(*) > 1'),
+                'duplicate_affiliate_commissions'
+            )
+            ->count();
+
+        if ($duplicateBookingCount > 0) {
+            throw new RuntimeException(
+                "Affiliate commission hardening stopped: {$duplicateBookingCount} booking(s) have duplicate commissions. Review them manually before migrating."
+            );
+        }
+
         Schema::table('affiliate_commissions', function (Blueprint $table) {
             $table->string('currency', 3)->default('EUR')->after('commission_amount');
         });
@@ -30,20 +46,6 @@ return new class extends Migration
              JOIN bookings b ON b.id = ac.booking_id
              SET ac.currency = COALESCE(b.booking_currency, "EUR")'
         );
-
-        // Guard against pre-existing duplicates before adding the unique index.
-        $dupes = DB::table('affiliate_commissions')
-            ->select('booking_id', DB::raw('COUNT(*) as c'), DB::raw('MIN(id) as keep_id'))
-            ->groupBy('booking_id')
-            ->having('c', '>', 1)
-            ->get();
-        foreach ($dupes as $dupe) {
-            DB::table('affiliate_commissions')
-                ->where('booking_id', $dupe->booking_id)
-                ->where('id', '!=', $dupe->keep_id)
-                ->whereNotIn('status', ['paid'])
-                ->delete();
-        }
 
         Schema::table('affiliate_commissions', function (Blueprint $table) {
             $table->unique('booking_id', 'affiliate_commissions_booking_id_unique');

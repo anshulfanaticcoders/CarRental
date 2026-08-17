@@ -6,6 +6,8 @@ import AuthenticatedHeaderLayout from "@/Layouts/AuthenticatedHeaderLayout.vue";
 import Footer from "@/Components/Footer.vue";
 import BookingLocationBlock from "@/Components/Booking/BookingLocationBlock.vue";
 import paymentSuccessAnimation from '../../../assets/payment-successful.json';
+import { getCapturedPaymentReview } from '@/utils/bookingPaymentPresentation';
+import { getCurrencyMinorUnit } from '@/utils/currencyRegistry';
 
 const page = usePage();
 const props = page.props;
@@ -40,9 +42,16 @@ const awinAlreadySignalled = (bookingNumber) => {
   return false;
 };
 
-const pickupDetails = computed(() => booking?.provider_metadata?.pickup_location_details || null);
-const dropoffDetails = computed(() => booking?.provider_metadata?.dropoff_location_details || null);
-const isFailedState = computed(() => ['cancelled', 'reservation_failed', 'rejected'].includes(liveBooking.value?.booking_status));
+const customerSafeLocation = (value) => String(value || '').toLowerCase().includes('needs correction')
+  ? 'Being confirmed — our team will contact you'
+  : (value || '');
+const pickupDetails = computed(() => liveBooking.value?.provider_metadata?.pickup_location_details || null);
+const dropoffDetails = computed(() => liveBooking.value?.provider_metadata?.dropoff_location_details || null);
+const paymentReview = computed(() => getCapturedPaymentReview(liveBooking.value, getCurrencyMinorUnit));
+const capturedPaymentLabel = computed(() => paymentReview.value
+  ? `${paymentReview.value.currency} ${paymentReview.value.amount.toFixed(paymentReview.value.minorUnit)}`
+  : '');
+const isFailedState = computed(() => ['cancelled', 'reservation_failed', 'rejected', 'expired'].includes(liveBooking.value?.booking_status));
 const isSupplierPending = computed(() => {
   return !isFailedState.value
     && liveBooking.value?.provider_source
@@ -50,6 +59,24 @@ const isSupplierPending = computed(() => {
     && !liveBooking.value.provider_booking_ref;
 });
 const outcomeCopy = computed(() => {
+  if (paymentReview.value) {
+    return {
+      title: 'Payment Under Review',
+      subtitle: `Stripe captured ${capturedPaymentLabel.value}. Our team is checking the booking details and will contact you if anything is required.`,
+      status: 'Under review',
+      badgeClass: 'bg-amber-100 text-amber-700',
+      dotClass: 'bg-amber-500',
+    };
+  }
+  if (liveBooking.value?.booking_status === 'expired') {
+    return {
+      title: 'Checkout Expired',
+      subtitle: 'This payment session expired before the booking was completed.',
+      status: 'Expired',
+      badgeClass: 'bg-slate-100 text-slate-700',
+      dotClass: 'bg-slate-500',
+    };
+  }
   if (isFailedState.value) {
     return {
       title: 'Booking Under Review',
@@ -142,7 +169,7 @@ onUnmounted(() => { if (supplierPollTimer) clearInterval(supplierPollTimer); });
 onMounted(() => {
   startSupplierPolling();
   // Never report a purchase conversion for a booking that could not be completed.
-  if (awinEnabled && booking && booking.booking_number && !isFailedState.value && !awinAlreadySignalled(booking.booking_number)) {
+  if (awinEnabled && booking && booking.booking_number && !isFailedState.value && !paymentReview.value && !awinAlreadySignalled(booking.booking_number)) {
     const amount = awinAmount(booking);
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
@@ -228,8 +255,8 @@ onMounted(() => {
           </div>
 
           <BookingLocationBlock
-            :pickup-string="booking.pickup_location"
-            :return-string="booking.return_location"
+            :pickup-string="customerSafeLocation(booking.pickup_location)"
+            :return-string="customerSafeLocation(booking.return_location)"
             :pickup-details="pickupDetails"
             :dropoff-details="dropoffDetails"
             compact
@@ -238,8 +265,10 @@ onMounted(() => {
           <!-- Payment Summary -->
           <div class="flex items-center justify-between py-3 px-4 rounded-xl bg-[#153B4F]/5 border border-[#153B4F]/10">
             <div>
-              <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Amount Paid</p>
-              <p class="text-lg font-extrabold text-emerald-600">{{ booking.booking_currency }} {{ parseFloat(booking.amount_paid || 0).toFixed(2) }}</p>
+              <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ paymentReview ? 'Captured — Under Review' : 'Amount Paid' }}</p>
+              <p class="text-lg font-extrabold" :class="paymentReview ? 'text-amber-600' : 'text-emerald-600'">
+                {{ paymentReview ? capturedPaymentLabel : `${booking.booking_currency} ${parseFloat(booking.amount_paid || 0).toFixed(2)}` }}
+              </p>
             </div>
             <div class="text-right">
               <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</p>

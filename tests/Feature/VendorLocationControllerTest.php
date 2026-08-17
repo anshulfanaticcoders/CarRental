@@ -361,10 +361,10 @@ class VendorLocationControllerTest extends TestCase
         $this->assertDatabaseMissing('vendor_locations', ['id' => $location->id]);
         $this->assertDatabaseMissing('vehicles', ['id' => $vehicle->id]);
         $this->assertDatabaseMissing('api_bookings', ['vehicle_id' => $vehicle->id]);
-        $this->assertDatabaseMissing('damage_protections', ['booking_id' => $booking->id]);
+        $this->assertDatabaseHas('damage_protections', ['booking_id' => $booking->id]);
         Storage::disk('upcloud')->assertMissing($imagePath);
-        Storage::disk('upcloud')->assertMissing($beforeImagePath);
-        Storage::disk('upcloud')->assertMissing($afterImagePath);
+        Storage::disk('upcloud')->assertExists($beforeImagePath);
+        Storage::disk('upcloud')->assertExists($afterImagePath);
     }
 
     public function test_vendor_location_standard_delete_still_blocks_when_vehicles_are_linked(): void

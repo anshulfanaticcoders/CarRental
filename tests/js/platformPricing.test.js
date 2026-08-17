@@ -68,13 +68,13 @@ test('uses deposit-percentage totals for internal checkout vehicles', () => {
         source: 'internal',
     };
 
-    assert.equal(resolveEffectiveProviderMarkupRate(vehicle, 0.15), 0.15);
+    assert.equal(resolveEffectiveProviderMarkupRate(vehicle, 0.15), 0);
     assert.equal(shouldUseCommissionOnlyForVehicle(vehicle, 0.15), false);
 
     assert.deepEqual(
         computeBookingChargeBreakdown({
             netTotal: 391.62,
-            markupRate: 0,
+            markupRate: resolveEffectiveProviderMarkupRate(vehicle, 0.15),
             depositPercentage: 15,
             useCommissionOnly: shouldUseCommissionOnlyForVehicle(vehicle, 0.15),
         }),

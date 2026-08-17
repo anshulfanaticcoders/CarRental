@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VendorLocation;
 use App\Models\VendorVehicleAddon;
-use App\Models\VendorVehiclePlan;
 use App\Services\Bookings\InternalBookingSnapshotService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
 use Carbon\Carbon;
@@ -92,6 +91,15 @@ class InternalProviderController extends Controller
         // Rental days from the FULL datetimes — same billing rule as booking.
         $pickupAt = Carbon::parse($validated['pickup_date'].' '.$validated['pickup_time']);
         $dropoffAt = Carbon::parse($validated['dropoff_date'].' '.$validated['dropoff_time']);
+        if ($pickupAt->lessThanOrEqualTo(now()) || $dropoffAt->lessThanOrEqualTo($pickupAt)) {
+            return response()->json([
+                'error' => [
+                    'code' => 'INVALID_RENTAL_WINDOW',
+                    'message' => 'Pickup must be in the future and drop-off must be after pickup.',
+                    'status' => 422,
+                ],
+            ], 422);
+        }
         $totalDays = max(1, (int) ceil($pickupAt->diffInMinutes($dropoffAt) / 1440));
         // Prices are stored and booked in EUR and this endpoint performs no
         // conversion — labeling raw amounts with a requested currency was a
@@ -160,12 +168,8 @@ class InternalProviderController extends Controller
                 ? ($dropoffLocationVehicle->full_vehicle_address ?: $dropoffLocationVehicle->location)
                 : $pickupLocationName);
 
-        // Get global insurance plans and addons
-        $globalPlans = \App\Models\Plan::all();
-        $globalAddons = \App\Models\BookingAddon::all();
-
         $results = $available->map(function ($vehicle) use (
-            $totalDays, $currency, $pickupLocationName, $dropoffLocationName, $globalPlans, $globalAddons
+            $totalDays, $currency, $pickupLocationName, $dropoffLocationName
         ) {
             // Quoted price must equal the booked price: the same partner
             // markup rate applies here as in createBooking.
@@ -228,50 +232,21 @@ class InternalProviderController extends Controller
                 $paymentMethods = is_array($decoded) ? $decoded : [];
             }
 
-            // Insurance plans (global + vendor-specific)
-            $insurancePlans = $globalPlans->map(fn ($p) => [
-                'id' => $p->id,
-                'name' => $p->plan_type,
-                'daily_rate' => (float) $p->plan_value,
-                'total_price' => round((float) $p->plan_value * $totalDays, 2),
-                'description' => $p->plan_description,
-                'features' => is_string($p->features) ? json_decode($p->features, true) : ($p->features ?? []),
-            ])->values()->toArray();
-
-            // Vehicle-specific vendor plans (if any)
-            $vendorPlans = \App\Models\VendorVehiclePlan::where('vendor_id', $vehicle->vendor_id)
-                ->where('vehicle_id', $vehicle->id)
+            // Publish only inventory this endpoint can actually book. Insurance
+            // remains omitted until createBooking supports it end-to-end.
+            $insurancePlans = [];
+            $extras = [];
+            $bookableAddons = VendorVehicleAddon::where('vendor_id', $vehicle->vendor_id)
+                ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhereNull('vehicle_id'))
                 ->get();
-            foreach ($vendorPlans as $vp) {
-                $insurancePlans[] = [
-                    'id' => $vp->id,
-                    'name' => $vp->plan_type,
-                    'daily_rate' => (float) $vp->price,
-                    'total_price' => round((float) $vp->price * $totalDays, 2),
-                    'description' => $vp->plan_description,
-                    'features' => is_string($vp->features) ? json_decode($vp->features, true) : ($vp->features ?? []),
-                ];
-            }
-
-            // Extras (global + vehicle-specific addons)
-            $extras = $globalAddons->map(fn ($a) => [
-                'id' => $a->id,
-                'name' => $a->extra_name,
-                'type' => $a->extra_type,
-                'daily_rate' => (float) $a->price,
-                'total_price' => round((float) $a->price * $totalDays, 2),
-                'description' => $a->description,
-                'max_quantity' => (int) ($a->quantity ?: 1),
-            ])->values()->toArray();
-
-            // Vehicle-specific addons
-            foreach ($vehicle->addons as $addon) {
+            foreach ($bookableAddons as $addon) {
+                $addonDailyRate = round((float) $addon->price * (1 + $partnerRate), 2);
                 $extras[] = [
                     'id' => $addon->id,
                     'name' => $addon->extra_name,
                     'type' => $addon->extra_type,
-                    'daily_rate' => (float) $addon->price,
-                    'total_price' => round((float) $addon->price * $totalDays, 2),
+                    'daily_rate' => $addonDailyRate,
+                    'total_price' => round($addonDailyRate * $totalDays, 2),
                     'description' => $addon->description,
                     'max_quantity' => (int) ($addon->quantity ?: 1),
                 ];
@@ -322,7 +297,12 @@ class InternalProviderController extends Controller
                 'terms_policy' => $vehicle->terms_policy,
                 'rental_policy' => $vehicle->rental_policy,
             ];
-        })->values();
+        })
+            ->filter(function (array $result) use ($validated): bool {
+                return ! isset($validated['driver_age'])
+                    || (int) $validated['driver_age'] >= (int) ($result['minimum_driver_age'] ?? 18);
+            })
+            ->values();
 
         return response()->json([
             'data' => $results,
@@ -350,6 +330,7 @@ class InternalProviderController extends Controller
             ], 404);
         }
 
+        $partnerRate = max(0.0, (float) config('vrooem.partner_markup_percent', 0)) / 100;
         $extras = VendorVehicleAddon::where('vendor_id', $vehicle->vendor_id)
             ->where(function ($q) use ($vehicle) {
                 $q->where('vehicle_id', $vehicle->id)
@@ -360,29 +341,15 @@ class InternalProviderController extends Controller
                 'extra_id' => $addon->id,
                 'name' => $addon->extra_name ?: ($addon->addon?->name ?? 'Extra'),
                 'type' => $addon->extra_type ?? 'optional',
-                'price_per_day' => (float) $addon->price,
+                'price_per_day' => round((float) $addon->price * (1 + $partnerRate), 2),
                 'max_quantity' => (int) ($addon->quantity ?? 1),
                 'description' => $addon->description,
-            ]);
-
-        $insuranceOptions = VendorVehiclePlan::where('vendor_id', $vehicle->vendor_id)
-            ->where(function ($q) use ($vehicle) {
-                $q->where('vehicle_id', $vehicle->id)
-                    ->orWhereNull('vehicle_id');
-            })
-            ->get()
-            ->map(fn ($plan) => [
-                'insurance_id' => $plan->id,
-                'name' => $plan->plan_type ?? ($plan->plan?->name ?? 'Insurance'),
-                'price_per_day' => (float) $plan->price,
-                'description' => $plan->plan_description,
-                'features' => $plan->features ?? [],
             ]);
 
         return response()->json([
             'data' => [
                 'extras' => $extras->values(),
-                'insurance_options' => $insuranceOptions->values(),
+                'insurance_options' => [],
             ],
         ]);
     }
@@ -443,17 +410,17 @@ class InternalProviderController extends Controller
         // 17:00 → 09:00 request used to pass and get priced as one day.
         $pickupAt = Carbon::parse($validated['pickup_date'].' '.$validated['pickup_time']);
         $dropoffAt = Carbon::parse($validated['dropoff_date'].' '.$validated['dropoff_time']);
-        if ($dropoffAt->lessThanOrEqualTo($pickupAt)) {
+        if ($pickupAt->lessThanOrEqualTo(now()) || $dropoffAt->lessThanOrEqualTo($pickupAt)) {
             return response()->json([
                 'error' => [
                     'code' => 'INVALID_RENTAL_WINDOW',
-                    'message' => 'dropoff_date/dropoff_time must be after pickup_date/pickup_time.',
+                    'message' => 'Pickup must be in the future and drop-off must be after pickup.',
                     'status' => 422,
                 ],
             ], 422);
         }
 
-        $vehicle = Vehicle::with(['vendor', 'vendor.vendorProfile', 'images', 'vendorLocation', 'vendorProfileData'])->find($validated['vehicle_id']);
+        $vehicle = Vehicle::with(['vendor', 'vendor.vendorProfile', 'images', 'vendorLocation', 'vendorProfileData', 'benefits'])->find($validated['vehicle_id']);
 
         if (! $vehicle || ! in_array($vehicle->status, Vehicle::searchableStatuses(), true)) {
             return response()->json([
@@ -463,6 +430,17 @@ class InternalProviderController extends Controller
                     'status' => 409,
                 ],
             ], 409);
+        }
+
+        $minimumDriverAge = max(18, (int) ($vehicle->benefits?->minimum_driver_age ?? 18));
+        if ((int) $validated['driver']['age'] < $minimumDriverAge) {
+            return response()->json([
+                'error' => [
+                    'code' => 'DRIVER_AGE_NOT_ELIGIBLE',
+                    'message' => "Driver must be at least {$minimumDriverAge} years old for this vehicle.",
+                    'status' => 422,
+                ],
+            ], 422);
         }
 
         // Shared namespace with the customer checkout paths — see
@@ -508,19 +486,24 @@ class InternalProviderController extends Controller
             ], 409);
         }
 
-        $dailyRate = (float) $vehicle->price_per_day;
+        $vendorDailyRate = (float) $vehicle->price_per_day;
+        $partnerRate = max(0.0, (float) config('vrooem.partner_markup_percent', 0)) / 100;
+        $dailyRate = round($vendorDailyRate * (1 + $partnerRate), 2);
         // Rental days from the FULL datetimes — date-only diffing billed
         // Mon 09:00 → Wed 18:00 as 2 days while the vendor supplied 3.
         $totalDays = max(1, (int) ceil($pickupAt->diffInMinutes($dropoffAt) / 1440));
         $basePrice = round($dailyRate * $totalDays, 2);
+        $vendorBasePrice = round($vendorDailyRate * $totalDays, 2);
 
         $extrasTotal = 0;
+        $vendorExtrasTotal = 0;
         $extrasData = [];
 
         if (! empty($validated['extras'])) {
             foreach ($validated['extras'] as $extraInput) {
                 $addon = VendorVehicleAddon::where('id', $extraInput['extra_id'])
                     ->where('vendor_id', $vehicle->vendor_id)
+                    ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhereNull('vehicle_id'))
                     ->first();
 
                 // Reject unknown ids loudly. Silently dropping them created
@@ -528,6 +511,9 @@ class InternalProviderController extends Controller
                 // for — and an id clash with another table could book the
                 // wrong extra entirely.
                 if (! $addon) {
+                    $this->releaseAvailabilityLockQuietly($availabilityLock, $vehicle->id);
+                    $lockAcquired = false;
+
                     return response()->json([
                         'error' => [
                             'code' => 'UNKNOWN_EXTRA',
@@ -537,10 +523,26 @@ class InternalProviderController extends Controller
                     ], 422);
                 }
 
-                $unitPrice = (float) $addon->price;
+                $vendorUnitPrice = (float) $addon->price;
                 $quantity = (int) $extraInput['quantity'];
+                $maxQuantity = max(1, (int) ($addon->quantity ?? 1));
+                if ($quantity > $maxQuantity) {
+                    $this->releaseAvailabilityLockQuietly($availabilityLock, $vehicle->id);
+                    $lockAcquired = false;
+
+                    return response()->json([
+                        'error' => [
+                            'code' => 'EXTRA_QUANTITY_EXCEEDED',
+                            'message' => 'Extra '.$addon->id.' allows a maximum quantity of '.$maxQuantity.'.',
+                            'status' => 422,
+                        ],
+                    ], 422);
+                }
+
+                $unitPrice = round($vendorUnitPrice * (1 + $partnerRate), 2);
                 $extraTotal = round($unitPrice * $quantity * $totalDays, 2);
                 $extrasTotal += $extraTotal;
+                $vendorExtrasTotal += round($vendorUnitPrice * $quantity * $totalDays, 2);
 
                 $extrasData[] = [
                     'extra_id' => $addon->id,
@@ -557,6 +559,9 @@ class InternalProviderController extends Controller
         // partner insurance upsell was revenue we never collected. Until
         // insurance pricing is wired, refuse ids we can't verify and price.
         if (! empty($validated['insurance_id'])) {
+            $this->releaseAvailabilityLockQuietly($availabilityLock, $vehicle->id);
+            $lockAcquired = false;
+
             return response()->json([
                 'error' => [
                     'code' => 'INSURANCE_NOT_SUPPORTED',
@@ -570,10 +575,9 @@ class InternalProviderController extends Controller
         // commission (PARTNER_API_MARKUP_PERCENT, default 0) sits on top.
         // Partner bookings used to pass through at 100% vendor price with no
         // settlement record at all.
-        $vendorNet = round($basePrice + $extrasTotal, 2);
-        $partnerRate = max(0.0, (float) config('vrooem.partner_markup_percent', 0)) / 100;
-        $platformCommission = round($vendorNet * $partnerRate, 2);
-        $totalAmount = round($vendorNet + $platformCommission, 2);
+        $vendorNet = round($vendorBasePrice + $vendorExtrasTotal, 2);
+        $totalAmount = round($basePrice + $extrasTotal, 2);
+        $platformCommission = round($totalAmount - $vendorNet, 2);
 
         $primaryImage = $vehicle->images->first();
         $vehicleImage = $primaryImage ? ($primaryImage->image_url ?: $primaryImage->image_path) : null;
@@ -909,7 +913,9 @@ class InternalProviderController extends Controller
         $freeBeforeDays = (int) $benefits->cancellation_available_per_day_date;
         $fee = (float) ($benefits->cancellation_fee_per_day ?? 0);
 
-        $pickupAt = Carbon::parse($booking->pickup_date);
+        $pickupAt = Carbon::parse(
+            $booking->pickup_date->toDateString().' '.($booking->pickup_time ?: '00:00')
+        );
         $withinFreeWindow = $freeCancellation && now()->lessThanOrEqualTo($pickupAt->copy()->subDays($freeBeforeDays));
 
         if ($withinFreeWindow || $fee <= 0) {

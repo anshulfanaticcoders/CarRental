@@ -18,6 +18,18 @@ class ApiBookingObserver
             return;
         }
 
-        SendPartnerBookingWebhook::dispatch($booking->id, 'booking.'.$booking->status);
+        SendPartnerBookingWebhook::dispatch(
+            $booking->id,
+            'booking.'.$booking->status,
+            [
+                'booking_number' => $booking->booking_number,
+                'status' => $booking->status,
+                'cancellation_reason' => $booking->cancellation_reason,
+                'cancellation_fee' => $booking->cancellation_fee !== null ? (float) $booking->cancellation_fee : null,
+                'currency' => $booking->currency,
+                'is_test' => (bool) $booking->is_test,
+                'transitioned_at' => now()->toIso8601String(),
+            ]
+        );
     }
 }

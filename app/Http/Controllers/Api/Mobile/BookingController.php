@@ -9,8 +9,8 @@ use App\Models\VendorProfile;
 use App\Notifications\Booking\BookingCancelledCustomerNotification;
 use App\Notifications\Booking\BookingCancelledNotification;
 use App\Notifications\Concerns\DeliversToCustomer;
+use App\Services\ProviderBookingCancellationService;
 use App\Services\StripeBookingService;
-use App\Services\VrooemGatewayService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -241,52 +241,18 @@ class BookingController extends Controller
             }
         }
 
-        if ($isExternal) {
-            $gatewayBookingId = (string) ($providerMetadata['gateway_booking_id'] ?? '');
-            $gatewaySupplierId = (string) ($providerMetadata['gateway_supplier_id']
-                ?? $this->mapProviderSourceToGatewaySupplierId($providerSource));
+        $cancelResult = app(ProviderBookingCancellationService::class)->cancel(
+            $booking->id,
+            $validated['cancellation_reason']
+        );
+        if (! ($cancelResult['success'] ?? false)) {
+            $status = in_array($cancelResult['code'] ?? '', ['gateway_failure', 'gateway_rejected', 'operation_in_progress'], true) ? 502 : 422;
 
-            if ($gatewayBookingId === '' || $gatewaySupplierId === '' || empty($booking->provider_booking_ref)) {
-                return response()->json([
-                    'message' => 'Provider cancellation metadata is missing. Contact support.',
-                ], 422);
-            }
-
-            try {
-                $response = app(VrooemGatewayService::class)->cancelBooking(
-                    $gatewayBookingId,
-                    $gatewaySupplierId,
-                    (string) $booking->provider_booking_ref,
-                    $validated['cancellation_reason']
-                );
-
-                if ($response === null) {
-                    $booking->notes = trim(($booking->notes ?? '')."\nGateway Cancel failed: empty response.");
-                    $booking->save();
-
-                    return response()->json([
-                        'message' => 'Failed to cancel reservation with provider. Try again or contact support.',
-                    ], 502);
-                }
-
-                $booking->notes = trim(($booking->notes ?? '')."\nGateway Cancel: cancellation requested.");
-            } catch (\Throwable $e) {
-                Log::error('Mobile cancel: gateway failed', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
-                $booking->notes = trim(($booking->notes ?? '')."\nGateway Cancel failed: ".$e->getMessage());
-                $booking->save();
-
-                return response()->json([
-                    'message' => 'Failed to cancel reservation with provider. Try again or contact support.',
-                ], 502);
-            }
+            return response()->json([
+                'message' => $cancelResult['message'] ?? 'Booking cancellation failed.',
+            ], $status);
         }
-
-        $booking->booking_status = 'cancelled';
-        $booking->cancellation_reason = $validated['cancellation_reason'];
-        $booking->save();
+        $booking = $cancelResult['booking']->load(['vehicle', 'customer']);
 
         $vehicle = $booking->vehicle;
         $customer = $booking->customer;

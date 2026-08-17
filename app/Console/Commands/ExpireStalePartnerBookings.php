@@ -24,7 +24,7 @@ class ExpireStalePartnerBookings extends Command
     {
         $stale = ApiBooking::query()
             ->where('status', 'pending')
-            ->where('pickup_date', '<', now())
+            ->whereDate('pickup_date', '<=', now()->toDateString())
             ->get();
 
         if ($stale->isEmpty()) {
@@ -34,13 +34,20 @@ class ExpireStalePartnerBookings extends Command
         }
 
         foreach ($stale as $booking) {
-            $this->line("#{$booking->booking_number}: pending past pickup ({$booking->pickup_date}) — expiring");
+            $pickupAt = \Carbon\Carbon::parse(
+                $booking->pickup_date->toDateString().' '.($booking->pickup_time ?: '00:00')
+            );
+            if ($pickupAt->isFuture()) {
+                continue;
+            }
+
+            $this->line("#{$booking->booking_number}: pending past pickup ({$pickupAt}) — expiring");
 
             if ($this->option('dry-run')) {
                 continue;
             }
 
-            $booking->update([
+            ApiBooking::whereKey($booking->id)->where('status', 'pending')->update([
                 'status' => 'cancelled',
                 'cancellation_reason' => 'Auto-expired: still pending after the pickup time passed.',
                 'cancelled_at' => now(),

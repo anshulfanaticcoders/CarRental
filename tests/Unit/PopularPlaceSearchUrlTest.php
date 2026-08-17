@@ -13,6 +13,11 @@ class PopularPlaceSearchUrlTest extends TestCase
     public function it_serializes_a_gateway_search_url_for_popular_places(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-03-21 10:00:00', 'UTC'));
+        config([
+            'destinations.default_lead_days' => 1,
+            'destinations.default_rental_days' => 1,
+            'destinations.default_pickup_time' => '09:00',
+        ]);
 
         $place = new PopularPlace([
             'place_name' => 'Dubai Airport (DXB)',

@@ -109,12 +109,19 @@ class StripeCheckoutController extends Controller
         return $normalized;
     }
 
-    private function reserveInternalVehicleForCheckout(Request $request, array $validated, ?string $searchSessionId): array
-    {
+    private function reserveInternalVehicleForCheckout(
+        Request $request,
+        array $validated,
+        ?string $searchSessionId,
+        ?\Carbon\CarbonInterface $stripeSessionExpiresAt = null
+    ): array {
         $vehicle = $validated['vehicle'] ?? [];
         if (($vehicle['source'] ?? null) !== 'internal' || empty($vehicle['id'])) {
             return ['success' => true, 'hold' => null];
         }
+
+        $stripeSessionExpiresAt ??= now()->addMinutes(30);
+        $holdExpiresAt = $stripeSessionExpiresAt->copy()->addMinutes(10);
 
         $vehicleId = (int) $vehicle['id'];
         $window = [
@@ -137,7 +144,7 @@ class StripeCheckoutController extends Controller
         if ($existingHold) {
             // Re-arm the clock: a retried checkout mints a fresh 30-min Stripe
             // session, so the hold must cover the new session's full lifetime.
-            $existingHold->update(['expires_at' => now()->addMinutes(30)]);
+            $existingHold->update(['expires_at' => $holdExpiresAt]);
 
             return ['success' => true, 'hold' => $existingHold];
         }
@@ -179,10 +186,10 @@ class StripeCheckoutController extends Controller
                 'pickup_time' => $window['pickup_time'],
                 'dropoff_date' => $window['dropoff_date'],
                 'dropoff_time' => $window['dropoff_time'],
-                // Must outlive the Stripe session (30 min, see expires_at on the
-                // session below). A 15-min hold left minutes 15-30 as a window
-                // where a second customer could book while the first could still pay.
-                'expires_at' => now()->addMinutes(30),
+                // Keep a fulfilment buffer after Stripe stops accepting payment.
+                // Exact-equality expiry allowed the hold sweeper to win a race
+                // against a paid webhook arriving at the 30-minute boundary.
+                'expires_at' => $holdExpiresAt,
                 'status' => 'active',
             ]);
 
@@ -873,7 +880,8 @@ class StripeCheckoutController extends Controller
                 $extrasVerification = $priceVerificationService->verifyAndResolveExtras(
                     $validated['detailed_extras'] ?? [],
                     $verifiedPrices,
-                    $validated['package'] ?? null
+                    $validated['package'] ?? null,
+                    $validated['number_of_days'] ?? null
                 );
 
                 if (! $extrasVerification['valid']) {
@@ -935,6 +943,53 @@ class StripeCheckoutController extends Controller
                         : $verifiedGatewayVehicleContext;
                     $vehicle = $validated['vehicle'];
                 }
+
+                $trustedSourceCurrency = $this->normalizeCurrencyCode($verifiedPrices['currency'] ?? 'EUR');
+                foreach ([
+                    $request->input('currency'),
+                    $request->input('vehicle.currency'),
+                    $request->input('vehicle.pricing.currency'),
+                ] as $submittedCurrency) {
+                    if ($submittedCurrency === null || $submittedCurrency === '') {
+                        continue;
+                    }
+
+                    if ($this->normalizeCurrencyCode($submittedCurrency) !== $trustedSourceCurrency) {
+                        Log::warning('StripeCheckout: source currency mismatch', [
+                            'submitted_currency' => $submittedCurrency,
+                            'trusted_currency' => $trustedSourceCurrency,
+                            'vehicle_id' => $vehicle['id'] ?? null,
+                            'search_session' => $searchSessionId,
+                            'ip' => $request->ip(),
+                        ]);
+
+                        return response()->json([
+                            'error' => 'Pricing currency changed. Please refresh your search and try again.',
+                            'code' => 'SOURCE_CURRENCY_MISMATCH',
+                        ], 422);
+                    }
+                }
+
+                $validated['currency'] = $trustedSourceCurrency;
+                $vehicle['currency'] = $trustedSourceCurrency;
+                $vehicle['pricing'] = is_array($vehicle['pricing'] ?? null) ? $vehicle['pricing'] : [];
+                $vehicle['pricing']['currency'] = $trustedSourceCurrency;
+                $validated['vehicle'] = $vehicle;
+
+                $trustedProtectionTotal = $this->resolveTrustedProtectionTotal(
+                    $providerSource,
+                    $validated['detailed_extras'] ?? [],
+                    $verifiedPrices,
+                    (int) ($validated['number_of_days'] ?? 1)
+                );
+                if ($trustedProtectionTotal === null) {
+                    return response()->json([
+                        'error' => 'Protection pricing is invalid. Please refresh your search and try again.',
+                        'code' => 'INVALID_PROTECTION_PRICE',
+                    ], 422);
+                }
+                $validated['trusted_protection_total'] = $trustedProtectionTotal;
+                $validated['protection_amount'] = $trustedProtectionTotal;
             } else {
                 Log::warning('Checkout attempted without search_session_id', [
                     'vehicle_id' => $vehicle['id'] ?? $vehicle['provider_vehicle_id'] ?? null,
@@ -1040,7 +1095,13 @@ class StripeCheckoutController extends Controller
                 }
             }
 
-            $holdResult = $this->reserveInternalVehicleForCheckout($request, $validated, $searchSessionId ?? null);
+            $stripeSessionExpiresAt = now()->addMinutes(30);
+            $holdResult = $this->reserveInternalVehicleForCheckout(
+                $request,
+                $validated,
+                $searchSessionId ?? null,
+                $stripeSessionExpiresAt
+            );
             if (! ($holdResult['success'] ?? false)) {
                 return response()->json([
                     'error' => $holdResult['error'] ?? 'Vehicle is no longer available.',
@@ -1491,39 +1552,56 @@ class StripeCheckoutController extends Controller
             // later would replay the DEAD session and error at redirect.
             $idempotencyKey = 'co_'.$checkoutAttemptHash.'_'.intdiv(time(), 1800);
 
-            $session = StripeSession::create([
-                'payment_method_types' => $paymentMethodTypes,
-                'line_items' => $lineItems,
-                'mode' => 'payment',
-                'success_url' => $successUrl,
-                'cancel_url' => $cancelUrl,
-                'customer_email' => $validated['customer']['email'] ?? null,
-                'metadata' => $metadata,
-                'payment_intent_data' => [
-                    'metadata' => $metadata,
-                ],
-                // Quotes and holds live ~15 minutes; a session payable for 24h
-                // invites paying on a dead quote. 30 minutes is Stripe's minimum.
-                'expires_at' => now()->addMinutes(30)->timestamp,
-            ], [
-                'idempotency_key' => $idempotencyKey,
-            ]);
+            // Keep the attempt mutex through Stripe creation + durable session
+            // back-patch. The earlier lookup lock alone allowed two requests to
+            // both observe an empty session id and mint separate payable links.
+            $sessionCreationLock = Cache::lock("stripe_checkout_attempt_lock:{$checkoutAttemptHash}", 90);
+            if (! $sessionCreationLock->block(10)) {
+                return response()->json([
+                    'error' => 'Checkout is already being prepared. Please wait a moment and try again.',
+                    'code' => 'checkout_in_progress',
+                ], 409);
+            }
 
-            if ($extrasPayloadId) {
-                try {
+            try {
+                $payloadRecord = $extrasPayloadId ? StripeCheckoutPayload::find($extrasPayloadId) : null;
+                if ($payloadRecord?->stripe_session_id) {
+                    $existingSession = StripeSession::retrieve($payloadRecord->stripe_session_id);
+                    if (($existingSession->status ?? null) === 'open' && ! empty($existingSession->url)) {
+                        return response()->json([
+                            'success' => true,
+                            'session_id' => $existingSession->id,
+                            'url' => $existingSession->url,
+                        ]);
+                    }
+                }
+
+                $session = StripeSession::create([
+                    'payment_method_types' => $paymentMethodTypes,
+                    'line_items' => $lineItems,
+                    'mode' => 'payment',
+                    'success_url' => $successUrl,
+                    'cancel_url' => $cancelUrl,
+                    'customer_email' => $validated['customer']['email'] ?? null,
+                    'metadata' => $metadata,
+                    'payment_intent_data' => [
+                        'metadata' => $metadata,
+                    ],
+                    'expires_at' => $stripeSessionExpiresAt->timestamp,
+                ], [
+                    'idempotency_key' => $idempotencyKey,
+                ]);
+
+                if ($extrasPayloadId) {
                     StripeCheckoutPayload::whereKey($extrasPayloadId)->update([
                         'stripe_session_id' => $session->id,
                     ]);
                     if ($bookingHold) {
                         $bookingHold->update(['stripe_session_id' => $session->id]);
                     }
-                } catch (\Exception $e) {
-                    Log::warning('Stripe Checkout: Failed to update payload session id', [
-                        'payload_id' => $extrasPayloadId,
-                        'session_id' => $session->id,
-                        'error' => $e->getMessage(),
-                    ]);
                 }
+            } finally {
+                $sessionCreationLock->release();
             }
 
             Log::info('Stripe Checkout Session created', [
@@ -1929,17 +2007,9 @@ class StripeCheckoutController extends Controller
 
         $extrasTotalRaw = $this->resolveExtrasTotal($validated['detailed_extras'] ?? [], $days);
 
-        // Protection amount: provider-priced add-on (net).
-        // Locauto: daily rate Ã— days. Adobe: total amount (PLI + selected protections).
-        $providerProtectionTotal = 0.0;
-        if ($vehicleSource === 'locauto_rent') {
-            $protectionDaily = (float) ($validated['protection_amount'] ?? 0);
-            if ($protectionDaily > 0) {
-                $providerProtectionTotal = round($protectionDaily * $days, 2);
-            }
-        } elseif ($vehicleSource === 'adobe') {
-            $providerProtectionTotal = (float) ($validated['protection_amount'] ?? 0);
-        }
+        // Never trust the client protection amount. It is rebuilt from the
+        // signed search context and server-resolved selected extras above.
+        $providerProtectionTotal = round((float) ($validated['trusted_protection_total'] ?? 0), 2);
 
         $providerOptionsTotal = round($extrasTotalRaw + $providerProtectionTotal, 2);
 
@@ -2331,6 +2401,57 @@ class StripeCheckoutController extends Controller
             if ($extraTotal !== null) {
                 $total += (float) $extraTotal;
             }
+        }
+
+        return round($total, 2);
+    }
+
+    private function resolveTrustedProtectionTotal(
+        string $providerSource,
+        array $extras,
+        array $verifiedPrices,
+        int $days
+    ): ?float {
+        $providerSource = strtolower($providerSource);
+        $total = $providerSource === 'adobe'
+            ? (float) ($verifiedPrices['mandatory_protection_amount'] ?? 0)
+            : 0.0;
+
+        if ($total < 0) {
+            return null;
+        }
+
+        if (! in_array($providerSource, ['locauto', 'locauto_rent'], true)) {
+            return round($total, 2);
+        }
+
+        foreach ($extras as $extra) {
+            if (! is_array($extra)) {
+                continue;
+            }
+
+            $extraId = (string) ($extra['id'] ?? $extra['option_id'] ?? '');
+            if (($extra['purpose'] ?? null) !== 'protection' && ! str_starts_with($extraId, 'locauto_protection_')) {
+                continue;
+            }
+
+            $quantity = max(1, (int) ($extra['qty'] ?? $extra['quantity'] ?? 1));
+            $amount = $extra['total_for_booking']
+                ?? $extra['Total_for_this_booking']
+                ?? $extra['total_for_this_booking']
+                ?? $extra['total_price']
+                ?? $extra['total']
+                ?? null;
+            if ($amount === null) {
+                $daily = $extra['daily_rate'] ?? $extra['dailyRate'] ?? $extra['amount'] ?? null;
+                $amount = $daily !== null ? (float) $daily * max(1, $days) : 0;
+            }
+
+            if (! is_numeric($amount) || (float) $amount < 0) {
+                return null;
+            }
+
+            $total += (float) $amount * $quantity;
         }
 
         return round($total, 2);
@@ -2789,7 +2910,7 @@ class StripeCheckoutController extends Controller
      */
     private function isTerminalFailureStatus(Booking $booking): bool
     {
-        return in_array($booking->booking_status, ['cancelled', 'reservation_failed', 'rejected'], true);
+        return in_array($booking->booking_status, ['cancelled', 'reservation_failed', 'rejected', 'expired'], true);
     }
 
     private function resolveBookingOutcomeState(Booking $booking, string $fallback): string
@@ -2804,6 +2925,10 @@ class StripeCheckoutController extends Controller
 
         if ($booking->booking_status === 'reservation_failed') {
             return 'reservation_failed';
+        }
+
+        if ($booking->booking_status === 'expired') {
+            return 'payment_cancelled';
         }
 
         if ($booking->payment_status === 'refund_pending' || $booking->booking_status === 'rejected') {

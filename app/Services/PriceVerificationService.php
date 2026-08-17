@@ -66,9 +66,10 @@ class PriceVerificationService
             'original_total' => $vehicle['total'] ?? ($vehicle['total_price'] ?? ($pricing['total_price'] ?? null)),
             'original_daily_rate' => $vehicle['daily_rate'] ?? ($vehicle['price_per_day'] ?? ($pricing['price_per_day'] ?? null)),
             'products' => $vehicle['products'] ?? [],
-            'extras' => $vehicle['extras'] ?? ($vehicle['options'] ?? ($vehicle['extras_preview'] ?? [])),
+            'extras' => $this->buildTrustedExtrasCatalog($vehicle),
             'price_per_day' => $vehicle['price_per_day'] ?? ($pricing['price_per_day'] ?? null),
             'currency' => $vehicle['currency'] ?? ($pricing['currency'] ?? 'EUR'),
+            'mandatory_protection_amount' => $this->resolveMandatoryProtectionAmount($vehicle),
             'stored_at' => now()->toIso8601String(),
             'search_session' => $searchSessionId,
             'offer_fingerprint' => app(OfferService::class)->getOfferFingerprint('search'),
@@ -564,8 +565,12 @@ class PriceVerificationService
         ];
     }
 
-    public function verifyAndResolveExtras(array $clientExtras, array $storedData, ?string $selectedPackage = null): array
-    {
+    public function verifyAndResolveExtras(
+        array $clientExtras,
+        array $storedData,
+        ?string $selectedPackage = null,
+        ?int $rentalDays = null
+    ): array {
         $resolvedExtras = [];
 
         foreach ($clientExtras as $extra) {
@@ -586,13 +591,6 @@ class PriceVerificationService
             $storedExtra ??= $this->resolveRecordGoProductComplement($extraId, $storedData, $selectedPackage);
 
             if (! $storedExtra) {
-                // Skip validation for provider-built protection plans (not from search extras)
-                if (str_starts_with($extraId, 'adobe_protection_') || str_starts_with($extraId, 'locauto_protection_') || str_starts_with($extraId, 'ins_')) {
-                    $resolvedExtras[] = array_merge($extra, ['qty' => max(1, (int) ($extra['qty'] ?? $extra['quantity'] ?? 1))]);
-
-                    continue;
-                }
-
                 Log::warning('Price manipulation detected - unknown selected extra', [
                     'extra_id' => $extraId,
                     'available_extra_ids' => $this->availableExtraIdentifiers($storedData, $selectedPackage),
@@ -604,8 +602,21 @@ class PriceVerificationService
                 ];
             }
 
-            $clientPrice = $this->resolveExtraReferencePrice($extra);
-            $storedPrice = $this->resolveExtraReferencePrice($storedExtra);
+            $clientPrice = $this->resolveExtraReferencePrice($extra, $rentalDays);
+            $storedPrice = $this->resolveExtraReferencePrice($storedExtra, $rentalDays);
+
+            if (($clientPrice !== null && $clientPrice < 0) || ($storedPrice !== null && $storedPrice < 0)) {
+                Log::warning('Price manipulation detected - negative extra price', [
+                    'extra_id' => $extraId,
+                    'expected_price' => $storedPrice,
+                    'received_price' => $clientPrice,
+                ]);
+
+                return [
+                    'valid' => false,
+                    'error' => 'Price verification failed: Invalid extra price.',
+                ];
+            }
 
             if ($clientPrice !== null && $storedPrice !== null) {
                 $difference = abs((float) $clientPrice - (float) $storedPrice);
@@ -791,18 +802,113 @@ class PriceVerificationService
         return array_values(array_unique($identifiers));
     }
 
-    private function resolveExtraReferencePrice(array $extra): ?float
+    private function resolveExtraReferencePrice(array $extra, ?int $rentalDays = null): ?float
     {
-        $raw = $extra['total_for_booking']
+        $total = $extra['total_for_booking']
             ?? $extra['Total_for_this_booking']
             ?? $extra['total_for_this_booking']
-            ?? $extra['daily_rate']
-            ?? $extra['dailyRate']
+            ?? $extra['total_price']
+            ?? $extra['total']
             ?? $extra['price']
             ?? $extra['amount']
             ?? null;
 
-        return $raw !== null ? (float) $raw : null;
+        if ($total !== null) {
+            return (float) $total;
+        }
+
+        $daily = $extra['daily_rate'] ?? $extra['dailyRate'] ?? null;
+        if ($daily === null) {
+            return null;
+        }
+
+        return (float) $daily * max(1, (int) ($rentalDays ?? 1));
+    }
+
+    private function buildTrustedExtrasCatalog(array $vehicle): array
+    {
+        $catalog = [];
+
+        foreach (['extras', 'options', 'extras_preview', 'insurance_options'] as $key) {
+            foreach (is_array($vehicle[$key] ?? null) ? $vehicle[$key] : [] as $extra) {
+                if (! is_array($extra)) {
+                    continue;
+                }
+
+                $identifier = $this->resolveExtraIdentifier($extra);
+                if ($identifier !== null) {
+                    $catalog[$identifier] = $extra;
+                }
+            }
+        }
+
+        $source = strtolower((string) ($vehicle['source'] ?? ''));
+        if ($source === 'adobe') {
+            foreach (is_array($vehicle['protections'] ?? null) ? $vehicle['protections'] : [] as $protection) {
+                if (! is_array($protection)) {
+                    continue;
+                }
+
+                $code = strtoupper(trim((string) ($protection['code'] ?? '')));
+                if ($code === '' || $code === 'PLI') {
+                    continue;
+                }
+
+                $identifier = 'adobe_protection_'.$code;
+                $catalog[$identifier] = array_merge($protection, [
+                    'id' => $identifier,
+                    'option_id' => $identifier,
+                    'code' => $code,
+                    'max_quantity' => 1,
+                ]);
+            }
+
+            foreach (['LDW' => 'ldw', 'SPP' => 'spp'] as $code => $field) {
+                $identifier = 'adobe_protection_'.$code;
+                if (isset($catalog[$identifier]) || ! is_numeric($vehicle[$field] ?? null)) {
+                    continue;
+                }
+
+                $catalog[$identifier] = [
+                    'id' => $identifier,
+                    'option_id' => $identifier,
+                    'code' => $code,
+                    'name' => $code === 'LDW' ? 'Car Protection' : 'Extended Protection',
+                    'daily_rate' => (float) $vehicle[$field],
+                    'max_quantity' => 1,
+                ];
+            }
+        }
+
+        if (in_array($source, ['locauto', 'locauto_rent'], true)) {
+            foreach ($catalog as $extra) {
+                $code = trim((string) ($extra['code'] ?? ''));
+                if ($code === '') {
+                    continue;
+                }
+
+                $identifier = 'locauto_protection_'.$code;
+                $catalog[$identifier] = array_merge($extra, [
+                    'id' => $identifier,
+                    'option_id' => $identifier,
+                    'purpose' => 'protection',
+                    'max_quantity' => 1,
+                ]);
+            }
+        }
+
+        return array_values($catalog);
+    }
+
+    private function resolveMandatoryProtectionAmount(array $vehicle): float
+    {
+        if (strtolower((string) ($vehicle['source'] ?? '')) !== 'adobe') {
+            return 0.0;
+        }
+
+        $amount = $vehicle['pli'] ?? null;
+
+        return is_numeric($amount) && (float) $amount >= 0 ? (float) $amount : 0.0;
     }
 
     private function resolveExtraMaxQuantity(array $extra): int

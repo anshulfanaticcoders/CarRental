@@ -7,6 +7,9 @@ return [
     'timeout' => env('VROOEM_GATEWAY_TIMEOUT', 60),
     'connect_timeout' => env('VROOEM_GATEWAY_CONNECT_TIMEOUT', 5),
     'internal_api_token' => env('GATEWAY_INTERNAL_TOKEN'),
+    // Temporary migration escape hatch only. Live partner identity must come
+    // from a scoped X-Api-Key, never an api_consumer_id supplied by the caller.
+    'allow_legacy_partner_identity' => (bool) env('ALLOW_LEGACY_PARTNER_IDENTITY', false),
 
     // Platform markup applied to partner-API quotes and bookings, in percent.
     // Default 0 = partner bookings pass through at vendor price (no silent

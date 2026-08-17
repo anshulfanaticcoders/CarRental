@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Booking Confirmation - {{ $booking->booking_number }}</title>
+    <title>Booking Document - {{ $booking->booking_number }}</title>
     <style>
         @page { margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -436,19 +436,58 @@
     $policies = $providerMetadata['benefits'] ?? $providerMetadata['policies'] ?? [];
     $amounts = $booking->amounts ?? null;
     $currency = $booking->booking_currency ?? 'EUR';
-    $displayVehicleRental = (float) ($customerPricing['vehicle_total'] ?? $booking->base_price ?? 0);
     $displayExtrasTotal = (float) ($customerPricing['extras_total'] ?? $booking->extra_charges ?? 0);
+    $renderedExtrasTotal = $booking->extras && $booking->extras->count() > 0
+        ? (float) $booking->extras->sum(fn ($extra) => (float) ($extra->price ?? 0) * max(1, (int) ($extra->quantity ?? 1)))
+        : $displayExtrasTotal;
+    $displayVehicleRental = max(0, round(
+        (float) ($booking->total_amount ?? 0)
+        - $renderedExtrasTotal
+        - (float) ($booking->tax_amount ?? 0)
+        + (float) ($booking->discount_amount ?? 0),
+        2
+    ));
 
     $paidPercentage = $booking->total_amount > 0 ? round(($booking->amount_paid / $booking->total_amount) * 100) : 0;
     $isPOA = $paidPercentage > 0 && $paidPercentage < 100;
     $duePercentage = 100 - $paidPercentage;
 
+    $supplierPending = $booking->provider_source
+        && $booking->provider_source !== 'internal'
+        && empty($booking->provider_booking_ref)
+        && in_array($booking->booking_status, ['pending', 'confirmed'], true);
     $statusClass = match($booking->booking_status) {
         'confirmed' => 'status-confirmed',
         'completed' => 'status-completed',
-        'cancelled' => 'status-cancelled',
+        'cancelled', 'reservation_failed', 'rejected', 'expired' => 'status-cancelled',
         default => 'status-pending',
     };
+    if ($supplierPending) $statusClass = 'status-pending';
+    $statusLabel = $supplierPending ? 'Supplier confirmation pending' : match($booking->booking_status) {
+        'reservation_failed', 'rejected' => 'Under review',
+        'expired' => 'Expired',
+        default => ucfirst(str_replace('_', ' ', $booking->booking_status)),
+    };
+    $documentType = $supplierPending ? 'Payment Receipt — Supplier Pending' : match($booking->booking_status) {
+        'confirmed', 'completed' => 'Booking Confirmation',
+        'cancelled' => 'Cancellation Record',
+        'expired' => 'Expired Checkout Record',
+        'reservation_failed', 'rejected' => 'Booking Review Record',
+        default => 'Booking Record',
+    };
+
+    $amountMismatch = $providerMetadata['amount_mismatch'] ?? null;
+    $displayPaidAmount = (float) ($booking->amount_paid ?? 0);
+    $displayPaidCurrency = $currency;
+    if (is_array($amountMismatch) && isset($amountMismatch['charged_minor'], $amountMismatch['charged_currency'])) {
+        $displayPaidCurrency = strtoupper((string) $amountMismatch['charged_currency']);
+        $minorUnit = app(\App\Support\CurrencyRegistry::class)->minorUnit($displayPaidCurrency);
+        $displayPaidAmount = (float) $amountMismatch['charged_minor'] / (10 ** $minorUnit);
+    }
+
+    $safeLocation = static fn ($value) => str_contains(strtolower((string) $value), 'needs correction')
+        ? 'Being confirmed — our team will contact you'
+        : $value;
 
     $pickupLocation = $providerMetadata['pickup_location_details'] ?? $providerMetadata['location'] ?? [];
     $dropoffLocation = $providerMetadata['dropoff_location_details'] ?? [];
@@ -462,12 +501,12 @@
                 <tr>
                     <td style="vertical-align:top;">
                         <div class="brand-name">vrooem.</div>
-                        <div class="doc-type">Booking Confirmation</div>
+                        <div class="doc-type">{{ $documentType }}</div>
                     </td>
                     <td style="text-align:right; vertical-align:top;">
                         <div class="booking-num">#{{ $booking->booking_number }}</div>
                         <div class="booking-date">{{ date('F j, Y', strtotime($booking->created_at)) }}</div>
-                        <div class="status-pill {{ $statusClass }}">{{ ucfirst($booking->booking_status) }}</div>
+                        <div class="status-pill {{ $statusClass }}">{{ $statusLabel }}</div>
                     </td>
                 </tr>
             </table>
@@ -519,9 +558,9 @@
                                 <td>
                                     <div class="loc-label loc-label-pickup">Pickup</div>
                                     <div class="loc-datetime">{{ date('D, M j, Y', strtotime($booking->pickup_date)) }} &middot; {{ date('g:i A', strtotime($booking->pickup_time)) }}</div>
-                                    <div class="loc-place">{{ $booking->pickup_location }}</div>
+                                    <div class="loc-place">{{ $safeLocation($booking->pickup_location) }}</div>
                                     @if(!empty($pickupLocation['name']))
-                                        <div class="loc-place" style="font-weight:600; color:#334155;">{{ $pickupLocation['name'] }}</div>
+                                        <div class="loc-place" style="font-weight:600; color:#334155;">{{ $safeLocation($pickupLocation['name']) }}</div>
                                     @endif
                                 </td>
                             </tr>
@@ -535,9 +574,9 @@
                                 <td>
                                     <div class="loc-label loc-label-return">Return</div>
                                     <div class="loc-datetime">{{ date('D, M j, Y', strtotime($booking->return_date)) }} &middot; {{ date('g:i A', strtotime($booking->return_time)) }}</div>
-                                    <div class="loc-place">{{ $booking->return_location ?? $booking->pickup_location }}</div>
+                                    <div class="loc-place">{{ $safeLocation($booking->return_location ?? $booking->pickup_location) }}</div>
                                     @if(!empty($dropoffLocation['name']))
-                                        <div class="loc-place" style="font-weight:600; color:#334155;">{{ $dropoffLocation['name'] }}</div>
+                                        <div class="loc-place" style="font-weight:600; color:#334155;">{{ $safeLocation($dropoffLocation['name']) }}</div>
                                     @endif
                                 </td>
                             </tr>
@@ -660,12 +699,12 @@
                         <tr>
                             <td style="padding-left:0; width:50%;">
                                 <div class="pay-card pay-card-paid">
-                                    <div class="pay-card-label pay-card-label-paid">{{ $isPOA ? "Paid Online ({$paidPercentage}%)" : 'Paid in Full' }}</div>
-                                    <div class="pay-card-amount pay-card-amount-paid">{{ $currency }} {{ number_format($booking->amount_paid, 2) }}</div>
+                                    <div class="pay-card-label pay-card-label-paid">{{ $amountMismatch ? 'Captured Online — Under Review' : ($isPOA ? "Paid Online ({$paidPercentage}%)" : 'Paid in Full') }}</div>
+                                    <div class="pay-card-amount pay-card-amount-paid">{{ $displayPaidCurrency }} {{ number_format($displayPaidAmount, 2) }}</div>
                                     <div class="pay-card-note" style="color:#059669;">via Stripe</div>
                                 </div>
                             </td>
-                            @if($booking->pending_amount > 0)
+                            @if(!$amountMismatch && $booking->pending_amount > 0)
                                 <td style="padding-right:0; width:50%;">
                                     <div class="pay-card pay-card-due">
                                         <div class="pay-card-label pay-card-label-due">Due at Pickup ({{ $duePercentage }}%)</div>
@@ -676,6 +715,12 @@
                             @endif
                         </tr>
                     </table>
+                </div>
+            @endif
+
+            @if($amountMismatch)
+                <div class="note-box" style="margin-top:10px;">
+                    <strong>Payment review:</strong> The amount actually captured by Stripe is shown above. Our team is reviewing a mismatch with the original checkout summary.
                 </div>
             @endif
 
@@ -1046,15 +1091,9 @@
         </div>
 
         {{-- ═══ NOTES ═══ --}}
-        @if($booking->notes || $booking->cancellation_reason)
+        @if($booking->cancellation_reason)
             <div class="section">
                 <div class="section-head">Additional Notes</div>
-                @if($booking->notes)
-                    <div class="info-block-full">
-                        <div class="info-block-label">Notes</div>
-                        <div class="info-block-value">{{ $booking->notes }}</div>
-                    </div>
-                @endif
                 @if($booking->cancellation_reason)
                     <div class="info-block-full" style="background:#fef2f2; border-color:#fecaca;">
                         <div class="info-block-label" style="color:#dc2626;">Cancellation Reason</div>

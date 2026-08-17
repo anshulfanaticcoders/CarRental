@@ -10,6 +10,7 @@ use App\Models\Vehicle;
 use App\Models\VendorProfile;
 use App\Notifications\Booking\BookingCancelledCustomerNotification;
 use App\Notifications\Booking\BookingCancelledNotification;
+use App\Services\ProviderBookingCancellationService;
 use App\Services\VrooemGatewayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -62,18 +63,11 @@ class BookingDashboardController extends Controller
         $vehicle = $booking->vehicle_id ? Vehicle::find($booking->vehicle_id) : null;
         $reason = $validated['cancellation_reason'];
 
-        // Attempt provider cancellation for external bookings
-        $providerSource = $booking->provider_source ? strtolower($booking->provider_source) : null;
-        $providerError = $this->cancelWithProvider($booking, $providerSource, $reason);
-
-        if ($providerError) {
-            return back()->with('error', $providerError);
+        $result = app(ProviderBookingCancellationService::class)->cancel($booking->id, $reason, 'Admin');
+        if (! ($result['success'] ?? false)) {
+            return back()->with('error', $result['message'] ?? 'Booking cancellation failed.');
         }
-
-        // Update booking status
-        $booking->booking_status = 'cancelled';
-        $booking->cancellation_reason = $reason;
-        $booking->save();
+        $booking = $result['booking'];
 
         // Send notifications
         $this->sendCancellationNotifications($booking, $customer, $vehicle, $reason);
@@ -100,8 +94,8 @@ class BookingDashboardController extends Controller
         if (in_array($booking->booking_status, ['cancelled', 'rejected', 'expired', 'completed'], true)) {
             return back()->with('error', 'Booking #'.$booking->booking_number.' is '.$booking->booking_status.' — not eligible for a reservation retry.');
         }
-        if (in_array($booking->payment_status, ['refunded', 'refund_pending'], true)) {
-            return back()->with('error', 'Booking #'.$booking->booking_number.' is refunded — reserving a car for it would cost money nobody collects.');
+        if (! in_array($booking->payment_status, ['partial', 'paid'], true)) {
+            return back()->with('error', 'Booking #'.$booking->booking_number.' is not paid — a supplier reservation cannot be created.');
         }
 
         // An unknown outcome means the supplier MAY already hold this
@@ -341,6 +335,17 @@ class BookingDashboardController extends Controller
                 ->whereNull('provider_booking_ref')
                 ->whereIn('booking_status', ['pending', 'confirmed'])
                 ->count(),
+            'rescue_total' => Booking::where(function ($query) {
+                $query->whereIn('booking_status', ['reservation_failed', 'rejected'])
+                    ->orWhere('payment_status', 'refund_pending')
+                    ->orWhere('provider_metadata->needs_correction', true)
+                    ->orWhere(function ($providerQuery) {
+                        $providerQuery->whereNotNull('provider_source')
+                            ->where('provider_source', '!=', 'internal')
+                            ->whereNull('provider_booking_ref')
+                            ->whereIn('booking_status', ['pending', 'confirmed']);
+                    });
+            })->count(),
         ];
 
         return Inertia::render('AdminDashboardPages/Bookings/Index', [

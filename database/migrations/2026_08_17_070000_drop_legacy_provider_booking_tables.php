@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Schema;
  * anywhere in the codebase — all provider bookings live in `bookings` since
  * the unified gateway flow.
  *
- * Deliberately defensive: a table is dropped ONLY if it exists and is empty.
- * A non-empty table is left in place and logged, never destroyed — nothing a
- * deploy runs unattended should be able to delete data.
+ * Deployment migrations must not remove tables automatically. This migration
+ * records what still exists so removal can be handled as a separately approved,
+ * backed-up maintenance operation.
  */
 return new class extends Migration
 {
@@ -31,13 +31,11 @@ return new class extends Migration
                 continue;
             }
 
-            if (DB::table($table)->exists()) {
-                Log::warning("Legacy table {$table} is NOT empty — left in place, review manually.");
-
-                continue;
-            }
-
-            Schema::drop($table);
+            $rowCount = DB::table($table)->count();
+            Log::notice("Legacy table {$table} left in place for manual review.", [
+                'table' => $table,
+                'row_count' => $rowCount,
+            ]);
         }
     }
 

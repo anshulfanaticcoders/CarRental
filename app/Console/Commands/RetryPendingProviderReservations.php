@@ -130,7 +130,12 @@ class RetryPendingProviderReservations extends Command
 
         try {
             $admin = User::where('email', config('admin.email'))->first();
-            $admin?->notify(new AdminReservationManualCheckNotification($booking, $reason));
+            if ($admin) {
+                AdminReservationManualCheckNotification::sendOnce(
+                    $admin,
+                    new AdminReservationManualCheckNotification($booking, $reason)
+                );
+            }
         } catch (\Throwable $e) {
             Log::warning('RetryPendingProviderReservations: failed to notify admin', [
                 'booking_id' => $booking->id,

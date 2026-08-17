@@ -24,9 +24,25 @@ class PartnerApiBookingTest extends TestCase
 
     private function gatewayHeaders(): array
     {
-        config(['vrooem.internal_api_token' => 'test-gateway-token']);
+        config([
+            'vrooem.internal_api_token' => 'test-gateway-token',
+            'vrooem.allow_legacy_partner_identity' => true,
+        ]);
 
         return ['Authorization' => 'Bearer test-gateway-token'];
+    }
+
+    #[Test]
+    public function partner_routes_reject_headerless_consumer_identity_by_default(): void
+    {
+        config([
+            'vrooem.internal_api_token' => 'test-gateway-token',
+            'vrooem.allow_legacy_partner_identity' => false,
+        ]);
+
+        $this->postJson('/api/internal/provider/vehicles/search', [], [
+            'Authorization' => 'Bearer test-gateway-token',
+        ])->assertStatus(401)->assertJsonPath('error.code', 'MISSING_API_KEY');
     }
 
     private function consumer(): ApiConsumer
@@ -208,11 +224,41 @@ class PartnerApiBookingTest extends TestCase
             'pickup_date' => now()->addDays(5), 'return_date' => now()->addDays(7),
             'status' => 'pending',
         ]));
+        $laterToday = ApiBooking::create(array_merge($stale->only([
+            'api_consumer_id', 'vehicle_id', 'vehicle_name', 'driver_first_name', 'driver_last_name',
+            'driver_email', 'driver_phone', 'driver_age', 'driver_license_number', 'driver_license_country',
+            'return_time', 'pickup_location', 'return_location', 'total_days', 'daily_rate', 'base_price',
+            'extras_total', 'total_amount', 'currency',
+        ]), [
+            'booking_number' => ApiBooking::generateBookingNumber(),
+            'pickup_date' => now()->toDateString(),
+            'pickup_time' => now()->addHours(2)->format('H:i'),
+            'return_date' => now()->addDay(),
+            'status' => 'pending',
+        ]));
 
         $this->artisan('api-bookings:expire-stale-pending')->assertSuccessful();
 
         $this->assertSame('cancelled', $stale->fresh()->status);
         $this->assertSame('pending', $future->fresh()->status);
+        $this->assertSame('pending', $laterToday->fresh()->status);
+    }
+
+    #[Test]
+    public function search_rejects_an_inverted_same_day_window(): void
+    {
+        $vehicle = $this->vehicle();
+        $day = now()->addDays(5)->toDateString();
+
+        $this->postJson('/api/internal/provider/vehicles/search', [
+            'pickup_location_id' => $vehicle->vendor_location_id,
+            'pickup_date' => $day,
+            'pickup_time' => '17:00',
+            'dropoff_date' => $day,
+            'dropoff_time' => '09:00',
+        ], $this->gatewayHeaders())
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'INVALID_RENTAL_WINDOW');
     }
 
     #[Test]

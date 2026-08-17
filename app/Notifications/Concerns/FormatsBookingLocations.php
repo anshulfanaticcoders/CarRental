@@ -2,8 +2,6 @@
 
 namespace App\Notifications\Concerns;
 
-use App\Models\Booking;
-
 /**
  * Shared helpers for rendering pickup/dropoff blocks in notifications.
  *
@@ -14,17 +12,17 @@ use App\Models\Booking;
  */
 trait FormatsBookingLocations
 {
-    protected function pickupDetails(Booking $booking): array
+    protected function pickupDetails(object $booking): array
     {
         return (array) ($booking->provider_metadata['pickup_location_details'] ?? []);
     }
 
-    protected function dropoffDetails(Booking $booking): array
+    protected function dropoffDetails(object $booking): array
     {
         return (array) ($booking->provider_metadata['dropoff_location_details'] ?? []);
     }
 
-    protected function isOneWayBooking(Booking $booking): bool
+    protected function isOneWayBooking(object $booking): bool
     {
         $pickup = $this->pickupDetails($booking);
         $dropoff = $this->dropoffDetails($booking);
@@ -108,7 +106,7 @@ trait FormatsBookingLocations
         return $lines;
     }
 
-    protected function pickupInstructions(Booking $booking): ?string
+    protected function pickupInstructions(object $booking): ?string
     {
         $value = $this->pickupDetails($booking)['pickup_instructions']
             ?? ($booking->provider_metadata['pickup_instructions'] ?? null);
@@ -117,7 +115,7 @@ trait FormatsBookingLocations
         return $trimmed !== '' ? $trimmed : null;
     }
 
-    protected function dropoffInstructions(Booking $booking): ?string
+    protected function dropoffInstructions(object $booking): ?string
     {
         $value = $this->dropoffDetails($booking)['dropoff_instructions']
             ?? ($booking->provider_metadata['dropoff_instructions'] ?? null);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\BookingHold;
 use App\Models\BookingPayment;
+use App\Models\StripeCheckoutPayload;
 use App\Models\User;
 use App\Notifications\Payment\AdminChargeDisputeNotification;
 use App\Notifications\Payment\AdminChargeRefundedNotification;
@@ -90,7 +91,9 @@ class StripeWebhookController extends Controller
                 break;
 
             case 'charge.dispute.created':
-                $this->handleChargeDispute($event->data->object);
+            case 'charge.dispute.updated':
+            case 'charge.dispute.closed':
+                $this->handleChargeDispute($event->data->object, $event->type);
                 break;
 
             default:
@@ -126,6 +129,16 @@ class StripeWebhookController extends Controller
 
             return;
         }
+
+        StripeCheckoutPayload::updateOrCreate(
+            ['stripe_session_id' => $sessionId],
+            [
+                'payment_status' => 'paid',
+                'fulfilment_status' => 'pending',
+                'stripe_payment_intent_id' => $session->payment_intent ?? null,
+                'paid_at' => now(),
+            ]
+        );
 
         // The hold and the session share a 30-min lifetime; queued fulfilment
         // adds delay AFTER payment, so re-arm the hold now or a payment near
@@ -198,15 +211,39 @@ class StripeWebhookController extends Controller
     {
         Log::info('Checkout session expired', ['session_id' => $session->id]);
 
-        // Find any pending booking and mark as expired
+        $payload = StripeCheckoutPayload::where('stripe_session_id', $session->id)->first();
+        if ($payload?->payment_status === 'paid') {
+            Log::warning('Ignoring expired event for a checkout already recorded as paid', [
+                'session_id' => $session->id,
+            ]);
+
+            return;
+        }
+
+        // Only an unpaid, non-terminal booking may be expired. Stripe events
+        // can arrive late or out of order and must never overwrite a paid row.
         $booking = Booking::where('stripe_session_id', $session->id)->first();
-        if ($booking) {
+        if ($booking && $booking->booking_status === 'pending' && in_array($booking->payment_status, ['pending', 'unpaid', 'failed'], true)) {
             $booking->update([
                 'booking_status' => 'expired',
                 'payment_status' => 'expired',
             ]);
             Log::info('Booking marked as expired', ['booking_id' => $booking->id]);
+        } elseif ($booking) {
+            Log::warning('Ignoring expired event for a non-pending booking', [
+                'session_id' => $session->id,
+                'booking_id' => $booking->id,
+                'booking_status' => $booking->booking_status,
+                'payment_status' => $booking->payment_status,
+            ]);
+
+            return;
         }
+
+        $payload?->update([
+            'payment_status' => 'expired',
+            'fulfilment_status' => 'expired',
+        ]);
 
         BookingHold::where('stripe_session_id', $session->id)
             ->where('status', 'active')
@@ -244,6 +281,7 @@ class StripeWebhookController extends Controller
                 'refund_amount_minor' => $amountRefunded,
                 'refund_currency' => strtoupper($currency),
                 'fully_refunded' => $fullyRefunded,
+                'supplier_cancellation_required' => $fullyRefunded && ! empty($booking->provider_booking_ref),
             ]),
         ];
         if ($fullyRefunded) {
@@ -279,7 +317,7 @@ class StripeWebhookController extends Controller
      * Handle charge.dispute.created — a chargeback has a response deadline and
      * takes the money if ignored; it must never live only in the Stripe dashboard.
      */
-    protected function handleChargeDispute($dispute)
+    protected function handleChargeDispute($dispute, string $eventType = 'charge.dispute.created')
     {
         $paymentIntentId = $dispute->payment_intent ?? null;
         $booking = Booking::with('customer')
@@ -294,9 +332,16 @@ class StripeWebhookController extends Controller
             return;
         }
 
+        $isClosed = $eventType === 'charge.dispute.closed';
         $booking->update([
             'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
                 'dispute_opened_at' => now()->toIso8601String(),
+                'dispute_last_event' => $eventType,
+                'dispute_status' => (string) ($dispute->status ?? ''),
+                'dispute_evidence_due_by' => ! empty($dispute->evidence_details->due_by)
+                    ? \Carbon\Carbon::createFromTimestamp((int) $dispute->evidence_details->due_by)->toIso8601String()
+                    : null,
+                'dispute_closed_at' => $isClosed ? now()->toIso8601String() : null,
                 'dispute_reason' => (string) ($dispute->reason ?? ''),
                 'dispute_amount_minor' => (int) ($dispute->amount ?? 0),
                 'dispute_currency' => strtoupper((string) ($dispute->currency ?? '')),
@@ -307,6 +352,10 @@ class StripeWebhookController extends Controller
             'booking_id' => $booking->id,
             'reason' => $dispute->reason ?? null,
         ]);
+
+        if ($eventType !== 'charge.dispute.created') {
+            return;
+        }
 
         try {
             $admin = User::where('email', config('admin.email'))->first();

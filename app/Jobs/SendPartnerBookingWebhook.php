@@ -36,6 +36,7 @@ class SendPartnerBookingWebhook implements ShouldQueue
     public function __construct(
         public int $apiBookingId,
         public string $event,
+        public array $snapshot = [],
     ) {}
 
     public function handle(): void
@@ -50,14 +51,18 @@ class SendPartnerBookingWebhook implements ShouldQueue
             return; // partner has not registered a callback — polling only
         }
 
-        $payload = json_encode([
-            'event' => $this->event,
+        $transition = $this->snapshot ?: [
             'booking_number' => $booking->booking_number,
             'status' => $booking->status,
             'cancellation_reason' => $booking->cancellation_reason,
             'cancellation_fee' => $booking->cancellation_fee !== null ? (float) $booking->cancellation_fee : null,
             'currency' => $booking->currency,
             'is_test' => (bool) $booking->is_test,
+            'transitioned_at' => $booking->updated_at?->toIso8601String(),
+        ];
+        $payload = json_encode([
+            'event' => $this->event,
+            ...$transition,
             'sent_at' => now()->toIso8601String(),
         ]);
 

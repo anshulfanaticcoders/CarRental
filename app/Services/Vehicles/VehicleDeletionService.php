@@ -17,27 +17,11 @@ class VehicleDeletionService
         // and found out at the counter. Active obligations block the delete.
         $this->assertNoActiveObligations($vehicle);
 
-        $vehicle->loadMissing(['images', 'bookings.damageProtection']);
+        $vehicle->loadMissing('images');
 
         foreach ($vehicle->images as $image) {
             $this->deleteStoragePath($image->image_path ?: $image->image_url);
             $this->deleteStoragePath($image->thumbnail_path ?: $image->thumbnail_url);
-        }
-
-        foreach ($vehicle->bookings as $booking) {
-            $damageProtection = $booking->damageProtection;
-
-            if (! $damageProtection) {
-                continue;
-            }
-
-            foreach ($damageProtection->before_images ?? [] as $imageKey) {
-                $this->deleteStoragePath('damage_protections/before/'.$imageKey);
-            }
-
-            foreach ($damageProtection->after_images ?? [] as $imageKey) {
-                $this->deleteStoragePath('damage_protections/after/'.$imageKey);
-            }
         }
 
         DB::transaction(function () use ($vehicle) {

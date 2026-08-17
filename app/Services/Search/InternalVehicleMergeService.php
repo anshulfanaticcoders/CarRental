@@ -23,16 +23,14 @@ class InternalVehicleMergeService
 
         $locationHash = $this->extractInternalLocationHash($matchedLocation);
         if ($locationHash !== null) {
-            $filtered = $internalVehicles
-                ->filter(fn ($vehicle) => $this->vehicleLocationHash((array) $vehicle) === $locationHash);
-            if ($filtered->isNotEmpty()) {
-                return $filtered->values();
-            }
+            return $internalVehicles
+                ->filter(fn ($vehicle) => $this->vehicleLocationHash((array) $vehicle) === $locationHash)
+                ->values();
         }
 
-        // Fallback: if hash matching failed or returned empty, include all internal
-        // vehicles that were already location-filtered by the DB query in SearchController.
-        return $internalVehicles->values();
+        // Mixed search must prove an exact internal location mapping. Falling
+        // back to every DB result can advertise cars from another branch/city.
+        return $provider === 'internal' ? $internalVehicles->values() : collect();
     }
 
     private function extractInternalLocationHash(?array $matchedLocation): ?string
@@ -46,7 +44,7 @@ class InternalVehicleMergeService
         }
 
         $hash = preg_replace('/^internal_/i', '', $internalLocationId);
-        if (!is_string($hash) || !preg_match('/^[a-f0-9]{32}$/i', $hash)) {
+        if (! is_string($hash) || ! preg_match('/^[a-f0-9]{32}$/i', $hash)) {
             return null;
         }
 
@@ -59,9 +57,9 @@ class InternalVehicleMergeService
 
         return md5(
             $this->normalizeTextValue($vehicle['city'] ?? ($legacyPayload['city'] ?? ''), ['city', 'name', 'label', 'value'])
-            . $this->normalizeTextValue($vehicle['state'] ?? ($legacyPayload['state'] ?? ''), ['state', 'name', 'label', 'value'])
-            . $this->normalizeTextValue($vehicle['country'] ?? ($legacyPayload['country'] ?? ''), ['country', 'name', 'label', 'value', 'code'])
-            . $this->normalizeTextValue($legacyPayload['location'] ?? ($vehicle['location'] ?? ''), ['location', 'name', 'address', 'formatted_address', 'label', 'value'])
+            .$this->normalizeTextValue($vehicle['state'] ?? ($legacyPayload['state'] ?? ''), ['state', 'name', 'label', 'value'])
+            .$this->normalizeTextValue($vehicle['country'] ?? ($legacyPayload['country'] ?? ''), ['country', 'name', 'label', 'value', 'code'])
+            .$this->normalizeTextValue($legacyPayload['location'] ?? ($vehicle['location'] ?? ''), ['location', 'name', 'address', 'formatted_address', 'label', 'value'])
         );
     }
 
@@ -71,12 +69,12 @@ class InternalVehicleMergeService
             return trim((string) $value);
         }
 
-        if (!is_array($value)) {
+        if (! is_array($value)) {
             return '';
         }
 
         foreach ($preferredKeys as $key) {
-            if (!array_key_exists($key, $value)) {
+            if (! array_key_exists($key, $value)) {
                 continue;
             }
 

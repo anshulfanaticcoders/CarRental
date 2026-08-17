@@ -18,16 +18,29 @@ class TrabberAttributionService
         $days = (int) config('trabber.attribution_days', 90);
         $expiresAt = now()->addDays($days);
 
-        // updateOrCreate: refreshes/replays of the same clickid must not
-        // duplicate the server-side click record (unique index backs this).
-        TrabberClick::updateOrCreate(['clickid' => $clickid], [
+        // Atomic upsert against the canonical key prevents concurrent redirects
+        // from creating another row while preserving any historical duplicates.
+        $timestamp = now();
+        TrabberClick::upsert([[
+            'canonical_clickid' => $clickid,
+            'clickid' => $clickid,
             'offer_id' => $offer['offer_id'] ?? null,
             'source' => 'trabber',
             'clicked_url' => $request->fullUrl(),
             'landing_url' => $this->landingUrl($offerPayload),
-            'search_metadata' => $search,
-            'clicked_at' => now(),
+            'search_metadata' => json_encode($search, JSON_THROW_ON_ERROR),
+            'clicked_at' => $timestamp,
             'expires_at' => $expiresAt,
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
+        ]], ['canonical_clickid'], [
+            'offer_id',
+            'clicked_url',
+            'landing_url',
+            'search_metadata',
+            'clicked_at',
+            'expires_at',
+            'updated_at',
         ]);
 
         $payload = [

@@ -15,7 +15,7 @@ use App\Notifications\Booking\BookingCancelledCustomerNotification;
 use App\Notifications\Booking\BookingCancelledNotification;
 use App\Notifications\Concerns\DeliversToCustomer;
 use App\Services\Bookings\InternalBookingSnapshotService;
-use App\Services\VrooemGatewayService;
+use App\Services\ProviderBookingCancellationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -348,9 +348,9 @@ class BookingController extends Controller
                 'brand' => explode(' ', $booking->vehicle_name)[0] ?? 'Vehicle',
                 'model' => $booking->vehicle_name,
                 'vehicle_name' => $booking->vehicle_name,
-                'transmission' => 'Manual',
-                'fuel' => 'Petrol',
-                'seating_capacity' => 5,
+                'transmission' => null,
+                'fuel' => null,
+                'seating_capacity' => null,
                 'images' => $booking->vehicle_image ? [
                     ['image_url' => $booking->vehicle_image, 'image_type' => 'primary'],
                 ] : [],
@@ -502,72 +502,20 @@ class BookingController extends Controller
             }
         }
 
-        $providerSource = $booking->provider_source ? strtolower($booking->provider_source) : null;
-        $isExternalProvider = $providerSource !== null && $providerSource !== 'internal';
-
-        $gatewayBookingId = (string) ($providerMetadata['gateway_booking_id'] ?? '');
-        $gatewaySupplierId = (string) ($providerMetadata['gateway_supplier_id'] ?? $this->mapProviderSourceToGatewaySupplierId($providerSource));
-        $canUseGatewayCancellation = $isExternalProvider
-            && $gatewayBookingId !== ''
-            && $gatewaySupplierId !== ''
-            && ! empty($booking->provider_booking_ref);
-
-        if ($isExternalProvider && ! $canUseGatewayCancellation) {
-            $message = 'Provider gateway cancellation metadata is missing.';
+        $cancelResult = app(ProviderBookingCancellationService::class)->cancel(
+            $booking->id,
+            $validatedData['cancellation_reason']
+        );
+        if (! ($cancelResult['success'] ?? false)) {
+            $message = $cancelResult['message'] ?? 'Booking cancellation failed.';
+            $status = in_array($cancelResult['code'] ?? '', ['gateway_failure', 'gateway_rejected', 'operation_in_progress'], true) ? 502 : 422;
             if ($request->wantsJson()) {
-                return response()->json(['message' => $message], 422);
+                return response()->json(['message' => $message], $status);
             }
 
             return redirect()->back()->with('error', $message);
         }
-
-        if ($canUseGatewayCancellation) {
-            try {
-                $gatewayService = app(VrooemGatewayService::class);
-                $response = $gatewayService->cancelBooking(
-                    $gatewayBookingId,
-                    $gatewaySupplierId,
-                    (string) $booking->provider_booking_ref,
-                    $validatedData['cancellation_reason']
-                );
-
-                if ($response === null) {
-                    $message = 'Failed to cancel reservation with provider gateway.';
-                    $appendBookingNote($booking, 'Gateway Cancel failed: empty response.');
-                    $booking->save();
-
-                    if ($request->wantsJson()) {
-                        return response()->json(['message' => $message], 502);
-                    }
-
-                    return redirect()->back()->with('error', $message);
-                }
-
-                $appendBookingNote($booking, 'Gateway Cancel: cancellation requested.');
-            } catch (\Exception $e) {
-                Log::error('Gateway cancel failed', [
-                    'booking_id' => $booking->id,
-                    'gateway_booking_id' => $gatewayBookingId,
-                    'gateway_supplier_id' => $gatewaySupplierId,
-                    'error' => $e->getMessage(),
-                ]);
-
-                $appendBookingNote($booking, 'Gateway Cancel failed: '.$e->getMessage());
-                $booking->save();
-
-                $message = 'Failed to cancel reservation with provider gateway.';
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => $message], 502);
-                }
-
-                return redirect()->back()->with('error', $message);
-            }
-        }
-
-        // Update booking status and save cancellation reason
-        $booking->booking_status = 'cancelled';
-        $booking->cancellation_reason = $validatedData['cancellation_reason'];
-        $booking->save();
+        $booking = $cancelResult['booking'];
 
         $vehicle = $booking->vehicle_id ? Vehicle::find($booking->vehicle_id) : null;
         $customer = $booking->customer;
@@ -739,12 +687,31 @@ class BookingController extends Controller
 
         $bookings = collect();
         $statusCounts = collect();
+        $statusTab = 'all';
 
         if (! empty($customerIds)) {
-            $bookings = Booking::whereIn('customer_id', $customerIds)
+            $statusTab = (string) $request->query('status', 'all');
+            $tabStatuses = [
+                'pending' => ['pending'],
+                'confirmed' => ['confirmed', 'active'],
+                'completed' => ['completed'],
+                'cancelled' => ['cancelled', 'expired'],
+                'attention' => ['reservation_failed', 'rejected'],
+            ];
+            if ($statusTab !== 'all' && ! array_key_exists($statusTab, $tabStatuses)) {
+                $statusTab = 'all';
+            }
+
+            $query = Booking::whereIn('customer_id', $customerIds);
+            if ($statusTab !== 'all') {
+                $query->whereIn('booking_status', $tabStatuses[$statusTab]);
+            }
+
+            $bookings = $query
                 ->with('vehicle.images', 'vehicle.category', 'payments', 'vehicle.vendorProfile', 'extras', 'amounts', 'offers', 'review')
                 ->orderBy('created_at', 'desc')
-                ->paginate(10);
+                ->paginate(10)
+                ->withQueryString();
 
             // The server knows whether a cancellation can actually succeed (the
             // gateway path needs metadata) — never let the UI guess and 422.
@@ -765,6 +732,7 @@ class BookingController extends Controller
         return Inertia::render('Profile/Bookings/AllBookings', [
             'bookings' => $bookings,
             'status_counts' => $statusCounts,
+            'current_status' => $statusTab,
         ]);
     }
 

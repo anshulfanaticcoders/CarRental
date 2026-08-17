@@ -15,31 +15,32 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('trabber_clicks', function (Blueprint $table) {
+            // Historical duplicates are preserved. Exactly one existing row per
+            // click ID becomes canonical; future writes target this unique key.
+            $table->string('canonical_clickid')->nullable()->after('clickid');
             $table->unsignedBigInteger('booking_id')->nullable()->index();
         });
 
-        $dupes = DB::table('trabber_clicks')
-            ->select('clickid', DB::raw('COUNT(*) as c'), DB::raw('MIN(id) as keep_id'))
-            ->groupBy('clickid')
-            ->having('c', '>', 1)
-            ->get();
-        foreach ($dupes as $dupe) {
-            DB::table('trabber_clicks')
-                ->where('clickid', $dupe->clickid)
-                ->where('id', '!=', $dupe->keep_id)
-                ->delete();
-        }
+        DB::statement(
+            'UPDATE trabber_clicks AS target
+             INNER JOIN (
+                 SELECT MIN(id) AS canonical_id, clickid
+                 FROM trabber_clicks
+                 GROUP BY clickid
+             ) AS canonical ON canonical.canonical_id = target.id
+             SET target.canonical_clickid = canonical.clickid'
+        );
 
         Schema::table('trabber_clicks', function (Blueprint $table) {
-            $table->unique('clickid', 'trabber_clicks_clickid_unique');
+            $table->unique('canonical_clickid', 'trabber_clicks_canonical_clickid_unique');
         });
     }
 
     public function down(): void
     {
         Schema::table('trabber_clicks', function (Blueprint $table) {
-            $table->dropUnique('trabber_clicks_clickid_unique');
-            $table->dropColumn('booking_id');
+            $table->dropUnique('trabber_clicks_canonical_clickid_unique');
+            $table->dropColumn(['canonical_clickid', 'booking_id']);
         });
     }
 };

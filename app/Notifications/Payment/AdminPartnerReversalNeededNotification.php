@@ -2,6 +2,7 @@
 
 namespace App\Notifications\Payment;
 
+use App\Notifications\Concerns\SendsAdminNotificationOncePerDay;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -14,6 +15,7 @@ use Illuminate\Notifications\Notification;
 class AdminPartnerReversalNeededNotification extends Notification
 {
     use Queueable;
+    use SendsAdminNotificationOncePerDay;
 
     /** @param array<int, string> $actions */
     public function __construct(
@@ -24,6 +26,11 @@ class AdminPartnerReversalNeededNotification extends Notification
     public function via(object $notifiable): array
     {
         return ['database', 'mail'];
+    }
+
+    public function dedupeKey(): string
+    {
+        return sha1('partner-reversal|'.$this->booking->getKey());
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -48,6 +55,7 @@ class AdminPartnerReversalNeededNotification extends Notification
             'title' => 'Partner commission needs reversal — booking #'.$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
+            'dedupe_key' => $this->dedupeKey(),
             'actions' => $this->actions,
             'role' => 'admin',
             'message' => 'Booking #'.$this->booking->booking_number.' died after partner commission fired: '

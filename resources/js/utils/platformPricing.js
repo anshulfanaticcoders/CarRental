@@ -41,7 +41,8 @@ export const isPartnerQuoteVehicle = (vehicle = {}) => {
 };
 
 export const resolveEffectiveProviderMarkupRate = (vehicle = {}, rate = 0) => {
-    if (isPartnerQuoteVehicle(vehicle)) {
+    const source = `${vehicle?.source ?? ''}`.trim().toLowerCase();
+    if (source === 'internal' || isPartnerQuoteVehicle(vehicle)) {
         return 0;
     }
 

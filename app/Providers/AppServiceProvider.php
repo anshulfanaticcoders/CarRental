@@ -25,6 +25,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // A cached or incorrectly labelled environment can otherwise leave a
+        // test database using SMTP. Test data must never deliver external mail.
+        $config = $this->app['config'];
+        $connection = (string) $config->get('database.default');
+        $database = strtolower((string) $config->get("database.connections.{$connection}.database"));
+        if ($this->app->environment('testing') || str_contains($database, 'test')) {
+            $this->app['config']->set('mail.default', 'array');
+            $this->app['config']->set('mail.mailers.array', ['transport' => 'array']);
+        }
+
         $this->app->scoped(\App\Services\VrooemGatewayService::class);
     }
 

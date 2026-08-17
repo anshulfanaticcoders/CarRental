@@ -3,6 +3,7 @@
 namespace App\Notifications\Booking;
 
 use App\Notifications\Concerns\FormatsBookingAmounts;
+use App\Notifications\Concerns\SendsAdminNotificationOncePerDay;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -11,6 +12,7 @@ class BookingCreatedAdminNotification extends Notification
 {
     use FormatsBookingAmounts;
     use Queueable;
+    use SendsAdminNotificationOncePerDay;
 
     protected $booking;
 
@@ -28,6 +30,11 @@ class BookingCreatedAdminNotification extends Notification
     public function via(object $notifiable): array
     {
         return ['database', 'mail'];
+    }
+
+    public function dedupeKey(): string
+    {
+        return sha1('booking-created|'.$this->booking->getKey());
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -90,6 +97,7 @@ class BookingCreatedAdminNotification extends Notification
             'title' => 'New Booking #'.$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
+            'dedupe_key' => $this->dedupeKey(),
             'vehicle' => $vehicleName,
             'location' => $location,
             'address' => $address,

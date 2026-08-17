@@ -315,7 +315,7 @@
                                         Retry reservation
                                     </Button>
                                     <Button
-                                        v-if="booking.booking_status !== 'cancelled'"
+                                        v-if="canCancelBooking(booking)"
                                         variant="destructive"
                                         size="sm"
                                         @click="openCancelModal(booking)"
@@ -559,8 +559,7 @@ const statusFilter = ref(props.currentStatus || 'all');
 
 const rescueQueueTotal = computed(() => {
     const c = props.statusCounts || {};
-    return (c.provider_pending || 0) + (c.reservation_failed || 0)
-        + (c.refund_pending || 0) + (c.needs_correction || 0) + (c.rejected || 0);
+    return c.rescue_total || 0;
 });
 
 // The four status cards deliberately exclude problem states; this card is the
@@ -663,8 +662,13 @@ const canRetryReservation = (booking) => {
     return booking?.provider_source
         && booking.provider_source !== 'internal'
         && !booking.provider_booking_ref
+        && ['partial', 'paid'].includes(booking.payment_status)
         && ['pending', 'confirmed', 'reservation_failed'].includes(booking.booking_status);
 };
+
+const canCancelBooking = (booking) => (
+    !['cancelled', 'completed', 'rejected', 'expired'].includes(booking?.booking_status)
+);
 
 const retryReservation = (booking) => {
     // Unknown outcome = the supplier may ALREADY hold this reservation. The

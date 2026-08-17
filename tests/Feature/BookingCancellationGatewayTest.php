@@ -109,6 +109,31 @@ class BookingCancellationGatewayTest extends TestCase
         $this->assertSame('cancelled', $booking->booking_status);
     }
 
+    public function test_gateway_failed_status_does_not_cancel_the_local_booking(): void
+    {
+        $user = User::factory()->create();
+        $booking = $this->createBookingForUser($user, [
+            'provider_source' => 'recordgo',
+            'provider_booking_ref' => 'SUP-BOOK-FAILED',
+            'provider_metadata' => [
+                'gateway_booking_id' => 'gw_failed',
+                'gateway_supplier_id' => 'recordgo',
+            ],
+        ]);
+
+        $this->mock(VrooemGatewayService::class, function ($mock): void {
+            $mock->shouldReceive('cancelBooking')->once()->andReturn(['status' => 'failed']);
+        });
+
+        $response = $this->actingAs($user)->postJson(route('booking.cancel', ['locale' => 'en']), [
+            'booking_id' => $booking->id,
+            'cancellation_reason' => 'Need to cancel',
+        ]);
+
+        $response->assertStatus(502);
+        $this->assertSame('confirmed', $booking->fresh()->booking_status);
+    }
+
     private function createBookingForUser(User $user, array $overrides = []): Booking
     {
         $customer = Customer::create([

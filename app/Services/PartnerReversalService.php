@@ -57,7 +57,12 @@ class PartnerReversalService
                 $needsHuman = array_filter($actions, fn ($a) => str_starts_with($a, 'MANUAL'));
                 if ($needsHuman !== []) {
                     $admin = User::where('email', config('admin.email'))->first();
-                    $admin?->notify(new AdminPartnerReversalNeededNotification($booking, array_values($needsHuman)));
+                    if ($admin) {
+                        AdminPartnerReversalNeededNotification::sendOnce(
+                            $admin,
+                            new AdminPartnerReversalNeededNotification($booking, array_values($needsHuman))
+                        );
+                    }
                 }
             }
         } catch (\Throwable $e) {

@@ -7,6 +7,7 @@ use App\Console\Commands\ExpireBookingHolds;
 use App\Console\Commands\ExportTrabberDailyReport;
 use App\Console\Commands\ExportTrabberMonthlyReport;
 use App\Console\Commands\GeneratePublicSitemaps;
+use App\Console\Commands\ReconcileStripeCheckoutSessions;
 use App\Console\Commands\RefreshCurrencyRates;
 use App\Console\Commands\RefreshMerchantFeed;
 use App\Console\Commands\RetryPendingProviderReservations;
@@ -28,6 +29,10 @@ class Kernel extends ConsoleKernel
         // $schedule->command('inspire')->hourly();
         $schedule->command(AutoCompleteInternalBookings::class)->everyMinute()->withoutOverlapping();
         $schedule->command(ExpireBookingHolds::class)->everyFiveMinutes()->withoutOverlapping();
+        $schedule->command(ReconcileStripeCheckoutSessions::class)
+            ->everyFiveMinutes()
+            ->environments(['production'])
+            ->withoutOverlapping();
         $schedule->command(RetryPendingProviderReservations::class)->everyFifteenMinutes()->withoutOverlapping();
         $schedule->command(\App\Console\Commands\ExpireStalePartnerBookings::class)->hourly()->withoutOverlapping();
         $schedule->command(\App\Console\Commands\ExportSkyscannerBookingReport::class)->dailyAt('03:15')->withoutOverlapping();

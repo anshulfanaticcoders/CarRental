@@ -18,8 +18,25 @@ abstract class TestCase extends BaseTestCase
         $this->ensureSafeTestingDatabase(
             config('database.connections.'.config('database.default').'.database')
         );
+        $this->ensureSafeTestingMail();
 
         URL::defaults(['locale' => 'en']);
+    }
+
+    private function ensureSafeTestingMail(): void
+    {
+        // AppServiceProvider overrides cached config before the mailer resolves.
+        // Repeat the assignment here and discard any previously resolved mailer
+        // so every test has a fail-closed, non-delivering transport.
+        config([
+            'mail.default' => 'array',
+            'mail.mailers.array' => ['transport' => 'array'],
+        ]);
+        app('mail.manager')->forgetMailers();
+
+        if (config('mail.default') !== 'array') {
+            throw new \RuntimeException('Refusing to run tests with a delivering mail transport.');
+        }
     }
 
     private function ensureSafeTestingDatabase(?string $databaseName): void

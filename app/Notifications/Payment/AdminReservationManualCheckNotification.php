@@ -2,6 +2,7 @@
 
 namespace App\Notifications\Payment;
 
+use App\Notifications\Concerns\SendsAdminNotificationOncePerDay;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -15,6 +16,7 @@ use Illuminate\Notifications\Notification;
 class AdminReservationManualCheckNotification extends Notification
 {
     use Queueable;
+    use SendsAdminNotificationOncePerDay;
 
     protected $booking;
 
@@ -29,6 +31,11 @@ class AdminReservationManualCheckNotification extends Notification
     public function via(object $notifiable): array
     {
         return ['database', 'mail'];
+    }
+
+    public function dedupeKey(): string
+    {
+        return sha1('reservation-manual-check|'.$this->booking->getKey());
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -51,6 +58,7 @@ class AdminReservationManualCheckNotification extends Notification
             'title' => 'Reservation needs manual check #'.$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
+            'dedupe_key' => $this->dedupeKey(),
             'provider_source' => $this->booking->provider_source,
             'reason' => $this->reason,
             'role' => 'admin',

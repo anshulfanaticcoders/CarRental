@@ -2,6 +2,7 @@
 
 namespace App\Notifications\Booking;
 
+use App\Notifications\Concerns\SendsAdminNotificationOncePerDay;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -15,6 +16,7 @@ use Illuminate\Notifications\Notification;
 class AdminBookingNeedsCorrectionNotification extends Notification
 {
     use Queueable;
+    use SendsAdminNotificationOncePerDay;
 
     public function __construct(
         protected $booking,
@@ -24,6 +26,11 @@ class AdminBookingNeedsCorrectionNotification extends Notification
     public function via(object $notifiable): array
     {
         return ['database', 'mail'];
+    }
+
+    public function dedupeKey(): string
+    {
+        return sha1('booking-needs-correction|'.$this->booking->getKey());
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -44,6 +51,7 @@ class AdminBookingNeedsCorrectionNotification extends Notification
             'title' => 'Booking needs correction #'.$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
+            'dedupe_key' => $this->dedupeKey(),
             'reason' => $this->reason,
             'role' => 'admin',
             'message' => 'Booking #'.$this->booking->booking_number.' was created with defaulted details: '.$this->reason,

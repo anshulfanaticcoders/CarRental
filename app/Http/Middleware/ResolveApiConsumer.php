@@ -20,9 +20,9 @@ use Illuminate\Support\Facades\Log;
  * endpoint, and the consumer identity is DERIVED FROM THE KEY — any
  * client-supplied api_consumer_id is overwritten.
  *
- * Without the header: the request still passes on the gateway token alone
- * (existing integrations keep working) but is logged as a legacy identity
- * risk until every partner is migrated to keys.
+ * Headerless identity is rejected by default. A deliberately configured,
+ * temporary migration flag can keep a legacy integration alive while its key
+ * is rolled out, but production does not silently trust api_consumer_id.
  */
 class ResolveApiConsumer
 {
@@ -31,6 +31,16 @@ class ResolveApiConsumer
         $rawKey = trim((string) ($request->header('X-Api-Key') ?: $request->header('X-Partner-Key') ?: ''));
 
         if ($rawKey === '') {
+            if (! config('vrooem.allow_legacy_partner_identity', false)) {
+                return response()->json([
+                    'error' => [
+                        'code' => 'MISSING_API_KEY',
+                        'message' => 'An X-Api-Key header is required.',
+                        'status' => 401,
+                    ],
+                ], 401);
+            }
+
             Log::warning('Partner API request without X-Api-Key — consumer identity is client-asserted', [
                 'path' => $request->path(),
                 'claimed_consumer_id' => $request->input('api_consumer_id') ?? $request->query('api_consumer_id'),

@@ -35,6 +35,14 @@ class StripeBookingServiceAccountingTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Unit accounting tests must never dispatch live Awin conversion HTTP.
+        config(['awin.enabled' => false]);
+    }
+
     private function makeServiceWithIdentityConversions(): StripeBookingService
     {
         $conversionService = Mockery::mock(CurrencyConversionService::class);

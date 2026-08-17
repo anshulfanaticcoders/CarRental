@@ -44,7 +44,9 @@ class PruneOldData extends Command
             'activity' => fn () => $this->pruneActivityLogs($force),
             'notifications' => fn () => $this->pruneNotifications($force),
             'trabber_clicks' => fn () => $this->deleteWhere('trabber_clicks', fn ($q) => $q->where('expires_at', '<', now()->subDays(30)), $force),
-            'checkout_payloads' => fn () => $this->deleteWhere('stripe_checkout_payloads', fn ($q) => $q->where('created_at', '<', now()->subDays(self::CHECKOUT_PAYLOAD_DAYS)), $force),
+            'checkout_payloads' => fn () => $this->deleteWhere('stripe_checkout_payloads', fn ($q) => $q
+                ->whereIn('fulfilment_status', ['fulfilled', 'expired'])
+                ->where('created_at', '<', now()->subDays(self::CHECKOUT_PAYLOAD_DAYS)), $force),
             'newsletter_logs' => fn () => $this->deleteWhere('newsletter_campaign_logs', fn ($q) => $q->where('created_at', '<', now()->subDays(180)), $force),
             'booking_holds' => fn () => $this->deleteWhere('booking_holds', fn ($q) => $q->whereIn('status', ['expired', 'released', 'converted'])->where('updated_at', '<', now()->subDays(30)), $force),
             'affiliate_sessions' => fn () => $this->deleteWhere('affiliate_dashboard_sessions', fn ($q) => $q->where('expires_at', '<', now()->subDays(30)), $force),

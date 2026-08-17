@@ -140,7 +140,12 @@ class StripeBookingService
                 ]),
             ]);
             $admin = User::where('email', config('admin.email'))->first();
-            $admin?->notify(new AdminBookingNeedsCorrectionNotification($booking, $reason));
+            if ($admin) {
+                AdminBookingNeedsCorrectionNotification::sendOnce(
+                    $admin,
+                    new AdminBookingNeedsCorrectionNotification($booking, $reason)
+                );
+            }
         } catch (\Throwable $e) {
             Log::warning('StripeBookingService: failed to flag booking for correction', [
                 'booking_id' => $booking->id,
@@ -1630,7 +1635,8 @@ class StripeBookingService
         $adminEmail = config('admin.email');
         $admin = User::where('email', $adminEmail)->first();
         if ($admin) {
-            $this->safeNotify($booking, 'admin', fn () => $admin->notify(
+            $this->safeNotify($booking, 'admin', fn () => BookingCreatedAdminNotification::sendOnce(
+                $admin,
                 new BookingCreatedAdminNotification($booking, $customer, $vehicle)
             ));
         } else {
@@ -2048,7 +2054,10 @@ class StripeBookingService
         try {
             $admin = User::where('email', config('admin.email'))->first();
             if ($admin) {
-                $admin->notify(new AdminReservationManualCheckNotification($booking, $reason));
+                AdminReservationManualCheckNotification::sendOnce(
+                    $admin,
+                    new AdminReservationManualCheckNotification($booking, $reason)
+                );
             }
         } catch (\Throwable $e) {
             Log::warning('Failed to send admin reservation-manual-check notification', [
