@@ -29,7 +29,9 @@ class AutoCompleteInternalBookings extends Command
                             ->whereNotNull('vehicle_id');
                     });
             })
-            ->whereDate('return_date', '<=', $now->toDateString())
+            // Range predicate, not whereDate(): DATE(return_date) defeats the
+            // index and this command runs every minute on the busiest table.
+            ->where('return_date', '<', $now->copy()->addDay()->startOfDay())
             ->orderBy('id')
             ->lazyById()
             ->each(function (Booking $booking) use ($now, &$completedCount, &$completedBookingIds) {
@@ -68,6 +70,6 @@ class AutoCompleteInternalBookings extends Command
             return $returnDate->endOfDay();
         }
 
-        return Carbon::parse($returnDate->toDateString() . ' ' . $returnTime);
+        return Carbon::parse($returnDate->toDateString().' '.$returnTime);
     }
 }
