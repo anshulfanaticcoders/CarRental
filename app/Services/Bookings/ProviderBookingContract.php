@@ -17,6 +17,8 @@ class ProviderBookingContract
         'sicily_by_car' => 'sicily_by_car',
         'u_save' => 'usave',
         'usave' => 'usave',
+        'yes_away' => 'yesaway',
+        'yesaway' => 'yesaway',
     ];
 
     public function validateCheckout(array $validated): array
@@ -277,7 +279,13 @@ class ProviderBookingContract
             ->all();
     }
 
-    private function normalizeSource(?string $source): string
+    /**
+     * Public: this is THE canonical source normalization. Any caller comparing
+     * a provider source against a list must route through here — a raw
+     * strtolower compare lets an aliased spelling (green_motion, u_save,
+     * yes_away) skip provider-specific rules.
+     */
+    public function normalizeSource(?string $source): string
     {
         $source = strtolower(trim((string) $source));
 

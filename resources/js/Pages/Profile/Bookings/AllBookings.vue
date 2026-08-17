@@ -288,6 +288,11 @@ const getFailureNote = (booking) => {
 };
 
 const getLocationLabel = (location, fallback) => {
+  // Backend placeholder for data a degraded payment session never carried —
+  // never show the internal marker text to the customer.
+  if (String(location || '').toLowerCase().includes('needs correction')) {
+    return t('location_being_confirmed', 'Being confirmed — our team will contact you');
+  }
   return location || fallback;
 };
 

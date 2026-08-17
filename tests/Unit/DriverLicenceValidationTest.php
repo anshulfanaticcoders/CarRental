@@ -32,4 +32,22 @@ class DriverLicenceValidationTest extends TestCase
             $this->assertTrue($this->isValid($good), "Expected '{$good}' to be valid");
         }
     }
+
+    #[Test]
+    public function aliased_provider_spellings_cannot_skip_the_licence_gate(): void
+    {
+        // The gate used a raw strtolower compare against canonical names, so
+        // 'green_motion' / 'u_save' / 'yes_away' / 'okmobility' sailed past it
+        // and the supplier rejected the reservation AFTER payment.
+        $method = new ReflectionMethod(StripeCheckoutController::class, 'validateProviderDriverFields');
+
+        foreach (['green_motion', 'greenmotion', 'u_save', 'yes_away', 'okmobility', 'ok_mobility'] as $alias) {
+            $response = $method->invoke(app(StripeCheckoutController::class), $alias, [
+                'driver_license_number' => '',
+            ]);
+
+            $this->assertNotNull($response, "Expected '{$alias}' to be blocked without a licence");
+            $this->assertSame(422, $response->getStatusCode());
+        }
+    }
 }

@@ -33,6 +33,7 @@ class BookingCreatedCustomerNotification extends Notification
         if (! empty($notifiable->expo_push_token)) {
             $channels[] = \App\Notifications\Channels\ExpoPushChannel::class;
         }
+
         return $channels;
     }
 
@@ -40,6 +41,7 @@ class BookingCreatedCustomerNotification extends Notification
     {
         $bookingNumber = $this->booking->booking_number ?? '';
         $vehicleName = $this->getVehicleName();
+
         return [
             'title' => 'Booking confirmed',
             'body' => "Your {$vehicleName} booking #{$bookingNumber} is confirmed.",
@@ -172,9 +174,11 @@ class BookingCreatedCustomerNotification extends Notification
             return $location;
         }
 
-        return $this->booking->pickup_location
-            ?? $this->booking->return_location
-            ?? 'N/A';
+        return $this->customerSafeLocation(
+            $this->booking->pickup_location
+                ?? $this->booking->return_location
+                ?? 'N/A'
+        );
     }
 
     private function getAddress(): string

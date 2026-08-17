@@ -95,39 +95,45 @@ const handleCheckout = async () => {
     errorCode.value = null;
 
     try {
-        // 1. Initialize Stripe
-        const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
-        if (!stripe) throw new Error('Stripe failed to initialize.');
-
-        // 2. Create Checkout Session (30s timeout so a stalled request never
+        // 1. Create Checkout Session (30s timeout so a stalled request never
         // leaves the customer on an infinite spinner)
         const response = await axios.post(route('api.stripe.checkout'), props.bookingData, { timeout: 30000 });
-        
-        const sessionId = response.data?.session_id || response.data?.sessionId;
-        if ((response.data?.success || sessionId) && sessionId) {
-            // 3. Redirect to Checkout
-            const result = await stripe.redirectToCheckout({
-                sessionId
-            });
 
+        const sessionUrl = response.data?.url;
+        const sessionId = response.data?.session_id || response.data?.sessionId;
+        if (sessionUrl) {
+            // 2. Navigate to the session URL the server already returned
+            // (stripe.redirectToCheckout is deprecated). isLoading stays true
+            // through the navigation so a second click can't re-POST.
+            window.location.assign(sessionUrl);
+            return;
+        }
+
+        if (sessionId) {
+            // Fallback for a response without a url.
+            const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
+            if (!stripe) throw new Error('Stripe failed to initialize.');
+            const result = await stripe.redirectToCheckout({ sessionId });
             if (result.error) {
                 throw new Error(result.error.message);
             }
-        } else {
-            throw new Error('Failed to create checkout session.');
+            return;
         }
 
+        throw new Error('Failed to create checkout session.');
     } catch (err) {
         console.error('Checkout error:', err);
 
         if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
             error.value = 'The connection timed out. Your card was NOT charged — please check your internet connection and try again.';
+            isLoading.value = false;
             return;
         }
 
         const responseData = err.response?.data || {};
         const redirectState = checkoutFailureState(responseData);
         if (redirectState) {
+            // Navigating away — keep the button disabled until the page unloads.
             window.location.href = bookingStatusUrl(redirectState);
             return;
         }
@@ -138,6 +144,7 @@ const handleCheckout = async () => {
         if (Object.keys(fieldErrors).length) {
             emit('field-errors', fieldErrors);
             error.value = responseData.error || responseData.message || 'Please correct the highlighted fields above.';
+            isLoading.value = false;
             return;
         }
 
@@ -146,7 +153,6 @@ const handleCheckout = async () => {
             : (responseData.error || responseData.message || 'We could not start secure payment. Please try again.');
         loginUrl.value = responseData.login_url || null;
         errorCode.value = responseData.error_code || null;
-    } finally {
         isLoading.value = false;
     }
 };

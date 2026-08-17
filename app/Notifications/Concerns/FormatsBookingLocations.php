@@ -58,8 +58,25 @@ trait FormatsBookingLocations
      *
      * @return list<string>
      */
+    /**
+     * The backend stores 'Unknown — needs correction' when a degraded payment
+     * session never carried a location. That internal marker must never reach
+     * a recipient — swap it for a human message.
+     */
+    protected function customerSafeLocation(?string $value): string
+    {
+        $value = (string) $value;
+        if (str_contains(strtolower($value), 'needs correction')) {
+            return 'Being confirmed — our team will contact you with the details';
+        }
+
+        return $value;
+    }
+
     protected function formatLocationBlock(array $details, string $fallback = ''): array
     {
+        $fallback = $this->customerSafeLocation($fallback);
+
         if (empty($details) && $fallback === '') {
             return [];
         }

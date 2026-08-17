@@ -323,6 +323,15 @@ const formatTime = (timeStr) => {
   return `${formattedHour}:${minutes} ${ampm}`;
 };
 
+// Backend placeholder for fields a degraded payment session never carried —
+// never show the internal marker text to the customer.
+const friendlyLocation = (value) => {
+  if (String(value || '').toLowerCase().includes('needs correction')) {
+    return 'Being confirmed — our team will contact you';
+  }
+  return value || '';
+};
+
 const getStatusBadge = (status) => {
   const config = {
     pending: { bg: 'bg-amber-400/20', text: 'text-amber-200', border: 'border-amber-400/30', dot: 'bg-amber-400' },
@@ -609,12 +618,12 @@ const vendorInitials = computed(() => {
             <div class="quick-pill">
               <span class="pill-label">{{ _t('customerprofile', 'pickup') || 'Pickup' }}</span>
               <span class="pill-value">{{ formatDateShort(booking?.pickup_date) }}</span>
-              <span class="pill-sub">{{ formatTime(booking?.pickup_time) }} &middot; {{ booking?.pickup_location }}</span>
+              <span class="pill-sub">{{ formatTime(booking?.pickup_time) }} &middot; {{ friendlyLocation(booking?.pickup_location) }}</span>
             </div>
             <div class="quick-pill">
               <span class="pill-label">{{ _t('customerprofile', 'return') || 'Return' }}</span>
               <span class="pill-value">{{ formatDateShort(booking?.return_date) }}</span>
-              <span class="pill-sub">{{ formatTime(booking?.return_time) }} &middot; {{ booking?.return_location || booking?.pickup_location }}</span>
+              <span class="pill-sub">{{ formatTime(booking?.return_time) }} &middot; {{ friendlyLocation(booking?.return_location || booking?.pickup_location) }}</span>
             </div>
             <div class="quick-pill">
               <span class="pill-label">{{ _t('customerprofile', 'duration') || 'Duration' }}</span>
@@ -813,7 +822,7 @@ const vendorInitials = computed(() => {
                     </p>
                     <p class="text-sm text-gray-500 mt-1">
                       <svg class="w-3.5 h-3.5 inline -mt-0.5 mr-0.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                      {{ booking?.pickup_location }}
+                      {{ friendlyLocation(booking?.pickup_location) }}
                     </p>
                   </div>
                 </div>
@@ -829,7 +838,7 @@ const vendorInitials = computed(() => {
                     </p>
                     <p class="text-sm text-gray-500 mt-1">
                       <svg class="w-3.5 h-3.5 inline -mt-0.5 mr-0.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                      {{ booking?.return_location || booking?.pickup_location }}
+                      {{ friendlyLocation(booking?.return_location || booking?.pickup_location) }}
                     </p>
                   </div>
                 </div>

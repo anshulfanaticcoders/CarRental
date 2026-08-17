@@ -1,9 +1,10 @@
 ﻿<script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { Head, Link, usePage } from '@inertiajs/vue3'
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue'
 import Footer from '@/Components/Footer.vue'
 import { Toaster } from '@/Components/ui/sonner'
+import { toast } from 'vue-sonner'
 import BookingExtrasStep from '@/Components/BookingExtras/BookingExtrasStep.vue'
 import BookingCheckoutStep from '@/Components/BookingCheckoutStep.vue'
 import CarListingCard from '@/Components/CarListingCard.vue'
@@ -228,6 +229,10 @@ const props = defineProps<{
 }>()
 
 const bookingStep = ref<'results' | 'extras' | 'checkout'>('results')
+
+// Arms the checkout quote-expiry gate. Without it quoteExpired stayed false
+// forever on offer pages and a stale checkout 422'd at Pay.
+const offerLoadedAt = ref(Date.now())
 const activeBookingContext = ref<BookingContext | null>(null)
 const selectedPackage = ref('BAS')
 const selectedProtectionCode = ref<string | null>(null)
@@ -665,8 +670,28 @@ const startBooking = (quoteId: string, selection: Record<string, unknown> | null
     : context.initial_protection_code ?? null
   selectedCheckoutData.value = null
   bookingStep.value = 'extras'
+  pushStepHistory('extras')
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
+
+// Back button steps back through the booking flow instead of leaving the page
+// and dropping the selected extras/package (parity with SearchResults).
+const pushStepHistory = (step: string) => {
+  history.pushState({ bookingStep: step }, '', '')
+}
+const onPopState = (event: PopStateEvent) => {
+  const target = event.state?.bookingStep
+  if (target === 'extras' && bookingStep.value === 'checkout') {
+    handleBackToExtras()
+  } else if (target === 'results' && bookingStep.value !== 'results') {
+    handleBackToResults()
+  } else if (!target && bookingStep.value !== 'results') {
+    handleBackToResults()
+  }
+}
+history.replaceState({ bookingStep: 'results' }, '', '')
+window.addEventListener('popstate', onPopState)
+onUnmounted(() => window.removeEventListener('popstate', onPopState))
 
 const handleBackToResults = () => {
   bookingStep.value = 'results'
@@ -676,8 +701,20 @@ const handleBackToResults = () => {
 }
 
 const handleProceedToCheckout = (data: CheckoutData) => {
+  // Offer adapters can legitimately return a context without pickup fields.
+  // The checkout screen has no inputs for them, so submitting would 422 into
+  // a dead end — block the transition here with a recoverable message instead.
+  const ctx = currentBookingContext.value || {}
+  const missingTripFields = ['pickup_date', 'pickup_time', 'dropoff_date', 'dropoff_time', 'pickup_location']
+    .filter((field) => !String((ctx as Record<string, unknown>)[field] ?? '').trim())
+  if (missingTripFields.length) {
+    toast.error(_t('offer_context_incomplete', 'This offer is missing trip details. Please search again to get a fresh quote.'))
+    return
+  }
+
   selectedCheckoutData.value = data
   bookingStep.value = 'checkout'
+  pushStepHistory('checkout')
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -1124,8 +1161,11 @@ const canBookQuote = (quoteId: string) => !isExpired.value && Boolean(props.book
       :vehicle-total-currency="selectedCheckoutData.vehicle_total_currency || bookingCurrencyCode"
       :location-details="currentBookingContext.location_details || null"
       :location-instructions="currentBookingContext.location_instructions || null"
+      :dropoff-location-details="currentBookingContext.dropoff_location_details || null"
+      :dropoff-instructions="currentBookingContext.dropoff_instructions || null"
       :driver-requirements="currentBookingContext.driver_requirements || null"
       :terms="currentBookingContext.terms || null"
+      :search-loaded-at="offerLoadedAt"
       :search-session-id="checkoutSearchSessionId"
       :gateway-search-id="checkoutGatewaySearchId"
       :provider-pickup-id="currentBookingContext.provider_pickup_id ?? selectedVehicle.provider_pickup_id ?? null"

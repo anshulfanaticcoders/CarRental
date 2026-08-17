@@ -1,5 +1,5 @@
 ﻿<script setup>
-import { ref, computed, onMounted, onUnmounted, unref, watch } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted, unref, watch } from 'vue';
 import StripeCheckoutButton from './StripeCheckoutButton.vue';
 import { usePage } from '@inertiajs/vue3';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -167,8 +167,15 @@ const isOkMobility = computed(() => normalizedSource.value === 'okmobility');
 const isGreenMotion = computed(() => ['greenmotion', 'usave'].includes(normalizedSource.value));
 const isYesaway = computed(() => normalizedSource.value === 'yesaway');
 
-const needsLicence = computed(() => isOkMobility.value || isGreenMotion.value || isYesaway.value);
-const needsAddress = computed(() => isGreenMotion.value || isYesaway.value);
+// If the server rejects the checkout demanding driver fields this client-side
+// source mapping decided not to render, render them anyway — the server's
+// trusted source wins. Without this the 422 landed on v-if-hidden inputs and
+// the customer saw "correct the highlighted fields" with nothing highlighted.
+const serverRequiresLicence = ref(false);
+const serverRequiresAddress = ref(false);
+
+const needsLicence = computed(() => isOkMobility.value || isGreenMotion.value || isYesaway.value || serverRequiresLicence.value);
+const needsAddress = computed(() => isGreenMotion.value || isYesaway.value || serverRequiresAddress.value);
 
 const LICENCE_REGEX = /^[A-Za-z0-9][A-Za-z0-9 \-\/]{3,}[A-Za-z0-9]$/;
 // Same rule as the backend: optional +, then 7-15 digits after stripping separators.
@@ -219,6 +226,7 @@ const fieldValidators = {
     postal_code: (v) => (needsAddress.value && !v ? 'Postal code is required for this provider' : null),
     country: (v) => (needsAddress.value && (!v || v.length < 2) ? 'Country is required for this provider' : null),
     notes: (v) => (v && v.length > 400 ? 'Notes must be 400 characters or fewer' : null),
+    flight_number: (v) => (v && v.length > 20 ? 'Flight number must be 20 characters or fewer' : null),
 };
 
 const fieldError = (field) => {
@@ -257,15 +265,28 @@ for (const field of Object.keys(fieldValidators)) {
 
 // Map backend 422 field errors (missing_fields / invalid_fields / Laravel
 // errors bag) onto the form and bring the first broken field into view.
-const applyBackendFieldErrors = (fields) => {
+const LICENCE_FIELDS = ['driver_license_number', 'driving_license_country'];
+const ADDRESS_FIELDS = ['address', 'city', 'postal_code', 'country'];
+
+const applyBackendFieldErrors = async (fields) => {
     const mapped = {};
     for (const [rawKey, message] of Object.entries(fields)) {
         const key = rawKey.replace(/^customer\./, '');
-        if (key in form.value) mapped[key] = message;
+        mapped[key] = message;
     }
+
+    // Server demanded fields the client-side source mapping hid — show them.
+    if (LICENCE_FIELDS.some((f) => f in mapped)) serverRequiresLicence.value = true;
+    if (ADDRESS_FIELDS.some((f) => f in mapped)) serverRequiresAddress.value = true;
+
     if (!Object.keys(mapped).length) return false;
     errors.value = { ...errors.value, ...mapped };
-    const firstField = document.getElementById(`checkout-field-${Object.keys(mapped)[0]}`);
+
+    // Wait for any newly-revealed inputs to render before scrolling to them.
+    await nextTick();
+    const firstField = Object.keys(mapped)
+        .map((key) => document.getElementById(`checkout-field-${key}`))
+        .find(Boolean);
     firstField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     firstField?.focus?.();
     return true;
@@ -709,8 +730,9 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-value': form.flight_number }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
-                                    <input v-model="form.flight_number" type="text" class="form-input" placeholder="FR1234" />
+                                    <input id="checkout-field-flight_number" v-model="form.flight_number" type="text" maxlength="20" class="form-input" placeholder="FR1234" />
                                 </div>
+                                <p v-if="errors.flight_number" class="form-error">{{ errors.flight_number }}</p>
                                 <p class="text-[11px] text-gray-400 mt-1 pl-1">For airport pickup tracking</p>
                             </div>
 

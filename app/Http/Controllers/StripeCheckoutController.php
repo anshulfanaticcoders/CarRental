@@ -234,10 +234,15 @@ class StripeCheckoutController extends Controller
      */
     private function validateProviderDriverFields(string $providerSource, array $customer): ?\Illuminate\Http\JsonResponse
     {
+        // Compare through the canonical normalization — a raw strtolower let
+        // aliased spellings (green_motion, u_save, yes_away, ok_mobility) skip
+        // this gate entirely and fail at the supplier AFTER payment.
+        $providerSource = app(ProviderBookingContract::class)->normalizeSource($providerSource);
+
         // Providers whose reservation is rejected without a licence and full
         // address — yesaway included (same class of failure as the GreenMotion
-        // junk-licence incident). okmobility requires the licence only.
-        $licenceProviders = ['greenmotion', 'usave', 'yesaway', 'okmobility'];
+        // junk-licence incident). ok_mobility requires the licence only.
+        $licenceProviders = ['greenmotion', 'usave', 'yesaway', 'ok_mobility'];
         $addressProviders = ['greenmotion', 'usave', 'yesaway'];
 
         if (! in_array($providerSource, $licenceProviders, true)) {
@@ -645,8 +650,8 @@ class StripeCheckoutController extends Controller
                 'pickup_time' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
                 'dropoff_date' => 'required|date_format:Y-m-d|after_or_equal:pickup_date',
                 'dropoff_time' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
-                'pickup_location' => 'required|string',
-                'dropoff_location' => 'nullable|string',
+                'pickup_location' => 'required|string|max:500',
+                'dropoff_location' => 'nullable|string|max:500',
                 'total_amount' => 'required|numeric',
                 'currency' => 'required|string',
                 'display_currency' => 'nullable|string|max:10',
@@ -1451,7 +1456,10 @@ class StripeCheckoutController extends Controller
                 ? 'vrooem://booking-cancel'
                 : route('booking.status', ['locale' => $currentLocale, 'state' => 'payment_cancelled']).'&session_id={CHECKOUT_SESSION_ID}';
 
-            $idempotencyKey = 'co_'.$checkoutAttemptHash;
+            // Salted with a 30-min bucket: Stripe honours an idempotency key
+            // for 24h but the session expires in 30 min — an identical retry
+            // later would replay the DEAD session and error at redirect.
+            $idempotencyKey = 'co_'.$checkoutAttemptHash.'_'.intdiv(time(), 1800);
 
             $session = StripeSession::create([
                 'payment_method_types' => $paymentMethodTypes,
@@ -2643,6 +2651,16 @@ class StripeCheckoutController extends Controller
 
         if ($path === '/s' || $path === '/s/') {
             return "/{$locale}/s{$query}";
+        }
+
+        // Offer pages (Skyscanner / Trabber) are valid return targets too —
+        // only accepting /s dumped every failed offer booking on the homepage.
+        if (preg_match('#^/(en|fr|nl|es|ar)/(trabber/)?offers/[A-Za-z0-9_\-]+/?$#', $path)) {
+            return rtrim($path, '/').$query;
+        }
+
+        if (preg_match('#^/(trabber/)?offers/[A-Za-z0-9_\-]+/?$#', $path)) {
+            return "/{$locale}".rtrim($path, '/').$query;
         }
 
         return null;

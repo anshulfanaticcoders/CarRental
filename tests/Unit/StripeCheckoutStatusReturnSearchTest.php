@@ -30,6 +30,29 @@ class StripeCheckoutStatusReturnSearchTest extends TestCase
         $this->assertSame('/en/s?where=Athens+Airport&date_from=2026-08-20&date_to=2026-08-23', $url);
     }
 
+    public function test_offer_page_urls_are_accepted_as_return_targets(): void
+    {
+        // Only /s paths were whitelisted, so every failed Skyscanner/Trabber
+        // offer booking sent the customer to the homepage instead of back to
+        // their offer.
+        $method = new ReflectionMethod(StripeCheckoutController::class, 'normalizeReturnSearchUrl');
+        $controller = new StripeCheckoutController(Mockery::mock(StripeBookingService::class));
+
+        $this->assertSame(
+            '/en/offers/59ac3f15-e82c',
+            $method->invoke($controller, '/en/offers/59ac3f15-e82c')
+        );
+        $this->assertSame(
+            '/en/offers/59ac3f15-e82c',
+            $method->invoke($controller, '/offers/59ac3f15-e82c')
+        );
+        $this->assertSame(
+            '/en/trabber/offers/3c11aec8',
+            $method->invoke($controller, '/trabber/offers/3c11aec8')
+        );
+        $this->assertNull($method->invoke($controller, '/offers/../admin'));
+    }
+
     public function test_it_rebuilds_search_url_from_booking_when_stored_url_is_missing(): void
     {
         $booking = new Booking([

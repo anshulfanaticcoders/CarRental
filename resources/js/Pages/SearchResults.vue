@@ -277,17 +277,16 @@ const handlePackageSelection = (event) => {
     // Attach price_hash from price_map to vehicle for verification
     const vehicleWithPriceHash = { ...event.vehicle };
     if (props.price_map && event.vehicle) {
-        // Try every id key the backend may have used for the price-map entry —
-        // a missed match means checkout can never pass price verification.
-        const candidateIds = [
+        // MUST mirror PriceVerificationService::resolveVehicleId exactly:
+        // first NON-EMPTY key wins, in the server's order. Scanning for the
+        // first key present in the map could select ANOTHER vehicle's hash
+        // and get logged as price manipulation.
+        const vehicleId = [
             event.vehicle.id,
             event.vehicle.gateway_vehicle_id,
-            event.vehicle.vehicle_id,
-            event.vehicle.api_vehicle_id,
             event.vehicle.provider_vehicle_id,
-        ].filter(Boolean);
-        const vehicleId = candidateIds.find((id) => props.price_map[id]);
-        if (vehicleId) {
+        ].map((v) => String(v ?? '').trim()).find(Boolean);
+        if (vehicleId && props.price_map[vehicleId]) {
             vehicleWithPriceHash.price_hash = props.price_map[vehicleId].price_hash;
         }
     }
