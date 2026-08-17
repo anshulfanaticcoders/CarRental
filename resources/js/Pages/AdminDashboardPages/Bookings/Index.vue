@@ -102,11 +102,15 @@
                     </div>
                 </div>
 
-                <!-- Needs Attention Card: reservation_failed + rejected + expired -->
-                <button
-                    type="button"
-                    class="relative bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] text-left"
+                <!-- Needs Attention Card: reservation_failed + rejected + expired.
+                     A div like its sibling cards — the admin theme's global button
+                     styles break the card layout on a bare <button>. -->
+                <div
+                    role="button"
+                    tabindex="0"
+                    class="relative bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] cursor-pointer"
                     @click="statusFilter = 'reservation_failed'"
+                    @keydown.enter="statusFilter = 'reservation_failed'"
                 >
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-3 bg-amber-500 bg-opacity-20 rounded-lg">
@@ -120,7 +124,7 @@
                         <p class="text-4xl font-bold text-amber-900">{{ problemStatusTotal }}</p>
                         <p class="text-sm text-amber-700 mt-1">Failed / Rejected / Expired</p>
                     </div>
-                </button>
+                </div>
             </div>
 
             <!-- Enhanced Search & Filter -->
