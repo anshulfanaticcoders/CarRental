@@ -613,8 +613,15 @@ class StripeBookingService
             Log::info('StripeBookingService: Booking record created', ['booking_id' => $booking->id]);
 
             $this->guardedStep('payment_record', $degraded, function () use ($booking, $session, $metadata, $bookingCurrency) {
+                // SQL: `transaction_id = NULL` matches nothing, so a session
+                // without a payment_intent would insert a duplicate row on
+                // every webhook retry. Match the null explicitly.
                 $existingPayment = BookingPayment::where('booking_id', $booking->id)
-                    ->where('transaction_id', $session->payment_intent)
+                    ->when(
+                        $session->payment_intent,
+                        fn ($q) => $q->where('transaction_id', $session->payment_intent),
+                        fn ($q) => $q->whereNull('transaction_id')
+                    )
                     ->first();
 
                 if (! $existingPayment) {
@@ -640,12 +647,22 @@ class StripeBookingService
                     if (! empty($extrasData)) {
                         $providerCurrency = $metadata->provider_currency ?? $metadata->currency ?? null;
                         $bookingCurrency = $metadata->currency ?? null;
+                        // Rate captured at checkout, where a failed conversion now
+                        // blocks the session — so when it's present, no FX HTTP
+                        // call runs inside this open transaction and the extras
+                        // can't be lost to a rates outage.
+                        $storedRate = (float) ($metadata->exchange_rate_provider_to_booking ?? 0);
                         foreach ($extrasData as $extraItem) {
                             $price = (float) ($extraItem['total_for_booking'] ?? $extraItem['total_price'] ?? $extraItem['total'] ?? 0);
                             if ($price > 0 && $providerCurrency && $bookingCurrency && $providerCurrency !== $bookingCurrency) {
-                                $conversion = app(CurrencyConversionService::class)->convert($price, $providerCurrency, $bookingCurrency);
-                                if ($conversion['success'] ?? false) {
-                                    $price = (float) ($conversion['converted_amount'] ?? $price);
+                                if ($storedRate > 0) {
+                                    $price = round($price * $storedRate, 2);
+                                } else {
+                                    // Sessions minted before the rate was stored.
+                                    $conversion = app(CurrencyConversionService::class)->convert($price, $providerCurrency, $bookingCurrency);
+                                    if ($conversion['success'] ?? false) {
+                                        $price = (float) ($conversion['converted_amount'] ?? $price);
+                                    }
                                 }
                             }
 
@@ -1185,6 +1202,9 @@ class StripeBookingService
         $tracking = array_filter([
             'search_session_id' => $metadata->search_session_id ?? null,
             'gateway_search_id' => $metadata->gateway_search_id ?? null,
+            // Recovery anchor: lets the rescue sweep find the checkout payload
+            // even when the payload row's session-id back-patch failed.
+            'checkout_payload_id' => $metadata->extras_payload_id ?? null,
             'return_search_url' => $metadata->return_search_url ?? null,
             'unified_location_id' => $metadata->unified_location_id ?? null,
             'dropoff_unified_location_id' => $metadata->dropoff_unified_location_id ?? null,

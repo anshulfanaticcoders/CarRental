@@ -106,6 +106,22 @@ class RetryPendingProviderReservationsTest extends TestCase
     }
 
     #[Test]
+    public function a_pending_paid_booking_is_swept_too(): void
+    {
+        // The admin provider-pending queue includes booking_status 'pending';
+        // a sweep that only matched 'confirmed' left those rows permanently
+        // stuck with no retry path and (until the close-out fix) no cancel path.
+        Queue::fake();
+        $booking = $this->booking(['booking_status' => 'pending']);
+        $this->payloadFor($booking);
+
+        $this->artisan('bookings:retry-provider-reservations')->assertSuccessful();
+
+        Queue::assertPushed(TriggerProviderReservationJob::class,
+            fn ($job) => $job->bookingId === $booking->id);
+    }
+
+    #[Test]
     public function a_recently_active_booking_is_left_alone(): void
     {
         // Its job chain may still be retrying with backoff — racing it could
@@ -154,6 +170,31 @@ class RetryPendingProviderReservationsTest extends TestCase
         Notification::fake();
         $this->artisan('bookings:retry-provider-reservations')->assertSuccessful();
         Notification::assertNothingSent();
+    }
+
+    #[Test]
+    public function metadata_is_recovered_via_the_payload_id_when_the_session_backpatch_failed(): void
+    {
+        // The payload row's stripe_session_id is written best-effort AFTER the
+        // Stripe session is created; when that write failed, the sweep used to
+        // give up on a booking whose metadata was sitting right there.
+        Queue::fake();
+        $booking = $this->booking();
+        $payload = StripeCheckoutPayload::create([
+            'stripe_session_id' => null, // the failed back-patch
+            'payload' => ['full_metadata' => [
+                'gateway_vehicle_id' => 'gw_backpatch', 'gateway_search_id' => 'gws-bp',
+            ]],
+        ]);
+        Booking::whereKey($booking->id)->update([
+            'provider_metadata' => json_encode(['checkout_payload_id' => $payload->id]),
+            'updated_at' => now()->subHours(5), // stay in the sweep's quiet window
+        ]);
+
+        $this->artisan('bookings:retry-provider-reservations')->assertSuccessful();
+
+        Queue::assertPushed(TriggerProviderReservationJob::class,
+            fn ($job) => $job->bookingId === $booking->id && $job->metadata['gateway_vehicle_id'] === 'gw_backpatch');
     }
 
     #[Test]

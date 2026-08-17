@@ -6,6 +6,8 @@ use App\Models\Booking;
 use App\Models\BookingHold;
 use App\Models\BookingPayment;
 use App\Models\User;
+use App\Notifications\Payment\AdminChargeDisputeNotification;
+use App\Notifications\Payment\AdminChargeRefundedNotification;
 use App\Notifications\Payment\AdminManualRefundRequiredNotification;
 use App\Notifications\Payment\AdminPaymentFailedNotification;
 use App\Notifications\Payment\CustomerPaymentFailedNotification;
@@ -72,6 +74,14 @@ class StripeWebhookController extends Controller
 
             case 'payment_intent.payment_failed':
                 $this->handlePaymentFailed($event->data->object);
+                break;
+
+            case 'charge.refunded':
+                $this->handleChargeRefunded($event->data->object);
+                break;
+
+            case 'charge.dispute.created':
+                $this->handleChargeDispute($event->data->object);
                 break;
 
             default:
@@ -215,6 +225,119 @@ class StripeWebhookController extends Controller
         BookingHold::where('stripe_session_id', $session->id)
             ->where('status', 'active')
             ->update(['status' => 'released']);
+    }
+
+    /**
+     * Handle charge.refunded — refunds are performed manually in the Stripe
+     * dashboard by design, so this event is how the app learns they happened.
+     * Without it the booking stays confirmed/partial forever and any supplier
+     * reservation silently stays live.
+     */
+    protected function handleChargeRefunded($charge)
+    {
+        $paymentIntentId = $charge->payment_intent ?? null;
+        $booking = Booking::with('customer')
+            ->where('stripe_payment_intent_id', $paymentIntentId)
+            ->first();
+
+        if (! $booking) {
+            Log::info('Stripe Webhook: refund for a payment with no booking', [
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            return;
+        }
+
+        $fullyRefunded = (bool) ($charge->refunded ?? false);
+        $amountRefunded = (int) ($charge->amount_refunded ?? 0);
+        $currency = (string) ($charge->currency ?? '');
+
+        $updates = [
+            'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                'refund_recorded_at' => now()->toIso8601String(),
+                'refund_amount_minor' => $amountRefunded,
+                'refund_currency' => strtoupper($currency),
+                'fully_refunded' => $fullyRefunded,
+            ]),
+        ];
+        if ($fullyRefunded) {
+            $updates['payment_status'] = 'refunded';
+        }
+        $booking->update($updates);
+
+        if ($fullyRefunded) {
+            BookingPayment::where('transaction_id', $paymentIntentId)
+                ->update(['payment_status' => 'refunded']);
+        }
+
+        Log::info('Stripe Webhook: refund recorded on booking', [
+            'booking_id' => $booking->id,
+            'fully_refunded' => $fullyRefunded,
+            'amount_refunded' => $amountRefunded,
+        ]);
+
+        try {
+            $admin = User::where('email', config('admin.email'))->first();
+            if ($admin) {
+                $admin->notify(new AdminChargeRefundedNotification($booking, $amountRefunded, $currency, $fullyRefunded));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Stripe Webhook: failed to send refund-recorded notification', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Handle charge.dispute.created — a chargeback has a response deadline and
+     * takes the money if ignored; it must never live only in the Stripe dashboard.
+     */
+    protected function handleChargeDispute($dispute)
+    {
+        $paymentIntentId = $dispute->payment_intent ?? null;
+        $booking = Booking::with('customer')
+            ->where('stripe_payment_intent_id', $paymentIntentId)
+            ->first();
+
+        if (! $booking) {
+            Log::warning('Stripe Webhook: dispute for a payment with no booking', [
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            return;
+        }
+
+        $booking->update([
+            'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                'dispute_opened_at' => now()->toIso8601String(),
+                'dispute_reason' => (string) ($dispute->reason ?? ''),
+                'dispute_amount_minor' => (int) ($dispute->amount ?? 0),
+                'dispute_currency' => strtoupper((string) ($dispute->currency ?? '')),
+            ]),
+        ]);
+
+        Log::warning('Stripe Webhook: dispute opened on booking', [
+            'booking_id' => $booking->id,
+            'reason' => $dispute->reason ?? null,
+        ]);
+
+        try {
+            $admin = User::where('email', config('admin.email'))->first();
+            if ($admin) {
+                $admin->notify(new AdminChargeDisputeNotification(
+                    $booking,
+                    (string) ($dispute->reason ?? ''),
+                    (int) ($dispute->amount ?? 0),
+                    (string) ($dispute->currency ?? '')
+                ));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Stripe Webhook: failed to send dispute notification', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

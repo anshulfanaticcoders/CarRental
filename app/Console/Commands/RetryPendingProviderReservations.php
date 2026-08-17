@@ -43,7 +43,10 @@ class RetryPendingProviderReservations extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
 
-        $stuck = Booking::where('booking_status', 'confirmed')
+        // 'pending' too: the admin provider-pending queue includes both, and a
+        // pending+paid booking with no ref would otherwise never be swept —
+        // permanently stuck with no retry path at all.
+        $stuck = Booking::whereIn('booking_status', ['pending', 'confirmed'])
             ->whereNotNull('provider_source')
             ->where('provider_source', '!=', 'internal')
             ->whereIn('payment_status', ['partial', 'paid'])
@@ -108,11 +111,18 @@ class RetryPendingProviderReservations extends Command
      */
     private function reservationMetadataFor(Booking $booking): ?array
     {
-        if (empty($booking->stripe_session_id)) {
-            return null;
+        $payload = null;
+        if (! empty($booking->stripe_session_id)) {
+            $payload = StripeCheckoutPayload::where('stripe_session_id', $booking->stripe_session_id)->first();
         }
 
-        $payload = StripeCheckoutPayload::where('stripe_session_id', $booking->stripe_session_id)->first();
+        // The session-id back-patch on the payload row is best-effort at
+        // checkout; the payload id captured into provider_metadata at booking
+        // creation is the fallback recovery path.
+        if (! $payload && ! empty($booking->provider_metadata['checkout_payload_id'])) {
+            $payload = StripeCheckoutPayload::find($booking->provider_metadata['checkout_payload_id']);
+        }
+
         $metadata = $payload->payload['full_metadata'] ?? null;
 
         return is_array($metadata) && $metadata !== [] ? $metadata : null;

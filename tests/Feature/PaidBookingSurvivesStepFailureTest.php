@@ -156,6 +156,29 @@ class PaidBookingSurvivesStepFailureTest extends TestCase
     }
 
     #[Test]
+    public function extras_survive_an_fx_outage_when_the_checkout_rate_is_stored(): void
+    {
+        // Checkout already computed the provider→booking rate (and now fails
+        // closed if it can't). With the rate in metadata the extras step needs
+        // no FX HTTP call at all — a rates outage during booking creation must
+        // not cost the customer their paid child seat on the supplier reservation.
+        $this->mock(CurrencyConversionService::class, fn ($m) => $m->shouldReceive('convert')
+            ->andThrow(new \RuntimeException('exchange rate api down')));
+
+        $booking = $this->book('cs_test_rate_stored', array_merge(
+            $this->extrasNeedingConversion(),
+            ['exchange_rate_provider_to_booking' => 1.175]
+        ));
+
+        $this->assertDatabaseHas('booking_extras', [
+            'booking_id' => $booking->id,
+            'extra_name' => 'GPS',
+            'price' => 23.5, // 20 GBP × stored rate 1.175
+        ]);
+        $this->assertStringNotContainsString('extras', (string) $booking->fresh()->notes);
+    }
+
+    #[Test]
     public function a_healthy_session_is_not_flagged(): void
     {
         // The guards must stay silent when everything works, or the flag is noise.
