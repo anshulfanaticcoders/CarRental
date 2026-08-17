@@ -1539,49 +1539,6 @@ class StripeCheckoutController extends Controller
         }
     }
 
-    private function buildProviderMetadata(array $validated): array
-    {
-        $vehicle = $validated['vehicle'] ?? [];
-        $package = $validated['package'] ?? null;
-        $product = $this->resolveSelectedProduct($vehicle, $package);
-
-        return [
-            'provider' => $vehicle['source'] ?? null,
-            'quoteid' => $validated['quoteid'] ?? ($vehicle['quoteid'] ?? null),
-            'rental_code' => $package,
-            'currency' => $validated['currency'] ?? ($vehicle['currency'] ?? null),
-            'vehicle_total' => $validated['vehicle_total'] ?? null,
-            'pickup_location_id' => $vehicle['provider_pickup_id'] ?? null,
-            'dropoff_location_id' => $vehicle['provider_return_id'] ?? null,
-            'location' => $validated['location_details'] ?? null,
-            'location_instructions' => $validated['location_instructions'] ?? null,
-            'driver_requirements' => $validated['driver_requirements'] ?? null,
-            'terms' => $validated['terms'] ?? null,
-            'selected_product' => [
-                'type' => $product['type'] ?? $package,
-                'total' => $product['total'] ?? ($validated['vehicle_total'] ?? null),
-                'currency' => $product['currency'] ?? ($validated['currency'] ?? null),
-                'deposit' => $product['deposit'] ?? null,
-                'deposit_currency' => $product['deposit_currency'] ?? null,
-                'excess' => $product['excess'] ?? null,
-                'excess_theft_amount' => $product['excess_theft_amount'] ?? null,
-                'mileage' => $product['mileage'] ?? null,
-                'costperextradistance' => $product['costperextradistance'] ?? null,
-                'fuelpolicy' => $product['fuelpolicy'] ?? null,
-                'minage' => $product['minage'] ?? null,
-                'gateway_vehicle_id' => $product['gateway_vehicle_id'] ?? null,
-                'connector_id' => $product['connector_id'] ?? null,
-                'provider_pickup_office_id' => $product['provider_pickup_office_id'] ?? null,
-                'provider_dropoff_office_id' => $product['provider_dropoff_office_id'] ?? null,
-                'pricelist_id' => $product['pricelist_id'] ?? null,
-                'pricelist_code' => $product['pricelist_code'] ?? null,
-                'price_date' => $product['price_date'] ?? null,
-                'prepaid' => $product['prepaid'] ?? null,
-            ],
-            'extras_selected' => $validated['detailed_extras'] ?? [],
-        ];
-    }
-
     private function resolveSelectedProduct(array $vehicle, ?string $package): ?array
     {
         if (empty($vehicle['products']) || ! is_array($vehicle['products'])) {
@@ -2801,13 +2758,6 @@ class StripeCheckoutController extends Controller
         }
 
         return $sellCodes[$country] ?? ($sellCodes['default'] ?? null);
-    }
-
-    public function cancel()
-    {
-        return inertia('Booking/Cancel', [
-            'message' => 'Your payment was cancelled. You can try again anytime.',
-        ]);
     }
 
     private function resolveCheckoutIdentityConflict(Request $request, array $customer): ?array

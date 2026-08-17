@@ -297,10 +297,6 @@ const effectivePaymentPercentage = computed(() => {
     return Math.round(percent * 100) / 100;
 });
 
-const isInternal = computed(() => {
-    return props.vehicle?.source === 'internal';
-});
-
 const displayVehicleName = computed(() => {
     return resolveSearchVehicleDisplayName(props.vehicle);
 });

@@ -8,7 +8,6 @@ use App\Http\Controllers\Api\CategoryFeaturesController;
 use App\Http\Controllers\Api\SeoMetaController;
 use App\Http\Controllers\Api\UnifiedLocationController;
 use App\Http\Controllers\BookingAddonController;
-use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NewsletterSubscriptionController;
@@ -81,7 +80,6 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
 
     Route::get('/admin/profile', [App\Http\Controllers\AdminProfileController::class, 'getAdminProfile']);
 });
-Route::get('/booking-success/details', [BookingController::class, 'getBookingDetails'])->name('booking-success.details');
 Route::get('/currencies', [CurrencyController::class, 'index']);
 Route::get('/currency-rates', [CurrencyController::class, 'rates'])->name('api.currency-rates');
 // Route::get('/vendor/payments', [BookingController::class, 'getVendorPaymentHistory'])->name('vendor.payments');

@@ -69,33 +69,6 @@ const userInitials = computed(() => {
   return `${first}${last}`.toUpperCase() || 'U';
 });
 
-const booking = ref(null);
-const payment = ref(null);
-const vehicle = ref(null);
-const error = ref(null);
-
-onMounted(async () => {
-  const paymentIntentId = page.props.payment_intent;
-
-  if (paymentIntentId) {
-    try {
-      const response = await axios.get(
-        `/api/booking-success/details?payment_intent=${paymentIntentId}`
-      );
-
-      booking.value = response.data.booking;
-      payment.value = response.data.payment;
-      vehicle.value = response.data.vehicle;
-    } catch (err) {
-      error.value =
-        "There was an error fetching the booking details. Please try again later.";
-      console.error("Error fetching booking details:", err);
-    }
-  } else {
-    error.value = "Payment Intent ID is missing from the URL.";
-  }
-});
-
 const activeMenu = ref(null);
 const activeSubmenu = ref(null);
 const activeLink = ref(null);

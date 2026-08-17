@@ -476,14 +476,6 @@ Route::group([
     Route::get('/booking/success', [\App\Http\Controllers\StripeCheckoutController::class, 'success'])->name('booking.success');
     Route::get('/booking/status', [\App\Http\Controllers\StripeCheckoutController::class, 'status'])->name('booking.status');
 
-    Route::get('/booking/cancel', function () {
-        return Inertia::render('Booking/Cancel');
-    })->name('booking.cancel.page');
-
-    Route::get('/booking-unsuccess', function () {
-        return Inertia::render('Booking/Unsuccess');
-    })->name('booking.unsuccess');
-
     // Booking Details Route - moved to authenticated customer routes with locale prefix (line 849)
 
     // Public QR Code Tracking Routes (with locale prefix)
@@ -782,7 +774,9 @@ Route::group([
         Route::get('/booking/{id}/download-pdf', [BookingController::class, 'downloadPDF'])->name('booking.download.pdf');
         Route::post('/booking/allow-access', [BookingController::class, 'allowAccess'])->name('booking.allow_access');
         Route::post('/booking/cancel', [BookingController::class, 'cancelBooking'])->name('booking.cancel');
-        Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
+        // POST /booking is a deliberate tombstone: the controller returns an
+        // explanatory 410 so stale cached frontends fail loudly, not weirdly.
+        // (GET /booking removed — it rendered a page that no longer exists.)
         Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
         // Legacy URL — controller method never existed; the unified list is canonical.
         Route::get('/customer/bookings', fn (string $locale) => redirect()->route('profile.bookings.all', ['locale' => $locale]))->name('customer.bookings');
