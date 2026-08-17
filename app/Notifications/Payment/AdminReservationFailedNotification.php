@@ -42,7 +42,7 @@ class AdminReservationFailedNotification extends Notification
             ->line('**Customer:** '.($this->booking->customer?->email ?? 'unknown'))
             ->when($this->reason !== '', fn ($mail) => $mail->line('**Supplier error:** '.$this->reason))
             ->line('Next steps: rebook manually via the supplier portal and record the reference, or cancel and refund the customer manually. The customer has been told their booking is under review.')
-            ->action('View Bookings', url('/admin/bookings'));
+            ->action('View Bookings', url('/customer-bookings'));
     }
 
     public function toArray(object $notifiable): array

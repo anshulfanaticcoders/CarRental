@@ -21,7 +21,7 @@
             </div>
 
             <!-- Enhanced Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
                 <!-- Total Bookings Card -->
                 <div class="relative bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
                     <div class="flex items-center justify-between mb-4">
@@ -101,6 +101,26 @@
                         <p class="text-sm text-red-700 mt-1">Cancelled Bookings</p>
                     </div>
                 </div>
+
+                <!-- Needs Attention Card: reservation_failed + rejected + expired -->
+                <button
+                    type="button"
+                    class="relative bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] text-left"
+                    @click="statusFilter = 'reservation_failed'"
+                >
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-amber-500 bg-opacity-20 rounded-lg">
+                            <AlertTriangle class="w-6 h-6 text-amber-600" />
+                        </div>
+                        <Badge variant="secondary" class="bg-amber-500 text-white">
+                            Attention
+                        </Badge>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-4xl font-bold text-amber-900">{{ problemStatusTotal }}</p>
+                        <p class="text-sm text-amber-700 mt-1">Failed / Rejected / Expired</p>
+                    </div>
+                </button>
             </div>
 
             <!-- Enhanced Search & Filter -->
@@ -127,18 +147,21 @@
                             <SelectItem value="completed">Completed</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
                             <SelectItem value="reservation_failed">Reservation Failed</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                            <SelectItem value="expired">Expired</SelectItem>
                             <SelectItem value="refund_pending">Refund Pending</SelectItem>
                             <SelectItem value="provider_pending">Provider Pending</SelectItem>
+                            <SelectItem value="needs_correction">Needs Correction</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
             </div>
 
             <div
-                v-if="(statusCounts?.reservation_failed || 0) + (statusCounts?.refund_pending || 0) + (statusCounts?.provider_pending || 0) > 0"
+                v-if="rescueQueueTotal > 0"
                 class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
             >
-                <div class="font-semibold">Booking rescue queue</div>
+                <div class="font-semibold">Booking rescue queue — {{ rescueQueueTotal }} booking{{ rescueQueueTotal === 1 ? '' : 's' }} need attention</div>
                 <div class="mt-1 flex flex-wrap gap-3">
                     <button class="underline" @click="statusFilter = 'provider_pending'">
                         Provider pending: {{ statusCounts?.provider_pending || 0 }}
@@ -148,6 +171,12 @@
                     </button>
                     <button class="underline" @click="statusFilter = 'refund_pending'">
                         Refund pending: {{ statusCounts?.refund_pending || 0 }}
+                    </button>
+                    <button class="underline" @click="statusFilter = 'needs_correction'">
+                        Needs correction: {{ statusCounts?.needs_correction || 0 }}
+                    </button>
+                    <button class="underline" @click="statusFilter = 'rejected'">
+                        Rejected: {{ statusCounts?.rejected || 0 }}
                     </button>
                 </div>
             </div>
@@ -261,6 +290,12 @@
                                     <div v-if="booking.payment_status === 'refund_pending'" class="mt-1 text-xs font-semibold text-red-700">
                                         Refund pending
                                     </div>
+                                    <div v-if="needsCorrection(booking)" class="mt-1 text-xs font-semibold text-amber-700">
+                                        Needs correction
+                                    </div>
+                                    <div v-if="booking.provider_metadata?.dispute_opened_at" class="mt-1 text-xs font-semibold text-red-700">
+                                        Dispute opened
+                                    </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 text-right">
                                     <div class="flex flex-wrap justify-end gap-2">
@@ -268,6 +303,16 @@
                                         <ChevronUp v-if="isBookingDetailsOpen(booking.id)" class="w-3 h-3" />
                                         <ChevronDown v-else class="w-3 h-3" />
                                         Details
+                                    </Button>
+                                    <Button
+                                        v-if="canRetryReservation(booking)"
+                                        size="sm"
+                                        variant="outline"
+                                        :disabled="retryingId === booking.id"
+                                        @click="retryReservation(booking)"
+                                    >
+                                        <RefreshCw class="w-3 h-3 mr-1" :class="retryingId === booking.id ? 'animate-spin' : ''" />
+                                        Retry reservation
                                     </Button>
                                     <Button
                                         v-if="booking.booking_status !== 'cancelled'"
@@ -340,11 +385,17 @@
                                             <dl class="mt-3 space-y-2 text-sm">
                                                 <div>
                                                     <dt class="text-muted-foreground">Pickup</dt>
-                                                    <dd class="font-medium">{{ booking.pickup_location || 'N/A' }}</dd>
+                                                    <dd class="font-medium" :class="isPlaceholderValue(booking.pickup_location) ? 'italic text-amber-700' : ''">
+                                                        {{ booking.pickup_location || 'N/A' }}
+                                                        <span v-if="isPlaceholderValue(booking.pickup_location)" class="ml-1 rounded-full border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold not-italic text-amber-800">placeholder</span>
+                                                    </dd>
                                                 </div>
                                                 <div>
                                                     <dt class="text-muted-foreground">Return</dt>
-                                                    <dd class="font-medium">{{ booking.return_location || booking.pickup_location || 'N/A' }}</dd>
+                                                    <dd class="font-medium" :class="isPlaceholderValue(booking.return_location || booking.pickup_location) ? 'italic text-amber-700' : ''">
+                                                        {{ booking.return_location || booking.pickup_location || 'N/A' }}
+                                                        <span v-if="isPlaceholderValue(booking.return_location || booking.pickup_location)" class="ml-1 rounded-full border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold not-italic text-amber-800">placeholder</span>
+                                                    </dd>
                                                 </div>
                                             </dl>
                                         </div>
@@ -366,6 +417,25 @@
                                                 <div class="flex items-center justify-between gap-3">
                                                     <dt class="text-muted-foreground">Pending</dt>
                                                     <dd class="font-medium text-yellow-600">{{ formatCurrency(getAdminAmounts(booking).pending, getAdminAmounts(booking).currency) }}</dd>
+                                                </div>
+                                                <div v-if="booking.stripe_payment_intent_id">
+                                                    <dt class="text-muted-foreground">Stripe payment intent</dt>
+                                                    <dd class="select-all break-all font-mono text-xs font-medium">{{ booking.stripe_payment_intent_id }}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+
+                                        <!-- Everything the rescue machinery recorded about this booking -->
+                                        <div v-if="getProblemInfo(booking).length || booking.notes" class="rounded-lg border border-amber-300 bg-amber-50 p-4 xl:col-span-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-amber-800">Problems & history</p>
+                                            <dl class="mt-3 space-y-2 text-sm">
+                                                <div v-for="item in getProblemInfo(booking)" :key="item.label">
+                                                    <dt class="text-xs font-semibold text-amber-800">{{ item.label }}</dt>
+                                                    <dd class="text-amber-900">{{ item.value }}</dd>
+                                                </div>
+                                                <div v-if="booking.notes">
+                                                    <dt class="text-xs font-semibold text-amber-800">Notes</dt>
+                                                    <dd class="whitespace-pre-line text-amber-900">{{ booking.notes }}</dd>
                                                 </div>
                                             </dl>
                                         </div>
@@ -436,7 +506,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import {Table, TableHeader, TableRow, TableHead, TableBody, TableCell} from "@/Components/ui/table";
 import { Button } from "@/Components/ui/button";
@@ -469,7 +539,9 @@ import {
   ChevronDown,
   ChevronUp,
   Building2,
-  KeyRound
+  KeyRound,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-vue-next';
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
@@ -484,6 +556,19 @@ const props = defineProps({
 
 const search = ref(props.filters.search || '');
 const statusFilter = ref(props.currentStatus || 'all');
+
+const rescueQueueTotal = computed(() => {
+    const c = props.statusCounts || {};
+    return (c.provider_pending || 0) + (c.reservation_failed || 0)
+        + (c.refund_pending || 0) + (c.needs_correction || 0) + (c.rejected || 0);
+});
+
+// The four status cards deliberately exclude problem states; this card is the
+// residual so the arithmetic closes and failures stay visible.
+const problemStatusTotal = computed(() => {
+    const c = props.statusCounts || {};
+    return (c.reservation_failed || 0) + (c.rejected || 0) + (c.expired || 0);
+});
 const expandedBookingRows = ref([]);
 
 const isBookingDetailsOpen = (id) => expandedBookingRows.value.includes(id);
@@ -560,28 +645,33 @@ const handleSearch = () => {
     handleFilterChange();
 };
 
-const status = ref(props.currentStatus || 'all');
+// One route + a status query param. The old per-status named routes only
+// existed for four statuses, so paginating a rescue filter either silently
+// dropped the filter (stale status ref) or threw on a missing route name.
 const handlePageChange = (page) => {
-    let routeName = 'customer-bookings.index'; // Default
-    const params = { page: page, search: search.value }; // Common params
-
-    if (status.value !== 'all') {
-        routeName = `customer-bookings.${status.value}`;
-    }
-
-    router.get(route(routeName, params), { preserveState: true, replace: true });
+    router.get('/customer-bookings', {
+        page,
+        search: search.value,
+        status: statusFilter.value,
+    }, { preserveState: true, replace: true });
 };
 
-const navigateTo = (newStatus) => {
-    status.value = newStatus; // Update status ref
-    let routeName = 'customer-bookings.index'; // Default
-    const params = { search: search.value }; // Common params
+// Manual reservation retry for rows stuck without a supplier reservation.
+const retryingId = ref(null);
 
-    if (newStatus !== 'all') {
-        routeName = `customer-bookings.${newStatus}`;
-    }
+const canRetryReservation = (booking) => {
+    return booking?.provider_source
+        && booking.provider_source !== 'internal'
+        && !booking.provider_booking_ref
+        && ['pending', 'confirmed', 'reservation_failed'].includes(booking.booking_status);
+};
 
-    router.get(route(routeName, params), { preserveState: true, replace: true });
+const retryReservation = (booking) => {
+    retryingId.value = booking.id;
+    router.post(`/customer-bookings/${booking.id}/retry-reservation`, {}, {
+        preserveScroll: true,
+        onFinish: () => { retryingId.value = null; },
+    });
 };
 
 
@@ -598,8 +688,8 @@ const getStatusBadgeBooking = (status) => {
         case 'reservation_failed':
         case 'rejected':
             return 'destructive';
-        case 'failed':
-            return 'destructive';
+        case 'expired':
+            return 'outline';
         default:
             return 'default';
     }
@@ -614,6 +704,32 @@ const isProviderPending = (booking) => {
         && booking.provider_source !== 'internal'
         && !booking.provider_booking_ref
         && ['pending', 'confirmed'].includes(booking.booking_status);
+};
+
+const needsCorrection = (booking) => !!booking?.provider_metadata?.needs_correction;
+
+// The backend's placeholder for fields the paid Stripe session never carried.
+const isPlaceholderValue = (value) => String(value || '').toLowerCase().includes('needs correction');
+
+// Everything the rescue machinery wrote about this booking, rendered as
+// label/value rows in the expander's Problems panel.
+const getProblemInfo = (booking) => {
+    const pm = booking?.provider_metadata || {};
+    const items = [];
+
+    const supplierError = pm.reservation_final_error || pm.gateway_error || pm.reservation_last_error;
+    if (supplierError) items.push({ label: 'Supplier error', value: supplierError });
+    if (pm.needs_correction) items.push({ label: 'Needs correction', value: pm.needs_correction_reason || 'Stored with placeholder data from a degraded Stripe session.' });
+    if (pm.manual_refund_required && !pm.refund_recorded_at) items.push({ label: 'Manual refund required', value: 'Refund this payment in the Stripe dashboard — the refund will be recorded here automatically.' });
+    if (pm.refund_recorded_at) items.push({ label: 'Refund recorded', value: `${((pm.refund_amount_minor || 0) / 100).toFixed(2)} ${pm.refund_currency || ''} (${pm.fully_refunded ? 'full' : 'partial'}) on ${formatDate(pm.refund_recorded_at)}` });
+    if (pm.dispute_opened_at) items.push({ label: 'Dispute opened', value: `${pm.dispute_reason || 'no reason given'} — respond in the Stripe dashboard before the deadline.` });
+    if (pm.reservation_manual_check) items.push({ label: 'Manual check', value: pm.rescue_gave_up_reason || 'Automatic retries stopped — needs a human decision.' });
+    if (pm.rescue_attempts) items.push({ label: 'Rescue attempts', value: `${pm.rescue_attempts}${pm.rescue_last_attempt_at ? ' (last: ' + formatDate(pm.rescue_last_attempt_at) + ')' : ''}` });
+    if (pm.amount_mismatch) items.push({ label: 'Amount mismatch', value: `Stripe captured ${((pm.amount_mismatch.charged_minor || 0) / 100).toFixed(2)} ${pm.amount_mismatch.charged_currency || ''} but checkout expected ${pm.amount_mismatch.expected_amount} ${pm.amount_mismatch.expected_currency || ''}` });
+    if (pm.manual_retry_at) items.push({ label: 'Manual retry', value: `Queued ${formatDate(pm.manual_retry_at)}` });
+    if (booking?.cancellation_reason) items.push({ label: 'Cancellation reason', value: booking.cancellation_reason });
+
+    return items;
 };
 
 const providerNames = {

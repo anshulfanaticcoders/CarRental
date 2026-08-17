@@ -82,7 +82,7 @@ class AdminManualRefundRequiredNotification extends Notification
 
         return $mail
             ->line('Verify the charge in Stripe and either complete the booking or refund the customer manually.')
-            ->action('View Bookings', url('/admin/bookings'));
+            ->action('View Bookings', url('/customer-bookings'));
     }
 
     public function toArray(object $notifiable): array

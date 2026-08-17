@@ -27,7 +27,13 @@ class OverviewController extends Controller
         $totalBookings = $vendorBookingIds->count();
         $confirmedBookings = Booking::whereIn('id', $vendorBookingIds)->where('booking_status', 'confirmed')->count();
         $pendingBookings = Booking::whereIn('id', $vendorBookingIds)->where('booking_status', 'pending')->count();
-        $activeBookings = Booking::whereIn('id', $vendorBookingIds)->where('booking_status', 'active')->count();
+        // 'active' is never written as a booking_status — a rental in progress
+        // is a confirmed booking whose trip window covers today.
+        $activeBookings = Booking::whereIn('id', $vendorBookingIds)
+            ->where('booking_status', 'confirmed')
+            ->whereDate('pickup_date', '<=', Carbon::today())
+            ->whereDate('return_date', '>=', Carbon::today())
+            ->count();
         $completedBookings = Booking::whereIn('id', $vendorBookingIds)->where('booking_status', 'completed')->count();
         $cancelledBookings = Booking::whereIn('id', $vendorBookingIds)->where('booking_status', 'cancelled')->count();
 

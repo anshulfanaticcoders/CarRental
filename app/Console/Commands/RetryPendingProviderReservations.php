@@ -4,9 +4,9 @@ namespace App\Console\Commands;
 
 use App\Jobs\TriggerProviderReservationJob;
 use App\Models\Booking;
-use App\Models\StripeCheckoutPayload;
 use App\Models\User;
 use App\Notifications\Payment\AdminReservationManualCheckNotification;
+use App\Services\StripeBookingService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -111,21 +111,7 @@ class RetryPendingProviderReservations extends Command
      */
     private function reservationMetadataFor(Booking $booking): ?array
     {
-        $payload = null;
-        if (! empty($booking->stripe_session_id)) {
-            $payload = StripeCheckoutPayload::where('stripe_session_id', $booking->stripe_session_id)->first();
-        }
-
-        // The session-id back-patch on the payload row is best-effort at
-        // checkout; the payload id captured into provider_metadata at booking
-        // creation is the fallback recovery path.
-        if (! $payload && ! empty($booking->provider_metadata['checkout_payload_id'])) {
-            $payload = StripeCheckoutPayload::find($booking->provider_metadata['checkout_payload_id']);
-        }
-
-        $metadata = $payload->payload['full_metadata'] ?? null;
-
-        return is_array($metadata) && $metadata !== [] ? $metadata : null;
+        return app(StripeBookingService::class)->recoverReservationMetadata($booking);
     }
 
     /**

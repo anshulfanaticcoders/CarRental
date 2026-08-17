@@ -151,12 +151,15 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         'store' => 'admin.vehicles.store',
         'destroy' => 'admin.vehicles.destroy',
     ]);
-    Route::resource('customer-bookings', BookingDashboardController::class)->except(['create', 'edit', 'show']);
+    // only(): the controller implements just index — the resource shell used to
+    // register store/update/destroy routes that 500'd on BadMethodCallException.
+    Route::resource('customer-bookings', BookingDashboardController::class)->only(['index']);
     Route::get('/customer-bookings/pending', [BookingDashboardController::class, 'pending'])->name('customer-bookings.pending');
     Route::get('/customer-bookings/confirmed', [BookingDashboardController::class, 'confirmed'])->name('customer-bookings.confirmed');
     Route::get('/customer-bookings/completed', [BookingDashboardController::class, 'completed'])->name('customer-bookings.completed');
     Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
     Route::post('/customer-bookings/{id}/cancel', [BookingDashboardController::class, 'cancelBooking'])->name('customer-bookings.cancel');
+    Route::post('/customer-bookings/{id}/retry-reservation', [BookingDashboardController::class, 'retryReservation'])->name('customer-bookings.retry-reservation');
 
     Route::delete('/popular-places/bulk', [PopularPlacesController::class, 'bulkDestroy'])->name('popular-places.bulk-destroy');
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);

@@ -62,7 +62,7 @@ class VendorBookingController extends Controller
 
     public function show($locale, Booking $booking)
     {
-        if ($booking->vehicle->vendor_id !== auth()->id()) {
+        if (! $booking->vehicle || $booking->vehicle->vendor_id !== auth()->id()) {
             abort(403);
         }
 
@@ -76,7 +76,7 @@ class VendorBookingController extends Controller
     public function update(Request $request, $locale, Booking $booking)
     {
         // Verify that the authenticated vendor owns this booking
-        if ($booking->vehicle->vendor_id !== auth()->id()) {
+        if (! $booking->vehicle || $booking->vehicle->vendor_id !== auth()->id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -132,7 +132,7 @@ class VendorBookingController extends Controller
     public function cancel(Request $request, $locale, Booking $booking)
     {
         // Verify that the authenticated vendor owns this booking
-        if ($booking->vehicle->vendor_id !== auth()->id()) {
+        if (! $booking->vehicle || $booking->vehicle->vendor_id !== auth()->id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

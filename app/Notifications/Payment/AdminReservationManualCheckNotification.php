@@ -42,7 +42,7 @@ class AdminReservationManualCheckNotification extends Notification
             ->line('**Provider:** '.($this->booking->provider_source ?: 'unknown'))
             ->when($this->reason !== '', fn ($mail) => $mail->line('**Details:** '.$this->reason))
             ->line('Please check the supplier portal: if a reservation exists, record its reference; otherwise retry or refund.')
-            ->action('View Bookings', url('/admin/bookings'));
+            ->action('View Bookings', url('/customer-bookings'));
     }
 
     public function toArray(object $notifiable): array

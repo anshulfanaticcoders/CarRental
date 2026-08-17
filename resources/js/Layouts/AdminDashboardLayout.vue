@@ -314,6 +314,18 @@ const getNotificationLink = (notification) => {
     // Payments
     case 'AdminPaymentFailedNotification':
       return '/admin/payments';
+    // Rescue-queue alerts: deep-link straight to the affected booking
+    case 'AdminReservationFailedNotification':
+    case 'AdminReservationManualCheckNotification':
+    case 'AdminManualRefundRequiredNotification':
+    case 'AdminBookingNeedsCorrectionNotification':
+    case 'AdminChargeRefundedNotification':
+    case 'AdminChargeDisputeNotification': {
+      const bookingNumber = notification.data?.booking_number;
+      return bookingNumber
+        ? `/customer-bookings?search=${encodeURIComponent(bookingNumber)}`
+        : '/customer-bookings';
+    }
     // Reviews
     case 'ReviewSubmittedAdminNotification':
     case 'ReviewSubmittedVendorNotification':

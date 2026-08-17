@@ -82,6 +82,55 @@ class BookingDashboardController extends Controller
     }
 
     /**
+     * Admin manually re-queues the supplier reservation for a booking stuck
+     * without one. The 15-minute sweep is the automatic path; this is the
+     * on-demand version for the rescue queue, and the only retry available
+     * once a booking is flagged reservation_manual_check.
+     */
+    public function retryReservation(Request $request, $id)
+    {
+        $booking = Booking::findOrFail($id);
+
+        if (! empty($booking->provider_booking_ref)) {
+            return back()->with('error', 'Booking #'.$booking->booking_number.' already has a supplier reservation.');
+        }
+        if (! $booking->provider_source || strtolower($booking->provider_source) === 'internal') {
+            return back()->with('error', 'Internal bookings have no supplier reservation to retry.');
+        }
+        if (in_array($booking->booking_status, ['cancelled', 'rejected', 'expired', 'completed'], true)) {
+            return back()->with('error', 'Booking #'.$booking->booking_number.' is '.$booking->booking_status.' — not eligible for a reservation retry.');
+        }
+
+        $metadata = app(\App\Services\StripeBookingService::class)->recoverReservationMetadata($booking);
+        if ($metadata === null) {
+            return back()->with('error', 'Checkout metadata could not be recovered for booking #'.$booking->booking_number.'. Rebook manually via the supplier portal.');
+        }
+
+        $updates = [
+            'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                'manual_retry_at' => now()->toIso8601String(),
+                'manual_retry_by' => $request->user()?->id,
+                'reservation_manual_check' => false,
+            ]),
+        ];
+        // An explicit admin retry un-fails the booking: the reservation job
+        // refuses to reserve for a reservation_failed status (by design).
+        if ($booking->booking_status === 'reservation_failed') {
+            $updates['booking_status'] = 'confirmed';
+        }
+        $booking->update($updates);
+
+        \App\Jobs\TriggerProviderReservationJob::dispatch($booking->id, $metadata);
+
+        Log::info('Admin queued a manual reservation retry', [
+            'booking_id' => $booking->id,
+            'admin_id' => $request->user()?->id,
+        ]);
+
+        return back()->with('success', 'Reservation retry queued for booking #'.$booking->booking_number.'.');
+    }
+
+    /**
      * Call the provider's cancellation API if applicable.
      * Returns an error message string on failure, or null on success.
      */
@@ -96,7 +145,19 @@ class BookingDashboardController extends Controller
         $gatewayBookingId = (string) ($providerMetadata['gateway_booking_id'] ?? '');
         $gatewaySupplierId = (string) ($providerMetadata['gateway_supplier_id'] ?? $this->mapProviderSourceToGatewaySupplierId($providerSource));
 
-        if ($gatewayBookingId === '' || $gatewaySupplierId === '' || empty($bookingRef)) {
+        // No supplier reservation was ever confirmed (reservation_failed and
+        // provider-pending rows) — there is nothing to cancel upstream, and
+        // blocking here made exactly the broken bookings permanently
+        // uncancellable. Safe against an in-flight retry: the reservation job
+        // skips bookings whose status is no longer eligible.
+        if (empty($bookingRef)) {
+            $booking->notes = trim(($booking->notes ? $booking->notes."\n" : '')
+                .'Admin close-out: cancelled without a supplier call (no provider reservation existed).');
+
+            return null;
+        }
+
+        if ($gatewayBookingId === '' || $gatewaySupplierId === '') {
             return 'Provider gateway cancellation metadata is missing.';
         }
 
@@ -226,6 +287,8 @@ class BookingDashboardController extends Controller
                 ->whereIn('booking_status', ['pending', 'confirmed']);
         } elseif ($statusFilter === 'refund_pending') {
             $bookings->where('payment_status', 'refund_pending');
+        } elseif ($statusFilter === 'needs_correction') {
+            $bookings->where('provider_metadata->needs_correction', true);
         } elseif ($statusFilter !== 'all') { // Filter by status if not 'all'
             $bookings->where('booking_status', $statusFilter);
         }
@@ -251,7 +314,10 @@ class BookingDashboardController extends Controller
             'completed' => Booking::where('booking_status', 'completed')->count(),
             'cancelled' => Booking::where('booking_status', 'cancelled')->count(),
             'reservation_failed' => Booking::where('booking_status', 'reservation_failed')->count(),
+            'rejected' => Booking::where('booking_status', 'rejected')->count(),
+            'expired' => Booking::where('booking_status', 'expired')->count(),
             'refund_pending' => Booking::where('payment_status', 'refund_pending')->count(),
+            'needs_correction' => Booking::where('provider_metadata->needs_correction', true)->count(),
             'provider_pending' => Booking::whereNotNull('provider_source')
                 ->where('provider_source', '!=', 'internal')
                 ->whereNull('provider_booking_ref')

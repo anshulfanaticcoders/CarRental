@@ -124,6 +124,7 @@ const navGroups: NavGroup[] = [
         icon: SquareKanban,
         items: [
           { title: 'All Bookings', url: '/customer-bookings' },
+          { title: 'Rescue Queue', url: '/customer-bookings?status=provider_pending' },
           { title: 'Pending', url: '/customer-bookings/pending' },
           { title: 'Active', url: '/customer-bookings/confirmed' },
           { title: 'Completed', url: '/customer-bookings/completed' },
@@ -131,12 +132,12 @@ const navGroups: NavGroup[] = [
         ],
       },
       {
-        title: 'Provider API',
+        title: 'Partner API',
         url: '#',
         icon: Plug,
         items: [
           { title: 'API Consumers', url: '/api-consumers' },
-          { title: 'External Bookings', url: '/external-bookings' },
+          { title: 'Partner API Bookings', url: '/external-bookings' },
           { title: 'API Analytics', url: '/admin/api-analytics' },
         ],
       },

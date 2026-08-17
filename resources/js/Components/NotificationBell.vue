@@ -20,18 +20,18 @@
         <div v-for="notification in notifications" :key="notification.id" 
              class="py-2 px-4 hover:bg-gray-100 cursor-pointer border-b">
           <!-- Add dynamic link to messages -->
-          <a v-if="notification.type === 'message'" 
-             :href="`/messages/${notification.booking_id}`"
+          <a v-if="isMessageNotification(notification)"
+             :href="`/messages/${notification.data?.booking_id || ''}`"
              class="block w-full h-full text-customPrimaryColor">
-            <div class="font-semibold">{{ notification.title }}</div>
+            <div class="font-semibold">{{ titleOf(notification) }}</div>
             <div class="text-sm text-gray-600">
-              <p>{{ notification.message }}</p>
+              <p>{{ messageOf(notification) }}</p>
               <small class="block text-end text-customPrimaryColor font-medium">{{ formatTime(notification.created_at) }}</small>
             </div>
           </a>
           <div v-else>
-            <div class="font-semibold">{{ notification.title }}</div>
-            <div class="text-sm text-gray-600">{{ notification.message }}</div>
+            <div class="font-semibold">{{ titleOf(notification) }}</div>
+            <div class="text-sm text-gray-600">{{ messageOf(notification) }}</div>
           </div>
         </div>
       </div>
@@ -105,6 +105,13 @@ onUnmounted(() => {
 const formatTime = (date) => {
   return dayjs(date).fromNow(); // Converts "2025-02-25 09:22:44" to "1 min ago"
 };
+
+// The API returns DatabaseNotification models: display fields live under
+// `data`, and `type` is the fully-qualified class name. Reading them at the
+// top level rendered every row as two blank lines.
+const titleOf = (n) => n?.data?.title || n?.title || 'Notification';
+const messageOf = (n) => n?.data?.message || n?.message || '';
+const isMessageNotification = (n) => String(n?.type || '').includes('MessageNotification');
   </script>
   
   <style scoped>

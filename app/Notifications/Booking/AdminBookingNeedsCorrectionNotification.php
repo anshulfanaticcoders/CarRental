@@ -35,7 +35,7 @@ class AdminBookingNeedsCorrectionNotification extends Notification
             ->line('**Booking Number:** '.$this->booking->booking_number)
             ->line('**Details:** '.$this->reason)
             ->line('Confirm the correct values with the customer and update the booking before pickup.')
-            ->action('View Bookings', url('/admin/bookings'));
+            ->action('View Bookings', url('/customer-bookings'));
     }
 
     public function toArray(object $notifiable): array

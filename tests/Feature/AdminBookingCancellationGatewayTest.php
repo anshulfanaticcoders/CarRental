@@ -110,6 +110,41 @@ class AdminBookingCancellationGatewayTest extends TestCase
         $this->assertSame('cancelled', $booking->booking_status);
     }
 
+    public function test_admin_can_close_out_a_booking_that_never_got_a_supplier_reservation(): void
+    {
+        // reservation_failed / provider-pending rows have no provider_booking_ref
+        // by definition — there is nothing to cancel upstream. Blocking the cancel
+        // made exactly the broken bookings immortal in the rescue queue.
+        Notification::fake();
+        config(['vrooem.enabled' => false]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $booking = $this->createBooking([
+            'provider_source' => 'greenmotion',
+            'provider_booking_ref' => null,
+            'booking_status' => 'reservation_failed',
+            'provider_metadata' => ['manual_refund_required' => true],
+        ]);
+
+        $this->mock(VrooemGatewayService::class, function ($mock): void {
+            $mock->shouldNotReceive('cancelBooking');
+        });
+
+        $response = $this
+            ->actingAs($admin)
+            ->from(route('customer-bookings.index'))
+            ->post(route('customer-bookings.cancel', ['id' => $booking->id]), [
+                'cancellation_reason' => 'Refunded in Stripe, closing out',
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionMissing('error');
+
+        $booking->refresh();
+        $this->assertSame('cancelled', $booking->booking_status);
+        $this->assertStringContainsString('Admin close-out', (string) $booking->notes);
+    }
+
     private function createBooking(array $overrides = []): Booking
     {
         $customerUser = User::factory()->create();

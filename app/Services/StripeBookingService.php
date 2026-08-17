@@ -132,6 +132,12 @@ class StripeBookingService
         try {
             $booking->update([
                 'notes' => ($booking->notes ? $booking->notes."\n" : '').'NEEDS CORRECTION: '.$reason,
+                // Queryable flag — a notes-string prefix can't drive an admin
+                // filter or count.
+                'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                    'needs_correction' => true,
+                    'needs_correction_reason' => $reason,
+                ]),
             ]);
             $admin = User::where('email', config('admin.email'))->first();
             $admin?->notify(new AdminBookingNeedsCorrectionNotification($booking, $reason));
@@ -254,6 +260,28 @@ class StripeBookingService
         }
 
         return (int) round($amount * 100);
+    }
+
+    /**
+     * Recovers the full checkout metadata a reservation retry needs. Looked up
+     * by session id first; the payload id stored in provider_metadata covers
+     * rows whose session-id back-patch failed at checkout. Used by the rescue
+     * sweep and the admin "retry reservation" action.
+     */
+    public function recoverReservationMetadata(Booking $booking): ?array
+    {
+        $payload = null;
+        if (! empty($booking->stripe_session_id)) {
+            $payload = StripeCheckoutPayload::where('stripe_session_id', $booking->stripe_session_id)->first();
+        }
+
+        if (! $payload && ! empty($booking->provider_metadata['checkout_payload_id'])) {
+            $payload = StripeCheckoutPayload::find($booking->provider_metadata['checkout_payload_id']);
+        }
+
+        $metadata = $payload->payload['full_metadata'] ?? null;
+
+        return is_array($metadata) && $metadata !== [] ? $metadata : null;
     }
 
     public function resolveCustomerFromCheckoutPayload(array $payload, ?int $userId = null): array
