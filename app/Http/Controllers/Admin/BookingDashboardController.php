@@ -297,6 +297,19 @@ class BookingDashboardController extends Controller
                 ->where('provider_source', '!=', 'internal')
                 ->whereNull('provider_booking_ref')
                 ->whereIn('booking_status', ['pending', 'confirmed']);
+        } elseif ($statusFilter === 'rescue') {
+            // Everything the rescue banner counts — union of all problem states.
+            $bookings->where(function ($query) {
+                $query->whereIn('booking_status', ['reservation_failed', 'rejected'])
+                    ->orWhere('payment_status', 'refund_pending')
+                    ->orWhere('provider_metadata->needs_correction', true)
+                    ->orWhere(function ($providerQuery) {
+                        $providerQuery->whereNotNull('provider_source')
+                            ->where('provider_source', '!=', 'internal')
+                            ->whereNull('provider_booking_ref')
+                            ->whereIn('booking_status', ['pending', 'confirmed']);
+                    });
+            });
         } elseif ($statusFilter === 'refund_pending') {
             $bookings->where('payment_status', 'refund_pending');
         } elseif ($statusFilter === 'needs_correction') {
@@ -353,6 +366,20 @@ class BookingDashboardController extends Controller
             'statusCounts' => $statusCounts,
             'filters' => $request->only(['search', 'status']), // Include status filter
             'currentStatus' => $statusFilter, // Pass current status to the view
+            'flash' => session()->only(['success', 'error']),
+        ]);
+    }
+
+    public function show(Booking $booking)
+    {
+        $booking->load(['customer', 'vehicle.vendorProfileData', 'payments', 'amounts', 'extras', 'offers']);
+        $booking->trip_from_date = optional($booking->pickup_date)->toDateString();
+        $booking->trip_from_time = $booking->pickup_time;
+        $booking->trip_to_date = optional($booking->return_date)->toDateString();
+        $booking->trip_to_time = $booking->return_time;
+
+        return Inertia::render('AdminDashboardPages/Bookings/Show', [
+            'booking' => $booking,
             'flash' => session()->only(['success', 'error']),
         ]);
     }

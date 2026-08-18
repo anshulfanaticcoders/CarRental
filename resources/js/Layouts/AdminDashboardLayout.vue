@@ -457,6 +457,10 @@ const enhanceAdminActions = () => {
   ].join(', ');
 
   document.querySelectorAll(actionSelector).forEach((element) => {
+    // Stat cards and other large role="button" surfaces must keep their own
+    // layout — admin-action-btn's inline-flex/nowrap destroys block cards.
+    if (element.dataset.adminEnhance === 'off') return;
+
     const action = classifyAdminAction(element);
     if (!action) return;
 

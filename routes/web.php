@@ -160,6 +160,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/customer-bookings/cancelled', [BookingDashboardController::class, 'cancelled'])->name('customer-bookings.cancelled');
     Route::post('/customer-bookings/{id}/cancel', [BookingDashboardController::class, 'cancelBooking'])->name('customer-bookings.cancel');
     Route::post('/customer-bookings/{id}/retry-reservation', [BookingDashboardController::class, 'retryReservation'])->name('customer-bookings.retry-reservation');
+    Route::get('/customer-bookings/{booking}', [BookingDashboardController::class, 'show'])->whereNumber('booking')->name('customer-bookings.show');
 
     Route::delete('/popular-places/bulk', [PopularPlacesController::class, 'bulkDestroy'])->name('popular-places.bulk-destroy');
     Route::resource('popular-places', PopularPlacesController::class)->except(['show']);

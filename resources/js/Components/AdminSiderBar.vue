@@ -124,7 +124,7 @@ const navGroups: NavGroup[] = [
         icon: SquareKanban,
         items: [
           { title: 'All Bookings', url: '/customer-bookings' },
-          { title: 'Rescue Queue', url: '/customer-bookings?status=provider_pending' },
+          { title: 'Rescue Queue', url: '/customer-bookings?status=rescue' },
           { title: 'Pending', url: '/customer-bookings/pending' },
           { title: 'Active', url: '/customer-bookings/confirmed' },
           { title: 'Completed', url: '/customer-bookings/completed' },
@@ -295,13 +295,14 @@ const navGroups: NavGroup[] = [
 ];
 
 const currentPath = ref(window.location.pathname);
+const currentSearch = ref(window.location.search);
 const expandedMenus = ref<Set<string>>(new Set());
 const { state: sidebarState } = useSidebar();
 
 const setActiveMenusBasedOnPath = () => {
   navGroups.forEach((group) => {
     group.items.forEach((menuItem) => {
-      const hasActiveSubmenu = menuItem.items.some(item => currentPath.value === item.url);
+      const hasActiveSubmenu = menuItem.items.some(item => isSubmenuActive(item.url));
       if (hasActiveSubmenu) {
         expandedMenus.value.add(menuItem.title);
       }
@@ -320,13 +321,23 @@ const toggleMenu = (menuTitle: string) => {
 };
 
 const isMenuActive = (menuItem: NavItem) => {
-  return menuItem.items.some(item => currentPath.value === item.url);
+  return menuItem.items.some(item => isSubmenuActive(item.url));
 };
 
-const isSubmenuActive = (url: string) => currentPath.value === url;
+// Query-aware matching: a link with ?status=x is active only on that status;
+// a plain link is active only when no status filter (or 'all') is applied.
+const isSubmenuActive = (url: string) => {
+  const [path, query] = url.split('?');
+  if (currentPath.value !== path) return false;
+
+  const currentStatus = new URLSearchParams(currentSearch.value).get('status');
+  if (query) return new URLSearchParams(query).get('status') === currentStatus;
+
+  return !currentStatus || currentStatus === 'all';
+};
 
 const getPrimaryMenuUrl = (menuItem: NavItem) => {
-  return menuItem.items.find(item => currentPath.value === item.url)?.url
+  return menuItem.items.find(item => isSubmenuActive(item.url))?.url
     || menuItem.items[0]?.url
     || (menuItem.url !== '#' ? menuItem.url : '');
 };
@@ -365,7 +376,7 @@ const visitSubmenu = (event: MouseEvent, url: string) => {
 
   event.preventDefault();
 
-  if (currentPath.value === url) {
+  if (currentPath.value + currentSearch.value === url || (currentPath.value === url && !currentSearch.value)) {
     return;
   }
 
@@ -374,6 +385,7 @@ const visitSubmenu = (event: MouseEvent, url: string) => {
 
 router.on('navigate', () => {
   currentPath.value = window.location.pathname;
+  currentSearch.value = window.location.search;
   setActiveMenusBasedOnPath();
 });
 

@@ -21,7 +21,7 @@
             </div>
 
             <!-- Enhanced Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
                 <!-- Total Bookings Card -->
                 <div class="relative bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]">
                     <div class="flex items-center justify-between mb-4">
@@ -108,6 +108,7 @@
                 <div
                     role="button"
                     tabindex="0"
+                    data-admin-enhance="off"
                     class="relative bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] cursor-pointer"
                     @click="statusFilter = 'reservation_failed'"
                     @keydown.enter="statusFilter = 'reservation_failed'"
@@ -146,6 +147,7 @@
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="rescue">Rescue Queue</SelectItem>
                             <SelectItem value="pending">Pending</SelectItem>
                             <SelectItem value="confirmed">Confirmed</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
@@ -163,24 +165,29 @@
 
             <div
                 v-if="rescueQueueTotal > 0"
-                class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+                class="mb-4 rounded-xl border border-amber-400/30 bg-gradient-to-r from-amber-500/10 via-transparent to-transparent p-4"
             >
-                <div class="font-semibold">Booking rescue queue — {{ rescueQueueTotal }} booking{{ rescueQueueTotal === 1 ? '' : 's' }} need attention</div>
-                <div class="mt-1 flex flex-wrap gap-3">
-                    <button class="underline" @click="statusFilter = 'provider_pending'">
-                        Provider pending: {{ statusCounts?.provider_pending || 0 }}
-                    </button>
-                    <button class="underline" @click="statusFilter = 'reservation_failed'">
-                        Reservation failed: {{ statusCounts?.reservation_failed || 0 }}
-                    </button>
-                    <button class="underline" @click="statusFilter = 'refund_pending'">
-                        Refund pending: {{ statusCounts?.refund_pending || 0 }}
-                    </button>
-                    <button class="underline" @click="statusFilter = 'needs_correction'">
-                        Needs correction: {{ statusCounts?.needs_correction || 0 }}
-                    </button>
-                    <button class="underline" @click="statusFilter = 'rejected'">
-                        Rejected: {{ statusCounts?.rejected || 0 }}
+                <div class="flex items-center gap-2">
+                    <AlertTriangle class="h-4 w-4 shrink-0 text-amber-400" />
+                    <span class="text-sm font-semibold">
+                        Booking rescue queue — {{ rescueQueueTotal }} booking{{ rescueQueueTotal === 1 ? '' : 's' }} need attention
+                    </span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <button
+                        v-for="chip in rescueChips"
+                        :key="chip.status"
+                        data-admin-enhance="off"
+                        class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-[color,background-color,border-color] duration-200"
+                        :class="statusFilter === chip.status
+                            ? 'border-amber-400 bg-amber-400/20 text-amber-200'
+                            : chip.count
+                                ? 'border-amber-400/30 bg-amber-400/5 text-amber-300/90 hover:border-amber-400/60 hover:bg-amber-400/10'
+                                : 'border-white/10 text-muted-foreground opacity-60 hover:opacity-90'"
+                        @click="statusFilter = chip.status"
+                    >
+                        {{ chip.label }}
+                        <span class="rounded-full bg-black/25 px-1.5 py-0.5 font-mono text-[11px]">{{ chip.count }}</span>
                     </button>
                 </div>
             </div>
@@ -216,63 +223,31 @@
                                         {{ booking.plan }}
                                     </Badge>
                                 </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="font-medium">{{ booking.customer?.first_name }} {{ booking.customer?.last_name }}</div>
-                                    <div class="text-sm text-muted-foreground">{{ booking.customer?.email }}</div>
-                                </TableCell>
-                                <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="max-w-[220px]">
-                                        <div class="font-medium leading-snug whitespace-normal">{{ getVehicleName(booking) }}</div>
-                                        <div class="text-sm text-muted-foreground">{{ getVehicleMeta(booking) }}</div>
+                                <TableCell class="px-4 py-3">
+                                    <div class="max-w-[180px]">
+                                        <div class="font-medium truncate">{{ booking.customer?.first_name }} {{ booking.customer?.last_name }}</div>
+                                        <div class="text-xs text-muted-foreground truncate">{{ booking.customer?.email }}</div>
                                     </div>
                                 </TableCell>
                                 <TableCell class="px-4 py-3">
-                                    <div class="min-w-[180px] space-y-1.5">
-                                        <div class="inline-flex items-center gap-1.5 rounded-full border border-[#22d3ee]/35 bg-[#22d3ee]/10 px-2.5 py-1 text-xs font-semibold text-[#22d3ee]">
-                                            <Building2 class="h-3.5 w-3.5" />
-                                            {{ getProviderName(booking) }}
-                                        </div>
-                                        <div class="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                            <KeyRound class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                                            <span class="font-mono text-foreground">{{ getProviderRef(booking) }}</span>
-                                        </div>
-                                        <div v-if="getGatewayBookingId(booking)" class="text-[11px] text-muted-foreground">
-                                            Gateway: <span class="font-mono">{{ getGatewayBookingId(booking) }}</span>
-                                        </div>
-                                    </div>
+                                    <div class="max-w-[180px] font-medium leading-snug line-clamp-2">{{ getVehicleName(booking) }}</div>
                                 </TableCell>
                                 <TableCell class="px-4 py-3">
-                                    <div class="min-w-[190px] space-y-1 text-sm">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">From</span>
-                                            <span class="font-medium">{{ formatTripDate(booking.trip_from_date || booking.pickup_date) }}</span>
-                                            <span class="text-xs text-muted-foreground">{{ booking.trip_from_time || booking.pickup_time || '' }}</span>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">To</span>
-                                            <span class="font-medium">{{ formatTripDate(booking.trip_to_date || booking.return_date) }}</span>
-                                            <span class="text-xs text-muted-foreground">{{ booking.trip_to_time || booking.return_time || '' }}</span>
-                                        </div>
-                                        <div class="text-muted-foreground text-xs">
-                                            <span class="block max-w-[180px] truncate">{{ booking.pickup_location }}</span>
-                                            <span v-if="booking.return_location && booking.return_location !== booking.pickup_location"
-                                                class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[#22d3ee]/15 text-[#0b2230] border border-[#22d3ee]/40">
-                                                One-way
-                                            </span>
-                                        </div>
+                                    <div class="inline-flex max-w-[150px] items-center gap-1.5 rounded-full border border-[#22d3ee]/35 bg-[#22d3ee]/10 px-2.5 py-1 text-xs font-semibold text-[#22d3ee]">
+                                        <Building2 class="h-3.5 w-3.5 shrink-0" />
+                                        <span class="truncate">{{ getProviderName(booking) }}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
-                                    <div class="text-sm">
-                                        <div class="font-medium">
-                                            {{ formatCurrency(getAdminAmounts(booking).total, getAdminAmounts(booking).currency) }}
-                                        </div>
-                                        <div class="text-green-600 text-xs">
-                                            Commission Collected: {{ formatCurrency(getAdminAmounts(booking).paid, getAdminAmounts(booking).currency) }}
-                                        </div>
-                                        <div class="text-yellow-600 text-xs">
-                                            Pending Commission: {{ formatCurrency(getAdminAmounts(booking).pending, getAdminAmounts(booking).currency) }}
-                                        </div>
+                                    <div class="text-sm font-medium">{{ formatTripDate(booking.trip_from_date || booking.pickup_date) }}</div>
+                                    <div class="text-xs text-muted-foreground">→ {{ formatTripDate(booking.trip_to_date || booking.return_date) }}</div>
+                                </TableCell>
+                                <TableCell class="whitespace-nowrap px-4 py-3">
+                                    <div class="text-sm font-medium">
+                                        {{ formatCurrency(getAdminAmounts(booking).total, getAdminAmounts(booking).currency) }}
+                                    </div>
+                                    <div class="text-green-600 text-xs">
+                                        {{ formatCurrency(getAdminAmounts(booking).paid, getAdminAmounts(booking).currency) }} collected
                                     </div>
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3">
@@ -303,11 +278,12 @@
                                 </TableCell>
                                 <TableCell class="whitespace-nowrap px-4 py-3 text-right">
                                     <div class="flex flex-wrap justify-end gap-2">
-                                    <Button size="sm" variant="outline" @click="toggleBookingDetails(booking.id)" class="flex items-center gap-1">
-                                        <ChevronUp v-if="isBookingDetailsOpen(booking.id)" class="w-3 h-3" />
-                                        <ChevronDown v-else class="w-3 h-3" />
-                                        Details
-                                    </Button>
+                                    <Link :href="route('customer-bookings.show', booking.id)">
+                                        <Button size="sm" variant="outline" class="flex items-center gap-1">
+                                            <Eye class="w-3 h-3" />
+                                            Details
+                                        </Button>
+                                    </Link>
                                     <Button
                                         v-if="canRetryReservation(booking)"
                                         size="sm"
@@ -328,121 +304,6 @@
                                         Cancel
                                     </Button>
                                     <span v-else class="text-sm text-muted-foreground">--</span>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                            <TableRow v-if="isBookingDetailsOpen(booking.id)" class="bg-muted/20">
-                                <TableCell colspan="10" class="px-4 py-4">
-                                    <div class="grid gap-4 xl:grid-cols-4">
-                                        <div class="rounded-lg border bg-background/40 p-4">
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Booking</p>
-                                            <dl class="mt-3 space-y-2 text-sm">
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <dt class="text-muted-foreground">Booking number</dt>
-                                                    <dd class="font-mono font-medium">{{ booking.booking_number }}</dd>
-                                                </div>
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <dt class="text-muted-foreground">Plan</dt>
-                                                    <dd class="font-medium capitalize">{{ booking.plan }}</dd>
-                                                </div>
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <dt class="text-muted-foreground">Total days</dt>
-                                                    <dd class="font-medium">{{ booking.total_days || 0 }} days</dd>
-                                                </div>
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <dt class="text-muted-foreground">Created</dt>
-                                                    <dd class="font-medium">{{ formatDate(booking.created_at) }}</dd>
-                                                </div>
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <dt class="text-muted-foreground">Trip from</dt>
-                                                    <dd class="font-medium">{{ formatTripDate(booking.trip_from_date || booking.pickup_date) }} {{ booking.trip_from_time || booking.pickup_time || '' }}</dd>
-                                                </div>
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <dt class="text-muted-foreground">Trip to</dt>
-                                                    <dd class="font-medium">{{ formatTripDate(booking.trip_to_date || booking.return_date) }} {{ booking.trip_to_time || booking.return_time || '' }}</dd>
-                                                </div>
-                                            </dl>
-                                        </div>
-                                        <div class="rounded-lg border bg-background/40 p-4">
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vehicle & Provider</p>
-                                            <dl class="mt-3 space-y-2 text-sm">
-                                                <div>
-                                                    <dt class="text-muted-foreground">Vehicle</dt>
-                                                    <dd class="font-medium">{{ getVehicleName(booking) }}</dd>
-                                                </div>
-                                                <div>
-                                                    <dt class="text-muted-foreground">Provider</dt>
-                                                    <dd class="font-medium">{{ getProviderName(booking) }}</dd>
-                                                </div>
-                                                <div>
-                                                    <dt class="text-muted-foreground">Provider reference</dt>
-                                                    <dd class="font-mono font-medium">{{ getProviderRef(booking) }}</dd>
-                                                </div>
-                                                <div v-if="getGatewayBookingId(booking)">
-                                                    <dt class="text-muted-foreground">Gateway booking id</dt>
-                                                    <dd class="font-mono font-medium">{{ getGatewayBookingId(booking) }}</dd>
-                                                </div>
-                                            </dl>
-                                        </div>
-                                        <div class="rounded-lg border bg-background/40 p-4">
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Route</p>
-                                            <dl class="mt-3 space-y-2 text-sm">
-                                                <div>
-                                                    <dt class="text-muted-foreground">Pickup</dt>
-                                                    <dd class="font-medium" :class="isPlaceholderValue(booking.pickup_location) ? 'italic text-amber-700' : ''">
-                                                        {{ booking.pickup_location || 'N/A' }}
-                                                        <span v-if="isPlaceholderValue(booking.pickup_location)" class="ml-1 rounded-full border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold not-italic text-amber-800">placeholder</span>
-                                                    </dd>
-                                                </div>
-                                                <div>
-                                                    <dt class="text-muted-foreground">Return</dt>
-                                                    <dd class="font-medium" :class="isPlaceholderValue(booking.return_location || booking.pickup_location) ? 'italic text-amber-700' : ''">
-                                                        {{ booking.return_location || booking.pickup_location || 'N/A' }}
-                                                        <span v-if="isPlaceholderValue(booking.return_location || booking.pickup_location)" class="ml-1 rounded-full border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold not-italic text-amber-800">placeholder</span>
-                                                    </dd>
-                                                </div>
-                                            </dl>
-                                        </div>
-                                        <div class="rounded-lg border bg-background/40 p-4">
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment</p>
-                                            <dl class="mt-3 space-y-2 text-sm">
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <dt class="text-muted-foreground">Currency</dt>
-                                                    <dd class="font-medium">{{ getAdminAmounts(booking).currency }}</dd>
-                                                </div>
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <dt class="text-muted-foreground">Total</dt>
-                                                    <dd class="font-medium">{{ formatCurrency(getAdminAmounts(booking).total, getAdminAmounts(booking).currency) }}</dd>
-                                                </div>
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <dt class="text-muted-foreground">Collected</dt>
-                                                    <dd class="font-medium text-green-600">{{ formatCurrency(getAdminAmounts(booking).paid, getAdminAmounts(booking).currency) }}</dd>
-                                                </div>
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <dt class="text-muted-foreground">Pending</dt>
-                                                    <dd class="font-medium text-yellow-600">{{ formatCurrency(getAdminAmounts(booking).pending, getAdminAmounts(booking).currency) }}</dd>
-                                                </div>
-                                                <div v-if="booking.stripe_payment_intent_id">
-                                                    <dt class="text-muted-foreground">Stripe payment intent</dt>
-                                                    <dd class="select-all break-all font-mono text-xs font-medium">{{ booking.stripe_payment_intent_id }}</dd>
-                                                </div>
-                                            </dl>
-                                        </div>
-
-                                        <!-- Everything the rescue machinery recorded about this booking -->
-                                        <div v-if="getProblemInfo(booking).length || booking.notes" class="rounded-lg border border-amber-300 bg-amber-50 p-4 xl:col-span-4">
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-amber-800">Problems & history</p>
-                                            <dl class="mt-3 space-y-2 text-sm">
-                                                <div v-for="item in getProblemInfo(booking)" :key="item.label">
-                                                    <dt class="text-xs font-semibold text-amber-800">{{ item.label }}</dt>
-                                                    <dd class="text-amber-900">{{ item.value }}</dd>
-                                                </div>
-                                                <div v-if="booking.notes">
-                                                    <dt class="text-xs font-semibold text-amber-800">Notes</dt>
-                                                    <dd class="whitespace-pre-line text-amber-900">{{ booking.notes }}</dd>
-                                                </div>
-                                            </dl>
-                                        </div>
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -511,7 +372,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from "vue";
-import { router } from "@inertiajs/vue3";
+import { router, Link } from "@inertiajs/vue3";
 import {Table, TableHeader, TableRow, TableHead, TableBody, TableCell} from "@/Components/ui/table";
 import { Button } from "@/Components/ui/button";
 import { Badge } from "@/Components/ui/badge";
@@ -540,10 +401,8 @@ import {
   CheckSquare,
   XCircle,
   Search,
-  ChevronDown,
-  ChevronUp,
+  Eye,
   Building2,
-  KeyRound,
   AlertTriangle,
   RefreshCw
 } from 'lucide-vue-next';
@@ -566,25 +425,23 @@ const rescueQueueTotal = computed(() => {
     return c.rescue_total || 0;
 });
 
+const rescueChips = computed(() => {
+    const c = props.statusCounts || {};
+    return [
+        { status: 'provider_pending', label: 'Provider pending', count: c.provider_pending || 0 },
+        { status: 'reservation_failed', label: 'Reservation failed', count: c.reservation_failed || 0 },
+        { status: 'refund_pending', label: 'Refund pending', count: c.refund_pending || 0 },
+        { status: 'needs_correction', label: 'Needs correction', count: c.needs_correction || 0 },
+        { status: 'rejected', label: 'Rejected', count: c.rejected || 0 },
+    ];
+});
+
 // The four status cards deliberately exclude problem states; this card is the
 // residual so the arithmetic closes and failures stay visible.
 const problemStatusTotal = computed(() => {
     const c = props.statusCounts || {};
     return (c.reservation_failed || 0) + (c.rejected || 0) + (c.expired || 0);
 });
-const expandedBookingRows = ref([]);
-
-const isBookingDetailsOpen = (id) => expandedBookingRows.value.includes(id);
-
-const toggleBookingDetails = (id) => {
-    if (isBookingDetailsOpen(id)) {
-        expandedBookingRows.value = expandedBookingRows.value.filter((rowId) => rowId !== id);
-        return;
-    }
-
-    expandedBookingRows.value = [id];
-};
-
 // Cancel modal state
 const showCancelModal = ref(false);
 const cancelTarget = ref(null);
@@ -729,29 +586,6 @@ const isProviderPending = (booking) => {
 
 const needsCorrection = (booking) => !!booking?.provider_metadata?.needs_correction;
 
-// The backend's placeholder for fields the paid Stripe session never carried.
-const isPlaceholderValue = (value) => String(value || '').toLowerCase().includes('needs correction');
-
-// Everything the rescue machinery wrote about this booking, rendered as
-// label/value rows in the expander's Problems panel.
-const getProblemInfo = (booking) => {
-    const pm = booking?.provider_metadata || {};
-    const items = [];
-
-    const supplierError = pm.reservation_final_error || pm.gateway_error || pm.reservation_last_error;
-    if (supplierError) items.push({ label: 'Supplier error', value: supplierError });
-    if (pm.needs_correction) items.push({ label: 'Needs correction', value: pm.needs_correction_reason || 'Stored with placeholder data from a degraded Stripe session.' });
-    if (pm.manual_refund_required && !pm.refund_recorded_at) items.push({ label: 'Manual refund required', value: 'Refund this payment in the Stripe dashboard — the refund will be recorded here automatically.' });
-    if (pm.refund_recorded_at) items.push({ label: 'Refund recorded', value: `${((pm.refund_amount_minor || 0) / 100).toFixed(2)} ${pm.refund_currency || ''} (${pm.fully_refunded ? 'full' : 'partial'}) on ${formatDate(pm.refund_recorded_at)}` });
-    if (pm.dispute_opened_at) items.push({ label: 'Dispute opened', value: `${pm.dispute_reason || 'no reason given'} — respond in the Stripe dashboard before the deadline.` });
-    if (pm.reservation_manual_check) items.push({ label: 'Manual check', value: pm.rescue_gave_up_reason || 'Automatic retries stopped — needs a human decision.' });
-    if (pm.rescue_attempts) items.push({ label: 'Rescue attempts', value: `${pm.rescue_attempts}${pm.rescue_last_attempt_at ? ' (last: ' + formatDate(pm.rescue_last_attempt_at) + ')' : ''}` });
-    if (pm.amount_mismatch) items.push({ label: 'Amount mismatch', value: `Stripe captured ${((pm.amount_mismatch.charged_minor || 0) / 100).toFixed(2)} ${pm.amount_mismatch.charged_currency || ''} but checkout expected ${pm.amount_mismatch.expected_amount} ${pm.amount_mismatch.expected_currency || ''}` });
-    if (pm.manual_retry_at) items.push({ label: 'Manual retry', value: `Queued ${formatDate(pm.manual_retry_at)}` });
-    if (booking?.cancellation_reason) items.push({ label: 'Cancellation reason', value: booking.cancellation_reason });
-
-    return items;
-};
 
 const providerNames = {
     adobe_car: 'Adobe Car',
