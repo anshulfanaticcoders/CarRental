@@ -13,8 +13,10 @@ class StripeCheckoutPayload extends Model
      * Statuses that must never be reset to pending — a webhook replay or
      * queued retry that downgrades one of these can resurrect a booking
      * that was deliberately deleted, or re-fulfil an already-handled session.
+     * 'ignored' marks paid sessions that are not car-rental checkouts (other
+     * products share the Stripe account) and must never become bookings.
      */
-    public const TERMINAL_STATUSES = ['fulfilled', 'manual_review', 'expired'];
+    public const TERMINAL_STATUSES = ['fulfilled', 'manual_review', 'expired', 'ignored'];
 
     protected $fillable = [
         'stripe_session_id',

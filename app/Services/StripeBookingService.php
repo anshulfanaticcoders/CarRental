@@ -315,6 +315,30 @@ class StripeBookingService
     {
         Log::info('StripeBookingService: Starting creation', ['session_id' => $session->id]);
 
+        // Resurrection guard — lives HERE because every creation path (webhook,
+        // queue job, success-page fallback, mobile bySession fallback) funnels
+        // through this method. A terminal payload whose booking no longer exists
+        // means the booking was deliberately deleted or is under manual review;
+        // recreating it from the still-paid Stripe session (e.g. an email link
+        // scanner prefetching an old success URL) restarts the notification storm.
+        $sessionPayload = StripeCheckoutPayload::where('stripe_session_id', $session->id)->first();
+        if ($sessionPayload
+            && in_array($sessionPayload->fulfilment_status, StripeCheckoutPayload::TERMINAL_STATUSES, true)
+            && ! Booking::where('stripe_session_id', $session->id)->exists()) {
+            if ($sessionPayload->fulfilment_status === 'fulfilled') {
+                $sessionPayload->update([
+                    'fulfilment_status' => 'manual_review',
+                    'last_error' => 'Booking deleted after fulfilment — not recreating.',
+                ]);
+            }
+            Log::info('StripeBookingService: terminal payload with no booking — refusing to recreate', [
+                'session_id' => $session->id,
+                'fulfilment_status' => $sessionPayload->fulfilment_status,
+            ]);
+
+            return null;
+        }
+
         $metadata = $session->metadata;
         // Normalize ONCE: (array)/property casts on a Stripe\StripeObject yield
         // internal "\0*\0_values" garbage instead of keys. Every consumer below —
@@ -348,6 +372,30 @@ class StripeBookingService
                     'error' => $e->getMessage(),
                 ]);
             }
+        }
+
+        // Foreign-session guard: other products (e.g. the eSIM shop) share this
+        // Stripe account, and checkout.session.completed fires for ALL of them.
+        // Every session OUR checkout creates carries booking metadata
+        // (vehicle_source, pickup_date, vehicle_id — see StripeCheckoutController).
+        // A paid session with none of those keys is not a car-rental checkout;
+        // building a booking from defaults produces a garbage reservation the
+        // supplier rejects and an admin notification storm.
+        if (empty($metadata->vehicle_source) && empty($metadata->pickup_date)
+            && empty($metadata->vehicle_id) && empty($metadata->extras_payload_id)
+            && ! Booking::where('stripe_session_id', $session->id)->exists()) {
+            StripeCheckoutPayload::firstOrCreate(
+                ['stripe_session_id' => $session->id],
+                ['payload' => null]
+            )->update([
+                'fulfilment_status' => 'ignored',
+                'last_error' => 'Paid session has no booking metadata — not a car-rental checkout.',
+            ]);
+            Log::warning('StripeBookingService: paid session without booking metadata ignored', [
+                'session_id' => $session->id,
+            ]);
+
+            return null;
         }
 
         // Idempotency check

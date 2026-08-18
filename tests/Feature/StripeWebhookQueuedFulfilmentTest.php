@@ -107,6 +107,41 @@ class StripeWebhookQueuedFulfilmentTest extends TestCase
     }
 
     #[Test]
+    public function a_direct_service_call_refuses_to_recreate_a_deleted_booking(): void
+    {
+        // The success page and mobile bySession call the service directly,
+        // bypassing the job — the guard must live in the service itself.
+        \App\Models\StripeCheckoutPayload::create([
+            'stripe_session_id' => 'cs_queued_6',
+            'payload' => null,
+            'fulfilment_status' => 'manual_review',
+            'booking_id' => 999999,
+        ]);
+
+        $booking = app(StripeBookingService::class)
+            ->createBookingFromSession((object) ['id' => 'cs_queued_6']);
+
+        $this->assertNull($booking);
+        $this->assertSame(0, \App\Models\Booking::count());
+    }
+
+    #[Test]
+    public function a_paid_session_without_booking_metadata_never_becomes_a_booking(): void
+    {
+        // Other products (eSIM shop) share the Stripe account; their paid
+        // sessions carry none of our booking metadata keys.
+        $booking = app(StripeBookingService::class)->createBookingFromSession((object) [
+            'id' => 'cs_foreign_1',
+            'metadata' => (object) [],
+        ]);
+
+        $this->assertNull($booking);
+        $this->assertSame(0, \App\Models\Booking::count());
+        $this->assertSame('ignored', \App\Models\StripeCheckoutPayload::where('stripe_session_id', 'cs_foreign_1')
+            ->value('fulfilment_status'));
+    }
+
+    #[Test]
     public function exhausted_fulfilment_retries_raise_the_orphaned_payment_alert(): void
     {
         Notification::fake();

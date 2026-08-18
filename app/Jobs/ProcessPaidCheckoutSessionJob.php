@@ -119,6 +119,12 @@ class ProcessPaidCheckoutSessionJob implements ShouldBeUnique, ShouldQueue
                 return;
             }
 
+            // The service may have resolved the payload itself (e.g. 'ignored'
+            // for a paid session that isn't a car-rental checkout) — keep that.
+            if (in_array($payload->refresh()->fulfilment_status, StripeCheckoutPayload::TERMINAL_STATUSES, true)) {
+                return;
+            }
+
             // The service already raised the manual-refund alert. Persist the
             // unresolved paid state for operations; never refund automatically.
             $payload->update([
