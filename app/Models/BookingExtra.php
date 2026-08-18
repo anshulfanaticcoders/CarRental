@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class BookingExtra extends Model
 {
@@ -16,12 +16,13 @@ class BookingExtra extends Model
         'extra_name',
         'provider_extra_id',
         'quantity',
-        'price'
+        'price',
+        'currency',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
-        'quantity' => 'integer'
+        'quantity' => 'integer',
     ];
 
     // Relationship with Booking
@@ -39,12 +40,12 @@ class BookingExtra extends Model
     // Get formatted price
     public function getFormattedPriceAttribute(): string
     {
-        return '€' . number_format($this->price, 2);
+        return '€'.number_format($this->price, 2);
     }
 
     // Get formatted total price
     public function getFormattedTotalPriceAttribute(): string
     {
-        return '€' . number_format($this->getTotalPriceAttribute(), 2);
+        return '€'.number_format($this->getTotalPriceAttribute(), 2);
     }
 }

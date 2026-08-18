@@ -110,6 +110,21 @@ class ProviderBookingCancellationService
 
             $booking->booking_status = 'cancelled';
             $booking->cancellation_reason = $reason;
+
+            // A cancelled booking with captured money needs a refund. Flag it
+            // for the rescue queue's manual-refund flow — never refund
+            // automatically, and never downgrade an already-refunded state.
+            $hasCapturedMoney = (float) $booking->amount_paid > 0
+                || $booking->payments()->where('payment_status', 'succeeded')->exists();
+            if ($hasCapturedMoney && ! in_array($booking->payment_status, ['refunded', 'refund_pending'], true)) {
+                $booking->payment_status = 'refund_pending';
+                $booking->provider_metadata = array_merge($booking->provider_metadata ?? [], [
+                    'manual_refund_required' => true,
+                    'refund_flagged_at' => now()->toIso8601String(),
+                    'refund_flagged_by' => $auditActor,
+                ]);
+            }
+
             $booking->save();
 
             return ['success' => true, 'booking' => $booking];

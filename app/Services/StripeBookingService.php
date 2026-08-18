@@ -755,6 +755,7 @@ class StripeBookingService
                                 'provider_extra_id' => $extraItem['id'] ?? null,
                                 'quantity' => (int) ($extraItem['qty'] ?? 1),
                                 'price' => $price,
+                                'currency' => $bookingCurrency ?: null,
                             ]);
                         }
                     } else {
@@ -775,6 +776,7 @@ class StripeBookingService
                                         'extra_name' => $name,
                                         'quantity' => (int) $quantity,
                                         'price' => (float) $price,
+                                        'currency' => $booking->booking_currency ?: null,
                                     ]);
                                 }
                             }
