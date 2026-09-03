@@ -22,6 +22,7 @@ use App\Notifications\Booking\BookingCreatedCustomerNotification;
 use App\Notifications\Booking\BookingCreatedVendorNotification;
 use App\Notifications\Booking\BookingPaymentReceivedCustomerNotification;
 use App\Notifications\Booking\GuestBookingCreatedNotification;
+use App\Notifications\Booking\GuestSupplierBookingAccessNotification;
 use App\Services\CurrencyConversionService;
 use App\Services\StripeBookingService;
 use App\Services\VrooemGatewayService;
@@ -404,11 +405,11 @@ class StripeBookingServiceAccountingTest extends TestCase
 
         Notification::assertSentTo($admin, BookingCreatedAdminNotification::class);
         // This session carries a pre-existing provider_booking_ref, so no
-        // reservation job will run — the customer gets the supplier-confirmed
-        // email directly. A guest account was created here, so the
-        // payment-received email also goes out to deliver the credentials.
+        // reservation job will run. The guest receives truthful account access
+        // separately from the final supplier-confirmed notification.
         Notification::assertSentTo($customerUser, \App\Notifications\Booking\BookingSupplierConfirmedCustomerNotification::class);
-        Notification::assertSentTo($customerUser, BookingPaymentReceivedCustomerNotification::class);
+        Notification::assertSentTo($customerUser, GuestSupplierBookingAccessNotification::class);
+        Notification::assertSentTimes(BookingPaymentReceivedCustomerNotification::class, 0);
         Notification::assertSentTimes(BookingCreatedCustomerNotification::class, 0);
         Notification::assertSentTimes(GuestBookingCreatedNotification::class, 0);
         Notification::assertSentTimes(BookingCreatedVendorNotification::class, 0);
@@ -417,7 +418,7 @@ class StripeBookingServiceAccountingTest extends TestCase
     }
 
     #[Test]
-    public function it_sends_payment_received_email_when_external_booking_awaits_supplier_confirmation(): void
+    public function it_defers_the_pending_email_while_external_booking_awaits_supplier_confirmation(): void
     {
         Notification::fake();
         \Illuminate\Support\Facades\Queue::fake();
@@ -435,6 +436,7 @@ class StripeBookingServiceAccountingTest extends TestCase
             'id' => 'cs_test_external_pending_notifications',
             'payment_intent' => 'pi_test_external_pending_notifications',
             'metadata' => (object) [
+                'capture_policy' => 'manual_supplier',
                 'vehicle_source' => 'greenmotion',
                 'vehicle_id' => 'greenmotion_456',
                 'vehicle_brand' => 'Example',
@@ -467,8 +469,9 @@ class StripeBookingServiceAccountingTest extends TestCase
         $booking = $service->createBookingFromSession($session);
         $customerUser = $booking->customer()->firstOrFail()->user()->firstOrFail();
 
-        // No provider ref yet → truthful "payment received, confirming with supplier".
-        Notification::assertSentTo($customerUser, BookingPaymentReceivedCustomerNotification::class);
+        Notification::assertSentTimes(BookingCreatedAdminNotification::class, 0);
+        Notification::assertSentTimes(BookingPaymentReceivedCustomerNotification::class, 0);
+        Notification::assertSentTo($customerUser, GuestSupplierBookingAccessNotification::class);
         Notification::assertSentTimes(\App\Notifications\Booking\BookingSupplierConfirmedCustomerNotification::class, 0);
     }
 

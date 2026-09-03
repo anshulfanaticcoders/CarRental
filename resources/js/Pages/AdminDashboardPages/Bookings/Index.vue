@@ -298,6 +298,13 @@
                                         Retry reservation
                                     </Button>
                                     <Button
+                                        v-if="canRecordSupplierReference(booking)"
+                                        size="sm"
+                                        @click="openRecordReference(booking)"
+                                    >
+                                        Record supplier ref
+                                    </Button>
+                                    <Button
                                         v-if="canCancelBooking(booking)"
                                         variant="destructive"
                                         size="sm"
@@ -370,6 +377,11 @@
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <RecordSupplierReferenceDialog
+            v-model:open="showRecordReferenceModal"
+            :booking="recordReferenceTarget"
+        />
     </AdminDashboardLayout>
 </template>
 
@@ -411,6 +423,7 @@ import {
 } from 'lucide-vue-next';
 import AdminDashboardLayout from "@/Layouts/AdminDashboardLayout.vue";
 import Pagination from '@/Components/ReusableComponents/Pagination.vue';
+import RecordSupplierReferenceDialog from '@/Components/Admin/RecordSupplierReferenceDialog.vue';
 
 const props = defineProps({
     users: Object,
@@ -531,6 +544,8 @@ const handlePageChange = (page) => {
 
 // Manual reservation retry for rows stuck without a supplier reservation.
 const retryingId = ref(null);
+const showRecordReferenceModal = ref(false);
+const recordReferenceTarget = ref(null);
 
 const canRetryReservation = (booking) => {
     const captureOnly = !!booking?.provider_booking_ref && booking.payment_status === 'authorized';
@@ -544,6 +559,17 @@ const canRetryReservation = (booking) => {
 const canCancelBooking = (booking) => (
     !['cancelled', 'completed', 'rejected', 'expired'].includes(booking?.booking_status)
 );
+
+const canRecordSupplierReference = (booking) => booking?.payment_status === 'authorized'
+    && !booking?.provider_booking_ref
+    && booking?.provider_source !== 'internal'
+    && !!(booking?.provider_metadata?.reservation_manual_check
+        || booking?.provider_metadata?.reservation_unknown_at);
+
+const openRecordReference = (booking) => {
+    recordReferenceTarget.value = booking;
+    showRecordReferenceModal.value = true;
+};
 
 const retryReservation = (booking) => {
     // Unknown outcome = the supplier may ALREADY hold this reservation. The

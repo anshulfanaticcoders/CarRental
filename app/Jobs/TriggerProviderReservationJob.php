@@ -4,9 +4,11 @@ namespace App\Jobs;
 
 use App\Exceptions\ReservationOutcomeUnknownException;
 use App\Exceptions\StripePaymentAlreadyCapturedException;
+use App\Exceptions\SupplierReservationRejectedException;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\User;
+use App\Notifications\Booking\PaymentCaptureReviewCustomerNotification;
 use App\Notifications\Booking\ReservationFailedCustomerNotification;
 use App\Notifications\Concerns\DeliversToCustomer;
 use App\Notifications\Payment\AdminReservationFailedNotification;
@@ -95,6 +97,18 @@ class TriggerProviderReservationJob implements ShouldQueue
                 return;
             }
 
+            if ($booking->supplier_confirmation_deadline_at !== null
+                && now()->greaterThanOrEqualTo($booking->supplier_confirmation_deadline_at)
+                && empty($booking->provider_metadata['reservation_manual_check'])) {
+                Log::warning('TriggerProviderReservationJob: confirmation deadline elapsed before supplier attempt', [
+                    'booking_id' => $booking->id,
+                    'deadline' => $booking->supplier_confirmation_deadline_at->toIso8601String(),
+                ]);
+                $this->failed(new SupplierReservationRejectedException('Supplier confirmation deadline exceeded.'));
+
+                return;
+            }
+
             try {
                 $reservationMetadata = $this->metadata;
                 if ($booking->payment_status === 'authorized') {
@@ -123,6 +137,12 @@ class TriggerProviderReservationJob implements ShouldQueue
                     'booking_id' => $booking->id,
                 ]);
                 $this->fail($e);
+            } catch (SupplierReservationRejectedException $e) {
+                Log::warning('TriggerProviderReservationJob: supplier explicitly rejected the reservation', [
+                    'booking_id' => $booking->id,
+                    'reason' => $e->getMessage(),
+                ]);
+                $this->failed($e);
             }
         } finally {
             $lock->release();
@@ -157,8 +177,9 @@ class TriggerProviderReservationJob implements ShouldQueue
                 $this->notifyAdminManualCheck(
                     $booking,
                     'Supplier reference '.$booking->provider_booking_ref
-                    .' is saved, but Stripe capture did not complete. Do not retry the supplier reservation.'
+                    .' is saved, but Stripe capture could not be reconciled automatically. Do not retry the supplier reservation.'
                 );
+                $this->notifyCustomerPaymentCaptureReview($booking);
             }
 
             Log::warning('TriggerProviderReservationJob: job failed AFTER a confirmed reservation, leaving booking intact', [
@@ -306,6 +327,10 @@ class TriggerProviderReservationJob implements ShouldQueue
 
     private function notifyCustomerReservationFailed(Booking $booking): void
     {
+        if ($booking->supplier_resolution_notified_at !== null) {
+            return;
+        }
+
         try {
             $customer = $booking->customer;
             if (! $customer) {
@@ -318,8 +343,38 @@ class TriggerProviderReservationJob implements ShouldQueue
                 $customer,
                 new ReservationFailedCustomerNotification($booking, $customer, $booking->vehicle)
             );
+            $booking->update(['supplier_resolution_notified_at' => now()]);
         } catch (Throwable $e) {
             Log::warning('TriggerProviderReservationJob: failed to notify customer of reservation failure', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function notifyCustomerPaymentCaptureReview(Booking $booking): void
+    {
+        if ($booking->supplier_capture_review_notified_at !== null) {
+            return;
+        }
+
+        try {
+            $customer = $booking->customer;
+            if (! $customer) {
+                Log::warning('TriggerProviderReservationJob: no customer for capture review notification', [
+                    'booking_id' => $booking->id,
+                ]);
+
+                return;
+            }
+
+            $this->deliverToCustomer(
+                $customer,
+                new PaymentCaptureReviewCustomerNotification($booking)
+            );
+            $booking->update(['supplier_capture_review_notified_at' => now()]);
+        } catch (Throwable $e) {
+            Log::warning('TriggerProviderReservationJob: failed to notify customer of payment capture review', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
             ]);

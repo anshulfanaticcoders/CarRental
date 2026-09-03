@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import Footer from '@/Components/Footer.vue';
@@ -30,29 +30,76 @@ const props = defineProps({
         type: String,
         default: null,
     },
+    confirmation_deadline_at: {
+        type: String,
+        default: null,
+    },
+    server_time: {
+        type: String,
+        default: null,
+    },
 });
 
 const page = usePage();
 let refreshTimer = null;
+let clockTimer = null;
+const clockMs = shallowRef(Date.now());
+const serverOffsetMs = shallowRef(0);
+
+const syncServerClock = () => {
+    const serverTime = Date.parse(props.server_time || '');
+    serverOffsetMs.value = Number.isFinite(serverTime) ? serverTime - Date.now() : 0;
+};
+
+const clearRefreshTimer = () => {
+    if (!refreshTimer) return;
+    window.clearTimeout(refreshTimer);
+    refreshTimer = null;
+};
+
+const isConfirmationPending = computed(() => props.state === 'card_authorized_supplier_confirmation');
+const hasPersistedSupplierReference = computed(() => Boolean(props.booking?.provider_booking_ref));
+const deadlineMs = computed(() => Date.parse(props.confirmation_deadline_at || ''));
+const serverNowMs = computed(() => clockMs.value + serverOffsetMs.value);
+const remainingSeconds = computed(() => {
+    if (!Number.isFinite(deadlineMs.value)) return null;
+    return Math.max(0, Math.ceil((deadlineMs.value - serverNowMs.value) / 1000));
+});
+const isTakingLonger = computed(() => isConfirmationPending.value
+    && remainingSeconds.value !== null
+    && remainingSeconds.value === 0);
+const confirmationElapsedMs = computed(() => {
+    if (!Number.isFinite(deadlineMs.value)) return 0;
+    return Math.max(0, (5 * 60 * 1000) - (deadlineMs.value - serverNowMs.value));
+});
+
+const scheduleRefresh = () => {
+    clearRefreshTimer();
+    if (!isConfirmationPending.value) return;
+
+    const delay = isTakingLonger.value ? 15000 : confirmationElapsedMs.value < 30000 ? 2000 : 5000;
+    refreshTimer = window.setTimeout(() => {
+        router.reload({
+            only: ['state', 'booking', 'confirmation_deadline_at', 'server_time'],
+            preserveScroll: true,
+            onFinish: scheduleRefresh,
+        });
+    }, delay);
+};
 
 onMounted(() => {
-    if (props.state !== 'card_authorized_supplier_confirmation') return;
-
-    refreshTimer = window.setInterval(() => {
-        if (props.state !== 'card_authorized_supplier_confirmation') {
-            window.clearInterval(refreshTimer);
-            refreshTimer = null;
-
-            return;
-        }
-
-        router.reload({ only: ['state', 'booking'], preserveScroll: true });
-    }, 5000);
+    syncServerClock();
+    clockTimer = window.setInterval(() => { clockMs.value = Date.now(); }, 1000);
+    scheduleRefresh();
 });
 
 onBeforeUnmount(() => {
-    if (refreshTimer) window.clearInterval(refreshTimer);
+    clearRefreshTimer();
+    if (clockTimer) window.clearInterval(clockTimer);
 });
+
+watch(() => props.server_time, syncServerClock);
+watch(() => props.state, scheduleRefresh);
 
 const currentLocale = computed(() => {
     const propLocale = page.props.locale;
@@ -120,8 +167,8 @@ const outcomes = {
         icon: Clock3,
         illustration: supplierPendingIllustration,
         tone: 'warning',
-        title: 'Card authorized',
-        message: 'Your card has not been charged. We are confirming the reservation with the supplier and will capture the authorized amount only after the supplier reference is ready.',
+        title: 'Confirming your vehicle',
+        message: 'Your card is authorized but has not been charged. We will capture the amount only after the supplier reference is saved.',
         primaryLabel: 'View booking status',
         primaryHref: localizedPath('/profile/bookings'),
         secondaryLabel: 'Back to home',
@@ -144,6 +191,17 @@ const outcomes = {
         tone: 'warning',
         title: 'Card authorization under review',
         message: 'The supplier booking was stopped, but we could not verify the authorization release automatically. Our team has been alerted. No supplier reservation will be retried automatically.',
+        primaryLabel: 'Contact support',
+        primaryHref: localizedPath('/contact-us'),
+        secondaryLabel: 'Back to home',
+        secondaryHref: localizedPath('/'),
+    },
+    supplier_confirmed_payment_review: {
+        icon: AlertCircle,
+        illustration: supportReviewIllustration,
+        tone: 'warning',
+        title: 'Vehicle reserved — payment review',
+        message: 'The supplier reference is saved, but Stripe did not return a conclusive final capture result. Your payment status is under review, and we will not create another supplier reservation.',
         primaryLabel: 'Contact support',
         primaryHref: localizedPath('/contact-us'),
         secondaryLabel: 'Back to home',
@@ -239,7 +297,35 @@ const outcomes = {
     },
 };
 
-const outcome = computed(() => outcomes[props.state] || outcomes.support_review);
+const confirmationEyebrow = computed(() => {
+    if (!isConfirmationPending.value) return 'Booking status';
+    if (isTakingLonger.value) return 'Supplier confirmation · Still processing';
+    if (remainingSeconds.value === null) return 'Supplier confirmation';
+
+    const minutes = Math.floor(remainingSeconds.value / 60);
+    const seconds = String(remainingSeconds.value % 60).padStart(2, '0');
+    return `Supplier confirmation · ${minutes}:${seconds} remaining`;
+});
+
+const outcome = computed(() => {
+    const resolved = outcomes[props.state] || outcomes.support_review;
+    if (!isConfirmationPending.value) return resolved;
+
+    return {
+        ...resolved,
+        eyebrow: confirmationEyebrow.value,
+        title: hasPersistedSupplierReference.value
+            ? 'Supplier confirmed — finalizing payment'
+            : isTakingLonger.value ? 'Confirmation is taking longer' : resolved.title,
+        message: isTakingLonger.value
+            ? hasPersistedSupplierReference.value
+                ? 'The supplier reference is saved. Your payment status is being finalized with Stripe; you may safely close this page and we will email you when it is resolved.'
+                : 'Your card has not been charged. You may safely close this page; we will email you when the booking is resolved.'
+            : hasPersistedSupplierReference.value
+                ? 'The supplier reference is saved. We are finalizing your payment status with Stripe now.'
+                : resolved.message,
+    };
+});
 const Icon = computed(() => outcome.value.icon);
 </script>
 
@@ -248,6 +334,7 @@ const Icon = computed(() => outcome.value.icon);
     <AuthenticatedHeaderLayout />
 
     <BookingOutcomePage
+        :eyebrow="outcome.eyebrow"
         :title="outcome.title"
         :message="outcome.message"
         :tone="outcome.tone"

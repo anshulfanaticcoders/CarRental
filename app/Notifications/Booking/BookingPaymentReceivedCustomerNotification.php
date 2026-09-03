@@ -4,6 +4,7 @@ namespace App\Notifications\Booking;
 
 use App\Notifications\Concerns\FormatsBookingAmounts;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -12,7 +13,7 @@ use Illuminate\Notifications\Notification;
  * card authorization only; legacy sessions may already be captured. The copy
  * must state the truthful payment state while supplier confirmation is pending.
  */
-class BookingPaymentReceivedCustomerNotification extends Notification
+class BookingPaymentReceivedCustomerNotification extends Notification implements ShouldQueue
 {
     use FormatsBookingAmounts;
     use Queueable;

@@ -2669,9 +2669,14 @@ class StripeCheckoutController extends Controller
 
             if ($booking) {
                 if ($booking->booking_status === 'supplier_pending'
-                    && $booking->payment_status === 'authorized'
-                    && empty($booking->provider_booking_ref)) {
-                    return $this->bookingStatusRedirect('card_authorized_supplier_confirmation', $sessionId);
+                    && $booking->payment_status === 'authorized') {
+                    return $this->bookingStatusRedirect(
+                        $this->resolveBookingOutcomeState(
+                            $booking,
+                            'card_authorized_supplier_confirmation'
+                        ),
+                        $sessionId
+                    );
                 }
 
                 // Terminal failure states: never render the celebration page (and
@@ -2839,11 +2844,18 @@ class StripeCheckoutController extends Controller
         $searchUrl = $booking
             ? $this->resolveBookingReturnSearchUrl($booking)
             : $this->normalizeReturnSearchUrl((string) $request->query('return_search_url', ''));
+        $confirmationDeadlineAt = $booking?->supplier_confirmation_deadline_at;
+        if ($confirmationDeadlineAt === null
+            && $checkoutPayload?->payment_status === 'authorized') {
+            $confirmationDeadlineAt = $checkoutPayload->created_at?->copy()->addMinutes(5);
+        }
 
         return inertia('Booking/Status', [
             'state' => $state,
             'session_id' => $sessionId !== '' ? $sessionId : null,
             'search_url' => $searchUrl,
+            'confirmation_deadline_at' => $confirmationDeadlineAt?->toIso8601String(),
+            'server_time' => now()->toIso8601String(),
             'booking' => $booking ? [
                 'booking_number' => $booking->booking_number,
                 'booking_status' => $booking->booking_status,
@@ -2997,6 +3009,12 @@ class StripeCheckoutController extends Controller
 
     private function resolveBookingOutcomeState(Booking $booking, string $fallback): string
     {
+        if ($booking->payment_status === 'authorized'
+            && ! empty($booking->provider_booking_ref)
+            && ! empty($booking->provider_metadata['payment_capture_manual_check'])) {
+            return 'supplier_confirmed_payment_review';
+        }
+
         if ($booking->payment_status === 'authorized'
             && (! empty($booking->provider_metadata['reservation_manual_check'])
                 || ! empty($booking->provider_metadata['cancellation_authorization_release_pending'])

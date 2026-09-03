@@ -63,6 +63,7 @@ class AdminRetryReservationTest extends TestCase
         Queue::fake();
         $booking = $this->stuckBooking([
             'provider_metadata' => ['reservation_manual_check' => true],
+            'supplier_resolution_notified_at' => now(),
         ]);
         $this->payloadFor($booking);
 
@@ -82,6 +83,7 @@ class AdminRetryReservationTest extends TestCase
         $this->assertFalse((bool) $booking->provider_metadata['reservation_manual_check'],
             'A manual retry must lift the manual-check flag so the sweep can resume.');
         $this->assertNotNull($booking->provider_metadata['manual_retry_at']);
+        $this->assertNull($booking->supplier_resolution_notified_at);
     }
 
     #[Test]
@@ -174,6 +176,102 @@ class AdminRetryReservationTest extends TestCase
         $metadata = $booking->fresh()->provider_metadata;
         $this->assertFalse((bool) $metadata['payment_capture_manual_check']);
         $this->assertFalse((bool) $metadata['capture_rescue_exhausted']);
+    }
+
+    #[Test]
+    public function admin_can_record_a_found_supplier_reference_and_queue_capture_only(): void
+    {
+        Queue::fake();
+        $admin = $this->admin();
+        $booking = $this->stuckBooking([
+            'booking_status' => 'supplier_pending',
+            'payment_status' => 'authorized',
+            'amount_paid' => 0,
+            'provider_metadata' => [
+                'reservation_manual_check' => true,
+                'reservation_unknown_at' => now()->toIso8601String(),
+            ],
+        ]);
+        $this->payloadFor($booking);
+
+        $this->actingAs($admin)
+            ->post(route('customer-bookings.record-supplier-reference', ['id' => $booking->id]), [
+                'supplier_checked' => true,
+                'supplier_reference' => 'EMR-PORTAL-9988',
+            ])
+            ->assertSessionHas('success');
+
+        $booking->refresh();
+        $this->assertSame('EMR-PORTAL-9988', $booking->provider_booking_ref);
+        $this->assertTrue((bool) $booking->provider_metadata['payment_capture_manual_check']);
+        $this->assertSame($admin->id, $booking->provider_metadata['manual_supplier_reference_recorded_by']);
+        Queue::assertPushed(TriggerProviderReservationJob::class,
+            fn ($job) => $job->bookingId === $booking->id);
+    }
+
+    #[Test]
+    public function recording_a_supplier_reference_requires_a_confirmed_portal_check(): void
+    {
+        Queue::fake();
+        $booking = $this->stuckBooking([
+            'booking_status' => 'supplier_pending',
+            'payment_status' => 'authorized',
+            'amount_paid' => 0,
+            'provider_metadata' => ['reservation_manual_check' => true],
+        ]);
+        $this->payloadFor($booking);
+
+        $this->actingAs($this->admin())
+            ->post(route('customer-bookings.record-supplier-reference', ['id' => $booking->id]), [
+                'supplier_reference' => 'EMR-PORTAL-9988',
+            ])
+            ->assertSessionHasErrors('supplier_checked');
+
+        $this->assertNull($booking->fresh()->provider_booking_ref);
+        Queue::assertNothingPushed();
+    }
+
+    #[Test]
+    public function a_supplier_reference_rejects_multiline_audit_text(): void
+    {
+        Queue::fake();
+        $booking = $this->stuckBooking([
+            'booking_status' => 'supplier_pending',
+            'payment_status' => 'authorized',
+            'amount_paid' => 0,
+            'provider_metadata' => ['reservation_manual_check' => true],
+        ]);
+        $this->payloadFor($booking);
+
+        $this->actingAs($this->admin())
+            ->post(route('customer-bookings.record-supplier-reference', ['id' => $booking->id]), [
+                'supplier_checked' => true,
+                'supplier_reference' => "EMR-7788\nFake audit event",
+            ])
+            ->assertSessionHasErrors('supplier_reference');
+
+        $this->assertNull($booking->fresh()->provider_booking_ref);
+        Queue::assertNothingPushed();
+    }
+
+    #[Test]
+    public function recording_a_supplier_reference_is_rejected_for_a_non_authorized_booking(): void
+    {
+        Queue::fake();
+        $booking = $this->stuckBooking([
+            'provider_metadata' => ['reservation_manual_check' => true],
+        ]);
+        $this->payloadFor($booking);
+
+        $this->actingAs($this->admin())
+            ->post(route('customer-bookings.record-supplier-reference', ['id' => $booking->id]), [
+                'supplier_checked' => true,
+                'supplier_reference' => 'EMR-PORTAL-9988',
+            ])
+            ->assertSessionHas('error');
+
+        $this->assertNull($booking->fresh()->provider_booking_ref);
+        Queue::assertNothingPushed();
     }
 
     #[Test]

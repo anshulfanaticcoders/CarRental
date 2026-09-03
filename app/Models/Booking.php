@@ -48,6 +48,11 @@ class Booking extends Model
         'notes',
         'stripe_session_id',
         'stripe_payment_intent_id',
+        'supplier_confirmation_deadline_at',
+        'supplier_pending_notified_at',
+        'supplier_confirmed_notified_at',
+        'supplier_resolution_notified_at',
+        'supplier_capture_review_notified_at',
     ];
 
     protected $casts = [
@@ -59,6 +64,11 @@ class Booking extends Model
         'total_amount' => 'decimal:2',
         'pending_amount' => 'decimal:2',
         'provider_metadata' => 'array',
+        'supplier_confirmation_deadline_at' => 'datetime',
+        'supplier_pending_notified_at' => 'datetime',
+        'supplier_confirmed_notified_at' => 'datetime',
+        'supplier_resolution_notified_at' => 'datetime',
+        'supplier_capture_review_notified_at' => 'datetime',
     ];
 
     // Relationships

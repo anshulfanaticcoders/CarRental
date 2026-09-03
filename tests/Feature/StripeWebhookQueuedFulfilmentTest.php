@@ -57,6 +57,86 @@ class StripeWebhookQueuedFulfilmentTest extends TestCase
     }
 
     #[Test]
+    public function an_authorized_supplier_session_waits_briefly_for_queued_fulfilment(): void
+    {
+        Queue::fake();
+        $service = Mockery::mock(StripeBookingService::class);
+        $service->shouldReceive('isManualSupplierCaptureMetadata')->once()->andReturnTrue();
+        $controller = new class($service) extends StripeWebhookController
+        {
+            public array $waitedFor = [];
+
+            protected function waitForSupplierResolution(string $sessionId, ?int $maxWaitMilliseconds = null): bool
+            {
+                $this->waitedFor[] = $sessionId;
+
+                return false;
+            }
+        };
+
+        $method = new ReflectionMethod($controller, 'handleCheckoutComplete');
+        $method->invoke($controller, (object) [
+            'id' => 'cs_supplier_fast_path',
+            'payment_status' => 'unpaid',
+            'payment_intent' => 'pi_supplier_fast_path',
+            'metadata' => (object) ['capture_policy' => 'manual_supplier'],
+        ]);
+
+        $this->assertSame(['cs_supplier_fast_path'], $controller->waitedFor);
+        Queue::assertPushed(ProcessPaidCheckoutSessionJob::class,
+            fn ($job) => $job->sessionId === 'cs_supplier_fast_path');
+    }
+
+    #[Test]
+    public function supplier_fast_path_waiter_distinguishes_pending_and_terminal_payloads(): void
+    {
+        \App\Models\StripeCheckoutPayload::create([
+            'stripe_session_id' => 'cs_supplier_still_pending',
+            'payload' => null,
+            'payment_status' => 'authorized',
+            'fulfilment_status' => 'supplier_pending',
+        ]);
+        \App\Models\StripeCheckoutPayload::create([
+            'stripe_session_id' => 'cs_supplier_finished',
+            'payload' => null,
+            'payment_status' => 'paid',
+            'fulfilment_status' => 'fulfilled',
+        ]);
+
+        $controller = new StripeWebhookController(Mockery::mock(StripeBookingService::class));
+        $method = new ReflectionMethod($controller, 'waitForSupplierResolution');
+
+        $this->assertFalse($method->invoke($controller, 'cs_supplier_still_pending', 0));
+        $this->assertTrue($method->invoke($controller, 'cs_supplier_finished', 0));
+    }
+
+    #[Test]
+    public function a_fast_path_wait_failure_does_not_fail_the_queued_webhook(): void
+    {
+        Queue::fake();
+        $service = Mockery::mock(StripeBookingService::class);
+        $service->shouldReceive('isManualSupplierCaptureMetadata')->once()->andReturnTrue();
+        $controller = new class($service) extends StripeWebhookController
+        {
+            protected function waitForSupplierResolution(string $sessionId, ?int $maxWaitMilliseconds = null): bool
+            {
+                throw new \RuntimeException('temporary read failure');
+            }
+        };
+
+        $method = new ReflectionMethod($controller, 'handleCheckoutComplete');
+        $method->invoke($controller, (object) [
+            'id' => 'cs_supplier_wait_failure',
+            'payment_status' => 'unpaid',
+            'payment_intent' => 'pi_supplier_wait_failure',
+            'metadata' => (object) ['capture_policy' => 'manual_supplier'],
+        ]);
+
+        Queue::assertPushed(ProcessPaidCheckoutSessionJob::class,
+            fn ($job) => $job->sessionId === 'cs_supplier_wait_failure');
+    }
+
+    #[Test]
     public function an_unpaid_completed_session_queues_nothing(): void
     {
         Queue::fake();
@@ -87,6 +167,42 @@ class StripeWebhookQueuedFulfilmentTest extends TestCase
 
         $this->assertSame('fulfilled', \App\Models\StripeCheckoutPayload::where('stripe_session_id', 'cs_queued_5')
             ->value('fulfilment_status'));
+    }
+
+    #[Test]
+    public function a_manual_capture_webhook_replay_never_downgrades_a_captured_payload(): void
+    {
+        Queue::fake();
+        \App\Models\StripeCheckoutPayload::create([
+            'stripe_session_id' => 'cs_manual_capture_replay',
+            'payload' => null,
+            'payment_status' => 'paid',
+            'fulfilment_status' => 'fulfilled',
+            'booking_id' => 43,
+            'paid_at' => now(),
+        ]);
+        $service = Mockery::mock(StripeBookingService::class);
+        $service->shouldReceive('isManualSupplierCaptureMetadata')->once()->andReturnTrue();
+        $controller = new class($service) extends StripeWebhookController
+        {
+            protected function waitForSupplierResolution(string $sessionId, ?int $maxWaitMilliseconds = null): bool
+            {
+                return true;
+            }
+        };
+
+        $method = new ReflectionMethod($controller, 'handleCheckoutComplete');
+        $method->invoke($controller, (object) [
+            'id' => 'cs_manual_capture_replay',
+            'payment_status' => 'paid',
+            'payment_intent' => 'pi_manual_capture_replay',
+            'metadata' => (object) ['capture_policy' => 'manual_supplier'],
+        ]);
+
+        $payload = \App\Models\StripeCheckoutPayload::where('stripe_session_id', 'cs_manual_capture_replay')->firstOrFail();
+        $this->assertSame('fulfilled', $payload->fulfilment_status);
+        $this->assertSame('paid', $payload->payment_status);
+        $this->assertNotNull($payload->paid_at);
     }
 
     #[Test]

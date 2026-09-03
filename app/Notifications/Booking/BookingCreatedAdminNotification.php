@@ -43,6 +43,7 @@ class BookingCreatedAdminNotification extends Notification
         $vehicleName = $this->getVehicleName();
         $location = $this->getLocation();
         $address = $this->getAddress();
+        $confirmedSupplier = $this->isConfirmedSupplierBooking();
         // $addressParts = array_filter([
         //     $this->vehicle->city,
         //     $this->vehicle->state,
@@ -50,10 +51,12 @@ class BookingCreatedAdminNotification extends Notification
         // ]);
         // $formattedAddress = implode(', ', $addressParts);
 
-        return (new MailMessage)
-            ->subject('New Booking Created - #'.$this->booking->booking_number)
+        $mail = (new MailMessage)
+            ->subject(($confirmedSupplier ? 'Supplier booking confirmed' : 'New Booking Created').' - #'.$this->booking->booking_number)
             ->greeting('Hello Admin,')
-            ->line('A new booking has been created and requires your review.')
+            ->line($confirmedSupplier
+                ? 'The supplier reservation is confirmed and the authorized payment has been captured.'
+                : 'A new booking has been created and requires your review.')
             ->line('**Booking Details:**')
             ->line('**Booking Number:** '.$this->booking->booking_number)
             ->line('**Vehicle:** '.$vehicleName)
@@ -69,9 +72,15 @@ class BookingCreatedAdminNotification extends Notification
             ->line('**Customer Details:**')
             ->line('**Name:** '.$this->customer->first_name.' '.$this->customer->last_name)
             ->line('**Email:** '.$this->customer->email)
-            ->line('**Phone:** '.($this->customer->phone ?: 'Not provided'))
+            ->line('**Phone:** '.($this->customer->phone ?: 'Not provided'));
+
+        if ($confirmedSupplier) {
+            $mail->line('**Supplier Reference:** '.$this->booking->provider_booking_ref);
+        }
+
+        return $mail
             ->action('View Booking', url('/customer-bookings'))
-            ->line('Please review the booking details.');
+            ->line($confirmedSupplier ? 'No routine action is required.' : 'Please review the booking details.');
     }
 
     public function toArray(object $notifiable): array
@@ -94,7 +103,7 @@ class BookingCreatedAdminNotification extends Notification
             && $this->booking->return_location !== null;
 
         return [
-            'title' => 'New Booking #'.$this->booking->booking_number,
+            'title' => ($this->isConfirmedSupplierBooking() ? 'Supplier booking confirmed #' : 'New Booking #').$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'dedupe_key' => $this->dedupeKey(),
@@ -115,8 +124,19 @@ class BookingCreatedAdminNotification extends Notification
             'customer_email' => $this->customer->email,
             'currency_symbol' => $this->getCurrencySymbol($amounts['currency']),
             'role' => 'admin',
-            'message' => 'A new booking has been created for review.',
+            'message' => $this->isConfirmedSupplierBooking()
+                ? 'Supplier reference '.$this->booking->provider_booking_ref.' is saved and payment capture completed.'
+                : 'A new booking has been created for review.',
         ];
+    }
+
+    private function isConfirmedSupplierBooking(): bool
+    {
+        return ($this->booking->provider_source ?? null) !== null
+            && ($this->booking->provider_source ?? null) !== 'internal'
+            && ! empty($this->booking->provider_booking_ref)
+            && in_array($this->booking->booking_status ?? null, ['confirmed', 'completed'], true)
+            && in_array($this->booking->payment_status ?? null, ['paid', 'partial'], true);
     }
 
     private function getVehicleName(): string

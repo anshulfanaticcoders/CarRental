@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\ReservationOutcomeUnknownException;
 use App\Exceptions\StripePaymentAlreadyCapturedException;
+use App\Exceptions\SupplierReservationRejectedException;
 use App\Http\Controllers\StripeCheckoutController;
 use App\Http\Controllers\StripeWebhookController;
+use App\Jobs\NotifyDelayedSupplierConfirmationJob;
 use App\Jobs\ProcessPaidCheckoutSessionJob;
 use App\Jobs\SendAwinConversion;
 use App\Jobs\TriggerProviderReservationJob;
@@ -12,8 +15,11 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\StripeCheckoutPayload;
 use App\Models\User;
+use App\Notifications\Booking\BookingCreatedAdminNotification;
 use App\Notifications\Booking\BookingPaymentReceivedCustomerNotification;
 use App\Notifications\Booking\BookingSupplierConfirmedCustomerNotification;
+use App\Notifications\Booking\GuestSupplierBookingAccessNotification;
+use App\Notifications\Booking\PaymentCaptureReviewCustomerNotification;
 use App\Notifications\Booking\ReservationFailedCustomerNotification;
 use App\Notifications\Payment\AdminAuthorizationReviewNotification;
 use App\Notifications\Payment\AdminReservationFailedNotification;
@@ -23,10 +29,12 @@ use App\Services\ProviderQuoteRevalidationService;
 use App\Services\StripeBookingService;
 use App\Services\StripePaymentLifecycleService;
 use App\Services\VrooemGatewayService;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Inertia\Testing\AssertableInertia as Assert;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionMethod;
@@ -74,6 +82,82 @@ class ExternalSupplierManualCaptureTest extends TestCase
         $this->assertEqualsWithDelta(15, (float) $payment->amount, 0.01);
 
         Queue::assertPushed(TriggerProviderReservationJob::class, fn ($job) => $job->bookingId === $booking->id);
+        Queue::assertPushed(NotifyDelayedSupplierConfirmationJob::class, fn ($job) => $job->bookingId === $booking->id);
+    }
+
+    #[Test]
+    public function a_pending_supplier_checkout_defers_routine_booking_notifications_for_five_minutes(): void
+    {
+        $admin = User::factory()->create([
+            'email' => config('admin.email'),
+            'role' => 'admin',
+        ]);
+
+        $booking = app(StripeBookingService::class)->createBookingFromSession(
+            $this->authorizedSession('cs_supplier_notification_grace')
+        );
+        $booking->load('customer.user');
+
+        $this->assertNotNull($booking->supplier_confirmation_deadline_at);
+        $this->assertSame(
+            $booking->created_at->copy()->addMinutes(5)->format('Y-m-d H:i'),
+            $booking->supplier_confirmation_deadline_at->format('Y-m-d H:i')
+        );
+        Notification::assertNotSentTo($admin, BookingCreatedAdminNotification::class);
+        Notification::assertNotSentTo(
+            $booking->customer->user,
+            BookingPaymentReceivedCustomerNotification::class
+        );
+        Notification::assertSentTo(
+            $booking->customer->user,
+            GuestSupplierBookingAccessNotification::class
+        );
+    }
+
+    #[Test]
+    public function delayed_pending_notification_is_sent_once_only_after_the_deadline(): void
+    {
+        $booking = app(StripeBookingService::class)->createBookingFromSession(
+            $this->authorizedSession('cs_supplier_delayed_notification')
+        );
+        $booking->update(['supplier_confirmation_deadline_at' => now()->subSecond()]);
+        $booking->load('customer.user');
+        Notification::fake();
+
+        $job = new NotifyDelayedSupplierConfirmationJob($booking->id);
+        $job->handle();
+        $job->handle();
+
+        Notification::assertSentToTimes(
+            $booking->customer->user,
+            BookingPaymentReceivedCustomerNotification::class,
+            1
+        );
+        $this->assertNotNull($booking->fresh()->supplier_pending_notified_at);
+    }
+
+    #[Test]
+    public function delayed_pending_notification_does_nothing_after_confirmation(): void
+    {
+        $booking = app(StripeBookingService::class)->createBookingFromSession(
+            $this->authorizedSession('cs_supplier_delayed_notification_skip')
+        );
+        $booking->update([
+            'booking_status' => 'confirmed',
+            'payment_status' => 'paid',
+            'provider_booking_ref' => 'EMR-ALREADY-CONFIRMED',
+            'supplier_confirmation_deadline_at' => now()->subSecond(),
+        ]);
+        $booking->load('customer.user');
+        Notification::fake();
+
+        (new NotifyDelayedSupplierConfirmationJob($booking->id))->handle();
+
+        Notification::assertNotSentTo(
+            $booking->customer->user,
+            BookingPaymentReceivedCustomerNotification::class
+        );
+        $this->assertNull($booking->fresh()->supplier_pending_notified_at);
     }
 
     #[Test]
@@ -81,7 +165,17 @@ class ExternalSupplierManualCaptureTest extends TestCase
     {
         $bookingService = Mockery::mock(StripeBookingService::class);
         $bookingService->shouldReceive('isManualSupplierCaptureMetadata')->once()->andReturnTrue();
-        $controller = new StripeWebhookController($bookingService);
+        $controller = new class($bookingService) extends StripeWebhookController
+        {
+            public ?int $waitBudget = null;
+
+            protected function waitForSupplierResolution(string $sessionId, ?int $maxWaitMilliseconds = null): bool
+            {
+                $this->waitBudget = $maxWaitMilliseconds;
+
+                return false;
+            }
+        };
         $method = new ReflectionMethod($controller, 'handleCheckoutComplete');
         $method->invoke($controller, (object) [
             'id' => 'cs_supplier_authorized_webhook',
@@ -95,6 +189,9 @@ class ExternalSupplierManualCaptureTest extends TestCase
 
         Queue::assertPushed(ProcessPaidCheckoutSessionJob::class,
             fn ($job) => $job->sessionId === 'cs_supplier_authorized_webhook');
+        $this->assertIsInt($controller->waitBudget);
+        $this->assertGreaterThanOrEqual(0, $controller->waitBudget);
+        $this->assertLessThanOrEqual(8000, $controller->waitBudget);
     }
 
     #[Test]
@@ -204,6 +301,10 @@ class ExternalSupplierManualCaptureTest extends TestCase
     #[Test]
     public function supplier_confirmation_is_sent_once_and_only_after_capture(): void
     {
+        $admin = User::factory()->create([
+            'email' => config('admin.email'),
+            'role' => 'admin',
+        ]);
         $booking = app(StripeBookingService::class)->createBookingFromSession(
             $this->authorizedSession('cs_supplier_notification_order')
         );
@@ -241,6 +342,8 @@ class ExternalSupplierManualCaptureTest extends TestCase
             BookingSupplierConfirmedCustomerNotification::class,
             1
         );
+        Notification::assertSentToTimes($admin, BookingCreatedAdminNotification::class, 1);
+        $this->assertNotNull($booking->fresh()->supplier_confirmed_notified_at);
     }
 
     #[Test]
@@ -314,6 +417,149 @@ class ExternalSupplierManualCaptureTest extends TestCase
         $this->assertSame('authorization_released', $booking->payments->sole()->payment_status);
         $this->assertEqualsWithDelta(0, (float) $booking->pending_amount, 0.01);
         $this->assertEqualsWithDelta(0, (float) $booking->amounts->admin_pending_amount, 0.01);
+    }
+
+    #[Test]
+    public function an_expired_confirmation_deadline_stops_before_another_supplier_attempt(): void
+    {
+        $booking = app(StripeBookingService::class)->createBookingFromSession(
+            $this->authorizedSession('cs_supplier_deadline_expired')
+        );
+        $booking->update(['supplier_confirmation_deadline_at' => now()->subSecond()]);
+
+        $service = Mockery::mock(StripeBookingService::class);
+        $service->shouldNotReceive('refreshAuthorizedSupplierMetadata');
+        $service->shouldNotReceive('triggerGatewayReservation');
+        $payments = Mockery::mock(StripePaymentLifecycleService::class);
+        $payments->shouldReceive('releaseAuthorization')
+            ->once()
+            ->with('pi_cs_supplier_deadline_expired', 'release_booking_'.$booking->id);
+        $this->app->instance(StripePaymentLifecycleService::class, $payments);
+
+        (new TriggerProviderReservationJob($booking->id, $this->metadata()))->handle($service, $payments);
+
+        $booking->refresh();
+        $this->assertSame('reservation_failed', $booking->booking_status);
+        $this->assertSame('payment_cancelled', $booking->payment_status);
+        $this->assertNull($booking->provider_booking_ref);
+    }
+
+    #[Test]
+    public function an_explicit_supplier_rejection_is_classified_as_non_retryable(): void
+    {
+        $booking = app(StripeBookingService::class)->createBookingFromSession(
+            $this->authorizedSession('cs_supplier_explicit_rejection')
+        );
+        $gateway = Mockery::mock(VrooemGatewayService::class);
+        $gateway->shouldReceive('createBooking')->once()->andReturn([
+            'status' => 'rejected',
+            'provider_status' => 'rejected',
+            'failure_reason' => 'Vehicle sold out',
+        ]);
+        $gateway->shouldReceive('getLastError')->once()->andReturn(null);
+        $this->app->instance(VrooemGatewayService::class, $gateway);
+
+        $this->expectException(SupplierReservationRejectedException::class);
+
+        app(StripeBookingService::class)->triggerGatewayReservation(
+            $booking,
+            (object) $this->metadata()
+        );
+    }
+
+    #[Test]
+    public function a_generic_gateway_failure_is_treated_as_unknown_instead_of_releasing_the_card(): void
+    {
+        $booking = app(StripeBookingService::class)->createBookingFromSession(
+            $this->authorizedSession('cs_supplier_generic_gateway_failure')
+        );
+        $gateway = Mockery::mock(VrooemGatewayService::class);
+        $gateway->shouldReceive('createBooking')->once()->andReturn([
+            'status' => 'failed',
+            'provider_status' => 'failed',
+            'failure_reason' => 'Unexpected adapter exception',
+            'supplier_data' => [
+                'exception_type' => 'ValueError',
+                'outcome_unknown' => false,
+            ],
+        ]);
+        $gateway->shouldReceive('getLastError')->once()->andReturn(null);
+        $this->app->instance(VrooemGatewayService::class, $gateway);
+
+        $this->expectException(ReservationOutcomeUnknownException::class);
+
+        try {
+            app(StripeBookingService::class)->triggerGatewayReservation(
+                $booking,
+                (object) $this->metadata()
+            );
+        } finally {
+            $booking->refresh();
+            $this->assertSame('authorized', $booking->payment_status);
+            $this->assertTrue((bool) ($booking->provider_metadata['reservation_manual_check'] ?? false));
+        }
+    }
+
+    #[Test]
+    public function legacy_paid_supplier_success_notifies_admin_after_the_reference_is_saved(): void
+    {
+        $admin = User::factory()->create([
+            'email' => config('admin.email'),
+            'role' => 'admin',
+        ]);
+        $session = $this->authorizedSession('cs_legacy_paid_supplier_success');
+        unset($session->metadata->capture_policy);
+        $booking = app(StripeBookingService::class)->createBookingFromSession($session);
+        Notification::fake();
+
+        $gateway = Mockery::mock(VrooemGatewayService::class);
+        $gateway->shouldReceive('createBooking')->once()->andReturn([
+            'status' => 'confirmed',
+            'supplier_booking_id' => 'LEGACY-SUPPLIER-REF',
+            'gateway_booking_id' => 'legacy-gateway-id',
+            'supplier_id' => 'emr',
+        ]);
+        $this->app->instance(VrooemGatewayService::class, $gateway);
+
+        app(StripeBookingService::class)->triggerGatewayReservation($booking, (object) $this->metadata());
+
+        Notification::assertSentTo($admin, BookingCreatedAdminNotification::class);
+    }
+
+    #[Test]
+    public function guest_supplier_access_notification_encrypts_the_queued_password(): void
+    {
+        $booking = app(StripeBookingService::class)->createBookingFromSession(
+            $this->authorizedSession('cs_guest_access_encryption')
+        );
+
+        $notification = new GuestSupplierBookingAccessNotification(
+            $booking,
+            $booking->customer,
+            'temporary-secret'
+        );
+
+        $this->assertInstanceOf(ShouldBeEncrypted::class, $notification);
+    }
+
+    #[Test]
+    public function timeout_and_conflict_responses_are_unknown_but_rate_limits_remain_retryable(): void
+    {
+        $service = app(StripeBookingService::class);
+        $unknown = new ReflectionMethod($service, 'isUnknownReservationOutcome');
+        $unknown->setAccessible(true);
+        $rejected = new ReflectionMethod($service, 'isDefiniteReservationRejection');
+        $rejected->setAccessible(true);
+
+        foreach ([408, 409] as $status) {
+            $error = ['type' => 'http', 'method' => 'POST', 'status' => $status];
+            $this->assertTrue($unknown->invoke($service, null, $error));
+            $this->assertFalse($rejected->invoke($service, null, $error));
+        }
+
+        $rateLimit = ['type' => 'http', 'method' => 'POST', 'status' => 429];
+        $this->assertFalse($unknown->invoke($service, null, $rateLimit));
+        $this->assertFalse($rejected->invoke($service, null, $rateLimit));
     }
 
     #[Test]
@@ -421,6 +667,82 @@ class ExternalSupplierManualCaptureTest extends TestCase
         $state = $method->invoke($controller, $booking, 'support_review');
 
         $this->assertSame('card_authorized_supplier_confirmation', $state);
+    }
+
+    #[Test]
+    public function an_unknown_supplier_outcome_redirects_to_review_instead_of_continuing_the_spinner(): void
+    {
+        $booking = app(StripeBookingService::class)->createBookingFromSession(
+            $this->authorizedSession('cs_supplier_unknown_redirect')
+        );
+        $booking->update([
+            'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                'reservation_manual_check' => true,
+            ]),
+        ]);
+
+        $response = (new StripeCheckoutController(app(StripeBookingService::class)))->success(
+            Request::create('/booking/success', 'GET', ['session_id' => $booking->stripe_session_id]),
+            app(StripeBookingService::class)
+        );
+
+        parse_str((string) parse_url($response->getTargetUrl(), PHP_URL_QUERY), $query);
+        $this->assertSame('authorization_review', $query['state'] ?? null);
+    }
+
+    #[Test]
+    public function a_saved_supplier_reference_with_uncertain_capture_redirects_to_payment_review(): void
+    {
+        $booking = app(StripeBookingService::class)->createBookingFromSession(
+            $this->authorizedSession('cs_supplier_capture_review_redirect')
+        );
+        $booking->update([
+            'provider_booking_ref' => 'EMR-REVIEW-REDIRECT',
+            'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                'payment_capture_manual_check' => true,
+            ]),
+        ]);
+
+        $response = (new StripeCheckoutController(app(StripeBookingService::class)))->success(
+            Request::create('/booking/success', 'GET', ['session_id' => $booking->stripe_session_id]),
+            app(StripeBookingService::class)
+        );
+
+        parse_str((string) parse_url($response->getTargetUrl(), PHP_URL_QUERY), $query);
+        $this->assertSame('supplier_confirmed_payment_review', $query['state'] ?? null);
+    }
+
+    #[Test]
+    public function supplier_status_page_exposes_the_five_minute_confirmation_deadline(): void
+    {
+        $booking = app(StripeBookingService::class)->createBookingFromSession(
+            $this->authorizedSession('cs_supplier_status_deadline')
+        );
+
+        $this->get('/en/booking/status?state=card_authorized_supplier_confirmation&session_id='.$booking->stripe_session_id)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Booking/Status')
+                ->where('state', 'card_authorized_supplier_confirmation')
+                ->where('confirmation_deadline_at', $booking->supplier_confirmation_deadline_at->toIso8601String())
+            );
+    }
+
+    #[Test]
+    public function supplier_status_page_has_a_deadline_even_before_the_booking_row_exists(): void
+    {
+        $payload = StripeCheckoutPayload::create([
+            'stripe_session_id' => 'cs_supplier_payload_only_deadline',
+            'payment_status' => 'authorized',
+            'fulfilment_status' => 'pending',
+        ]);
+
+        $this->get('/en/booking/status?state=card_authorized_supplier_confirmation&session_id='.$payload->stripe_session_id)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Booking/Status')
+                ->where('confirmation_deadline_at', $payload->created_at->copy()->addMinutes(5)->toIso8601String())
+            );
     }
 
     #[Test]
@@ -733,7 +1055,10 @@ class ExternalSupplierManualCaptureTest extends TestCase
         $booking = app(StripeBookingService::class)->createBookingFromSession(
             $this->authorizedSession('cs_supplier_capture_review')
         );
-        $booking->update(['provider_booking_ref' => 'EMR-CAPTURE-REVIEW']);
+        $booking->update([
+            'provider_booking_ref' => 'EMR-CAPTURE-REVIEW',
+            'supplier_resolution_notified_at' => now(),
+        ]);
 
         (new TriggerProviderReservationJob($booking->id, $this->metadata()))
             ->failed(new \RuntimeException('Stripe capture outcome unknown'));
@@ -742,7 +1067,29 @@ class ExternalSupplierManualCaptureTest extends TestCase
         $this->assertSame('authorized', $booking->payment_status);
         $this->assertSame('EMR-CAPTURE-REVIEW', $booking->provider_booking_ref);
         $this->assertTrue((bool) ($booking->provider_metadata['reservation_manual_check'] ?? false));
+        $controller = new StripeCheckoutController(app(StripeBookingService::class));
+        $method = new ReflectionMethod($controller, 'resolveBookingOutcomeState');
+        $method->setAccessible(true);
+        $this->assertSame('supplier_confirmed_payment_review', $method->invoke(
+            $controller,
+            $booking,
+            'support_review'
+        ));
         Notification::assertSentTo($admin, AdminReservationManualCheckNotification::class);
+        Notification::assertSentTo(
+            $booking->customer->user,
+            PaymentCaptureReviewCustomerNotification::class,
+            function (PaymentCaptureReviewCustomerNotification $notification, array $channels) use ($booking): bool {
+                $mail = $notification->toMail($booking->customer->user);
+                $copy = implode(' ', $mail->introLines);
+
+                return str_contains($copy, 'EMR-CAPTURE-REVIEW')
+                    && str_contains($copy, 'payment status is under review')
+                    && ! str_contains($copy, 'not been charged')
+                    && ! str_contains($copy, 'unable to confirm your reservation');
+            }
+        );
+        $this->assertNotNull($booking->fresh()->supplier_capture_review_notified_at);
     }
 
     private function authorizedSession(string $id = 'cs_supplier_authorized'): object

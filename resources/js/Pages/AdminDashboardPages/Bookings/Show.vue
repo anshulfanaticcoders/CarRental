@@ -23,6 +23,15 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
+                    <Button
+                        v-if="canRecordSupplierReference(booking)"
+                        size="sm"
+                        class="gap-1.5"
+                        @click="showRecordReferenceModal = true"
+                    >
+                        <ShieldCheck class="h-4 w-4" />
+                        Record supplier ref
+                    </Button>
                     <Badge :variant="getStatusBadgeBooking(booking.booking_status)" class="capitalize">
                         {{ formatStatusLabel(booking.booking_status) }}
                     </Badge>
@@ -201,21 +210,41 @@
                 </div>
             </div>
         </div>
+
+        <RecordSupplierReferenceDialog
+            v-model:open="showRecordReferenceModal"
+            :booking="booking"
+        />
     </AdminDashboardLayout>
 </template>
 
 <script setup>
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
+import RecordSupplierReferenceDialog from '@/Components/Admin/RecordSupplierReferenceDialog.vue';
 import { Link } from '@inertiajs/vue3';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft } from 'lucide-vue-next';
+import { ref } from 'vue';
+import { ArrowLeft, ShieldCheck } from 'lucide-vue-next';
 import { getCurrencySymbol as registryCurrencySymbol } from '@/utils/currencyRegistry';
 
-defineProps({
+const props = defineProps({
     booking: Object,
     flash: Object,
 });
+
+const booking = props.booking;
+const showRecordReferenceModal = ref(false);
+
+const canRecordSupplierReference = (candidate) => {
+    const metadata = candidate?.provider_metadata || {};
+    const unknownOutcome = Boolean(metadata.reservation_manual_check || metadata.reservation_unknown_at);
+
+    return candidate?.provider_source !== 'internal'
+        && candidate?.payment_status === 'authorized'
+        && !candidate?.provider_booking_ref
+        && unknownOutcome;
+};
 
 const getStatusBadgeBooking = (status) => {
     switch (status) {

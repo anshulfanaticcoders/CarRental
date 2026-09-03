@@ -45,6 +45,15 @@ class BookingController extends Controller
             ]);
         }
 
+        if (! $booking && $checkoutPayload?->payment_status === 'authorized') {
+            return response()->json([
+                'status' => 'authorized',
+                'message' => 'Your card is authorized but has not been charged. We are confirming the reservation with the supplier.',
+                'confirmation_deadline_at' => $checkoutPayload->created_at?->copy()->addMinutes(5)->toIso8601String(),
+                'server_time' => now()->toIso8601String(),
+            ], 202);
+        }
+
         // Fallback: webhook may not have run yet in dev, so we mirror the web
         // success page logic — fetch the session from Stripe and create the
         // booking on the fly if Stripe says the payment succeeded.
@@ -123,7 +132,7 @@ class BookingController extends Controller
         ]);
     }
 
-    /** @return array{status: string, message?: string} */
+    /** @return array{status: string, message?: string, confirmation_deadline_at?: string|null, server_time?: string} */
     private function checkoutState(Booking $booking): array
     {
         $bookingStatus = strtolower((string) ($booking->booking_status ?? ''));
@@ -135,6 +144,14 @@ class BookingController extends Controller
                 || ! empty($providerMetadata['cancellation_authorization_release_pending']));
 
         if ($authorizationNeedsReview) {
+            if (! empty($booking->provider_booking_ref)
+                && ! empty($providerMetadata['payment_capture_manual_check'])) {
+                return [
+                    'status' => 'review_required',
+                    'message' => 'The supplier confirmed reference '.$booking->provider_booking_ref.'. Your payment status is under review because Stripe did not return a conclusive final capture result.',
+                ];
+            }
+
             return [
                 'status' => 'review_required',
                 'message' => 'The supplier outcome or card authorization needs support review. Your card has not been captured automatically.',
@@ -159,7 +176,11 @@ class BookingController extends Controller
         if ($paymentStatus === 'authorized') {
             return [
                 'status' => 'authorized',
-                'message' => 'Your card has not been charged. We are confirming the reservation with the supplier.',
+                'message' => ! empty($booking->provider_booking_ref)
+                    ? 'The supplier confirmed your reservation. Your payment status is being finalized with Stripe.'
+                    : 'Your card has not been charged. We are confirming the reservation with the supplier.',
+                'confirmation_deadline_at' => $booking->supplier_confirmation_deadline_at?->toIso8601String(),
+                'server_time' => now()->toIso8601String(),
             ];
         }
 

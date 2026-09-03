@@ -13,6 +13,7 @@ use App\Notifications\Booking\BookingCancelledNotification;
 use App\Services\ProviderBookingCancellationService;
 use App\Services\VrooemGatewayService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
@@ -128,6 +129,10 @@ class BookingDashboardController extends Controller
                 'capture_rescue_exhausted' => false,
             ]),
         ];
+        if (! $captureOnly) {
+            $updates['supplier_confirmation_deadline_at'] = now()->addMinutes(5);
+            $updates['supplier_resolution_notified_at'] = null;
+        }
         // An explicit admin retry un-fails the booking: the reservation job
         // refuses to reserve for a reservation_failed status (by design).
         if ($booking->booking_status === 'reservation_failed') {
@@ -145,6 +150,75 @@ class BookingDashboardController extends Controller
         ]);
 
         return back()->with('success', 'Reservation retry queued for booking #'.$booking->booking_number.'.');
+    }
+
+    public function recordSupplierReference(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'supplier_reference' => ['required', 'string', 'min:2', 'max:191', 'regex:/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/'],
+            'supplier_checked' => ['required', 'accepted'],
+        ]);
+
+        $lock = Cache::lock("provider-booking-operation:{$id}", 30);
+        if (! $lock->block(5)) {
+            return back()->with('error', 'Another supplier operation is running for this booking. Try again shortly.');
+        }
+
+        try {
+            $booking = Booking::findOrFail($id);
+            $providerMetadata = $booking->provider_metadata ?? [];
+            $outcomeUnknown = ! empty($providerMetadata['reservation_manual_check'])
+                || ! empty($providerMetadata['reservation_unknown_at']);
+
+            if (! $booking->provider_source || strtolower($booking->provider_source) === 'internal') {
+                return back()->with('error', 'Internal bookings do not accept a supplier reference.');
+            }
+            if ($booking->payment_status !== 'authorized' || (float) $booking->amount_paid > 0) {
+                return back()->with('error', 'A supplier reference can only be recovered while the card authorization is uncaptured.');
+            }
+            if (! empty($booking->provider_booking_ref)) {
+                return back()->with('error', 'This booking already has a supplier reference.');
+            }
+            if (! $outcomeUnknown) {
+                return back()->with('error', 'This action is only available after an unknown supplier outcome.');
+            }
+
+            $metadata = app(\App\Services\StripeBookingService::class)->recoverReservationMetadata($booking);
+            if ($metadata === null) {
+                return back()->with('error', 'Checkout metadata could not be recovered. Record the incident and contact payment support before capturing.');
+            }
+
+            $supplierReference = trim($validated['supplier_reference']);
+            $booking->update([
+                'provider_booking_ref' => $supplierReference,
+                'booking_status' => 'supplier_pending',
+                'provider_metadata' => array_merge($providerMetadata, [
+                    'reservation_manual_check' => false,
+                    'payment_capture_manual_check' => true,
+                    'manual_supplier_reference_recorded_at' => now()->toIso8601String(),
+                    'manual_supplier_reference_recorded_by' => $request->user()?->id,
+                    'manual_supplier_reference' => $supplierReference,
+                ]),
+                'notes' => trim(($booking->notes ? $booking->notes."\n" : '')
+                    .'Admin recovered supplier reference: '.$supplierReference),
+            ]);
+
+        } finally {
+            $lock->release();
+        }
+
+        // Dispatch only after releasing the shared supplier-operation lock.
+        // This also keeps QUEUE_CONNECTION=sync usable in local environments.
+        \App\Jobs\TriggerProviderReservationJob::dispatch($booking->id, $metadata);
+
+        Log::warning('Admin recorded a recovered supplier reference and queued capture only', [
+            'booking_id' => $booking->id,
+            'admin_id' => $request->user()?->id,
+            'provider_source' => $booking->provider_source,
+            'supplier_reference' => $supplierReference,
+        ]);
+
+        return back()->with('success', 'Supplier reference saved. Stripe capture-only processing was queued for booking #'.$booking->booking_number.'.');
     }
 
     /**

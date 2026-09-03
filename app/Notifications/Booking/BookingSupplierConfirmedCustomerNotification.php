@@ -4,6 +4,7 @@ namespace App\Notifications\Booking;
 
 use App\Notifications\Concerns\FormatsBookingAmounts;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -11,7 +12,7 @@ use Illuminate\Notifications\Notification;
  * Final confirmation for an external-provider booking: the supplier accepted
  * the reservation and issued a reference. Follows the payment-received email.
  */
-class BookingSupplierConfirmedCustomerNotification extends Notification
+class BookingSupplierConfirmedCustomerNotification extends Notification implements ShouldQueue
 {
     use FormatsBookingAmounts;
     use Queueable;

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Exceptions\ReservationOutcomeUnknownException;
 use App\Exceptions\StripeAuthorizationAmountMismatchException;
+use App\Exceptions\SupplierReservationRejectedException;
+use App\Jobs\NotifyDelayedSupplierConfirmationJob;
 use App\Jobs\SendAwinConversion;
 use App\Models\Booking;
 use App\Models\BookingExtra;
@@ -23,6 +25,7 @@ use App\Notifications\Booking\BookingCreatedVendorNotification;
 use App\Notifications\Booking\BookingPaymentReceivedCustomerNotification;
 use App\Notifications\Booking\BookingSupplierConfirmedCustomerNotification;
 use App\Notifications\Booking\GuestBookingCreatedNotification;
+use App\Notifications\Booking\GuestSupplierBookingAccessNotification;
 use App\Notifications\Concerns\DeliversToCustomer;
 use App\Notifications\Payment\AdminManualRefundRequiredNotification;
 use App\Notifications\Payment\AdminReservationManualCheckNotification;
@@ -640,6 +643,8 @@ class StripeBookingService
                     'stripe_session_id' => $session->id,
                     'stripe_payment_intent_id' => $session->payment_intent,
                     'provider_booking_ref' => $booking->provider_booking_ref ?? ($metadata->provider_booking_ref ?? null),
+                    'supplier_confirmation_deadline_at' => $booking->supplier_confirmation_deadline_at
+                        ?? ($authorizedSupplier ? now()->addMinutes(5) : null),
                 ]);
             } else {
                 $bookingData = [
@@ -672,6 +677,7 @@ class StripeBookingService
                     'stripe_payment_intent_id' => $session->payment_intent,
                     'provider_booking_ref' => $metadata->provider_booking_ref ?? null,
                     'discount_amount' => (float) ($metadata->offer_discount_amount ?? $metadata->promo_discount_amount ?? 0),
+                    'supplier_confirmation_deadline_at' => $authorizedSupplier ? now()->addMinutes(5) : null,
                 ];
 
                 // The charge is already captured: no NOT NULL column may reject
@@ -1789,6 +1795,9 @@ class StripeBookingService
                 'pending_amount' => $pendingAmount,
                 'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
                     'stripe_captured_at' => now()->toIso8601String(),
+                    'reservation_manual_check' => false,
+                    'payment_capture_manual_check' => false,
+                    'capture_rescue_exhausted' => false,
                 ]),
             ]);
 
@@ -1819,6 +1828,7 @@ class StripeBookingService
         $booking = $booking->fresh(['customer']);
         $this->runConfirmedSupplierSideEffects($booking, $metadata);
         $this->notifyCustomerSupplierConfirmed($booking);
+        $this->notifyAdminBookingCreated($booking, $booking->customer, $booking->vehicle);
     }
 
     private function runConfirmedSupplierSideEffects(Booking $booking, object $metadata): void
@@ -1911,41 +1921,39 @@ class StripeBookingService
         $vehicle = $booking->vehicle ?? null;
         $isInternalBooking = ($booking->provider_source ?? null) === 'internal';
 
-        $adminEmail = config('admin.email');
-        $admin = User::where('email', $adminEmail)->first();
-        if ($admin) {
-            $this->safeNotify($booking, 'admin', fn () => BookingCreatedAdminNotification::sendOnce(
-                $admin,
-                new BookingCreatedAdminNotification($booking, $customer, $vehicle)
-            ));
-        } else {
-            Log::warning('StripeBookingService: Admin user not found for booking notification', [
-                'booking_id' => $booking->id,
-                'admin_email_env' => $adminEmail,
-            ]);
+        if ($isInternalBooking) {
+            $this->notifyAdminBookingCreated($booking, $customer, $vehicle);
         }
 
         if (! $isInternalBooking) {
-            // No vendor/company exists for external-provider bookings, but the
-            // customer must still hear from us. Normally: "payment received,
-            // confirming with supplier" — the outcome email follows from
-            // triggerGatewayReservation (confirmed) or the reservation job (failed).
-            // When the supplier reference already exists (no reservation job will
-            // run), send the confirmation directly; keep the payment-received
-            // email when guest credentials must be delivered.
             $hasProviderRef = ! empty($booking->provider_booking_ref);
 
-            if (! $hasProviderRef || $tempPassword) {
+            if ($tempPassword) {
                 $this->safeNotify($booking, 'customer', fn () => $this->deliverToCustomer(
                     $customer,
-                    new BookingPaymentReceivedCustomerNotification($booking, $customer, $vehicle, $tempPassword)
+                    new GuestSupplierBookingAccessNotification($booking, $customer, $tempPassword)
                 ));
             }
 
-            if ($hasProviderRef) {
-                if ($booking->payment_status !== 'authorized') {
-                    $this->notifyCustomerSupplierConfirmed($booking);
-                }
+            if (! $hasProviderRef && $booking->payment_status === 'authorized') {
+                NotifyDelayedSupplierConfirmationJob::dispatch($booking->id)
+                    ->delay($booking->supplier_confirmation_deadline_at ?? now()->addMinutes(5));
+
+                return;
+            }
+
+            if (! $hasProviderRef) {
+                $this->safeNotify($booking, 'customer', fn () => $this->deliverToCustomer(
+                    $customer,
+                    new BookingPaymentReceivedCustomerNotification($booking, $customer, $vehicle)
+                ));
+
+                return;
+            }
+
+            if ($booking->payment_status !== 'authorized') {
+                $this->notifyCustomerSupplierConfirmed($booking);
+                $this->notifyAdminBookingCreated($booking, $customer, $vehicle);
             }
 
             return;
@@ -2004,17 +2012,40 @@ class StripeBookingService
      * Send one notification in isolation — a mail-channel rate limit or transient
      * SMTP failure on any single recipient must not cascade and skip the rest.
      */
-    private function safeNotify(Booking $booking, string $role, \Closure $fn): void
+    private function safeNotify(Booking $booking, string $role, \Closure $fn): bool
     {
         try {
             $fn();
+
+            return true;
         } catch (\Throwable $e) {
             Log::warning('StripeBookingService: Failed to send booking notification', [
                 'booking_id' => $booking->id,
                 'role' => $role,
                 'error' => $e->getMessage(),
             ]);
+
+            return false;
         }
+    }
+
+    private function notifyAdminBookingCreated(Booking $booking, Customer $customer, mixed $vehicle): void
+    {
+        $adminEmail = config('admin.email');
+        $admin = User::where('email', $adminEmail)->first();
+        if ($admin) {
+            $this->safeNotify($booking, 'admin', fn () => BookingCreatedAdminNotification::sendOnce(
+                $admin,
+                new BookingCreatedAdminNotification($booking, $customer, $vehicle)
+            ));
+
+            return;
+        }
+
+        Log::warning('StripeBookingService: Admin user not found for booking notification', [
+            'booking_id' => $booking->id,
+            'admin_email_env' => $adminEmail,
+        ]);
     }
 
     private function extractSicilyByCarExcessSummary($metadata): array
@@ -2235,6 +2266,7 @@ class StripeBookingService
                 // the sole notification point for that flow.
                 if ($booking->payment_status !== 'authorized') {
                     $this->notifyCustomerSupplierConfirmed($booking);
+                    $this->notifyAdminBookingCreated($booking, $booking->customer, $booking->vehicle);
                 }
 
                 return;
@@ -2275,12 +2307,21 @@ class StripeBookingService
                     $failureContext
                 ),
             ]);
+            if ($this->isDefiniteReservationRejection($result, $lastError)) {
+                throw new SupplierReservationRejectedException(
+                    $this->extractGatewayReservationError($result, $lastError, 'Supplier rejected the reservation.')
+                );
+            }
             // Throw so the queue job retries; failed() handler marks manual review after exhaustion.
             throw new \RuntimeException(
                 'Gateway did not return a confirmed supplier reservation for booking '.$booking->id
             );
         } catch (ReservationOutcomeUnknownException $e) {
             // Deliberate non-retryable signal — already recorded and notified above.
+            throw $e;
+        } catch (SupplierReservationRejectedException $e) {
+            // The gateway supplied a definite business rejection. Preserve that
+            // classification so the job can release the authorization safely.
             throw $e;
         } catch (\Exception $e) {
             Log::error('VrooemGateway: Reservation error', [
@@ -2306,6 +2347,9 @@ class StripeBookingService
             $supplierBookingId = trim((string) ($result['supplier_booking_id'] ?? ''));
             if (in_array($providerStatus, ['timeout_unknown', 'pending_unknown', 'pending'], true)
                 || $status === 'pending') {
+                return true;
+            }
+            if ($status === 'failed' || $providerStatus === 'failed') {
                 return true;
             }
             if (! empty($result['supplier_data']['outcome_unknown'])) {
@@ -2344,30 +2388,60 @@ class StripeBookingService
             }
         }
 
-        // A 5xx from POST /bookings is ambiguous: the supplier may have
+        // A timeout/conflict or 5xx from POST /bookings is ambiguous: the supplier may have
         // confirmed before the gateway failed while persisting/returning the
         // result. Blind retrying here risks a second reservation.
         if (is_array($lastError)
             && ($lastError['type'] ?? '') === 'http'
             && strtolower((string) ($lastError['method'] ?? '')) === 'post'
-            && (int) ($lastError['status'] ?? 0) >= 500) {
-            return true;
+        ) {
+            $status = (int) ($lastError['status'] ?? 0);
+            if (in_array($status, [408, 409], true) || $status >= 500) {
+                return true;
+            }
         }
 
         return false;
     }
 
+    private function isDefiniteReservationRejection(?array $result, ?array $lastError): bool
+    {
+        if (is_array($result)) {
+            $status = strtolower(trim((string) ($result['status'] ?? '')));
+            $providerStatus = strtolower(trim((string) ($result['provider_status'] ?? '')));
+            if (in_array($status, ['rejected', 'declined', 'unavailable'], true)
+                || in_array($providerStatus, ['rejected', 'declined', 'unavailable'], true)) {
+                return true;
+            }
+        }
+
+        $status = (int) ($lastError['status'] ?? 0);
+
+        return is_array($lastError)
+            && ($lastError['type'] ?? '') === 'http'
+            && $status >= 400
+            && $status < 500
+            && ! in_array($status, [408, 409, 425, 429], true);
+    }
+
     private function notifyCustomerSupplierConfirmed(Booking $booking): void
     {
+        if ($booking->supplier_confirmed_notified_at !== null) {
+            return;
+        }
+
         $customer = $booking->customer;
         if (! $customer) {
             return;
         }
 
-        $this->safeNotify($booking, 'customer', fn () => $this->deliverToCustomer(
+        $sent = $this->safeNotify($booking, 'customer', fn () => $this->deliverToCustomer(
             $customer,
             new BookingSupplierConfirmedCustomerNotification($booking, $customer, $booking->vehicle)
         ));
+        if ($sent) {
+            $booking->update(['supplier_confirmed_notified_at' => now()]);
+        }
     }
 
     private function notifyAdminReservationManualCheck($booking, string $reason): void

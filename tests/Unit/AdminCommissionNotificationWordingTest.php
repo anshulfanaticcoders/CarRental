@@ -83,4 +83,22 @@ class AdminCommissionNotificationWordingTest extends TestCase
         $this->assertStringContainsString('**Commission Total:** €22.50', $cancelledLines);
         $this->assertStringNotContainsString('**Total Amount:**', $cancelledLines);
     }
+
+    #[Test]
+    public function confirmed_supplier_notification_contains_the_supplier_reference_and_requires_no_routine_action(): void
+    {
+        $booking = $this->makeBooking();
+        $booking->provider_source = 'emr';
+        $booking->provider_booking_ref = 'EMR-784521';
+        $booking->booking_status = 'confirmed';
+        $booking->payment_status = 'paid';
+
+        $mail = (new BookingCreatedAdminNotification($booking, $this->makeCustomer(), $this->makeVehicle()))
+            ->toMail((object) []);
+        $lines = implode("\n", array_merge($mail->introLines, $mail->outroLines));
+
+        $this->assertStringContainsString('Supplier booking confirmed', (string) $mail->subject);
+        $this->assertStringContainsString('**Supplier Reference:** EMR-784521', $lines);
+        $this->assertStringContainsString('No routine action is required', $lines);
+    }
 }

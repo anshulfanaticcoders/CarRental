@@ -22,6 +22,10 @@ use Stripe\Webhook;
 
 class StripeWebhookController extends Controller
 {
+    private const SUPPLIER_FAST_PATH_WAIT_MILLISECONDS = 8000;
+
+    private const SUPPLIER_FAST_PATH_POLL_MICROSECONDS = 250000;
+
     protected $bookingService;
 
     public function __construct(StripeBookingService $bookingService)
@@ -106,15 +110,14 @@ class StripeWebhookController extends Controller
     /**
      * Handle checkout.session.completed — queue booking creation.
      *
-     * The webhook must ack fast: doing the Stripe retrieve + FX calls inline
-     * pushed responses past Stripe's timeout, and the resulting concurrent
-     * redeliveries deadlocked on the bookings unique index. The event payload
-     * already carries payment_status. Supplier checkouts use a manual card
-     * authorization, so Checkout reports them as unpaid until the reservation
-     * exists; the job verifies the PaymentIntent is actually capturable.
+     * Stripe retrieval, FX calls, and supplier work stay in the queue to avoid
+     * concurrent redelivery deadlocks. For manual-capture supplier sessions we
+     * only wait on persisted state after dispatch, bounded below Stripe's hosted
+     * Checkout redirect limit. The job remains the authoritative fulfilment path.
      */
     protected function handleCheckoutComplete($session)
     {
+        $fastPathStartedAt = hrtime(true);
         $sessionId = $session->id ?? null;
         if (! $sessionId) {
             Log::warning('Stripe webhook session missing id');
@@ -138,14 +141,23 @@ class StripeWebhookController extends Controller
             ['stripe_session_id' => $sessionId],
             ['fulfilment_status' => 'pending']
         );
-        $payload->fill([
-            'payment_status' => $manualSupplierCapture ? 'authorized' : 'paid',
-            'stripe_payment_intent_id' => $session->payment_intent ?? null,
-            'paid_at' => $manualSupplierCapture ? null : ($payload->paid_at ?? now()),
-        ]);
+        $terminalPayload = in_array(
+            $payload->fulfilment_status,
+            StripeCheckoutPayload::TERMINAL_STATUSES,
+            true
+        );
+        if (! $terminalPayload || empty($payload->payment_status)) {
+            $payload->payment_status = $manualSupplierCapture ? 'authorized' : 'paid';
+        }
+        if (empty($payload->stripe_payment_intent_id)) {
+            $payload->stripe_payment_intent_id = $session->payment_intent ?? null;
+        }
+        if (! $terminalPayload && ! $manualSupplierCapture) {
+            $payload->paid_at ??= now();
+        }
         // Stripe replays this webhook for days; a replay must never downgrade
         // a terminal payload back to pending (that resurrects deleted bookings).
-        if (! in_array($payload->fulfilment_status, StripeCheckoutPayload::TERMINAL_STATUSES, true)) {
+        if (! $terminalPayload) {
             $payload->fulfilment_status = 'pending';
         }
         $payload->save();
@@ -179,6 +191,89 @@ class StripeWebhookController extends Controller
             // Rethrow so the top-level handler responds non-2xx and Stripe retries.
             throw $e;
         }
+
+        if ($manualSupplierCapture) {
+            try {
+                $elapsedMilliseconds = max(0, intdiv(hrtime(true) - $fastPathStartedAt, 1_000_000));
+                $waitBudgetMilliseconds = max(
+                    0,
+                    self::SUPPLIER_FAST_PATH_WAIT_MILLISECONDS - $elapsedMilliseconds
+                );
+                $resolvedBeforeRedirect = $this->waitForSupplierResolution(
+                    $sessionId,
+                    $waitBudgetMilliseconds
+                );
+                Log::info('Stripe Webhook: supplier checkout fast-path wait finished', [
+                    'session_id' => $sessionId,
+                    'resolved_before_redirect' => $resolvedBeforeRedirect,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Stripe Webhook: supplier checkout fast-path wait failed', [
+                    'session_id' => $sessionId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Stripe-hosted Checkout waits at most ten seconds for this webhook before
+     * redirecting. Give the queued supplier flow most of that window so normal
+     * confirmations land directly on the success page, while slower suppliers
+     * still fall back to the polling status page.
+     */
+    protected function waitForSupplierResolution(string $sessionId, ?int $maxWaitMilliseconds = null): bool
+    {
+        $maxWaitMilliseconds ??= self::SUPPLIER_FAST_PATH_WAIT_MILLISECONDS;
+        $maxWaitMilliseconds = max(0, min($maxWaitMilliseconds, self::SUPPLIER_FAST_PATH_WAIT_MILLISECONDS));
+        $deadline = hrtime(true) + ($maxWaitMilliseconds * 1_000_000);
+
+        do {
+            $booking = Booking::query()
+                ->where('stripe_session_id', $sessionId)
+                ->first([
+                    'booking_status',
+                    'payment_status',
+                    'provider_booking_ref',
+                    'provider_metadata',
+                ]);
+
+            if ($booking && $this->supplierBookingHasResolved($booking)) {
+                return true;
+            }
+
+            $payloadStatus = StripeCheckoutPayload::where('stripe_session_id', $sessionId)
+                ->value('fulfilment_status');
+            if (in_array($payloadStatus, StripeCheckoutPayload::TERMINAL_STATUSES, true)) {
+                return true;
+            }
+
+            if ($maxWaitMilliseconds === 0 || hrtime(true) >= $deadline) {
+                return false;
+            }
+
+            $remainingMicroseconds = max(1, intdiv($deadline - hrtime(true), 1000));
+            usleep((int) min(self::SUPPLIER_FAST_PATH_POLL_MICROSECONDS, $remainingMicroseconds));
+        } while (true);
+    }
+
+    private function supplierBookingHasResolved(Booking $booking): bool
+    {
+        $metadata = is_array($booking->provider_metadata) ? $booking->provider_metadata : [];
+
+        if (! empty($metadata['reservation_manual_check'])
+            || ! empty($metadata['payment_capture_manual_check'])) {
+            return true;
+        }
+
+        if (in_array($booking->booking_status, ['cancelled', 'rejected', 'expired', 'reservation_failed'], true)
+            || in_array($booking->payment_status, ['authorization_released', 'payment_cancelled', 'refund_pending', 'refunded'], true)) {
+            return true;
+        }
+
+        return ! empty($booking->provider_booking_ref)
+            && in_array($booking->booking_status, ['confirmed', 'completed'], true)
+            && in_array($booking->payment_status, ['partial', 'paid'], true);
     }
 
     /**
