@@ -266,6 +266,9 @@
                                     <div v-if="isProviderPending(booking)" class="mt-1 text-xs font-semibold text-amber-700">
                                         Provider ref missing
                                     </div>
+                                    <div v-if="booking.payment_status === 'authorized' && booking.provider_booking_ref" class="mt-1 text-xs font-semibold text-amber-700">
+                                        Supplier booked — Stripe capture pending
+                                    </div>
                                     <div v-if="booking.payment_status === 'refund_pending'" class="mt-1 text-xs font-semibold text-red-700">
                                         Refund pending
                                     </div>
@@ -470,9 +473,19 @@ const submitCancel = () => {
     }
     cancelling.value = true;
     cancelError.value = '';
+    const supplierOutcomeUnknown = !cancelTarget.value?.provider_booking_ref
+        && !!(cancelTarget.value?.provider_metadata?.reservation_manual_check
+            || cancelTarget.value?.provider_metadata?.reservation_unknown_at);
+    if (supplierOutcomeUnknown && !window.confirm(
+        'This supplier reservation had an UNKNOWN outcome. Only close it if you checked the supplier portal and confirmed that no reservation exists.\n\nConfirm supplier portal checked?'
+    )) {
+        cancelling.value = false;
+        return;
+    }
 
     router.post(`/customer-bookings/${cancelTarget.value.id}/cancel`, {
         cancellation_reason: cancelReason.value.trim(),
+        supplier_checked: supplierOutcomeUnknown,
     }, {
         preserveScroll: true,
         onSuccess: () => {
@@ -520,11 +533,12 @@ const handlePageChange = (page) => {
 const retryingId = ref(null);
 
 const canRetryReservation = (booking) => {
+    const captureOnly = !!booking?.provider_booking_ref && booking.payment_status === 'authorized';
     return booking?.provider_source
         && booking.provider_source !== 'internal'
-        && !booking.provider_booking_ref
-        && ['partial', 'paid'].includes(booking.payment_status)
-        && ['pending', 'confirmed', 'reservation_failed'].includes(booking.booking_status);
+        && (!booking.provider_booking_ref || captureOnly)
+        && ['authorized', 'partial', 'paid'].includes(booking.payment_status)
+        && ['supplier_pending', 'pending', 'confirmed', 'reservation_failed'].includes(booking.booking_status);
 };
 
 const canCancelBooking = (booking) => (
@@ -535,7 +549,8 @@ const retryReservation = (booking) => {
     // Unknown outcome = the supplier may ALREADY hold this reservation. The
     // backend refuses a blind retry; the admin must confirm they checked the
     // supplier portal first.
-    const outcomeUnknown = !!(booking.provider_metadata?.reservation_manual_check
+    const captureOnly = !!booking.provider_booking_ref && booking.payment_status === 'authorized';
+    const outcomeUnknown = !captureOnly && !!(booking.provider_metadata?.reservation_manual_check
         || booking.provider_metadata?.reservation_unknown_at);
     if (outcomeUnknown && !window.confirm(
         'The supplier may ALREADY hold this reservation — its outcome was unknown when the confirmation timed out. '
@@ -558,6 +573,7 @@ const getStatusBadgeBooking = (status) => {
         case 'completed':
             return 'default';
         case 'pending':
+        case 'supplier_pending':
             return 'secondary';
         case 'confirmed':
             return 'default';
@@ -581,7 +597,7 @@ const isProviderPending = (booking) => {
     return booking?.provider_source
         && booking.provider_source !== 'internal'
         && !booking.provider_booking_ref
-        && ['pending', 'confirmed'].includes(booking.booking_status);
+        && ['supplier_pending', 'pending', 'confirmed'].includes(booking.booking_status);
 };
 
 const needsCorrection = (booking) => !!booking?.provider_metadata?.needs_correction;
@@ -657,6 +673,7 @@ const getPaymentBadgeVariant = (paymentStatus) => {
         case 'paid':
             return 'default';
         case 'pending':
+        case 'authorized':
             return 'secondary';
         case 'failed':
             return 'destructive';

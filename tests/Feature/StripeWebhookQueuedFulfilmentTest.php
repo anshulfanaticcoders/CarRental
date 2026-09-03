@@ -33,7 +33,11 @@ class StripeWebhookQueuedFulfilmentTest extends TestCase
 
     private function invokeComplete(object $session): void
     {
-        $controller = new StripeWebhookController(Mockery::mock(StripeBookingService::class));
+        $service = Mockery::mock(StripeBookingService::class);
+        $service->shouldReceive('isManualSupplierCaptureMetadata')
+            ->once()
+            ->andReturn((data_get($session, 'metadata.capture_policy') ?? null) === 'manual_supplier');
+        $controller = new StripeWebhookController($service);
         $method = new ReflectionMethod($controller, 'handleCheckoutComplete');
         $method->invoke($controller, $session);
     }

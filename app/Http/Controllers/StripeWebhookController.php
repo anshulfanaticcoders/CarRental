@@ -109,8 +109,9 @@ class StripeWebhookController extends Controller
      * The webhook must ack fast: doing the Stripe retrieve + FX calls inline
      * pushed responses past Stripe's timeout, and the resulting concurrent
      * redeliveries deadlocked on the bookings unique index. The event payload
-     * already carries payment_status, so unpaid sessions are filtered here and
-     * the job re-verifies against a fresh retrieve before booking.
+     * already carries payment_status. Supplier checkouts use a manual card
+     * authorization, so Checkout reports them as unpaid until the reservation
+     * exists; the job verifies the PaymentIntent is actually capturable.
      */
     protected function handleCheckoutComplete($session)
     {
@@ -121,7 +122,10 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        if (($session->payment_status ?? null) !== 'paid') {
+        $manualSupplierCapture = $this->bookingService->isManualSupplierCaptureMetadata(
+            $session->metadata ?? null
+        );
+        if (($session->payment_status ?? null) !== 'paid' && ! $manualSupplierCapture) {
             Log::info('Checkout completed but payment not settled', [
                 'session_id' => $sessionId,
                 'payment_status' => $session->payment_status ?? null,
@@ -135,9 +139,9 @@ class StripeWebhookController extends Controller
             ['fulfilment_status' => 'pending']
         );
         $payload->fill([
-            'payment_status' => 'paid',
+            'payment_status' => $manualSupplierCapture ? 'authorized' : 'paid',
             'stripe_payment_intent_id' => $session->payment_intent ?? null,
-            'paid_at' => $payload->paid_at ?? now(),
+            'paid_at' => $manualSupplierCapture ? null : ($payload->paid_at ?? now()),
         ]);
         // Stripe replays this webhook for days; a replay must never downgrade
         // a terminal payload back to pending (that resurrects deleted bookings).

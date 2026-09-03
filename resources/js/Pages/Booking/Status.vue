@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue';
-import { Head, usePage } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedHeaderLayout from '@/Layouts/AuthenticatedHeaderLayout.vue';
 import Footer from '@/Components/Footer.vue';
 import BookingOutcomePage from '@/Components/Booking/BookingOutcomePage.vue';
@@ -33,6 +33,26 @@ const props = defineProps({
 });
 
 const page = usePage();
+let refreshTimer = null;
+
+onMounted(() => {
+    if (props.state !== 'card_authorized_supplier_confirmation') return;
+
+    refreshTimer = window.setInterval(() => {
+        if (props.state !== 'card_authorized_supplier_confirmation') {
+            window.clearInterval(refreshTimer);
+            refreshTimer = null;
+
+            return;
+        }
+
+        router.reload({ only: ['state', 'booking'], preserveScroll: true });
+    }, 5000);
+});
+
+onBeforeUnmount(() => {
+    if (refreshTimer) window.clearInterval(refreshTimer);
+});
 
 const currentLocale = computed(() => {
     const propLocale = page.props.locale;
@@ -93,6 +113,39 @@ const outcomes = {
         message: 'Your booking is confirmed. Your reservation details are ready.',
         primaryLabel: 'View booking',
         primaryHref: localizedPath('/profile/bookings'),
+        secondaryLabel: 'Back to home',
+        secondaryHref: localizedPath('/'),
+    },
+    card_authorized_supplier_confirmation: {
+        icon: Clock3,
+        illustration: supplierPendingIllustration,
+        tone: 'warning',
+        title: 'Card authorized',
+        message: 'Your card has not been charged. We are confirming the reservation with the supplier and will capture the authorized amount only after the supplier reference is ready.',
+        primaryLabel: 'View booking status',
+        primaryHref: localizedPath('/profile/bookings'),
+        secondaryLabel: 'Back to home',
+        secondaryHref: localizedPath('/'),
+    },
+    authorization_released: {
+        icon: ShieldCheck,
+        illustration: paymentCancelledIllustration,
+        tone: 'neutral',
+        title: 'Card authorization released',
+        message: 'The supplier booking was not created and the card authorization was released. Your card was not charged.',
+        primaryLabel: 'Return to search',
+        primaryHref: searchUrl.value,
+        secondaryLabel: 'Back to home',
+        secondaryHref: localizedPath('/'),
+    },
+    authorization_review: {
+        icon: AlertCircle,
+        illustration: supportReviewIllustration,
+        tone: 'warning',
+        title: 'Card authorization under review',
+        message: 'The supplier booking was stopped, but we could not verify the authorization release automatically. Our team has been alerted. No supplier reservation will be retried automatically.',
+        primaryLabel: 'Contact support',
+        primaryHref: localizedPath('/contact-us'),
         secondaryLabel: 'Back to home',
         secondaryHref: localizedPath('/'),
     },

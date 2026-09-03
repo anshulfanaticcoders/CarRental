@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessPaidCheckoutSessionJob;
 use App\Models\Booking;
 use App\Models\BookingHold;
 use App\Models\Customer;
@@ -17,8 +18,10 @@ use App\Services\OfferService;
 use App\Services\PriceVerificationService;
 use App\Services\ProviderQuoteRevalidationService;
 use App\Services\StripeBookingService;
+use App\Services\StripePaymentLifecycleService;
 use App\Services\Trabber\TrabberAttributionService;
 use App\Services\Vehicles\InternalVehicleAvailabilityService;
+use App\Services\VrooemGatewayService;
 use App\Support\CurrencyRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -221,6 +224,35 @@ class StripeCheckoutController extends Controller
         $normalized = strtolower(trim((string) $source));
 
         return $normalized !== '' && $normalized !== 'internal';
+    }
+
+    private function stripePaymentConfiguration(string $providerSource, string $requestedMethod, string $currencyCode): array
+    {
+        if ($this->isExternalProviderSource($providerSource)) {
+            return [
+                'payment_method_types' => ['card'],
+                'payment_intent_data' => ['capture_method' => 'manual'],
+                'recorded_payment_method' => 'card',
+            ];
+        }
+
+        $availableMethods = ['card'];
+        if ($currencyCode === 'EUR') {
+            $availableMethods[] = 'bancontact';
+        }
+        if (in_array($currencyCode, ['EUR', 'USD', 'GBP', 'DKK', 'NOK', 'SEK', 'CHF'], true)) {
+            $availableMethods[] = 'klarna';
+        }
+
+        $paymentMethodTypes = in_array($requestedMethod, $availableMethods, true)
+            ? [$requestedMethod]
+            : $availableMethods;
+
+        return [
+            'payment_method_types' => $paymentMethodTypes,
+            'payment_intent_data' => [],
+            'recorded_payment_method' => $paymentMethodTypes[0],
+        ];
     }
 
     /**
@@ -913,6 +945,19 @@ class StripeCheckoutController extends Controller
                 }
 
                 if ($this->isExternalProviderSource($providerSource)) {
+                    $gatewayService = app(VrooemGatewayService::class);
+                    if (! $gatewayService->isReadyForBooking()) {
+                        Log::error('Supplier checkout blocked because gateway booking dependencies are degraded', [
+                            'provider_source' => $providerSource,
+                            'gateway_error' => $gatewayService->getLastError(),
+                        ]);
+
+                        return response()->json([
+                            'error' => 'Supplier booking is temporarily unavailable. Please try again shortly.',
+                            'code' => 'SUPPLIER_GATEWAY_NOT_READY',
+                        ], 503);
+                    }
+
                     $freshQuote = app(ProviderQuoteRevalidationService::class)->revalidate(
                         $validated,
                         $verifiedPrices,
@@ -942,6 +987,9 @@ class StripeCheckoutController extends Controller
                         ? $freshQuote['gateway_vehicle_context']
                         : $verifiedGatewayVehicleContext;
                     $vehicle = $validated['vehicle'];
+                    // Supplier Checkout is card-only because alternative
+                    // methods do not support the required manual capture flow.
+                    $validated['payment_method'] = 'card';
                 }
 
                 $trustedSourceCurrency = $this->normalizeCurrencyCode($verifiedPrices['currency'] ?? 'EUR');
@@ -1369,6 +1417,14 @@ class StripeCheckoutController extends Controller
                 'mileage' => $validated['vehicle']['mileage'] ?? ($validated['vehicle']['policies']['mileage_limit_km'] ?? null),
                 'transmission' => $validated['vehicle']['transmission'] ?? ($validated['vehicle']['specs']['transmission'] ?? null),
                 'gateway_vehicle_context' => $gatewayVehicleContext ?: null,
+                'supplier_revalidation' => $this->isExternalProviderSource($providerSource) ? [
+                    // Durable, server-verified comparison baseline. It is never
+                    // booked directly: the reservation job performs a new
+                    // bypass-cache supplier search after card authorization.
+                    'validated' => $validated,
+                    'verified_prices' => $verifiedPrices,
+                    'search_session_id' => (string) $searchSessionId,
+                ] : null,
                 // Store full metadata here â€” StripeBookingService merges this back
                 'full_metadata' => array_filter($fullMetadata, fn ($v) => $v !== null && $v !== ''),
             ];
@@ -1504,6 +1560,12 @@ class StripeCheckoutController extends Controller
                 'trabber_offer_id' => $trabberAttribution['trabber_offer_id'] ?? null,
             ];
 
+            if ($this->isExternalProviderSource($providerSource)) {
+                // Trusted server marker: supplier bookings authorize the card
+                // now and capture only after the supplier reference is stored.
+                $metadata['capture_policy'] = 'manual_supplier';
+            }
+
             $metadata = $this->compactStripeMetadata($metadata);
 
             // Create Stripe Checkout Session
@@ -1513,29 +1575,13 @@ class StripeCheckoutController extends Controller
                 $currentLocale = 'en';
             }
 
-            // Determine supported payment method types based on currency
-            $availableMethods = ['card'];
-
-            // Bancontact only supports EUR
-            if ($currencyCode === 'EUR') {
-                $availableMethods[] = 'bancontact';
-            }
-
-            // Klarna supports multiple currencies
-            $klarnaCurrencies = ['EUR', 'USD', 'GBP', 'DKK', 'NOK', 'SEK', 'CHF'];
-            if (in_array($currencyCode, $klarnaCurrencies)) {
-                $availableMethods[] = 'klarna';
-            }
-
-            // Respect the selected payment method if it's available for the current currency
-            // To avoid redundancy on the Stripe page, we only send the selected method.
             $requestedMethod = $validated['payment_method'] ?? 'card';
-            if (in_array($requestedMethod, $availableMethods)) {
-                $paymentMethodTypes = [$requestedMethod];
-            } else {
-                // Fallback to all available if the requested one is invalid for the currency
-                $paymentMethodTypes = $availableMethods;
-            }
+            $paymentConfiguration = $this->stripePaymentConfiguration(
+                $providerSource,
+                $requestedMethod,
+                $currencyCode
+            );
+            $paymentMethodTypes = $paymentConfiguration['payment_method_types'];
 
             $isMobileClient = strtolower((string) $request->header('X-Client')) === 'mobile';
             $successUrl = $isMobileClient
@@ -1584,9 +1630,10 @@ class StripeCheckoutController extends Controller
                     'cancel_url' => $cancelUrl,
                     'customer_email' => $validated['customer']['email'] ?? null,
                     'metadata' => $metadata,
-                    'payment_intent_data' => [
-                        'metadata' => $metadata,
-                    ],
+                    'payment_intent_data' => array_merge(
+                        $paymentConfiguration['payment_intent_data'],
+                        ['metadata' => $metadata]
+                    ),
                     'expires_at' => $stripeSessionExpiresAt->timestamp,
                 ], [
                     'idempotency_key' => $idempotencyKey,
@@ -2621,6 +2668,12 @@ class StripeCheckoutController extends Controller
             $session = null;
 
             if ($booking) {
+                if ($booking->booking_status === 'supplier_pending'
+                    && $booking->payment_status === 'authorized'
+                    && empty($booking->provider_booking_ref)) {
+                    return $this->bookingStatusRedirect('card_authorized_supplier_confirmation', $sessionId);
+                }
+
                 // Terminal failure states: never render the celebration page (and
                 // never re-run booking creation) — send the customer to the
                 // truthful status page instead.
@@ -2641,6 +2694,10 @@ class StripeCheckoutController extends Controller
                     if ($session->payment_status === 'paid') {
                         Log::info('Session paid, updating booking via service', ['session_id' => $sessionId]);
                         $booking = $bookingService->createBookingFromSession($session);
+                    } elseif ($this->isAuthorizedManualSupplierSession($session)) {
+                        ProcessPaidCheckoutSessionJob::dispatch($sessionId);
+
+                        return $this->bookingStatusRedirect('card_authorized_supplier_confirmation', $sessionId);
                     } else {
                         Log::warning('Session not paid', ['session_id' => $sessionId, 'status' => $session->payment_status]);
 
@@ -2658,6 +2715,10 @@ class StripeCheckoutController extends Controller
                 if ($session->payment_status === 'paid') {
                     Log::info('Session paid, creating booking via service', ['session_id' => $sessionId]);
                     $booking = $bookingService->createBookingFromSession($session);
+                } elseif ($this->isAuthorizedManualSupplierSession($session)) {
+                    ProcessPaidCheckoutSessionJob::dispatch($sessionId);
+
+                    return $this->bookingStatusRedirect('card_authorized_supplier_confirmation', $sessionId);
                 } else {
                     Log::warning('Session not paid', ['session_id' => $sessionId, 'status' => $session->payment_status]);
 
@@ -2727,16 +2788,27 @@ class StripeCheckoutController extends Controller
         }
     }
 
+    private function isAuthorizedManualSupplierSession(object $session): bool
+    {
+        $paymentIntentId = trim((string) ($session->payment_intent ?? ''));
+
+        return $paymentIntentId !== ''
+            && $this->bookingService->isManualSupplierCaptureMetadata($session->metadata ?? null)
+            && app(StripePaymentLifecycleService::class)->isAuthorized($paymentIntentId);
+    }
+
     public function status(Request $request)
     {
         $state = (string) $request->query('state', 'support_review');
         $sessionId = (string) $request->query('session_id', '');
         $booking = null;
+        $checkoutPayload = null;
 
         if ($sessionId !== '') {
             $booking = Booking::where('stripe_session_id', $sessionId)
                 ->with(['customer', 'payments'])
                 ->first();
+            $checkoutPayload = StripeCheckoutPayload::where('stripe_session_id', $sessionId)->first();
         }
 
         if ($booking) {
@@ -2752,6 +2824,16 @@ class StripeCheckoutController extends Controller
             }
 
             $state = $this->resolveBookingOutcomeState($booking, $state);
+        } elseif ($checkoutPayload) {
+            $state = match (true) {
+                $checkoutPayload->payment_status === 'authorization_released' => 'authorization_released',
+                $checkoutPayload->fulfilment_status === 'manual_review'
+                    && $checkoutPayload->payment_status === 'authorized' => 'authorization_review',
+                $checkoutPayload->fulfilment_status === 'manual_review'
+                    && $checkoutPayload->payment_status === 'paid' => 'refund_pending',
+                $checkoutPayload->payment_status === 'authorized' => 'card_authorized_supplier_confirmation',
+                default => $state,
+            };
         }
 
         $searchUrl = $booking
@@ -2915,6 +2997,19 @@ class StripeCheckoutController extends Controller
 
     private function resolveBookingOutcomeState(Booking $booking, string $fallback): string
     {
+        if ($booking->payment_status === 'authorized'
+            && (! empty($booking->provider_metadata['reservation_manual_check'])
+                || ! empty($booking->provider_metadata['cancellation_authorization_release_pending'])
+                || ! empty($booking->provider_metadata['payment_capture_manual_check']))) {
+            return 'authorization_review';
+        }
+
+        if ($booking->booking_status === 'supplier_pending'
+            && $booking->payment_status === 'authorized'
+            && empty($booking->provider_booking_ref)) {
+            return 'card_authorized_supplier_confirmation';
+        }
+
         if ($booking->booking_status === 'cancelled') {
             // Only claim "payment cancelled" when nothing was captured. A charged
             // customer must see the truthful under-review/refund copy instead —
@@ -2939,7 +3034,7 @@ class StripeCheckoutController extends Controller
             $booking->provider_source
             && $booking->provider_source !== 'internal'
             && empty($booking->provider_booking_ref)
-            && in_array($booking->booking_status, ['confirmed', 'pending'], true)
+            && in_array($booking->booking_status, ['supplier_pending', 'confirmed', 'pending'], true)
         ) {
             return 'pending_supplier_confirmation';
         }

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class BookingPayment extends Model
 {
@@ -17,22 +17,30 @@ class BookingPayment extends Model
         'amount',
         'currency',
         'payment_status',
-        'payment_date'
+        'payment_date',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'payment_date' => 'datetime'
+        'payment_date' => 'datetime',
     ];
 
     // Define payment status constants
     public const STATUS_PENDING = 'pending';
+
+    public const STATUS_AUTHORIZED = 'authorized';
+
+    public const STATUS_AUTHORIZATION_RELEASED = 'authorization_released';
+
     public const STATUS_SUCCEEDED = 'succeeded';
+
     public const STATUS_FAILED = 'failed';
 
     // Define payment methods
     public const METHOD_STRIPE = 'stripe';
+
     public const METHOD_PAYPAL = 'paypal';
+
     public const METHOD_BANK_TRANSFER = 'bank_transfer';
 
     // Relationship with Booking
@@ -53,9 +61,9 @@ class BookingPayment extends Model
             'CAD' => 'C$',
         ];
         $currency = strtoupper((string) ($this->currency ?? 'EUR'));
-        $symbol = $symbolMap[$currency] ?? $currency . ' ';
+        $symbol = $symbolMap[$currency] ?? $currency.' ';
 
-        return $symbol . number_format($this->amount, 2);
+        return $symbol.number_format($this->amount, 2);
     }
 
     // Check if payment is completed

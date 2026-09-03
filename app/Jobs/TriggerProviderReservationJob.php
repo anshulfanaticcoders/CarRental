@@ -3,12 +3,16 @@
 namespace App\Jobs;
 
 use App\Exceptions\ReservationOutcomeUnknownException;
+use App\Exceptions\StripePaymentAlreadyCapturedException;
 use App\Models\Booking;
+use App\Models\BookingPayment;
 use App\Models\User;
 use App\Notifications\Booking\ReservationFailedCustomerNotification;
 use App\Notifications\Concerns\DeliversToCustomer;
 use App\Notifications\Payment\AdminReservationFailedNotification;
+use App\Notifications\Payment\AdminReservationManualCheckNotification;
 use App\Services\StripeBookingService;
+use App\Services\StripePaymentLifecycleService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -26,21 +30,21 @@ class TriggerProviderReservationJob implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    public int $tries = 5;
+    public int $tries = 4;
 
-    public int $timeout = 120;
+    public int $timeout = 180;
 
-    /** Backoff in seconds — 1m, 5m, 10m, 30m, 1h. */
-    public array $backoff = [60, 300, 600, 1800, 3600];
+    /** Fresh quote on every safe retry; resolve card authorizations quickly. */
+    public array $backoff = [15, 60, 180];
 
     public function __construct(
         public int $bookingId,
         public array $metadata,
     ) {}
 
-    public function handle(StripeBookingService $service): void
+    public function handle(StripeBookingService $service, $paymentLifecycle = null): void
     {
-        $lock = Cache::lock("provider-booking-operation:{$this->bookingId}", 180);
+        $lock = Cache::lock("provider-booking-operation:{$this->bookingId}", 210);
         if (! $lock->block(15)) {
             throw new \RuntimeException('Could not acquire supplier booking operation lock.');
         }
@@ -58,6 +62,17 @@ class TriggerProviderReservationJob implements ShouldQueue
                 return;
             }
             if (! empty($booking->provider_booking_ref)) {
+                if ($booking->payment_status === 'authorized') {
+                    $paymentLifecycle ??= app(StripePaymentLifecycleService::class);
+                    $service->finalizeAuthorizedSupplierBooking(
+                        $booking,
+                        (object) $this->metadata,
+                        $paymentLifecycle
+                    );
+
+                    return;
+                }
+
                 Log::info('TriggerProviderReservationJob: reservation already complete', [
                     'booking_id' => $booking->id,
                     'provider_booking_ref' => $booking->provider_booking_ref,
@@ -66,7 +81,7 @@ class TriggerProviderReservationJob implements ShouldQueue
                 return;
             }
 
-            $eligiblePayment = in_array($booking->payment_status, ['partial', 'paid'], true);
+            $eligiblePayment = in_array($booking->payment_status, ['authorized', 'partial', 'paid'], true);
             $terminalBooking = in_array($booking->booking_status, ['cancelled', 'rejected', 'expired', 'completed', 'reservation_failed'], true);
             $refundOrManualClose = in_array($booking->payment_status, ['refunded', 'refund_pending'], true)
                 || ! empty($booking->provider_metadata['manual_refund_required']);
@@ -81,7 +96,25 @@ class TriggerProviderReservationJob implements ShouldQueue
             }
 
             try {
-                $service->triggerGatewayReservation($booking, (object) $this->metadata);
+                $reservationMetadata = $this->metadata;
+                if ($booking->payment_status === 'authorized') {
+                    $reservationMetadata = $service->refreshAuthorizedSupplierMetadata(
+                        $booking,
+                        $reservationMetadata
+                    );
+                }
+
+                $service->triggerGatewayReservation($booking, (object) $reservationMetadata);
+
+                $booking->refresh();
+                if ($booking->payment_status === 'authorized' && ! empty($booking->provider_booking_ref)) {
+                    $paymentLifecycle ??= app(StripePaymentLifecycleService::class);
+                    $service->finalizeAuthorizedSupplierBooking(
+                        $booking,
+                        (object) $reservationMetadata,
+                        $paymentLifecycle
+                    );
+                }
             } catch (ReservationOutcomeUnknownException $e) {
                 // Supplier timed out; a reservation may already exist upstream.
                 // Retrying would double-book, so fail now (no retries) and let
@@ -112,6 +145,22 @@ class TriggerProviderReservationJob implements ShouldQueue
         // reservation landed. Marking this reservation_failed would tell a customer
         // with a real car booked that it failed, and tell admin to refund it.
         if (! empty($booking->provider_booking_ref)) {
+            if ($booking->payment_status === 'authorized') {
+                $booking->update([
+                    'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                        'reservation_manual_check' => true,
+                        'payment_capture_manual_check' => true,
+                        'payment_capture_last_error' => substr($e->getMessage(), 0, 500),
+                        'payment_capture_failed_at' => now()->toIso8601String(),
+                    ]),
+                ]);
+                $this->notifyAdminManualCheck(
+                    $booking,
+                    'Supplier reference '.$booking->provider_booking_ref
+                    .' is saved, but Stripe capture did not complete. Do not retry the supplier reservation.'
+                );
+            }
+
             Log::warning('TriggerProviderReservationJob: job failed AFTER a confirmed reservation, leaving booking intact', [
                 'booking_id' => $booking->id,
                 'provider_booking_ref' => $booking->provider_booking_ref,
@@ -141,6 +190,22 @@ class TriggerProviderReservationJob implements ShouldQueue
 
         $finalError = substr($e->getMessage(), 0, 500);
 
+        if ($booking->payment_status === 'authorized') {
+            $releaseOutcome = $this->releaseFailedAuthorization($booking, $finalError);
+            $booking = $booking->fresh();
+            $this->notifyCustomerReservationFailed($booking);
+            if ($releaseOutcome === 'failed') {
+                $this->notifyAdminManualCheck(
+                    $booking,
+                    'The supplier definitively rejected the reservation, but the Stripe card authorization could not be released automatically.'
+                );
+            } else {
+                $this->notifyAdminReservationFailed($booking, $finalError);
+            }
+
+            return;
+        }
+
         // The customer PAID. Never auto-cancel: hold the booking in
         // reservation_failed so an admin can rebook with the supplier or refund
         // manually. payment_status stays truthful (money captured, not refunded).
@@ -164,6 +229,79 @@ class TriggerProviderReservationJob implements ShouldQueue
             $booking->stripe_payment_intent_id,
             'External provider could not confirm reservation after retries'
         );
+    }
+
+    private function releaseFailedAuthorization(Booking $booking, string $finalError): string
+    {
+        try {
+            app(StripePaymentLifecycleService::class)->releaseAuthorization(
+                (string) $booking->stripe_payment_intent_id,
+                'release_booking_'.$booking->id
+            );
+
+            $booking->update([
+                'booking_status' => 'reservation_failed',
+                'payment_status' => 'payment_cancelled',
+                'amount_paid' => 0,
+                'pending_amount' => 0,
+                'cancellation_reason' => 'Supplier could not confirm the reservation. Your card authorization was released.',
+                'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                    'reservation_final_error' => $finalError,
+                    'reservation_failed_at' => now()->toIso8601String(),
+                    'stripe_authorization_released_at' => now()->toIso8601String(),
+                ]),
+            ]);
+            $booking->payments()->where('payment_status', 'authorized')->update([
+                'payment_status' => 'authorization_released',
+            ]);
+            $booking->amounts?->update([
+                'booking_paid_amount' => 0,
+                'booking_pending_amount' => 0,
+                'admin_paid_amount' => 0,
+                'admin_pending_amount' => 0,
+            ]);
+
+            return 'released';
+        } catch (StripePaymentAlreadyCapturedException) {
+            $payment = $booking->payments()
+                ->where('transaction_id', $booking->stripe_payment_intent_id)
+                ->first();
+            $capturedAmount = round((float) ($payment?->amount ?? 0), 2);
+            $booking->update([
+                'booking_status' => 'reservation_failed',
+                'payment_status' => 'refund_pending',
+                'amount_paid' => $capturedAmount,
+                'pending_amount' => 0,
+                'cancellation_reason' => 'Supplier could not confirm the reservation. Captured payment requires a refund.',
+                'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                    'manual_refund_required' => true,
+                    'reservation_final_error' => $finalError,
+                    'stripe_capture_detected_after_supplier_failure_at' => now()->toIso8601String(),
+                ]),
+            ]);
+            $payment?->update(['payment_status' => BookingPayment::STATUS_SUCCEEDED]);
+            $booking->amounts?->update([
+                'booking_paid_amount' => $capturedAmount,
+                'booking_pending_amount' => 0,
+                'admin_paid_amount' => $booking->amounts->admin_total_amount,
+                'admin_pending_amount' => 0,
+            ]);
+
+            return 'captured';
+        } catch (Throwable $releaseError) {
+            $booking->update([
+                'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                    'reservation_manual_check' => true,
+                    'authorization_release_error' => substr($releaseError->getMessage(), 0, 500),
+                ]),
+            ]);
+            Log::critical('TriggerProviderReservationJob: Stripe authorization release needs manual review', [
+                'booking_id' => $booking->id,
+                'error' => $releaseError->getMessage(),
+            ]);
+
+            return 'failed';
+        }
     }
 
     private function notifyCustomerReservationFailed(Booking $booking): void
@@ -200,6 +338,24 @@ class TriggerProviderReservationJob implements ShouldQueue
             }
         } catch (Throwable $e) {
             Log::warning('TriggerProviderReservationJob: failed to notify admin of reservation failure', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function notifyAdminManualCheck(Booking $booking, string $reason): void
+    {
+        try {
+            $admin = User::where('email', config('admin.email'))->first();
+            if ($admin) {
+                AdminReservationManualCheckNotification::sendOnce(
+                    $admin,
+                    new AdminReservationManualCheckNotification($booking, $reason)
+                );
+            }
+        } catch (Throwable $e) {
+            Log::warning('TriggerProviderReservationJob: failed to notify admin of capture review', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
             ]);

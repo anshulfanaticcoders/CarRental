@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\StripeCheckoutPayload;
 use App\Models\User;
 use App\Notifications\Payment\AdminReservationManualCheckNotification;
+use App\Services\ProviderBookingCancellationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -119,6 +120,75 @@ class RetryPendingProviderReservationsTest extends TestCase
 
         Queue::assertPushed(TriggerProviderReservationJob::class,
             fn ($job) => $job->bookingId === $booking->id);
+    }
+
+    #[Test]
+    public function a_stuck_authorized_supplier_booking_is_swept_too(): void
+    {
+        Queue::fake();
+        $booking = $this->booking([
+            'booking_status' => 'supplier_pending',
+            'payment_status' => 'authorized',
+            'amount_paid' => 0,
+            'pending_amount' => 100,
+        ]);
+        $this->payloadFor($booking);
+
+        $this->artisan('bookings:retry-provider-reservations')->assertSuccessful();
+
+        Queue::assertPushed(TriggerProviderReservationJob::class,
+            fn ($job) => $job->bookingId === $booking->id);
+    }
+
+    #[Test]
+    public function an_authorized_booking_with_a_supplier_reference_is_redispatched_for_capture_only(): void
+    {
+        Queue::fake();
+        $booking = $this->booking([
+            'booking_status' => 'supplier_pending',
+            'payment_status' => 'authorized',
+            'provider_booking_ref' => 'EMR-READY-FOR-CAPTURE',
+            'amount_paid' => 0,
+            'pending_amount' => 100,
+            'provider_metadata' => [
+                'reservation_manual_check' => true,
+                'payment_capture_manual_check' => true,
+            ],
+        ]);
+        $this->payloadFor($booking);
+
+        $this->artisan('bookings:retry-provider-reservations')->assertSuccessful();
+
+        Queue::assertPushed(TriggerProviderReservationJob::class,
+            fn ($job) => $job->bookingId === $booking->id);
+    }
+
+    #[Test]
+    public function a_cancelled_booking_with_a_pending_authorization_release_is_retried_safely(): void
+    {
+        Queue::fake();
+        $booking = $this->booking([
+            'booking_status' => 'cancelled',
+            'payment_status' => 'authorized',
+            'amount_paid' => 0,
+            'pending_amount' => 100,
+            'cancellation_reason' => 'Customer changed plans.',
+            'provider_metadata' => [
+                'cancellation_authorization_release_pending' => true,
+                'authorization_release_error' => 'Stripe temporarily unavailable',
+            ],
+        ]);
+
+        $cancellations = \Mockery::mock(ProviderBookingCancellationService::class);
+        $cancellations->shouldReceive('cancel')
+            ->once()
+            ->with($booking->id, 'Customer changed plans.', 'Automated recovery')
+            ->andReturn(['success' => true, 'booking' => $booking]);
+        $this->app->instance(ProviderBookingCancellationService::class, $cancellations);
+
+        $this->artisan('bookings:retry-provider-reservations')->assertSuccessful();
+
+        Queue::assertNothingPushed();
     }
 
     #[Test]

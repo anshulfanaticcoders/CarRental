@@ -51,19 +51,21 @@ class BookingDashboardController extends Controller
     {
         $validated = $request->validate([
             'cancellation_reason' => 'required|string|min:3|max:500',
+            'supplier_checked' => 'sometimes|boolean',
         ]);
 
         $booking = Booking::with(['customer', 'vehicle', 'amounts'])->findOrFail($id);
-
-        if ($booking->booking_status === 'cancelled') {
-            return back()->with('error', 'Booking is already cancelled.');
-        }
 
         $customer = $booking->customer;
         $vehicle = $booking->vehicle_id ? Vehicle::find($booking->vehicle_id) : null;
         $reason = $validated['cancellation_reason'];
 
-        $result = app(ProviderBookingCancellationService::class)->cancel($booking->id, $reason, 'Admin');
+        $result = app(ProviderBookingCancellationService::class)->cancel(
+            $booking->id,
+            $reason,
+            'Admin #'.($request->user()?->id ?? 'unknown'),
+            $request->boolean('supplier_checked')
+        );
         if (! ($result['success'] ?? false)) {
             return back()->with('error', $result['message'] ?? 'Booking cancellation failed.');
         }
@@ -85,7 +87,9 @@ class BookingDashboardController extends Controller
     {
         $booking = Booking::findOrFail($id);
 
-        if (! empty($booking->provider_booking_ref)) {
+        $captureOnly = ! empty($booking->provider_booking_ref)
+            && $booking->payment_status === 'authorized';
+        if (! empty($booking->provider_booking_ref) && ! $captureOnly) {
             return back()->with('error', 'Booking #'.$booking->booking_number.' already has a supplier reservation.');
         }
         if (! $booking->provider_source || strtolower($booking->provider_source) === 'internal') {
@@ -94,7 +98,7 @@ class BookingDashboardController extends Controller
         if (in_array($booking->booking_status, ['cancelled', 'rejected', 'expired', 'completed'], true)) {
             return back()->with('error', 'Booking #'.$booking->booking_number.' is '.$booking->booking_status.' — not eligible for a reservation retry.');
         }
-        if (! in_array($booking->payment_status, ['partial', 'paid'], true)) {
+        if (! in_array($booking->payment_status, ['authorized', 'partial', 'paid'], true)) {
             return back()->with('error', 'Booking #'.$booking->booking_number.' is not paid — a supplier reservation cannot be created.');
         }
 
@@ -102,8 +106,10 @@ class BookingDashboardController extends Controller
         // reservation (the confirmation timed out before the reference was
         // stored). Blind redispatch would book a second car — the admin must
         // confirm they checked the supplier portal first.
-        $outcomeUnknown = ! empty($booking->provider_metadata['reservation_manual_check'])
-            || ! empty($booking->provider_metadata['reservation_unknown_at']);
+        $outcomeUnknown = ! $captureOnly && (
+            ! empty($booking->provider_metadata['reservation_manual_check'])
+            || ! empty($booking->provider_metadata['reservation_unknown_at'])
+        );
         if ($outcomeUnknown && ! $request->boolean('supplier_checked')) {
             return back()->with('error', 'The supplier may already hold this reservation (the outcome was unknown). Check the supplier portal for booking #'.$booking->booking_number.' first, then confirm the retry.');
         }
@@ -118,12 +124,16 @@ class BookingDashboardController extends Controller
                 'manual_retry_at' => now()->toIso8601String(),
                 'manual_retry_by' => $request->user()?->id,
                 'reservation_manual_check' => false,
+                'payment_capture_manual_check' => false,
+                'capture_rescue_exhausted' => false,
             ]),
         ];
         // An explicit admin retry un-fails the booking: the reservation job
         // refuses to reserve for a reservation_failed status (by design).
         if ($booking->booking_status === 'reservation_failed') {
-            $updates['booking_status'] = 'confirmed';
+            $updates['booking_status'] = $booking->payment_status === 'authorized'
+                ? 'supplier_pending'
+                : 'confirmed';
         }
         $booking->update($updates);
 
@@ -295,8 +305,12 @@ class BookingDashboardController extends Controller
             $bookings
                 ->whereNotNull('provider_source')
                 ->where('provider_source', '!=', 'internal')
-                ->whereNull('provider_booking_ref')
-                ->whereIn('booking_status', ['pending', 'confirmed']);
+                ->where(function ($query) {
+                    $query->whereNull('provider_booking_ref')
+                        ->orWhere('provider_booking_ref', '')
+                        ->orWhere('payment_status', 'authorized');
+                })
+                ->whereIn('booking_status', ['supplier_pending', 'pending', 'confirmed']);
         } elseif ($statusFilter === 'rescue') {
             // Everything the rescue banner counts — union of all problem states.
             $bookings->where(function ($query) {
@@ -306,8 +320,12 @@ class BookingDashboardController extends Controller
                     ->orWhere(function ($providerQuery) {
                         $providerQuery->whereNotNull('provider_source')
                             ->where('provider_source', '!=', 'internal')
-                            ->whereNull('provider_booking_ref')
-                            ->whereIn('booking_status', ['pending', 'confirmed']);
+                            ->where(function ($query) {
+                                $query->whereNull('provider_booking_ref')
+                                    ->orWhere('provider_booking_ref', '')
+                                    ->orWhere('payment_status', 'authorized');
+                            })
+                            ->whereIn('booking_status', ['supplier_pending', 'pending', 'confirmed']);
                     });
             });
         } elseif ($statusFilter === 'refund_pending') {
@@ -334,7 +352,7 @@ class BookingDashboardController extends Controller
         // Get booking status counts
         $statusCounts = [
             'total' => Booking::count(),
-            'pending' => Booking::where('booking_status', 'pending')->count(),
+            'pending' => Booking::whereIn('booking_status', ['supplier_pending', 'pending'])->count(),
             'confirmed' => Booking::where('booking_status', 'confirmed')->count(),
             'completed' => Booking::where('booking_status', 'completed')->count(),
             'cancelled' => Booking::where('booking_status', 'cancelled')->count(),
@@ -345,8 +363,12 @@ class BookingDashboardController extends Controller
             'needs_correction' => Booking::where('provider_metadata->needs_correction', true)->count(),
             'provider_pending' => Booking::whereNotNull('provider_source')
                 ->where('provider_source', '!=', 'internal')
-                ->whereNull('provider_booking_ref')
-                ->whereIn('booking_status', ['pending', 'confirmed'])
+                ->where(function ($query) {
+                    $query->whereNull('provider_booking_ref')
+                        ->orWhere('provider_booking_ref', '')
+                        ->orWhere('payment_status', 'authorized');
+                })
+                ->whereIn('booking_status', ['supplier_pending', 'pending', 'confirmed'])
                 ->count(),
             'rescue_total' => Booking::where(function ($query) {
                 $query->whereIn('booking_status', ['reservation_failed', 'rejected'])
@@ -355,8 +377,12 @@ class BookingDashboardController extends Controller
                     ->orWhere(function ($providerQuery) {
                         $providerQuery->whereNotNull('provider_source')
                             ->where('provider_source', '!=', 'internal')
-                            ->whereNull('provider_booking_ref')
-                            ->whereIn('booking_status', ['pending', 'confirmed']);
+                            ->where(function ($query) {
+                                $query->whereNull('provider_booking_ref')
+                                    ->orWhere('provider_booking_ref', '')
+                                    ->orWhere('payment_status', 'authorized');
+                            })
+                            ->whereIn('booking_status', ['supplier_pending', 'pending', 'confirmed']);
                     });
             })->count(),
         ];

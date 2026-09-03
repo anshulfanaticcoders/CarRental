@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\ReservationOutcomeUnknownException;
+use App\Exceptions\StripeAuthorizationAmountMismatchException;
 use App\Jobs\SendAwinConversion;
 use App\Models\Booking;
 use App\Models\BookingExtra;
@@ -213,7 +214,7 @@ class StripeBookingService
      * payable. Throwing routes the mismatch through guardedStep → the booking
      * survives and gets the NEEDS CORRECTION flag + admin alert.
      */
-    private function reconcileChargedAmount(Booking $booking, $session, object $metadata): void
+    private function reconcileChargedAmount(?Booking $booking, $session, object $metadata): void
     {
         $chargedMinor = $session->amount_total ?? null;
         $chargedCurrency = strtoupper((string) ($session->currency ?? ''));
@@ -222,7 +223,7 @@ class StripeBookingService
         }
 
         $expected = (float) ($metadata->payable_amount ?? 0);
-        $expectedCurrency = strtoupper((string) ($metadata->currency ?? $booking->booking_currency ?? ''));
+        $expectedCurrency = strtoupper((string) ($metadata->currency ?? $booking?->booking_currency ?? ''));
 
         $currencyMatches = $expectedCurrency === '' || $expectedCurrency === $chargedCurrency;
         // ±1 minor unit tolerance for rounding at conversion boundaries.
@@ -232,24 +233,33 @@ class StripeBookingService
             return;
         }
 
-        $booking->update([
-            'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
-                'amount_mismatch' => [
-                    'charged_minor' => (int) $chargedMinor,
-                    'charged_currency' => $chargedCurrency,
-                    'expected_amount' => $expected,
-                    'expected_currency' => $expectedCurrency,
-                ],
-            ]),
-        ]);
+        $mismatch = [
+            'charged_minor' => (int) $chargedMinor,
+            'charged_currency' => $chargedCurrency,
+            'expected_amount' => $expected,
+            'expected_currency' => $expectedCurrency,
+        ];
+        if ($booking) {
+            $booking->update([
+                'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                    'amount_mismatch' => $mismatch,
+                ]),
+            ]);
+        }
 
-        throw new \RuntimeException(sprintf(
-            'Stripe captured %d (minor units) %s but checkout metadata expected %.2f %s',
+        $message = sprintf(
+            'Stripe amount is %d (minor units) %s but checkout metadata expected %.2f %s',
             (int) $chargedMinor,
             $chargedCurrency,
             $expected,
             $expectedCurrency
-        ));
+        );
+
+        if (! $booking) {
+            throw new StripeAuthorizationAmountMismatchException($message);
+        }
+
+        throw new \RuntimeException($message);
     }
 
     private function toMinorUnits(float $amount, string $currencyCode): int
@@ -287,6 +297,68 @@ class StripeBookingService
         $metadata = $payload->payload['full_metadata'] ?? null;
 
         return is_array($metadata) && $metadata !== [] ? $metadata : null;
+    }
+
+    /**
+     * Re-search the supplier after card authorization. The Checkout snapshot is
+     * only a comparison baseline; its gateway search id/context may already be
+     * expired by the time the customer returns from Stripe.
+     */
+    public function refreshAuthorizedSupplierMetadata(Booking $booking, array $metadata): array
+    {
+        $payload = StripeCheckoutPayload::where('stripe_session_id', $booking->stripe_session_id)->first();
+        $snapshot = $payload?->payload['supplier_revalidation'] ?? null;
+        if (! is_array($snapshot)
+            || ! is_array($snapshot['validated'] ?? null)
+            || ! is_array($snapshot['verified_prices'] ?? null)
+            || empty($snapshot['search_session_id'])) {
+            throw new \RuntimeException('Fresh supplier quote baseline is missing for authorized booking '.$booking->id.'.');
+        }
+
+        $result = app(ProviderQuoteRevalidationService::class)->revalidate(
+            $snapshot['validated'],
+            $snapshot['verified_prices'],
+            (string) $snapshot['search_session_id']
+        );
+        if (! ($result['valid'] ?? false)) {
+            throw new \RuntimeException(
+                (string) ($result['error'] ?? 'Supplier quote is no longer available after card authorization.')
+            );
+        }
+
+        $freshVehicle = is_array($result['vehicle'] ?? null) ? $result['vehicle'] : [];
+        $freshVehicleId = trim((string) (
+            $freshVehicle['gateway_vehicle_id']
+            ?? $freshVehicle['id']
+            ?? ''
+        ));
+        $freshSearchId = trim((string) ($result['gateway_search_id'] ?? ''));
+        $freshContext = is_array($result['gateway_vehicle_context'] ?? null)
+            ? $result['gateway_vehicle_context']
+            : [];
+        if ($freshVehicleId === '' || $freshSearchId === '' || $freshContext === []) {
+            throw new \RuntimeException('Fresh supplier quote did not return bookable gateway context.');
+        }
+
+        $freshContext['id'] = $freshVehicleId;
+        $freshContext['gateway_vehicle_id'] = $freshVehicleId;
+        $freshContext['search_id'] = $freshSearchId;
+        $freshContext['gateway_search_id'] = $freshSearchId;
+
+        $booking->update([
+            'provider_vehicle_id' => $freshVehicleId,
+            'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                'authorized_quote_revalidated_at' => now()->toIso8601String(),
+                'authorized_quote_gateway_search_id' => $freshSearchId,
+                'authorized_quote_gateway_vehicle_id' => $freshVehicleId,
+            ]),
+        ]);
+
+        return array_merge($metadata, [
+            'gateway_vehicle_id' => $freshVehicleId,
+            'gateway_search_id' => $freshSearchId,
+            'gateway_vehicle_context' => $freshContext,
+        ]);
     }
 
     public function resolveCustomerFromCheckoutPayload(array $payload, ?int $userId = null): array
@@ -398,6 +470,14 @@ class StripeBookingService
             return null;
         }
 
+        $authorizedSupplier = $this->isManualSupplierCaptureMetadata($metadata);
+        if ($authorizedSupplier) {
+            // Funds are only authorized at this point, so unlike legacy paid
+            // sessions an amount/currency mismatch can and must fail closed
+            // before creating a booking or contacting the supplier.
+            $this->reconcileChargedAmount(null, $session, $metadata);
+        }
+
         // Idempotency check
         $existingBooking = Booking::where('stripe_session_id', $session->id)->first();
         if (! $existingBooking && ! empty($metadata->booking_id)) {
@@ -405,7 +485,7 @@ class StripeBookingService
         }
         // Terminal states short-circuit too: a success-URL revisit must never
         // resurrect a cancelled/failed/rejected booking back to confirmed.
-        if ($existingBooking && in_array($existingBooking->booking_status, ['confirmed', 'completed', 'cancelled', 'reservation_failed', 'rejected'], true)) {
+        if ($existingBooking && in_array($existingBooking->booking_status, ['supplier_pending', 'confirmed', 'completed', 'cancelled', 'reservation_failed', 'rejected'], true)) {
             Log::info('StripeBookingService: Booking already in terminal state', [
                 'booking_id' => $existingBooking->id,
                 'booking_status' => $existingBooking->booking_status,
@@ -513,12 +593,18 @@ class StripeBookingService
                 ? (float) $metadata->extras_total
                 : 0.0;
             $bookingTotalAmount = (float) ($metadata->total_amount ?? $existingBooking?->total_amount ?? 0);
-            $bookingPaidAmount = (float) ($metadata->payable_amount ?? $existingBooking?->amount_paid ?? 0);
-            $bookingPendingAmount = isset($metadata->pending_amount)
+            $capturableAmount = (float) ($metadata->payable_amount ?? $existingBooking?->amount_paid ?? 0);
+            $postCapturePendingAmount = isset($metadata->pending_amount)
                 ? (float) $metadata->pending_amount
                 : ($bookingTotalAmount > 0
-                    ? max(round($bookingTotalAmount - $bookingPaidAmount, 2), 0)
+                    ? max(round($bookingTotalAmount - $capturableAmount, 2), 0)
                     : (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? $existingBooking?->pending_amount ?? 0));
+            $bookingPaidAmount = $authorizedSupplier ? 0.0 : $capturableAmount;
+            $bookingPendingAmount = $authorizedSupplier ? $bookingTotalAmount : $postCapturePendingAmount;
+            $bookingPaymentStatus = $authorizedSupplier
+                ? 'authorized'
+                : ($bookingPendingAmount > 0 ? 'partial' : 'paid');
+            $bookingStatus = $authorizedSupplier ? 'supplier_pending' : 'confirmed';
 
             if ($existingBooking) {
                 $booking = $existingBooking;
@@ -549,8 +635,8 @@ class StripeBookingService
                     'amount_paid' => $bookingPaidAmount,
                     'pending_amount' => $bookingPendingAmount,
                     'booking_currency' => $bookingCurrency,
-                    'payment_status' => $bookingPendingAmount > 0 ? 'partial' : 'paid',
-                    'booking_status' => 'confirmed',
+                    'payment_status' => $bookingPaymentStatus,
+                    'booking_status' => $bookingStatus,
                     'stripe_session_id' => $session->id,
                     'stripe_payment_intent_id' => $session->payment_intent,
                     'provider_booking_ref' => $booking->provider_booking_ref ?? ($metadata->provider_booking_ref ?? null),
@@ -580,8 +666,8 @@ class StripeBookingService
                     'amount_paid' => $bookingPaidAmount,
                     'pending_amount' => $bookingPendingAmount,
                     'booking_currency' => $bookingCurrency,
-                    'payment_status' => $bookingPendingAmount > 0 ? 'partial' : 'paid',
-                    'booking_status' => 'confirmed',
+                    'payment_status' => $bookingPaymentStatus,
+                    'booking_status' => $bookingStatus,
                     'stripe_session_id' => $session->id,
                     'stripe_payment_intent_id' => $session->payment_intent,
                     'provider_booking_ref' => $metadata->provider_booking_ref ?? null,
@@ -676,8 +762,8 @@ class StripeBookingService
             $adminRevenueAmount = round((float) ($metadata->payable_amount ?? 0), 2);
             $adminAmounts = [
                 'total_amount' => $adminRevenueAmount,
-                'amount_paid' => $adminRevenueAmount,
-                'pending_amount' => 0,
+                'amount_paid' => $authorizedSupplier ? 0 : $adminRevenueAmount,
+                'pending_amount' => $authorizedSupplier ? $adminRevenueAmount : 0,
                 // Preserve an explicit non-zero value so BookingAmountService does not
                 // reinterpret this as "full booking extra amount" fallback.
                 'extra_amount' => $adminRevenueAmount,
@@ -694,7 +780,7 @@ class StripeBookingService
 
             Log::info('StripeBookingService: Booking record created', ['booking_id' => $booking->id]);
 
-            $this->guardedStep('payment_record', $degraded, function () use ($booking, $session, $metadata, $bookingCurrency) {
+            $this->guardedStep('payment_record', $degraded, function () use ($booking, $session, $metadata, $bookingCurrency, $authorizedSupplier) {
                 // SQL: `transaction_id = NULL` matches nothing, so a session
                 // without a payment_intent would insert a duplicate row on
                 // every webhook retry. Match the null explicitly.
@@ -713,7 +799,7 @@ class StripeBookingService
                         'transaction_id' => $session->payment_intent,
                         'amount' => (float) ($metadata->payable_amount ?? 0),
                         'currency' => $bookingCurrency,
-                        'payment_status' => 'succeeded',
+                        'payment_status' => $authorizedSupplier ? 'authorized' : 'succeeded',
                         'payment_date' => now(),
                     ]);
                 }
@@ -801,18 +887,20 @@ class StripeBookingService
                 }
             });
 
-            $this->guardedStep('awin_conversion', $degraded, function () use ($booking, $metadata) {
-                $awcValue = $metadata->awc ?? null;
-                if (config('awin.enabled')) {
-                    Log::channel('awin')->info('StripeBookingService: Dispatching Awin conversion', [
-                        'booking_id' => $booking->id,
-                        'booking_number' => $booking->booking_number,
-                        'has_awc' => ! empty($awcValue),
-                    ]);
+            if (! $authorizedSupplier) {
+                $this->guardedStep('awin_conversion', $degraded, function () use ($booking, $metadata) {
+                    $awcValue = $metadata->awc ?? null;
+                    if (config('awin.enabled')) {
+                        Log::channel('awin')->info('StripeBookingService: Dispatching Awin conversion', [
+                            'booking_id' => $booking->id,
+                            'booking_number' => $booking->booking_number,
+                            'has_awc' => ! empty($awcValue),
+                        ]);
 
-                    SendAwinConversion::dispatch($booking->id, $awcValue);
-                }
-            });
+                        SendAwinConversion::dispatch($booking->id, $awcValue);
+                    }
+                });
+            }
 
             // Create affiliate commission if QR scan tracking data exists
             // Link the server-side Trabber click record to its booking so the
@@ -827,49 +915,53 @@ class StripeBookingService
             // Report the booking back to Skyscanner's conversion tracking —
             // the correlation service existed but had NO caller: 100% of
             // Skyscanner-sourced bookings were invisible to the partner.
-            $this->guardedStep('skyscanner_correlation', $degraded, function () use ($booking, $metadata) {
-                $redirectId = (string) ($metadata->skyscanner_redirectid ?? '');
-                if ($redirectId === '') {
-                    return;
-                }
+            if (! $authorizedSupplier) {
+                $this->guardedStep('skyscanner_correlation', $degraded, function () use ($booking, $metadata) {
+                    $redirectId = (string) ($metadata->skyscanner_redirectid ?? '');
+                    if ($redirectId === '') {
+                        return;
+                    }
 
-                app(\App\Services\Skyscanner\CarHireBookingCorrelationService::class)->correlateBooking($redirectId, [
-                    'booking_reference' => $booking->booking_number,
-                    'provider_booking_ref' => (string) ($booking->provider_booking_ref ?? ''),
-                    'booking_currency' => (string) ($booking->booking_currency ?? ''),
-                    'total_amount' => (float) $booking->total_amount,
-                    'booking_status' => (string) $booking->booking_status,
-                    'pickup_date' => optional($booking->pickup_date)->toDateString() ?? '',
-                    'return_date' => optional($booking->return_date)->toDateString() ?? '',
-                ]);
-            });
+                    app(\App\Services\Skyscanner\CarHireBookingCorrelationService::class)->correlateBooking($redirectId, [
+                        'booking_reference' => $booking->booking_number,
+                        'provider_booking_ref' => (string) ($booking->provider_booking_ref ?? ''),
+                        'booking_currency' => (string) ($booking->booking_currency ?? ''),
+                        'total_amount' => (float) $booking->total_amount,
+                        'booking_status' => (string) $booking->booking_status,
+                        'pickup_date' => optional($booking->pickup_date)->toDateString() ?? '',
+                        'return_date' => optional($booking->return_date)->toDateString() ?? '',
+                    ]);
+                });
+            }
 
-            $this->guardedStep('affiliate_commission', $degraded, function () use ($booking, $customer, $metadata) {
-                $affiliateBusinessId = $metadata->affiliate_business_id ?? null;
-                if (! $affiliateBusinessId) {
-                    return;
-                }
+            if (! $authorizedSupplier) {
+                $this->guardedStep('affiliate_commission', $degraded, function () use ($booking, $customer, $metadata) {
+                    $affiliateBusinessId = $metadata->affiliate_business_id ?? null;
+                    if (! $affiliateBusinessId) {
+                        return;
+                    }
 
-                $affiliateData = [
-                    'business_id' => $affiliateBusinessId,
-                    'customer_scan_id' => $metadata->affiliate_scan_id ?? null,
-                ];
-                $basePrice = (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? 0);
-                $affiliateCustomerUserId = $customer->user_id
-                    ?? ($metadata->user_id ?? null)
-                    ?? (! empty($metadata->affiliate_scan_id)
-                        ? \App\Models\Affiliate\AffiliateCustomerScan::whereKey($metadata->affiliate_scan_id)->value('customer_id')
-                        : null);
+                    $affiliateData = [
+                        'business_id' => $affiliateBusinessId,
+                        'customer_scan_id' => $metadata->affiliate_scan_id ?? null,
+                    ];
+                    $basePrice = (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? 0);
+                    $affiliateCustomerUserId = $customer->user_id
+                        ?? ($metadata->user_id ?? null)
+                        ?? (! empty($metadata->affiliate_scan_id)
+                            ? \App\Models\Affiliate\AffiliateCustomerScan::whereKey($metadata->affiliate_scan_id)->value('customer_id')
+                            : null);
 
-                app(\App\Services\Affiliate\ScoutCommissionService::class)->createCommission(
-                    $booking->id,
-                    $affiliateCustomerUserId ? (int) $affiliateCustomerUserId : null,
-                    $basePrice,
-                    'platform',
-                    $affiliateData,
-                    $booking->booking_currency ?? 'EUR'
-                );
-            });
+                    app(\App\Services\Affiliate\ScoutCommissionService::class)->createCommission(
+                        $booking->id,
+                        $affiliateCustomerUserId ? (int) $affiliateCustomerUserId : null,
+                        $basePrice,
+                        'platform',
+                        $affiliateData,
+                        $booking->booking_currency ?? 'EUR'
+                    );
+                });
+            }
 
             $this->guardedStep('booking_notifications', $degraded, function () use ($booking, $customer, $customerData) {
                 $this->notifyBookingCreated($booking, $customer, $customerData['temp_password']);
@@ -1648,6 +1740,143 @@ class StripeBookingService
         return in_array($value, [true, 1, '1', 'true', 'yes', 'on'], true);
     }
 
+    public function isManualSupplierCaptureMetadata(object|array|null $metadata): bool
+    {
+        $metadata = (object) ($metadata ?? []);
+
+        return ($metadata->capture_policy ?? null) === 'manual_supplier'
+            && strtolower((string) ($metadata->vehicle_source ?? '')) !== 'internal';
+    }
+
+    /**
+     * Capture an authorized supplier payment only after the supplier reference
+     * is durable, then make the local accounting/booking state truthful.
+     * Stripe capture is idempotent; a retry after a DB failure safely resumes
+     * here without creating a second supplier reservation.
+     */
+    public function finalizeAuthorizedSupplierBooking(Booking $booking, object $metadata, $paymentLifecycle): void
+    {
+        $booking->refresh();
+        if (empty($booking->provider_booking_ref)) {
+            throw new \LogicException('Cannot capture supplier payment before a supplier reference is stored.');
+        }
+
+        if ($booking->payment_status !== 'authorized') {
+            return;
+        }
+
+        $paymentIntentId = trim((string) $booking->stripe_payment_intent_id);
+        if ($paymentIntentId === '') {
+            throw new \RuntimeException('Authorized supplier booking has no Stripe PaymentIntent.');
+        }
+
+        $paymentLifecycle->captureAuthorized(
+            $paymentIntentId,
+            'capture_booking_'.$booking->id
+        );
+
+        $payableAmount = round((float) ($metadata->payable_amount ?? 0), 2);
+        $pendingAmount = isset($metadata->pending_amount)
+            ? round((float) $metadata->pending_amount, 2)
+            : max(round((float) $booking->total_amount - $payableAmount, 2), 0);
+        $paymentStatus = $pendingAmount > 0 ? 'partial' : 'paid';
+
+        DB::transaction(function () use ($booking, $payableAmount, $pendingAmount, $paymentStatus): void {
+            $booking->update([
+                'booking_status' => 'confirmed',
+                'payment_status' => $paymentStatus,
+                'amount_paid' => $payableAmount,
+                'pending_amount' => $pendingAmount,
+                'provider_metadata' => array_merge($booking->provider_metadata ?? [], [
+                    'stripe_captured_at' => now()->toIso8601String(),
+                ]),
+            ]);
+
+            $booking->payments()
+                ->where('transaction_id', $booking->stripe_payment_intent_id)
+                ->update([
+                    'payment_status' => BookingPayment::STATUS_SUCCEEDED,
+                    'payment_date' => now(),
+                ]);
+
+            if ($booking->amounts) {
+                $booking->amounts->update([
+                    'booking_paid_amount' => $payableAmount,
+                    'booking_pending_amount' => $pendingAmount,
+                    'admin_paid_amount' => $booking->amounts->admin_total_amount,
+                    'admin_pending_amount' => 0,
+                ]);
+            }
+
+            StripeCheckoutPayload::where('stripe_session_id', $booking->stripe_session_id)->update([
+                'payment_status' => 'paid',
+                'fulfilment_status' => 'fulfilled',
+                'fulfilled_at' => now(),
+                'last_error' => null,
+            ]);
+        });
+
+        $booking = $booking->fresh(['customer']);
+        $this->runConfirmedSupplierSideEffects($booking, $metadata);
+        $this->notifyCustomerSupplierConfirmed($booking);
+    }
+
+    private function runConfirmedSupplierSideEffects(Booking $booking, object $metadata): void
+    {
+        $degraded = [];
+
+        $this->guardedStep('awin_conversion', $degraded, function () use ($booking, $metadata): void {
+            if (config('awin.enabled')) {
+                SendAwinConversion::dispatch($booking->id, $metadata->awc ?? null);
+            }
+        });
+
+        $this->guardedStep('skyscanner_correlation', $degraded, function () use ($booking, $metadata): void {
+            $redirectId = (string) ($metadata->skyscanner_redirectid ?? '');
+            if ($redirectId === '') {
+                return;
+            }
+
+            app(\App\Services\Skyscanner\CarHireBookingCorrelationService::class)->correlateBooking($redirectId, [
+                'booking_reference' => $booking->booking_number,
+                'provider_booking_ref' => (string) $booking->provider_booking_ref,
+                'booking_currency' => (string) ($booking->booking_currency ?? ''),
+                'total_amount' => (float) $booking->total_amount,
+                'booking_status' => (string) $booking->booking_status,
+                'pickup_date' => optional($booking->pickup_date)->toDateString() ?? '',
+                'return_date' => optional($booking->return_date)->toDateString() ?? '',
+            ]);
+        });
+
+        $this->guardedStep('affiliate_commission', $degraded, function () use ($booking, $metadata): void {
+            $affiliateBusinessId = $metadata->affiliate_business_id ?? null;
+            if (! $affiliateBusinessId) {
+                return;
+            }
+
+            $customer = $booking->customer;
+            $affiliateCustomerUserId = $customer?->user_id
+                ?? ($metadata->user_id ?? null)
+                ?? (! empty($metadata->affiliate_scan_id)
+                    ? \App\Models\Affiliate\AffiliateCustomerScan::whereKey($metadata->affiliate_scan_id)->value('customer_id')
+                    : null);
+
+            app(\App\Services\Affiliate\ScoutCommissionService::class)->createCommission(
+                $booking->id,
+                $affiliateCustomerUserId ? (int) $affiliateCustomerUserId : null,
+                (float) ($metadata->total_amount_net ?? $metadata->provider_grand_total ?? 0),
+                'platform',
+                [
+                    'business_id' => $affiliateBusinessId,
+                    'customer_scan_id' => $metadata->affiliate_scan_id ?? null,
+                ],
+                $booking->booking_currency ?? 'EUR'
+            );
+        });
+
+        $this->flagBookingForCorrection($booking, [], $degraded);
+    }
+
     protected function normalizeCurrencyCode($currency): string
     {
         $value = $currency ?? 'EUR';
@@ -1714,7 +1943,9 @@ class StripeBookingService
             }
 
             if ($hasProviderRef) {
-                $this->notifyCustomerSupplierConfirmed($booking);
+                if ($booking->payment_status !== 'authorized') {
+                    $this->notifyCustomerSupplierConfirmed($booking);
+                }
             }
 
             return;
@@ -1823,8 +2054,11 @@ class StripeBookingService
         string $gatewayVehicleId,
         string $gatewaySearchId
     ): array {
-        $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
-        $context = $extrasPayload['gateway_vehicle_context'] ?? null;
+        $context = $metadata->gateway_vehicle_context ?? null;
+        if (! is_array($context) || $context === []) {
+            $extrasPayload = $this->resolveExtrasPayloadFromMetadata($metadata);
+            $context = $extrasPayload['gateway_vehicle_context'] ?? null;
+        }
 
         if (! is_array($context) || $context === []) {
             return [];
@@ -1996,7 +2230,12 @@ class StripeBookingService
                     );
                 }
 
-                $this->notifyCustomerSupplierConfirmed($booking);
+                // Manual-capture supplier checkouts are not fully confirmed to
+                // the customer until Stripe capture succeeds. The finalizer is
+                // the sole notification point for that flow.
+                if ($booking->payment_status !== 'authorized') {
+                    $this->notifyCustomerSupplierConfirmed($booking);
+                }
 
                 return;
             }
@@ -2063,10 +2302,16 @@ class StripeBookingService
         // Gateway reached the supplier but the supplier did not reply in time.
         if (is_array($result)) {
             $providerStatus = strtolower(trim((string) ($result['provider_status'] ?? '')));
-            if ($providerStatus === 'timeout_unknown') {
+            $status = strtolower(trim((string) ($result['status'] ?? '')));
+            $supplierBookingId = trim((string) ($result['supplier_booking_id'] ?? ''));
+            if (in_array($providerStatus, ['timeout_unknown', 'pending_unknown', 'pending'], true)
+                || $status === 'pending') {
                 return true;
             }
             if (! empty($result['supplier_data']['outcome_unknown'])) {
+                return true;
+            }
+            if ($status !== 'confirmed' && $supplierBookingId !== '') {
                 return true;
             }
         }
@@ -2076,11 +2321,37 @@ class StripeBookingService
         // unknown; a refused/unresolved connection never landed → retryable.
         if (is_array($lastError) && ($lastError['type'] ?? '') === 'connection') {
             $message = strtolower((string) ($lastError['message'] ?? ''));
-            foreach (['timed out', 'timeout', 'operation too slow', 'curl error 28'] as $needle) {
+            foreach ([
+                'timed out',
+                'timeout',
+                'operation too slow',
+                'curl error 28',
+                'connection reset',
+                'reset by peer',
+                'recv failure',
+                'unexpected eof',
+                'unexpected end of file',
+                'empty reply',
+                'server closed connection',
+                'premature eof',
+                'curl error 18',
+                'curl error 52',
+                'curl error 56',
+            ] as $needle) {
                 if (str_contains($message, $needle)) {
                     return true;
                 }
             }
+        }
+
+        // A 5xx from POST /bookings is ambiguous: the supplier may have
+        // confirmed before the gateway failed while persisting/returning the
+        // result. Blind retrying here risks a second reservation.
+        if (is_array($lastError)
+            && ($lastError['type'] ?? '') === 'http'
+            && strtolower((string) ($lastError['method'] ?? '')) === 'post'
+            && (int) ($lastError['status'] ?? 0) >= 500) {
+            return true;
         }
 
         return false;

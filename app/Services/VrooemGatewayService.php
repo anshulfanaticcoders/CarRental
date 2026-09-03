@@ -53,6 +53,21 @@ class VrooemGatewayService
     }
 
     /**
+     * Supplier reservations require both durable MySQL state and Redis locks.
+     * Search can degrade without Redis, but Checkout must fail closed before a
+     * card authorization when the booking path is not fully ready.
+     */
+    public function isReadyForBooking(): bool
+    {
+        $status = $this->request('GET', '/ready');
+
+        return is_array($status)
+            && ($status['status'] ?? null) === 'ready'
+            && ($status['redis'] ?? null) === 'connected'
+            && ($status['mysql'] ?? null) === 'connected';
+    }
+
+    /**
      * Search unified locations via the gateway.
      *
      * Returns array with keys: query, results, total

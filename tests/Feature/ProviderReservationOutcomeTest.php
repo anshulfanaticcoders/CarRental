@@ -71,6 +71,47 @@ class ProviderReservationOutcomeTest extends TestCase
     }
 
     #[Test]
+    public function laravel_to_gateway_connection_reset_is_treated_as_unknown(): void
+    {
+        Notification::fake();
+        $this->createAdminUser();
+        $booking = $this->createExternalBooking();
+
+        $this->mockGateway(null, [
+            'type' => 'connection',
+            'message' => 'Recv failure: Connection reset by peer',
+        ]);
+
+        $this->expectException(ReservationOutcomeUnknownException::class);
+        (new StripeBookingService)->triggerGatewayReservation($booking, $this->metadata());
+    }
+
+    #[Test]
+    public function a_gateway_server_error_after_booking_post_is_treated_as_unknown(): void
+    {
+        Notification::fake();
+        $admin = $this->createAdminUser();
+        $booking = $this->createExternalBooking();
+
+        $this->mockGateway(null, [
+            'type' => 'http',
+            'method' => 'post',
+            'status' => 502,
+            'body_preview' => 'Bad Gateway',
+        ]);
+
+        $this->expectException(ReservationOutcomeUnknownException::class);
+
+        try {
+            (new StripeBookingService)->triggerGatewayReservation($booking, $this->metadata());
+        } finally {
+            $booking->refresh();
+            $this->assertTrue((bool) ($booking->provider_metadata['reservation_manual_check'] ?? false));
+            Notification::assertSentTo($admin, AdminReservationManualCheckNotification::class);
+        }
+    }
+
+    #[Test]
     public function definite_failure_stays_retryable_and_is_not_manual_check(): void
     {
         Notification::fake();
@@ -100,6 +141,47 @@ class ProviderReservationOutcomeTest extends TestCase
         $booking->refresh();
         $this->assertArrayNotHasKey('reservation_manual_check', $booking->provider_metadata ?? []);
         Notification::assertNothingSent();
+    }
+
+    #[Test]
+    public function pending_supplier_response_is_unknown_and_is_never_retried_blindly(): void
+    {
+        Notification::fake();
+        $admin = $this->createAdminUser();
+        $booking = $this->createExternalBooking();
+
+        $this->mockGateway([
+            'status' => 'pending',
+            'provider_status' => 'pending',
+            'supplier_booking_id' => '',
+        ]);
+
+        $this->expectException(ReservationOutcomeUnknownException::class);
+
+        try {
+            (new StripeBookingService)->triggerGatewayReservation($booking, $this->metadata());
+        } finally {
+            $booking->refresh();
+            $this->assertTrue((bool) ($booking->provider_metadata['reservation_manual_check'] ?? false));
+            Notification::assertSentTo($admin, AdminReservationManualCheckNotification::class);
+        }
+    }
+
+    #[Test]
+    public function non_confirmed_response_with_a_supplier_reference_is_unknown(): void
+    {
+        Notification::fake();
+        $this->createAdminUser();
+        $booking = $this->createExternalBooking();
+
+        $this->mockGateway([
+            'status' => 'failed',
+            'provider_status' => 'failed',
+            'supplier_booking_id' => 'SUP-MAYBE-123',
+        ]);
+
+        $this->expectException(ReservationOutcomeUnknownException::class);
+        (new StripeBookingService)->triggerGatewayReservation($booking, $this->metadata());
     }
 
     #[Test]

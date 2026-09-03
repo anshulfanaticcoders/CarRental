@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\StripeCheckoutPayload;
 use App\Models\User;
 use App\Models\VendorProfile;
 use App\Notifications\Booking\BookingCancelledCustomerNotification;
@@ -31,6 +32,18 @@ class BookingController extends Controller
         $booking = Booking::with(['vehicle.images', 'extras', 'amounts', 'payments', 'offers'])
             ->where('stripe_session_id', $data['session_id'])
             ->first();
+        $checkoutPayload = StripeCheckoutPayload::where('stripe_session_id', $data['session_id'])->first();
+
+        if (! $booking && $checkoutPayload?->fulfilment_status === 'manual_review') {
+            $authorizationReleased = $checkoutPayload->payment_status === 'authorization_released';
+
+            return response()->json([
+                'status' => $authorizationReleased ? 'authorization_released' : 'review_required',
+                'message' => $authorizationReleased
+                    ? 'The supplier booking was not created and the card authorization was released. Your card was not charged.'
+                    : 'The supplier booking was stopped and our team has been alerted to review the card authorization.',
+            ]);
+        }
 
         // Fallback: webhook may not have run yet in dev, so we mirror the web
         // success page logic — fetch the session from Stripe and create the
@@ -75,12 +88,8 @@ class BookingController extends Controller
             return response()->json(['message' => 'Booking does not belong to this account.'], 403);
         }
 
-        $paid = in_array((string) $booking->payment_status, ['paid', 'partial'], true);
-        $bookingStatus = strtolower((string) ($booking->booking_status ?? ''));
-        $confirmed = $paid || in_array($bookingStatus, ['confirmed', 'completed', 'active'], true);
-
         return response()->json([
-            'status' => $confirmed ? 'confirmed' : 'pending',
+            ...$this->checkoutState($booking),
             'booking' => $this->transform($booking),
         ]);
     }
@@ -109,8 +118,55 @@ class BookingController extends Controller
         }
 
         return response()->json([
+            ...$this->checkoutState($booking),
             'booking' => $this->transform($booking),
         ]);
+    }
+
+    /** @return array{status: string, message?: string} */
+    private function checkoutState(Booking $booking): array
+    {
+        $bookingStatus = strtolower((string) ($booking->booking_status ?? ''));
+        $paymentStatus = strtolower((string) ($booking->payment_status ?? ''));
+        $providerMetadata = $booking->provider_metadata ?? [];
+        $authorizationNeedsReview = $paymentStatus === 'authorized'
+            && (! empty($providerMetadata['reservation_manual_check'])
+                || ! empty($providerMetadata['payment_capture_manual_check'])
+                || ! empty($providerMetadata['cancellation_authorization_release_pending']));
+
+        if ($authorizationNeedsReview) {
+            return [
+                'status' => 'review_required',
+                'message' => 'The supplier outcome or card authorization needs support review. Your card has not been captured automatically.',
+            ];
+        }
+
+        if ($paymentStatus === 'payment_cancelled') {
+            return [
+                'status' => 'authorization_released',
+                'message' => 'The card authorization was released. Your card was not charged.',
+            ];
+        }
+
+        if (! empty($providerMetadata['manual_refund_required'])
+            || in_array($bookingStatus, ['reservation_failed', 'rejected'], true)) {
+            return [
+                'status' => 'review_required',
+                'message' => 'This booking needs support review. Our team has been alerted.',
+            ];
+        }
+
+        if ($paymentStatus === 'authorized') {
+            return [
+                'status' => 'authorized',
+                'message' => 'Your card has not been charged. We are confirming the reservation with the supplier.',
+            ];
+        }
+
+        $confirmed = in_array($paymentStatus, ['paid', 'partial'], true)
+            || in_array($bookingStatus, ['confirmed', 'completed', 'active'], true);
+
+        return ['status' => $confirmed ? 'confirmed' : 'pending'];
     }
 
     public function downloadReceipt(Request $request, int $id)

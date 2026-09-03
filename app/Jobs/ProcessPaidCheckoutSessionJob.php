@@ -2,11 +2,14 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\StripeAuthorizationAmountMismatchException;
 use App\Models\Booking;
 use App\Models\StripeCheckoutPayload;
 use App\Models\User;
+use App\Notifications\Payment\AdminAuthorizationReviewNotification;
 use App\Notifications\Payment\AdminManualRefundRequiredNotification;
 use App\Services\StripeBookingService;
+use App\Services\StripePaymentLifecycleService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -50,7 +53,7 @@ class ProcessPaidCheckoutSessionJob implements ShouldBeUnique, ShouldQueue
         return $this->sessionId;
     }
 
-    public function handle(StripeBookingService $service): void
+    public function handle(StripeBookingService $service, $paymentLifecycle = null): void
     {
         $payload = StripeCheckoutPayload::firstOrCreate(
             ['stripe_session_id' => $this->sessionId],
@@ -77,6 +80,12 @@ class ProcessPaidCheckoutSessionJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        if ($payload->fulfilment_status === 'supplier_pending'
+            && $payload->booking_id
+            && Booking::whereKey($payload->booking_id)->exists()) {
+            return;
+        }
+
         $payload->update([
             'fulfilment_status' => 'processing',
             'fulfilment_attempts' => $payload->fulfilment_attempts + 1,
@@ -84,11 +93,20 @@ class ProcessPaidCheckoutSessionJob implements ShouldBeUnique, ShouldQueue
             'last_error' => null,
         ]);
 
+        $session = null;
+        $manualSupplierCapture = false;
+
         try {
             Stripe::setApiKey(config('services.stripe.secret'));
             $session = StripeSession::retrieve($this->sessionId);
+            $manualSupplierCapture = $service->isManualSupplierCaptureMetadata($session->metadata ?? null);
+            $authorized = false;
+            if ($manualSupplierCapture && ! empty($session->payment_intent)) {
+                $paymentLifecycle ??= app(StripePaymentLifecycleService::class);
+                $authorized = $paymentLifecycle->isAuthorized((string) $session->payment_intent);
+            }
 
-            if (($session->payment_status ?? null) !== 'paid') {
+            if (($session->payment_status ?? null) !== 'paid' && ! $authorized) {
                 $payload->update([
                     'payment_status' => (string) ($session->payment_status ?? 'unpaid'),
                     'fulfilment_status' => ($session->status ?? null) === 'expired' ? 'expired' : 'pending',
@@ -102,17 +120,17 @@ class ProcessPaidCheckoutSessionJob implements ShouldBeUnique, ShouldQueue
             }
 
             $payload->update([
-                'payment_status' => 'paid',
+                'payment_status' => $authorized ? 'authorized' : 'paid',
                 'stripe_payment_intent_id' => $session->payment_intent ?? null,
-                'paid_at' => $payload->paid_at ?? now(),
+                'paid_at' => $authorized ? null : ($payload->paid_at ?? now()),
             ]);
 
             $booking = $service->createBookingFromSession($session);
             if ($booking) {
                 $payload->update([
                     'booking_id' => $booking->id,
-                    'fulfilment_status' => 'fulfilled',
-                    'fulfilled_at' => now(),
+                    'fulfilment_status' => $authorized ? 'supplier_pending' : 'fulfilled',
+                    'fulfilled_at' => $authorized ? null : now(),
                     'last_error' => null,
                 ]);
 
@@ -131,6 +149,30 @@ class ProcessPaidCheckoutSessionJob implements ShouldBeUnique, ShouldQueue
                 'fulfilment_status' => 'manual_review',
                 'last_error' => 'Paid session could not be converted into a booking.',
             ]);
+        } catch (StripeAuthorizationAmountMismatchException $e) {
+            $released = false;
+            if ($manualSupplierCapture && ! empty($session?->payment_intent)) {
+                try {
+                    $paymentLifecycle ??= app(StripePaymentLifecycleService::class);
+                    $paymentLifecycle->releaseAuthorization(
+                        (string) $session->payment_intent,
+                        'release_checkout_'.$this->sessionId
+                    );
+                    $released = true;
+                } catch (Throwable $releaseError) {
+                    Log::critical('ProcessPaidCheckoutSessionJob: mismatched authorization release failed', [
+                        'session_id' => $this->sessionId,
+                        'error' => $releaseError->getMessage(),
+                    ]);
+                }
+            }
+
+            $payload->update([
+                'payment_status' => $released ? 'authorization_released' : 'authorized',
+                'fulfilment_status' => 'manual_review',
+                'last_error' => substr($e->getMessage(), 0, 2000),
+            ]);
+            $this->notifyAuthorizationReview($payload, $e->getMessage(), $released);
         } catch (Throwable $e) {
             $payload->update([
                 'fulfilment_status' => 'pending',
@@ -143,10 +185,43 @@ class ProcessPaidCheckoutSessionJob implements ShouldBeUnique, ShouldQueue
 
     public function failed(Throwable $e): void
     {
-        StripeCheckoutPayload::where('stripe_session_id', $this->sessionId)->update([
+        $payload = StripeCheckoutPayload::where('stripe_session_id', $this->sessionId)->first();
+        $payload?->update([
             'fulfilment_status' => 'manual_review',
             'last_error' => substr($e->getMessage(), 0, 2000),
         ]);
+
+        if ($payload
+            && $payload->payment_status === 'authorized'
+            && ! $payload->booking_id
+            && ! empty($payload->stripe_payment_intent_id)) {
+            try {
+                app(StripePaymentLifecycleService::class)->releaseAuthorization(
+                    (string) $payload->stripe_payment_intent_id,
+                    'release_checkout_'.$this->sessionId
+                );
+                $payload->update(['payment_status' => 'authorization_released']);
+                Log::warning('ProcessPaidCheckoutSessionJob: orphaned card authorization released', [
+                    'session_id' => $this->sessionId,
+                ]);
+                $this->notifyAuthorizationReview(
+                    $payload,
+                    'Checkout fulfilment exhausted retries before a booking could be created.',
+                    true
+                );
+
+                return;
+            } catch (Throwable $releaseError) {
+                Log::critical('ProcessPaidCheckoutSessionJob: orphaned authorization needs manual release', [
+                    'session_id' => $this->sessionId,
+                    'error' => $releaseError->getMessage(),
+                ]);
+                $this->notifyAuthorizationReview($payload, $releaseError->getMessage(), false);
+
+                return;
+            }
+        }
+
         Log::error('ProcessPaidCheckoutSessionJob exhausted retries — paid session has no booking', [
             'session_id' => $this->sessionId,
             'error' => $e->getMessage(),
@@ -163,6 +238,35 @@ class ProcessPaidCheckoutSessionJob implements ShouldBeUnique, ShouldQueue
             }
         } catch (Throwable $notifyError) {
             Log::warning('ProcessPaidCheckoutSessionJob: failed to send orphaned-payment alert', [
+                'session_id' => $this->sessionId,
+                'error' => $notifyError->getMessage(),
+            ]);
+        }
+    }
+
+    private function notifyAuthorizationReview(
+        StripeCheckoutPayload $payload,
+        string $reason,
+        bool $released
+    ): void {
+        try {
+            $admin = User::where('email', config('admin.email'))->first();
+            if ($admin) {
+                AdminAuthorizationReviewNotification::sendOnce(
+                    $admin,
+                    new AdminAuthorizationReviewNotification(
+                        $this->sessionId,
+                        $reason,
+                        $released,
+                        $payload->booking_id,
+                        $payload->booking_id
+                            ? Booking::whereKey($payload->booking_id)->value('booking_number')
+                            : null,
+                    )
+                );
+            }
+        } catch (Throwable $notifyError) {
+            Log::warning('ProcessPaidCheckoutSessionJob: failed to send authorization review alert', [
                 'session_id' => $this->sessionId,
                 'error' => $notifyError->getMessage(),
             ]);

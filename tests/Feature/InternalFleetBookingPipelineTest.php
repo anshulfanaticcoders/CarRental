@@ -149,6 +149,7 @@ class InternalFleetBookingPipelineTest extends TestCase
             'status' => 'expired',
         ]);
         $unpaidService = Mockery::mock(StripeBookingService::class);
+        $unpaidService->shouldReceive('isManualSupplierCaptureMetadata')->once()->andReturnFalse();
         $unpaidService->shouldNotReceive('createBookingFromSession');
 
         (new ProcessPaidCheckoutSessionJob($expiredSessionId))->handle($unpaidService);

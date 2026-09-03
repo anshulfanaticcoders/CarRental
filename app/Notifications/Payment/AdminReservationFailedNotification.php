@@ -39,31 +39,45 @@ class AdminReservationFailedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject('Action needed: supplier rejected paid Booking #'.$this->booking->booking_number)
+        $captured = in_array($this->booking->payment_status, ['partial', 'paid', 'refund_pending'], true)
+            || (float) $this->booking->amount_paid > 0;
+
+        $mail = (new MailMessage)
+            ->subject('Action needed: supplier rejected Booking #'.$this->booking->booking_number)
             ->greeting('Hello Admin,')
-            ->line('The supplier could not confirm a reservation for a PAID booking after all retries.')
-            ->line('The booking is NOT cancelled — it is waiting in the reservation-failed queue for your decision.')
+            ->line('The supplier could not confirm a reservation after all retries.')
             ->line('**Booking Number:** '.$this->booking->booking_number)
             ->line('**Provider:** '.($this->booking->provider_source ?: 'unknown'))
             ->line('**Customer:** '.($this->booking->customer?->email ?? 'unknown'))
-            ->when($this->reason !== '', fn ($mail) => $mail->line('**Supplier error:** '.$this->reason))
-            ->line('Next steps: rebook manually via the supplier portal and record the reference, or cancel and refund the customer manually. The customer has been told their booking is under review.')
-            ->action('View Bookings', url('/customer-bookings'));
+            ->when($this->reason !== '', fn ($message) => $message->line('**Supplier error:** '.$this->reason));
+
+        if ($captured) {
+            $mail->line('Payment was captured. Rebook manually or complete the flagged refund.')
+                ->line('The customer has been told the booking is under review.');
+        } else {
+            $mail->line('No payment was captured; the Stripe card authorization was released.')
+                ->line('Do not issue a refund for this booking.');
+        }
+
+        return $mail->action('View Bookings', url('/customer-bookings'));
     }
 
     public function toArray(object $notifiable): array
     {
+        $captured = in_array($this->booking->payment_status, ['partial', 'paid', 'refund_pending'], true)
+            || (float) $this->booking->amount_paid > 0;
+
         return [
-            'title' => 'Supplier rejected paid booking #'.$this->booking->booking_number,
+            'title' => 'Supplier rejected booking #'.$this->booking->booking_number,
             'booking_id' => $this->booking->id,
             'booking_number' => $this->booking->booking_number,
             'dedupe_key' => $this->dedupeKey(),
             'provider_source' => $this->booking->provider_source,
             'reason' => $this->reason,
             'role' => 'admin',
-            'message' => 'Supplier rejected the reservation for PAID booking #'.$this->booking->booking_number
-                .'. Held for manual review — rebook with the supplier or refund the customer.',
+            'message' => $captured
+                ? 'Supplier rejected booking #'.$this->booking->booking_number.'. Payment was captured; rebook or refund.'
+                : 'Supplier rejected booking #'.$this->booking->booking_number.'. Card authorization released; no refund is due.',
         ];
     }
 }

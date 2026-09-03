@@ -149,6 +149,34 @@ class AdminRetryReservationTest extends TestCase
     }
 
     #[Test]
+    public function an_authorized_booking_with_a_supplier_reference_can_retry_capture_without_supplier_confirmation(): void
+    {
+        Queue::fake();
+        $booking = $this->stuckBooking([
+            'booking_status' => 'supplier_pending',
+            'payment_status' => 'authorized',
+            'provider_booking_ref' => 'EMR-CAPTURE-ONLY',
+            'amount_paid' => 0,
+            'provider_metadata' => [
+                'reservation_manual_check' => true,
+                'payment_capture_manual_check' => true,
+                'capture_rescue_exhausted' => true,
+            ],
+        ]);
+        $this->payloadFor($booking);
+
+        $this->actingAs($this->admin())
+            ->post(route('customer-bookings.retry-reservation', ['id' => $booking->id]))
+            ->assertSessionHas('success');
+
+        Queue::assertPushed(TriggerProviderReservationJob::class,
+            fn ($job) => $job->bookingId === $booking->id);
+        $metadata = $booking->fresh()->provider_metadata;
+        $this->assertFalse((bool) $metadata['payment_capture_manual_check']);
+        $this->assertFalse((bool) $metadata['capture_rescue_exhausted']);
+    }
+
+    #[Test]
     public function unrecoverable_metadata_reports_an_error_instead_of_dispatching(): void
     {
         Queue::fake();

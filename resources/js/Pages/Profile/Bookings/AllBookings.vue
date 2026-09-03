@@ -41,7 +41,7 @@ const CLOSED_STATUSES = [...ATTENTION_STATUSES, 'completed', 'expired'];
 // Which raw statuses each tab shows — every status maps somewhere, so no
 // booking can hide from every tab.
 const TAB_STATUSES = {
-  pending: ['pending'],
+  pending: ['supplier_pending', 'pending'],
   confirmed: ['confirmed', 'active'],
   completed: ['completed'],
   cancelled: ['cancelled', 'expired'],
@@ -90,6 +90,10 @@ const getStatusBadge = (status, booking = null) => {
   const statusConfig = {
     pending: {
       label: t('pending', 'Pending'),
+      tone: 'pending',
+    },
+    supplier_pending: {
+      label: t('supplier_confirmation_pending', 'Supplier confirmation pending'),
       tone: 'pending',
     },
     confirmed: {
@@ -255,6 +259,9 @@ const hasFreeEsim = (booking) => {
 };
 
 const getPaymentStateLabel = (booking) => {
+  if (booking.payment_status === 'authorized') {
+    return t('card_authorized', 'Card authorized — not charged yet');
+  }
   if (booking.payment_status === 'pending') {
     return t('payment_pending', 'Payment pending');
   }

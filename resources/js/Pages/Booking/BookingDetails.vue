@@ -57,7 +57,7 @@ const isSupplierPending = computed(() => (
   !isFailedState.value
   && !!props.booking?.provider_source
   && props.booking.provider_source !== 'internal'
-  && !props.booking.provider_booking_ref
+  && (!props.booking.provider_booking_ref || props.booking.payment_status === 'authorized')
 ));
 
 // While the supplier is confirming, silently refresh the booking so the page
@@ -341,6 +341,7 @@ const friendlyLocation = (value) => {
 const getStatusBadge = (status) => {
   const config = {
     pending: { bg: 'bg-amber-400/20', text: 'text-amber-200', border: 'border-amber-400/30', dot: 'bg-amber-400' },
+    supplier_pending: { bg: 'bg-amber-400/20', text: 'text-amber-200', border: 'border-amber-400/30', dot: 'bg-amber-400' },
     confirmed: { bg: 'bg-emerald-400/20', text: 'text-emerald-200', border: 'border-emerald-400/30', dot: 'bg-emerald-400' },
     completed: { bg: 'bg-blue-400/20', text: 'text-blue-200', border: 'border-blue-400/30', dot: 'bg-blue-400' },
     cancelled: { bg: 'bg-rose-400/20', text: 'text-rose-200', border: 'border-rose-400/30', dot: 'bg-rose-400' },
@@ -365,7 +366,9 @@ const statusDisplay = computed(() => {
   }
   if (isSupplierPending.value) {
     return {
-      label: _t('customerprofile', 'supplier_confirmation_pending') || 'Supplier confirmation pending',
+      label: props.booking?.payment_status === 'authorized'
+        ? (_t('customerprofile', 'card_authorized') || 'Card authorized — final confirmation pending')
+        : (_t('customerprofile', 'supplier_confirmation_pending') || 'Supplier confirmation pending'),
       capitalize: false,
       ...getStatusBadge('pending'),
     };

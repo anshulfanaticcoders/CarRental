@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Exceptions\ReservationOutcomeUnknownException;
 use App\Jobs\TriggerProviderReservationJob;
 use App\Models\Affiliate\AffiliateBusiness;
 use App\Models\Affiliate\AffiliateBusinessLocation;
@@ -888,7 +889,7 @@ class StripeBookingServiceAccountingTest extends TestCase
     }
 
     #[Test]
-    public function it_treats_gateway_pending_response_as_reservation_failure(): void
+    public function it_treats_gateway_pending_response_as_an_unknown_outcome(): void
     {
         $booking = $this->createExternalBooking();
 
@@ -912,8 +913,7 @@ class StripeBookingServiceAccountingTest extends TestCase
             }
         };
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Gateway did not return a confirmed supplier reservation');
+        $this->expectException(ReservationOutcomeUnknownException::class);
 
         $service->invokeTriggerGatewayReservation($booking, (object) [
             'gateway_vehicle_id' => 'gw_vehicle_1',

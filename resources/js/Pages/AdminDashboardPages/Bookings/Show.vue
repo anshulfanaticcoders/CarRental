@@ -219,7 +219,8 @@ defineProps({
 
 const getStatusBadgeBooking = (status) => {
     switch (status) {
-        case 'pending': return 'secondary';
+        case 'pending':
+        case 'supplier_pending': return 'secondary';
         case 'cancelled':
         case 'reservation_failed':
         case 'rejected': return 'destructive';
@@ -307,7 +308,8 @@ const getVehicleMeta = (booking) => {
 const getPaymentBadgeVariant = (paymentStatus) => {
     switch (paymentStatus) {
         case 'paid': return 'default';
-        case 'pending': return 'secondary';
+        case 'pending':
+        case 'authorized': return 'secondary';
         case 'failed':
         case 'refund_pending': return 'destructive';
         default: return 'outline';

@@ -692,7 +692,7 @@ class BookingController extends Controller
         if (! empty($customerIds)) {
             $statusTab = (string) $request->query('status', 'all');
             $tabStatuses = [
-                'pending' => ['pending'],
+                'pending' => ['supplier_pending', 'pending'],
                 'confirmed' => ['confirmed', 'active'],
                 'completed' => ['completed'],
                 'cancelled' => ['cancelled', 'expired'],
@@ -762,6 +762,12 @@ class BookingController extends Controller
 
         // External: needs a confirmed supplier reservation plus the gateway
         // metadata cancelBooking() requires.
+        if ($booking->payment_status === 'authorized'
+            && empty($booking->provider_booking_ref)
+            && empty($metadata['reservation_manual_check'])) {
+            return true;
+        }
+
         return ! empty($booking->provider_booking_ref) && ! empty($metadata['gateway_booking_id']);
     }
 }
