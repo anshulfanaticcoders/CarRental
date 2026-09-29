@@ -1,0 +1,107 @@
+{
+  "page": {
+    "overflow": false,
+    "supplier": "Local supplier with a long rental-company name",
+    "deposit": "$950.00",
+    "depositLabel": "Security deposit",
+    "total": "€428.72",
+    "payNow": "€64.31",
+    "alternatives": 3
+  },
+  "revealedAlternatives": 6,
+  "allAlternatives": 12,
+  "extras": {
+    "visible": true,
+    "currentStep": "CustomizeExtras & options",
+    "stateKeys": [
+      "component",
+      "props",
+      "url",
+      "version",
+      "scrollRegions",
+      "rememberedState"
+    ],
+    "component": "OfferResults",
+    "url": "/en/offers/ui-skyscanner-live"
+  },
+  "proceedReady": true,
+  "checkout": {
+    "visible": true,
+    "percentage": true,
+    "component": "OfferResults",
+    "bookingStep": null
+  },
+  "backToExtras": "CustomizeExtras & options",
+  "backToResults": true,
+  "forwardToExtras": "CustomizeExtras & options",
+  "mobile": {
+    "overflow": false,
+    "stickyVisible": true,
+    "supplier": "Local supplier with a long rental-company name",
+    "deposit": "$950.00"
+  },
+  "viewports": {
+    "375": {
+      "overflow": false,
+      "panel": 338,
+      "content": 338,
+      "image": 297.5
+    },
+    "768": {
+      "overflow": false,
+      "panel": 678,
+      "content": 678,
+      "image": 272.78125
+    },
+    "1024": {
+      "overflow": false,
+      "panel": 548,
+      "content": 548,
+      "image": 213.3125
+    },
+    "1440": {
+      "overflow": false,
+      "panel": 931,
+      "content": 931,
+      "image": 389.171875
+    }
+  },
+  "trabber": {
+    "handoff": "Found on Trabber\n·\nSecurely booked with Vrooem",
+    "alternatives": 0
+  },
+  "expired": {
+    "disabled": true,
+    "search": "http://127.0.0.1:8000/en/s?where=Palma%20de%20Mallorca%20Airport%20%E2%80%94%20Terminal%201%20arrivals%20meeting%20point&provider=mixed&date_from=2026-11-12&date_to=2026-11-16&start_time=09%3A30&end_time=09%3A30&age=35&currency=EUR&dropoff_where=Palma%20de%20Mallorca%20Airport%20%E2%80%94%20Terminal%201%20arrivals%20meeting%20point"
+  },
+  "arabic": {
+    "dir": "rtl",
+    "overflow": false,
+    "panel": 338,
+    "content": 338
+  },
+  "locales": {
+    "es": {
+      "overflow": false,
+      "cta": "Elige los extras y continúa"
+    },
+    "fr": {
+      "overflow": false,
+      "cta": "Choisir les options et continuer"
+    },
+    "nl": {
+      "overflow": false,
+      "cta": "Kies extra’s en ga verder"
+    }
+  },
+  "reducedMotion": "0s",
+  "keyboard": {
+    "tag": "A",
+    "visibleFocus": true
+  },
+  "errors": {
+    "application": [],
+    "thirdParty": [],
+    "console": []
+  }
+}

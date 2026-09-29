@@ -56,7 +56,8 @@
       "WebFetch(domain:help.awin.com)",
       "mcp__exa__web_fetch_exa",
       "WebFetch(domain:advertiser-success.awin.com)",
-      "WebFetch(domain:www.trabber.us)"
+      "WebFetch(domain:www.trabber.us)",
+      "Bash(git worktree *)"
     ]
   },
   "enableAllProjectMcpServers": true,
