@@ -756,13 +756,15 @@ class StripeCheckoutController extends Controller
                 ], 422);
             }
 
-            $phoneDigits = preg_replace('/[\s\-().]/', '', (string) ($customerInput['phone'] ?? ''));
-            if (! preg_match('/^\+?[0-9]{7,15}$/', $phoneDigits)) {
+            $phoneInput = trim((string) ($customerInput['phone'] ?? ''));
+            $phoneNumber = phone($phoneInput);
+            if (! str_starts_with($phoneInput, '+') || ! $phoneNumber->isValid()) {
                 return response()->json([
-                    'error' => 'Please enter a valid phone number (7-15 digits).',
+                    'error' => 'Please enter a valid international phone number including the country code (for example, +90 545 850 1724).',
                     'invalid_fields' => ['phone'],
                 ], 422);
             }
+            $validated['customer']['phone'] = $phoneNumber->formatE164();
 
             $identityConflict = $this->resolveCheckoutIdentityConflict(
                 $request,

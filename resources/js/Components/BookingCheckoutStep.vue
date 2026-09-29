@@ -9,6 +9,7 @@ import { normalizeCurrencyCode as registryNormalizeCurrencyCode } from '@/utils/
 import { normalizeProviderSource } from '@/utils/providerSource';
 import { COUNTRIES } from '@/data/countries';
 import { useCheckoutDraft } from '@/composables/useCheckoutDraft';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import {
     getSearchVehicleLegacyPayload,
     resolveSearchVehicleDisplayName,
@@ -178,9 +179,6 @@ const needsLicence = computed(() => isOkMobility.value || isGreenMotion.value ||
 const needsAddress = computed(() => isGreenMotion.value || isYesaway.value || serverRequiresAddress.value);
 
 const LICENCE_REGEX = /^[A-Za-z0-9][A-Za-z0-9 \-\/]{3,}[A-Za-z0-9]$/;
-// Same rule as the backend: optional +, then 7-15 digits after stripping separators.
-const PHONE_REGEX = /^\+?[0-9]{7,15}$/;
-
 // Single source of truth for every field rule. Each validator receives the
 // trimmed value and returns an error message or null. Used by the reactive
 // form gate, per-field re-validation on input, and the pre-submit check —
@@ -199,8 +197,8 @@ const fieldValidators = {
     },
     phone: (v) => {
         if (!v) return 'Phone Number is required';
-        const digits = v.replace(/[\s\-().]/g, '');
-        if (!PHONE_REGEX.test(digits)) return 'Please enter a valid phone number (7-15 digits, e.g. +32493123456)';
+        const parsed = v.startsWith('+') ? parsePhoneNumberFromString(v) : null;
+        if (!parsed?.isValid()) return 'Include a valid country code, for example +90 545 850 1724';
         return null;
     },
     driver_age: (v) => {
@@ -425,7 +423,11 @@ const resolveReturnSearchUrl = () => {
 const trimmedCustomer = computed(() => {
     const out = {};
     for (const [key, value] of Object.entries(form.value)) {
-        out[key] = typeof value === 'string' ? value.trim() : value;
+        const trimmed = typeof value === 'string' ? value.trim() : value;
+        const parsedPhone = key === 'phone' && typeof trimmed === 'string'
+            ? parsePhoneNumberFromString(trimmed)
+            : null;
+        out[key] = parsedPhone?.isValid() ? parsedPhone.number : trimmed;
     }
     return out;
 });
@@ -554,7 +556,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                             <div class="form-field-group">
                                 <label class="form-label">
                                     <svg class="form-label-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
-                                    Phone Number <span class="text-red-400">*</span>
+                                    Phone Number (with country code) <span class="text-red-400">*</span>
                                 </label>
                                 <div class="form-input-wrap" :class="{ 'has-error': errors.phone, 'has-value': form.phone }">
                                     <svg class="form-input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
@@ -566,6 +568,7 @@ const formatTotalPrice = (val) => formatPrice(val, totalsSourceCurrency.value);
                                         {{ errors.phone }}
                                     </p>
                                 </Transition>
+                                <p v-if="!errors.phone" class="text-[11px] text-gray-400 mt-1 pl-1">Start with + and your country code so the rental company can contact you.</p>
                             </div>
 
                             <!-- Driver Age -->

@@ -71,6 +71,14 @@ class CheckoutCustomerValidationTest extends TestCase
     }
 
     #[Test]
+    public function phone_without_an_international_country_code_is_rejected_before_payment(): void
+    {
+        $this->checkout(['phone' => '545850172'])
+            ->assertStatus(422)
+            ->assertJson(['invalid_fields' => ['phone']]);
+    }
+
+    #[Test]
     public function malformed_email_is_rejected(): void
     {
         $this->checkout(['email' => 'not-an-email'])
